@@ -16,3 +16,6 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+
+# Copied from node_modules by scripts/sync-sqlite.sh, so it cannot drift from the installed version.
+static/sqlite/

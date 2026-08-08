@@ -13,7 +13,11 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
-    "cap:sync": "npm run build && cap sync"
+    "cap:sync": "npm run build && cap sync",
+    "sync:sqlite": "./scripts/sync-sqlite.sh",
+    "predev": "./scripts/sync-sqlite.sh",
+    "prebuild": "./scripts/sync-sqlite.sh",
+    "postinstall": "./scripts/sync-sqlite.sh"
   },
   "type": "module",
   "private": true,
