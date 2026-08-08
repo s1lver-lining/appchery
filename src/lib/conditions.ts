@@ -18,9 +18,9 @@ export interface WeatherSnapshot {
 }
 
 function flag(key: string, initial = false) {
-	const store = writable<boolean>(
-		typeof window === 'undefined' ? initial : window.localStorage.getItem(key) === 'true'
-	);
+	// An absent key means the preference was never set, which is not the same as it being off.
+	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	const store = writable<boolean>(saved === null ? initial : saved === 'true');
 	store.subscribe((value) => {
 		if (typeof window !== 'undefined') window.localStorage.setItem(key, String(value));
 	});
@@ -32,6 +32,12 @@ export const autoLocation = flag('appchery.autoLocation');
 
 /** Weather is derived from coordinates, so it is only meaningful while location is on. */
 export const autoWeather = flag('appchery.autoWeather');
+
+/**
+ * Naming the place sends coordinates to a third party, which recording them locally does not.
+ * That is a separate decision from switching location on, so it gets its own opt in.
+ */
+export const autoPlaceName = flag('appchery.autoPlaceName');
 
 export class LocationDeniedError extends Error {}
 
@@ -77,12 +83,15 @@ export async function fetchWeather(
 	}
 }
 
-export async function captureConditions(withWeather = true): Promise<Conditions> {
+export async function captureConditions(
+	withWeather = true,
+	withPlaceName = false
+): Promise<Conditions> {
 	const position = await requestPosition();
 	const { latitude, longitude } = position.coords;
 	const [weather, place] = await Promise.all([
 		withWeather ? fetchWeather(latitude, longitude) : Promise.resolve(null),
-		fetchPlace(latitude, longitude)
+		withPlaceName ? fetchPlace(latitude, longitude) : Promise.resolve(null)
 	]);
 	return { latitude, longitude, weather, place };
 }
