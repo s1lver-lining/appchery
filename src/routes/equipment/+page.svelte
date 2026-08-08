@@ -20,7 +20,10 @@
 
 	async function add() {
 		if (!name.trim()) return;
+		const first = bows.length === 0;
 		const id = await createBow(name.trim(), type);
+		// With a single bow there is nothing to choose between, so preselecting it saves a step.
+		if (first) defaultBowId.set(id);
 		name = '';
 		adding = false;
 		goto(`/equipment/${id}`);
