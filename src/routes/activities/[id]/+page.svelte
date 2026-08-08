@@ -163,11 +163,17 @@
 		openRow ? toShots(openRow.shots).filter((s) => s.x !== null) : []
 	);
 
-	let scrolledToEnd = false;
+	/**
+	 * Follow the shooting: the row being filled must stay in view, whether that is on first load of a
+	 * part shot round or after each arrow pushes the sheet down.
+	 */
 	$effect(() => {
-		if (!sheetScroller || scrolledToEnd || sheetRows.length === 0) return;
-		scrolledToEnd = true;
-		sheetScroller.scrollTop = sheetScroller.scrollHeight;
+		// Touch both so the effect reruns as arrows and ends are added.
+		void sheetRows.length;
+		void pending.length;
+		if (!sheetScroller) return;
+		const el = sheetScroller;
+		requestAnimationFrame(() => (el.scrollTop = el.scrollHeight));
 	});
 
 	async function loadRows() {

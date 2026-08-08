@@ -20,10 +20,13 @@ truth — WASM/OPFS in the browser, native SQLite on device — accessed through
 
 ```bash
 npm install
-npm run dev          # http://localhost:5173
-npm test             # domain/scoring unit tests
-npm run build        # static build into ./build
+./scripts/dev.sh     # dev server with hot reload, exposed on the LAN
+./scripts/run.sh     # build and serve the production bundle
+npm test             # domain and scoring unit tests
 ```
+
+`dev.sh` and `run.sh` both bind to the LAN, so the same server opens on a phone. Set `PORT` to
+change the port.
 
 ### Deploying the web build
 
@@ -42,13 +45,29 @@ configuration (`_headers`, nginx, Cloudflare rule).
 
 Native builds are unaffected: they use platform SQLite, not OPFS.
 
-### Native platforms
+### Installing on a phone
 
 ```bash
-npx cap add ios      # requires Xcode
-npx cap add android  # requires Android Studio
-npm run cap:sync     # build the web app and copy it into the native projects
+./scripts/adb_install.sh   # build, sync, assemble the debug APK, install over adb
 ```
+
+It expects an SDK at `$ANDROID_HOME` (defaulting to `~/Android/Sdk`) with platform 36 and
+build-tools 36, a device with USB debugging enabled, and a JDK Gradle supports. Set `JAVA_HOME` if
+21 is not where the script looks.
+
+iOS needs Xcode:
+
+```bash
+npx cap add ios
+npm run cap:sync
+npx cap open ios
+```
+
+### Installing as a web app
+
+The build ships a manifest and a service worker that precaches the whole app, so it installs from
+the browser and runs with no network. Installation needs HTTPS: a plain LAN address will run the
+app but will not offer to install it.
 
 ## Project layout
 

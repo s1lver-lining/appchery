@@ -1,33 +1,37 @@
 import { sqlite3Worker1Promiser } from '@sqlite.org/sqlite-wasm';
+import { base } from '$app/paths';
 import type { SqlDriver } from './driver';
 
 /**
  * Browser driver: official SQLite compiled to WASM, running in a Worker.
  *
- * The Worker is not optional. OPFS persistence uses synchronous access handles,
- * which are only available off the main thread — a main-thread `OpfsDb` silently
- * degrades to an in-memory database. The worker also keeps queries off the UI
- * thread, which matters when a session accumulates a few hundred arrows.
+ * The Worker is not optional. OPFS persistence uses synchronous access handles, which are only
+ * available off the main thread, and the worker also keeps queries off the UI thread.
  *
- * OPFS additionally requires cross-origin isolation (the COOP/COEP headers from
- * vite.config.ts). Where that is missing the database still works but lives only
- * in memory, surfaced through `persistent: false` so the UI can warn rather than
- * losing a session's scores on reload.
+ * OPFS additionally requires cross-origin isolation (the COOP/COEP headers from vite.config.ts).
+ * Where that is missing the database still works but lives only in memory, surfaced through
+ * `persistent: false` so the UI can warn rather than losing a session's scores on reload.
  */
 export async function createWebDriver(filename = 'appchery.db'): Promise<SqlDriver> {
 	type Promiser = (type: string, args: unknown) => Promise<unknown>;
 
-	// The promiser resolves itself: `onready` fires once the worker has booted,
-	// and the value it hands back is the function created on the line above.
+	// The promiser resolves itself: `onready` fires once the worker has booted, and the value it
+	// hands back is the function created on the line above.
 	const promiser = await new Promise<Promiser>((resolve) => {
-		const p: Promiser = sqlite3Worker1Promiser({ onready: () => resolve(p) });
+		const p: Promiser = sqlite3Worker1Promiser({
+			onready: () => resolve(p),
+			/**
+			 * The worker is loaded from a copy in `static/sqlite/` rather than through the bundler.
+			 * SQLite resolves its own `.wasm` and OPFS proxy relative to the worker script, and those
+			 * runtime paths do not survive Vite's asset hashing: the built app 404s on sqlite3.wasm
+			 * and never opens a database.
+			 */
+			worker: () => new Worker(`${base}/sqlite/sqlite3-worker1.mjs`, { type: 'module' })
+		});
 	});
 
-	// Ask for OPFS explicitly, and fall back to the default VFS if the worker
-	// cannot provide it. The worker reports back whether the database it opened
-	// actually persists — feature-detecting from the main thread proves nothing
-	// about what the worker managed to do, and silently accepting a transient
-	// database is exactly the failure that needs surfacing.
+	// Ask for OPFS explicitly, and fall back to the default VFS if the worker cannot provide it.
+	// The worker reports back whether the database it opened actually persists.
 	type OpenResult = { result?: { persistent?: boolean } };
 
 	const opened = (await promiser('open', { filename: `file:${filename}?vfs=opfs` }).catch(() =>
