@@ -1,18 +1,6 @@
 import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
 
-/**
- * Local SQLite schema — the source of truth for all user data.
- *
- * Sync-readiness conventions, applied from day one even though nothing consumes
- * them yet (see doc/data-model.md):
- *   - `id` is a UUID, never an autoincrement, so two devices cannot collide.
- *   - `updatedAt` drives last-writer-wins resolution.
- *   - `deletedAt` soft-deletes, because a hard delete cannot be synced.
- *   - every mutation is appended to `changeLog`.
- * Retrofitting these over existing user data is far more painful than carrying
- * a few unused columns.
- */
-
+// Sync readiness costs a few columns now and is impossible to retrofit later, see doc/data-model.md.
 const syncColumns = {
 	id: text('id').primaryKey(),
 	createdAt: integer('created_at').notNull(),
@@ -24,26 +12,21 @@ const syncColumns = {
 export const bow = sqliteTable('bow', {
 	...syncColumns,
 	name: text('name').notNull(),
-	/** 'recurve' | 'compound' | 'barebow' | 'longbow' */
+	/** recurve | compound | barebow | longbow */
 	type: text('type').notNull(),
 	isActive: integer('is_active').notNull().default(1),
 	notes: text('notes')
 });
 
-/**
- * Immutable. Changing a setting appends a revision rather than updating one, so
- * a past score always resolves to the exact configuration that produced it.
- */
+// Immutable: a settings change appends a revision so past scores still resolve to the setup that produced them.
 export const bowRevision = sqliteTable(
 	'bow_revision',
 	{
 		...syncColumns,
 		bowId: text('bow_id').notNull(),
 		revisionNo: integer('revision_no').notNull(),
-		/** JSON, validated against the schema for the bow's type. */
 		settings: text('settings').notNull(),
 		arrowSetId: text('arrow_set_id'),
-		/** Why the change was made. Free text, and unexpectedly valuable months later. */
 		reason: text('reason'),
 		effectiveFrom: integer('effective_from').notNull()
 	},
@@ -54,7 +37,7 @@ export const arrowSet = sqliteTable('arrow_set', {
 	...syncColumns,
 	label: text('label').notNull(),
 	spine: integer('spine'),
-	/** Canonical metric storage; arrow lengths are *displayed* in inches. */
+	/** Canonical metric storage, displayed in inches. */
 	lengthMm: integer('length_mm'),
 	pointGrain: integer('point_grain'),
 	fletching: text('fletching'),
@@ -63,42 +46,72 @@ export const arrowSet = sqliteTable('arrow_set', {
 	count: integer('count')
 });
 
-export const session = sqliteTable(
-	'session',
+/** One outing, holding the bow used, the conditions, and every activity done during it. */
+export const session = sqliteTable('session', {
+	...syncColumns,
+	label: text('label'),
+	startedAt: integer('started_at').notNull(),
+	endedAt: integer('ended_at'),
+	/** practice | competition | qualification */
+	kind: text('kind').notNull().default('practice'),
+	/** Set when shooting a bow the archer has recorded. */
+	bowId: text('bow_id'),
+	/** Set instead of bowId when the archer only wants to note a generic bow type. */
+	bowType: text('bow_type'),
+	bowRevisionId: text('bow_revision_id'),
+	location: text('location'),
+	latitude: real('latitude'),
+	longitude: real('longitude'),
+	/** JSON weather snapshot taken once at session start, never refreshed. */
+	weather: text('weather'),
+	notes: text('notes')
+});
+
+/** One thing done inside a session: a scored round, or a tuning procedure. */
+export const activity = sqliteTable(
+	'activity',
 	{
 		...syncColumns,
-		roundDefinitionId: text('round_definition_id').notNull(),
-		bowRevisionId: text('bow_revision_id'),
+		sessionId: text('session_id').notNull(),
+		/** scoring | tuning */
+		kind: text('kind').notNull(),
+		/** Set for built-in rounds, null for custom ones. */
+		roundDefinitionId: text('round_definition_id'),
+		/**
+		 * Full round snapshot as JSON, so editing a definition never rewrites the history of a
+		 * round already shot under the old one.
+		 */
+		roundDefinition: text('round_definition'),
+		/** Set for tuning activities. */
+		templateKey: text('template_key'),
+		observations: text('observations'),
+		conclusion: text('conclusion'),
+		adjustmentMade: text('adjustment_made'),
+		resultingRevisionId: text('resulting_revision_id'),
 		startedAt: integer('started_at').notNull(),
 		endedAt: integer('ended_at'),
-		/** 'practice' | 'competition' | 'qualification' */
-		kind: text('kind').notNull().default('practice'),
-		location: text('location'),
-		/** JSON: wind, temperature, light, indoor/outdoor. */
-		conditions: text('conditions'),
-		/** Denormalised for list views; recomputed whenever an end changes. */
 		totalScore: integer('total_score').notNull().default(0),
 		count10s: integer('count_10s').notNull().default(0),
 		countX: integer('count_x').notNull().default(0),
 		arrowsShot: integer('arrows_shot').notNull().default(0),
-		/** 'in_progress' | 'complete' | 'abandoned' */
+		/** in_progress | complete | abandoned */
 		status: text('status').notNull().default('in_progress'),
 		notes: text('notes')
 	},
-	(t) => [index('idx_session_round').on(t.roundDefinitionId, t.startedAt)]
+	(t) => [index('idx_activity_session').on(t.sessionId, t.startedAt)]
 );
 
-/** Named `round_end` in SQL: `end` is a reserved SQLite keyword. */
+/** Named round_end in SQL because end is a reserved keyword. */
 export const end = sqliteTable(
 	'round_end',
 	{
 		...syncColumns,
-		sessionId: text('session_id').notNull(),
+		activityId: text('activity_id').notNull(),
 		stageIndex: integer('stage_index').notNull(),
 		endNo: integer('end_no').notNull(),
 		subtotal: integer('subtotal').notNull().default(0)
 	},
-	(t) => [index('idx_end_session').on(t.sessionId)]
+	(t) => [index('idx_end_activity').on(t.activityId)]
 );
 
 export const shot = sqliteTable(
@@ -109,49 +122,24 @@ export const shot = sqliteTable(
 		ordinal: integer('ordinal').notNull(),
 		value: integer('value').notNull(),
 		zoneLabel: text('zone_label').notNull(),
-		/**
-		 * Normalised face coordinates, centre (0,0), radius 1.0. Null for
-		 * score-only entry. When present, `value` is derived from position rather
-		 * than entered separately — one input, so the two cannot contradict.
-		 */
+		/** Normalised face coordinates, null when the arrow was entered as a bare number. */
 		x: real('x'),
 		y: real('y'),
-		/** 'manual' | 'plotted' | 'vision' */
+		/** manual | plotted | vision */
 		source: text('source').notNull().default('manual'),
 		arrowId: text('arrow_id')
 	},
 	(t) => [index('idx_shot_end').on(t.endId)]
 );
 
-export const tuningRun = sqliteTable('tuning_run', {
-	...syncColumns,
-	templateKey: text('template_key').notNull(),
-	bowRevisionId: text('bow_revision_id').notNull(),
-	/** JSON: captured observations — tear direction, bare-shaft offset, crawls. */
-	observations: text('observations').notNull(),
-	conclusion: text('conclusion'),
-	adjustmentMade: text('adjustment_made'),
-	/**
-	 * The revision this run produced. Closes the causal loop:
-	 * setup -> test -> observation -> change -> new setup -> subsequent scores.
-	 */
-	resultingRevisionId: text('resulting_revision_id'),
-	photos: text('photos')
-});
-
-/**
- * Written from phase 1, consumed by sync in phase 3. Unused for now — that is
- * deliberate. A change log that starts recording only when sync ships cannot
- * reconcile anything that happened before it.
- */
+// Written from phase 1 so sync in phase 3 has a history to reconcile, see doc/architecture.md.
 export const changeLog = sqliteTable(
 	'change_log',
 	{
-		/** Local ordering only; never synced, so an autoincrement is correct here. */
 		id: integer('id').primaryKey({ autoIncrement: true }),
 		tableName: text('table_name').notNull(),
 		rowId: text('row_id').notNull(),
-		/** 'insert' | 'update' | 'delete' */
+		/** insert | update | delete */
 		op: text('op').notNull(),
 		changedAt: integer('changed_at').notNull(),
 		syncedAt: integer('synced_at')

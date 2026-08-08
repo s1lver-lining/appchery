@@ -1,14 +1,9 @@
 import { eq, and, isNull, desc, asc } from 'drizzle-orm';
 import { db, schema } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
-import { endSlots, sumShots, countLabel } from '$lib/domain/rounds/geometry';
+import { sumShots, countLabel } from '$lib/domain/rounds/geometry';
 
-/**
- * All persistence goes through here. Two things it guarantees that scattered
- * queries would not:
- *   1. every mutation is written to `change_log`, so phase-3 sync has a history;
- *   2. soft-deleted rows are filtered out of every read.
- */
+// All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
 const DEVICE_KEY = 'appchery.deviceId';
 
@@ -27,30 +22,43 @@ function stamp() {
 }
 
 async function log(table: string, rowId: string, op: 'insert' | 'update' | 'delete') {
-	await db().insert(schema.changeLog).values({
-		tableName: table,
-		rowId,
-		op,
-		changedAt: Date.now(),
-		syncedAt: null
-	});
+	await db()
+		.insert(schema.changeLog)
+		.values({ tableName: table, rowId, op, changedAt: Date.now(), syncedAt: null });
 }
 
-export async function createSession(
-	round: RoundDefinition,
-	opts: { kind?: string; bowRevisionId?: string; location?: string } = {}
-) {
+export type SessionRow = Awaited<ReturnType<typeof listSessions>>[number];
+export type ActivityRow = Awaited<ReturnType<typeof listActivities>>[number];
+export type EndRow = Awaited<ReturnType<typeof listEnds>>[number];
+export type ShotRow = Awaited<ReturnType<typeof listShots>>[number];
+export type BowRow = Awaited<ReturnType<typeof listBows>>[number];
+
+/* Sessions */
+
+export async function createSession(input: {
+	label?: string;
+	kind?: string;
+	bowId?: string | null;
+	bowType?: string | null;
+	location?: string | null;
+	latitude?: number | null;
+	longitude?: number | null;
+	weather?: string | null;
+}) {
 	const base = stamp();
 	await db()
 		.insert(schema.session)
 		.values({
 			...base,
-			roundDefinitionId: round.id,
-			bowRevisionId: opts.bowRevisionId ?? null,
+			label: input.label ?? null,
 			startedAt: base.createdAt,
-			kind: opts.kind ?? 'practice',
-			location: opts.location ?? null,
-			status: 'in_progress'
+			kind: input.kind ?? 'practice',
+			bowId: input.bowId ?? null,
+			bowType: input.bowType ?? null,
+			location: input.location ?? null,
+			latitude: input.latitude ?? null,
+			longitude: input.longitude ?? null,
+			weather: input.weather ?? null
 		});
 	await log('session', base.id, 'insert');
 	return base.id;
@@ -64,18 +72,131 @@ export async function listSessions() {
 		.orderBy(desc(schema.session.startedAt));
 }
 
-export type SessionRow = Awaited<ReturnType<typeof listSessions>>[number];
-
 export async function getSession(id: string): Promise<SessionRow | null> {
 	const rows = await db().select().from(schema.session).where(eq(schema.session.id, id)).limit(1);
 	return rows[0] ?? null;
 }
 
-export async function listEnds(sessionId: string) {
+export async function updateSession(
+	id: string,
+	patch: Partial<{
+		label: string | null;
+		kind: string;
+		bowId: string | null;
+		bowType: string | null;
+		location: string | null;
+		latitude: number | null;
+		longitude: number | null;
+		weather: string | null;
+		notes: string | null;
+		endedAt: number | null;
+	}>
+) {
+	await db()
+		.update(schema.session)
+		.set({ ...patch, updatedAt: Date.now() })
+		.where(eq(schema.session.id, id));
+	await log('session', id, 'update');
+}
+
+export async function deleteSession(id: string) {
+	const now = Date.now();
+	await db()
+		.update(schema.session)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(eq(schema.session.id, id));
+	await log('session', id, 'delete');
+}
+
+/* Activities */
+
+export async function createScoringActivity(sessionId: string, round: RoundDefinition) {
+	const base = stamp();
+	await db()
+		.insert(schema.activity)
+		.values({
+			...base,
+			sessionId,
+			kind: 'scoring',
+			roundDefinitionId: round.isBuiltin ? round.id : null,
+			// Snapshot the definition so later edits cannot rewrite a round already shot.
+			roundDefinition: JSON.stringify(round),
+			startedAt: base.createdAt,
+			status: 'in_progress'
+		});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+export async function createTuningActivity(sessionId: string, templateKey: string) {
+	const base = stamp();
+	await db().insert(schema.activity).values({
+		...base,
+		sessionId,
+		kind: 'tuning',
+		templateKey,
+		startedAt: base.createdAt,
+		status: 'in_progress'
+	});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+export async function listActivities(sessionId: string) {
+	return db()
+		.select()
+		.from(schema.activity)
+		.where(and(eq(schema.activity.sessionId, sessionId), isNull(schema.activity.deletedAt)))
+		.orderBy(asc(schema.activity.startedAt));
+}
+
+export async function listAllActivities() {
+	return db()
+		.select()
+		.from(schema.activity)
+		.where(isNull(schema.activity.deletedAt))
+		.orderBy(desc(schema.activity.startedAt));
+}
+
+export async function getActivity(id: string): Promise<ActivityRow | null> {
+	const rows = await db().select().from(schema.activity).where(eq(schema.activity.id, id)).limit(1);
+	return rows[0] ?? null;
+}
+
+export async function updateActivity(
+	id: string,
+	patch: Partial<{
+		observations: string | null;
+		conclusion: string | null;
+		adjustmentMade: string | null;
+		notes: string | null;
+		status: string;
+		endedAt: number | null;
+	}>
+) {
+	await db()
+		.update(schema.activity)
+		.set({ ...patch, updatedAt: Date.now() })
+		.where(eq(schema.activity.id, id));
+	await log('activity', id, 'update');
+}
+
+export async function deleteActivity(id: string) {
+	const now = Date.now();
+	await db()
+		.update(schema.activity)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(eq(schema.activity.id, id));
+	await log('activity', id, 'delete');
+}
+
+/* Ends and shots */
+
+export async function listEnds(activityId: string) {
 	return db()
 		.select()
 		.from(schema.end)
-		.where(and(eq(schema.end.sessionId, sessionId), isNull(schema.end.deletedAt)))
+		.where(and(eq(schema.end.activityId, activityId), isNull(schema.end.deletedAt)))
 		.orderBy(asc(schema.end.stageIndex), asc(schema.end.endNo));
 }
 
@@ -87,29 +208,22 @@ export async function listShots(endId: string) {
 		.orderBy(asc(schema.shot.ordinal));
 }
 
-/**
- * Records a completed end and refreshes the session's denormalised totals.
- *
- * Totals are recomputed from the stored shots rather than incremented, so an
- * edited or re-recorded end can never leave the session's total drifting away
- * from the arrows that actually justify it.
- */
 export async function recordEnd(
-	sessionId: string,
+	activityId: string,
 	stageIndex: number,
 	endNo: number,
 	shots: Omit<Shot, 'ordinal'>[]
 ) {
 	const endBase = stamp();
-	const subtotal = shots.reduce((sum, s) => sum + s.value, 0);
-
-	await db().insert(schema.end).values({
-		...endBase,
-		sessionId,
-		stageIndex,
-		endNo,
-		subtotal
-	});
+	await db()
+		.insert(schema.end)
+		.values({
+			...endBase,
+			activityId,
+			stageIndex,
+			endNo,
+			subtotal: shots.reduce((sum, s) => sum + s.value, 0)
+		});
 	await log('round_end', endBase.id, 'insert');
 
 	for (const [index, s] of shots.entries()) {
@@ -129,16 +243,35 @@ export async function recordEnd(
 		await log('shot', shotBase.id, 'insert');
 	}
 
-	await refreshSessionTotals(sessionId);
+	await refreshActivityTotals(activityId);
 	return endBase.id;
 }
 
-export async function refreshSessionTotals(sessionId: string) {
-	const ends = await listEnds(sessionId);
-	const allShots: Shot[] = [];
+/** Editing a recorded arrow, from tapping it on the score sheet. */
+export async function updateShot(shotId: string, endId: string, activityId: string, zone: Zone) {
+	await db()
+		.update(schema.shot)
+		.set({ value: zone.value, zoneLabel: zone.label, x: null, y: null, updatedAt: Date.now() })
+		.where(eq(schema.shot.id, shotId));
+	await log('shot', shotId, 'update');
+
+	const shots = await listShots(endId);
+	await db()
+		.update(schema.end)
+		.set({ subtotal: shots.reduce((sum, s) => sum + s.value, 0), updatedAt: Date.now() })
+		.where(eq(schema.end.id, endId));
+	await log('round_end', endId, 'update');
+
+	await refreshActivityTotals(activityId);
+}
+
+// Totals are recomputed from stored shots, never incremented, so an edited end cannot leave them drifting.
+export async function refreshActivityTotals(activityId: string) {
+	const ends = await listEnds(activityId);
+	const all: Shot[] = [];
 	for (const e of ends) {
 		const rows = await listShots(e.id);
-		allShots.push(
+		all.push(
 			...rows.map((r) => ({
 				ordinal: r.ordinal,
 				value: r.value,
@@ -151,41 +284,49 @@ export async function refreshSessionTotals(sessionId: string) {
 	}
 
 	await db()
-		.update(schema.session)
+		.update(schema.activity)
 		.set({
-			totalScore: sumShots(allShots),
-			// An X is also a 10: counting them separately would understate the tens.
-			count10s: countLabel(allShots, '10') + countLabel(allShots, 'X'),
-			countX: countLabel(allShots, 'X'),
-			arrowsShot: allShots.length,
+			totalScore: sumShots(all),
+			// An X is also a ten, so counting them separately would understate the tens.
+			count10s: countLabel(all, '10') + countLabel(all, 'X'),
+			countX: countLabel(all, 'X'),
+			arrowsShot: all.length,
 			updatedAt: Date.now()
 		})
-		.where(eq(schema.session.id, sessionId));
-	await log('session', sessionId, 'update');
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
 }
 
-export async function finishSession(sessionId: string) {
-	await db()
-		.update(schema.session)
-		.set({ status: 'complete', endedAt: Date.now(), updatedAt: Date.now() })
-		.where(eq(schema.session.id, sessionId));
-	await log('session', sessionId, 'update');
+export async function finishActivity(activityId: string) {
+	await updateActivity(activityId, { status: 'complete', endedAt: Date.now() });
 }
 
-/** Soft delete — a hard delete leaves nothing for sync to propagate. */
-export async function deleteSession(sessionId: string) {
+/* Bows */
+
+export async function createBow(name: string, type: string) {
+	const base = stamp();
+	await db().insert(schema.bow).values({ ...base, name, type });
+	await log('bow', base.id, 'insert');
+	return base.id;
+}
+
+export async function listBows() {
+	return db()
+		.select()
+		.from(schema.bow)
+		.where(isNull(schema.bow.deletedAt))
+		.orderBy(asc(schema.bow.createdAt));
+}
+
+export async function getBow(id: string): Promise<BowRow | null> {
+	const rows = await db().select().from(schema.bow).where(eq(schema.bow.id, id)).limit(1);
+	return rows[0] ?? null;
+}
+
+export async function deleteBow(id: string) {
 	const now = Date.now();
-	await db()
-		.update(schema.session)
-		.set({ deletedAt: now, updatedAt: now })
-		.where(eq(schema.session.id, sessionId));
-	await log('session', sessionId, 'delete');
-}
-
-/** Which end comes next, or null when the round is fully shot. */
-export function nextEndSlot(round: RoundDefinition, endsRecorded: number) {
-	const slots = endSlots(round);
-	return endsRecorded < slots.length ? slots[endsRecorded] : null;
+	await db().update(schema.bow).set({ deletedAt: now, updatedAt: now }).where(eq(schema.bow.id, id));
+	await log('bow', id, 'delete');
 }
 
 export function shotFromZone(zone: Zone, source: Shot['source'] = 'manual'): Omit<Shot, 'ordinal'> {
