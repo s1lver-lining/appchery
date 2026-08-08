@@ -57,6 +57,8 @@
 	);
 	let plotting = $state(false);
 	let openEnd = $state<number | null>(null);
+	/** Shot id being retapped inside the end modal. */
+	let modalEditing = $state<string | null>(null);
 	let observations = $state('');
 	let adjustment = $state('');
 	let saved = $state(false);
@@ -66,9 +68,7 @@
 	let savedSettings = $state<BowSettings>({});
 	let applied = $state(false);
 
-	let viewportHeight = $state(900);
-	let headerHeight = $state(0);
-	let controlsHeight = $state(0);
+	let sheetScroller = $state<HTMLDivElement | null>(null);
 
 	const round = $derived<RoundDefinition | null>(
 		activity?.roundDefinition ? JSON.parse(activity.roundDefinition) : null
@@ -163,14 +163,12 @@
 		openRow ? toShots(openRow.shots).filter((s) => s.x !== null) : []
 	);
 
-	/**
-	 * The sheet gives up its height so the keypad or the face stays fully visible without scrolling,
-	 * but never shrinks below three ends: a one row window is worse than a little scrolling.
-	 */
-	const MIN_SHEET = 3 * 29 + 26;
-	const sheetMax = $derived(
-		Math.max(MIN_SHEET, viewportHeight - headerHeight - controlsHeight - 190)
-	);
+	let scrolledToEnd = false;
+	$effect(() => {
+		if (!sheetScroller || scrolledToEnd || sheetRows.length === 0) return;
+		scrolledToEnd = true;
+		sheetScroller.scrollTop = sheetScroller.scrollHeight;
+	});
 
 	async function loadRows() {
 		const { ends, shotsByEnd } = await loadSheet(activityId);
@@ -251,6 +249,21 @@
 			return;
 		}
 		enqueueEnd(currentSlot, next);
+	}
+
+	function closeModal() {
+		openEnd = null;
+		modalEditing = null;
+	}
+
+	/** Editing from the modal keeps it open, so several arrows of one end can be fixed in a row. */
+	async function editModalShot(zone: Zone) {
+		const row = openRow;
+		if (!modalEditing || !row?.endId) return;
+		await updateShot(modalEditing, row.endId, activityId, zone);
+		modalEditing = null;
+		stored = await loadRows();
+		activity = await getActivity(activityId);
 	}
 
 	function undo() {
@@ -341,10 +354,9 @@
 		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;`;
 	}
 
-	const cursorClass = 'ring-2 ring-brand ring-offset-1 ring-offset-surface';
+	// Outline rather than ring: the chip sets an inline box-shadow, which a ring would lose to.
+	const cursorClass = 'outline outline-2 outline-brand outline-offset-2';
 </script>
-
-<svelte:window bind:innerHeight={viewportHeight} />
 
 {#if activity && activity.kind === 'tuning'}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
@@ -478,18 +490,22 @@
 		</button>
 	</div>
 {:else if activity && round && scoreSet}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-3 p-4 pt-6">
-		<div bind:clientHeight={headerHeight}>
-			<header class="flex items-baseline justify-between gap-2">
-				<div>
-					<a href="/sessions/{activity.sessionId}" class="text-sm text-muted"
-						>‹ {$t('common.back')}</a
-					>
-					<h1 class="text-xl font-bold tracking-tight">{round.name}</h1>
-				</div>
-				<div class="text-right">
-					<p class="tabular text-3xl font-bold">{shownTotal}</p>
-					<p class="text-xs text-muted">{$t('score.total')}</p>
+	<div class="mx-auto flex w-full max-w-2xl flex-col">
+		<!-- A fixed height, not a minimum: the sheet must scroll so the keypad stays on screen. -->
+		<div class="safe-top flex h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">
+		<div class="shrink-0">
+			<header class="flex items-center gap-2">
+				<a
+					href="/sessions/{activity.sessionId}"
+					class="shrink-0 text-muted"
+					aria-label={$t('common.back')}
+				>
+					<Icon name="back" size={22} />
+				</a>
+				<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">{round.name}</h1>
+				<div class="shrink-0 text-right">
+					<p class="tabular text-xl leading-none font-bold">{shownTotal}</p>
+					<p class="text-[10px] text-muted">{$t('score.total')}</p>
 				</div>
 			</header>
 
@@ -500,9 +516,9 @@
 			{/if}
 		</div>
 
-		<section class="overflow-hidden rounded-xl border border-line bg-surface">
+		<section class="flex min-h-[116px] flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
 			<div
-				class="flex items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
+				class="flex shrink-0 items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
 			>
 				<span class="w-5">{$t('score.endColumn')}</span>
 				<span class="flex-1">{$t('score.arrowsColumn')}</span>
@@ -514,7 +530,7 @@
 				</span>
 			</div>
 
-			<div class="overflow-y-auto" style="max-height: {sheetMax}px">
+			<div bind:this={sheetScroller} class="flex-1 overflow-y-auto">
 				{#each sheetRows as row, i (row.key)}
 					<div class="flex items-center gap-1 border-b border-line px-2 py-1">
 						<button
@@ -589,7 +605,7 @@
 			</div>
 		</section>
 
-		<div bind:clientHeight={controlsHeight}>
+		<div class="shrink-0">
 			{#if currentSlot}
 				<p class="mb-2 text-sm text-muted">
 					{$t('score.endOf', { n: sheetRows.length + 1, total: slots.length })} ·
@@ -674,6 +690,9 @@
 			</div>
 		{/if}
 
+		</div>
+
+		<div class="space-y-3 p-4 pt-0">
 		{#if complete}
 			<div class="space-y-2">
 				<p class="text-sm text-muted">{$t('score.roundComplete')}</p>
@@ -719,48 +738,92 @@
 			<Icon name="trash" size={16} />
 			{$t('activity.delete')}
 		</button>
+		</div>
 	</div>
 
 	{#if openRow}
-		<div class="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
-			<div class="w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
+		<!-- The backdrop is a button so a tap outside closes, which is what a modal is expected to do. -->
+		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+			<button
+				class="absolute inset-0 bg-black/40"
+				aria-label={$t('common.close')}
+				onclick={closeModal}
+			></button>
+
+			<div
+				class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl"
+			>
 				<div class="mb-3 flex items-center justify-between">
 					<h2 class="text-lg font-bold">{$t('score.end', { n: (openEnd ?? 0) + 1 })}</h2>
-					<button
-						class="text-muted"
-						aria-label={$t('common.close')}
-						onclick={() => (openEnd = null)}
-					>
+					<button class="text-muted" aria-label={$t('common.close')} onclick={closeModal}>
 						<Icon name="close" size={20} />
 					</button>
 				</div>
 
 				<div class="mb-3 flex flex-wrap gap-1">
 					{#each openRow.shots as shot (shot.ordinal)}
-						<span
-							class="tabular flex h-9 w-9 items-center justify-center rounded text-sm font-bold"
-							style={chipStyle(shot.zoneLabel)}
-						>
-							{shot.zoneLabel}
-						</span>
+						{#if shot.id}
+							<button
+								class="tabular flex h-9 w-9 items-center justify-center rounded text-sm font-bold
+									{modalEditing === shot.id ? cursorClass : ''}"
+								style={chipStyle(shot.zoneLabel)}
+								aria-label={$t('score.editArrow', { n: shot.ordinal, end: (openEnd ?? 0) + 1 })}
+								onclick={() => (modalEditing = modalEditing === shot.id ? null : shot.id)}
+							>
+								{shot.zoneLabel}
+							</button>
+						{:else}
+							<span
+								class="tabular flex h-9 w-9 items-center justify-center rounded text-sm font-bold"
+								style={chipStyle(shot.zoneLabel)}
+							>
+								{shot.zoneLabel}
+							</span>
+						{/if}
 					{/each}
 				</div>
 
-				<dl class="mb-3 flex justify-between text-sm">
-					<div>
-						<dt class="text-muted">{$t('score.endTotalLong')}</dt>
-						<dd class="tabular text-xl font-bold">{openRow.subtotal}</dd>
+				{#if modalEditing}
+					<div class="mb-3 grid grid-cols-6 gap-1">
+						{#each keypad as zone (zone.label)}
+							<button
+								class="tabular rounded py-2 text-sm font-bold"
+								style={chipStyle(zone.label)}
+								onclick={() => editModalShot(zone)}
+							>
+								{zone.label}
+							</button>
+						{/each}
+						<button
+							class="rounded border border-line py-2 text-sm font-bold"
+							onclick={() => editModalShot(missZone(scoreSet))}
+						>
+							{$t('score.miss')}
+						</button>
 					</div>
-					<div class="text-right">
-						<dt class="text-muted">{$t('score.runningTotalLong')}</dt>
-						<dd class="tabular text-xl font-bold">{runningTotals[openEnd ?? 0]}</dd>
-					</div>
-				</dl>
+				{:else}
+					<dl class="mb-3 flex justify-between text-sm">
+						<div>
+							<dt class="text-muted">{$t('score.endTotalLong')}</dt>
+							<dd class="tabular text-xl font-bold">{openRow.subtotal}</dd>
+						</div>
+						<div class="text-right">
+							<dt class="text-muted">{$t('score.runningTotalLong')}</dt>
+							<dd class="tabular text-xl font-bold">{runningTotals[openEnd ?? 0]}</dd>
+						</div>
+					</dl>
+				{/if}
 
 				{#if openRowShots.length > 0}
 					<div class="mx-auto aspect-square w-full max-w-64 rounded-xl border border-line p-2">
-						<!-- Only this end's arrows, with their centre on by default: the point of the view. -->
-						<TargetFace {scoreSet} shots={openRowShots} showCentreToggle showCentreDefault />
+						<!-- Only this end's arrows, with their centre and spread on by default. -->
+						<TargetFace
+							{scoreSet}
+							shots={openRowShots}
+							showCentreToggle
+							showCentreDefault
+							showPerimeter
+						/>
 					</div>
 				{:else}
 					<p class="text-center text-sm text-muted">{$t('score.noPlots')}</p>
