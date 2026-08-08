@@ -7,13 +7,21 @@
 	import {
 		buildCustomRound,
 		validateCustomRound,
+		FACE_SIZES,
+		DISTANCES_M,
+		DISTANCES_YD,
+		END_COUNTS,
+		ARROWS_PER_END,
 		type CustomRoundInput
 	} from '$lib/domain/rounds/custom';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { formatDistance } from '$lib/domain/units';
 	import {
 		captureConditions,
-		formatWeather,
+		formatTemperature,
+		formatWind,
+		weatherIcon,
+		weatherLabelKey,
 		autoLocation,
 		autoWeather,
 		LocationDeniedError
@@ -22,14 +30,15 @@
 	import {
 		getSession,
 		updateSession,
+		deleteSession,
 		listActivities,
 		listBows,
 		createScoringActivity,
 		createTuningActivity,
-		deleteActivity,
 		type ActivityRow
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
+	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -50,6 +59,7 @@
 		name: ''
 	});
 	const customErrors = $derived(validateCustomRound(custom));
+	const distances = $derived(custom.unit === 'm' ? DISTANCES_M : DISTANCES_YD);
 
 	const weather = $derived(session?.weather ? JSON.parse(session.weather) : null);
 	const selectedBowType = $derived<BowType | null>(
@@ -89,6 +99,7 @@
 			await updateSession(sessionId, {
 				latitude: conditions.latitude,
 				longitude: conditions.longitude,
+				location: conditions.place,
 				weather: conditions.weather ? JSON.stringify(conditions.weather) : null
 			});
 			// Being offline at a range is normal, so a failed lookup says so rather than showing nothing.
@@ -114,6 +125,11 @@
 		goto(`/activities/${await createTuningActivity(sessionId, key)}`);
 	}
 
+	async function remove() {
+		await deleteSession(sessionId);
+		goto('/');
+	}
+
 	function activityTitle(a: ActivityRow) {
 		if (a.kind === 'tuning') return a.templateKey ?? $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
@@ -121,12 +137,12 @@
 	}
 
 	function summarise(round: RoundDefinition) {
-		const distances = round.stages
+		const stages = round.stages
 			.map((s) =>
 				s.distance ? formatDistance(s.distance.value, s.distance.unit) : $t('round.unmarked')
 			)
 			.join(' · ');
-		return `${distances} · ${$t('round.arrows', { n: totalArrows(round) })}`;
+		return `${stages} · ${$t('round.arrows', { n: totalArrows(round) })}`;
 	}
 </script>
 
@@ -160,10 +176,11 @@
 				<div class="mb-2 flex items-center justify-between">
 					<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
 					<button
-						class="rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
-						onclick={() => (adding = !adding)}
+						class="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+						onclick={() => (adding = true)}
 					>
-						{adding ? $t('common.close') : $t('common.add')}
+						<Icon name="plus" size={16} />
+						{$t('common.add')}
 					</button>
 				</div>
 
@@ -174,8 +191,11 @@
 				{:else}
 					<ul class="space-y-2">
 						{#each activities as a (a.id)}
-							<li class="flex items-center gap-1 rounded-xl border border-line bg-surface">
-								<a href="/activities/{a.id}" class="flex flex-1 items-center justify-between p-3">
+							<li>
+								<a
+									href="/activities/{a.id}"
+									class="flex items-center justify-between rounded-xl border border-line bg-surface p-3"
+								>
 									<div>
 										<p class="font-medium">{activityTitle(a)}</p>
 										<p class="text-xs text-muted">
@@ -188,125 +208,11 @@
 										<span class="tabular text-xl font-bold">{a.totalScore}</span>
 									{/if}
 								</a>
-								<button
-									class="p-3 text-muted"
-									aria-label={$t('common.delete')}
-									onclick={async () => {
-										await deleteActivity(a.id);
-										await refresh();
-									}}
-								>
-									<Icon name="trash" size={16} />
-								</button>
 							</li>
 						{/each}
 					</ul>
 				{/if}
 			</section>
-
-			{#if adding}
-				<section class="space-y-3 rounded-xl border border-line bg-surface p-4">
-					<h3 class="text-sm font-semibold">{$t('session.addScoring')}</h3>
-					<div class="space-y-2">
-						{#each ROUNDS as round (round.id)}
-							<button
-								class="w-full rounded-lg border border-line p-3 text-left"
-								onclick={() => startRound(round)}
-							>
-								<div class="flex items-baseline justify-between gap-2">
-									<span class="font-medium">{round.name}</span>
-									<span class="text-xs text-muted">
-										{$t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
-									</span>
-								</div>
-								<p class="text-sm text-muted">{summarise(round)}</p>
-							</button>
-						{/each}
-					</div>
-
-					<div class="rounded-lg border border-line p-3">
-						<h4 class="font-medium">{$t('round.custom')}</h4>
-						<p class="mb-3 text-sm text-muted">{$t('round.customHint')}</p>
-						<div class="grid grid-cols-2 gap-3">
-							<label class="text-sm">
-								{$t('round.ends')}
-								<input
-									type="number"
-									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-									bind:value={custom.ends}
-								/>
-							</label>
-							<label class="text-sm">
-								{$t('round.arrowsPerEnd')}
-								<input
-									type="number"
-									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-									bind:value={custom.arrowsPerEnd}
-								/>
-							</label>
-							<label class="text-sm">
-								{$t('round.faceSize')}
-								<input
-									type="number"
-									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-									bind:value={custom.faceSize}
-								/>
-							</label>
-							<label class="text-sm">
-								{$t('round.distance')}
-								<div class="mt-1 flex gap-1">
-									<input
-										type="number"
-										class="w-full rounded-lg border border-line bg-bg p-2 text-ink"
-										bind:value={custom.distance}
-									/>
-									<select
-										class="rounded-lg border border-line bg-bg p-2 text-ink"
-										bind:value={custom.unit}
-									>
-										<option value="m">m</option>
-										<option value="yd">yd</option>
-									</select>
-								</div>
-							</label>
-							<label class="col-span-2 text-sm">
-								{$t('round.name')} <span class="text-muted">({$t('common.optional')})</span>
-								<input
-									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-									bind:value={custom.name}
-								/>
-							</label>
-						</div>
-						<button
-							class="mt-3 w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
-							disabled={customErrors.length > 0}
-							onclick={startCustom}
-						>
-							{$t('round.create')}
-						</button>
-					</div>
-
-					<div class="rounded-lg border border-line p-3">
-						<h4 class="mb-2 font-medium">{$t('session.addTuning')}</h4>
-						{#if !selectedBowType}
-							<p class="text-sm text-muted">{$t('tuning.noBowSelected')}</p>
-						{:else}
-							<ul class="space-y-1">
-								{#each tuningTemplates as template (template.key)}
-									<li>
-										<button
-											class="w-full rounded-lg border border-line p-2 text-left text-sm"
-											onclick={() => startTuning(template.key)}
-										>
-											{template.name}
-										</button>
-									</li>
-								{/each}
-							</ul>
-						{/if}
-					</div>
-				</section>
-			{/if}
 		{:else}
 			<section class="rounded-xl border border-line bg-surface p-4">
 				<label class="mb-1 block text-sm font-semibold" for="bow">{$t('session.bow')}</label>
@@ -332,37 +238,192 @@
 				</select>
 			</section>
 
-			<section class="rounded-xl border border-line bg-surface p-4">
-				<div class="flex items-center justify-between gap-2">
+			<section class="overflow-hidden rounded-xl border border-line bg-surface">
+				<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
 					<h2 class="text-sm font-semibold">{$t('session.conditions')}</h2>
 					<button
-						class="text-sm font-medium text-brand disabled:opacity-50"
+						class="text-sm font-medium text-brand-text disabled:opacity-50"
 						disabled={fetching}
 						onclick={fetchConditions}
 					>
 						{fetching ? $t('session.fetching') : $t('session.fetchConditions')}
 					</button>
 				</div>
-				{#if session.latitude !== null && session.longitude !== null}
-					<dl class="mt-2 space-y-1 text-sm">
-						<div class="flex justify-between gap-2">
-							<dt class="text-muted">{$t('session.location')}</dt>
-							<dd class="tabular">{session.latitude.toFixed(3)}, {session.longitude.toFixed(3)}</dd>
+
+				{#if session.location || session.latitude !== null}
+					<div class="flex items-center gap-4 p-4">
+						{#if weather}
+							<div class="flex flex-col items-center text-brand-text">
+								<Icon name={weatherIcon(weather.code)} size={40} />
+								<span class="mt-1 text-xs text-muted">{$t(weatherLabelKey(weather.code))}</span>
+							</div>
+						{/if}
+						<div class="flex-1">
+							<p class="text-lg font-semibold">
+								{session.location ?? $t('session.unknownPlace')}
+							</p>
+							{#if weather}
+								<p class="tabular text-sm text-muted">
+									{formatTemperature(weather)} · {formatWind(weather)}
+								</p>
+							{:else}
+								<p class="text-sm text-muted">{$t('session.weatherNone')}</p>
+							{/if}
 						</div>
-						<div class="flex justify-between gap-2">
-							<dt class="text-muted">{$t('session.weather')}</dt>
-							<dd>{weather ? formatWeather(weather) : $t('session.weatherNone')}</dd>
-						</div>
-					</dl>
+					</div>
 				{:else}
-					<p class="mt-2 text-sm text-muted">{$t('session.noConditions')}</p>
+					<p class="p-4 text-sm text-muted">{$t('session.noConditions')}</p>
 				{/if}
+
 				{#if notice}
-					<p class="mt-2 text-sm text-danger">{notice}</p>
+					<p class="border-t border-line px-4 py-2 text-sm text-danger">{notice}</p>
 				{/if}
 			</section>
+
+			<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+				<Icon name="trash" size={16} />
+				{$t('session.delete')}
+			</button>
 		{/if}
 	</div>
+
+	{#if adding}
+		<div class="fixed inset-0 z-50 flex flex-col bg-bg">
+			<header
+				class="safe-top flex items-center justify-between border-b border-line px-4 py-3 pt-6"
+			>
+				<h2 class="text-lg font-bold">{$t('session.addActivity')}</h2>
+				<button class="text-muted" aria-label={$t('common.close')} onclick={() => (adding = false)}>
+					<Icon name="close" size={22} />
+				</button>
+			</header>
+
+			<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto p-4">
+				<section>
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.addScoring')}</h3>
+					<div class="space-y-2">
+						{#each ROUNDS as round (round.id)}
+							<button
+								class="w-full rounded-xl border border-line bg-surface p-3 text-left"
+								onclick={() => startRound(round)}
+							>
+								<div class="flex items-baseline justify-between gap-2">
+									<span class="font-medium">{round.name}</span>
+									<span class="text-xs text-muted">
+										{$t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
+									</span>
+								</div>
+								<p class="text-sm text-muted">{summarise(round)}</p>
+							</button>
+						{/each}
+					</div>
+				</section>
+
+				<section class="rounded-xl border border-line bg-surface p-4">
+					<h3 class="font-medium">{$t('round.custom')}</h3>
+					<p class="mb-3 text-sm text-muted">{$t('round.customHint')}</p>
+
+					<div class="grid grid-cols-2 gap-3">
+						<WheelPicker
+							values={END_COUNTS}
+							value={custom.ends}
+							label={$t('round.ends')}
+							onchange={(v) => (custom.ends = v)}
+						/>
+						<WheelPicker
+							values={ARROWS_PER_END}
+							value={custom.arrowsPerEnd}
+							label={$t('round.arrowsPerEnd')}
+							onchange={(v) => (custom.arrowsPerEnd = v)}
+						/>
+					</div>
+
+					<div class="mt-3">
+						<span class="text-sm text-muted">{$t('round.faceSize')}</span>
+						<div class="mt-1 flex gap-2">
+							{#each FACE_SIZES as size (size)}
+								<button
+									class="flex-1 rounded-lg border py-2 text-sm font-medium
+										{custom.faceSize === size
+										? 'border-brand bg-brand text-brand-ink'
+										: 'border-line'}"
+									onclick={() => (custom.faceSize = size)}
+								>
+									{size}
+								</button>
+							{/each}
+						</div>
+					</div>
+
+					<div class="mt-3">
+						<span class="text-sm text-muted">{$t('round.unit')}</span>
+						<div class="mt-1 flex gap-2">
+							{#each ['m', 'yd'] as const as unit (unit)}
+								<button
+									class="flex-1 rounded-lg border py-2 text-sm font-medium
+										{custom.unit === unit ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+									onclick={() => {
+										custom.unit = unit;
+										// Keep the value on the new unit's scale rather than leaving an impossible one.
+										const list = unit === 'm' ? DISTANCES_M : DISTANCES_YD;
+										if (!list.includes(custom.distance)) custom.distance = list[0];
+									}}
+								>
+									{unit}
+								</button>
+							{/each}
+						</div>
+						<div class="mt-2">
+							<WheelPicker
+								values={distances}
+								value={custom.distance}
+								label={$t('round.distance')}
+								format={(v) => `${v} ${custom.unit}`}
+								onchange={(v) => (custom.distance = v)}
+							/>
+						</div>
+					</div>
+
+					<label class="mt-3 block text-sm">
+						{$t('round.name')} <span class="text-muted">({$t('common.optional')})</span>
+						<input
+							class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+							bind:value={custom.name}
+						/>
+					</label>
+
+					<button
+						class="mt-3 w-full rounded-lg bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
+						disabled={customErrors.length > 0}
+						onclick={startCustom}
+					>
+						{$t('round.create')}
+					</button>
+				</section>
+
+				<section class="rounded-xl border border-line bg-surface p-4">
+					<h3 class="mb-2 font-medium">{$t('session.addTuning')}</h3>
+					{#if !selectedBowType}
+						<p class="text-sm text-muted">{$t('tuning.noBowSelected')}</p>
+					{:else}
+						<ul class="space-y-1">
+							{#each tuningTemplates as template (template.key)}
+								<li>
+									<button
+										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm"
+										onclick={() => startTuning(template.key)}
+									>
+										<Icon name="wrench" size={16} />
+										{template.name}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					{/if}
+				</section>
+			</div>
+		</div>
+	{/if}
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
 {/if}
