@@ -1,7 +1,8 @@
 # Appchery — Architecture
 
-> Status: phase 1 implemented. Sessions, activities, scoring, custom rounds, tuning templates,
-> theming, and i18n are working. See doc/dev_guidelines.md for conventions.
+> Status: phase 2 in progress. Sessions, activities, scoring, custom rounds, tuning templates,
+> versioned bow revisions, plotting, statistics, theming, and i18n are working.
+> See doc/dev_guidelines.md for conventions.
 
 ## 1. What this is
 
@@ -99,14 +100,14 @@ src/lib/
   domain/
     rounds/      round definitions, zone maps, scoring engine, custom rounds  <- pure, no I/O
     tuning/      activity templates, outcome interpretation
-    equipment/   bow-type schemas, revision diffing              <- phase 2
-    stats/       aggregates, PBs, trends, group metrics          <- phase 2
+    equipment/   bow-type setting schemas and revision diffing
+    stats.ts     personal bests, averages, trends
   i18n/          reference dictionary and locales
   sync/          change log, push/pull, conflict resolution      <- phase 3
   vision/        onnx session, homography, hole detection        <- phase 4
   ui/            components
 routes/
-  sessions/[id]/  activities/[id]/  equipment/  settings/
+  sessions/[id]/  activities/[id]/  equipment/[id]/  stats/  settings/
 ```
 
 The `domain/` layer is **pure TypeScript with no database or UI imports**. Scoring rules, zone
@@ -210,6 +211,20 @@ a `TuningActivityRun` bound to a bow revision, with the observation, the adjustm
 That yields a tuning history: what you tried, what you observed, what you changed, and whether
 scores moved afterwards. This is the feature that distinguishes the app from a scorecard.
 
+### 5.3 Bow settings are a schema per bow type
+
+`src/lib/domain/equipment/schemas.ts` declares the fields for each bow type: cam timing and peep
+height for a compound, crawl marks and a weight system for a barebow. The schema drives the form,
+the validation, and the revision diff alike, so adding a bow type means adding a schema file rather
+than touching any UI.
+
+Length fields store millimetres and display inches. The conversion lives only at the display
+boundary, so changing a preference can never touch stored data.
+
+Saving does not update settings in place: it appends a **revision**, and the pending diff is shown
+before saving alongside a free text reason. The history tab then reads as a sequence of changes with
+their justifications, which is what makes "my groups got worse, what changed" answerable.
+
 ### 5.4 Custom rounds are ordinary rounds
 
 The built-in list stays short on purpose. Anything else is entered directly as ends, arrows per end,
@@ -233,11 +248,19 @@ editing or removing a definition later cannot rewrite the history of a round alr
 
 ### 6.1 Location and weather
 
-Opt-in, off by default, and controlled from Settings. Enabling it requests location permission
-immediately: a setting that appears enabled but silently fails at the range is worse than one that
-was never offered. If permission is refused the setting stays off.
+Two separate opt-ins, both off by default. Location comes first, and weather only appears once
+location is on, because weather is looked up **from** coordinates and cannot be recorded without
+them. Turning location off turns weather off with it.
 
-When enabled, starting a session captures coordinates once and looks up the weather for them.
+Enabling location requests permission immediately: a setting that appears enabled but silently fails
+at the range is worse than one that was never offered. If permission is refused the setting stays
+off and says why.
+
+Capture happens on the session page after it opens, never before. An earlier version fetched
+conditions before creating the session, which left the new session button sitting on a spinner
+behind a permission prompt the archer could not see.
+
+When enabled, opening a session captures coordinates once and looks up the weather for them.
 Weather comes from Open-Meteo, which needs no API key and no account, so the app stays installable
 and self-hostable. The snapshot is taken once and never refreshed: it records the conditions the
 arrows were actually shot in, so a later refresh would be a falsification rather than an update.
@@ -303,7 +326,7 @@ camera on people at a shooting line, this is worth treating as non-negotiable.
 | Phase | Content | Ends when |
 |---|---|---|
 | **1 — Foundation** (done) | DB and migrations, round engine, zone geometry, score sheet with editable arrows, sessions holding activities, custom rounds, tuning templates, bows, theming, i18n, opt-in conditions | You can shoot a round and see the score |
-| **2 — Depth** | Tap-to-plot, group stats, versioned bow revisions with per-type setting schemas, tuning runs linked to revisions, field and 3D rounds, personal bests and trends | The app is genuinely useful solo, offline, forever |
+| **2 — Depth** (mostly done) | Tap-to-plot and group metrics, versioned bow revisions with per-type setting schemas, personal bests and trends, bow photos. Remaining: tuning runs writing their resulting revision, field and 3D rounds | The app is genuinely useful solo, offline, forever |
 | **3 — Sync** | Supabase schema, auth, RLS, push/pull over the change log, multi-device | Optional login syncs cleanly and is skippable |
 | **4 — Vision** | Rectification, hole detection, opt-in photo capture, on-device inference | A photo produces a correct, confirmable end |
 
