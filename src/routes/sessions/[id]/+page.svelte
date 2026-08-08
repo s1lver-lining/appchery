@@ -2,7 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { ROUNDS, getScoreSet } from '$lib/domain/rounds/seed';
+	import { ROUNDS, UNVERIFIED_ROUNDS, getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
 	import {
 		buildCustomRound,
@@ -49,10 +49,13 @@
 	let adding = $state(false);
 	let fetching = $state(false);
 	let notice = $state<string | null>(null);
+	/** The name reads as a heading until tapped, so the page does not look like a form. */
+	let editingName = $state(false);
+	let nameInput = $state<HTMLInputElement | null>(null);
 
 	let custom = $state<CustomRoundInput>({
-		ends: 10,
-		arrowsPerEnd: 3,
+		ends: 6,
+		arrowsPerEnd: 6,
 		faceSize: 40,
 		distance: 18,
 		unit: 'm',
@@ -125,6 +128,18 @@
 		goto(`/activities/${await createTuningActivity(sessionId, key)}`);
 	}
 
+	function startRename() {
+		editingName = true;
+		// Focus after the input exists, and select so a placeholder name is replaced by typing.
+		queueMicrotask(() => nameInput?.select());
+	}
+
+	async function saveName(value: string) {
+		editingName = false;
+		await updateSession(sessionId, { label: value.trim() || null });
+		await refresh();
+	}
+
 	async function remove() {
 		await deleteSession(sessionId);
 		goto('/');
@@ -150,12 +165,27 @@
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
 			<a href="/" class="text-sm text-muted">‹ {$t('common.back')}</a>
-			<input
-				class="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
-				value={session.label ?? ''}
-				placeholder={$t('sessions.untitled')}
-				onchange={(e) => updateSession(sessionId, { label: e.currentTarget.value.trim() || null })}
-			/>
+			{#if editingName}
+				<input
+					bind:this={nameInput}
+					class="mt-1 w-full rounded-lg border-2 border-brand bg-surface px-3 py-2 text-2xl font-bold tracking-tight text-ink outline-none"
+					value={session.label ?? ''}
+					placeholder={$t('sessions.untitled')}
+					onblur={(e) => saveName(e.currentTarget.value)}
+					onkeydown={(e) => {
+						if (e.key === 'Enter') e.currentTarget.blur();
+						if (e.key === 'Escape') editingName = false;
+					}}
+				/>
+			{:else}
+				<button
+					class="-mx-1 mt-1 rounded-lg px-1 text-left text-2xl font-bold tracking-tight
+						{session.label ? 'text-ink' : 'text-muted'}"
+					onclick={startRename}
+				>
+					{session.label ?? $t('sessions.untitled')}
+				</button>
+			{/if}
 			<p class="text-sm text-muted">{new Date(session.startedAt).toLocaleString()}</p>
 		</header>
 
@@ -299,30 +329,7 @@
 			</header>
 
 			<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto p-4">
-				<section>
-					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.addScoring')}</h3>
-					<div class="space-y-2">
-						{#each ROUNDS as round (round.id)}
-							<button
-								class="w-full rounded-xl border border-line bg-surface p-3 text-left"
-								onclick={() => startRound(round)}
-							>
-								<div class="flex items-baseline justify-between gap-2">
-									<span class="font-medium">{round.name}</span>
-									<span class="text-xs text-muted">
-										{$t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
-									</span>
-								</div>
-								<p class="text-sm text-muted">{summarise(round)}</p>
-							</button>
-						{/each}
-					</div>
-				</section>
-
 				<section class="rounded-xl border border-line bg-surface p-4">
-					<h3 class="font-medium">{$t('round.custom')}</h3>
-					<p class="mb-3 text-sm text-muted">{$t('round.customHint')}</p>
-
 					<div class="grid grid-cols-2 gap-3">
 						<WheelPicker
 							values={END_COUNTS}
@@ -401,8 +408,29 @@
 					</button>
 				</section>
 
+				<section>
+					<div class="space-y-2">
+						{#each [...ROUNDS, ...UNVERIFIED_ROUNDS] as round (round.id)}
+							<button
+								class="w-full rounded-xl border border-line bg-surface p-3 text-left"
+								onclick={() => startRound(round)}
+							>
+								<div class="flex items-baseline justify-between gap-2">
+									<span class="font-medium">{round.name}</span>
+									<span class="text-xs text-muted">
+										{roundNeedsVerification(round)
+											? $t('round.unverifiedShort')
+											: $t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
+									</span>
+								</div>
+								<p class="text-sm text-muted">{summarise(round)}</p>
+							</button>
+						{/each}
+					</div>
+				</section>
+
 				<section class="rounded-xl border border-line bg-surface p-4">
-					<h3 class="mb-2 font-medium">{$t('session.addTuning')}</h3>
+					<h3 class="mb-2 font-medium">{$t('tuning.title')}</h3>
 					{#if !selectedBowType}
 						<p class="text-sm text-muted">{$t('tuning.noBowSelected')}</p>
 					{:else}

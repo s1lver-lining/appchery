@@ -74,6 +74,9 @@ export const fr: Dictionary = {
 		endsOf: '{ends} volées de {arrows}',
 		face: 'blason {size} cm',
 		unmarked: 'Distance inconnue',
+		unverifiedShort: 'Non vérifié',
+		unverified:
+			"Le barème de ce tir n'a pas encore été vérifié avec le règlement en vigueur. Vérifiez les valeurs avant de vous fier à un résultat.",
 		max: 'Max {n}',
 		custom: 'Tir personnalisé',
 		customHint: 'Renseignez le tir que vous effectuez réellement.',
@@ -126,6 +129,12 @@ export const fr: Dictionary = {
 	},
 	tuning: {
 		title: 'Réglages',
+		applyTitle: "Appliquer le réglage",
+		applyHint:
+			'Modifiez ce que vous avez réellement ajusté. Enregistrer crée une révision de l\'arc liée à ce test.',
+		apply: "Enregistrer comme révision de l'arc",
+		applied: 'Ce test a produit une révision de l\'arc.',
+		viewHistory: "Voir l'historique de l'arc",
 		steps: 'Étapes',
 		interpretation: 'Ce que le résultat suggère',
 		observation: 'Ce que vous avez observé',

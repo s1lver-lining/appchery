@@ -73,6 +73,9 @@ export const en = {
 		endsOf: '{ends} ends of {arrows}',
 		face: '{size}cm face',
 		unmarked: 'Unmarked',
+		unverifiedShort: 'Unverified',
+		unverified:
+			'Scoring for this round has not been checked against the current rulebook yet. Verify the values before trusting a result.',
 		max: 'Max {n}',
 		custom: 'Custom round',
 		customHint: 'Enter the round you are actually shooting.',
@@ -125,6 +128,12 @@ export const en = {
 	},
 	tuning: {
 		title: 'Tuning',
+		applyTitle: 'Apply the adjustment',
+		applyHint:
+			'Change what you actually adjusted. Saving records a new bow revision and links it to this test.',
+		apply: 'Save as a bow revision',
+		applied: 'This test produced a bow revision.',
+		viewHistory: 'View the bow history',
 		steps: 'Steps',
 		interpretation: 'What the result suggests',
 		observation: 'What you observed',
