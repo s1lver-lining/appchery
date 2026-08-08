@@ -70,8 +70,9 @@ Three things to know before opening a PR:
 
 1. **Scoring data is rules data.** Round definitions and zone maps must be verified against the
    current published rulebook of the governing body concerned. Field, IFAA, IBO and ASA score sets
-   are deliberately absent for this reason — see
-   [src/lib/domain/rounds/field.todo.md](src/lib/domain/rounds/field.todo.md).
+   ship flagged as unverified and the app warns on them: see
+   [doc/scoring-verification.md](doc/scoring-verification.md) for what must be checked before a flag
+   is removed.
 2. **Read [doc/dev_guidelines.md](doc/dev_guidelines.md)** for commit, comment, and prose rules.
 3. **English is the reference locale.** Add keys to `src/lib/i18n/en.ts` first; other locales are
    type-checked against it, so the build fails until each one is translated.

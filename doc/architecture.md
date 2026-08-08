@@ -1,8 +1,8 @@
 # Appchery — Architecture
 
-> Status: phase 2 in progress. Sessions, activities, scoring, custom rounds, tuning templates,
-> versioned bow revisions, plotting, statistics, theming, and i18n are working.
-> See doc/dev_guidelines.md for conventions.
+> Status: phase 2 essentially complete. Sessions, activities, scoring, custom rounds, tuning
+> templates that write bow revisions, versioned bow settings, plotting, statistics, field and 3D
+> rounds, theming, and i18n are working. See doc/dev_guidelines.md for conventions.
 
 ## 1. What this is
 
@@ -175,10 +175,16 @@ and what is scored.
 offset from the face centre). `Zone.radius` therefore generalises to a `shape` union —
 `{ kind: 'circle', r, cx?, cy? }` or `{ kind: 'path', d }` in normalised face coordinates.
 
-> ⚠️ The actual point values and ring counts for WA field, IFAA, IBO and ASA differ and change
-> between rulebook editions. These must be entered as data and **verified against the current
-> rulebook** before release, not hardcoded from memory. Shipping a wrong zone map silently corrupts
-> every score.
+Zones are shapes, not radii, because 3D vitals are offset ellipses rather than concentric rings and
+field faces are not all the same layout. Hit testing covers circles, ellipses and polygons, with
+ray casting written in the domain layer rather than using `Path2D`, so scoring stays testable
+outside a browser.
+
+> ⚠️ Field, IFAA, IBO and ASA point values differ and change between rulebook editions. Those score
+> sets ship with `needsVerification: true`: the app shows a warning banner on any round that uses
+> one, and the picker labels them Unverified rather than showing a maximum. See
+> [scoring-verification.md](./scoring-verification.md) for the checklist that must be completed
+> before a flag is removed.
 
 ### 5.2 Bow configuration is versioned
 
@@ -210,6 +216,16 @@ a `TuningActivityRun` bound to a bow revision, with the observation, the adjustm
 
 That yields a tuning history: what you tried, what you observed, what you changed, and whether
 scores moved afterwards. This is the feature that distinguishes the app from a scorecard.
+
+### 5.2b The tuning loop closes
+
+A tuning activity is not just notes. Once the archer records what they observed, the activity offers
+the bow's own setting fields; changing the ones they actually adjusted and saving writes a **new bow
+revision** and stores its id on the activity as `resultingRevisionId`.
+
+That is the chain the app exists to capture: setup, test, observation, change, new setup, and the
+scores that follow. Without the link the tuning notes and the equipment history are two unrelated
+piles.
 
 ### 5.3 Bow settings are a schema per bow type
 
@@ -326,7 +342,7 @@ camera on people at a shooting line, this is worth treating as non-negotiable.
 | Phase | Content | Ends when |
 |---|---|---|
 | **1 — Foundation** (done) | DB and migrations, round engine, zone geometry, score sheet with editable arrows, sessions holding activities, custom rounds, tuning templates, bows, theming, i18n, opt-in conditions | You can shoot a round and see the score |
-| **2 — Depth** (mostly done) | Tap-to-plot and group metrics, versioned bow revisions with per-type setting schemas, personal bests and trends, bow photos. Remaining: tuning runs writing their resulting revision, field and 3D rounds | The app is genuinely useful solo, offline, forever |
+| **2 — Depth** (done, pending verification) | Tap-to-plot with a magnifying face and group metrics, versioned bow revisions with per-type setting schemas, tuning runs that write their resulting revision, personal bests and trends, bow photos, field and 3D rounds | The app is genuinely useful solo, offline, forever |
 | **3 — Sync** | Supabase schema, auth, RLS, push/pull over the change log, multi-device | Optional login syncs cleanly and is skippable |
 | **4 — Vision** | Rectification, hole detection, opt-in photo capture, on-device inference | A photo produces a correct, confirmable end |
 
