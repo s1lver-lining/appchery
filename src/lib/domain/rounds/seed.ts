@@ -1,4 +1,5 @@
 import type { RoundDefinition, ScoreSet, Zone } from './types';
+import { FIELD_SCORE_SETS, FIELD_ROUNDS } from './field';
 
 /**
  * Curated built-in rounds. Scoring data is rules data: verify any addition against the governing
@@ -45,7 +46,7 @@ export const WA_10_RING: ScoreSet = {
 	]
 };
 
-export const SCORE_SETS: ScoreSet[] = [WA_10_RING];
+export const SCORE_SETS: ScoreSet[] = [WA_10_RING, ...FIELD_SCORE_SETS];
 
 export const ROUNDS: RoundDefinition[] = [
 	{
@@ -68,8 +69,17 @@ export const ROUNDS: RoundDefinition[] = [
 	}
 ];
 
+/** Field and 3D rounds are listed apart, because their score sets still need rulebook checking. */
+export const UNVERIFIED_ROUNDS: RoundDefinition[] = FIELD_ROUNDS;
+
+export const ALL_ROUNDS: RoundDefinition[] = [...ROUNDS, ...FIELD_ROUNDS];
+
+export function roundNeedsVerification(round: RoundDefinition): boolean {
+	return getScoreSet(round.scoreSetId).needsVerification === true;
+}
+
 export function getRound(id: string): RoundDefinition | undefined {
-	return ROUNDS.find((r) => r.id === id);
+	return ALL_ROUNDS.find((r) => r.id === id);
 }
 
 export function getScoreSet(id: string): ScoreSet {
