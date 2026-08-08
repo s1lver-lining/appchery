@@ -5,6 +5,8 @@ export interface Conditions {
 	longitude: number;
 	/** Null when the weather lookup failed, so a recorded position is never discarded with it. */
 	weather: WeatherSnapshot | null;
+	/** Nearest town, which is what an archer recognises. Coordinates stay stored for the lookup. */
+	place: string | null;
 }
 
 export interface WeatherSnapshot {
@@ -78,13 +80,55 @@ export async function fetchWeather(
 export async function captureConditions(withWeather = true): Promise<Conditions> {
 	const position = await requestPosition();
 	const { latitude, longitude } = position.coords;
-	return {
-		latitude,
-		longitude,
-		weather: withWeather ? await fetchWeather(latitude, longitude) : null
-	};
+	const [weather, place] = await Promise.all([
+		withWeather ? fetchWeather(latitude, longitude) : Promise.resolve(null),
+		fetchPlace(latitude, longitude)
+	]);
+	return { latitude, longitude, weather, place };
 }
 
-export function formatWeather(snapshot: WeatherSnapshot): string {
-	return `${Math.round(snapshot.temperatureC)}°C, ${Math.round(snapshot.windSpeedKmh)} km/h`;
+/** Reverse geocoding with no key and no account, so the app stays installable and self-hostable. */
+export async function fetchPlace(latitude: number, longitude: number): Promise<string | null> {
+	const url =
+		`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude.toFixed(4)}` +
+		`&longitude=${longitude.toFixed(4)}&localityLanguage=en`;
+	try {
+		const response = await fetch(url);
+		if (!response.ok) return null;
+		const data = await response.json();
+		const town = data?.city || data?.locality || data?.principalSubdivision;
+		return town ? [town, data?.countryCode].filter(Boolean).join(', ') : null;
+	} catch {
+		return null;
+	}
+}
+
+export function formatTemperature(snapshot: WeatherSnapshot): string {
+	return `${Math.round(snapshot.temperatureC)}°C`;
+}
+
+export function formatWind(snapshot: WeatherSnapshot): string {
+	return `${Math.round(snapshot.windSpeedKmh)} km/h ${compass(snapshot.windDirectionDeg)}`;
+}
+
+/** Wind direction matters more to an archer than the exact bearing, so it reads as a compass point. */
+function compass(degrees: number): string {
+	const points = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+	return points[Math.round(degrees / 45) % 8];
+}
+
+export type WeatherIcon = 'sun' | 'cloud' | 'rain' | 'snow' | 'fog' | 'storm';
+
+/** WMO weather codes, grouped down to the handful of icons worth drawing. */
+export function weatherIcon(code: number): WeatherIcon {
+	if (code === 0 || code === 1) return 'sun';
+	if (code === 45 || code === 48) return 'fog';
+	if (code >= 95) return 'storm';
+	if ((code >= 71 && code <= 77) || code === 85 || code === 86) return 'snow';
+	if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return 'rain';
+	return 'cloud';
+}
+
+export function weatherLabelKey(code: number): string {
+	return `weather.${weatherIcon(code)}`;
 }
