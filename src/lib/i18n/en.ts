@@ -7,6 +7,7 @@ export const en = {
 	nav: {
 		sessions: 'Sessions',
 		equipment: 'Equipment',
+		stats: 'Stats',
 		settings: 'Settings'
 	},
 	common: {
@@ -88,6 +89,13 @@ export const en = {
 		xs: 'Xs',
 		average: 'Average per arrow',
 		tapToScore: 'Tap a value for each arrow.',
+		plotMode: 'Plot on face',
+		undoEnd: 'Undo last end',
+		group: 'Group',
+		groupCentre: 'Centre offset',
+		meanRadius: 'Mean radius',
+		plottedArrows: '{n} plotted',
+		smallSample: 'Too few plotted arrows for these numbers to mean much yet.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		roundComplete: 'Round complete.'
 	},
@@ -107,7 +115,26 @@ export const en = {
 		addBow: 'Add a bow',
 		bowName: 'Name',
 		bowType: 'Type',
-		tuningSteps: 'Tuning steps'
+		tuningSteps: 'Tuning',
+		settingsTab: 'Settings',
+		historyTab: 'History',
+		noChanges: 'No unsaved changes.',
+		pendingChanges: '{n} unsaved changes',
+		reason: 'Why did you change this?',
+		saveRevision: 'Save as a new revision',
+		revision: 'Revision {n}',
+		initialRevision: 'First recorded setup.',
+		noRevisions: 'No settings recorded yet. Fill in the settings tab and save.',
+		deleteBow: 'Delete this bow'
+	},
+	stats: {
+		title: 'Stats',
+		empty: 'Finish a round and its scores will appear here.',
+		personalBest: 'Personal best',
+		average: 'Average',
+		trend: 'Trend per arrow',
+		rounds: '{n} rounds',
+		bestOn: 'Best on {date}'
 	},
 	storage: {
 		volatileWarning:
@@ -121,9 +148,12 @@ export const en = {
 		themeDark: 'Dark',
 		themeSystem: 'System',
 		conditions: 'Location and weather',
-		conditionsHint:
-			'When enabled, starting a session records where you shot and the weather at the time. Location permission is required.',
-		conditionsEnable: 'Fetch automatically for new sessions',
+		locationTitle: 'Record location',
+		locationHint:
+			'Starting a session records where you shot. Location permission is requested when you turn this on.',
+		weatherTitle: 'Record weather',
+		weatherHint:
+			'Looks up the weather for that location once, at the start of the session. Needs a network connection.',
 		storage: 'Storage',
 		persistent: 'Persistent',
 		volatile: 'In memory, lost on reload'

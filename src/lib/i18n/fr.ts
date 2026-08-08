@@ -8,6 +8,7 @@ export const fr: Dictionary = {
 	nav: {
 		sessions: 'Séances',
 		equipment: 'Matériel',
+		stats: 'Stats',
 		settings: 'Paramètres'
 	},
 	common: {
@@ -89,6 +90,13 @@ export const fr: Dictionary = {
 		xs: 'X',
 		average: 'Moyenne par flèche',
 		tapToScore: 'Touchez une valeur pour chaque flèche.',
+		plotMode: 'Pointer sur le blason',
+		undoEnd: 'Annuler la dernière volée',
+		group: 'Groupement',
+		groupCentre: 'Décalage du centre',
+		meanRadius: 'Rayon moyen',
+		plottedArrows: '{n} pointées',
+		smallSample: 'Trop peu de flèches pointées pour que ces chiffres soient significatifs.',
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		roundComplete: 'Tir terminé.'
 	},
@@ -108,7 +116,26 @@ export const fr: Dictionary = {
 		addBow: 'Ajouter un arc',
 		bowName: 'Nom',
 		bowType: 'Type',
-		tuningSteps: 'Étapes de réglage'
+		tuningSteps: 'Réglages',
+		settingsTab: 'Réglages',
+		historyTab: 'Historique',
+		noChanges: 'Aucune modification en attente.',
+		pendingChanges: '{n} modifications en attente',
+		reason: 'Pourquoi cette modification ?',
+		saveRevision: 'Enregistrer comme nouvelle révision',
+		revision: 'Révision {n}',
+		initialRevision: 'Première configuration enregistrée.',
+		noRevisions: 'Aucun réglage enregistré. Remplissez l\'onglet Réglages puis enregistrez.',
+		deleteBow: 'Supprimer cet arc'
+	},
+	stats: {
+		title: 'Statistiques',
+		empty: 'Terminez un tir et vos scores apparaîtront ici.',
+		personalBest: 'Record personnel',
+		average: 'Moyenne',
+		trend: 'Tendance par flèche',
+		rounds: '{n} tirs',
+		bestOn: 'Record le {date}'
 	},
 	storage: {
 		volatileWarning:
@@ -122,9 +149,12 @@ export const fr: Dictionary = {
 		themeDark: 'Sombre',
 		themeSystem: 'Système',
 		conditions: 'Lieu et météo',
-		conditionsHint:
-			"Une fois activé, le démarrage d'une séance enregistre le lieu de tir et la météo du moment. L'autorisation de localisation est requise.",
-		conditionsEnable: 'Récupérer automatiquement pour les nouvelles séances',
+		locationTitle: 'Enregistrer le lieu',
+		locationHint:
+			"Le démarrage d'une séance enregistre le lieu de tir. L'autorisation de localisation est demandée à l'activation.",
+		weatherTitle: 'Enregistrer la météo',
+		weatherHint:
+			'Récupère la météo de ce lieu une seule fois, au début de la séance. Nécessite une connexion réseau.',
 		storage: 'Stockage',
 		persistent: 'Persistant',
 		volatile: 'En mémoire, perdu au rechargement'

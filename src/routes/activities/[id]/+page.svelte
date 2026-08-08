@@ -2,10 +2,18 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { getScoreSet } from '$lib/domain/rounds/seed';
-	import { endSlots, scorableZones, missZone } from '$lib/domain/rounds/geometry';
+	import {
+		endSlots,
+		scorableZones,
+		missZone,
+		scoreAt,
+		groupMetrics
+	} from '$lib/domain/rounds/geometry';
 	import { formatDistance } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
+	import TargetFace from '$lib/ui/TargetFace.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
 	import {
 		getActivity,
 		listEnds,
@@ -15,6 +23,8 @@
 		updateActivity,
 		finishActivity,
 		shotFromZone,
+		shotFromPlot,
+		deleteLastEnd,
 		type ActivityRow,
 		type EndRow,
 		type ShotRow
@@ -31,6 +41,7 @@
 	let editing = $state<{ endId: string; shotId: string; endNo: number; ordinal: number } | null>(
 		null
 	);
+	let plotting = $state(false);
 	let observations = $state('');
 	let adjustment = $state('');
 	let saved = $state(false);
@@ -43,6 +54,23 @@
 	const currentSlot = $derived(slots[rows.length] ?? null);
 	const keypad = $derived<Zone[]>(scoreSet ? scorableZones(scoreSet) : []);
 	const template = $derived(activity?.templateKey ? getTemplate(activity.templateKey) : undefined);
+
+	/** Every plotted arrow of the activity, for the group plot and its metrics. */
+	const plottedShots = $derived<Shot[]>(
+		rows.flatMap((row) =>
+			row.shots
+				.filter((s) => s.x !== null && s.y !== null)
+				.map((s) => ({
+					ordinal: s.ordinal,
+					value: s.value,
+					zoneLabel: s.zoneLabel,
+					x: s.x,
+					y: s.y,
+					source: s.source as Shot['source']
+				}))
+		)
+	);
+	const metrics = $derived(groupMetrics(plottedShots));
 
 	/** Running totals per end, so the sheet reads like a paper scorecard. */
 	const runningTotals = $derived(
@@ -90,8 +118,42 @@
 		await refresh();
 	}
 
+	/** Plotting derives the value from where the arrow landed, so score and position cannot disagree. */
+	async function plot(x: number, y: number) {
+		if (!scoreSet) return;
+		const zone = scoreAt(scoreSet, x, y);
+
+		if (editing) {
+			await updateShot(editing.shotId, editing.endId, activityId, zone, { x, y });
+			editing = null;
+			await refresh();
+			return;
+		}
+		if (!currentSlot || pending.length >= currentSlot.arrows) return;
+
+		const next = [...pending, shotFromPlot(zone, x, y)];
+		if (next.length < currentSlot.arrows) {
+			pending = next;
+			return;
+		}
+		pending = [];
+		await recordEnd(
+			activityId,
+			currentSlot.stageIndex,
+			currentSlot.endNo,
+			[...next].sort((a, b) => b.value - a.value)
+		);
+		await refresh();
+	}
+
 	function undo() {
 		pending = pending.slice(0, -1);
+	}
+
+	/** Undo for an end already written: only ever the last one, never a gap in the middle. */
+	async function undoEnd() {
+		await deleteLastEnd(activityId);
+		await refresh();
 	}
 
 	async function saveTuning() {
@@ -271,6 +333,30 @@
 
 		{#if currentSlot || editing}
 			<section>
+				<div class="mb-2 flex gap-2">
+					<button
+						class="rounded-lg border px-3 py-1.5 text-sm font-medium
+							{plotting ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+						onclick={() => (plotting = !plotting)}
+					>
+						{$t('score.plotMode')}
+					</button>
+					{#if rows.length > 0 && !editing}
+						<button
+							class="flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-sm"
+							onclick={undoEnd}
+						>
+							{$t('score.undoEnd')}
+						</button>
+					{/if}
+				</div>
+
+				{#if plotting}
+					<div class="mx-auto mb-3 aspect-square max-w-80 rounded-xl border border-line bg-surface p-2">
+						<TargetFace {scoreSet} shots={plottedShots} interactive onplot={plot} />
+					</div>
+				{/if}
+
 				<div class="grid grid-cols-4 gap-2">
 					{#each keypad as zone (zone.label)}
 						<button
@@ -319,6 +405,24 @@
 					</button>
 				{/if}
 			</div>
+		{/if}
+
+		{#if metrics}
+			<section class="rounded-xl border border-line bg-surface p-4 text-sm">
+				<h2 class="mb-2 font-semibold">{$t('score.group')}</h2>
+				<p class="text-muted">
+					{$t('score.groupCentre')}:
+					<strong class="tabular text-ink">
+						{(metrics.centerX * 100).toFixed(0)}, {(metrics.centerY * 100).toFixed(0)}
+					</strong>
+					· {$t('score.meanRadius')}:
+					<strong class="tabular text-ink">{(metrics.meanRadius * 100).toFixed(1)}</strong>
+					· {$t('score.plottedArrows', { n: metrics.sampleSize })}
+				</p>
+				{#if metrics.sampleSize < 6}
+					<p class="mt-1 text-xs text-muted">{$t('score.smallSample')}</p>
+				{/if}
+			</section>
 		{/if}
 
 		<p class="text-sm text-muted">

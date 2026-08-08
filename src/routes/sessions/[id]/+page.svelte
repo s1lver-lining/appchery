@@ -11,7 +11,13 @@
 	} from '$lib/domain/rounds/custom';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { formatDistance } from '$lib/domain/units';
-	import { captureConditions, formatWeather, LocationDeniedError } from '$lib/conditions';
+	import {
+		captureConditions,
+		formatWeather,
+		autoLocation,
+		autoWeather,
+		LocationDeniedError
+	} from '$lib/conditions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import {
 		getSession,
@@ -20,8 +26,10 @@
 		listBows,
 		createScoringActivity,
 		createTuningActivity,
+		deleteActivity,
 		type ActivityRow
 	} from '$lib/db/repository';
+	import Icon from '$lib/ui/Icon.svelte';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -57,6 +65,14 @@
 		refresh();
 	});
 
+	// Fetch once for a session that has none yet, so a slow permission prompt never blocks the UI.
+	let attempted = false;
+	$effect(() => {
+		if (!session || attempted || !$autoLocation || session.latitude !== null) return;
+		attempted = true;
+		fetchConditions();
+	});
+
 	async function setBow(value: string) {
 		if (value.startsWith('bow:'))
 			await updateSession(sessionId, { bowId: value.slice(4), bowType: null });
@@ -68,13 +84,13 @@
 		fetching = true;
 		notice = null;
 		try {
-			const conditions = await captureConditions();
+			const conditions = await captureConditions($autoWeather);
 			await updateSession(sessionId, {
 				latitude: conditions.latitude,
 				longitude: conditions.longitude,
 				weather: conditions.weather ? JSON.stringify(conditions.weather) : null
 			});
-			if (!conditions.weather) notice = $t('session.weatherFailed');
+			if ($autoWeather && !conditions.weather) notice = $t('session.weatherFailed');
 			await refresh();
 		} catch (error) {
 			notice = error instanceof LocationDeniedError ? $t('session.locationDenied') : String(error);
@@ -115,7 +131,12 @@
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4">
 		<header>
 			<a href="/" class="text-sm text-muted">‹ {$t('common.back')}</a>
-			<h1 class="text-2xl font-bold tracking-tight">{session.label ?? $t('sessions.untitled')}</h1>
+			<input
+				class="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
+				value={session.label ?? ''}
+				placeholder={$t('sessions.untitled')}
+				onchange={(e) => updateSession(sessionId, { label: e.currentTarget.value.trim() || null })}
+			/>
 			<p class="text-sm text-muted">{new Date(session.startedAt).toLocaleString()}</p>
 		</header>
 
@@ -179,11 +200,8 @@
 			{:else}
 				<ul class="space-y-2">
 					{#each activities as a (a.id)}
-						<li>
-							<a
-								href="/activities/{a.id}"
-								class="flex items-center justify-between rounded-xl border border-line bg-surface p-3"
-							>
+						<li class="flex items-center gap-1 rounded-xl border border-line bg-surface">
+							<a href="/activities/{a.id}" class="flex flex-1 items-center justify-between p-3">
 								<div>
 									<p class="font-medium">{activityTitle(a)}</p>
 									<p class="text-xs text-muted">
@@ -196,6 +214,16 @@
 									<span class="tabular text-xl font-bold">{a.totalScore}</span>
 								{/if}
 							</a>
+							<button
+								class="p-3 text-muted"
+								aria-label={$t('common.delete')}
+								onclick={async () => {
+									await deleteActivity(a.id);
+									await refresh();
+								}}
+							>
+								<Icon name="trash" size={16} />
+							</button>
 						</li>
 					{/each}
 				</ul>

@@ -1,22 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
-	import {
-		listBows,
-		createBow,
-		deleteBow,
-		listSessions,
-		createSession,
-		createTuningActivity,
-		type BowRow
-	} from '$lib/db/repository';
+	import { BOW_TYPES, type BowType } from '$lib/domain/tuning/templates';
+	import { listBows, createBow, type BowRow } from '$lib/db/repository';
+	import Icon from '$lib/ui/Icon.svelte';
 
 	let bows = $state<BowRow[]>([]);
 	let adding = $state(false);
 	let name = $state('');
 	let type = $state<BowType>('recurve');
-	let expanded = $state<string | null>(null);
 
 	async function refresh() {
 		bows = await listBows();
@@ -27,21 +19,10 @@
 
 	async function add() {
 		if (!name.trim()) return;
-		await createBow(name.trim(), type);
+		const id = await createBow(name.trim(), type);
 		name = '';
 		adding = false;
-		await refresh();
-	}
-
-	/**
-	 * A tuning step is an activity, so it needs a session to live in.
-	 * Reuse the most recent open session rather than making the archer create one first.
-	 */
-	async function startTuning(bow: BowRow, templateKey: string) {
-		const sessions = await listSessions();
-		const open = sessions.find((s) => s.endedAt === null && s.bowId === bow.id);
-		const sessionId = open?.id ?? (await createSession({ bowId: bow.id, label: bow.name }));
-		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
+		goto(`/equipment/${id}`);
 	}
 </script>
 
@@ -49,9 +30,10 @@
 	<header class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">{$t('equipment.title')}</h1>
 		<button
-			class="rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
+			class="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
 			onclick={() => (adding = !adding)}
 		>
+			<Icon name="plus" size={18} />
 			{adding ? $t('common.cancel') : $t('equipment.addBow')}
 		</button>
 	</header>
@@ -60,11 +42,17 @@
 		<section class="space-y-3 rounded-xl border border-line bg-surface p-4">
 			<label class="block text-sm font-semibold">
 				{$t('equipment.bowName')}
-				<input class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink" bind:value={name} />
+				<input
+					class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+					bind:value={name}
+				/>
 			</label>
 			<label class="block text-sm font-semibold">
 				{$t('equipment.bowType')}
-				<select class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink" bind:value={type}>
+				<select
+					class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+					bind:value={type}
+				>
 					{#each BOW_TYPES as option (option)}
 						<option value={option}>{$t(`bow.${option}`)}</option>
 					{/each}
@@ -83,46 +71,26 @@
 	{:else}
 		<ul class="space-y-2">
 			{#each bows as bow (bow.id)}
-				<li class="rounded-xl border border-line bg-surface">
-					<div class="flex items-center justify-between p-4">
-						<div>
+				<li>
+					<a
+						href="/equipment/{bow.id}"
+						class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+					>
+						{#if bow.photo}
+							<img src={bow.photo} alt="" class="h-14 w-14 rounded-lg object-cover" />
+						{:else}
+							<span
+								class="flex h-14 w-14 items-center justify-center rounded-lg bg-sunk text-muted"
+							>
+								<Icon name="bow" size={26} />
+							</span>
+						{/if}
+						<div class="flex-1">
 							<p class="font-semibold">{bow.name}</p>
 							<p class="text-sm text-muted">{$t(`bow.${bow.type}`)}</p>
 						</div>
-						<button
-							class="text-sm font-medium text-brand"
-							onclick={() => (expanded = expanded === bow.id ? null : bow.id)}
-						>
-							{$t('equipment.tuningSteps')}
-						</button>
-					</div>
-
-					{#if expanded === bow.id}
-						<div class="border-t border-line p-4">
-							<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow.name })}</p>
-							<ul class="space-y-1">
-								{#each templatesForBowType(bow.type as BowType) as template (template.key)}
-									<li>
-										<button
-											class="w-full rounded-lg border border-line p-2 text-left text-sm"
-											onclick={() => startTuning(bow, template.key)}
-										>
-											{template.name}
-										</button>
-									</li>
-								{/each}
-							</ul>
-							<button
-								class="mt-3 text-sm text-danger"
-								onclick={async () => {
-									await deleteBow(bow.id);
-									await refresh();
-								}}
-							>
-								{$t('common.delete')}
-							</button>
-						</div>
-					{/if}
+						<span class="text-muted">›</span>
+					</a>
 				</li>
 			{/each}
 		</ul>

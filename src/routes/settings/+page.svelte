@@ -2,26 +2,29 @@
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
 	import { theme, THEMES } from '$lib/theme';
 	import { dbInfo } from '$lib/db';
-	import { autoConditions, requestPosition, LocationDeniedError } from '$lib/conditions';
+	import { autoLocation, autoWeather, requestPosition, LocationDeniedError } from '$lib/conditions';
+	import Toggle from '$lib/ui/Toggle.svelte';
 
 	const info = dbInfo();
 	let error = $state<string | null>(null);
 
 	/**
-	 * Permission is requested at the moment the archer opts in, not silently at session start,
-	 * and a refusal leaves the setting off rather than enabled but broken.
+	 * Permission is requested the moment the archer opts in, not silently at session start, and a
+	 * refusal leaves the setting off rather than enabled but quietly broken.
 	 */
-	async function toggleConditions(enabled: boolean) {
+	async function toggleLocation(enabled: boolean) {
 		error = null;
 		if (!enabled) {
-			autoConditions.set(false);
+			autoLocation.set(false);
+			// Weather is looked up from coordinates, so it cannot outlive location being switched off.
+			autoWeather.set(false);
 			return;
 		}
 		try {
 			await requestPosition();
-			autoConditions.set(true);
+			autoLocation.set(true);
 		} catch (e) {
-			autoConditions.set(false);
+			autoLocation.set(false);
 			error = e instanceof LocationDeniedError ? $t('session.locationDenied') : String(e);
 		}
 	}
@@ -66,19 +69,37 @@
 		</div>
 	</section>
 
-	<section>
-		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.conditions')}</h2>
-		<p class="mb-2 text-sm text-muted">{$t('settings.conditionsHint')}</p>
-		<label class="flex items-center gap-2 text-sm">
-			<input
-				type="checkbox"
-				checked={$autoConditions}
-				onchange={(e) => toggleConditions(e.currentTarget.checked)}
+	<section class="space-y-4">
+		<h2 class="text-sm font-semibold text-muted">{$t('settings.conditions')}</h2>
+
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex-1">
+				<p class="font-medium">{$t('settings.locationTitle')}</p>
+				<p class="mt-0.5 text-sm text-muted">{$t('settings.locationHint')}</p>
+			</div>
+			<Toggle
+				checked={$autoLocation}
+				label={$t('settings.locationTitle')}
+				onchange={toggleLocation}
 			/>
-			{$t('settings.conditionsEnable')}
-		</label>
+		</div>
+
+		{#if $autoLocation}
+			<div class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
+				<div class="flex-1">
+					<p class="font-medium">{$t('settings.weatherTitle')}</p>
+					<p class="mt-0.5 text-sm text-muted">{$t('settings.weatherHint')}</p>
+				</div>
+				<Toggle
+					checked={$autoWeather}
+					label={$t('settings.weatherTitle')}
+					onchange={(v) => autoWeather.set(v)}
+				/>
+			</div>
+		{/if}
+
 		{#if error}
-			<p class="mt-2 text-sm text-danger">{error}</p>
+			<p class="text-sm text-danger">{error}</p>
 		{/if}
 	</section>
 
