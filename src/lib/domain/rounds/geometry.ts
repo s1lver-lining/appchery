@@ -1,13 +1,7 @@
 import type { Shot, RoundDefinition, RoundStage, Zone, ScoreSet } from './types';
 
-/**
- * Score a point in normalised face coordinates.
- *
- * Walks zones innermost -> outermost and returns the first containing zone, so
- * overlapping definitions resolve to the highest-value ring. Returns the miss
- * zone when nothing contains the point.
- */
 export function scoreAt(scoreSet: ScoreSet, x: number, y: number): Zone {
+	// Innermost first so overlapping definitions resolve to the higher value ring.
 	for (let i = scoreSet.zones.length - 1; i >= 0; i--) {
 		const zone = scoreSet.zones[i];
 		if (containsPoint(zone, x, y)) return zone;
@@ -20,11 +14,10 @@ export function containsPoint(zone: Zone, x: number, y: number): boolean {
 	if (shape.kind === 'circle') {
 		const dx = x - (shape.cx ?? 0);
 		const dy = y - (shape.cy ?? 0);
+		// Inclusive because an arrow touching the line scores the higher value.
 		return dx * dx + dy * dy <= shape.r * shape.r;
 	}
-	// Path zones (3D animal faces) need Path2D hit-testing, which is a browser
-	// API rather than pure logic. Deliberately unimplemented until 3D faces land
-	// in phase 2 — failing loudly beats silently scoring every shot as a miss.
+	// Failing loudly beats silently scoring every 3D shot as a miss, see field.todo.md.
 	throw new Error(`Path zone hit-testing is not implemented yet (zone "${zone.label}")`);
 }
 
@@ -34,18 +27,19 @@ export function missZone(scoreSet: ScoreSet): Zone {
 	return miss;
 }
 
-/**
- * Scoring zones highest-value first, for the keypad. Excludes the miss zone,
- * which the UI renders separately and distinctly — a miss is a different kind of
- * outcome from a low score, and mixing it into the ring buttons invites mistaps.
- */
+/** Excludes the miss, which the keypad renders separately so a miss cannot be mistapped for a low score. */
 export function scorableZones(scoreSet: ScoreSet): Zone[] {
 	return scoreSet.zones.filter((z) => z.countsAsHit).reverse();
 }
 
-/** The highest-scoring zone, used to compute a round's maximum. */
 export function bestZone(scoreSet: ScoreSet): Zone {
 	return scoreSet.zones.reduce((best, z) => (z.value > best.value ? z : best));
+}
+
+export function zoneByLabel(scoreSet: ScoreSet, label: string): Zone {
+	const zone = scoreSet.zones.find((z) => z.label === label);
+	if (!zone) throw new Error(`Score set "${scoreSet.id}" has no zone "${label}"`);
+	return zone;
 }
 
 export function totalArrows(round: RoundDefinition): number {
@@ -64,7 +58,6 @@ export function countLabel(shots: Shot[], label: string): number {
 	return shots.filter((s) => s.zoneLabel === label).length;
 }
 
-/** Flattened list of every end in a round, in shooting order. */
 export interface EndSlot {
 	stageIndex: number;
 	endNo: number;
@@ -72,6 +65,7 @@ export interface EndSlot {
 	stage: RoundStage;
 }
 
+/** Every end of a round flattened into shooting order. */
 export function endSlots(round: RoundDefinition): EndSlot[] {
 	const slots: EndSlot[] = [];
 	round.stages.forEach((stage, stageIndex) => {
@@ -82,17 +76,13 @@ export function endSlots(round: RoundDefinition): EndSlot[] {
 	return slots;
 }
 
-/**
- * Group metrics over plotted shots. Shots without coordinates are ignored,
- * which is why the sample size is returned alongside — a mean radius over two
- * arrows is noise, and the UI should say so.
- */
 export interface GroupMetrics {
+	/** Returned so the UI can caveat a mean radius computed over two arrows. */
 	sampleSize: number;
-	/** Group centre offset from face centre. The number that drives sight moves. */
+	/** Offset of the group from the face centre, the number that drives a sight move. */
 	centerX: number;
 	centerY: number;
-	/** Mean distance from the group's own centre. Measures the archer, not the sight. */
+	/** Spread around the group's own centre, which measures the archer rather than the sight. */
 	meanRadius: number;
 	horizontalSpread: number;
 	verticalSpread: number;

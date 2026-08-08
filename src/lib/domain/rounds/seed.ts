@@ -1,31 +1,23 @@
 import type { RoundDefinition, ScoreSet, Zone } from './types';
 
 /**
- * Curated built-in round definitions.
- *
- * ⚠️ Scoring data is rules data. Every value here must be checked against the
- * current published rulebook of the governing body before release — a wrong
- * zone map corrupts scores silently, and the archer only finds out when a
- * result is disputed. Field, IFAA, IBO and ASA score sets are deliberately NOT
- * included yet for exactly this reason; see `field.todo.md` in this folder.
+ * Curated built-in rounds. Scoring data is rules data: verify any addition against the governing
+ * body's current published rulebook, because a wrong zone map corrupts scores silently.
  */
-
-const GOLD = '#ffd94a';
-const RED = '#f2453d';
-const BLUE = '#4aa3df';
-const BLACK = '#2b2b2b';
-const WHITE = '#f7f7f7';
 
 function ring(value: number, label: string, r: number, color: string, strokeColor: string): Zone {
 	return { value, label, shape: { kind: 'circle', r }, countsAsHit: true, color, strokeColor };
 }
 
+const GOLD = '#ffcf3f';
+const RED = '#e8453c';
+const BLUE = '#3aa0d8';
+const BLACK = '#23282c';
+const WHITE = '#f4f1ea';
+
 /**
- * The World Archery 10-ring face. Ten equal-width rings, so ring N sits at
- * radius (11 - N)/10 of the face; the X-ring is half the 10-ring.
- *
- * Expressed as fractions, this is identical for a 122cm, 80cm, 60cm or 40cm
- * face — which is the whole point of normalised coordinates.
+ * Ten equal-width rings, so ring N sits at radius (11 - N)/10 and the X ring is half the 10 ring.
+ * As fractions this is identical for a 122cm and a 40cm face, which is why coordinates are normalised.
  */
 export const WA_10_RING: ScoreSet = {
 	id: 'wa-10-ring',
@@ -37,7 +29,7 @@ export const WA_10_RING: ScoreSet = {
 			shape: { kind: 'circle', r: Number.POSITIVE_INFINITY },
 			countsAsHit: false,
 			color: 'transparent',
-			strokeColor: '#888'
+			strokeColor: '#888888'
 		},
 		ring(1, '1', 1.0, WHITE, BLACK),
 		ring(2, '2', 0.9, WHITE, BLACK),
@@ -66,24 +58,6 @@ export const ROUNDS: RoundDefinition[] = [
 		stages: [{ distance: { value: 70, unit: 'm' }, faceSize: 122, ends: 12, arrowsPerEnd: 6 }]
 	},
 	{
-		id: 'wa720-60m',
-		name: 'WA 720 (60m)',
-		discipline: 'target',
-		governingBody: 'WA',
-		scoreSetId: WA_10_RING.id,
-		isBuiltin: true,
-		stages: [{ distance: { value: 60, unit: 'm' }, faceSize: 122, ends: 12, arrowsPerEnd: 6 }]
-	},
-	{
-		id: 'wa720-50m-compound',
-		name: 'WA 720 (50m, 80cm face)',
-		discipline: 'target',
-		governingBody: 'WA',
-		scoreSetId: WA_10_RING.id,
-		isBuiltin: true,
-		stages: [{ distance: { value: 50, unit: 'm' }, faceSize: 80, ends: 12, arrowsPerEnd: 6 }]
-	},
-	{
 		id: 'wa-indoor-18m',
 		name: 'WA Indoor 18m',
 		discipline: 'target',
@@ -91,43 +65,6 @@ export const ROUNDS: RoundDefinition[] = [
 		scoreSetId: WA_10_RING.id,
 		isBuiltin: true,
 		stages: [{ distance: { value: 18, unit: 'm' }, faceSize: 40, ends: 20, arrowsPerEnd: 3 }]
-	},
-	{
-		id: 'portsmouth',
-		name: 'Portsmouth',
-		discipline: 'target',
-		governingBody: 'AGB',
-		scoreSetId: WA_10_RING.id,
-		isBuiltin: true,
-		stages: [{ distance: { value: 20, unit: 'yd' }, faceSize: 60, ends: 20, arrowsPerEnd: 3 }]
-	},
-	{
-		id: 'wa1440-men',
-		name: 'WA 1440 (men)',
-		discipline: 'target',
-		governingBody: 'WA',
-		scoreSetId: WA_10_RING.id,
-		isBuiltin: true,
-		stages: [
-			{ distance: { value: 90, unit: 'm' }, faceSize: 122, ends: 6, arrowsPerEnd: 6 },
-			{ distance: { value: 70, unit: 'm' }, faceSize: 122, ends: 6, arrowsPerEnd: 6 },
-			{ distance: { value: 50, unit: 'm' }, faceSize: 80, ends: 6, arrowsPerEnd: 6 },
-			{ distance: { value: 30, unit: 'm' }, faceSize: 80, ends: 6, arrowsPerEnd: 6 }
-		]
-	},
-	{
-		id: 'wa1440-women',
-		name: 'WA 1440 (women)',
-		discipline: 'target',
-		governingBody: 'WA',
-		scoreSetId: WA_10_RING.id,
-		isBuiltin: true,
-		stages: [
-			{ distance: { value: 70, unit: 'm' }, faceSize: 122, ends: 6, arrowsPerEnd: 6 },
-			{ distance: { value: 60, unit: 'm' }, faceSize: 122, ends: 6, arrowsPerEnd: 6 },
-			{ distance: { value: 50, unit: 'm' }, faceSize: 80, ends: 6, arrowsPerEnd: 6 },
-			{ distance: { value: 30, unit: 'm' }, faceSize: 80, ends: 6, arrowsPerEnd: 6 }
-		]
 	}
 ];
 

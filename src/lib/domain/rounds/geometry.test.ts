@@ -1,13 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import { WA_10_RING, ROUNDS, getRound } from './seed';
 import { scoreAt, maxScore, totalArrows, endSlots, groupMetrics } from './geometry';
+import { buildCustomRound, validateCustomRound } from './custom';
 import type { Shot } from './types';
 
-/**
- * Scoring rules are the part of this app that must not be wrong. Everything
- * else is an inconvenience when it breaks; a wrong score is a corrupted record
- * the archer may not notice until a result is disputed.
- */
+// Scoring is the part that must not be wrong: a bad score is a corrupted record nobody notices.
 
 describe('scoreAt', () => {
 	it('scores the exact centre as an X', () => {
@@ -25,8 +22,7 @@ describe('scoreAt', () => {
 	});
 
 	it('scores each ring boundary to the inner ring', () => {
-		// A shot touching the line scores the higher value — the standard rule,
-		// and the reason hit-testing uses <= rather than <.
+		// A shot touching the line scores the higher value, which is why hit testing is inclusive.
 		expect(scoreAt(WA_10_RING, 0.1, 0).label).toBe('10');
 		expect(scoreAt(WA_10_RING, 0.2, 0).label).toBe('9');
 		expect(scoreAt(WA_10_RING, 1.0, 0).label).toBe('1');
@@ -53,27 +49,6 @@ describe('round definitions', () => {
 		const round = getRound('wa720-70m')!;
 		expect(totalArrows(round)).toBe(72);
 		expect(maxScore(round, WA_10_RING)).toBe(720);
-	});
-
-	it('gives a WA 1440 a maximum of 1440 over 144 arrows', () => {
-		const round = getRound('wa1440-men')!;
-		expect(totalArrows(round)).toBe(144);
-		expect(maxScore(round, WA_10_RING)).toBe(1440);
-	});
-
-	it('gives a Portsmouth a maximum of 600 over 60 arrows', () => {
-		const round = getRound('portsmouth')!;
-		expect(totalArrows(round)).toBe(60);
-		expect(maxScore(round, WA_10_RING)).toBe(600);
-	});
-
-	it('expands multi-stage rounds into ends in shooting order', () => {
-		const slots = endSlots(getRound('wa1440-men')!);
-		expect(slots).toHaveLength(24);
-		expect(slots[0].stage.distance).toEqual({ value: 90, unit: 'm' });
-		expect(slots[23].stage.distance).toEqual({ value: 30, unit: 'm' });
-		// Ends restart their numbering at each new distance.
-		expect(slots[6]).toMatchObject({ stageIndex: 1, endNo: 1 });
 	});
 
 	it('uses only score sets that exist', () => {
@@ -104,8 +79,7 @@ describe('groupMetrics', () => {
 	});
 
 	it('finds the group centre, which is what drives a sight adjustment', () => {
-		// A tight group placed high-left: the centre offset is the signal, and the
-		// mean radius stays small because the group itself is tight.
+		// A tight group placed high and left: the offset is the signal, the spread stays small.
 		const metrics = groupMetrics([plotted(-0.2, -0.3), plotted(-0.22, -0.28), plotted(-0.18, -0.32)])!;
 		expect(metrics.centerX).toBeCloseTo(-0.2, 5);
 		expect(metrics.centerY).toBeCloseTo(-0.3, 5);
@@ -117,5 +91,26 @@ describe('groupMetrics', () => {
 		const offset = groupMetrics([plotted(0.5, 0.6), plotted(0.7, 0.6)])!;
 		expect(offset.horizontalSpread).toBeCloseTo(centred.horizontalSpread, 5);
 		expect(offset.meanRadius).toBeCloseTo(centred.meanRadius, 5);
+	});
+});
+
+describe('custom rounds', () => {
+	const input = { ends: 10, arrowsPerEnd: 3, faceSize: 60, distance: 25, unit: 'm' as const };
+
+	it('builds a round the engine treats like any other', () => {
+		const round = buildCustomRound(input);
+		expect(totalArrows(round)).toBe(30);
+		expect(maxScore(round, WA_10_RING)).toBe(300);
+		expect(endSlots(round)).toHaveLength(10);
+	});
+
+	it('names itself from its own parameters when left blank', () => {
+		expect(buildCustomRound(input).name).toBe('25m · 60cm · 10x3');
+	});
+
+	it('rejects values that cannot describe a real round', () => {
+		expect(validateCustomRound({ ...input, ends: 0 })).toContain('ends');
+		expect(validateCustomRound({ ...input, arrowsPerEnd: 99 })).toContain('arrowsPerEnd');
+		expect(validateCustomRound(input)).toEqual([]);
 	});
 });
