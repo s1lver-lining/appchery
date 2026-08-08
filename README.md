@@ -2,10 +2,11 @@
 
 Archery session tracking, scoring, and bow tuning — offline-first, on mobile and in the browser.
 
-- **Score sessions** for target rounds, per arrow, with no network connection.
-- **Document your bows**, with every settings change kept as an immutable revision.
-- **Run tuning activities** whose outcomes link back to the exact bow setup they were performed on.
-- **Live camera scoring** (planned) — sweep the camera over the target and confirm what it found.
+- **Sessions hold activities.** One outing, many things done in it: score a round, then tune.
+- **Score on a sheet** that reads like paper, with every arrow editable after the fact.
+- **Custom rounds** by entering ends, arrows, face size, and distance.
+- **Document your bows** and launch tuning procedures against them.
+- **Live camera scoring** (planned): sweep the camera over the target and confirm what it found.
 
 Design and rationale live in [doc/architecture.md](doc/architecture.md) and
 [doc/data-model.md](doc/data-model.md). Read those before making structural changes.
@@ -52,12 +53,12 @@ npm run cap:sync     # build the web app and copy it into the native projects
 ## Project layout
 
 ```
-src/lib/domain/    pure scoring, round and unit logic — no I/O, fully unit-tested
+src/lib/domain/    pure scoring, round, tuning and unit logic, no I/O, fully unit-tested
 src/lib/db/        schema, bundled migrations, platform drivers, repository
-src/lib/i18n/      en (reference) + fr dictionaries
+src/lib/i18n/      en (reference) and fr dictionaries
 src/lib/ui/        shared components
 src/routes/        pages
-doc/               architecture and data model
+doc/               architecture, data model, development guidelines
 ```
 
 The `domain/` layer imports nothing from the database or the UI. Scoring rules are the part that
@@ -71,7 +72,8 @@ Two things to know before opening a PR:
    current published rulebook of the governing body concerned. Field, IFAA, IBO and ASA score sets
    are deliberately absent for this reason — see
    [src/lib/domain/rounds/field.todo.md](src/lib/domain/rounds/field.todo.md).
-2. **English is the reference locale.** Add keys to `src/lib/i18n/en.ts` first; other locales are
+2. **Read [doc/dev_guidelines.md](doc/dev_guidelines.md)** for commit, comment, and prose rules.
+3. **English is the reference locale.** Add keys to `src/lib/i18n/en.ts` first; other locales are
    type-checked against it, so the build fails until each one is translated.
 
 Contributions require signing a CLA — see below.
