@@ -1,0 +1,44 @@
+{
+  "name": "appchery",
+  "version": "0.1.0",
+  "description": "Archery session, scoring and bow tuning tracker",
+  "directories": {
+    "doc": "doc"
+  },
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "db:generate": "drizzle-kit generate",
+    "cap:sync": "npm run build && cap sync"
+  },
+  "type": "module",
+  "private": true,
+  "license": "AGPL-3.0-only",
+  "devDependencies": {
+    "@capacitor/cli": "^8.5.0",
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.70.2",
+    "@sveltejs/vite-plugin-svelte": "^7.3.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "drizzle-kit": "^0.31.10",
+    "playwright": "^1.62.1",
+    "svelte": "^5.56.8",
+    "svelte-check": "^4.7.5",
+    "tailwindcss": "^4.3.3",
+    "typescript": "^6.0.3",
+    "vite": "^8.2.1",
+    "vitest": "^4.1.10"
+  },
+  "dependencies": {
+    "@capacitor-community/sqlite": "^8.1.1",
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/core": "^8.5.0",
+    "@capacitor/ios": "^8.5.0",
+    "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
+    "drizzle-orm": "^0.45.2"
+  }
+}

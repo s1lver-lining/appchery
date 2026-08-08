@@ -1,0 +1,214 @@
+# Appchery — Data Model
+
+Companion to [architecture.md](./architecture.md). SQLite (local, source of truth), mirrored later
+to Postgres for sync.
+
+## Conventions
+
+Every user-owned table carries:
+
+| Column | Type | Purpose |
+|---|---|---|
+| `id` | TEXT (UUIDv7) | Time-sortable, collision-free across devices — no autoincrement anywhere |
+| `created_at` | INTEGER (epoch ms) | |
+| `updated_at` | INTEGER (epoch ms) | Sync ordering, LWW resolution |
+| `deleted_at` | INTEGER, nullable | Soft delete — a hard delete cannot be synced |
+| `device_id` | TEXT | Origin device, for debugging and conflict attribution |
+
+`user_id` is deliberately **absent in phase 1** and added by the phase-3 migration. Locally there is
+exactly one archer; inventing accounts before they exist is speculative complexity.
+
+---
+
+## Equipment
+
+### `bow`
+
+| Column | Type | Notes |
+|---|---|---|
+| `name` | TEXT | "Blue riser", "Hoyt indoor" |
+| `type` | TEXT | `recurve` \| `compound` \| `barebow` \| `longbow` |
+| `is_active` | INTEGER | Retired bows stay for history |
+| `notes` | TEXT | |
+
+### `bow_revision`
+
+Immutable. A settings change appends a row; it never updates one.
+
+| Column | Type | Notes |
+|---|---|---|
+| `bow_id` | TEXT FK | |
+| `revision_no` | INTEGER | Monotonic per bow |
+| `settings` | TEXT (JSON) | Validated against the schema for `bow.type` |
+| `arrow_set_id` | TEXT FK, nullable | Arrows in use at this revision |
+| `reason` | TEXT | Why the change was made — free text, surprisingly valuable later |
+| `effective_from` | INTEGER | Usually = `created_at`, editable for backfilled history |
+
+> Rationale: sessions and tuning runs both point at a revision, so any score can be traced to the
+> exact configuration that produced it. Mutating settings in place would destroy that link
+> retroactively and silently.
+
+### `arrow_set`
+
+| Column | Type | Notes |
+|---|---|---|
+| `label` | TEXT | |
+| `spine` | INTEGER | |
+| `length_mm` | INTEGER | Canonical metric; display converts |
+| `point_grain` | INTEGER | |
+| `fletching` | TEXT (JSON) | type, length, offset/helical |
+| `nock` | TEXT | |
+| `total_grain` | REAL, nullable | Measured, not derived |
+| `count` | INTEGER | |
+
+Individual arrow numbering is a phase-2 nicety (`arrow` table, FK to `arrow_set`) that unlocks
+per-arrow grouping analysis — "arrow 3 always drifts left" is a real and common finding.
+
+---
+
+## Rounds & scoring
+
+### `round_definition`
+
+Built-in rows ship seeded and read-only (`is_builtin = 1`); user rows are the custom-round builder's
+output. Same table, same engine — a custom round is not a second-class citizen.
+
+| Column | Type | Notes |
+|---|---|---|
+| `name` | TEXT | |
+| `discipline` | TEXT | `target` \| `field` \| `3d` \| `clout` \| `custom` |
+| `stages` | TEXT (JSON) | `RoundStage[]` — distance, face size, ends, arrows/end |
+| `score_set_id` | TEXT FK | |
+| `max_score` | INTEGER | Cached, recomputed on write |
+| `is_builtin` | INTEGER | |
+| `governing_body` | TEXT, nullable | `WA`, `IFAA`, `IBO`, `ASA`, `AGB` — for filtering and record eligibility |
+
+### `score_set` / zone geometry
+
+| Column | Type | Notes |
+|---|---|---|
+| `name` | TEXT | "WA 10-ring", "WA field 6-zone", "IBO 3D" |
+| `zones` | TEXT (JSON) | `Zone[]`, outermost → innermost |
+
+`Zone` shape (normalised face coordinates, face radius = 1.0):
+
+```jsonc
+{
+  "value": 10,
+  "label": "10",
+  "shape": { "kind": "circle", "r": 0.1 },   // or { "kind": "path", "d": "M..." } for 3D vitals
+  "isInner": false,
+  "countsAsHit": true
+}
+```
+
+One geometry definition serves three consumers: the SVG renderer, the tap hit-test, and
+score-from-coordinates. They cannot disagree, because there is nothing to disagree with.
+
+> ⚠️ Zone values for field, IFAA and 3D organisations differ and are revised between rulebook
+> editions. Seed data must be checked against the current published rulebook before release.
+
+### `session`
+
+| Column | Type | Notes |
+|---|---|---|
+| `round_definition_id` | TEXT FK | |
+| `bow_revision_id` | TEXT FK | The configuration actually shot |
+| `started_at` / `ended_at` | INTEGER | |
+| `kind` | TEXT | `practice` \| `competition` \| `qualification` |
+| `location` | TEXT, nullable | |
+| `conditions` | TEXT (JSON), nullable | wind, temp, light, indoor/outdoor |
+| `total_score` | INTEGER | Denormalised for list views; recomputed on end change |
+| `counts_10s` / `counts_x` | INTEGER | Tiebreak columns |
+| `status` | TEXT | `in_progress` \| `complete` \| `abandoned` |
+| `notes` | TEXT | |
+
+### `end`
+
+| Column | Type | Notes |
+|---|---|---|
+| `session_id` | TEXT FK | |
+| `stage_index` | INTEGER | Which `RoundStage` |
+| `end_no` | INTEGER | Within the stage |
+| `subtotal` | INTEGER | |
+
+### `shot`
+
+| Column | Type | Notes |
+|---|---|---|
+| `end_id` | TEXT FK | |
+| `ordinal` | INTEGER | Order within the end |
+| `value` | INTEGER | Points scored |
+| `zone_label` | TEXT | `10`, `X`, `M`, `vital` — the semantic result |
+| `x` / `y` | REAL, nullable | Normalised face coords, centre = (0,0), radius = 1.0. **Null when score-only.** |
+| `source` | TEXT | `manual` \| `plotted` \| `vision` — provenance matters for trusting stats |
+| `arrow_id` | TEXT FK, nullable | For per-arrow analysis |
+
+The default entry mode is numeric; `x`/`y` are populated only when plotted or vision-derived. When
+present, `value` is **derived** from position via the zone geometry rather than entered — one input,
+not two that can contradict.
+
+---
+
+## Tuning
+
+### `tuning_template`
+
+Seeded, versioned with the app. Not user data in phase 2.
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | TEXT | `bare-shaft`, `paper`, `walk-back`, `crawl-calibration`, `cam-timing`, `nock-height` |
+| `applies_to` | TEXT (JSON) | Bow types this is valid for |
+| `steps` | TEXT (JSON) | Ordered instructions, each with optional input capture |
+| `interpretation` | TEXT (JSON) | observation → likely cause → suggested adjustment |
+
+### `tuning_run`
+
+| Column | Type | Notes |
+|---|---|---|
+| `template_key` | TEXT | |
+| `bow_revision_id` | TEXT FK | Configuration under test |
+| `observations` | TEXT (JSON) | Captured inputs — tear direction, bare-shaft offset, crawl marks |
+| `conclusion` | TEXT | Which interpretation branch matched |
+| `adjustment_made` | TEXT | |
+| `resulting_revision_id` | TEXT FK, nullable | The revision this run caused — closes the loop |
+| `photos` | TEXT (JSON), nullable | Local file references (paper tears, group photos) |
+
+`resulting_revision_id` is what turns a pile of notes into a causal chain: setup → test →
+observation → change → new setup → subsequent scores.
+
+---
+
+## Sync scaffolding (written from phase 1, consumed in phase 3)
+
+### `change_log`
+
+| Column | Type | Notes |
+|---|---|---|
+| `id` | INTEGER PK AUTOINCREMENT | Local ordering only, never synced |
+| `table_name` / `row_id` | TEXT | |
+| `op` | TEXT | `insert` \| `update` \| `delete` |
+| `changed_at` | INTEGER | |
+| `synced_at` | INTEGER, nullable | Null = pending |
+
+### `sync_state`
+
+Single row: last successful pull cursor, last push cursor, `device_id`, endpoint URL.
+
+Writing this log from day one costs a trigger and some disk. Adding it later means reconciling
+history that was never recorded — which is to say, not doing it.
+
+---
+
+## Derived / query notes
+
+- **Personal bests** are a query over `session`, not a stored table, filtered by
+  `round_definition_id` and `kind` — no denormalised state to invalidate.
+- **Group metrics** (mean radius, group centre offset, horizontal/vertical spread) computed from
+  `shot.x/y` where non-null. Group centre offset is the number that matters for sight and tuning
+  decisions; raw spread is the one that measures the archer.
+- **Round progress charts** join sessions on `round_definition_id` over time, optionally split by
+  `bow_revision_id` to visualise the effect of an equipment change.
+- Index at minimum: `end(session_id)`, `shot(end_id)`, `session(round_definition_id, started_at)`,
+  `bow_revision(bow_id, revision_no)`, `change_log(synced_at)`.

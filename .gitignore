@@ -1,0 +1,18 @@
+node_modules/
+.svelte-kit/
+build/
+drizzle/
+*.log
+.DS_Store
+
+# Capacitor copies the web build into the native projects; the projects
+# themselves are committed, because native config gets hand-edited.
+ios/App/App/public/
+ios/App/Pods/
+ios/App/App/capacitor.config.json
+android/app/src/main/assets/public/
+android/app/src/main/assets/capacitor.config.json
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties

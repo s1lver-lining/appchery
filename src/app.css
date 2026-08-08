@@ -1,0 +1,22 @@
+@import 'tailwindcss';
+
+/*
+ * Tokens are defined on :root and overridden for dark mode, so no colour has
+ * its only definition inside a media query. Archery scoring happens outdoors in
+ * bright sun — high contrast is a usability requirement, not a preference.
+ */
+@theme {
+	--color-gold: #ffd94a;
+	--color-target-red: #f2453d;
+	--color-target-blue: #4aa3df;
+}
+
+html,
+body {
+	overscroll-behavior: none;
+	-webkit-tap-highlight-color: transparent;
+}
+
+/* Respect the notch/home indicator on iOS. */
+.safe-top { padding-top: env(safe-area-inset-top); }
+.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }

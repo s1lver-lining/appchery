@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Appchery</string>
+    <string name="title_activity_main">Appchery</string>
+    <string name="package_name">com.appchery.app</string>
+    <string name="custom_url_scheme">com.appchery.app</string>
+</resources>
