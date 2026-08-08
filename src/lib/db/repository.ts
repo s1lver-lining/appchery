@@ -422,6 +422,33 @@ export async function deleteLastEnd(activityId: string) {
 	await refreshActivityTotals(activityId);
 }
 
+export interface BowUsage {
+	sessions: number;
+	activities: number;
+	arrowsShot: number;
+	/** Best finished score with this bow, null until one round is complete. */
+	bestScore: number | null;
+	lastUsedAt: number | null;
+}
+
+/** Usage is derived from the sessions that name the bow, so nothing needs denormalising onto it. */
+export async function bowUsage(bowId: string): Promise<BowUsage> {
+	const sessions = (await listSessions()).filter((s) => s.bowId === bowId);
+	const ids = new Set(sessions.map((s) => s.id));
+	const activities = (await listAllActivities()).filter(
+		(a) => ids.has(a.sessionId) && a.kind === 'scoring'
+	);
+
+	const finished = activities.filter((a) => a.status === 'complete');
+	return {
+		sessions: sessions.length,
+		activities: activities.length,
+		arrowsShot: activities.reduce((sum, a) => sum + a.arrowsShot, 0),
+		bestScore: finished.length > 0 ? Math.max(...finished.map((a) => a.totalScore)) : null,
+		lastUsedAt: sessions.length > 0 ? Math.max(...sessions.map((s) => s.startedAt)) : null
+	};
+}
+
 export function shotFromZone(zone: Zone, source: Shot['source'] = 'manual'): Omit<Shot, 'ordinal'> {
 	return { value: zone.value, zoneLabel: zone.label, x: null, y: null, source };
 }
