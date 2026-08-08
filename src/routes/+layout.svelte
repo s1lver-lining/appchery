@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { initDb, dbInfo } from '$lib/db';
 	import { t } from '$lib/i18n';
+	import { theme } from '$lib/theme';
 
 	let { children } = $props();
 
@@ -11,6 +12,8 @@
 	let volatileStorage = $state(false);
 
 	$effect(() => {
+		// Touch the store so the theme attribute is applied before first paint of the shell.
+		void $theme;
 		initDb()
 			.then(() => {
 				volatileStorage = !dbInfo().persistent;
@@ -20,29 +23,26 @@
 	});
 
 	const tabs = [
-		{ href: '/', key: 'nav.sessions', icon: '🎯' },
-		{ href: '/equipment', key: 'nav.equipment', icon: '🏹' },
-		{ href: '/tuning', key: 'nav.tuning', icon: '🔧' },
-		{ href: '/settings', key: 'nav.settings', icon: '⚙️' }
+		{ href: '/', key: 'nav.sessions' },
+		{ href: '/equipment', key: 'nav.equipment' },
+		{ href: '/settings', key: 'nav.settings' }
 	];
 
 	const isActive = (href: string) =>
 		href === '/' ? $page.url.pathname === '/' : $page.url.pathname.startsWith(href);
 </script>
 
-<div class="flex h-full flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+<div class="flex h-full flex-col bg-bg text-ink">
 	{#if error}
-		<div class="m-4 rounded-lg bg-red-100 p-4 text-red-900 dark:bg-red-950 dark:text-red-200">
+		<div class="m-4 rounded-lg border border-danger/40 bg-danger/10 p-4 text-danger">
 			<p class="font-semibold">Database failed to open</p>
 			<p class="mt-1 text-sm">{error}</p>
 		</div>
 	{:else if !ready}
-		<div class="flex flex-1 items-center justify-center text-slate-500">{$t('common.loading')}</div>
+		<div class="flex flex-1 items-center justify-center text-muted">{$t('common.loading')}</div>
 	{:else}
 		{#if volatileStorage}
-			<p
-				class="safe-top bg-amber-100 px-4 py-2 text-sm text-amber-900 dark:bg-amber-950 dark:text-amber-200"
-			>
+			<p class="safe-top bg-accent/20 px-4 py-2 text-sm text-ink">
 				{$t('storage.volatileWarning')}
 			</p>
 		{/if}
@@ -51,18 +51,13 @@
 			{@render children()}
 		</main>
 
-		<nav
-			class="safe-bottom flex border-t border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900"
-		>
+		<nav class="safe-bottom flex border-t border-line bg-surface">
 			{#each tabs as tab (tab.href)}
 				<a
 					href={tab.href}
-					class="flex flex-1 flex-col items-center gap-0.5 py-2 text-xs
-						{isActive(tab.href)
-						? 'text-slate-900 dark:text-white'
-						: 'text-slate-400 dark:text-slate-500'}"
+					class="flex-1 py-3 text-center text-sm font-medium
+						{isActive(tab.href) ? 'text-brand' : 'text-muted'}"
 				>
-					<span class="text-lg" aria-hidden="true">{tab.icon}</span>
 					{$t(tab.key)}
 				</a>
 			{/each}
