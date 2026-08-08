@@ -66,7 +66,7 @@ must not be wrong, so they stay testable without a browser or a device.
 
 ## Contributing
 
-Two things to know before opening a PR:
+Three things to know before opening a PR:
 
 1. **Scoring data is rules data.** Round definitions and zone maps must be verified against the
    current published rulebook of the governing body concerned. Field, IFAA, IBO and ASA score sets
