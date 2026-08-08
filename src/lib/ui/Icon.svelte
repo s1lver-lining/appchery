@@ -1,0 +1,64 @@
+<script lang="ts">
+	// Drawn on a 24 unit grid with stroked geometry so every icon shares one weight and inherits currentColor.
+	export type IconName =
+		| 'target'
+		| 'bow'
+		| 'chart'
+		| 'sliders'
+		| 'plus'
+		| 'trash'
+		| 'camera'
+		| 'wrench';
+
+	let {
+		name,
+		size = 24,
+		filled = false
+	}: { name: IconName; size?: number; filled?: boolean } = $props();
+</script>
+
+<svg
+	width={size}
+	height={size}
+	viewBox="0 0 24 24"
+	fill="none"
+	stroke="currentColor"
+	stroke-width={filled ? 2.1 : 1.6}
+	stroke-linecap="round"
+	stroke-linejoin="round"
+	aria-hidden="true"
+>
+	{#if name === 'target'}
+		<circle cx="12" cy="12" r="9" />
+		<circle cx="12" cy="12" r="5.2" />
+		<circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+	{:else if name === 'bow'}
+		<!-- A recurve seen from the side: limbs curving back, string drawn straight, arrow nocked. -->
+		<path d="M7.5 3.2c3.6 2 5.6 5.2 5.6 8.8s-2 6.8-5.6 8.8" />
+		<path d="M7.5 3.2c1.4 .5 2.2 1.3 2.4 2.4M7.5 20.8c1.4-.5 2.2-1.3 2.4-2.4" />
+		<path d="M9.9 5.6v12.8" />
+		<path d="M4.6 12h9.8" />
+		<path d="M18.4 12h2.6M18.4 12l-1.9-1.9M18.4 12l-1.9 1.9" />
+	{:else if name === 'chart'}
+		<path d="M4 19.5V4.5" />
+		<path d="M4 19.5h16" />
+		<path d="M7.6 16.4v-4.2M12 16.4V7.8M16.4 16.4v-6.4" />
+	{:else if name === 'sliders'}
+		<path d="M4 7.5h9M17.5 7.5H20" />
+		<path d="M4 16.5h3.5M12 16.5h8" />
+		<circle cx="15.2" cy="7.5" r="2.3" />
+		<circle cx="9.7" cy="16.5" r="2.3" />
+	{:else if name === 'plus'}
+		<path d="M12 5v14M5 12h14" />
+	{:else if name === 'trash'}
+		<path d="M4.5 7h15" />
+		<path d="M9.5 7V5.2A1.2 1.2 0 0 1 10.7 4h2.6a1.2 1.2 0 0 1 1.2 1.2V7" />
+		<path d="M6.8 7l.8 11.4A1.6 1.6 0 0 0 9.2 20h5.6a1.6 1.6 0 0 0 1.6-1.6L17.2 7" />
+		<path d="M10.5 11v5M13.5 11v5" />
+	{:else if name === 'camera'}
+		<path d="M3.5 8.6A1.6 1.6 0 0 1 5.1 7h2.3l1.3-2.1h6.6L16.6 7h2.3a1.6 1.6 0 0 1 1.6 1.6v8.8a1.6 1.6 0 0 1-1.6 1.6H5.1a1.6 1.6 0 0 1-1.6-1.6z" />
+		<circle cx="12" cy="12.8" r="3.4" />
+	{:else if name === 'wrench'}
+		<path d="M15.6 3.6a5.4 5.4 0 0 0-5.1 8.9L4 19a2 2 0 0 0 2.8 2.8l6.5-6.5a5.4 5.4 0 0 0 6.6-7.4l-3 3-2.5-2.5 3-3a5.4 5.4 0 0 0-1.8-1.8z" />
+	{/if}
+</svg>
