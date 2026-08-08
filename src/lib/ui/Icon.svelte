@@ -13,6 +13,7 @@
 		| 'eye'
 		| 'eyeOff'
 		| 'close'
+		| 'back'
 		| 'sun'
 		| 'cloud'
 		| 'rain'
@@ -80,6 +81,8 @@
 		<path d="M9.6 6.3A10 10 0 0 1 12 6c6 0 9.4 6 9.4 6a17 17 0 0 1-2.9 3.5" />
 		<path d="M9.9 9.9a2.9 2.9 0 0 0 4.1 4.1" />
 		<path d="M3.6 3.6l16.8 16.8" />
+	{:else if name === 'back'}
+		<path d="M15 5l-7 7 7 7" />
 	{:else if name === 'close'}
 		<path d="M6 6l12 12M18 6L6 18" />
 	{:else if name === 'sun'}
