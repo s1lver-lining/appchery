@@ -197,6 +197,12 @@ export const fr: Dictionary = {
 		weatherTitle: 'Enregistrer la météo',
 		weatherHint:
 			'Récupère la météo de ce lieu une seule fois, au début de la séance. Nécessite une connexion réseau.',
+		display: 'Affichage',
+		clockTitle: 'Format 24 heures',
+		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',
+		placeTitle: 'Nommer le lieu',
+		placeHint:
+			"Recherche la ville la plus proche. Vos coordonnées sont envoyées à un tiers, ce que leur enregistrement local ne fait pas.",
 		storage: 'Stockage',
 		persistent: 'Persistant',
 		volatile: 'En mémoire, perdu au rechargement'

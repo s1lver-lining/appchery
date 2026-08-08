@@ -24,6 +24,7 @@
 		weatherLabelKey,
 		autoLocation,
 		autoWeather,
+		autoPlaceName,
 		LocationDeniedError
 	} from '$lib/conditions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -39,6 +40,7 @@
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
+	import { formatDateTime } from '$lib/prefs';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -98,7 +100,7 @@
 		fetching = true;
 		notice = null;
 		try {
-			const conditions = await captureConditions($autoWeather);
+			const conditions = await captureConditions($autoWeather, $autoPlaceName);
 			await updateSession(sessionId, {
 				latitude: conditions.latitude,
 				longitude: conditions.longitude,
@@ -164,7 +166,9 @@
 {#if session}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
-			<a href="/" class="text-sm text-muted">‹ {$t('common.back')}</a>
+			<a href="/" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+				<Icon name="back" size={22} />
+			</a>
 			{#if editingName}
 				<input
 					bind:this={nameInput}
@@ -186,7 +190,7 @@
 					{session.label ?? $t('sessions.untitled')}
 				</button>
 			{/if}
-			<p class="text-sm text-muted">{new Date(session.startedAt).toLocaleString()}</p>
+			<p class="text-sm text-muted">{$formatDateTime(session.startedAt)}</p>
 		</header>
 
 		<nav class="flex gap-1 rounded-lg bg-sunk p-1">

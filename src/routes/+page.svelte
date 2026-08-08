@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { listSessions, listAllActivities, createSession } from '$lib/db/repository';
-	import { defaultBowId } from '$lib/prefs';
+	import { defaultBowId, formatDateTime } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
@@ -63,7 +63,7 @@
 						<div class="min-w-0">
 							<p class="truncate font-semibold">{s.label ?? $t('sessions.untitled')}</p>
 							<p class="text-sm text-muted">
-								{new Date(s.startedAt).toLocaleDateString()} · {activityLabel(s.id)}
+								{$formatDateTime(s.startedAt)} · {activityLabel(s.id)}
 							</p>
 						</div>
 						<div class="text-right">

@@ -142,7 +142,9 @@
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header class="flex items-start gap-3">
 			<div class="min-w-0 flex-1">
-				<a href="/equipment" class="text-sm text-muted">‹ {$t('common.back')}</a>
+				<a href="/equipment" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+					<Icon name="back" size={22} />
+				</a>
 				<input
 					class="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
 					value={bow.name}

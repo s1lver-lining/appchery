@@ -2,7 +2,14 @@
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
 	import { theme, THEMES } from '$lib/theme';
 	import { dbInfo } from '$lib/db';
-	import { autoLocation, autoWeather, requestPosition, LocationDeniedError } from '$lib/conditions';
+	import {
+		autoLocation,
+		autoWeather,
+		autoPlaceName,
+		requestPosition,
+		LocationDeniedError
+	} from '$lib/conditions';
+	import { use24Hour } from '$lib/prefs';
 	import Toggle from '$lib/ui/Toggle.svelte';
 
 	const info = dbInfo();
@@ -16,8 +23,9 @@
 		error = null;
 		if (!enabled) {
 			autoLocation.set(false);
-			// Weather is looked up from coordinates, so it cannot outlive location being switched off.
+			// Both are derived from coordinates, so neither can outlive location being switched off.
 			autoWeather.set(false);
+			autoPlaceName.set(false);
 			return;
 		}
 		try {
@@ -96,11 +104,38 @@
 					onchange={(v) => autoWeather.set(v)}
 				/>
 			</div>
+
+			<div class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
+				<div class="flex-1">
+					<p class="font-medium">{$t('settings.placeTitle')}</p>
+					<p class="mt-0.5 text-sm text-muted">{$t('settings.placeHint')}</p>
+				</div>
+				<Toggle
+					checked={$autoPlaceName}
+					label={$t('settings.placeTitle')}
+					onchange={(v) => autoPlaceName.set(v)}
+				/>
+			</div>
 		{/if}
 
 		{#if error}
 			<p class="text-sm text-danger">{error}</p>
 		{/if}
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.display')}</h2>
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex-1">
+				<p class="font-medium">{$t('settings.clockTitle')}</p>
+				<p class="mt-0.5 text-sm text-muted">{$t('settings.clockHint')}</p>
+			</div>
+			<Toggle
+				checked={$use24Hour}
+				label={$t('settings.clockTitle')}
+				onchange={(v) => use24Hour.set(v)}
+			/>
+		</div>
 	</section>
 
 	<section>

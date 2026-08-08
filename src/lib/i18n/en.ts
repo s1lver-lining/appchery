@@ -196,6 +196,12 @@ export const en = {
 		weatherTitle: 'Record weather',
 		weatherHint:
 			'Looks up the weather for that location once, at the start of the session. Needs a network connection.',
+		display: 'Display',
+		clockTitle: '24 hour clock',
+		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
+		placeTitle: 'Name the place',
+		placeHint:
+			'Looks up the nearest town. This sends your coordinates to a third party, which recording them on the device does not.',
 		storage: 'Storage',
 		persistent: 'Persistent',
 		volatile: 'In memory, lost on reload'
