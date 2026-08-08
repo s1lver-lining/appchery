@@ -11,7 +11,6 @@
 	--color-brand: var(--c-brand);
 	--color-brand-ink: var(--c-brand-ink);
 	--color-accent: var(--c-accent);
-	--color-accent-ink: var(--c-accent-ink);
 	--color-danger: var(--c-danger);
 
 	/* Regulated target face colours, identical in every theme because the rules define them. */
@@ -23,20 +22,19 @@
 }
 
 /*
- * Light is the base palette: warm paper and deep field green, drawn from target faces and outdoor
- * ranges rather than generic greys.
+ * Bronze and target gold on warm paper: leather, cedar limbs and the gold ring, which reads as
+ * archery without competing with the regulated face colours used for scores.
  */
 :root {
-	--c-bg: #f6f2e9;
-	--c-surface: #fffdf8;
-	--c-sunk: #ece5d7;
-	--c-line: #ddd3c0;
-	--c-ink: #1d2a24;
-	--c-muted: #6d7c73;
-	--c-brand: #1f5d4c;
-	--c-brand-ink: #fffdf8;
-	--c-accent: #b8842a;
-	--c-accent-ink: #2a1d05;
+	--c-bg: #f7f3ec;
+	--c-surface: #fffcf6;
+	--c-sunk: #ece4d6;
+	--c-line: #dcd0bc;
+	--c-ink: #241f19;
+	--c-muted: #6f6659;
+	--c-brand: #8a5320;
+	--c-brand-ink: #fffcf6;
+	--c-accent: #d99b20;
 	--c-danger: #a3392c;
 
 	color-scheme: light;
@@ -45,16 +43,15 @@
 /* Guarded so an explicit light choice still wins on a device set to dark. */
 @media (prefers-color-scheme: dark) {
 	:root:not([data-theme='light']) {
-		--c-bg: #101613;
-		--c-surface: #19211d;
-		--c-sunk: #222b26;
-		--c-line: #2f3a34;
-		--c-ink: #e7ede9;
-		--c-muted: #8fa098;
-		--c-brand: #4fa88b;
-		--c-brand-ink: #0b1512;
-		--c-accent: #dcae5c;
-		--c-accent-ink: #241804;
+		--c-bg: #17140f;
+		--c-surface: #201c16;
+		--c-sunk: #2a251d;
+		--c-line: #3a332a;
+		--c-ink: #efe8dc;
+		--c-muted: #a2988a;
+		--c-brand: #d99b47;
+		--c-brand-ink: #1b1610;
+		--c-accent: #e8b45c;
 		--c-danger: #e0776a;
 
 		color-scheme: dark;
@@ -62,16 +59,15 @@
 }
 
 :root[data-theme='dark'] {
-	--c-bg: #101613;
-	--c-surface: #19211d;
-	--c-sunk: #222b26;
-	--c-line: #2f3a34;
-	--c-ink: #e7ede9;
-	--c-muted: #8fa098;
-	--c-brand: #4fa88b;
-	--c-brand-ink: #0b1512;
-	--c-accent: #dcae5c;
-	--c-accent-ink: #241804;
+	--c-bg: #17140f;
+	--c-surface: #201c16;
+	--c-sunk: #2a251d;
+	--c-line: #3a332a;
+	--c-ink: #efe8dc;
+	--c-muted: #a2988a;
+	--c-brand: #d99b47;
+	--c-brand-ink: #1b1610;
+	--c-accent: #e8b45c;
 	--c-danger: #e0776a;
 
 	color-scheme: dark;
