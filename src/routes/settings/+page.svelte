@@ -30,7 +30,7 @@
 	}
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-6 p-4">
+<div class="safe-top mx-auto w-full max-w-2xl space-y-6 p-4 pt-6">
 	<h1 class="text-2xl font-bold tracking-tight">{$t('settings.title')}</h1>
 
 	<section>

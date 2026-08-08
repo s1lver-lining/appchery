@@ -2,6 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { listSessions, listAllActivities, createSession, deleteSession } from '$lib/db/repository';
+	import { defaultBowId } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
@@ -24,7 +25,7 @@
 	 * afterwards, because waiting on a geolocation prompt here left the button stuck on "fetching".
 	 */
 	async function start() {
-		goto(`/sessions/${await createSession({})}`);
+		goto(`/sessions/${await createSession({ bowId: $defaultBowId })}`);
 	}
 
 	async function remove(id: string) {
@@ -38,7 +39,7 @@
 	}
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl p-4">
+<div class="safe-top mx-auto w-full max-w-2xl p-4 pt-6">
 	<header class="mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">{$t('sessions.title')}</h1>
 		<button

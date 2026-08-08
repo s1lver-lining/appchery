@@ -45,7 +45,7 @@
 	}
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 	<h1 class="text-2xl font-bold tracking-tight">{$t('stats.title')}</h1>
 
 	{#if summaries.length === 0}
