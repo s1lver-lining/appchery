@@ -10,6 +10,7 @@
 	--color-muted: var(--c-muted);
 	--color-brand: var(--c-brand);
 	--color-brand-ink: var(--c-brand-ink);
+	--color-brand-text: var(--c-brand-text);
 	--color-accent: var(--c-accent);
 	--color-danger: var(--c-danger);
 
@@ -32,8 +33,10 @@
 	--c-line: #dcd0bc;
 	--c-ink: #241f19;
 	--c-muted: #6f6659;
-	--c-brand: #8a5320;
-	--c-brand-ink: #fffcf6;
+	--c-brand: #d0912f;
+	--c-brand-ink: #261904;
+	/* Gold is too pale to read as text on paper, so links and labels use a deeper bronze. */
+	--c-brand-text: #8a5320;
 	--c-accent: #d99b20;
 	--c-danger: #a3392c;
 
@@ -51,6 +54,7 @@
 		--c-muted: #a2988a;
 		--c-brand: #d99b47;
 		--c-brand-ink: #1b1610;
+		--c-brand-text: #e0a95c;
 		--c-accent: #e8b45c;
 		--c-danger: #e0776a;
 
@@ -67,6 +71,7 @@
 	--c-muted: #a2988a;
 	--c-brand: #d99b47;
 	--c-brand-ink: #1b1610;
+	--c-brand-text: #e0a95c;
 	--c-accent: #e8b45c;
 	--c-danger: #e0776a;
 
