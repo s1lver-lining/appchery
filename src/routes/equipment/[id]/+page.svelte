@@ -150,7 +150,7 @@
 				/>
 				<p class="text-sm text-muted">
 					{$t(`bow.${bow.type}`)}
-					{#if isDefault}· <span class="text-brand">{$t('equipment.default')}</span>{/if}
+					{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
 				</p>
 			</div>
 			<label class="cursor-pointer">

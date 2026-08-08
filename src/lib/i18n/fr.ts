@@ -32,6 +32,7 @@ export const fr: Dictionary = {
 		finish: 'Terminer la séance',
 		untitled: 'Séance',
 		activityCount: '{n} activités',
+		arrows: 'flèches',
 		oneActivity: '1 activité',
 		practice: 'Entraînement',
 		competition: 'Compétition',
@@ -55,6 +56,9 @@ export const fr: Dictionary = {
 		weatherNone: 'Non enregistrée',
 		weatherOff: "L'enregistrement de la météo est désactivé. Activez-le dans les paramètres.",
 		noConditions: 'Rien enregistré pour cette séance.',
+		unknownPlace: 'Lieu enregistré',
+		addActivity: 'Ajouter une activité',
+		delete: 'Supprimer cette séance',
 		noActivities: 'Aucune activité.',
 		addScoring: 'Ajouter une activité de score',
 		addTuning: 'Ajouter une activité de réglage'
@@ -77,6 +81,7 @@ export const fr: Dictionary = {
 		arrowsPerEnd: 'Flèches par volée',
 		faceSize: 'Diamètre du blason (cm)',
 		distance: 'Distance',
+		unit: 'Unité',
 		name: 'Nom',
 		create: 'Créer et commencer'
 	},
@@ -103,8 +108,21 @@ export const fr: Dictionary = {
 		meanRadius: 'Rayon moyen',
 		plottedArrows: '{n} pointées',
 		smallSample: 'Trop peu de flèches pointées pour que ces chiffres soient significatifs.',
+		plotHint: 'Maintenez et déplacez pour placer la flèche, relâchez pour valider.',
+		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		roundComplete: 'Tir terminé.'
+	},
+	activity: {
+		delete: 'Supprimer cette activité'
+	},
+	weather: {
+		sun: 'Dégagé',
+		cloud: 'Nuageux',
+		rain: 'Pluie',
+		snow: 'Neige',
+		fog: 'Brouillard',
+		storm: 'Orage'
 	},
 	tuning: {
 		title: 'Réglages',

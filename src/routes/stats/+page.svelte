@@ -75,7 +75,7 @@
 						<div>
 							<p
 								class="tabular text-xl font-semibold {summary.trend >= 0
-									? 'text-brand'
+									? 'text-brand-text'
 									: 'text-danger'}"
 							>
 								{summary.trend >= 0 ? '+' : ''}{summary.trend.toFixed(2)}
@@ -91,7 +91,7 @@
 							d={sparkline(summary)}
 							fill="none"
 							stroke="currentColor"
-							class="text-brand"
+							class="text-brand-text"
 							stroke-width="1.4"
 							vector-effect="non-scaling-stroke"
 						/>

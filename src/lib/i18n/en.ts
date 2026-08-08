@@ -31,6 +31,7 @@ export const en = {
 		finish: 'Finish session',
 		untitled: 'Session',
 		activityCount: '{n} activities',
+		arrows: 'arrows',
 		oneActivity: '1 activity',
 		practice: 'Practice',
 		competition: 'Competition',
@@ -54,6 +55,9 @@ export const en = {
 		weatherNone: 'Not recorded',
 		weatherOff: 'Weather recording is off. Turn it on in Settings.',
 		noConditions: 'Nothing recorded for this session yet.',
+		unknownPlace: 'Location recorded',
+		addActivity: 'Add an activity',
+		delete: 'Delete this session',
 		noActivities: 'No activities yet.',
 		addScoring: 'Add a scoring activity',
 		addTuning: 'Add a tuning activity'
@@ -76,6 +80,7 @@ export const en = {
 		arrowsPerEnd: 'Arrows per end',
 		faceSize: 'Face diameter (cm)',
 		distance: 'Distance',
+		unit: 'Unit',
 		name: 'Name',
 		create: 'Create and start'
 	},
@@ -102,8 +107,21 @@ export const en = {
 		meanRadius: 'Mean radius',
 		plottedArrows: '{n} plotted',
 		smallSample: 'Too few plotted arrows for these numbers to mean much yet.',
+		plotHint: 'Press and drag to place the arrow, release to record it.',
+		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		roundComplete: 'Round complete.'
+	},
+	activity: {
+		delete: 'Delete this activity'
+	},
+	weather: {
+		sun: 'Clear',
+		cloud: 'Cloudy',
+		rain: 'Rain',
+		snow: 'Snow',
+		fog: 'Fog',
+		storm: 'Storm'
 	},
 	tuning: {
 		title: 'Tuning',

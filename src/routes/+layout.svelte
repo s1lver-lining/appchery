@@ -56,7 +56,7 @@
 				<a
 					href={tab.href}
 					class="flex flex-1 flex-col items-center gap-0.5 py-2
-						{isActive(tab.href) ? 'text-brand' : 'text-muted'}"
+						{isActive(tab.href) ? 'text-brand-text' : 'text-muted'}"
 					aria-current={isActive(tab.href) ? 'page' : undefined}
 				>
 					<Icon name={tab.icon} size={24} filled={isActive(tab.href)} />

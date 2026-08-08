@@ -1,18 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { listSessions, listAllActivities, createSession, deleteSession } from '$lib/db/repository';
+	import { listSessions, listAllActivities, createSession } from '$lib/db/repository';
 	import { defaultBowId } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
-	let counts = $state<Record<string, number>>({});
+	let counts = $state<Record<string, { activities: number; arrows: number }>>({});
 
 	async function refresh() {
 		sessions = await listSessions();
 		const activities = await listAllActivities();
-		counts = activities.reduce<Record<string, number>>((acc, a) => {
-			acc[a.sessionId] = (acc[a.sessionId] ?? 0) + 1;
+		counts = activities.reduce<Record<string, { activities: number; arrows: number }>>((acc, a) => {
+			const entry = (acc[a.sessionId] ??= { activities: 0, arrows: 0 });
+			entry.activities += 1;
+			entry.arrows += a.arrowsShot;
 			return acc;
 		}, {});
 	}
@@ -28,19 +30,14 @@
 		goto(`/sessions/${await createSession({ bowId: $defaultBowId })}`);
 	}
 
-	async function remove(id: string) {
-		await deleteSession(id);
-		await refresh();
-	}
-
 	function activityLabel(id: string) {
-		const n = counts[id] ?? 0;
+		const n = counts[id]?.activities ?? 0;
 		return n === 1 ? $t('sessions.oneActivity') : $t('sessions.activityCount', { n });
 	}
 </script>
 
 <div class="safe-top mx-auto w-full max-w-2xl p-4 pt-6">
-	<header class="mb-4 flex items-center justify-between">
+	<header class="mt-2 mb-4 flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">{$t('sessions.title')}</h1>
 		<button
 			class="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
@@ -58,20 +55,22 @@
 	{:else}
 		<ul class="space-y-2">
 			{#each sessions as s (s.id)}
-				<li class="flex items-center gap-1 rounded-xl border border-line bg-surface">
-					<a href="/sessions/{s.id}" class="flex-1 p-4">
-						<p class="font-semibold">{s.label ?? $t('sessions.untitled')}</p>
-						<p class="text-sm text-muted">
-							{new Date(s.startedAt).toLocaleDateString()} · {activityLabel(s.id)}
-						</p>
-					</a>
-					<button
-						class="p-4 text-muted"
-						aria-label={$t('common.delete')}
-						onclick={() => remove(s.id)}
+				<li>
+					<a
+						href="/sessions/{s.id}"
+						class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-4"
 					>
-						<Icon name="trash" size={18} />
-					</button>
+						<div class="min-w-0">
+							<p class="truncate font-semibold">{s.label ?? $t('sessions.untitled')}</p>
+							<p class="text-sm text-muted">
+								{new Date(s.startedAt).toLocaleDateString()} · {activityLabel(s.id)}
+							</p>
+						</div>
+						<div class="text-right">
+							<p class="tabular text-xl font-bold">{counts[s.id]?.arrows ?? 0}</p>
+							<p class="text-xs text-muted">{$t('sessions.arrows')}</p>
+						</div>
+					</a>
 				</li>
 			{/each}
 		</ul>

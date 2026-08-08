@@ -28,7 +28,7 @@
 </script>
 
 <div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
-	<header class="flex items-center justify-between">
+	<header class="mt-2 flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">{$t('equipment.title')}</h1>
 		<button
 			class="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
@@ -91,7 +91,7 @@
 							<p class="font-semibold">{bow.name}</p>
 							<p class="text-sm text-muted">
 								{$t(`bow.${bow.type}`)}
-								{#if $defaultBowId === bow.id}· <span class="text-brand">{$t('equipment.default')}</span>{/if}
+								{#if $defaultBowId === bow.id}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
 							</p>
 						</div>
 						<span class="text-muted">›</span>
