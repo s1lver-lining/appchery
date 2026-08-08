@@ -1,7 +1,7 @@
 # Appchery — Architecture
 
-> Status: design draft. No code written yet.
-> Decisions recorded here reflect the requirements agreed in the initial scoping round.
+> Status: phase 1 implemented. Sessions, activities, scoring, custom rounds, tuning templates,
+> theming, and i18n are working. See doc/dev_guidelines.md for conventions.
 
 ## 1. What this is
 
@@ -25,6 +25,7 @@ Primary platform is mobile; the browser is a first-class secondary target.
 | Four bow types, multiple bows per archer | Bow settings are a **schema per bow type**, not fixed columns. |
 | Open source, with commercial use kept open later | **AGPL-3.0 + a CLA** (see §10). Prefer self-hostable dependencies; Supabase chosen partly because it can be self-hosted. |
 | Multilingual, English default | i18n from the first screen. English is the reference dictionary and every other locale is type-checked against it, so a missing key fails the build rather than shipping a blank label. |
+| Conditions are useful but private | Location and weather capture is opt-in, off by default, and asks for permission at the moment the archer enables it. See section 6.1. |
 | Developer knows web + Python | TypeScript/Svelte for the app, Python for the CV training pipeline. |
 
 ## 3. Stack
@@ -58,7 +59,12 @@ background work. Capacitor is a thin wrapper around the same code that removes t
 opens the app stores. The browser build remains a genuine PWA regardless.
 
 **The cost, stated plainly:** the UI runs in a webview. For this app that is fine, with one
-exception — on-device ML inference (§7) is slower than native. Acceptable for a per-end action.
+exception: live on-device inference (section 7) is not viable in WASM and will need a native plugin.
+
+**One deployment requirement:** the browser build must be served with `Cross-Origin-Opener-Policy:
+same-origin` and `Cross-Origin-Embedder-Policy: require-corp`. Without cross-origin isolation SQLite
+cannot use OPFS, and the app degrades to an in-memory database that loses everything on reload. It
+fails loudly rather than silently, but it is not a usable deployment.
 
 ### Chosen libraries
 
@@ -66,14 +72,14 @@ exception — on-device ML inference (§7) is slower than native. Acceptable for
 |---|---|---|
 | Framework | Svelte 5 + SvelteKit, `adapter-static` | No SSR — the app must boot offline |
 | Native shell | Capacitor 6 | `@capacitor-community/sqlite`, Camera, Filesystem, Preferences |
-| Database | SQLite | native on device; `wa-sqlite`/OPFS in browser |
+| Database | SQLite | native on device, official `sqlite-wasm` in a Worker over OPFS in the browser |
 | ORM & migrations | Drizzle ORM | TS-first, tiny, real migration files, works over both drivers |
 | State | Svelte 5 runes + stores | No Redux-alikes needed; the DB is the state |
 | Charts | LayerChart or hand-rolled SVG | Group plots are custom SVG anyway |
 | Target face rendering | SVG (not canvas) | Faces are concentric circles — SVG is declarative, hit-testable, scales, and is trivially themeable |
 | Validation | Zod / Valibot | Also generates the dynamic bow-setting forms |
 | Tests | Vitest + Playwright | Scoring rules deserve heavy unit coverage |
-| i18n | Paraglide | Archery is international; retrofitting i18n is painful |
+| i18n | Typed dictionaries in `src/lib/i18n` | English is the reference, other locales are typed against it so a missing key fails the build |
 
 ### Backend (deferred)
 
@@ -91,16 +97,16 @@ notebooks and the export script live in a separate `ml/` workspace, not shipped 
 src/lib/
   db/            schema.ts, migrations/, client adapters (native | wasm)
   domain/
-    rounds/      round definitions, zone maps, scoring engine   ← pure, no I/O
-    scoring/     end/session state machine, validation
-    equipment/   bow-type schemas, revision diffing
+    rounds/      round definitions, zone maps, scoring engine, custom rounds  <- pure, no I/O
     tuning/      activity templates, outcome interpretation
-    stats/       aggregates, PBs, trends, group metrics
-  sync/          change log, push/pull, conflict resolution     ← phase 3
-  vision/        onnx session, homography, hole detection       ← phase 4
+    equipment/   bow-type schemas, revision diffing              <- phase 2
+    stats/       aggregates, PBs, trends, group metrics          <- phase 2
+  i18n/          reference dictionary and locales
+  sync/          change log, push/pull, conflict resolution      <- phase 3
+  vision/        onnx session, homography, hole detection        <- phase 4
   ui/            components
 routes/
-  sessions/  equipment/  tuning/  stats/  settings/
+  sessions/[id]/  activities/[id]/  equipment/  settings/
 ```
 
 The `domain/` layer is **pure TypeScript with no database or UI imports**. Scoring rules, zone
@@ -110,6 +116,22 @@ strict about — everything else is replaceable.
 ## 5. Core domain model
 
 Detailed tables in [data-model.md](./data-model.md). The three ideas that matter:
+
+### 5.0 A session holds activities
+
+A **session** is one outing: a date, a place, the weather, and the bow being used. An **activity**
+is one thing done inside it, either a scored round or a tuning procedure. A session holds many
+activities, which is what makes a realistic afternoon expressible: sight in, shoot a 720, bare shaft
+tune, shoot another 720.
+
+The bow lives on the session rather than the activity, because an archer does not swap bows halfway
+through an outing, and putting it on the session means every activity inherits it for free. It is
+set either to a bow the archer has recorded, or to a generic bow type for someone who has not
+entered their equipment yet. The generic option exists so a first-time user can score immediately
+without filling in an equipment form.
+
+Tuning is an activity, not a separate area of the app. This is why there is no tuning tab: tuning
+procedures are launched from a bow in Equipment, or added to the session in progress.
 
 ### 5.1 A round is a data structure
 
@@ -188,6 +210,15 @@ a `TuningActivityRun` bound to a bow revision, with the observation, the adjustm
 That yields a tuning history: what you tried, what you observed, what you changed, and whether
 scores moved afterwards. This is the feature that distinguishes the app from a scorecard.
 
+### 5.4 Custom rounds are ordinary rounds
+
+The built-in list stays short on purpose. Anything else is entered directly as ends, arrows per end,
+face diameter, and distance, which produces a normal `RoundDefinition` that the scoring engine,
+statistics, and target rendering treat exactly like a built-in one.
+
+Every activity stores a **full snapshot** of the round it was shot under, not just a reference, so
+editing or removing a definition later cannot rewrite the history of a round already shot.
+
 ## 6. Data flow & offline model
 
 - **The local SQLite database is the source of truth.** All reads and writes are local and
@@ -199,6 +230,20 @@ scores moved afterwards. This is the feature that distinguishes the app from a s
 - **Conflict policy: last-writer-wins per row, except sessions, which are append-only and never
   merged.** Two devices editing one session is a pathological case; a session belongs to the device
   that shot it.
+
+### 6.1 Location and weather
+
+Opt-in, off by default, and controlled from Settings. Enabling it requests location permission
+immediately: a setting that appears enabled but silently fails at the range is worse than one that
+was never offered. If permission is refused the setting stays off.
+
+When enabled, starting a session captures coordinates once and looks up the weather for them.
+Weather comes from Open-Meteo, which needs no API key and no account, so the app stays installable
+and self-hostable. The snapshot is taken once and never refreshed: it records the conditions the
+arrows were actually shot in, so a later refresh would be a falsification rather than an update.
+
+A failed weather lookup keeps the recorded position, and a refused permission never blocks starting
+a session. Being offline at a range is the normal case, not an error.
 
 ## 7. Live camera scoring (phase 4)
 
@@ -257,8 +302,8 @@ camera on people at a shooting line, this is worth treating as non-negotiable.
 
 | Phase | Content | Ends when |
 |---|---|---|
-| **1 — Foundation** | DB + migrations, round definition engine, zone geometry, scoring state machine, numeric end entry, session list, WA target rounds | You can shoot a WA 720 and see the score |
-| **2 — Depth** | Tap-to-plot, group stats, bows + versioned revisions, bow-type schemas, tuning templates & runs, field/3D rounds, custom round builder | The app is genuinely useful solo, offline, forever |
+| **1 — Foundation** (done) | DB and migrations, round engine, zone geometry, score sheet with editable arrows, sessions holding activities, custom rounds, tuning templates, bows, theming, i18n, opt-in conditions | You can shoot a round and see the score |
+| **2 — Depth** | Tap-to-plot, group stats, versioned bow revisions with per-type setting schemas, tuning runs linked to revisions, field and 3D rounds, personal bests and trends | The app is genuinely useful solo, offline, forever |
 | **3 — Sync** | Supabase schema, auth, RLS, push/pull over the change log, multi-device | Optional login syncs cleanly and is skippable |
 | **4 — Vision** | Rectification, hole detection, opt-in photo capture, on-device inference | A photo produces a correct, confirmable end |
 
@@ -272,8 +317,14 @@ Phases 1 and 2 have no server dependency at all. That is the point.
   in grains, draw weight in pounds. The conversion lives at the display boundary only, so a
   preference change can never touch stored data.
 - **Languages**: English (default) and French, with the structure to add more.
-- **Tuning content**: built-in templates only for now. User-contributed activities are deferred —
-  it turns the app into a small CMS and deserves its own design pass.
+- **Tuning content**: built-in templates only for now, launched per bow from Equipment. User
+  contributed activities are deferred: they turn the app into a small CMS and deserve their own
+  design pass.
+- **Built-in rounds**: only WA 720 (70m) and WA Indoor 18m ship as presets. Everything else is a
+  custom round, which keeps the preset list honest and avoids shipping unverified rules data.
+- **Theme**: light, dark, and system, with light as the base palette. The palette is drawn from
+  target faces and outdoor ranges rather than generic greys, and the regulated face colours stay
+  identical in both themes because the rules define them.
 
 ## 10. Licensing
 

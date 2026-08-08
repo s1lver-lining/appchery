@@ -110,6 +110,49 @@ score-from-coordinates. They cannot disagree, because there is nothing to disagr
 
 ### `session`
 
+One outing. Holds the bow, the place, and the conditions. Activities hang off it.
+
+| Column | Type | Notes |
+|---|---|---|
+| `label` | TEXT, nullable | |
+| `started_at` / `ended_at` | INTEGER | |
+| `kind` | TEXT | `practice` \| `competition` \| `qualification` |
+| `bow_id` | TEXT FK, nullable | Set when shooting a recorded bow |
+| `bow_type` | TEXT, nullable | Set instead of `bow_id` for a generic bow type |
+| `bow_revision_id` | TEXT FK, nullable | The configuration actually shot |
+| `location` | TEXT, nullable | |
+| `latitude` / `longitude` | REAL, nullable | Captured only when the archer opts in |
+| `conditions` | TEXT (JSON), nullable | Weather snapshot, taken once and never refreshed |
+| `notes` | TEXT | |
+
+> Rationale: the bow sits on the session because an archer does not swap bows mid-outing, so every
+> activity inherits it. The weather snapshot is never refreshed because it records the conditions the
+> arrows were shot in: a later refresh would falsify the record rather than update it.
+
+### `activity`
+
+One thing done inside a session: a scored round, or a tuning procedure.
+
+| Column | Type | Notes |
+|---|---|---|
+| `session_id` | TEXT FK | |
+| `kind` | TEXT | `scoring` \| `tuning` |
+| `round_definition_id` | TEXT, nullable | Set for built-in rounds, null for custom ones |
+| `round_definition` | TEXT (JSON) | **Full snapshot** of the round as shot |
+| `template_key` | TEXT, nullable | Set for tuning activities |
+| `observations` / `conclusion` / `adjustment_made` | TEXT, nullable | Tuning outcome |
+| `resulting_revision_id` | TEXT FK, nullable | The revision this tuning run produced |
+| `total_score` | INTEGER | Denormalised, recomputed on any end change |
+| `count_10s` / `count_x` | INTEGER | Tiebreak columns |
+| `arrows_shot` | INTEGER | |
+| `status` | TEXT | `in_progress` \| `complete` \| `abandoned` |
+
+> Rationale: the round is stored as a **snapshot**, not a reference. Editing or deleting a definition
+> later must not rewrite the history of a round already shot under the old one. This is also what
+> lets custom rounds be first-class without a separate table.
+
+### `session` (superseded, kept for the rationale below)
+
 | Column | Type | Notes |
 |---|---|---|
 | `round_definition_id` | TEXT FK | |
