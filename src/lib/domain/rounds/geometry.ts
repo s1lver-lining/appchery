@@ -11,14 +11,44 @@ export function scoreAt(scoreSet: ScoreSet, x: number, y: number): Zone {
 
 export function containsPoint(zone: Zone, x: number, y: number): boolean {
 	const { shape } = zone;
+	// Every test is inclusive, because an arrow touching the line scores the higher value.
 	if (shape.kind === 'circle') {
 		const dx = x - (shape.cx ?? 0);
 		const dy = y - (shape.cy ?? 0);
-		// Inclusive because an arrow touching the line scores the higher value.
 		return dx * dx + dy * dy <= shape.r * shape.r;
 	}
-	// Failing loudly beats silently scoring every 3D shot as a miss, see field.todo.md.
-	throw new Error(`Path zone hit-testing is not implemented yet (zone "${zone.label}")`);
+	if (shape.kind === 'ellipse') {
+		const dx = (x - shape.cx) / shape.rx;
+		const dy = (y - shape.cy) / shape.ry;
+		return dx * dx + dy * dy <= 1;
+	}
+	return insidePolygon(shape.points, x, y);
+}
+
+/**
+ * Ray casting, kept here rather than using Path2D so the scoring rules stay testable outside a
+ * browser. Points on an edge count as inside, matching the line-cutting rule.
+ */
+export function insidePolygon(points: [number, number][], x: number, y: number): boolean {
+	let inside = false;
+	for (let i = 0, j = points.length - 1; i < points.length; j = i++) {
+		const [xi, yi] = points[i];
+		const [xj, yj] = points[j];
+		if (onSegment(xi, yi, xj, yj, x, y)) return true;
+		if (yi > y !== yj > y && x < ((xj - xi) * (y - yi)) / (yj - yi) + xi) inside = !inside;
+	}
+	return inside;
+}
+
+function onSegment(xi: number, yi: number, xj: number, yj: number, x: number, y: number): boolean {
+	const cross = (xj - xi) * (y - yi) - (yj - yi) * (x - xi);
+	if (Math.abs(cross) > 1e-9) return false;
+	return (
+		Math.min(xi, xj) - 1e-9 <= x &&
+		x <= Math.max(xi, xj) + 1e-9 &&
+		Math.min(yi, yj) - 1e-9 <= y &&
+		y <= Math.max(yi, yj) + 1e-9
+	);
 }
 
 export function missZone(scoreSet: ScoreSet): Zone {
