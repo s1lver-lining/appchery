@@ -10,6 +10,13 @@ export interface CustomRoundInput {
 	unit: LengthUnit;
 }
 
+/** Typical values, so the pickers offer what archers actually shoot rather than every integer. */
+export const FACE_SIZES = [40, 60, 80, 122];
+export const DISTANCES_M = [5, 10, 15, 18, 20, 25, 30, 40, 50, 60, 70, 90];
+export const DISTANCES_YD = [10, 15, 20, 30, 40, 50, 60, 80, 100];
+export const END_COUNTS = Array.from({ length: 30 }, (_, i) => i + 1);
+export const ARROWS_PER_END = Array.from({ length: 12 }, (_, i) => i + 1);
+
 export const CUSTOM_ROUND_LIMITS = {
 	ends: { min: 1, max: 60 },
 	arrowsPerEnd: { min: 1, max: 12 },
