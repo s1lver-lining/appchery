@@ -118,6 +118,36 @@ export interface GroupMetrics {
 	verticalSpread: number;
 }
 
+/**
+ * Convex hull of the plotted arrows, drawn as the group's perimeter. Monotone chain, so the result
+ * is deterministic and needs no browser.
+ */
+export function groupHull(shots: Shot[]): [number, number][] {
+	const points = shots
+		.filter((s): s is Shot & { x: number; y: number } => s.x !== null && s.y !== null)
+		.map((s) => [s.x, s.y] as [number, number])
+		.sort((a, b) => a[0] - b[0] || a[1] - b[1]);
+
+	// Fewer than three arrows have no area, so the points themselves are the whole outline.
+	if (points.length < 3) return points;
+
+	const cross = (o: [number, number], a: [number, number], b: [number, number]) =>
+		(a[0] - o[0]) * (b[1] - o[1]) - (a[1] - o[1]) * (b[0] - o[0]);
+
+	const build = (source: [number, number][]) => {
+		const chain: [number, number][] = [];
+		for (const point of source) {
+			while (chain.length >= 2 && cross(chain[chain.length - 2], chain[chain.length - 1], point) <= 0)
+				chain.pop();
+			chain.push(point);
+		}
+		chain.pop();
+		return chain;
+	};
+
+	return [...build(points), ...build([...points].reverse())];
+}
+
 export function groupMetrics(shots: Shot[]): GroupMetrics | null {
 	const plotted = shots.filter(
 		(s): s is Shot & { x: number; y: number } => s.x !== null && s.y !== null

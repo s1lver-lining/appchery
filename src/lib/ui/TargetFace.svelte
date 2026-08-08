@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ScoreSet, Shot } from '$lib/domain/rounds/types';
-	import { groupMetrics } from '$lib/domain/rounds/geometry';
+	import { groupMetrics, groupHull } from '$lib/domain/rounds/geometry';
 	import Icon from './Icon.svelte';
 
 	/**
@@ -16,6 +16,7 @@
 		showOtherDefault = true,
 		showCentreToggle = false,
 		showCentreDefault = false,
+		showPerimeter = false,
 		onplot
 	}: {
 		scoreSet: ScoreSet;
@@ -28,6 +29,8 @@
 		showOtherDefault?: boolean;
 		showCentreToggle?: boolean;
 		showCentreDefault?: boolean;
+		/** Outline around the group, which reads its spread faster than a radius figure. */
+		showPerimeter?: boolean;
 		onplot?: (x: number, y: number) => void;
 	} = $props();
 
@@ -53,6 +56,7 @@
 
 	const visibleOther = $derived(showOther ? otherShots : []);
 	const centre = $derived(showCentre ? groupMetrics([...otherShots, ...shots]) : null);
+	const hull = $derived(showPerimeter ? groupHull(shots) : []);
 
 	const ZOOM = 2.6;
 	/** The plot sits above the touch point so a finger does not cover the arrow being placed. */
@@ -151,11 +155,22 @@
 							fill="#f4f1ea"
 							fill-opacity="0.55"
 							stroke="#23282c"
-							stroke-opacity="0.55"
-							stroke-width={0.012 / (cursor ? ZOOM : 1)}
+							stroke-opacity="0.3"
+							stroke-width={0.01 / (cursor ? ZOOM : 1)}
 						/>
 					{/if}
 				{/each}
+
+				{#if hull.length >= 3}
+					<polygon
+						points={hull.map(([x, y]) => `${x},${y}`).join(' ')}
+						fill="var(--c-brand)"
+						fill-opacity="0.12"
+						stroke="var(--c-brand)"
+						stroke-width={0.01 / (cursor ? ZOOM : 1)}
+						stroke-dasharray="0.03 0.02"
+					/>
+				{/if}
 
 				{#each shots as shot, i (i)}
 					{#if shot.x !== null && shot.y !== null}

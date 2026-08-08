@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { WA_10_RING, ROUNDS, getRound } from './seed';
-import { scoreAt, maxScore, totalArrows, endSlots, groupMetrics } from './geometry';
+import { scoreAt, maxScore, totalArrows, endSlots, groupMetrics, groupHull } from './geometry';
 import { buildCustomRound, validateCustomRound } from './custom';
 import type { Shot } from './types';
 
@@ -112,5 +112,33 @@ describe('custom rounds', () => {
 		expect(validateCustomRound({ ...input, ends: 0 })).toContain('ends');
 		expect(validateCustomRound({ ...input, arrowsPerEnd: 99 })).toContain('arrowsPerEnd');
 		expect(validateCustomRound(input)).toEqual([]);
+	});
+});
+
+describe('groupHull', () => {
+	const at = (x: number, y: number): Shot => ({
+		ordinal: 1,
+		value: 10,
+		zoneLabel: '10',
+		x,
+		y,
+		source: 'plotted'
+	});
+
+	it('returns the points themselves when there is no area to enclose', () => {
+		expect(groupHull([])).toEqual([]);
+		expect(groupHull([at(0.1, 0.1)])).toHaveLength(1);
+		expect(groupHull([at(0.1, 0.1), at(0.2, 0.2)])).toHaveLength(2);
+	});
+
+	it('drops a point sitting inside the group, which does not shape the perimeter', () => {
+		const hull = groupHull([at(-0.5, -0.5), at(0.5, -0.5), at(0.5, 0.5), at(-0.5, 0.5), at(0, 0)]);
+		expect(hull).toHaveLength(4);
+		expect(hull).not.toContainEqual([0, 0]);
+	});
+
+	it('ignores arrows that were never plotted', () => {
+		const scoreOnly: Shot = { ordinal: 1, value: 9, zoneLabel: '9', x: null, y: null, source: 'manual' };
+		expect(groupHull([at(0, 0), at(0.3, 0), scoreOnly])).toHaveLength(2);
 	});
 });
