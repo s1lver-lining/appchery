@@ -15,20 +15,21 @@ export interface WeatherSnapshot {
 	fetchedAt: number;
 }
 
-const STORAGE_KEY = 'appchery.autoConditions';
-
-function stored(): boolean {
-	if (typeof window === 'undefined') return false;
-	return window.localStorage.getItem(STORAGE_KEY) === 'true';
+function flag(key: string, initial = false) {
+	const store = writable<boolean>(
+		typeof window === 'undefined' ? initial : window.localStorage.getItem(key) === 'true'
+	);
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, String(value));
+	});
+	return store;
 }
 
 /** Opt in, off by default: nothing asks for location until the archer turns this on. */
-export const autoConditions = writable<boolean>(stored());
+export const autoLocation = flag('appchery.autoLocation');
 
-autoConditions.subscribe((value) => {
-	if (typeof window === 'undefined') return;
-	window.localStorage.setItem(STORAGE_KEY, String(value));
-});
+/** Weather is derived from coordinates, so it is only meaningful while location is on. */
+export const autoWeather = flag('appchery.autoWeather');
 
 export class LocationDeniedError extends Error {}
 
@@ -74,10 +75,14 @@ export async function fetchWeather(
 	}
 }
 
-export async function captureConditions(): Promise<Conditions> {
+export async function captureConditions(withWeather = true): Promise<Conditions> {
 	const position = await requestPosition();
 	const { latitude, longitude } = position.coords;
-	return { latitude, longitude, weather: await fetchWeather(latitude, longitude) };
+	return {
+		latitude,
+		longitude,
+		weather: withWeather ? await fetchWeather(latitude, longitude) : null
+	};
 }
 
 export function formatWeather(snapshot: WeatherSnapshot): string {
