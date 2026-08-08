@@ -522,7 +522,8 @@
 			{/if}
 		</div>
 
-		<section class="flex min-h-[116px] flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+		<!-- Sized by its rows rather than stretched: an empty sheet should not draw a tall empty box. -->
+		<section class="flex max-h-full min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface">
 			<div
 				class="flex shrink-0 items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
 			>
@@ -611,7 +612,8 @@
 			</div>
 		</section>
 
-		<div class="shrink-0">
+		<!-- Pinned to the bottom so the keypad does not walk down the screen as ends are added. -->
+		<div class="mt-auto shrink-0">
 			{#if currentSlot}
 				<p class="mb-2 text-sm text-muted">
 					{$t('score.endOf', { n: sheetRows.length + 1, total: slots.length })} ·
