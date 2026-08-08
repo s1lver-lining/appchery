@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc, asc } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, inArray } from 'drizzle-orm';
 import { db, schema } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel } from '$lib/domain/rounds/geometry';
@@ -25,6 +25,14 @@ async function log(table: string, rowId: string, op: 'insert' | 'update' | 'dele
 	await db()
 		.insert(schema.changeLog)
 		.values({ tableName: table, rowId, op, changedAt: Date.now(), syncedAt: null });
+}
+
+async function logMany(table: string, rowIds: string[], op: 'insert' | 'update' | 'delete') {
+	if (rowIds.length === 0) return;
+	const changedAt = Date.now();
+	await db()
+		.insert(schema.changeLog)
+		.values(rowIds.map((rowId) => ({ tableName: table, rowId, op, changedAt, syncedAt: null })));
 }
 
 export type SessionRow = Awaited<ReturnType<typeof listSessions>>[number];
@@ -208,6 +216,42 @@ export async function listShots(endId: string) {
 		.orderBy(asc(schema.shot.ordinal));
 }
 
+export interface SheetData {
+	ends: EndRow[];
+	shotsByEnd: Map<string, ShotRow[]>;
+}
+
+/**
+ * Loads a whole score sheet in two queries. Reading shots per end was an N+1 that made every commit
+ * and undo visibly lag on a round with a dozen ends.
+ */
+export async function loadSheet(activityId: string): Promise<SheetData> {
+	const ends = await listEnds(activityId);
+	if (ends.length === 0) return { ends, shotsByEnd: new Map() };
+
+	const rows = await db()
+		.select()
+		.from(schema.shot)
+		.where(
+			and(
+				inArray(
+					schema.shot.endId,
+					ends.map((e) => e.id)
+				),
+				isNull(schema.shot.deletedAt)
+			)
+		)
+		.orderBy(asc(schema.shot.ordinal));
+
+	const shotsByEnd = new Map<string, ShotRow[]>();
+	for (const row of rows) {
+		const bucket = shotsByEnd.get(row.endId);
+		if (bucket) bucket.push(row);
+		else shotsByEnd.set(row.endId, [row]);
+	}
+	return { ends, shotsByEnd };
+}
+
 export async function recordEnd(
 	activityId: string,
 	stageIndex: number,
@@ -226,22 +270,18 @@ export async function recordEnd(
 		});
 	await log('round_end', endBase.id, 'insert');
 
-	for (const [index, s] of shots.entries()) {
-		const shotBase = stamp();
-		await db()
-			.insert(schema.shot)
-			.values({
-				...shotBase,
-				endId: endBase.id,
-				ordinal: index + 1,
-				value: s.value,
-				zoneLabel: s.zoneLabel,
-				x: s.x,
-				y: s.y,
-				source: s.source
-			});
-		await log('shot', shotBase.id, 'insert');
-	}
+	const rows = shots.map((s, index) => ({
+		...stamp(),
+		endId: endBase.id,
+		ordinal: index + 1,
+		value: s.value,
+		zoneLabel: s.zoneLabel,
+		x: s.x,
+		y: s.y,
+		source: s.source
+	}));
+	await db().insert(schema.shot).values(rows);
+	await logMany('shot', rows.map((r) => r.id), 'insert');
 
 	await refreshActivityTotals(activityId);
 	return endBase.id;
@@ -280,21 +320,17 @@ export async function updateShot(
 
 // Totals are recomputed from stored shots, never incremented, so an edited end cannot leave them drifting.
 export async function refreshActivityTotals(activityId: string) {
-	const ends = await listEnds(activityId);
-	const all: Shot[] = [];
-	for (const e of ends) {
-		const rows = await listShots(e.id);
-		all.push(
-			...rows.map((r) => ({
-				ordinal: r.ordinal,
-				value: r.value,
-				zoneLabel: r.zoneLabel,
-				x: r.x,
-				y: r.y,
-				source: r.source as Shot['source']
-			}))
-		);
-	}
+	const { ends, shotsByEnd } = await loadSheet(activityId);
+	const all: Shot[] = ends.flatMap((e) =>
+		(shotsByEnd.get(e.id) ?? []).map((r) => ({
+			ordinal: r.ordinal,
+			value: r.value,
+			zoneLabel: r.zoneLabel,
+			x: r.x,
+			y: r.y,
+			source: r.source as Shot['source']
+		}))
+	);
 
 	await db()
 		.update(schema.activity)
@@ -412,9 +448,18 @@ export async function deleteLastEnd(activityId: string) {
 	if (!last) return;
 
 	const now = Date.now();
-	for (const s of await listShots(last.id)) {
-		await db().update(schema.shot).set({ deletedAt: now, updatedAt: now }).where(eq(schema.shot.id, s.id));
-		await log('shot', s.id, 'delete');
+	const shots = await listShots(last.id);
+	if (shots.length > 0) {
+		await db()
+			.update(schema.shot)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(
+				inArray(
+					schema.shot.id,
+					shots.map((s) => s.id)
+				)
+			);
+		await logMany('shot', shots.map((s) => s.id), 'delete');
 	}
 	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, last.id));
 	await log('round_end', last.id, 'delete');
