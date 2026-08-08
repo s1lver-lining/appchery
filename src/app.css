@@ -1,22 +1,99 @@
 @import 'tailwindcss';
 
-/*
- * Tokens are defined on :root and overridden for dark mode, so no colour has
- * its only definition inside a media query. Archery scoring happens outdoors in
- * bright sun — high contrast is a usability requirement, not a preference.
- */
+/* Semantic tokens indirect through runtime variables so the theme can switch without a rebuild. */
 @theme {
-	--color-gold: #ffd94a;
-	--color-target-red: #f2453d;
-	--color-target-blue: #4aa3df;
+	--color-bg: var(--c-bg);
+	--color-surface: var(--c-surface);
+	--color-sunk: var(--c-sunk);
+	--color-line: var(--c-line);
+	--color-ink: var(--c-ink);
+	--color-muted: var(--c-muted);
+	--color-brand: var(--c-brand);
+	--color-brand-ink: var(--c-brand-ink);
+	--color-accent: var(--c-accent);
+	--color-accent-ink: var(--c-accent-ink);
+	--color-danger: var(--c-danger);
+
+	/* Regulated target face colours, identical in every theme because the rules define them. */
+	--color-face-gold: #ffcf3f;
+	--color-face-red: #e8453c;
+	--color-face-blue: #3aa0d8;
+	--color-face-black: #23282c;
+	--color-face-white: #f4f1ea;
+}
+
+/*
+ * Light is the base palette: warm paper and deep field green, drawn from target faces and outdoor
+ * ranges rather than generic greys.
+ */
+:root {
+	--c-bg: #f6f2e9;
+	--c-surface: #fffdf8;
+	--c-sunk: #ece5d7;
+	--c-line: #ddd3c0;
+	--c-ink: #1d2a24;
+	--c-muted: #6d7c73;
+	--c-brand: #1f5d4c;
+	--c-brand-ink: #fffdf8;
+	--c-accent: #b8842a;
+	--c-accent-ink: #2a1d05;
+	--c-danger: #a3392c;
+
+	color-scheme: light;
+}
+
+/* Guarded so an explicit light choice still wins on a device set to dark. */
+@media (prefers-color-scheme: dark) {
+	:root:not([data-theme='light']) {
+		--c-bg: #101613;
+		--c-surface: #19211d;
+		--c-sunk: #222b26;
+		--c-line: #2f3a34;
+		--c-ink: #e7ede9;
+		--c-muted: #8fa098;
+		--c-brand: #4fa88b;
+		--c-brand-ink: #0b1512;
+		--c-accent: #dcae5c;
+		--c-accent-ink: #241804;
+		--c-danger: #e0776a;
+
+		color-scheme: dark;
+	}
+}
+
+:root[data-theme='dark'] {
+	--c-bg: #101613;
+	--c-surface: #19211d;
+	--c-sunk: #222b26;
+	--c-line: #2f3a34;
+	--c-ink: #e7ede9;
+	--c-muted: #8fa098;
+	--c-brand: #4fa88b;
+	--c-brand-ink: #0b1512;
+	--c-accent: #dcae5c;
+	--c-accent-ink: #241804;
+	--c-danger: #e0776a;
+
+	color-scheme: dark;
 }
 
 html,
 body {
+	background-color: var(--c-bg);
+	color: var(--c-ink);
 	overscroll-behavior: none;
 	-webkit-tap-highlight-color: transparent;
 }
 
-/* Respect the notch/home indicator on iOS. */
-.safe-top { padding-top: env(safe-area-inset-top); }
-.safe-bottom { padding-bottom: env(safe-area-inset-bottom); }
+/* Scores are read at a glance between ends, so digits must not shift width as they change. */
+.tabular {
+	font-variant-numeric: tabular-nums;
+}
+
+.safe-top {
+	padding-top: env(safe-area-inset-top);
+}
+
+.safe-bottom {
+	padding-bottom: env(safe-area-inset-bottom);
+}
