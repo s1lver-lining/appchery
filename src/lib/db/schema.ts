@@ -15,6 +15,8 @@ export const bow = sqliteTable('bow', {
 	/** recurve | compound | barebow | longbow */
 	type: text('type').notNull(),
 	isActive: integer('is_active').notNull().default(1),
+	/** Data URL, kept local so a bow photo never leaves the device. */
+	photo: text('photo'),
 	notes: text('notes')
 });
 

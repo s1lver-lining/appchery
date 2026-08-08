@@ -135,5 +135,7 @@ export const MIGRATIONS: string[][] = [
 			last_push_cursor TEXT,
 			endpoint TEXT
 		);`
-	]
+	],
+	// 0002 bow photo, shown in the equipment list
+	[`ALTER TABLE bow ADD COLUMN photo TEXT;`]
 ];
