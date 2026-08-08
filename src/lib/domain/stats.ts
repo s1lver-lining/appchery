@@ -1,3 +1,4 @@
+import { isRoundComplete } from './rounds/geometry';
 import type { RoundDefinition } from './rounds/types';
 
 export interface ScoredActivity {
@@ -8,9 +9,78 @@ export interface ScoredActivity {
 	arrowsShot: number;
 	count10s: number;
 	countX: number;
-	status: string;
 	roundDefinitionId: string | null;
 	round: RoundDefinition | null;
+}
+
+/** Completion is derived from the arrows entered, so an edited round never needs a status fixing up. */
+export function isComplete(activity: ScoredActivity): boolean {
+	return isRoundComplete(activity.round, activity.arrowsShot);
+}
+
+export interface MonthVolume {
+	/** Sortable and locale free: the UI formats it for display. */
+	month: string;
+	arrows: number;
+}
+
+export interface Overview {
+	/** Every arrow entered, whether or not its round was finished. */
+	arrows: number;
+	rounds: number;
+	completeRounds: number;
+	/** Distinct calendar days shot, a better measure of habit than a round count. */
+	days: number;
+	sessions: number;
+	averagePerArrow: number;
+	/** Contiguous months so gaps in the bar chart read as time off, not as missing data. */
+	byMonth: MonthVolume[];
+	byRound: { name: string; arrows: number }[];
+}
+
+function monthKey(at: number): string {
+	const date = new Date(at);
+	return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}`;
+}
+
+/**
+ * The picture across everything shot, regardless of discipline. Volume is the honest total: leaving
+ * out unfinished rounds would undercount arrows the archer actually loosed.
+ */
+export function overview(activities: ScoredActivity[], months = 12): Overview {
+	const shot = activities.filter((a) => a.arrowsShot > 0);
+	const arrows = shot.reduce((sum, a) => sum + a.arrowsShot, 0);
+	const score = shot.reduce((sum, a) => sum + a.totalScore, 0);
+
+	const perMonth = new Map<string, number>();
+	const perRound = new Map<string, number>();
+	const days = new Set<string>();
+	for (const a of shot) {
+		perMonth.set(monthKey(a.startedAt), (perMonth.get(monthKey(a.startedAt)) ?? 0) + a.arrowsShot);
+		const name = a.round?.name ?? 'Round';
+		perRound.set(name, (perRound.get(name) ?? 0) + a.arrowsShot);
+		days.add(new Date(a.startedAt).toDateString());
+	}
+
+	const now = new Date();
+	const byMonth: MonthVolume[] = [];
+	for (let i = months - 1; i >= 0; i--) {
+		const at = new Date(now.getFullYear(), now.getMonth() - i, 1).getTime();
+		byMonth.push({ month: monthKey(at), arrows: perMonth.get(monthKey(at)) ?? 0 });
+	}
+
+	return {
+		arrows,
+		rounds: shot.length,
+		completeRounds: shot.filter(isComplete).length,
+		days: days.size,
+		sessions: new Set(shot.map((a) => a.sessionId)).size,
+		averagePerArrow: arrows > 0 ? score / arrows : 0,
+		byMonth,
+		byRound: [...perRound.entries()]
+			.map(([name, count]) => ({ name, arrows: count }))
+			.sort((a, b) => b.arrows - a.arrows)
+	};
 }
 
 export interface RoundSummary {
@@ -33,7 +103,7 @@ export interface RoundSummary {
  * to do with how well it was shot.
  */
 export function summariseByRound(activities: ScoredActivity[]): RoundSummary[] {
-	const complete = activities.filter((a) => a.status === 'complete' && a.arrowsShot > 0);
+	const complete = activities.filter(isComplete);
 
 	const buckets = new Map<string, ScoredActivity[]>();
 	for (const activity of complete) {

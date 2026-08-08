@@ -116,6 +116,15 @@ export interface GroupMetrics {
 	meanRadius: number;
 	horizontalSpread: number;
 	verticalSpread: number;
+	/** Widest gap between any two arrows, the figure archers quote as their group size. */
+	diameter: number;
+}
+
+/** A round is finished once every arrow it defines has been entered, not by pressing a button. */
+export function isRoundComplete(round: RoundDefinition | null, arrowsShot: number): boolean {
+	if (!round) return false;
+	const expected = totalArrows(round);
+	return expected > 0 && arrowsShot >= expected;
 }
 
 /**
@@ -162,7 +171,13 @@ export function groupMetrics(shots: Shot[]): GroupMetrics | null {
 	const xs = plotted.map((s) => s.x);
 	const ys = plotted.map((s) => s.y);
 
+	let diameter = 0;
+	for (let i = 0; i < plotted.length; i++)
+		for (let j = i + 1; j < plotted.length; j++)
+			diameter = Math.max(diameter, Math.hypot(plotted[i].x - plotted[j].x, plotted[i].y - plotted[j].y));
+
 	return {
+		diameter,
 		sampleSize: plotted.length,
 		centerX,
 		centerY,

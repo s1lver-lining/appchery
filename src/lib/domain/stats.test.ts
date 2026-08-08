@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summariseByRound, compareScores, type ScoredActivity } from './stats';
+import { summariseByRound, compareScores, overview, type ScoredActivity } from './stats';
 import { getRound } from './rounds/seed';
 
 const round = getRound('wa720-70m')!;
@@ -12,7 +12,6 @@ function activity(partial: Partial<ScoredActivity> & { id: string }): ScoredActi
 		arrowsShot: 72,
 		count10s: 20,
 		countX: 5,
-		status: 'complete',
 		roundDefinitionId: round.id,
 		round,
 		...partial
@@ -24,7 +23,7 @@ describe('summariseByRound', () => {
 		// An abandoned round scores lower for reasons that say nothing about how it was shot.
 		const summaries = summariseByRound([
 			activity({ id: 'a', totalScore: 600 }),
-			activity({ id: 'b', totalScore: 120, arrowsShot: 12, status: 'in_progress' })
+			activity({ id: 'b', totalScore: 120, arrowsShot: 12 })
 		]);
 		expect(summaries[0].history).toHaveLength(1);
 		expect(summaries[0].best.totalScore).toBe(600);
@@ -74,6 +73,30 @@ describe('summariseByRound', () => {
 			activity({ id: 'c', startedAt: 200 })
 		]);
 		expect(summaries[0].history.map((a) => a.startedAt)).toEqual([100, 200, 300]);
+	});
+});
+
+describe('overview', () => {
+	it('counts every arrow shot, including those of an unfinished round', () => {
+		const result = overview([
+			activity({ id: 'a' }),
+			activity({ id: 'b', arrowsShot: 12, totalScore: 100 })
+		]);
+		expect(result.arrows).toBe(84);
+		expect(result.rounds).toBe(2);
+		expect(result.completeRounds).toBe(1);
+	});
+
+	it('returns a contiguous run of months so quiet spells stay visible', () => {
+		const result = overview([activity({ id: 'a', startedAt: Date.now() })], 6);
+		expect(result.byMonth).toHaveLength(6);
+		expect(result.byMonth[5].arrows).toBe(72);
+		expect(result.byMonth[0].arrows).toBe(0);
+	});
+
+	it('is empty rather than dividing by zero when nothing was shot', () => {
+		expect(overview([]).averagePerArrow).toBe(0);
+		expect(overview([]).arrows).toBe(0);
 	});
 });
 
