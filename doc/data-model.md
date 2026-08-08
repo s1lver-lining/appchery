@@ -68,20 +68,11 @@ per-arrow grouping analysis — "arrow 3 always drifts left" is a real and commo
 
 ## Rounds & scoring
 
-### `round_definition`
+### Round definitions
 
-Built-in rows ship seeded and read-only (`is_builtin = 1`); user rows are the custom-round builder's
-output. Same table, same engine — a custom round is not a second-class citizen.
-
-| Column | Type | Notes |
-|---|---|---|
-| `name` | TEXT | |
-| `discipline` | TEXT | `target` \| `field` \| `3d` \| `clout` \| `custom` |
-| `stages` | TEXT (JSON) | `RoundStage[]` — distance, face size, ends, arrows/end |
-| `score_set_id` | TEXT FK | |
-| `max_score` | INTEGER | Cached, recomputed on write |
-| `is_builtin` | INTEGER | |
-| `governing_body` | TEXT, nullable | `WA`, `IFAA`, `IBO`, `ASA`, `AGB` — for filtering and record eligibility |
+Round definitions are **code, not rows**: built-in rounds live in `src/lib/domain/rounds/seed.ts` and
+custom ones are built at creation time. Each activity stores its own JSON snapshot, so there is no
+definitions table to keep in sync and no way for an edit to rewrite history.
 
 ### `score_set` / zone geometry
 
@@ -151,26 +142,13 @@ One thing done inside a session: a scored round, or a tuning procedure.
 > later must not rewrite the history of a round already shot under the old one. This is also what
 > lets custom rounds be first-class without a separate table.
 
-### `session` (superseded, kept for the rationale below)
+### `round_end`
+
+Named `round_end` in SQL because `end` is a reserved keyword.
 
 | Column | Type | Notes |
 |---|---|---|
-| `round_definition_id` | TEXT FK | |
-| `bow_revision_id` | TEXT FK | The configuration actually shot |
-| `started_at` / `ended_at` | INTEGER | |
-| `kind` | TEXT | `practice` \| `competition` \| `qualification` |
-| `location` | TEXT, nullable | |
-| `conditions` | TEXT (JSON), nullable | wind, temp, light, indoor/outdoor |
-| `total_score` | INTEGER | Denormalised for list views; recomputed on end change |
-| `counts_10s` / `counts_x` | INTEGER | Tiebreak columns |
-| `status` | TEXT | `in_progress` \| `complete` \| `abandoned` |
-| `notes` | TEXT | |
-
-### `end`
-
-| Column | Type | Notes |
-|---|---|---|
-| `session_id` | TEXT FK | |
+| `activity_id` | TEXT FK | |
 | `stage_index` | INTEGER | Which `RoundStage` |
 | `end_no` | INTEGER | Within the stage |
 | `subtotal` | INTEGER | |
@@ -246,12 +224,12 @@ history that was never recorded — which is to say, not doing it.
 
 ## Derived / query notes
 
-- **Personal bests** are a query over `session`, not a stored table, filtered by
-  `round_definition_id` and `kind` — no denormalised state to invalidate.
+- **Personal bests** are a query over `activity`, not a stored table, filtered by
+  `round_definition_id` and the parent session's `kind`, so there is no denormalised state to invalidate.
 - **Group metrics** (mean radius, group centre offset, horizontal/vertical spread) computed from
   `shot.x/y` where non-null. Group centre offset is the number that matters for sight and tuning
   decisions; raw spread is the one that measures the archer.
-- **Round progress charts** join sessions on `round_definition_id` over time, optionally split by
-  `bow_revision_id` to visualise the effect of an equipment change.
-- Index at minimum: `end(session_id)`, `shot(end_id)`, `session(round_definition_id, started_at)`,
+- **Round progress charts** join activities on `round_definition_id` over time, optionally split by
+  the session's `bow_revision_id` to visualise the effect of an equipment change.
+- Index at minimum: `round_end(activity_id)`, `shot(end_id)`, `activity(session_id, started_at)`,
   `bow_revision(bow_id, revision_no)`, `change_log(synced_at)`.
