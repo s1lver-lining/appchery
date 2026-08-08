@@ -15,6 +15,7 @@
 		showOtherToggle = false,
 		showOtherDefault = true,
 		showCentreToggle = false,
+		showCentreDefault = false,
 		onplot
 	}: {
 		scoreSet: ScoreSet;
@@ -26,23 +27,29 @@
 		showOtherToggle?: boolean;
 		showOtherDefault?: boolean;
 		showCentreToggle?: boolean;
+		showCentreDefault?: boolean;
 		onplot?: (x: number, y: number) => void;
 	} = $props();
 
 	// Initial value only: the toggle is the archer's from then on, not the caller's.
 	// svelte-ignore state_referenced_locally
 	let showOther = $state(showOtherDefault);
-	let showCentre = $state(false);
+	// svelte-ignore state_referenced_locally
+	let showCentre = $state(showCentreDefault);
 
 	let svg = $state<SVGSVGElement | null>(null);
 	/** Live position while dragging, which is what the magnifier follows. */
 	let cursor = $state<{ x: number; y: number } | null>(null);
 
-	const rings = $derived(
+	const drawable = $derived(
 		scoreSet.zones.filter(
-			(z) => z.countsAsHit && z.shape.kind === 'circle' && Number.isFinite(z.shape.r)
+			(z) => z.countsAsHit && (z.shape.kind !== 'circle' || Number.isFinite(z.shape.r))
 		)
 	);
+
+	function polygonPoints(points: [number, number][]): string {
+		return points.map(([x, y]) => `${x},${y}`).join(' ');
+	}
 
 	const visibleOther = $derived(showOther ? otherShots : []);
 	const centre = $derived(showCentre ? groupMetrics([...otherShots, ...shots]) : null);
@@ -104,7 +111,7 @@
 					? `translate(${-cursor.x * (ZOOM - 1)} ${-cursor.y * (ZOOM - 1)}) scale(${ZOOM})`
 					: ''}
 			>
-				{#each rings as zone (zone.label)}
+				{#each drawable as zone (zone.label)}
 					{#if zone.shape.kind === 'circle'}
 						<circle
 							cx={zone.shape.cx ?? 0}
@@ -114,17 +121,38 @@
 							stroke={zone.strokeColor}
 							stroke-width={0.005 / (cursor ? ZOOM : 1)}
 						/>
+					{:else if zone.shape.kind === 'ellipse'}
+						<ellipse
+							cx={zone.shape.cx}
+							cy={zone.shape.cy}
+							rx={zone.shape.rx}
+							ry={zone.shape.ry}
+							fill={zone.color}
+							stroke={zone.strokeColor}
+							stroke-width={0.005 / (cursor ? ZOOM : 1)}
+						/>
+					{:else}
+						<polygon
+							points={polygonPoints(zone.shape.points)}
+							fill={zone.color}
+							stroke={zone.strokeColor}
+							stroke-width={0.005 / (cursor ? ZOOM : 1)}
+						/>
 					{/if}
 				{/each}
 
 				{#each visibleOther as shot, i (i)}
 					{#if shot.x !== null && shot.y !== null}
+						<!-- Pale fill with a dark rim, so a faded arrow reads on both the black and white rings. -->
 						<circle
 							cx={shot.x}
 							cy={shot.y}
-							r={0.03 / (cursor ? ZOOM : 1)}
-							fill="var(--c-ink)"
-							opacity="0.28"
+							r={0.028 / (cursor ? ZOOM : 1)}
+							fill="#f4f1ea"
+							fill-opacity="0.55"
+							stroke="#23282c"
+							stroke-opacity="0.55"
+							stroke-width={0.012 / (cursor ? ZOOM : 1)}
 						/>
 					{/if}
 				{/each}
