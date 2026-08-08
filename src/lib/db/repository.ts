@@ -248,10 +248,23 @@ export async function recordEnd(
 }
 
 /** Editing a recorded arrow, from tapping it on the score sheet. */
-export async function updateShot(shotId: string, endId: string, activityId: string, zone: Zone) {
+export async function updateShot(
+	shotId: string,
+	endId: string,
+	activityId: string,
+	zone: Zone,
+	plot?: { x: number; y: number }
+) {
 	await db()
 		.update(schema.shot)
-		.set({ value: zone.value, zoneLabel: zone.label, x: null, y: null, updatedAt: Date.now() })
+		.set({
+			value: zone.value,
+			zoneLabel: zone.label,
+			x: plot?.x ?? null,
+			y: plot?.y ?? null,
+			source: plot ? 'plotted' : 'manual',
+			updatedAt: Date.now()
+		})
 		.where(eq(schema.shot.id, shotId));
 	await log('shot', shotId, 'update');
 
@@ -329,6 +342,91 @@ export async function deleteBow(id: string) {
 	await log('bow', id, 'delete');
 }
 
+export async function updateBow(
+	id: string,
+	patch: Partial<{ name: string; photo: string | null; notes: string | null; isActive: number }>
+) {
+	await db()
+		.update(schema.bow)
+		.set({ ...patch, updatedAt: Date.now() })
+		.where(eq(schema.bow.id, id));
+	await log('bow', id, 'update');
+}
+
+/* Bow revisions */
+
+export type RevisionRow = Awaited<ReturnType<typeof listRevisions>>[number];
+
+export async function listRevisions(bowId: string) {
+	return db()
+		.select()
+		.from(schema.bowRevision)
+		.where(and(eq(schema.bowRevision.bowId, bowId), isNull(schema.bowRevision.deletedAt)))
+		.orderBy(desc(schema.bowRevision.revisionNo));
+}
+
+export async function currentRevision(bowId: string): Promise<RevisionRow | null> {
+	return (await listRevisions(bowId))[0] ?? null;
+}
+
+/**
+ * Appends a revision instead of updating one, so a score recorded last month still resolves to the
+ * settings it was actually shot under.
+ */
+export async function createRevision(
+	bowId: string,
+	settings: Record<string, unknown>,
+	reason?: string
+) {
+	const base = stamp();
+	const previous = await currentRevision(bowId);
+	await db()
+		.insert(schema.bowRevision)
+		.values({
+			...base,
+			bowId,
+			revisionNo: (previous?.revisionNo ?? 0) + 1,
+			settings: JSON.stringify(settings),
+			reason: reason?.trim() || null,
+			effectiveFrom: base.createdAt
+		});
+	await log('bow_revision', base.id, 'insert');
+	return base.id;
+}
+
+/** Links a tuning activity to the revision it produced, closing the loop from test to change. */
+export async function linkResultingRevision(activityId: string, revisionId: string) {
+	await db()
+		.update(schema.activity)
+		.set({ resultingRevisionId: revisionId, updatedAt: Date.now() })
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
+}
+
+/* Corrections */
+
+/** Undo for a committed end: the sheet only ever removes the last one, never a gap in the middle. */
+export async function deleteLastEnd(activityId: string) {
+	const ends = await listEnds(activityId);
+	const last = ends[ends.length - 1];
+	if (!last) return;
+
+	const now = Date.now();
+	for (const s of await listShots(last.id)) {
+		await db().update(schema.shot).set({ deletedAt: now, updatedAt: now }).where(eq(schema.shot.id, s.id));
+		await log('shot', s.id, 'delete');
+	}
+	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, last.id));
+	await log('round_end', last.id, 'delete');
+
+	await refreshActivityTotals(activityId);
+}
+
 export function shotFromZone(zone: Zone, source: Shot['source'] = 'manual'): Omit<Shot, 'ordinal'> {
 	return { value: zone.value, zoneLabel: zone.label, x: null, y: null, source };
+}
+
+/** Plotted arrows carry coordinates, and the value is derived from them rather than entered twice. */
+export function shotFromPlot(zone: Zone, x: number, y: number): Omit<Shot, 'ordinal'> {
+	return { value: zone.value, zoneLabel: zone.label, x, y, source: 'plotted' };
 }
