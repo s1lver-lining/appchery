@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { BOW_TYPES, type BowType } from '$lib/domain/tuning/templates';
 	import { listBows, createBow, type BowRow } from '$lib/db/repository';
+	import { defaultBowId } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	let bows = $state<BowRow[]>([]);
@@ -26,7 +27,7 @@
 	}
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 	<header class="flex items-center justify-between">
 		<h1 class="text-2xl font-bold tracking-tight">{$t('equipment.title')}</h1>
 		<button
@@ -74,7 +75,8 @@
 				<li>
 					<a
 						href="/equipment/{bow.id}"
-						class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+						class="flex items-center gap-3 rounded-xl border bg-surface p-3
+							{$defaultBowId === bow.id ? 'border-brand ring-1 ring-brand' : 'border-line'}"
 					>
 						{#if bow.photo}
 							<img src={bow.photo} alt="" class="h-14 w-14 rounded-lg object-cover" />
@@ -87,7 +89,10 @@
 						{/if}
 						<div class="flex-1">
 							<p class="font-semibold">{bow.name}</p>
-							<p class="text-sm text-muted">{$t(`bow.${bow.type}`)}</p>
+							<p class="text-sm text-muted">
+								{$t(`bow.${bow.type}`)}
+								{#if $defaultBowId === bow.id}· <span class="text-brand">{$t('equipment.default')}</span>{/if}
+							</p>
 						</div>
 						<span class="text-muted">›</span>
 					</a>
