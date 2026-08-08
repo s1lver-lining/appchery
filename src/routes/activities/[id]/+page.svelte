@@ -7,7 +7,8 @@
 		scorableZones,
 		missZone,
 		scoreAt,
-		groupMetrics
+		groupMetrics,
+		type EndSlot
 	} from '$lib/domain/rounds/geometry';
 	import { formatDistance } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
@@ -37,6 +38,8 @@
 	let rows = $state<{ end: EndRow; shots: ShotRow[] }[]>([]);
 	/** Arrows of the end being shot, held here until the end fills and commits itself. */
 	let pending = $state<Omit<Shot, 'ordinal'>[]>([]);
+	/** The end being written, held so the sheet shows it as a finished row rather than blinking. */
+	let committing = $state<Omit<Shot, 'ordinal'>[] | null>(null);
 	/** Set while retapping an already recorded arrow on the sheet. */
 	let editing = $state<{ endId: string; shotId: string; endNo: number; ordinal: number } | null>(
 		null
@@ -51,7 +54,7 @@
 	);
 	const scoreSet = $derived(round ? getScoreSet(round.scoreSetId) : null);
 	const slots = $derived(round ? endSlots(round) : []);
-	const currentSlot = $derived(slots[rows.length] ?? null);
+	const currentSlot = $derived(committing ? null : (slots[rows.length] ?? null));
 	const keypad = $derived<Zone[]>(scoreSet ? scorableZones(scoreSet) : []);
 	const template = $derived(activity?.templateKey ? getTemplate(activity.templateKey) : undefined);
 
@@ -72,10 +75,40 @@
 	);
 	const metrics = $derived(groupMetrics(plottedShots));
 
+	interface SheetRow {
+		key: string;
+		shots: { id: string | null; ordinal: number; zoneLabel: string }[];
+		subtotal: number;
+		endId: string | null;
+	}
+
+	const sheetRows = $derived<SheetRow[]>([
+		...rows.map((row) => ({
+			key: row.end.id,
+			endId: row.end.id,
+			subtotal: row.end.subtotal,
+			shots: row.shots.map((s) => ({ id: s.id, ordinal: s.ordinal, zoneLabel: s.zoneLabel }))
+		})),
+		...(committing
+			? [
+					{
+						key: 'committing',
+						endId: null,
+						subtotal: committing.reduce((sum, s) => sum + s.value, 0),
+						shots: committing.map((s, i) => ({
+							id: null,
+							ordinal: i + 1,
+							zoneLabel: s.zoneLabel
+						}))
+					}
+				]
+			: [])
+	]);
+
 	/** Running totals per end, so the sheet reads like a paper scorecard. */
 	const runningTotals = $derived(
-		rows.reduce<number[]>((acc, row) => {
-			acc.push((acc[acc.length - 1] ?? 0) + row.end.subtotal);
+		sheetRows.reduce<number[]>((acc, row) => {
+			acc.push((acc[acc.length - 1] ?? 0) + row.subtotal);
 			return acc;
 		}, [])
 	);
@@ -107,15 +140,21 @@
 		}
 
 		// The end commits itself once full, so there is nothing to confirm and the sheet just advances.
-		pending = [];
+		await commitEnd(currentSlot, next);
+	}
+
+	/**
+	 * The slot is passed in rather than read again: `currentSlot` derives from `committing`, so it
+	 * turns null the moment the optimistic row is shown.
+	 */
+	async function commitEnd(slot: EndSlot, shots: Omit<Shot, 'ordinal'>[]) {
 		// Arrows are written highest first, the order a paper scoresheet uses.
-		await recordEnd(
-			activityId,
-			currentSlot.stageIndex,
-			currentSlot.endNo,
-			[...next].sort((a, b) => b.value - a.value)
-		);
+		const ordered = [...shots].sort((a, b) => b.value - a.value);
+		committing = ordered;
+		pending = [];
+		await recordEnd(activityId, slot.stageIndex, slot.endNo, ordered);
 		await refresh();
+		committing = null;
 	}
 
 	/** Plotting derives the value from where the arrow landed, so score and position cannot disagree. */
@@ -136,14 +175,7 @@
 			pending = next;
 			return;
 		}
-		pending = [];
-		await recordEnd(
-			activityId,
-			currentSlot.stageIndex,
-			currentSlot.endNo,
-			[...next].sort((a, b) => b.value - a.value)
-		);
-		await refresh();
+		await commitEnd(currentSlot, next);
 	}
 
 	function undo() {
@@ -181,7 +213,7 @@
 </script>
 
 {#if activity && activity.kind === 'tuning'}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4">
+	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
 			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
 			<h1 class="text-2xl font-bold tracking-tight">{template?.name ?? $t('tuning.title')}</h1>
@@ -236,7 +268,7 @@
 		</section>
 	</div>
 {:else if activity && round && scoreSet}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4">
+	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header class="flex items-baseline justify-between gap-2">
 			<div>
 				<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
@@ -250,67 +282,76 @@
 
 		<section class="overflow-hidden rounded-xl border border-line bg-surface">
 			<div
-				class="flex items-center gap-2 border-b border-line bg-sunk px-3 py-2 text-xs font-semibold text-muted"
+				class="flex items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
 			>
-				<span class="w-8">{$t('score.endColumn')}</span>
+				<span class="w-5">{$t('score.endColumn')}</span>
 				<span class="flex-1">{$t('score.arrowsColumn')}</span>
-				<span class="w-10 text-right" title={$t('score.endTotalLong')}>
+				<span class="w-8 text-right" title={$t('score.endTotalLong')}>
 					{$t('score.endTotalShort')}
 				</span>
-				<span class="w-12 text-right" title={$t('score.runningTotalLong')}>
+				<span class="w-9 text-right" title={$t('score.runningTotalLong')}>
 					{$t('score.total')}
 				</span>
 			</div>
 
-			{#each rows as row, i (row.end.id)}
-				<div class="flex items-center gap-2 border-b border-line px-3 py-1.5">
-					<span class="tabular w-8 text-sm text-muted">{i + 1}</span>
-					<div class="flex flex-1 flex-wrap gap-1">
-						{#each row.shots as shot (shot.id)}
-							<button
-								class="tabular h-8 w-8 rounded text-sm font-bold
-									{editing?.shotId === shot.id ? 'ring-2 ring-brand' : ''}"
-								style={chipStyle(shot.zoneLabel)}
-								aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
-								onclick={() =>
-									(editing =
-										editing?.shotId === shot.id
-											? null
-											: {
-													endId: row.end.id,
-													shotId: shot.id,
-													endNo: i + 1,
-													ordinal: shot.ordinal
-												})}
-							>
-								{shot.zoneLabel}
-							</button>
+			{#each sheetRows as row, i (row.key)}
+				<div class="flex items-center gap-1 border-b border-line px-2 py-1">
+					<span class="tabular w-5 text-xs text-muted">{i + 1}</span>
+					<div class="flex flex-1 gap-0.5">
+						{#each row.shots as shot (shot.ordinal)}
+							{#if shot.id}
+								<button
+									class="tabular h-7 w-7 shrink-0 rounded text-[13px] font-bold
+										{editing?.shotId === shot.id ? 'ring-2 ring-brand' : ''}"
+									style={chipStyle(shot.zoneLabel)}
+									aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
+									onclick={() =>
+										(editing =
+											editing?.shotId === shot.id
+												? null
+												: {
+														endId: row.endId as string,
+														shotId: shot.id as string,
+														endNo: i + 1,
+														ordinal: shot.ordinal
+													})}
+								>
+									{shot.zoneLabel}
+								</button>
+							{:else}
+								<span
+									class="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded text-[13px] font-bold"
+									style={chipStyle(shot.zoneLabel)}
+								>
+									{shot.zoneLabel}
+								</span>
+							{/if}
 						{/each}
 					</div>
-					<span class="tabular w-10 text-right font-semibold">{row.end.subtotal}</span>
-					<span class="tabular w-12 text-right text-muted">{runningTotals[i]}</span>
+					<span class="tabular w-8 text-right text-sm font-semibold">{row.subtotal}</span>
+					<span class="tabular w-9 text-right text-sm text-muted">{runningTotals[i]}</span>
 				</div>
 			{/each}
 
 			{#if currentSlot}
-				<div class="flex items-center gap-2 bg-brand/5 px-3 py-1.5">
-					<span class="tabular w-8 text-sm font-bold text-brand">{rows.length + 1}</span>
-					<div class="flex flex-1 flex-wrap gap-1">
+				<div class="flex items-center gap-1 bg-brand/5 px-2 py-1">
+					<span class="tabular w-5 text-xs font-bold text-brand">{rows.length + 1}</span>
+					<div class="flex flex-1 gap-0.5">
 						{#each Array(currentSlot.arrows) as _, i (i)}
 							{#if pending[i]}
 								<span
-									class="tabular flex h-8 w-8 items-center justify-center rounded text-sm font-bold"
+									class="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded text-[13px] font-bold"
 									style={chipStyle(pending[i].zoneLabel)}
 								>
 									{pending[i].zoneLabel}
 								</span>
 							{:else}
-								<span class="h-8 w-8 rounded border border-dashed border-line"></span>
+								<span class="h-7 w-7 shrink-0 rounded border border-dashed border-line"></span>
 							{/if}
 						{/each}
 					</div>
-					<span class="w-10"></span>
-					<span class="w-12"></span>
+					<span class="w-8"></span>
+					<span class="w-9"></span>
 				</div>
 			{/if}
 		</section>
@@ -341,7 +382,7 @@
 					>
 						{$t('score.plotMode')}
 					</button>
-					{#if rows.length > 0 && !editing}
+					{#if sheetRows.length > 0 && !editing}
 						<button
 							class="flex items-center gap-1 rounded-lg border border-line px-3 py-1.5 text-sm"
 							onclick={undoEnd}
