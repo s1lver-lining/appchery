@@ -102,8 +102,12 @@ export function verifyRings(
 	face: FaceLocation,
 	options: { gold?: number; red?: number; mid?: number; outer?: number; agreement?: number } = {}
 ): RingCheck {
-	// Measured: 0.55 is the loosest setting that still produced no false face on the annotated set.
-	const minAgreement = options.agreement ?? 0.55;
+	/**
+	 * Measured. This was 0.55 when the fit was scored on ring interiors alone. Scoring boundaries as
+	 * well lands fits more squarely on the rings, which lifts every agreement figure including those of
+	 * the near misses, so the bar has to rise with them or the extra accuracy is spent on false faces.
+	 */
+	const minAgreement = options.agreement ?? 0.7;
 	const probes = [
 		probeRing(frame, face, options.gold ?? 0.15),
 		probeRing(frame, face, options.red ?? 0.25),

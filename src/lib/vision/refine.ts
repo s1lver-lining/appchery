@@ -13,6 +13,12 @@ import type { Frame, FaceLocation } from './types';
  * fit can be scored directly against that: sample many rings, count how many samples show the
  * colour the geometry predicts, and move the estimate to maximise it. A few arrows only cost a few
  * samples, which is what makes this robust where a blob measurement is not.
+ *
+ * Sampling ring interiors alone is not enough to pin the geometry down. A ring is a tenth of the
+ * radius wide, so a fit can be out by nearly half a ring and still land every sample in the right
+ * colour, and the error is free to grow with radius: the gold sits perfectly while the blue and the
+ * black creep outwards. What actually fixes a circle in place is its edges, so every ring boundary is
+ * also checked, by sampling just inside and just outside it and asking for both colours at once.
  */
 
 /**
@@ -23,7 +29,13 @@ import type { Frame, FaceLocation } from './types';
  * against the full layout dragged the fit inward by about 9%, trying to move the expected white
  * onto the real white, so the fit takes whichever layout agrees better.
  */
-const FULL_FACE: { radius: number; colours: RingColour[] }[] = [
+interface Layout {
+	bands: { radius: number; colours: RingColour[] }[];
+	/** Ring boundaries, by the radius the change happens at and the colour on each side of it. */
+	edges: { radius: number; inner: RingColour[]; outer: RingColour[] }[];
+}
+
+const FULL_BANDS: { radius: number; colours: RingColour[] }[] = [
 	{ radius: 0.15, colours: ['gold'] },
 	{ radius: 0.25, colours: ['red'] },
 	{ radius: 0.35, colours: ['red'] },
@@ -40,7 +52,7 @@ const FULL_FACE: { radius: number; colours: RingColour[] }[] = [
  * inner rings, and a fit a seventh too large still scored perfectly, because every sample it took
  * still landed in the right colour.
  */
-const THREE_SPOT: { radius: number; colours: RingColour[] }[] = [
+const SPOT_BANDS: { radius: number; colours: RingColour[] }[] = [
 	{ radius: 0.15, colours: ['gold'] },
 	{ radius: 0.25, colours: ['red'] },
 	{ radius: 0.35, colours: ['red'] },
@@ -52,32 +64,72 @@ const THREE_SPOT: { radius: number; colours: RingColour[] }[] = [
 	{ radius: 0.7, colours: ['light', 'grey'] }
 ];
 
+/**
+ * How far either side of a boundary to sample. Wide enough to clear the printed line and the blur of
+ * a phone camera, narrow enough that being half a ring out fails the check rather than passing it.
+ */
+const EDGE_OFFSET = 0.035;
+
+const FULL_FACE: Layout = {
+	bands: FULL_BANDS,
+	edges: [
+		{ radius: 0.2, inner: ['gold'], outer: ['red'] },
+		{ radius: 0.4, inner: ['red'], outer: ['blue'] },
+		{ radius: 0.6, inner: ['blue'], outer: ['dark'] },
+		{ radius: 0.8, inner: ['dark'], outer: ['light'] }
+	]
+};
+
+const THREE_SPOT: Layout = {
+	bands: SPOT_BANDS,
+	edges: [
+		{ radius: 0.2, inner: ['gold'], outer: ['red'] },
+		{ radius: 0.4, inner: ['red'], outer: ['blue'] },
+		{ radius: 0.5, inner: ['blue'], outer: ['light', 'grey'] }
+	]
+};
+
 const ANGLES = 24;
 
-function score(
-	frame: Frame,
-	face: FaceLocation,
-	bands: { radius: number; colours: RingColour[] }[]
-): number {
+/**
+ * Boundaries count for more than interiors because they are what actually locate the face. Scored
+ * with interiors alone the fit drifts outwards; this is the weight that stops it.
+ */
+const EDGE_WEIGHT = 3;
+
+function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 	const cos = Math.cos(face.rotation);
 	const sin = Math.sin(face.rotation);
 	let hits = 0;
 	let total = 0;
 
-	for (const band of bands) {
-		for (let i = 0; i < ANGLES; i++) {
-			const angle = (i / ANGLES) * Math.PI * 2;
-			const fx = Math.cos(angle) * band.radius * face.semiMajor;
-			const fy = Math.sin(angle) * band.radius * face.semiMinor;
-			const x = Math.round(face.cx + fx * cos - fy * sin);
-			const y = Math.round(face.cy + fx * sin + fy * cos);
-			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
+	const at = (radius: number, angle: number): RingColour | null => {
+		const fx = Math.cos(angle) * radius * face.semiMajor;
+		const fy = Math.sin(angle) * radius * face.semiMinor;
+		const x = Math.round(face.cx + fx * cos - fy * sin);
+		const y = Math.round(face.cy + fx * sin + fy * cos);
+		if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) return null;
+		const p = (y * frame.width + x) * 4;
+		return classify(frame.data[p], frame.data[p + 1], frame.data[p + 2]);
+	};
 
-			const p = (y * frame.width + x) * 4;
+	for (let i = 0; i < ANGLES; i++) {
+		const angle = (i / ANGLES) * Math.PI * 2;
+
+		for (const band of layout.bands) {
+			const colour = at(band.radius, angle);
+			if (colour === null) continue;
 			total += 1;
-			if (band.colours.includes(classify(frame.data[p], frame.data[p + 1], frame.data[p + 2]))) {
-				hits += 1;
-			}
+			if (band.colours.includes(colour)) hits += 1;
+		}
+
+		for (const edge of layout.edges) {
+			const inside = at(edge.radius - EDGE_OFFSET, angle);
+			const outside = at(edge.radius + EDGE_OFFSET, angle);
+			if (inside === null || outside === null) continue;
+			total += EDGE_WEIGHT;
+			// Both sides at once: either alone is satisfied by a fit that has slid a whole ring over.
+			if (edge.inner.includes(inside) && edge.outer.includes(outside)) hits += EDGE_WEIGHT;
 		}
 	}
 

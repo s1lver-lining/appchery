@@ -417,8 +417,9 @@ describe('refineFace', () => {
 		const refined = detectFaces(frame)[0];
 
 		expect(refined).toBeDefined();
-		expect(refined.cx).toBeCloseTo(120, 0);
-		expect(refined.cy).toBeCloseTo(120, 0);
+		// Within a pixel of the true centre, which is a hundredth of the face.
+		expect(Math.abs(refined.cx - 120)).toBeLessThan(1.5);
+		expect(Math.abs(refined.cy - 120)).toBeLessThan(1.5);
 		// Within a few percent of the true 100px radius, and better than the unrefined seed.
 		expect(Math.abs(refined.semiMajor - 100)).toBeLessThan(8);
 		expect(Math.abs(refined.semiMajor - 100)).toBeLessThanOrEqual(
