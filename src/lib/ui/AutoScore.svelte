@@ -242,40 +242,52 @@
 		{/if}
 	</div>
 
+
 	<div class="safe-bottom space-y-3 bg-surface p-4">
-		{#if found.length === 0}
-			<p class="text-center text-sm text-muted">
-				{faces.length === 0
-					? $t('auto.noFace')
-					: steady
-						? $t('auto.watching', { n: pending })
-						: $t('auto.settling')}
-			</p>
-		{:else}
-			<!--
-				Six to a row, matching the longest common end, so a full end reads as one line. Scrollable
-				as well, because a bad frame must never push the buttons off the screen.
-			-->
-			<div class="grid max-h-28 grid-cols-6 gap-1.5 overflow-y-auto">
-				{#each ranked as arrow, i (i)}
-					<button
-						class="tabular flex h-10 items-center justify-center rounded-lg text-base font-bold
-							{i < remaining ? '' : 'opacity-40'}"
-						style={pillStyle(arrow)}
-						aria-label={$t('auto.drop')}
-						onclick={() => drop(arrow)}
-					>
-						{label(arrow)}<span class="ml-0.5 text-[10px] font-semibold opacity-70">
-							{detail(arrow)}
-						</span>
-					</button>
-				{/each}
-			</div>
-			<p class="text-center text-[11px] text-muted">{$t('auto.tapToDrop')}</p>
-			{#if found.length > remaining}
-				<p class="text-xs text-danger">{$t('auto.tooMany', { n: remaining })}</p>
+		<!--
+			The arrow area keeps its height whether or not anything has been found. Letting it collapse made
+			the buttons jump every time a detection came and went, which on a hand held phone is constantly.
+			Six pills to a row, matching the longest common end, so a full end reads as one line, and it
+			scrolls rather than growing, because a bad frame must never push the buttons off the screen.
+		-->
+		<div class="h-28 overflow-y-auto">
+			{#if found.length === 0}
+				<p class="flex h-full items-center justify-center text-center text-sm text-muted">
+					{faces.length === 0
+						? $t('auto.noFace')
+						: steady
+							? $t('auto.watching', { n: pending })
+							: $t('auto.settling')}
+				</p>
+			{:else}
+				<div class="grid grid-cols-6 gap-1.5">
+					{#each ranked as arrow, i (i)}
+						<button
+							class="tabular flex h-10 items-center justify-center rounded-lg text-base font-bold
+								{i < remaining ? '' : 'opacity-40'}"
+							style={pillStyle(arrow)}
+							aria-label={$t('auto.drop')}
+							onclick={() => drop(arrow)}
+						>
+							{label(arrow)}<span class="ml-0.5 text-[10px] font-semibold opacity-70">
+								{detail(arrow)}
+							</span>
+						</button>
+					{/each}
+				</div>
+
 			{/if}
-		{/if}
+		</div>
+
+
+		<!-- Fixed height as well, so the hint and the warning swapping does not move anything either. -->
+		<p class="flex h-4 items-center justify-center text-center text-[11px]">
+			{#if found.length > remaining}
+				<span class="text-danger">{$t('auto.tooMany', { n: remaining })}</span>
+			{:else if found.length > 0}
+				<span class="text-muted">{$t('auto.tapToDrop')}</span>
+			{/if}
+		</p>
 
 		<div class="flex gap-2">
 			<button class="flex-1 rounded-lg border border-line py-3 text-sm font-medium" onclick={onclose}>
@@ -289,5 +301,7 @@
 				{$t('auto.keep', { n: kept.length })}
 			</button>
 		</div>
+
 	</div>
+
 </div>
