@@ -81,6 +81,13 @@
 	const active = new Map<number, { x: number; y: number }>();
 	let pinchStart: { distance: number; zoom: number } | null = null;
 
+	/**
+	 * The magnifier scales the face about the cursor, so the cursor stays exactly where the finger
+	 * put it and the badge can be anchored straight to that coordinate.
+	 */
+	const badgeLeft = $derived(cursor ? ((cursor.x + 1.05) / 2.1) * 100 : 50);
+	const badgeTop = $derived(cursor ? ((cursor.y + 1.05) / 2.1) * 100 : 50);
+
 	function toFace(event: { clientX: number; clientY: number }): { x: number; y: number } | null {
 		if (!svg) return null;
 		const rect = svg.getBoundingClientRect();
@@ -100,8 +107,9 @@
 		active.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
 		if (active.size === 2) {
-			// The arrow stays where the first finger left it while the second one only scales.
+			// A pinch is a zoom, not a placement: the cursor goes away so nothing looks selectable.
 			pinchStart = { distance: spread(), zoom };
+			cursor = null;
 			return;
 		}
 		cursor = toFace(event);
@@ -302,11 +310,18 @@
 		</g>
 	</svg>
 
-	{#if previewZone}
-		<!-- The magnifier centres the touch point, so the middle of the face is where the arrow lands. -->
-		<div class="pointer-events-none absolute inset-0 grid place-items-center">
+	{#if previewZone && cursor}
+		<!--
+			Anchored to the magnified position of the cursor rather than the middle of the face, and
+			offset up and to the right, so the crosshair stays visible underneath it while the finger
+			is held still.
+		-->
+		<div
+			class="pointer-events-none absolute"
+			style="left: {badgeLeft}%; top: {badgeTop}%; transform: translate(0.6rem, -2.4rem)"
+		>
 			<span
-				class="tabular -translate-y-[3.4rem] rounded-lg px-3 py-1 text-2xl font-bold"
+				class="tabular block rounded-lg px-2.5 py-0.5 text-xl font-bold"
 				style={previewZone.countsAsHit
 					? `background-color: ${previewZone.color}; color: ${previewZone.strokeColor}; box-shadow: 0 0 0 2px ${previewZone.strokeColor}`
 					: 'background-color: var(--c-sunk); color: var(--c-muted);'}

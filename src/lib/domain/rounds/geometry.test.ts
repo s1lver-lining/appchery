@@ -169,9 +169,32 @@ describe('sortShotsDescending', () => {
 describe('decimalScore', () => {
 	it('reads higher the deeper into the ring the arrow sits', () => {
 		// The 8 ring runs from r = 0.2 to r = 0.3 on a ten ring face.
-		expect(decimalScore(WA_10_RING, 0.299, 0)).toBeCloseTo(8.0, 1);
-		expect(decimalScore(WA_10_RING, 0.25, 0)).toBeCloseTo(8.5, 1);
-		expect(decimalScore(WA_10_RING, 0.201, 0)).toBeCloseTo(8.9, 1);
+		expect(decimalScore(WA_10_RING, 0.299, 0)).toBeCloseTo(8.1, 5);
+		expect(decimalScore(WA_10_RING, 0.25, 0)).toBeCloseTo(8.5, 5);
+		expect(decimalScore(WA_10_RING, 0.201, 0)).toBeCloseTo(8.9, 5);
+	});
+
+	it('treats the whole ten ring as one band, with the X inside it', () => {
+		// The X is a tie break, not a scoring band: splitting it gave two ramps inside one gold.
+		expect(decimalScore(WA_10_RING, 0.0999, 0)).toBeCloseTo(10.1, 5);
+		expect(decimalScore(WA_10_RING, 0.05, 0)).toBeCloseTo(10.5, 5);
+		expect(decimalScore(WA_10_RING, 0, 0)).toBeCloseTo(10.9, 5);
+		// Monotonic all the way in, with no jump where the X ring starts.
+		let previous = 0;
+		for (let r = 0.1; r >= 0; r -= 0.005) {
+			const value = decimalScore(WA_10_RING, r, 0)!;
+			expect(value).toBeGreaterThanOrEqual(previous);
+			previous = value;
+		}
+	});
+
+	it('never prints a bare x.0, which would read as no depth at all', () => {
+		for (let r = 0.01; r < 1; r += 0.01) {
+			const value = decimalScore(WA_10_RING, r, 0)!;
+			const decimal = Math.round((value % 1) * 10) / 10;
+			expect(decimal).toBeGreaterThanOrEqual(0.1);
+			expect(decimal).toBeLessThanOrEqual(0.9);
+		}
 	});
 
 	it('agrees with the ring the arrow is actually in', () => {

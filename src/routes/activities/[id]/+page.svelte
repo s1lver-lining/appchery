@@ -177,7 +177,6 @@
 	const scoringNow = $derived(currentSlot !== null || editing !== null);
 	const faceShots = $derived(scoringNow ? livePlotted : storedPlotted);
 	const faceOther = $derived(scoringNow ? storedPlotted : []);
-	const metrics = $derived(groupMetrics([...storedPlotted, ...livePlotted]));
 
 	const openRow = $derived(openEnd !== null ? sheetRows[openEnd] : null);
 	const openRowShots = $derived<Shot[]>(
@@ -809,24 +808,6 @@
 		<div class="space-y-3 p-4 pt-0">
 		{#if complete}
 			<p class="text-sm text-muted">{$t('score.roundComplete')}</p>
-		{/if}
-
-		{#if metrics}
-			<section class="rounded-xl border border-line bg-surface p-4 text-sm">
-				<h2 class="mb-2 font-semibold">{$t('score.group')}</h2>
-				<p class="text-muted">
-					{$t('score.groupCentre')}:
-					<strong class="tabular text-ink">
-						{(metrics.centerX * 100).toFixed(0)}, {(metrics.centerY * 100).toFixed(0)}
-					</strong>
-					· {$t('score.meanRadius')}:
-					<strong class="tabular text-ink">{(metrics.meanRadius * 100).toFixed(1)}</strong>
-					· {$t('score.plottedArrows', { n: metrics.sampleSize })}
-				</p>
-				{#if metrics.sampleSize < 6}
-					<p class="mt-1 text-xs text-muted">{$t('score.smallSample')}</p>
-				{/if}
-			</section>
 		{/if}
 
 		<p class="text-sm text-muted">

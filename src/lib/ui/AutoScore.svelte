@@ -37,7 +37,15 @@
 	let stream: MediaStream | null = null;
 	let raf = 0;
 
-	const kept = $derived(found.slice(0, remaining));
+	/** Highest first, as a scoresheet reads, so the pills are checked in a predictable order. */
+	const ranked = $derived(
+		[...found].sort((a, b) => {
+			const left = scoreAt(scoreSet, a.x, a.y);
+			const right = scoreAt(scoreSet, b.x, b.y);
+			return right.value - left.value || Number(right.isInner ?? false) - Number(left.isInner ?? false);
+		})
+	);
+	const kept = $derived(ranked.slice(0, remaining));
 
 	// The scanner stops proposing once the end is full, rather than piling up arrows to discard.
 	$effect(() => {
@@ -198,7 +206,7 @@
 		{:else}
 			<!-- Capped and scrollable: a bad frame must never push the buttons off the screen. -->
 			<div class="flex max-h-24 flex-wrap items-start gap-2 overflow-y-auto">
-				{#each found as arrow, i (i)}
+				{#each ranked as arrow, i (i)}
 					<button
 						class="tabular flex h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-base font-bold
 							{i < remaining ? '' : 'opacity-40'}"
