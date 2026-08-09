@@ -1,0 +1,147 @@
+import { classify, type RingColour } from './rings';
+import type { Frame, FaceLocation } from './types';
+
+/**
+ * Refines a face by fitting it to the whole ring structure, not just the gold.
+ *
+ * The gold blob alone is fragile: arrows standing in the ten split it into pieces, and torn paper
+ * eats its edge, so its centroid and area both drift. Overlaying the detected geometry on real
+ * photographs made this obvious in a way the aggregate numbers did not, because a face can be
+ * "within 15% of the true size" and still visibly off centre.
+ *
+ * A target face is far more than its gold though. It is a known sequence of coloured annuli, so the
+ * fit can be scored directly against that: sample many rings, count how many samples show the
+ * colour the geometry predicts, and move the estimate to maximise it. A few arrows only cost a few
+ * samples, which is what makes this robust where a blob measurement is not.
+ */
+
+/**
+ * Sample radii and the colour a face shows there. Mid ring, never on a boundary.
+ *
+ * Two layouts, scored separately. A full face runs all ten rings out to the white; a three spot is
+ * printed only down to the 6 ring, so everything past r = 0.5 is backing paper. Scoring a three spot
+ * against the full layout dragged the fit inward by about 9%, trying to move the expected white
+ * onto the real white, so the fit takes whichever layout agrees better.
+ */
+const FULL_FACE: { radius: number; colours: RingColour[] }[] = [
+	{ radius: 0.15, colours: ['gold'] },
+	{ radius: 0.25, colours: ['red'] },
+	{ radius: 0.35, colours: ['red'] },
+	{ radius: 0.45, colours: ['blue'] },
+	{ radius: 0.55, colours: ['blue'] },
+	{ radius: 0.65, colours: ['dark'] },
+	{ radius: 0.75, colours: ['dark'] },
+	{ radius: 0.85, colours: ['light'] }
+];
+
+/**
+ * A three spot: printed to the 6 ring, so the blue is the outermost colour and the paper takes over
+ * beyond it. The band at 0.55 is what pins the scale. Without it the model only constrained the
+ * inner rings, and a fit a seventh too large still scored perfectly, because every sample it took
+ * still landed in the right colour.
+ */
+const THREE_SPOT: { radius: number; colours: RingColour[] }[] = [
+	{ radius: 0.15, colours: ['gold'] },
+	{ radius: 0.25, colours: ['red'] },
+	{ radius: 0.35, colours: ['red'] },
+	{ radius: 0.45, colours: ['blue'] },
+	// Brackets the edge of the printed spot at r = 0.5 from both sides, which is what fixes the
+	// scale. A single band outside it left about 7% of slack, and the fit settled at the small end.
+	{ radius: 0.48, colours: ['blue'] },
+	{ radius: 0.54, colours: ['light', 'grey'] },
+	{ radius: 0.7, colours: ['light', 'grey'] }
+];
+
+const ANGLES = 24;
+
+function score(
+	frame: Frame,
+	face: FaceLocation,
+	bands: { radius: number; colours: RingColour[] }[]
+): number {
+	const cos = Math.cos(face.rotation);
+	const sin = Math.sin(face.rotation);
+	let hits = 0;
+	let total = 0;
+
+	for (const band of bands) {
+		for (let i = 0; i < ANGLES; i++) {
+			const angle = (i / ANGLES) * Math.PI * 2;
+			const fx = Math.cos(angle) * band.radius * face.semiMajor;
+			const fy = Math.sin(angle) * band.radius * face.semiMinor;
+			const x = Math.round(face.cx + fx * cos - fy * sin);
+			const y = Math.round(face.cy + fx * sin + fy * cos);
+			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
+
+			const p = (y * frame.width + x) * 4;
+			total += 1;
+			if (band.colours.includes(classify(frame.data[p], frame.data[p + 1], frame.data[p + 2]))) {
+				hits += 1;
+			}
+		}
+	}
+
+	return total === 0 ? 0 : hits / total;
+}
+
+/**
+ * Share of sampled points whose colour matches the ring the geometry puts them in, under whichever
+ * face layout fits better. Samples off the frame are not counted either way, so a face running off
+ * the edge is judged on what is visible.
+ */
+export function ringAgreement(frame: Frame, face: FaceLocation): number {
+	return Math.max(score(frame, face, FULL_FACE), score(frame, face, THREE_SPOT));
+}
+
+/**
+ * Coordinate descent over centre and axes, with a shrinking step. Deliberately local: the estimate
+ * from the gold blob is already close, and a global search would cost far more than a video frame
+ * can afford.
+ */
+export function refineFace(frame: Frame, start: FaceLocation): FaceLocation {
+	let best = start;
+	let bestScore = ringAgreement(frame, start);
+
+	// Steps as a share of the face radius, halving each round.
+	for (let step = 0.06; step >= 0.0075; step /= 2) {
+		let improved = true;
+		while (improved) {
+			improved = false;
+			const delta = step * best.semiMajor;
+
+			const candidates: FaceLocation[] = [
+				{ ...best, cx: best.cx + delta },
+				{ ...best, cx: best.cx - delta },
+				{ ...best, cy: best.cy + delta },
+				{ ...best, cy: best.cy - delta },
+				// Scale both axes together, then each alone, so a tilted face can still square up.
+				{
+					...best,
+					semiMajor: best.semiMajor * (1 + step),
+					semiMinor: best.semiMinor * (1 + step)
+				},
+				{
+					...best,
+					semiMajor: best.semiMajor * (1 - step),
+					semiMinor: best.semiMinor * (1 - step)
+				},
+				{ ...best, semiMajor: best.semiMajor * (1 + step) },
+				{ ...best, semiMajor: best.semiMajor * (1 - step) },
+				{ ...best, semiMinor: best.semiMinor * (1 + step) },
+				{ ...best, semiMinor: best.semiMinor * (1 - step) }
+			];
+
+			for (const candidate of candidates) {
+				if (candidate.semiMinor < 4 || candidate.semiMajor < 4) continue;
+				const score = ringAgreement(frame, candidate);
+				if (score > bestScore + 1e-4) {
+					bestScore = score;
+					best = candidate;
+					improved = true;
+				}
+			}
+		}
+	}
+
+	return { ...best, support: bestScore };
+}
