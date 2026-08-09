@@ -32,3 +32,6 @@ test/pictures/*
 # The model training environment and its intermediate crops, neither of which the app needs
 .venv-ml/
 test/datasets/prepared/
+
+# Byte code from the training scripts
+__pycache__/
