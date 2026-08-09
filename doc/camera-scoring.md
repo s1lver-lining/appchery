@@ -18,20 +18,25 @@ into measurement rather than recognition, and measurement needs no training set.
 
 The one property the whole pipeline rests on:
 
-> On a WA face, the gold spans rings 9 and 10, which is **40% of the face radius**. Always, at every
-> face diameter.
+> A WA face has ten equal width rings. The gold is rings 9 and 10, so it reaches **2/10 = 20% of the
+> face radius**. Always, at every face diameter.
 
-Find the gold, and the geometry gives you the rest of the face for free.
+Find the gold, and the geometry gives you the rest of the face for free. This ratio also matches the
+zone map in `domain/rounds/seed.ts`, where the 9 ring sits at `r = 0.2`: the same number drives both
+drawing and detection, so they cannot drift apart.
+
+Measured on three photographs of real competition faces, the colour transitions land at r = 0.20,
+0.41 and 0.62, against the 0.2, 0.4 and 0.6 the geometry predicts.
 
 ## The pipeline
 
-Each video frame goes through five stages. Stages 1 and 2 answer "where is the target"; stages 3 to
-5 answer "what has landed on it".
+Each video frame goes through six stages. Stages 1 to 4 answer "where is the target, and is it
+really a target"; stages 5 and 6 answer "what has landed on it".
 
 ```
-frame ─▶ downscale ─▶ find the gold ─▶ fit an ellipse ─▶ FaceLocation
-                                                              │
-        background model ─▶ difference ─▶ blobs ─▶ face coords ─▶ tracker ─▶ arrows
+frame ─▶ downscale ─▶ find the gold ─▶ fit an ellipse ─▶ verify the rings ─▶ FaceLocation
+                                                                                 │
+           background model ─▶ difference ─▶ blobs ─▶ face coords ─▶ tracker ─▶ arrows
 ```
 
 ### 1. Downscale (`pixels.ts`)
@@ -56,7 +61,7 @@ eigenvalues are `(semi-axis)² / 4`, which recovers both axes and the tilt in cl
 iteration.
 
 An ellipse rather than a circle because a camera beside the shooting line never looks at the boss
-square on. Dividing the gold's axes by 0.4 gives the whole face.
+square on. Dividing the gold's axes by 0.2 gives the whole face.
 
 **A degenerate case worth knowing about.** A circle has no orientation, and the moment fit will
 happily invent one: with the two variances equal, `atan2` lands on 45° and rotates the entire
@@ -68,7 +73,32 @@ The result is a `FaceLocation`, and with it a pair of transforms between image p
 face coordinates. Those normalised coordinates are the *same space the scoring rules already use*,
 so a detected point is scored by the very same `scoreAt` that scores a tap.
 
-### 4. Detect what is new (`impacts.ts`)
+### 4. Confirm it is really a face (`rings.ts`)
+
+Finding yellow is not enough, and this was the single biggest source of false positives: a bag, a
+jacket, a hazard sign or sunlit grass all produce a large saturated yellow region, and a false face
+means every blob on it is reported as an arrow.
+
+So the candidate face is probed at four radii, 32 samples around each circle, and each sample is
+classified into a target colour. A face is accepted only when the sequence matches a real one:
+
+| radius | expected |
+| ------ | -------- |
+| 0.13   | gold |
+| 0.30   | red, or black on a two colour face |
+| 0.50   | blue |
+| 0.70   | black |
+
+Acceptance needs the gold *plus* either the full colour sequence (red, then blue or black further
+out) or a plain gold-inside-black face. Agreement of 62% per ring is enough, because an arrow shaft
+crossing a ring costs a few samples. Samples falling outside the image are skipped rather than
+counted as failures, so a camera zoomed in on the boss still passes on the rings it can see.
+
+Mid grey is deliberately classified separately from black. Lumping them together let a grey wall
+behind a yellow object read as the dark surround of a face, which is exactly the false positive this
+stage exists to stop.
+
+### 5. Detect what is new (`impacts.ts`)
 
 Arrows are not recognised by shape. They are recognised by **being new**.
 
@@ -81,7 +111,7 @@ The absolute difference against the reference is thresholded, and connected comp
 candidate blobs with a centroid and an area. Blobs whose centre falls outside the face are dropped,
 which is what ignores a person walking past, the stand, or grass moving in the wind.
 
-### 5. Decide it is an arrow (`tracker.ts`)
+### 6. Decide it is an arrow (`tracker.ts`)
 
 A single frame is never trusted. A shadow, a camera nudge, or a hand in front of the boss all
 produce a blob once. An arrow, having landed, stays exactly where it is.
@@ -94,6 +124,17 @@ one, so a confirmed arrow is never reported twice however long it stays in the b
 
 Position is refined as evidence accumulates: each new observation is averaged into the candidate,
 which settles the estimate rather than trusting whichever frame happened to be last.
+
+### Two guards against a flood of proposals
+
+Detection is gated on the face having **held still** for several frames. A face that jumps between
+detections is a new detection rather than the same one, and the settle counter restarts. Without
+this, a face whose fit wobbles produces coordinates that move every frame, so every frame's blobs
+look like new arrows.
+
+Promotion is also **capped at the end's remaining arrows**. The cap is applied inside the tracker,
+during promotion, not after: checking it beforehand still let a single frame confirm several arrows
+at once.
 
 ### Between ends
 
@@ -112,8 +153,9 @@ person.
 
 Stated plainly, because the limits are real:
 
-- **No gold, no face.** A field or 3D target, a face with the gold obscured, or a badly lit boss will
-  not be located. This is a target archery feature.
+- **No gold and the right rings around it, no face.** A field or 3D target, a face with the gold
+  obscured, or a badly lit boss will not be located. This is a target archery feature, and the ring
+  check makes that deliberate rather than incidental.
 - **Affine rectification only.** A camera off to one side is handled. A camera close to a steeply
   angled boss is not: with real perspective, near and far rings differ in scale and an ellipse fit
   cannot express that. A full homography would need four ring correspondences rather than one blob.
