@@ -498,6 +498,21 @@ describe('detectArrowsInStill', () => {
 		expect(Math.hypot(found[0].x - 0.1, found[0].y + 0.1)).toBeLessThan(0.2);
 	});
 
+	it('drops a streak that looks nothing like the arrow it is most sure of', () => {
+		const frame = waFace(600, 200);
+		// Two arrows from the same bow at the same camera, and one mark lying across them.
+		shaft(frame, { x: 320, y: 280 }, { x: 400, y: 560 });
+		shaft(frame, { x: 280, y: 290 }, { x: 360, y: 570 });
+		shaft(frame, { x: 200, y: 380 }, { x: 460, y: 330 });
+
+		const bearings = detectArrowsInStill(frame, face).map((a) =>
+			Math.atan2(a.tailY - a.imageY, a.tailX - a.imageX)
+		);
+		expect(bearings.length).toBeGreaterThanOrEqual(2);
+		// Everything kept points the same way as the strongest shaft, so the crossing mark is gone.
+		for (const bearing of bearings) expect(Math.cos(bearing - bearings[0])).toBeGreaterThan(0.8);
+	});
+
 	it('ignores a printed ring line, which is just as long, thin and dark', () => {
 		const frame = waFace(600, 200);
 		const arc = 120;

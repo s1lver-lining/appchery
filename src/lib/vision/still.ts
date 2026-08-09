@@ -46,6 +46,10 @@ export interface StillOptions {
 	reach?: number;
 	/** How far off a kept shaft's line another run may sit before it counts as a separate arrow. */
 	mergeDistance?: number;
+	/** How far a shaft's bearing may differ from the best one found, in radians. */
+	bearingTolerance?: number;
+	/** How much thicker or thinner than the best shaft another may be, as a factor. */
+	widthRatio?: number;
 }
 
 export interface StillArrow {
@@ -60,6 +64,8 @@ export interface StillArrow {
 	tailY: number;
 	area: number;
 	length: number;
+	/** Thickness of the shaft in pixels, which every arrow in one picture shares. */
+	width: number;
 }
 
 /**
@@ -135,6 +141,8 @@ export function detectArrowsInStill(
 	const minRidge = options.minRidge ?? 0.6;
 	const minFill = options.minFill ?? 0.85;
 	const reach = options.reach ?? REACH;
+	const bearingTolerance = options.bearingTolerance ?? 0.6;
+	const widthRatio = options.widthRatio ?? 1.7;
 	const mergeDistance = options.mergeDistance ?? 0.03;
 
 	const radius = (face.semiMajor + face.semiMinor) / 2;
@@ -205,7 +213,8 @@ export function detectArrowsInStill(
 			tailX: tail.x,
 			tailY: tail.y,
 			area: segment.length * segment.width,
-			length: segment.length
+			length: segment.length,
+			width: segment.width
 		});
 	}
 
@@ -238,7 +247,36 @@ export function detectArrowsInStill(
 		if (repeat) continue;
 		kept.push(arrow);
 	}
-	return kept;
+
+	return likeTheBest(kept, bearingTolerance, widthRatio);
+}
+
+/**
+ * Judges the weaker candidates against the strongest one.
+ *
+ * The arrows in a photograph are the same physical objects shot from the same place: the same shaft,
+ * the same thickness, and all of them leaning towards the same lens, so their bearings on the image
+ * are close to parallel. Nothing forces that on a crease, a shadow or an old hole. So once one arrow
+ * is found convincingly, it says what the rest should look like, and anything that does not resemble
+ * it has to be much better evidence than it would otherwise need.
+ *
+ * The longest run is the anchor because length is the measure least confused by clutter.
+ */
+function likeTheBest(arrows: StillArrow[], bearingTolerance: number, widthRatio: number): StillArrow[] {
+	const anchor = arrows[0];
+	if (!anchor) return arrows;
+
+	const bearing = (arrow: StillArrow) => Math.atan2(arrow.tailY - arrow.imageY, arrow.tailX - arrow.imageX);
+	const reference = bearing(anchor);
+	const limit = Math.cos(bearingTolerance);
+
+	return arrows.filter((arrow, index) => {
+		if (index === 0) return true;
+		const apart = bearing(arrow) - reference;
+		if (Math.cos(apart) < limit) return false;
+		const ratio = arrow.width / Math.max(anchor.width, 0.5);
+		return ratio >= 1 / widthRatio && ratio <= widthRatio;
+	});
 }
 
 interface Segment {
