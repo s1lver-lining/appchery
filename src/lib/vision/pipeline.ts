@@ -3,6 +3,7 @@ import { detectFaces, toFaceCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { Background, findBlobs } from './impacts';
+import { detectArrowsLearned, type ArrowModel } from './learned';
 import { ImpactTracker } from './tracker';
 import type { Frame, FaceLocation, Impact } from './types';
 
@@ -33,6 +34,12 @@ export interface ScannerOptions {
 	framesToSettle?: number;
 	/** Arrows to report at most, which is the end's remaining arrows. */
 	maxArrows?: number;
+	/**
+	 * The learned detector's weights. Given, arrows are proposed by the model instead of by differencing
+	 * against a quiet background. Everything downstream is unchanged: proposals still have to hold
+	 * across frames before they count, because a model is as capable of a confident mistake as a rule is.
+	 */
+	model?: ArrowModel | null;
 }
 
 /**
@@ -56,6 +63,7 @@ export class Scanner {
 	private settled = 0;
 	private readonly framesToSettle: number;
 	private maxArrows: number;
+	private model: ArrowModel | null;
 
 	constructor(options: ScannerOptions = {}) {
 		this.scale = options.scale ?? 4;
@@ -63,6 +71,7 @@ export class Scanner {
 		this.threshold = options.threshold ?? 28;
 		this.framesToSettle = options.framesToSettle ?? 8;
 		this.maxArrows = options.maxArrows ?? 12;
+		this.model = options.model ?? null;
 		this.tracker = new ImpactTracker(options.framesToConfirm ?? 4);
 	}
 
@@ -163,17 +172,25 @@ export class Scanner {
 			return -1;
 		};
 
-		const blobs = findBlobs(diff, small.width, small.height, {
-			threshold: this.threshold,
-			// Anything off every face is a person, a stand, or the wind in the grass.
-			accept: (cx, cy) => owner(cx, cy) >= 0
-		});
-
-		const detections = blobs.map((blob) => {
-			const index = owner(blob.cx, blob.cy);
-			const point = toFaceCoords(faces[index], blob.cx, blob.cy);
-			return { x: point.x, y: point.y, area: blob.area, face: index };
-		});
+		const detections = this.model
+			? faces.flatMap((face, index) =>
+					detectArrowsLearned(small, face, this.model as ArrowModel).map((arrow) => ({
+						x: arrow.x,
+						y: arrow.y,
+						// No blob to measure, so confidence stands in where the UI wants a size.
+						area: Math.round(arrow.confidence * 100),
+						face: index
+					}))
+				)
+			: findBlobs(diff, small.width, small.height, {
+					threshold: this.threshold,
+					// Anything off every face is a person, a stand, or the wind in the grass.
+					accept: (cx, cy) => owner(cx, cy) >= 0
+				}).map((blob) => {
+					const index = owner(blob.cx, blob.cy);
+					const point = toFaceCoords(faces[index], blob.cx, blob.cy);
+					return { x: point.x, y: point.y, area: blob.area, face: index };
+				});
 
 		// Capped at what the end can still take, so a misdetection cannot flood the list.
 		this.tracker.setLimit(this.maxArrows);

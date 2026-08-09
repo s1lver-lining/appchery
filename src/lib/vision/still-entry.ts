@@ -1,12 +1,13 @@
 // Entry point for scripts/arrow_detector.sh, bundled and run inside a browser so it can decode and
 // re-encode images. Not imported by the app.
 import { downscale } from './pixels';
-import { detectFaces } from './face';
+import { detectFaces, toFaceCoords } from './face';
 import { verifyRings } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
+import { detectArrowsLearned, type ArrowModel } from './learned';
 import { scoreAt, decimalScore } from '../domain/rounds/geometry';
 import { WA_10_RING } from '../domain/rounds/seed';
-import type { Frame } from './types';
+import type { Frame, FaceLocation } from './types';
 
 export interface StillFace {
 	cx: number;
@@ -33,6 +34,62 @@ export interface StillFace {
  * Detection at a chosen scale, with every coordinate reported in the original image's pixels so a
  * caller can draw straight onto it.
  */
+/** The single best verified face at a chosen scale, in the original image's pixels. */
+export function locate(frame: Frame, scale = 2): FaceLocation | null {
+	const small = downscale(frame, scale);
+	const face = detectFaces(small).filter((f) => verifyRings(small, f).ok)[0];
+	if (!face) return null;
+	return {
+		...face,
+		cx: face.cx * scale,
+		cy: face.cy * scale,
+		semiMajor: face.semiMajor * scale,
+		semiMinor: face.semiMinor * scale
+	};
+}
+
+/** Image pixels to face coordinates, exported so a data preparation step agrees with the app. */
+export function toFace(face: FaceLocation, x: number, y: number): { x: number; y: number } {
+	return toFaceCoords(face, x, y);
+}
+
+/**
+ * The same as `analyse`, with the learned detector in place of the rule based one. Kept beside it so
+ * the two can be measured through one harness on one set of photographs, which is the only way a claim
+ * that either is better means anything.
+ */
+export function analyseLearned(
+	frame: Frame,
+	scale = 2,
+	model: ArrowModel,
+	threshold?: number
+): StillFace[] {
+	const small = downscale(frame, scale);
+
+	return detectFaces(small)
+		.filter((face) => verifyRings(small, face).ok)
+		.map((face) => ({
+			cx: face.cx * scale,
+			cy: face.cy * scale,
+			semiMajor: face.semiMajor * scale,
+			semiMinor: face.semiMinor * scale,
+			rotation: face.rotation,
+			agreement: face.support,
+			arrows: detectArrowsLearned(small, face, model, threshold).map((arrow) => ({
+				x: arrow.x,
+				y: arrow.y,
+				imageX: arrow.imageX * scale,
+				imageY: arrow.imageY * scale,
+				tailX: arrow.imageX * scale,
+				tailY: arrow.imageY * scale,
+				area: 0,
+				length: 0,
+				label: scoreAt(WA_10_RING, arrow.x, arrow.y).label,
+				decimal: decimalScore(WA_10_RING, arrow.x, arrow.y)
+			}))
+		}));
+}
+
 export function analyse(frame: Frame, scale = 2, tune: StillOptions = {}): StillFace[] {
 	const small = downscale(frame, scale);
 

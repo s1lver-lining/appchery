@@ -28,3 +28,7 @@ test/pictures/*
 !test/pictures/2.png
 !test/pictures/3.png
 !test/pictures/README.md
+
+# The model training environment and its intermediate crops, neither of which the app needs
+.venv-ml/
+test/datasets/prepared/

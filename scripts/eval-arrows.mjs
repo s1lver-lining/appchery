@@ -22,9 +22,26 @@ const dir = flag('--dir', 'test/datasets/60cm');
 const limit = Number(flag('--limit', '0')) || Infinity;
 const tune = JSON.parse(flag('--tune', '{}'));
 const scale = Number(flag('--scale', '2'));
+const detector = flag('--detector', 'classical');
+const threshold = Number(flag('--threshold', '0')) || undefined;
+/** Restricts to one side of the training split, so the learned detector is judged on unseen pictures. */
+const split = flag('--split', '');
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const tasks = JSON.parse(await readFile(join(ROOT, dir, 'annotation.json'), 'utf8'));
+
+let only = null;
+if (split) {
+	const sets = JSON.parse(
+		await readFile(join(ROOT, 'test/datasets/prepared/split.json'), 'utf8')
+	);
+	only = new Set(sets[split]);
+}
+
+let model = null;
+if (detector === 'learned') {
+	model = JSON.parse(await readFile(join(ROOT, 'src/lib/vision/arrow-model.json'), 'utf8'));
+}
 
 const bundled = await build({
 	entryPoints: [join(ROOT, 'src/lib/vision/still-entry.ts')],
@@ -66,6 +83,7 @@ for (const task of tasks) {
 	if (truth.length === 0) continue;
 
 	const name = (task.file_upload ?? '').replace(/^[0-9a-f]+-/, '');
+	if (only && !only.has(name)) continue;
 	let bytes;
 	try {
 		bytes = await readFile(join(ROOT, dir, name));
@@ -78,7 +96,7 @@ for (const task of tasks) {
 
 	const url = `data:image/jpeg;base64,${bytes.toString('base64')}`;
 	const faces = await page.evaluate(
-		async ({ src, scale, tune }) => {
+		async ({ src, scale, tune, model, threshold }) => {
 			const image = new Image();
 			image.src = src;
 			await image.decode();
@@ -88,13 +106,12 @@ for (const task of tasks) {
 			const context = canvas.getContext('2d', { willReadFrequently: true });
 			context.drawImage(image, 0, 0);
 			const pixels = context.getImageData(0, 0, image.width, image.height);
-			return VISION.analyse(
-				{ width: image.width, height: image.height, data: pixels.data },
-				scale,
-				tune
-			);
+			const frame = { width: image.width, height: image.height, data: pixels.data };
+			return model
+				? VISION.analyseLearned(frame, scale, model, threshold)
+				: VISION.analyse(frame, scale, tune);
 		},
-		{ src: url, scale, tune }
+		{ src: url, scale, tune, model, threshold }
 	);
 
 	if (faces.length === 0) continue;
@@ -131,6 +148,7 @@ const pct = (n, d) => (d === 0 ? '0.0' : ((n / d) * 100).toFixed(1));
 totals.offset.sort((a, b) => a - b);
 const median = totals.offset[Math.floor(totals.offset.length / 2)] ?? 0;
 
+console.log(`detector             ${detector}${split ? ` (${split} split)` : ''}`);
 console.log(`images with labels   ${totals.images}`);
 console.log(`face found           ${pct(totals.faces, totals.images)}%`);
 console.log(`arrows labelled      ${totals.truth}`);
