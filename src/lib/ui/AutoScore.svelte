@@ -60,6 +60,15 @@
 	);
 	const kept = $derived(ranked.slice(0, remaining));
 
+	/**
+	 * A face read from well off to one side comes back as a stretched ellipse. The fit is affine, so it
+	 * cannot express real perspective, and the far rings drift. Saying so is more useful than asking
+	 * for a steady hand: where the archer stands is the thing that actually decides the reading.
+	 */
+	const skewed = $derived(
+		faces.length > 0 && faces[0].semiMajor / Math.max(faces[0].semiMinor, 1) > 1.25
+	);
+
 	// The scanner stops proposing once the end is full, rather than piling up arrows to discard.
 	$effect(() => {
 		scanner.setLimit(remaining);
@@ -354,9 +363,11 @@
 				<p class="flex h-full items-center justify-center text-center text-sm text-muted">
 					{faces.length === 0
 						? $t('auto.noFace')
-						: steady
-							? $t('auto.watching', { n: pending })
-							: $t('auto.settling')}
+						: skewed
+							? $t('auto.angle')
+							: steady
+								? $t('auto.watching', { n: pending })
+								: $t('auto.settling')}
 				</p>
 			{:else}
 				<div class="grid grid-cols-6 gap-1.5">
