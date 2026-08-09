@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { WA_10_RING, ROUNDS, getRound } from './seed';
-import { scoreAt, maxScore, totalArrows, endSlots, groupMetrics, groupHull } from './geometry';
+import { scoreAt, maxScore, totalArrows, endSlots, groupMetrics, groupHull,
+	sortShotsDescending
+} from './geometry';
 import { buildCustomRound, validateCustomRound } from './custom';
 import type { Shot } from './types';
 
@@ -140,5 +142,25 @@ describe('groupHull', () => {
 	it('ignores arrows that were never plotted', () => {
 		const scoreOnly: Shot = { ordinal: 1, value: 9, zoneLabel: '9', x: null, y: null, source: 'manual' };
 		expect(groupHull([at(0, 0), at(0.3, 0), scoreOnly])).toHaveLength(2);
+	});
+});
+
+describe('sortShotsDescending', () => {
+	it('puts an X ahead of a ten, since both are worth the same', () => {
+		const sorted = sortShotsDescending([
+			{ value: 9, zoneLabel: '9' },
+			{ value: 10, zoneLabel: '10' },
+			{ value: 10, zoneLabel: 'X' }
+		]);
+		expect(sorted.map((s) => s.zoneLabel)).toEqual(['X', '10', '9']);
+	});
+
+	it('leaves the input untouched, so entry order survives alongside the sorted view', () => {
+		const input = [
+			{ value: 5, zoneLabel: '5' },
+			{ value: 8, zoneLabel: '8' }
+		];
+		sortShotsDescending(input);
+		expect(input.map((s) => s.zoneLabel)).toEqual(['5', '8']);
 	});
 });

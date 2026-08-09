@@ -80,6 +80,18 @@ export function maxScore(round: RoundDefinition, scoreSet: ScoreSet): number {
 	return totalArrows(round) * bestZone(scoreSet).value;
 }
 
+/**
+ * Paper scoresheet order: highest first, with an X ahead of a plain ten. Both are worth ten, so
+ * comparing on value alone left them interleaved.
+ */
+export function sortShotsDescending<T extends { value: number; zoneLabel: string }>(shots: T[]): T[] {
+	return [...shots].sort((a, b) => b.value - a.value || rank(b.zoneLabel) - rank(a.zoneLabel));
+}
+
+function rank(label: string): number {
+	return label === 'X' ? 1 : 0;
+}
+
 export function sumShots(shots: Shot[]): number {
 	return shots.reduce((sum, s) => sum + s.value, 0);
 }
