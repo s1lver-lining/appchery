@@ -3,9 +3,32 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# A user-local SDK, so nothing needs root. Override if yours lives elsewhere.
-export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
+# Pick an SDK that can actually build, rather than trusting ANDROID_HOME. A distro package such as
+# /opt/android-sdk is often incomplete and not writable, so Gradle fails on unaccepted licences for
+# packages it cannot install. Set APPCHERY_ANDROID_HOME to force a particular one.
+PLATFORM="android-36"
+pick_sdk() {
+	local candidate
+	for candidate in "${APPCHERY_ANDROID_HOME:-}" "$HOME/Android/Sdk" "${ANDROID_HOME:-}" /opt/android-sdk; do
+		[[ -n "$candidate" && -d "$candidate/platforms/$PLATFORM" ]] || continue
+		[[ -f "$candidate/licenses/android-sdk-license" ]] || continue
+		echo "$candidate"
+		return 0
+	done
+	return 1
+}
+
+if ! ANDROID_HOME="$(pick_sdk)"; then
+	echo "No usable Android SDK found: none of the candidates has $PLATFORM with accepted licences." >&2
+	echo "Checked: \$APPCHERY_ANDROID_HOME, \$HOME/Android/Sdk, \$ANDROID_HOME, /opt/android-sdk" >&2
+	exit 1
+fi
+export ANDROID_HOME
 export ANDROID_SDK_ROOT="$ANDROID_HOME"
+echo "Using Android SDK: $ANDROID_HOME"
+
+# Gradle reads local.properties before the environment, so pin it to the SDK chosen here.
+echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
 # Gradle and the Android plugin do not support the newest JDKs, so pin one that works.
 if [[ -z "${JAVA_HOME:-}" && -d /usr/lib/jvm/java-21-openjdk ]]; then
@@ -14,12 +37,6 @@ fi
 
 ADB="$ANDROID_HOME/platform-tools/adb"
 [[ -x "$ADB" ]] || ADB="$(command -v adb)"
-
-if [[ ! -d "$ANDROID_HOME/platforms" ]]; then
-	echo "No Android SDK at $ANDROID_HOME." >&2
-	echo "Install one, or set ANDROID_HOME to an existing SDK." >&2
-	exit 1
-fi
 
 if ! "$ADB" devices | awk 'NR>1 && $2=="device"' | grep -q .; then
 	echo "No device connected. Enable USB debugging and accept the prompt on the phone." >&2
