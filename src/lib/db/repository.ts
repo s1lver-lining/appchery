@@ -1,7 +1,7 @@
 import { eq, and, isNull, desc, asc, inArray } from 'drizzle-orm';
 import { db, schema } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
-import { sumShots, countLabel } from '$lib/domain/rounds/geometry';
+import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -346,10 +346,6 @@ export async function refreshActivityTotals(activityId: string) {
 	await log('activity', activityId, 'update');
 }
 
-export async function finishActivity(activityId: string) {
-	await updateActivity(activityId, { status: 'complete', endedAt: Date.now() });
-}
-
 /* Bows */
 
 export async function createBow(name: string, type: string) {
@@ -484,7 +480,10 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 		(a) => ids.has(a.sessionId) && a.kind === 'scoring'
 	);
 
-	const finished = activities.filter((a) => a.status === 'complete');
+	// A best score is only comparable between rounds that were shot to the end.
+	const finished = activities.filter((a) =>
+		isRoundComplete(a.roundDefinition ? JSON.parse(a.roundDefinition) : null, a.arrowsShot)
+	);
 	return {
 		sessions: sessions.length,
 		activities: activities.length,

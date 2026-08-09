@@ -59,8 +59,11 @@
 	const hull = $derived(showPerimeter ? groupHull(shots) : []);
 
 	const ZOOM = 2.6;
-	/** The plot sits above the touch point so a finger does not cover the arrow being placed. */
-	const FINGER_OFFSET = 0.16;
+	/**
+	 * The plot sits above the touch point so a finger does not cover the arrow being placed. Roughly
+	 * half a centimetre of clearance on a phone, which is what it takes to see past a thumb.
+	 */
+	const FINGER_OFFSET = 0.28;
 
 	function toFace(event: PointerEvent): { x: number; y: number } | null {
 		if (!svg) return null;
@@ -204,13 +207,22 @@
 				{/if}
 
 				{#if cursor}
-					<g stroke="var(--c-ink)" stroke-width={0.008 / ZOOM} fill="none">
-						<circle cx={cursor.x} cy={cursor.y} r={0.05 / ZOOM} />
-						<path
-							d="M{cursor.x - 0.1 / ZOOM},{cursor.y}h{0.16 / ZOOM}M{cursor.x},{cursor.y -
-								0.1 / ZOOM}v{0.16 / ZOOM}"
-						/>
-					</g>
+					<!-- Drawn twice: a pale halo under a dark line, so the crosshair reads on gold and on black. -->
+					{#each [{ colour: '#ffffff', width: 0.026 }, { colour: 'var(--c-danger)', width: 0.012 }] as pen (pen.colour)}
+						<g
+							stroke={pen.colour}
+							stroke-width={pen.width / ZOOM}
+							stroke-linecap="round"
+							fill="none"
+						>
+							<circle cx={cursor.x} cy={cursor.y} r={0.07 / ZOOM} />
+							<path
+								d="M{cursor.x - 0.15 / ZOOM},{cursor.y}h{0.09 / ZOOM}M{cursor.x +
+									0.06 / ZOOM},{cursor.y}h{0.09 / ZOOM}M{cursor.x},{cursor.y -
+									0.15 / ZOOM}v{0.09 / ZOOM}M{cursor.x},{cursor.y + 0.06 / ZOOM}v{0.09 / ZOOM}"
+							/>
+						</g>
+					{/each}
 				{/if}
 			</g>
 		</g>

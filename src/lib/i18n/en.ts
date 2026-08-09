@@ -58,6 +58,8 @@ export const en = {
 		unknownPlace: 'Location recorded',
 		addActivity: 'Add an activity',
 		delete: 'Delete this session',
+		confirmTitle: 'Delete this session?',
+		confirmBody: 'Every activity in it is deleted too. This cannot be undone.',
 		noActivities: 'No activities yet.',
 		addScoring: 'Add a scoring activity',
 		addTuning: 'Add a tuning activity'
@@ -98,7 +100,6 @@ export const en = {
 		runningTotalLong: 'Running total',
 		arrow: 'Arrow',
 		miss: 'M',
-		finishActivity: 'Finish activity',
 		tens: '10s',
 		xs: 'Xs',
 		average: 'Average per arrow',
@@ -113,10 +114,13 @@ export const en = {
 		plotHint: 'Press and drag to place the arrow, release to record it.',
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
-		roundComplete: 'Round complete.'
+		groupSize: 'Group size',
+		roundComplete: 'Round complete. Arrows can still be edited.'
 	},
 	activity: {
-		delete: 'Delete this activity'
+		delete: 'Delete this activity',
+		confirmTitle: 'Delete this activity?',
+		confirmBody: 'Its ends and arrows are deleted with it. This cannot be undone.'
 	},
 	weather: {
 		sun: 'Clear',
@@ -172,6 +176,18 @@ export const en = {
 	stats: {
 		title: 'Stats',
 		empty: 'Finish a round and its scores will appear here.',
+		overview: 'Overview',
+		totalArrows: 'Arrows shot',
+		volume: 'Arrows per month',
+		byRound: 'By round',
+		daysShot: 'Days shot',
+		roundsShot: 'Rounds',
+		completeRounds: '{n} finished',
+		perArrow: 'Per arrow',
+		noVolume: 'Nothing shot in the last year.',
+		byRoundHint: 'Every arrow counts here, finished round or not.',
+		perRoundTitle: 'Personal bests',
+		perRoundHint: 'Only rounds shot to the end are compared.',
 		personalBest: 'Personal best',
 		average: 'Average',
 		trend: 'Trend per arrow',

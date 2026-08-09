@@ -18,6 +18,7 @@
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import {
 		getActivity,
 		getSession,
@@ -29,7 +30,6 @@
 		recordEnd,
 		updateShot,
 		updateActivity,
-		finishActivity,
 		deleteActivity,
 		deleteLastEnd,
 		shotFromZone,
@@ -62,6 +62,7 @@
 	let observations = $state('');
 	let adjustment = $state('');
 	let saved = $state(false);
+	let confirmingDelete = $state(false);
 
 	let bow = $state<BowRow | null>(null);
 	let draft = $state<BowSettings>({});
@@ -156,11 +157,29 @@
 
 	const storedPlotted = $derived<Shot[]>(toShots(shownShots).filter((s) => s.x !== null));
 	const livePlotted = $derived<Shot[]>(toShots(pending).filter((s) => s.x !== null));
+
+	/**
+	 * While shooting, the end in progress stands out against the faded ones already entered. Once the
+	 * round is over there is no end in progress, so every arrow is drawn alike.
+	 */
+	const scoringNow = $derived(currentSlot !== null || editing !== null);
+	const faceShots = $derived(scoringNow ? livePlotted : storedPlotted);
+	const faceOther = $derived(scoringNow ? storedPlotted : []);
 	const metrics = $derived(groupMetrics([...storedPlotted, ...livePlotted]));
 
 	const openRow = $derived(openEnd !== null ? sheetRows[openEnd] : null);
 	const openRowShots = $derived<Shot[]>(
 		openRow ? toShots(openRow.shots).filter((s) => s.x !== null) : []
+	);
+	const openMetrics = $derived(groupMetrics(openRowShots));
+	/**
+	 * Group size in centimetres: face coordinates run to 1.0 at the edge, so a normalised distance is
+	 * half the face diameter. Reported as a real measurement because that is how archers compare groups.
+	 */
+	const openGroupCm = $derived(
+		openMetrics && openEnd !== null && slots[openEnd]
+			? (openMetrics.diameter * slots[openEnd].stage.faceSize) / 2
+			: null
 	);
 
 	/**
@@ -272,6 +291,16 @@
 		activity = await getActivity(activityId);
 	}
 
+	/** Retapping on the face moves the arrow and rescores it together, so the two cannot disagree. */
+	async function editModalPlot(x: number, y: number) {
+		const row = openRow;
+		if (!modalEditing || !row?.endId || !scoreSet) return;
+		await updateShot(modalEditing, row.endId, activityId, scoreAt(scoreSet, x, y), { x, y });
+		modalEditing = null;
+		stored = await loadRows();
+		activity = await getActivity(activityId);
+	}
+
 	function undo() {
 		pending = pending.slice(0, -1);
 	}
@@ -334,11 +363,6 @@
 		await linkResultingRevision(activityId, revisionId);
 		await updateActivity(activityId, { observations, adjustmentMade: adjustment });
 		applied = true;
-		await refresh();
-	}
-
-	async function finish() {
-		await finishActivity(activityId);
 		await refresh();
 	}
 
@@ -490,11 +514,20 @@
 			</p>
 		{/if}
 
-		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
 			<Icon name="trash" size={16} />
 			{$t('activity.delete')}
 		</button>
 	</div>
+{#if confirmingDelete}
+	<ConfirmDialog
+		title={$t('activity.confirmTitle')}
+		message={$t('activity.confirmBody')}
+		onconfirm={remove}
+		oncancel={() => (confirmingDelete = false)}
+	/>
+{/if}
+
 {:else if activity && round && scoreSet}
 	<div class="mx-auto flex w-full max-w-2xl flex-col">
 		<!-- A fixed height, not a minimum: the sheet must scroll so the keypad stays on screen. -->
@@ -528,7 +561,7 @@
 			<div
 				class="flex shrink-0 items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
 			>
-				<span class="w-5">{$t('score.endColumn')}</span>
+				<span class="w-6 shrink-0">{$t('score.endColumn')}</span>
 				<span class="flex-1">{$t('score.arrowsColumn')}</span>
 				<span class="w-8 text-right" title={$t('score.endTotalLong')}>
 					{$t('score.endTotalShort')}
@@ -543,7 +576,7 @@
 				{#each sheetRows as row, i (row.key)}
 					<div class="flex items-center gap-1 border-b border-line px-2 py-1">
 						<button
-							class="tabular w-5 shrink-0 text-left text-xs font-medium text-brand-text"
+							class="tabular w-6 shrink-0 text-left text-xs font-medium text-brand-text"
 							onclick={() => (openEnd = i)}
 							aria-label={$t('score.end', { n: i + 1 })}
 						>
@@ -587,7 +620,7 @@
 
 				{#if currentSlot}
 					<div class="flex items-center gap-1 bg-brand/5 px-2 py-1">
-						<span class="tabular w-5 text-xs font-bold text-brand-text">{sheetRows.length + 1}</span>
+						<span class="tabular w-6 shrink-0 text-xs font-bold text-brand-text">{sheetRows.length + 1}</span>
 						<div class="flex flex-1 gap-0.5">
 							{#each Array(currentSlot.arrows) as _, i (i)}
 								{#if pending[i]}
@@ -625,7 +658,8 @@
 				</p>
 			{/if}
 
-			{#if currentSlot || editing}
+			<!-- Kept on screen after the last arrow, so the face stays available for review and edits. -->
+			{#if currentSlot || editing || complete}
 				<div class="mb-2 flex gap-2">
 					<button
 						class="rounded-lg border px-3 py-1.5 text-sm font-medium
@@ -647,9 +681,9 @@
 					>
 						<TargetFace
 							{scoreSet}
-							shots={livePlotted}
-							otherShots={storedPlotted}
-							interactive
+							shots={faceShots}
+							otherShots={faceOther}
+							interactive={scoringNow}
 							showOtherToggle
 							showCentreToggle
 							onplot={plot}
@@ -657,7 +691,7 @@
 					</div>
 					<p class="mt-2 text-center text-xs text-muted">{$t('score.plotHint')}</p>
 				{:else}
-					<div class="grid grid-cols-4 gap-2">
+					<div class="grid grid-cols-4 gap-2 {scoringNow ? '' : 'opacity-40'}">
 						{#each keypad as zone (zone.label)}
 							<button
 								class="tabular rounded-lg py-3 text-lg font-bold"
@@ -703,17 +737,7 @@
 
 		<div class="space-y-3 p-4 pt-0">
 		{#if complete}
-			<div class="space-y-2">
-				<p class="text-sm text-muted">{$t('score.roundComplete')}</p>
-				{#if activity.status !== 'complete'}
-					<button
-						class="w-full rounded-lg bg-brand py-3 font-semibold text-brand-ink"
-						onclick={finish}
-					>
-						{$t('score.finishActivity')}
-					</button>
-				{/if}
-			</div>
+			<p class="text-sm text-muted">{$t('score.roundComplete')}</p>
 		{/if}
 
 		{#if metrics}
@@ -743,7 +767,7 @@
 			{shownXs}
 		</p>
 
-		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
 			<Icon name="trash" size={16} />
 			{$t('activity.delete')}
 		</button>
@@ -821,9 +845,16 @@
 							<dd class="tabular text-xl font-bold">{runningTotals[openEnd ?? 0]}</dd>
 						</div>
 					</dl>
+
+					{#if openGroupCm !== null}
+						<p class="mb-3 text-sm text-muted">
+							{$t('score.groupSize')}:
+							<strong class="tabular text-ink">{openGroupCm.toFixed(1)} cm</strong>
+						</p>
+					{/if}
 				{/if}
 
-				{#if openRowShots.length > 0}
+				{#if openRowShots.length > 0 || modalEditing}
 					<div class="mx-auto aspect-square w-full max-w-64 rounded-xl border border-line p-2">
 						<!-- Only this end's arrows, with their centre and spread on by default. -->
 						<TargetFace
@@ -832,14 +863,28 @@
 							showCentreToggle
 							showCentreDefault
 							showPerimeter
+							interactive={modalEditing !== null}
+							onplot={editModalPlot}
 						/>
 					</div>
+					{#if modalEditing}
+						<p class="mt-2 text-center text-xs text-muted">{$t('score.plotHint')}</p>
+					{/if}
 				{:else}
 					<p class="text-center text-sm text-muted">{$t('score.noPlots')}</p>
 				{/if}
 			</div>
 		</div>
 	{/if}
+{#if confirmingDelete}
+	<ConfirmDialog
+		title={$t('activity.confirmTitle')}
+		message={$t('activity.confirmBody')}
+		onconfirm={remove}
+		oncancel={() => (confirmingDelete = false)}
+	/>
+{/if}
+
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
 {/if}

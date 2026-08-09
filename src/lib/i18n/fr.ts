@@ -59,6 +59,8 @@ export const fr: Dictionary = {
 		unknownPlace: 'Lieu enregistré',
 		addActivity: 'Ajouter une activité',
 		delete: 'Supprimer cette séance',
+		confirmTitle: 'Supprimer cette séance ?',
+		confirmBody: 'Toutes ses activités sont supprimées également. Action irréversible.',
 		noActivities: 'Aucune activité.',
 		addScoring: 'Ajouter une activité de score',
 		addTuning: 'Ajouter une activité de réglage'
@@ -91,7 +93,7 @@ export const fr: Dictionary = {
 	score: {
 		end: 'Volée {n}',
 		endOf: 'Volée {n} sur {total}',
-		endColumn: 'Volée',
+		endColumn: 'Vol.',
 		arrowsColumn: 'Flèches',
 		endTotalShort: 'T/V',
 		endTotalLong: 'Total de la volée',
@@ -99,7 +101,6 @@ export const fr: Dictionary = {
 		runningTotalLong: 'Total cumulé',
 		arrow: 'Flèche',
 		miss: 'M',
-		finishActivity: "Terminer l'activité",
 		tens: '10',
 		xs: 'X',
 		average: 'Moyenne par flèche',
@@ -114,10 +115,13 @@ export const fr: Dictionary = {
 		plotHint: 'Maintenez et déplacez pour placer la flèche, relâchez pour valider.',
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
-		roundComplete: 'Tir terminé.'
+		groupSize: 'Taille du groupement',
+		roundComplete: 'Tir terminé. Les flèches restent modifiables.'
 	},
 	activity: {
-		delete: 'Supprimer cette activité'
+		delete: 'Supprimer cette activité',
+		confirmTitle: 'Supprimer cette activité ?',
+		confirmBody: 'Ses volées et ses flèches sont supprimées avec elle. Action irréversible.'
 	},
 	weather: {
 		sun: 'Dégagé',
@@ -173,6 +177,18 @@ export const fr: Dictionary = {
 	stats: {
 		title: 'Statistiques',
 		empty: 'Terminez un tir et vos scores apparaîtront ici.',
+		overview: "Vue d'ensemble",
+		totalArrows: 'Flèches tirées',
+		volume: 'Flèches par mois',
+		byRound: 'Par tir',
+		daysShot: 'Jours de tir',
+		roundsShot: 'Tirs',
+		completeRounds: '{n} terminés',
+		perArrow: 'Par flèche',
+		noVolume: "Rien de tiré sur les douze derniers mois.",
+		byRoundHint: 'Toutes les flèches comptent ici, tir terminé ou non.',
+		perRoundTitle: 'Records personnels',
+		perRoundHint: 'Seuls les tirs menés à leur terme sont comparés.',
 		personalBest: 'Record personnel',
 		average: 'Moyenne',
 		trend: 'Tendance par flèche',
