@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # Runs the target face detector over a picture and reports what it found.
 #
-#   ./scripts/detect_arrows.sh photo.jpg
-#   ./scripts/detect_arrows.sh photo.jpg -o overlay.png
-#   ./scripts/detect_arrows.sh photo.png --json
+#   ./scripts/arrow_detector.sh photo.jpg
+#   ./scripts/arrow_detector.sh photo.jpg -o overlay.png
+#   ./scripts/arrow_detector.sh photo.png --json
 #
 # Any format the browser can decode works: png, jpg, webp, gif, bmp, avif.
 #
@@ -15,7 +15,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-	echo "usage: $(basename "$0") <image> [-o overlay.png] [--json] [--scale 4]" >&2
+	echo "usage: $(basename "$0") <image> [-o overlay.png] [--json] [--scale 2]" >&2
 	exit 2
 fi
 
@@ -37,4 +37,4 @@ if [[ -z "$CHROMIUM" ]]; then
 	exit 1
 fi
 
-CHROMIUM="$CHROMIUM" exec node scripts/detect_arrows.mjs "$@"
+CHROMIUM="$CHROMIUM" exec node scripts/arrow_detector.mjs "$@"

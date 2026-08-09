@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Runs the target detector over one image and prints what it found. Driven by detect_arrows.sh,
+ * Runs the target detector over one image and prints what it found. Driven by arrow_detector.sh,
  * which is the interface worth using; this half exists because decoding and re-encoding pictures is
  * the browser's job, and the detector itself is browser free.
  */
@@ -17,7 +17,7 @@ const json = args.includes('--json');
 const scale = Number(args[args.indexOf('--scale') + 1]) || 4;
 
 if (!input) {
-	console.error('usage: detect_arrows.sh <image> [-o overlay.png] [--json] [--scale 4]');
+	console.error('usage: arrow_detector.sh <image> [-o overlay.png] [--json] [--scale 4]');
 	process.exit(2);
 }
 
