@@ -1,5 +1,6 @@
 import { downscale } from './pixels';
 import { detectFaces, toFaceCoords } from './face';
+import { refineFace } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { Background, findBlobs } from './impacts';
 import { ImpactTracker } from './tracker';
@@ -73,8 +74,40 @@ export class Scanner {
 		return this.faces;
 	}
 
+	/**
+	 * Feeds a frame at its native size, reducing it here. Convenient, and what the tests use; a caller
+	 * with a canvas to hand should reduce it there instead and use the reduced form below, because
+	 * scaling an image is the one part of this the GPU does far better than a loop over pixels.
+	 */
 	push(frame: Frame): ScanResult {
-		const small = downscale(frame, this.scale);
+		return this.pushReduced(downscale(frame, this.scale));
+	}
+
+	/**
+	 * Follows the faces already found, without looking for new ones or for arrows.
+	 *
+	 * Detection is far too slow to run on every frame, but the overlay has to keep up with the camera
+	 * or it visibly lags behind what the archer is pointing at. Fitting a face that is already almost
+	 * right is cheap, a few hundred pixel reads, so the geometry can move every frame while the search
+	 * for new faces and new arrows runs a few times a second.
+	 */
+	track(small: Frame): FaceLocation[] {
+		if (this.faces.length === 0) return this.faces;
+
+		const followed = this.faces.map((face) => refineFace(small, face));
+		// A face that is moving is a camera being carried, and arrows must not be taken while it is.
+		const shifted = followed.some((face, i) => {
+			const before = this.faces[i];
+			return Math.hypot(face.cx - before.cx, face.cy - before.cy) > before.semiMajor * 0.02;
+		});
+		if (shifted) this.settled = 0;
+
+		this.faces = followed;
+		return this.faces;
+	}
+
+	/** The same as `push`, for a frame the caller has already reduced to `scaleFactor`. */
+	pushReduced(small: Frame): ScanResult {
 
 		if (this.frames % this.faceEvery === 0 || this.faces.length === 0) {
 			const candidates = detectFaces(small);
@@ -164,7 +197,11 @@ export class Scanner {
 
 	/** Called once an end is taken off the sheet, so the arrows now in the boss become the new normal. */
 	accept(frame: Frame) {
-		this.background.reset(downscale(frame, this.scale));
+		this.acceptReduced(downscale(frame, this.scale));
+	}
+
+	acceptReduced(small: Frame) {
+		this.background.reset(small);
 		this.tracker.clear();
 	}
 

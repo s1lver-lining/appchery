@@ -96,28 +96,51 @@
 	}
 	onDestroy(stop);
 
-	function tick() {
-		raf = requestAnimationFrame(tick);
-		if (!video || video.readyState < 2 || !overlay) return;
+	/**
+	 * How often the full search for faces and arrows runs. Everything in between follows the geometry
+	 * already found, which is cheap, so the overlay tracks the camera at the display's own rate instead
+	 * of waiting for a detection to finish. Detection three times a second is far more often than an
+	 * arrow arrives.
+	 */
+	const DETECT_EVERY_MS = 300;
+	let lastDetection = 0;
 
-		const width = video.videoWidth;
-		const height = video.videoHeight;
-		if (width === 0) return;
+	/** The frame reduced for detection, scaled by the canvas rather than by a loop over every pixel. */
+	function reduce(): { width: number; height: number; data: Uint8ClampedArray } | null {
+		if (!video) return null;
+		const scale = scanner.scaleFactor;
+		const width = Math.floor(video.videoWidth / scale);
+		const height = Math.floor(video.videoHeight / scale);
+		if (width === 0 || height === 0) return null;
 
 		work.width = width;
 		work.height = height;
 		const context = work.getContext('2d', { willReadFrequently: true });
-		if (!context) return;
+		if (!context) return null;
+		// Drawing straight to the smaller canvas hands the scaling to the GPU, which is most of the win.
 		context.drawImage(video, 0, 0, width, height);
-		const image = context.getImageData(0, 0, width, height);
+		return { width, height, data: context.getImageData(0, 0, width, height).data };
+	}
 
-		const result = scanner.push({ width, height, data: image.data });
-		faces = result.faces;
-		steady = result.steady;
-		found = result.arrows;
-		pending = result.pending.length;
+	function tick(now: number) {
+		raf = requestAnimationFrame(tick);
+		if (!video || video.readyState < 2 || !overlay) return;
 
-		draw(result.faces, result.arrows, overlay, width, height);
+		const small = reduce();
+		if (!small) return;
+
+		if (now - lastDetection >= DETECT_EVERY_MS) {
+			lastDetection = now;
+			const result = scanner.pushReduced(small);
+			faces = result.faces;
+			steady = result.steady;
+			found = result.arrows;
+			pending = result.pending.length;
+		} else {
+			faces = scanner.track(small);
+		}
+
+		draw(faces, found, overlay, video.videoWidth, video.videoHeight);
 	}
 
 	/** The overlay is drawn in the small image's pixels, so every coordinate scales back up. */
