@@ -264,10 +264,16 @@
 
 	<div class="relative flex-1 overflow-hidden">
 		<!-- svelte-ignore a11y_media_has_caption -->
-		<video bind:this={video} class="h-full w-full object-contain" playsinline muted></video>
+		<!--
+			Cover rather than contain: letterboxing wasted the sides of the screen, and the edges of the
+			frame are the least interesting part of a picture pointed at a target. The canvas carries the
+			video's own pixel dimensions and the same object fit, so the two crop identically and the
+			overlay stays on the rings.
+		-->
+		<video bind:this={video} class="h-full w-full object-cover" playsinline muted></video>
 		<canvas
 			bind:this={overlay}
-			class="pointer-events-none absolute inset-0 h-full w-full object-contain"
+			class="pointer-events-none absolute inset-0 h-full w-full object-cover"
 		></canvas>
 
 		{#if starting}
@@ -336,14 +342,14 @@
 	</div>
 
 
-	<div class="safe-bottom space-y-3 bg-surface p-4">
+	<div class="safe-bottom space-y-2 bg-surface px-4 py-3">
 		<!--
 			The arrow area keeps its height whether or not anything has been found. Letting it collapse made
 			the buttons jump every time a detection came and went, which on a hand held phone is constantly.
-			Six pills to a row, matching the longest common end, so a full end reads as one line, and it
-			scrolls rather than growing, because a bad frame must never push the buttons off the screen.
+			One row's worth, because six pills to a row already covers the longest common end, and anything
+			past that scrolls: this panel is stealing height from the camera, which is what matters here.
 		-->
-		<div class="h-28 overflow-y-auto">
+		<div class="h-11 overflow-y-auto">
 			{#if found.length === 0}
 				<p class="flex h-full items-center justify-center text-center text-sm text-muted">
 					{faces.length === 0
@@ -383,11 +389,11 @@
 		</p>
 
 		<div class="flex gap-2">
-			<button class="flex-1 rounded-lg border border-line py-3 text-sm font-medium" onclick={onclose}>
+			<button class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium" onclick={onclose}>
 				{$t('common.cancel')}
 			</button>
 			<button
-				class="flex-[2] rounded-lg bg-brand py-3 font-semibold text-brand-ink disabled:opacity-40"
+				class="flex-[2] rounded-lg bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-40"
 				disabled={kept.length === 0}
 				onclick={accept}
 			>
