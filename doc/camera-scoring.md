@@ -362,8 +362,12 @@ were placed by colour anomaly, which put its best candidates on the numbers prin
 
 Where the last rounds of work went is itself informative: they traded recall for precision rather than
 adding either, which is what a hand written rule set looks like when it runs out of road. `bridge` is
-the knob that sets that trade. A plan for a learned detector on the arrow stage, keeping this one
-alongside it, is in [arrow-detection-ml.md](arrow-detection-ml.md).
+the knob that sets that trade.
+
+There is now a second detector, learned rather than written, which roughly doubles this end to end and
+can be chosen in settings. Both are kept, and both are measured through the same harness on the same
+photographs: see [detector-comparison.md](detector-comparison.md) for the numbers and
+[arrow-detection-ml.md](arrow-detection-ml.md) for the plan they came from.
 
 ## Testing it
 

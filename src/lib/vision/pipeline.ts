@@ -3,7 +3,7 @@ import { detectFaces, toFaceCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { Background, findBlobs } from './impacts';
-import { detectArrowsLearned, type ArrowModel } from './learned';
+import { detectArrowsLearned, detectArrowsInCrop, type ArrowModel } from './learned';
 import { ImpactTracker } from './tracker';
 import type { Frame, FaceLocation, Impact } from './types';
 
@@ -40,6 +40,13 @@ export interface ScannerOptions {
 	 * across frames before they count, because a model is as capable of a confident mistake as a rule is.
 	 */
 	model?: ArrowModel | null;
+	/**
+	 * Supplies the learned detector with a rectified crop of a face, cut from the full resolution
+	 * source. Optional, and worth providing: without it the model is fed the reduced frame that face
+	 * detection runs on, which is blurrier than the crops it was trained on. A canvas does the cutting
+	 * and the rotation on the GPU, so this costs the caller almost nothing.
+	 */
+	crop?: ((face: FaceLocation, size: number, span: number) => Frame | null) | null;
 }
 
 /**
@@ -64,6 +71,7 @@ export class Scanner {
 	private readonly framesToSettle: number;
 	private maxArrows: number;
 	private model: ArrowModel | null;
+	private readonly crop: ScannerOptions['crop'];
 
 	constructor(options: ScannerOptions = {}) {
 		this.scale = options.scale ?? 4;
@@ -72,6 +80,7 @@ export class Scanner {
 		this.framesToSettle = options.framesToSettle ?? 8;
 		this.maxArrows = options.maxArrows ?? 12;
 		this.model = options.model ?? null;
+		this.crop = options.crop ?? null;
 		this.tracker = new ImpactTracker(options.framesToConfirm ?? 4);
 	}
 
@@ -173,15 +182,20 @@ export class Scanner {
 		};
 
 		const detections = this.model
-			? faces.flatMap((face, index) =>
-					detectArrowsLearned(small, face, this.model as ArrowModel).map((arrow) => ({
+			? faces.flatMap((face, index) => {
+					const model = this.model as ArrowModel;
+					const crop = this.crop?.(face, model.size, model.span) ?? null;
+					const arrows = crop
+						? detectArrowsInCrop(crop, face, model)
+						: detectArrowsLearned(small, face, model);
+					return arrows.map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
 						// No blob to measure, so confidence stands in where the UI wants a size.
 						area: Math.round(arrow.confidence * 100),
 						face: index
-					}))
-				)
+					}));
+				})
 			: findBlobs(diff, small.width, small.height, {
 					threshold: this.threshold,
 					// Anything off every face is a person, a stand, or the wind in the grass.

@@ -75,7 +75,17 @@ function rectify(frame: Frame, face: FaceLocation, size: number, span: number): 
 			const x = Math.round(face.cx + px * cos - py * sin);
 			const y = Math.round(face.cy + px * sin + py * cos);
 			const at = j * size + i;
-			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
+			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) {
+				/**
+				 * Off the edge of the picture reads as black, because that is what the training crops
+				 * hold there. Leaving it at zero instead put mid grey outside the frame, a colour the
+				 * model never saw at the edges of anything it learnt from.
+				 */
+				data[at] = -1;
+				data[plane + at] = -1;
+				data[2 * plane + at] = -1;
+				continue;
+			}
 
 			const p = (y * frame.width + x) * 4;
 			// Scaled to the range the network was trained on.
@@ -137,7 +147,41 @@ export function detectArrowsLearned(
 	model: ArrowModel,
 	threshold = model.threshold
 ): LearnedArrow[] {
-	let tensor = rectify(frame, face, model.size, model.span);
+	return run(rectify(frame, face, model.size, model.span), face, model, threshold);
+}
+
+/**
+ * The same, for a crop somebody else has already cut and rectified.
+ *
+ * The live camera path uses this. Detection runs on a reduced frame for speed, but the model was
+ * trained on crops taken from photographs at full resolution, and handing it the reduced frame instead
+ * shows it a blurrier picture than anything it has ever seen. A canvas can cut and rectify the crop
+ * from the full resolution video on the GPU for almost nothing, which keeps the two the same.
+ */
+export function detectArrowsInCrop(
+	crop: Frame,
+	face: FaceLocation,
+	model: ArrowModel,
+	threshold = model.threshold
+): LearnedArrow[] {
+	const plane = crop.width * crop.height;
+	const data = new Float32Array(3 * plane);
+	for (let i = 0; i < plane; i++) {
+		const p = i * 4;
+		data[i] = (crop.data[p] / 255) * 2 - 1;
+		data[plane + i] = (crop.data[p + 1] / 255) * 2 - 1;
+		data[2 * plane + i] = (crop.data[p + 2] / 255) * 2 - 1;
+	}
+	return run({ channels: 3, width: crop.width, height: crop.height, data }, face, model, threshold);
+}
+
+function run(
+	input: Tensor,
+	face: FaceLocation,
+	model: ArrowModel,
+	threshold: number
+): LearnedArrow[] {
+	let tensor = input;
 	for (const layer of model.layers) tensor = convolve(tensor, layer);
 
 	const { width, height, data } = tensor;
@@ -177,6 +221,11 @@ export function detectArrowsLearned(
 	}
 
 	return found.sort((a, b) => b.confidence - a.confidence);
+}
+
+/** Exported so the canvas crop the camera cuts can be checked against the sampler training used. */
+export function rectifyForTest(frame: Frame, face: FaceLocation, size: number, span: number) {
+	return rectify(frame, face, size, span).data;
 }
 
 /** Exported for the preparation script, so training crops and app crops are made the same way. */

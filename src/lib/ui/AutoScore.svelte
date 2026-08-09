@@ -56,7 +56,7 @@
 		import('$lib/vision/arrow-model.json')
 			.then((module) => {
 				if (cancelled) return;
-				scanner = new Scanner({ model: (module.default ?? module) as never });
+				scanner = new Scanner({ model: (module.default ?? module) as never, crop });
 				scanner.setLimit(remaining);
 			})
 			.catch(() => {
@@ -181,6 +181,43 @@
 	 */
 	const DETECT_EVERY_MS = 300;
 	let lastDetection = 0;
+
+	const cropCanvas = document.createElement('canvas');
+
+	/**
+	 * Cuts a rectified square of one face out of the video at full resolution.
+	 *
+	 * The model was trained on crops taken from photographs, not from the reduced frame detection runs
+	 * on, and the difference is visible: a shaft two pixels wide in the reduced frame is most of what
+	 * there is to see. A canvas transform does the rotation, the scaling and the crop in one go on the
+	 * GPU, and only the finished square is ever read back, so the whole thing costs a 128 by 128 read.
+	 */
+	function crop(face: FaceLocation, size: number, span: number) {
+		if (!video) return null;
+		cropCanvas.width = size;
+		cropCanvas.height = size;
+		const context = cropCanvas.getContext('2d', { willReadFrequently: true });
+		if (!context) return null;
+
+		// Nearest neighbour, because that is how the training crops were sampled. Left smooth, the model
+		// is shown a cleaner picture than it learnt on, which is a difference it cannot know about.
+		context.imageSmoothingEnabled = false;
+
+		// The face is measured on the reduced frame, so its geometry scales back up to video pixels.
+		const factor = scanner.scaleFactor;
+		const step = (2 * span) / size;
+
+		context.save();
+		context.translate(size / 2, size / 2);
+		context.scale(1 / (face.semiMajor * factor * step), 1 / (face.semiMinor * factor * step));
+		context.rotate(-face.rotation);
+		context.translate(-face.cx * factor, -face.cy * factor);
+		context.drawImage(video, 0, 0);
+		context.restore();
+
+		const pixels = context.getImageData(0, 0, size, size);
+		return { width: size, height: size, data: pixels.data };
+	}
 
 	/** The frame reduced for detection, scaled by the canvas rather than by a loop over every pixel. */
 	function reduce(): { width: number; height: number; data: Uint8ClampedArray } | null {

@@ -237,7 +237,8 @@ def export(model, span, threshold):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--epochs", type=int, default=120)
-    parser.add_argument("--threshold", type=float, default=0.3)
+    # 0.4 is where the sweep below balances: recall and precision cross at about three quarters each.
+    parser.add_argument("--threshold", type=float, default=0.4)
     parser.add_argument("--seed", type=int, default=7)
     args = parser.parse_args()
 
