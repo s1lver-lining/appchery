@@ -28,7 +28,11 @@ export const dateFormats = derived([locale, use24Hour], ([$locale, $use24]) => {
 	};
 
 	return {
-		dateTime: on({ dateStyle: 'medium', ...clock }),
+		/**
+		 * Spelled out rather than using dateStyle: Intl rejects dateStyle combined with hour and
+		 * minute, and the combination throws only when a date is actually formatted.
+		 */
+		dateTime: on({ day: 'numeric', month: 'short', year: 'numeric', ...clock }),
 		/** The weekday matters in a list: a Sunday reads differently from a Tuesday. */
 		dayDateTime: on({ weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', ...clock }),
 		time: on(clock),
