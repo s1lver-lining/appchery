@@ -219,6 +219,7 @@ export const en = {
 	},
 	auto: {
 		title: 'Auto score',
+		starting: 'Waking the camera up.',
 		open: 'Auto score',
 		hint: 'Detected arrows are proposals. Tap one to drop it, then keep the rest.',
 		aiming: 'Point the camera at the target so the gold is in frame.',

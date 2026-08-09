@@ -220,6 +220,7 @@ export const fr: Dictionary = {
 	},
 	auto: {
 		title: 'Score auto',
+		starting: "Démarrage de la caméra.",
 		open: 'Score auto',
 		hint: 'Les flèches détectées sont des propositions. Touchez-en une pour la retirer, puis gardez le reste.',
 		aiming: "Visez la cible avec la caméra pour que le jaune soit dans le cadre.",

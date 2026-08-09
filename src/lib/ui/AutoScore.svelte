@@ -230,7 +230,45 @@
 		></canvas>
 
 		{#if starting}
-			<p class="absolute inset-0 grid place-items-center text-white">{$t('common.loading')}</p>
+			<!--
+				The camera takes a moment to come up, and until it does the video element is an empty grey
+				rectangle. Rather than label that, the wait is drawn as the thing being waited for: a face,
+				with its rings sweeping into place.
+			-->
+			<div class="absolute inset-0 grid place-items-center bg-black">
+				<div class="flex flex-col items-center gap-5">
+					<svg viewBox="0 0 100 100" class="h-24 w-24" aria-hidden="true">
+						<g fill="none" stroke-linecap="round">
+							<circle cx="50" cy="50" r="44" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" />
+							<circle cx="50" cy="50" r="32" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" />
+							<circle cx="50" cy="50" r="20" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" />
+							<!-- Three arcs on the ring radii, each sweeping at its own rate. -->
+							<circle
+								class="sweep"
+								cx="50" cy="50" r="44"
+								stroke="var(--c-brand)" stroke-width="4"
+								stroke-dasharray="60 217" style="animation-duration: 2.4s"
+							/>
+							<circle
+								class="sweep"
+								cx="50" cy="50" r="32"
+								stroke="var(--c-brand)" stroke-width="4" stroke-opacity="0.75"
+								stroke-dasharray="40 161" style="animation-duration: 1.8s; animation-direction: reverse"
+							/>
+							<circle
+								class="sweep"
+								cx="50" cy="50" r="20"
+								stroke="#f7e03c" stroke-width="4"
+								stroke-dasharray="26 100" style="animation-duration: 1.2s"
+							/>
+							<circle cx="50" cy="50" r="6" fill="#f7e03c" stroke="none" class="pulse" />
+						</g>
+					</svg>
+					<p class="text-sm text-white/70">{$t('auto.starting')}</p>
+				</div>
+
+			</div>
+
 		{:else if error}
 			<p class="absolute inset-x-4 top-4 rounded-lg bg-danger/90 p-3 text-sm text-white">{error}</p>
 		{:else if faces.length === 0}
@@ -305,3 +343,38 @@
 	</div>
 
 </div>
+
+<style>
+	.sweep {
+		transform-origin: 50% 50%;
+		animation-name: sweep;
+		animation-timing-function: cubic-bezier(0.5, 0, 0.5, 1);
+		animation-iteration-count: infinite;
+	}
+
+	.pulse {
+		transform-origin: 50% 50%;
+		animation: pulse 1.6s ease-in-out infinite;
+	}
+
+	@keyframes sweep {
+		to {
+			transform: rotate(1turn);
+		}
+	}
+
+	@keyframes pulse {
+		50% {
+			transform: scale(1.35);
+			opacity: 0.65;
+		}
+	}
+
+	/* A steady target for anyone who would rather the screen held still. */
+	@media (prefers-reduced-motion: reduce) {
+		.sweep,
+		.pulse {
+			animation: none;
+		}
+	}
+</style>
