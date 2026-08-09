@@ -45,7 +45,8 @@
 	const recent = $derived(sessions.slice(0, 3));
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
+<div class="flex min-h-full flex-col">
+<div class="safe-top mx-auto w-full max-w-2xl flex-1 space-y-4 p-4 pt-6">
 	<header class="mt-2">
 		<p class="text-sm text-muted">{$t('home.greeting')}</p>
 		<h1 class="text-2xl font-bold tracking-tight">{$t('home.title')}</h1>
@@ -107,4 +108,5 @@
 		<Icon name="plus" size={20} />
 		{$t('sessions.new')}
 	</button>
+</div>
 </div>

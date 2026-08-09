@@ -3,7 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { listSessions, listAllActivities, createSession } from '$lib/db/repository';
 	import { groupByWeek, monthGrid, startOfDay } from '$lib/domain/dates';
-	import { defaultBowId, formatTime } from '$lib/prefs';
+	import { defaultBowId, formatTime, dateFormats } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
@@ -69,19 +69,16 @@
 
 	const today = startOfDay(Date.now());
 
-	const shortDay = (at: number) =>
-		new Date(at).toLocaleDateString(undefined, { weekday: 'short' }).replace('.', '') + '.';
+	const shortDay = $derived((at: number) => $dateFormats.weekdayShort(at).replace(/\.$/, '') + '.');
 	const dayNumber = (at: number) => new Date(at).getDate();
-	const shortDate = (at: number) =>
-		new Date(at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
-	const monthTitle = (date: Date) =>
-		date.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+	const shortDate = $derived((at: number) => $dateFormats.shortDate(at));
+	const monthTitle = $derived((date: Date) => $dateFormats.monthYear(date.getTime()));
 
 	/** Weekday initials in the locale's order, Monday first to match the grid. */
 	const weekdayHeads = $derived(
 		monthGrid(2024, 0)
 			.slice(0, 7)
-			.map((d) => new Date(d.at).toLocaleDateString(undefined, { weekday: 'narrow' }))
+			.map((d) => $dateFormats.weekdayNarrow(d.at))
 	);
 
 	const TABS = $derived([
@@ -90,7 +87,8 @@
 	]);
 </script>
 
-<div class="safe-top mx-auto flex w-full max-w-2xl flex-col p-4 pt-6">
+<div class="flex min-h-full flex-col">
+<div class="safe-top mx-auto flex w-full max-w-2xl flex-1 flex-col p-4 pt-6">
 	<h1 class="mt-2 mb-3 text-2xl font-bold tracking-tight">{$t('sessions.title')}</h1>
 
 	<nav class="mb-4 flex gap-1 rounded-lg bg-sunk p-1">
@@ -123,10 +121,18 @@
 
 					<ul class="space-y-2">
 						{#each group.items as s (s.id)}
-							<li class="flex items-stretch gap-3">
-								<div class="w-9 shrink-0 pt-1 text-center">
+							<li class="flex items-center gap-3">
+								<div class="w-9 shrink-0 text-center">
 									<p class="text-[11px] leading-none text-muted">{shortDay(s.startedAt)}</p>
-									<p class="tabular text-lg leading-tight font-bold">{dayNumber(s.startedAt)}</p>
+									<!-- Today wears a filled pill, so the current day is findable without reading dates. -->
+									<p
+										class="tabular mt-0.5 text-lg leading-none font-bold
+											{startOfDay(s.startedAt) === today
+											? 'mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-brand text-brand-ink'
+											: ''}"
+									>
+										{dayNumber(s.startedAt)}
+									</p>
 								</div>
 								<a
 									href="/sessions/{s.id}"
@@ -241,4 +247,5 @@
 		<Icon name="plus" size={20} />
 		{$t('sessions.new')}
 	</button>
+</div>
 </div>

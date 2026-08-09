@@ -1,4 +1,5 @@
 import { derived, writable } from 'svelte/store';
+import { locale } from './i18n';
 
 const DEFAULT_BOW_KEY = 'appchery.defaultBowId';
 
@@ -15,31 +16,34 @@ function flag(key: string, initial = false) {
 /** Clock format is a display preference, so stored timestamps never change with it. */
 export const use24Hour = flag('appchery.use24Hour', true);
 
-/** Formatters follow the preference, so every timestamp in the app reads the same way. */
-export const formatDateTime = derived(use24Hour, ($use24) => (value: number) =>
-	new Date(value).toLocaleString(undefined, {
-		dateStyle: 'medium',
-		timeStyle: 'short',
-		hour12: !$use24
-	})
-);
+/**
+ * Dates follow the language chosen in the app, not the one the browser happens to be set to. An
+ * English speaking archer on a French phone was reading "lundi" in an otherwise English interface.
+ */
+export const dateFormats = derived([locale, use24Hour], ([$locale, $use24]) => {
+	const clock: Intl.DateTimeFormatOptions = { hour: 'numeric', minute: '2-digit', hour12: !$use24 };
+	const on = (options: Intl.DateTimeFormatOptions) => {
+		const formatter = new Intl.DateTimeFormat($locale, options);
+		return (value: number) => formatter.format(value);
+	};
 
-/** The weekday matters in a list: shooting on a Sunday reads differently from shooting on a Tuesday. */
-export const formatDayDateTime = derived(use24Hour, ($use24) => (value: number) =>
-	new Date(value).toLocaleString(undefined, {
-		weekday: 'short',
-		day: 'numeric',
-		month: 'short',
-		year: 'numeric',
-		hour: 'numeric',
-		minute: '2-digit',
-		hour12: !$use24
-	})
-);
+	return {
+		dateTime: on({ dateStyle: 'medium', ...clock }),
+		/** The weekday matters in a list: a Sunday reads differently from a Tuesday. */
+		dayDateTime: on({ weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', ...clock }),
+		time: on(clock),
+		date: on({ dateStyle: 'medium' }),
+		shortDate: on({ day: 'numeric', month: 'short' }),
+		weekdayShort: on({ weekday: 'short' }),
+		weekdayNarrow: on({ weekday: 'narrow' }),
+		monthNarrow: on({ month: 'narrow' }),
+		monthYear: on({ month: 'long', year: 'numeric' })
+	};
+});
 
-export const formatTime = derived(use24Hour, ($use24) => (value: number) =>
-	new Date(value).toLocaleTimeString(undefined, { timeStyle: 'short', hour12: !$use24 })
-);
+export const formatDateTime = derived(dateFormats, ($f) => $f.dateTime);
+export const formatDayDateTime = derived(dateFormats, ($f) => $f.dayDateTime);
+export const formatTime = derived(dateFormats, ($f) => $f.time);
 
 function storedString(key: string) {
 	const store = writable<string | null>(

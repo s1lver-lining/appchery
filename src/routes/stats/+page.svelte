@@ -10,6 +10,7 @@
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { dateFormats } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
 	let range = $state<StatsRange>('all');
@@ -68,19 +69,13 @@
 	const peakMonth = $derived(Math.max(1, ...totals.byMonth.map((m) => m.arrows)));
 	const topRoundArrows = $derived(Math.max(1, ...totals.byRound.map((r) => r.arrows)));
 
-	/** Month labels come from the locale, so the chart reads the same way as every other date. */
-	function monthLabel(month: string): string {
+	/** Month labels follow the app language, so the chart reads the same way as every other date. */
+	const firstOfMonth = (month: string) => {
 		const [year, index] = month.split('-').map(Number);
-		return new Date(year, index - 1, 1).toLocaleDateString(undefined, { month: 'narrow' });
-	}
-
-	function monthTitle(month: string): string {
-		const [year, index] = month.split('-').map(Number);
-		return new Date(year, index - 1, 1).toLocaleDateString(undefined, {
-			month: 'long',
-			year: 'numeric'
-		});
-	}
+		return new Date(year, index - 1, 1).getTime();
+	};
+	const monthLabel = $derived((month: string) => $dateFormats.monthNarrow(firstOfMonth(month)));
+	const monthTitle = $derived((month: string) => $dateFormats.monthYear(firstOfMonth(month)));
 </script>
 
 <div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
@@ -208,7 +203,7 @@
 				{/if}
 
 				<p class="mt-2 text-xs text-muted">
-					{$t('stats.bestOn', { date: new Date(summary.best.startedAt).toLocaleDateString() })}
+					{$t('stats.bestOn', { date: $dateFormats.date(summary.best.startedAt) })}
 					· {summary.best.count10s}
 					{$t('score.tens')} · {summary.best.countX}
 					{$t('score.xs')}

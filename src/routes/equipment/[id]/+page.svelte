@@ -11,7 +11,7 @@
 		type SettingField
 	} from '$lib/domain/equipment/schemas';
 	import { mmToInches, inchesToMm } from '$lib/domain/units';
-	import { defaultBowId } from '$lib/prefs';
+	import { defaultBowId, dateFormats } from '$lib/prefs';
 	import {
 		getBow,
 		updateBow,
@@ -192,7 +192,7 @@
 				{#if usage.lastUsedAt}
 					<p class="text-sm text-muted">
 						{$t('equipment.lastUsed', {
-							date: new Date(usage.lastUsedAt).toLocaleDateString()
+							date: $dateFormats.date(usage.lastUsedAt)
 						})}
 					</p>
 				{/if}
@@ -336,7 +336,7 @@
 						<div class="flex items-baseline justify-between">
 							<p class="font-semibold">{$t('equipment.revision', { n: revision.revisionNo })}</p>
 							<p class="text-xs text-muted">
-								{new Date(revision.effectiveFrom).toLocaleDateString()}
+								{$dateFormats.date(revision.effectiveFrom)}
 							</p>
 						</div>
 						{#if revision.reason}
