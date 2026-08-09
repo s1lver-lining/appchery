@@ -224,6 +224,11 @@ node scripts/eval-arrows.mjs --detector learned --split test
 
 # Measure someone else's weights the same way
 .venv-ml/bin/python scripts/eval-yolo.py --conf 0.5
+
+# Look at one picture through either detector, which is how disagreements get found
+./scripts/arrow_detector.sh photo.jpg -o classical.png
+./scripts/arrow_detector.sh photo.jpg --ml -o learned.png
+./scripts/arrow_detector.sh photo.jpg --ml --threshold 0.6
 ```
 
 The training environment lives in `.venv-ml` and is not part of the app. Neither are the cloned

@@ -3,6 +3,9 @@
  * Runs the target detector over one image and prints what it found. Driven by arrow_detector.sh,
  * which is the interface worth using; this half exists because decoding and re-encoding pictures is
  * the browser's job, and the detector itself is browser free.
+ *
+ * Either detector can be asked for. They answer in the same coordinates and are drawn the same way, so
+ * running one after the other over the same picture is the quickest way to see where they differ.
  */
 import { chromium } from 'playwright-core';
 import { build } from 'esbuild';
@@ -10,16 +13,35 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { extname, resolve, join } from 'node:path';
 
 const args = process.argv.slice(2);
-const input = args.find((a) => !a.startsWith('-'));
-const outIndex = args.findIndex((a) => a === '-o' || a === '--output');
-const output = outIndex === -1 ? null : args[outIndex + 1];
-const json = args.includes('--json');
-const tuneIndex = args.indexOf('--tune');
-const tune = tuneIndex === -1 ? {} : JSON.parse(args[tuneIndex + 1]);
-const scale = Number(args[args.indexOf('--scale') + 1]) || 2;
+
+/** Flags that take a value, so the value is never mistaken for the file name. */
+const TAKES_VALUE = new Set(['-o', '--output', '--scale', '--tune', '--threshold']);
+
+const flags = new Map();
+const loose = [];
+for (let i = 0; i < args.length; i++) {
+	const arg = args[i];
+	if (!arg.startsWith('-')) {
+		loose.push(arg);
+	} else if (TAKES_VALUE.has(arg)) {
+		flags.set(arg, args[++i]);
+	} else {
+		flags.set(arg, true);
+	}
+}
+
+const input = loose[0];
+const output = flags.get('-o') ?? flags.get('--output') ?? null;
+const json = flags.has('--json');
+const learned = flags.has('--ml');
+const tune = flags.has('--tune') ? JSON.parse(flags.get('--tune')) : {};
+const scale = Number(flags.get('--scale')) || 2;
+const threshold = Number(flags.get('--threshold')) || undefined;
 
 if (!input) {
-	console.error('usage: arrow_detector.sh <image> [-o overlay.png] [--json] [--scale 2]');
+	console.error(
+		'usage: arrow_detector.sh <image> [--ml] [-o overlay.png] [--json] [--scale 2] [--threshold 0.4]'
+	);
 	process.exit(2);
 }
 
@@ -34,6 +56,18 @@ const MIME = {
 };
 
 const ROOT = new URL('..', import.meta.url).pathname;
+
+let model = null;
+if (learned) {
+	try {
+		model = JSON.parse(await readFile(join(ROOT, 'src/lib/vision/arrow-model.json'), 'utf8'));
+	} catch {
+		console.error('No learned model at src/lib/vision/arrow-model.json. Train one first:');
+		console.error('  node scripts/prepare-arrows.mjs && .venv-ml/bin/python scripts/train-arrows.py');
+		process.exit(1);
+	}
+}
+
 const bundled = await build({
 	entryPoints: [join(ROOT, 'src/lib/vision/still-entry.ts')],
 	bundle: true,
@@ -52,7 +86,7 @@ const mime = MIME[extname(input).toLowerCase()] ?? 'image/jpeg';
 const url = `data:${mime};base64,${data.toString('base64')}`;
 
 const result = await page.evaluate(
-	async ({ src, scale, wantOverlay }) => {
+	async ({ src, scale, wantOverlay, tune, model, threshold }) => {
 		const image = new Image();
 		image.src = src;
 		await image.decode();
@@ -64,10 +98,10 @@ const result = await page.evaluate(
 		context.drawImage(image, 0, 0);
 
 		const pixels = context.getImageData(0, 0, image.width, image.height);
-		const faces = VISION.analyse(
-			{ width: image.width, height: image.height, data: pixels.data },
-			scale
-		);
+		const frame = { width: image.width, height: image.height, data: pixels.data };
+		const faces = model
+			? VISION.analyseLearned(frame, scale, model, threshold)
+			: VISION.analyse(frame, scale, tune);
 
 		if (!wantOverlay) return { width: image.width, height: image.height, faces, png: null };
 
@@ -95,13 +129,19 @@ const result = await page.evaluate(
 			context.textBaseline = 'middle';
 
 			for (const arrow of face.arrows) {
-				// The streak that was found, so a mistaken shadow shows up as the wrong shape rather than a score.
-				context.beginPath();
-				context.moveTo(arrow.tailX, arrow.tailY);
-				context.lineTo(arrow.imageX, arrow.imageY);
-				context.lineWidth = line;
-				context.strokeStyle = 'rgba(0,230,118,0.7)';
-				context.stroke();
+				/**
+				 * The streak that was found, so a mistaken shadow shows up as the wrong shape rather than
+				 * a score. The learned detector has no streak to show: it answers with a point, so there
+				 * is nothing to draw and the circle stands alone.
+				 */
+				if (arrow.length > 0) {
+					context.beginPath();
+					context.moveTo(arrow.tailX, arrow.tailY);
+					context.lineTo(arrow.imageX, arrow.imageY);
+					context.lineWidth = line;
+					context.strokeStyle = 'rgba(0,230,118,0.7)';
+					context.stroke();
+				}
 
 				context.beginPath();
 				context.arc(arrow.imageX, arrow.imageY, line * 4, 0, Math.PI * 2);
@@ -124,7 +164,7 @@ const result = await page.evaluate(
 			png: canvas.toDataURL('image/png')
 		};
 	},
-	{ src: url, scale, wantOverlay: Boolean(output) }
+	{ src: url, scale, wantOverlay: Boolean(output), tune, model, threshold }
 );
 
 await browser.close();
@@ -133,7 +173,7 @@ if (json) {
 	const { png, ...rest } = result;
 	console.log(JSON.stringify(rest, null, 2));
 } else {
-	console.log(`${input}  ${result.width}x${result.height}`);
+	console.log(`${input}  ${result.width}x${result.height}  [${learned ? 'learned' : 'classical'}]`);
 	if (result.faces.length === 0) {
 		console.log('  no target face found');
 	}
@@ -145,15 +185,23 @@ if (json) {
 		);
 		if (face.arrows.length === 0) console.log('    no candidates');
 		for (const arrow of face.arrows.slice(0, 12)) {
+			// Each detector has its own evidence to show: a shaft length, or a confidence.
+			const evidence =
+				arrow.confidence === undefined
+					? `shaft ${arrow.length.toFixed(0)}px`
+					: `confidence ${(arrow.confidence * 100).toFixed(0)}%`;
 			console.log(
 				`    ${arrow.decimal === null ? arrow.label : arrow.decimal.toFixed(1)}` +
-					`  at ${arrow.x.toFixed(2)},${arrow.y.toFixed(2)}  shaft ${arrow.length.toFixed(0)}px`
+					`  at ${arrow.x.toFixed(2)},${arrow.y.toFixed(2)}  ${evidence}`
 			);
 		}
 	});
 	console.log(
-		'\n  Candidates, not scores: a still has no quiet reference frame, so every hole, tear and\n' +
-			'  pencil mark is a candidate too. Use the live camera for actual scoring.'
+		learned
+			? '\n  Candidates, not scores. Trained on one hall and one phone, so it reads pictures like\n' +
+					'  those far better than it reads anything else. Use the live camera for actual scoring.'
+			: '\n  Candidates, not scores: a still has no quiet reference frame, so every hole, tear and\n' +
+					'  pencil mark is a candidate too. Use the live camera for actual scoring.'
 	);
 }
 

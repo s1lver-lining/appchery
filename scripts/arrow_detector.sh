@@ -4,18 +4,23 @@
 #   ./scripts/arrow_detector.sh photo.jpg
 #   ./scripts/arrow_detector.sh photo.jpg -o overlay.png
 #   ./scripts/arrow_detector.sh photo.png --json
+#   ./scripts/arrow_detector.sh photo.jpg --ml               # the learned detector
+#   ./scripts/arrow_detector.sh photo.jpg --ml --threshold 0.5
 #
 # Any format the browser can decode works: png, jpg, webp, gif, bmp, avif.
 #
-# The arrows it reports are candidates, not a score. Live scoring recognises an arrow by it being
-# new against a reference frame of the quiet boss, which a single picture cannot provide, so this
-# falls back to finding patches whose colour does not match the ring they sit in. Holes, tears and
-# pencil marks qualify too.
+# Both detectors answer in the same coordinates and draw the same way, so running one after the other
+# over the same picture shows exactly where they disagree.
+#
+# The arrows either reports are candidates, not a score. Live scoring recognises an arrow by it being
+# new against a reference frame of the quiet boss, which a single picture cannot provide. Without that,
+# the classical detector looks for the shape of a shaft, and the learned one for what an impact looked
+# like in the pictures it was trained on. Holes, tears and pencil marks qualify for both.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-	echo "usage: $(basename "$0") <image> [-o overlay.png] [--json] [--scale 2]" >&2
+	echo "usage: $(basename "$0") <image> [--ml] [-o overlay.png] [--json] [--scale 2] [--threshold 0.4]" >&2
 	exit 2
 fi
 

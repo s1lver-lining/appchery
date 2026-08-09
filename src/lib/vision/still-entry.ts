@@ -27,6 +27,8 @@ export interface StillFace {
     length: number;
     label: string;
     decimal: number | null;
+    /** How sure the learned detector is. Absent from the classical one, which has no such notion. */
+    confidence?: number;
   }[];
 }
 
@@ -104,6 +106,7 @@ export function analyseLearned(
             length: 0,
             label: scoreAt(WA_10_RING, arrow.x, arrow.y).label,
             decimal: decimalScore(WA_10_RING, arrow.x, arrow.y),
+            confidence: arrow.confidence,
           }),
         ),
       };
