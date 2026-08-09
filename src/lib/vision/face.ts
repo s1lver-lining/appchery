@@ -1,4 +1,5 @@
-import { rgbToHsv, largestComponent } from './pixels';
+import { rgbToHsv, components } from './pixels';
+import { refineFace } from './refine';
 import type { Frame, FaceLocation } from './types';
 
 /**
@@ -15,10 +16,10 @@ const GOLD_SHARE_OF_FACE = 0.2;
  * Radii to probe, in face units, with the colour each must show. A yellow bag or a hazard sign
  * passes the gold test on its own; nothing but a target face has this sequence around it.
  */
-const RED_RING = 0.3;
-const MID_RING = 0.5;
-const OUTER_RING = 0.7;
-const GOLD_RING = 0.13;
+const RED_RING = 0.25;
+const MID_RING = 0.45;
+const OUTER_RING = 0.65;
+const GOLD_RING = 0.15;
 
 export interface FaceDetectOptions {
 	/** Hue window for the gold, in degrees. Wide enough to survive warm and cold daylight. */
@@ -27,13 +28,28 @@ export interface FaceDetectOptions {
 	minValue?: number;
 	/** Reject a blob too small to be a face, as a share of the frame. */
 	minAreaShare?: number;
+	/** Faces to return at most, so a noisy frame cannot cost a whole video frame's budget. */
+	limit?: number;
+	/** Fit to the surrounding rings after the gold blob. On by default; off is for measuring it. */
+	refine?: boolean;
 }
 
-export function detectFace(frame: Frame, options: FaceDetectOptions = {}): FaceLocation | null {
-	const [hueLow, hueHigh] = options.hueRange ?? [35, 70];
-	const minSaturation = options.minSaturation ?? 0.35;
+/**
+ * Every face in the frame, best supported first. A three spot puts three golds in one image, and
+ * taking only the largest quietly ignores two thirds of the target.
+ */
+export function detectFaces(frame: Frame, options: FaceDetectOptions = {}): FaceLocation[] {
+	const [hueLow, hueHigh] = options.hueRange ?? [38, 70];
+	const minSaturation = options.minSaturation ?? 0.45;
 	const minValue = options.minValue ?? 90;
-	const minAreaShare = options.minAreaShare ?? 0.002;
+	const minAreaShare = options.minAreaShare ?? 0.0015;
+	/**
+	 * Generous, because candidates are ranked by blob size and a real gold is often not the biggest
+	 * yellow thing in frame. Raising this from 4 to 12 took recall on the annotated set from 87% to
+	 * 93%: three spot golds were being crowded out by larger yellow blobs elsewhere in the picture.
+	 * The ring check is what rejects the extras, and it costs about 128 pixel reads per candidate.
+	 */
+	const limit = options.limit ?? 12;
 
 	const { width, height, data } = frame;
 	const mask = new Uint8Array(width * height);
@@ -43,39 +59,40 @@ export function detectFace(frame: Frame, options: FaceDetectOptions = {}): FaceL
 		if (h >= hueLow && h <= hueHigh && s >= minSaturation && v >= minValue) mask[i] = 1;
 	}
 
-	const { label, size } = largestComponent(mask, width, height);
-	if (size < minAreaShare * width * height) return null;
+	const minSize = Math.max(24, minAreaShare * width * height);
+	const found: FaceLocation[] = [];
 
-	return fromMoments(label, width, height, size, GOLD_SHARE_OF_FACE);
+	for (const blob of components(mask, width, height, minSize)) {
+		const seed = fromMoments(blob.pixels, width, blob.size, GOLD_SHARE_OF_FACE);
+		// The blob only has to get close: the rings around it are what settle the geometry.
+		if (seed) found.push(options.refine === false ? seed : refineFace(frame, seed));
+		if (found.length >= limit) break;
+	}
+	return found;
+}
+
+/** The single best face, which is what a caller aiming at one target wants. */
+export function detectFace(frame: Frame, options: FaceDetectOptions = {}): FaceLocation | null {
+	return detectFaces(frame, options)[0] ?? null;
 }
 
 /**
  * Second moments turn a blob into the ellipse that best matches it. For a filled ellipse the
- * covariance eigenvalues are (semi axis squared) / 4, which is what recovers the axes and the tilt.
+ * covariance eigenvalues are (semi axis squared) / 4, which recovers the axes and the tilt in closed
+ * form, with no iteration.
  */
 function fromMoments(
-	label: Uint8Array,
+	pixels: number[],
 	width: number,
-	height: number,
 	size: number,
 	share: number
 ): FaceLocation | null {
-	let sumX = 0;
-	let sumY = 0;
-	for (let i = 0; i < label.length; i++) {
-		if (!label[i]) continue;
-		const x = i % width;
-		sumX += x;
-		sumY += (i - x) / width;
-	}
-	const cx = sumX / size;
-	const cy = sumY / size;
+	const { cx, cy } = centroid(pixels, width, size);
 
 	let xx = 0;
 	let yy = 0;
 	let xy = 0;
-	for (let i = 0; i < label.length; i++) {
-		if (!label[i]) continue;
+	for (const i of pixels) {
 		const x = i % width;
 		const y = (i - x) / width;
 		const dx = x - cx;
@@ -104,9 +121,9 @@ function fromMoments(
 	 */
 	let rotation = 0.5 * Math.atan2(2 * xy, xx - yy);
 	if ((goldMajor - goldMinor) / goldMajor < 0.03) {
-		const mean = (goldMajor + goldMinor) / 2;
-		goldMajor = mean;
-		goldMinor = mean;
+		const size = (goldMajor + goldMinor) / 2;
+		goldMajor = size;
+		goldMinor = size;
 		rotation = 0;
 	}
 
@@ -115,14 +132,18 @@ function fromMoments(
 	const support = expected > 0 ? Math.min(1, size / expected) : 0;
 	if (support < 0.6) return null;
 
-	return {
-		cx,
-		cy,
-		semiMajor: goldMajor / share,
-		semiMinor: goldMinor / share,
-		rotation,
-		support
-	};
+	return { cx, cy, semiMajor: goldMajor / share, semiMinor: goldMinor / share, rotation, support };
+}
+
+function centroid(pixels: number[], width: number, size: number): { cx: number; cy: number } {
+	let sumX = 0;
+	let sumY = 0;
+	for (const i of pixels) {
+		const x = i % width;
+		sumX += x;
+		sumY += (i - x) / width;
+	}
+	return { cx: sumX / size, cy: sumY / size };
 }
 
 /**

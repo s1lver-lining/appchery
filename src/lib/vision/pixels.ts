@@ -71,32 +71,40 @@ export function rgbToHsv(r: number, g: number, b: number): Hsv {
 	return { h, s: max === 0 ? 0 : delta / max, v: max };
 }
 
+export interface Component {
+	/** Pixel indices, kept so a caller can take moments over the region. */
+	pixels: number[];
+	size: number;
+}
+
 /**
- * Largest connected run of set pixels, as a labelled mask plus its size. Four connectivity and an
- * explicit stack: recursion blows the stack on a region covering half a frame.
+ * Every connected run of set pixels, largest first. Four connectivity with an explicit stack:
+ * recursion blows the stack on a region covering half a frame.
+ *
+ * All of them, not just the biggest, because a three spot face puts several golds in one frame and
+ * taking only the largest silently ignores two thirds of the target.
  */
-export function largestComponent(
+export function components(
 	mask: Uint8Array,
 	width: number,
-	height: number
-): { label: Uint8Array; size: number } {
+	height: number,
+	minSize = 1
+): Component[] {
 	const seen = new Uint8Array(mask.length);
-	const best = new Uint8Array(mask.length);
-	const current: number[] = [];
 	const stack: number[] = [];
-	let bestSize = 0;
+	const found: Component[] = [];
 
 	for (let start = 0; start < mask.length; start++) {
 		if (!mask[start] || seen[start]) continue;
 
-		current.length = 0;
+		const pixels: number[] = [];
 		stack.length = 0;
 		stack.push(start);
 		seen[start] = 1;
 
 		while (stack.length > 0) {
 			const index = stack.pop() as number;
-			current.push(index);
+			pixels.push(index);
 			const x = index % width;
 			const y = (index - x) / width;
 
@@ -106,11 +114,7 @@ export function largestComponent(
 			if (y < height - 1) push(index + width);
 		}
 
-		if (current.length > bestSize) {
-			bestSize = current.length;
-			best.fill(0);
-			for (const index of current) best[index] = 1;
-		}
+		if (pixels.length >= minSize) found.push({ pixels, size: pixels.length });
 	}
 
 	function push(index: number) {
@@ -120,5 +124,18 @@ export function largestComponent(
 		}
 	}
 
-	return { label: best, size: bestSize };
+	return found.sort((a, b) => b.size - a.size);
+}
+
+/** Largest connected run of set pixels, as a labelled mask plus its size. */
+export function largestComponent(
+	mask: Uint8Array,
+	width: number,
+	height: number
+): { label: Uint8Array; size: number } {
+	const [biggest] = components(mask, width, height);
+	const label = new Uint8Array(mask.length);
+	if (!biggest) return { label, size: 0 };
+	for (const index of biggest.pixels) label[index] = 1;
+	return { label, size: biggest.size };
 }
