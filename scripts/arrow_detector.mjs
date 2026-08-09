@@ -14,10 +14,10 @@ const input = args.find((a) => !a.startsWith('-'));
 const outIndex = args.findIndex((a) => a === '-o' || a === '--output');
 const output = outIndex === -1 ? null : args[outIndex + 1];
 const json = args.includes('--json');
-const scale = Number(args[args.indexOf('--scale') + 1]) || 4;
+const scale = Number(args[args.indexOf('--scale') + 1]) || 2;
 
 if (!input) {
-	console.error('usage: arrow_detector.sh <image> [-o overlay.png] [--json] [--scale 4]');
+	console.error('usage: arrow_detector.sh <image> [-o overlay.png] [--json] [--scale 2]');
 	process.exit(2);
 }
 
@@ -93,19 +93,25 @@ const result = await page.evaluate(
 			context.textBaseline = 'middle';
 
 			for (const arrow of face.arrows) {
-				const radius = Math.max(6, Math.sqrt(arrow.area / Math.PI) * 1.4);
+				// The streak that was found, so a mistaken shadow shows up as the wrong shape rather than a score.
 				context.beginPath();
-				context.arc(arrow.imageX, arrow.imageY, radius, 0, Math.PI * 2);
+				context.moveTo(arrow.tailX, arrow.tailY);
+				context.lineTo(arrow.imageX, arrow.imageY);
 				context.lineWidth = line;
+				context.strokeStyle = 'rgba(0,230,118,0.7)';
+				context.stroke();
+
+				context.beginPath();
+				context.arc(arrow.imageX, arrow.imageY, line * 4, 0, Math.PI * 2);
 				context.strokeStyle = '#00e676';
 				context.stroke();
 
 				const text = arrow.decimal === null ? arrow.label : arrow.decimal.toFixed(1);
 				context.lineWidth = line * 2;
 				context.strokeStyle = 'rgba(0,0,0,0.85)';
-				context.strokeText(text, arrow.imageX, arrow.imageY - radius - 12);
+				context.strokeText(text, arrow.imageX, arrow.imageY - line * 10);
 				context.fillStyle = '#ffffff';
-				context.fillText(text, arrow.imageX, arrow.imageY - radius - 12);
+				context.fillText(text, arrow.imageX, arrow.imageY - line * 10);
 			}
 		}
 
@@ -139,7 +145,7 @@ if (json) {
 		for (const arrow of face.arrows.slice(0, 12)) {
 			console.log(
 				`    ${arrow.decimal === null ? arrow.label : arrow.decimal.toFixed(1)}` +
-					`  at ${arrow.x.toFixed(2)},${arrow.y.toFixed(2)}  ${arrow.area.toFixed(0)}px`
+					`  at ${arrow.x.toFixed(2)},${arrow.y.toFixed(2)}  shaft ${arrow.length.toFixed(0)}px`
 			);
 		}
 	});

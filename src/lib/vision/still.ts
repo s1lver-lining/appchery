@@ -1,143 +1,538 @@
-import { classify, type RingColour } from './rings';
-import { rgbToHsv } from './pixels';
-import { components } from './pixels';
+import { rgbToHsv, luma } from './pixels';
 import { toFaceCoords } from './face';
-import type { Frame, FaceLocation, Blob } from './types';
+import type { Frame, FaceLocation } from './types';
 
 /**
  * Finding arrows in a single photograph.
  *
  * The live scanner recognises an arrow by it being *new*, which needs a reference frame of the quiet
- * boss. A still has no such reference, so a different signal is needed: the face is a known pattern
- * of colours, and an arrow is a patch that does not match the colour its radius says it should be.
+ * boss. A still has no such reference, so the signal has to come from the arrow's own shape: a shaft
+ * sticking out of a face is a long, thin, dark streak, and nothing printed on a face looks like that.
+ * The ring numbers are compact, the printed lines are circles, and paper creases are faint.
  *
- * This is weaker than the video path and is meant for inspecting a picture, not for scoring one.
- * Every hole, tear, pencil mark and printed number is also an anomaly, and a shaft crossing rings
- * reads as one long blob. Treat the output as candidates to look at.
+ * The impact is not the middle of that streak, it is the end of it that touches the paper, which is the
+ * inner end: an arrow leans out of the face towards the lens.
  */
 
-/** What each ring should look like, by outer radius. Ten equal rings, gold reaching 0.2. */
-const BANDS: { outer: number; colours: RingColour[] }[] = [
-	{ outer: 0.2, colours: ['gold'] },
-	{ outer: 0.4, colours: ['red'] },
-	{ outer: 0.6, colours: ['blue'] },
-	{ outer: 0.8, colours: ['dark'] },
-	{ outer: 1.0, colours: ['light'] }
-];
+/**
+ * Angular resolution of the paper model, and the finest radial resolution it will use. The radial
+ * bins are capped to the face's own size in pixels: a bin thinner than a pixel holds so little that
+ * its median becomes whatever happens to lie there, which on a face with an arrow in it is the arrow.
+ */
+const MAX_RADIAL_BINS = 288;
+const SECTORS = 12;
+
+/** Default for how far past the face the search runs, in face radii. */
+const REACH = 1.0;
 
 export interface StillOptions {
-	/** Ignore anything smaller than this share of the face area: paper grain and single holes. */
-	minAreaShare?: number;
-	maxAreaShare?: number;
-	/** Skip a margin either side of every ring boundary, where the printed line lives. */
-	edgeMargin?: number;
-	/** How much darker than its ring a pixel must be. The printed numbers are lighter, not darker. */
+	/** How much darker than the surrounding paper a pixel must be to count as part of a shaft. */
 	darkness?: number;
+	/** Shortest streak worth reporting, as a share of the face radius. */
+	minLength?: number;
+	/** Longest streak worth reporting, so a shadow across the whole boss is not an arrow. */
+	maxLength?: number;
+	/** How many times longer than wide a streak must be. */
+	minElongation?: number;
+	/** Widest a shaft may be, as a share of the face radius. */
+	maxWidth?: number;
+	/** How much of a streak's length must be spent crossing rings rather than following one. */
+	radialLean?: number;
+	/** Share of a streak that must be darker than the paper on both sides rather than just one. */
+	minRidge?: number;
+	/** Share of a streak that must be unbroken, so a line bridged across noise is not a shaft. */
+	minFill?: number;
+	/** How far past the face to follow a shaft, in face radii. */
+	reach?: number;
+	/** How far off a kept shaft's line another run may sit before it counts as a separate arrow. */
+	mergeDistance?: number;
 }
 
-/** Median brightness of each band, so "darker than the ring" means darker than this actual paper. */
-function bandBrightness(frame: Frame, face: FaceLocation): number[] {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-
-	return BANDS.map((band, index) => {
-		const radius = index === 0 ? 0.15 : (band.outer + BANDS[index - 1].outer) / 2;
-		const values: number[] = [];
-		for (let i = 0; i < 32; i++) {
-			const angle = (i / 32) * Math.PI * 2;
-			const fx = Math.cos(angle) * radius * face.semiMajor;
-			const fy = Math.sin(angle) * radius * face.semiMinor;
-			const x = Math.round(face.cx + fx * cos - fy * sin);
-			const y = Math.round(face.cy + fx * sin + fy * cos);
-			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
-			const p = (y * frame.width + x) * 4;
-			values.push(rgbToHsv(frame.data[p], frame.data[p + 1], frame.data[p + 2]).v);
-		}
-		if (values.length === 0) return 255;
-		values.sort((a, b) => a - b);
-		return values[Math.floor(values.length / 2)];
-	});
-}
-
-function bandIndex(radius: number): number {
-	for (let i = 0; i < BANDS.length; i++) {
-		if (radius <= BANDS[i].outer) return i;
-	}
-	return -1;
+export interface StillArrow {
+	/** Where the shaft meets the paper, in face coordinates. */
+	x: number;
+	y: number;
+	/** The same point in the frame's pixels, so it can be drawn back onto the picture. */
+	imageX: number;
+	imageY: number;
+	/** The far end of the shaft, for drawing the line that was actually found. */
+	tailX: number;
+	tailY: number;
+	area: number;
+	length: number;
 }
 
 /**
- * Regions inside the face whose colour does not match the ring they sit in, in face coordinates.
- * Sorted largest first, which puts arrow shafts ahead of individual holes.
+ * What the paper looks like at each radius and bearing, taken as a median so the arrows lying on it
+ * cannot drag their own baseline down. Per sector as well as per radius because one side of a boss is
+ * almost always better lit than the other, and a flat per ring average turns that gradient into arrows.
  */
+function paperModel(frame: Frame, face: FaceLocation, reach: number, bins: number): Float32Array {
+	const buckets: number[][] = Array.from({ length: bins * SECTORS }, () => []);
+	const box = bounds(frame, face, reach);
+
+	for (let y = box.top; y <= box.bottom; y++) {
+		for (let x = box.left; x <= box.right; x++) {
+			const cell = cellOf(face, x, y, reach, bins);
+			if (cell < 0) continue;
+			const p = (y * frame.width + x) * 4;
+			buckets[cell].push(rgbToHsv(frame.data[p], frame.data[p + 1], frame.data[p + 2]).v);
+		}
+	}
+
+	const model = new Float32Array(bins * SECTORS);
+	for (let r = 0; r < bins; r++) {
+		for (let s = 0; s < SECTORS; s++) {
+			// Pooled with the neighbouring bearings: one sector of one thin ring holds too few pixels.
+			const values = [
+				...buckets[r * SECTORS + ((s + SECTORS - 1) % SECTORS)],
+				...buckets[r * SECTORS + s],
+				...buckets[r * SECTORS + ((s + 1) % SECTORS)]
+			];
+			if (values.length === 0) {
+				model[r * SECTORS + s] = -1;
+				continue;
+			}
+			values.sort((a, b) => a - b);
+			model[r * SECTORS + s] = values[Math.floor(values.length / 2)];
+		}
+	}
+	return model;
+}
+
+function bounds(frame: Frame, face: FaceLocation, reach: number) {
+	return {
+		left: Math.max(0, Math.floor(face.cx - face.semiMajor * reach)),
+		right: Math.min(frame.width - 1, Math.ceil(face.cx + face.semiMajor * reach)),
+		top: Math.max(0, Math.floor(face.cy - face.semiMajor * reach)),
+		bottom: Math.min(frame.height - 1, Math.ceil(face.cy + face.semiMajor * reach))
+	};
+}
+
+/** Index into the model for an image pixel, or -1 when it falls beyond the searched area. */
+function cellOf(face: FaceLocation, x: number, y: number, reach: number, bins: number): number {
+	const point = toFaceCoords(face, x, y);
+	const radius = Math.hypot(point.x, point.y);
+	if (radius >= reach) return -1;
+	const bin = Math.min(bins - 1, Math.floor((radius / reach) * bins));
+	const bearing = Math.atan2(point.y, point.x) + Math.PI;
+	const sector = Math.min(SECTORS - 1, Math.floor((bearing / (Math.PI * 2)) * SECTORS));
+	return bin * SECTORS + sector;
+}
+
+/** Shafts found in the picture, longest first. */
 export function detectArrowsInStill(
 	frame: Frame,
 	face: FaceLocation,
 	options: StillOptions = {}
-): (Blob & { x: number; y: number })[] {
-	const minAreaShare = options.minAreaShare ?? 0.0006;
-	const maxAreaShare = options.maxAreaShare ?? 0.06;
-	const edgeMargin = options.edgeMargin ?? 0.012;
-	const darkness = options.darkness ?? 0.72;
+): StillArrow[] {
+	const darkness = options.darkness ?? 0.75;
+	const minLength = options.minLength ?? 0.09;
+	const maxLength = options.maxLength ?? 3;
+	const minElongation = options.minElongation ?? 3;
+	const maxWidth = options.maxWidth ?? 0.08;
+	const radialLean = options.radialLean ?? 0.2;
+	const minRidge = options.minRidge ?? 0.6;
+	const minFill = options.minFill ?? 0.85;
+	const reach = options.reach ?? REACH;
+	const mergeDistance = options.mergeDistance ?? 0.03;
 
-	const brightness = bandBrightness(frame, face);
+	const radius = (face.semiMajor + face.semiMinor) / 2;
+	// One bin per pixel of face radius at most, so every bin holds a ring of real paper to take a median of.
+	const bins = Math.max(24, Math.min(MAX_RADIAL_BINS, Math.round(radius)));
+	const model = paperModel(frame, face, reach, bins);
 
-	const { width, height, data } = frame;
-	const mask = new Uint8Array(width * height);
+	const box = bounds(frame, face, reach);
 
-	// Only the face is worth scanning, and only out to the last ring.
-	const left = Math.max(0, Math.floor(face.cx - face.semiMajor));
-	const right = Math.min(width - 1, Math.ceil(face.cx + face.semiMajor));
-	const top = Math.max(0, Math.floor(face.cy - face.semiMajor));
-	const bottom = Math.min(height - 1, Math.ceil(face.cy + face.semiMajor));
+	const mask = new Uint8Array(frame.width * frame.height);
+	for (let y = box.top; y <= box.bottom; y++) {
+		for (let x = box.left; x <= box.right; x++) {
+			const cell = cellOf(face, x, y, reach, bins);
+			if (cell < 0) continue;
+			const reference = model[cell];
+			if (reference < 0) continue;
 
-	for (let y = top; y <= bottom; y++) {
-		for (let x = left; x <= right; x++) {
-			const point = toFaceCoords(face, x, y);
-			const radius = Math.hypot(point.x, point.y);
-			if (radius > 0.98) continue;
+			const p = (y * frame.width + x) * 4;
+			const value = rgbToHsv(frame.data[p], frame.data[p + 1], frame.data[p + 2]).v;
+			if (value < reference * darkness) mask[y * frame.width + x] = 1;
+		}
+	}
 
-			// The printed ring lines are dark everywhere, so a band either side of each is skipped.
-			const nearEdge = BANDS.some((band) => Math.abs(radius - band.outer) < edgeMargin);
-			if (nearEdge) continue;
+	const found: StillArrow[] = [];
+	for (const segment of straightRuns(frame, mask, box, minLength * radius, face)) {
+		if (segment.length < minLength * radius || segment.length > maxLength * radius) continue;
+		if (segment.width > maxWidth * radius) continue;
+		if (segment.length < minElongation * Math.max(segment.width, 1)) continue;
+		/**
+		 * A shaft is a dark line with lighter paper on both sides. The edge of a scoreboard graphic, the
+		 * rim of the boss and the shadow it throws are all dark on one side only, and they were what
+		 * survived every test based on shape alone.
+		 */
+		if (segment.ridge < minRidge) continue;
+		// A shaft is one unbroken stroke, not a line drawn through scattered marks on the same bearing.
+		if (segment.fill < minFill) continue;
 
-			const band = bandIndex(radius);
-			if (band < 0) continue;
-			const wanted = BANDS[band].colours;
+		// The buried end is the inner one: an arrow leans out of the face towards the lens.
+		const inner =
+			Math.hypot(toFaceCoords(face, segment.ax, segment.ay).x, toFaceCoords(face, segment.ax, segment.ay).y) <=
+			Math.hypot(toFaceCoords(face, segment.bx, segment.by).x, toFaceCoords(face, segment.bx, segment.by).y);
 
-			const p = (y * width + x) * 4;
-			if (wanted.includes(classify(data[p], data[p + 1], data[p + 2]))) continue;
+		/**
+		 * The end of the dark run is not the impact. Past the hole the run keeps going through the black
+		 * ring, an old shot or a neighbouring shaft, and every one of those pulls the score inwards. The
+		 * shaft stops being a ridge the moment it enters the paper, so that is where the arrow is read.
+		 */
+		const entry = enterPoint(frame, mask, segment, inner, maxWidth * radius);
+		const point = toFaceCoords(face, entry.x, entry.y);
+		const tail = inner ? { x: segment.bx, y: segment.by } : { x: segment.ax, y: segment.ay };
+		const far = toFaceCoords(face, tail.x, tail.y);
+		if (Math.hypot(point.x, point.y) >= 1) continue;
 
+		/**
+		 * The printed ring lines are long thin dark streaks too, and they were most of what the shape
+		 * test let through. What separates them is bearing: a ring line keeps its radius along its whole
+		 * length, while a shaft crosses rings on its way out to the nock.
+		 */
+		const span = Math.hypot(far.x - point.x, far.y - point.y);
+		const climb = Math.hypot(far.x, far.y) - Math.hypot(point.x, point.y);
+		if (span <= 0 || climb < radialLean * span) continue;
+
+		found.push({
+			x: point.x,
+			y: point.y,
+			imageX: entry.x,
+			imageY: entry.y,
+			tailX: tail.x,
+			tailY: tail.y,
+			area: segment.length * segment.width,
+			length: segment.length
+		});
+	}
+
+	found.sort((a, b) => b.length - a.length);
+
+	/**
+	 * One arrow answers several times: the two edges of the shaft are separate lines, a ring crossing
+	 * splits it into fragments, and the run often carries on past the hole to the far side of the face.
+	 * Every one of those repeats sits on the arrow's own line, so the test is collinearity rather than
+	 * distance, and the longest run wins because it is the one with the most evidence behind it.
+	 */
+	const gap = mergeDistance * radius;
+	const kept: StillArrow[] = [];
+	for (const arrow of found) {
+		const dx = arrow.tailX - arrow.imageX;
+		const dy = arrow.tailY - arrow.imageY;
+		const span = Math.hypot(dx, dy);
+		if (span <= 0) continue;
+
+		const repeat = kept.some((other) => {
+			const ox = other.tailX - other.imageX;
+			const oy = other.tailY - other.imageY;
+			const length = Math.hypot(ox, oy);
+			if (length <= 0) return false;
+			// Bearings within about ten degrees, measured without caring which way each one points.
+			if (Math.abs((dx * ox + dy * oy) / (span * length)) < 0.985) return false;
+			const offset = Math.abs((arrow.imageX - other.imageX) * oy - (arrow.imageY - other.imageY) * ox) / length;
+			return offset < gap;
+		});
+		if (repeat) continue;
+		kept.push(arrow);
+	}
+	return kept;
+}
+
+interface Segment {
+	ax: number;
+	ay: number;
+	bx: number;
+	by: number;
+	length: number;
+	width: number;
+	/** Share of the run that has lighter paper on both flanks. */
+	ridge: number;
+	/** Share of the run actually covered by dark pixels rather than bridged across a gap. */
+	fill: number;
+	/** The line the run sits on, kept so the buried end can be walked back to the paper. */
+	cos: number;
+	sin: number;
+	rho: number;
+	from: number;
+	to: number;
+}
+
+/**
+ * Where the shaft goes into the paper: the innermost point that still looks like a shaft. Past the
+ * hole the dark run usually keeps going, through the black ring, an old shot or a neighbouring arrow,
+ * and every one of those pulls the score inwards, so the run has to be read rather than trusted.
+ *
+ * Judged over a window rather than point by point. A single hard stop was tried and was much worse:
+ * the flank test fails wherever the shaft crosses a ring line or another arrow, and the walk gave up
+ * at the first of them, out beyond the paper.
+ */
+function enterPoint(
+	frame: Frame,
+	mask: Uint8Array,
+	segment: Segment,
+	innerIsFrom: boolean,
+	maxWidth: number
+): { x: number; y: number } {
+	const { width, height } = frame;
+	const dx = -segment.sin;
+	const dy = segment.cos;
+	const originX = segment.rho * segment.cos;
+	const originY = segment.rho * segment.sin;
+
+	const head = innerIsFrom ? segment.from : segment.to;
+	const nock = innerIsFrom ? segment.to : segment.from;
+	const step = head < nock ? -1 : 1;
+	const count = Math.abs(head - nock) + 1;
+
+	const good: boolean[] = [];
+	for (let i = 0; i < count; i++) {
+		const t = nock + step * i;
+		const x = originX + dx * t;
+		const y = originY + dy * t;
+
+		let thickness = 0;
+		for (let k = -14; k <= 14; k++) {
+			const px = Math.round(x + segment.cos * k);
+			const py = Math.round(y + segment.sin * k);
+			if (px < 0 || py < 0 || px >= width || py >= height) continue;
+			if (mask[py * width + px]) thickness++;
+		}
+
+		const reach = thickness / 2 + 2;
+		const centre = sample(frame, x, y);
+		const left = sample(frame, x - segment.cos * reach, y - segment.sin * reach);
+		const right = sample(frame, x + segment.cos * reach, y + segment.sin * reach);
+		good.push(
+			thickness >= 1 &&
+				thickness <= maxWidth * 2 &&
+				centre >= 0 &&
+				left > centre + 8 &&
+				right > centre + 8
+		);
+	}
+
+	const window = 5;
+	let last = 0;
+	for (let i = 0; i < count; i++) {
+		let hits = 0;
+		for (let k = Math.max(0, i - window + 1); k <= i; k++) if (good[k]) hits++;
+		if (hits * 3 >= Math.min(window, i + 1) * 2) last = i;
+	}
+
+	const t = nock + step * last;
+	return { x: originX + dx * t, y: originY + dy * t };
+}
+
+/**
+ * Whether the mask is set within a pixel or two of a point. A line walked at an angle never lands on
+ * the exact pixels it passes through, and a shaft is only a few pixels across to begin with.
+ */
+function near(mask: Uint8Array, width: number, height: number, x: number, y: number): boolean {
+	for (let dy = -1; dy <= 1; dy++) {
+		for (let dx = -1; dx <= 1; dx++) {
+			const px = x + dx;
+			const py = y + dy;
+			if (px < 0 || py < 0 || px >= width || py >= height) continue;
+			if (mask[py * width + px]) return true;
+		}
+	}
+	return false;
+}
+
+function sample(frame: Frame, x: number, y: number): number {
+	const px = Math.round(x);
+	const py = Math.round(y);
+	if (px < 0 || py < 0 || px >= frame.width || py >= frame.height) return -1;
+	const p = (py * frame.width + px) * 4;
+	return luma(frame.data[p], frame.data[p + 1], frame.data[p + 2]);
+}
+
+/**
+ * Half a degree of bearing. One degree was not enough: over the length of a shaft a half degree error
+ * walks the line several pixels sideways, off a shaft only a few pixels wide, and the run came back
+ * cut into pieces with its ends in the wrong place.
+ */
+const ANGLE_STEPS = 360;
+
+/**
+ * Straight runs of set pixels, longest first, found by voting for lines rather than by growing regions.
+ *
+ * Region growing was the obvious approach and it fails on exactly the picture that matters: arrows in a
+ * group cross each other on their way out of the boss, so three shafts come back as one blob with an
+ * axis belonging to none of them. A vote over bearings separates crossing lines by construction, since
+ * each shaft puts its pixels in a different bearing.
+ */
+function straightRuns(
+	frame: Frame,
+	mask: Uint8Array,
+	box: { left: number; right: number; top: number; bottom: number },
+	minVotes: number,
+	face: FaceLocation
+): Segment[] {
+	const { width, height } = frame;
+	const points: number[] = [];
+	for (let y = box.top; y <= box.bottom; y++) {
+		for (let x = box.left; x <= box.right; x++) {
+			if (mask[y * width + x]) points.push(y * width + x);
+		}
+	}
+	if (points.length === 0) return [];
+
+	const cos = new Float32Array(ANGLE_STEPS);
+	const sin = new Float32Array(ANGLE_STEPS);
+	for (let a = 0; a < ANGLE_STEPS; a++) {
+		cos[a] = Math.cos((a * Math.PI) / ANGLE_STEPS);
+		sin[a] = Math.sin((a * Math.PI) / ANGLE_STEPS);
+	}
+
+	const reach = Math.ceil(Math.hypot(width, height));
+	const rhoBins = reach * 2 + 1;
+	const votes = new Int32Array(ANGLE_STEPS * rhoBins);
+	for (const index of points) {
+		const x = index % width;
+		const y = (index - x) / width;
+		for (let a = 0; a < ANGLE_STEPS; a++) {
+			const rho = Math.round(x * cos[a] + y * sin[a]) + reach;
+			votes[a * rhoBins + rho]++;
+		}
+	}
+
+	// A bearing worth walking has to hold a run, not a scatter, so the bar is the shortest useful shaft.
+	const floor = Math.max(12, Math.round(minVotes));
+	const peaks: { angle: number; rho: number; votes: number }[] = [];
+	for (let a = 0; a < ANGLE_STEPS; a++) {
+		for (let r = 1; r < rhoBins - 1; r++) {
+			const n = votes[a * rhoBins + r];
+			if (n < floor) continue;
+			if (n < votes[a * rhoBins + r - 1] || n < votes[a * rhoBins + r + 1]) continue;
+			const rho = r - reach;
 			/**
-			 * Wrong colour is not enough on its own: the ring numbers printed on a face are the wrong
-			 * colour too, and they were the largest anomalies on every photograph tried. An arrow and
-			 * the hole it makes are physically darker than the paper; the printed numbers are lighter.
+			 * The impact is on the paper, so a shaft's line has to cross the face. Without this the search
+			 * spends itself on the plank edges and mat seams around the boss, which are longer and
+			 * straighter than any arrow and were crowding every real shaft out of the running.
 			 */
-			const value = rgbToHsv(data[p], data[p + 1], data[p + 2]).v;
-			if (value <= brightness[band] * darkness) mask[y * width + x] = 1;
+			if (Math.abs(face.cx * cos[a] + face.cy * sin[a] - rho) > face.semiMajor) continue;
+			peaks.push({ angle: a, rho, votes: n });
 		}
 	}
+	peaks.sort((p, q) => q.votes - p.votes);
 
-	const faceArea = Math.PI * face.semiMajor * face.semiMinor;
-	const minSize = Math.max(4, minAreaShare * faceArea);
-	const maxSize = maxAreaShare * faceArea;
+	const segments: Segment[] = [];
+	const taken: { angle: number; rho: number }[] = [];
+	for (const peak of peaks) {
+		// Neighbouring bins describe the same line, so one accepted peak silences the ones beside it.
+		const close = taken.some(
+			(other) =>
+				Math.min(
+					Math.abs(other.angle - peak.angle),
+					ANGLE_STEPS - Math.abs(other.angle - peak.angle)
+				) <= 6 && Math.abs(other.rho - peak.rho) <= 6
+		);
+		if (close) continue;
+		taken.push(peak);
+		if (taken.length > 90) break;
 
-	const found: (Blob & { x: number; y: number })[] = [];
-	for (const blob of components(mask, width, height, minSize)) {
-		if (blob.size > maxSize) continue;
-
-		let sumX = 0;
-		let sumY = 0;
-		for (const i of blob.pixels) {
-			const x = i % width;
-			sumX += x;
-			sumY += (i - x) / width;
-		}
-		const cx = sumX / blob.size;
-		const cy = sumY / blob.size;
-		const point = toFaceCoords(face, cx, cy);
-		found.push({ cx, cy, area: blob.size, x: point.x, y: point.y });
+		const run = walk(frame, mask, cos[peak.angle], sin[peak.angle], peak.rho);
+		if (run) segments.push(run);
 	}
 
-	return found.sort((a, b) => b.area - a.area);
+	return segments.sort((a, b) => b.length - a.length);
+}
+
+/** The longest unbroken stretch of mask along one line, and how thick the mask is across it. */
+function walk(
+	frame: Frame,
+	mask: Uint8Array,
+	cos: number,
+	sin: number,
+	rho: number
+): Segment | null {
+	const { width, height } = frame;
+	const dx = -sin;
+	const dy = cos;
+	const originX = rho * cos;
+	const originY = rho * sin;
+
+	// A shaft is cut by ring lines and by its own highlight, so short breaks do not end a run.
+	const gapTolerance = 6;
+	const limit = Math.ceil(Math.hypot(width, height));
+
+	let best: { from: number; to: number } | null = null;
+	let start: number | null = null;
+	let last = 0;
+	let gap = 0;
+
+	for (let t = -limit; t <= limit; t++) {
+		const x = Math.round(originX + dx * t);
+		const y = Math.round(originY + dy * t);
+		if (x < 0 || y < 0 || x >= width || y >= height) continue;
+
+		const hit = near(mask, width, height, x, y);
+
+		if (hit) {
+			if (start === null) start = t;
+			last = t;
+			gap = 0;
+		} else if (start !== null && ++gap > gapTolerance) {
+			if (!best || last - start > best.to - best.from) best = { from: start, to: last };
+			start = null;
+		}
+	}
+	if (start !== null && (!best || last - start > best.to - best.from)) {
+		best = { from: start, to: last };
+	}
+	if (!best) return null;
+
+	let covered = 0;
+	for (let t = best.from; t <= best.to; t++) {
+		const x = Math.round(originX + dx * t);
+		const y = Math.round(originY + dy * t);
+		if (x < 0 || y < 0 || x >= width || y >= height) continue;
+		if (near(mask, width, height, x, y)) covered++;
+	}
+
+	const widths: number[] = [];
+	let flanked = 0;
+	let sampled = 0;
+	for (let i = 1; i < 12; i++) {
+		const t = best.from + ((best.to - best.from) * i) / 12;
+		const x = originX + dx * t;
+		const y = originY + dy * t;
+		let thickness = 0;
+		for (let k = -12; k <= 12; k++) {
+			const px = Math.round(x + cos * k);
+			const py = Math.round(y + sin * k);
+			if (px < 0 || py < 0 || px >= width || py >= height) continue;
+			if (mask[py * width + px]) thickness++;
+		}
+		widths.push(thickness);
+
+		const step = thickness / 2 + 2;
+		const centre = sample(frame, x, y);
+		const left = sample(frame, x - cos * step, y - sin * step);
+		const right = sample(frame, x + cos * step, y + sin * step);
+		if (centre < 0 || left < 0 || right < 0) continue;
+		sampled++;
+		if (left > centre + 8 && right > centre + 8) flanked++;
+	}
+	widths.sort((a, b) => a - b);
+
+	return {
+		cos,
+		sin,
+		rho,
+		from: best.from,
+		to: best.to,
+		ridge: sampled === 0 ? 0 : flanked / sampled,
+		fill: covered / Math.max(1, best.to - best.from + 1),
+		ax: originX + dx * best.from,
+		ay: originY + dy * best.from,
+		bx: originX + dx * best.to,
+		by: originY + dy * best.to,
+		length: best.to - best.from,
+		width: Math.max(1, widths[Math.floor(widths.length / 2)])
+	};
 }

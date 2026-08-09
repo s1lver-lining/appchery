@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { detectFace, detectFaces, toFaceCoords, toImageCoords } from './face';
 import { refineFace, ringAgreement } from './refine';
+import { detectArrowsInStill } from './still';
 import { Background, findBlobs } from './impacts';
 import { verifyRings, classify, probeRing } from './rings';
 import { ImpactTracker } from './tracker';
@@ -450,5 +451,63 @@ describe('refineFace', () => {
 		expect(face).toBeDefined();
 		expect(face.semiMajor).toBeGreaterThan(88);
 		expect(face.semiMajor).toBeLessThan(112);
+	});
+});
+
+/** Draws a dark shaft from an impact on the paper outwards, the way an arrow leans towards the lens. */
+function shaft(
+	frame: Frame,
+	from: { x: number; y: number },
+	to: { x: number; y: number },
+	width = 2
+) {
+	const steps = Math.ceil(Math.hypot(to.x - from.x, to.y - from.y)) * 2;
+	for (let i = 0; i <= steps; i++) {
+		const x = from.x + ((to.x - from.x) * i) / steps;
+		const y = from.y + ((to.y - from.y) * i) / steps;
+		for (let dy = -width; dy <= width; dy++) {
+			for (let dx = -width; dx <= width; dx++) {
+				const px = Math.round(x + dx);
+				const py = Math.round(y + dy);
+				if (px < 0 || py < 0 || px >= frame.width || py >= frame.height) continue;
+				const p = (py * frame.width + px) * 4;
+				frame.data[p] = 20;
+				frame.data[p + 1] = 20;
+				frame.data[p + 2] = 20;
+			}
+		}
+	}
+}
+
+describe('detectArrowsInStill', () => {
+	const face = { cx: 300, cy: 300, semiMajor: 200, semiMinor: 200, rotation: 0, support: 1 };
+
+	it('reads the arrow where it enters the paper, not at the nock', () => {
+		const frame = waFace(600, 200);
+		// Impact just inside the gold, shaft hanging down and out towards the camera.
+		shaft(frame, { x: 320, y: 280 }, { x: 400, y: 560 });
+
+		const found = detectArrowsInStill(frame, face);
+		expect(found.length).toBeGreaterThan(0);
+		/**
+		 * Two rings of the hole. The entry lands a little way down the shaft because that is where the
+		 * shaft stops reading as a shaft, and this is the measured accuracy rather than an aspiration.
+		 * What the bound really catches is coming out at the nock, which misses by nearly a full radius.
+		 */
+		expect(Math.hypot(found[0].x - 0.1, found[0].y + 0.1)).toBeLessThan(0.2);
+	});
+
+	it('ignores a printed ring line, which is just as long, thin and dark', () => {
+		const frame = waFace(600, 200);
+		const arc = 120;
+		for (let i = 0; i <= 200; i++) {
+			const angle = -0.6 + (i / 200) * 1.2;
+			const p = ((Math.round(300 + Math.sin(angle) * arc) * 600) + Math.round(300 - Math.cos(angle) * arc)) * 4;
+			frame.data[p] = 20;
+			frame.data[p + 1] = 20;
+			frame.data[p + 2] = 20;
+		}
+
+		expect(detectArrowsInStill(frame, face)).toHaveLength(0);
 	});
 });
