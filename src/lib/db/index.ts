@@ -37,6 +37,13 @@ export function db(): SqliteRemoteDatabase<typeof schema> {
 	return database;
 }
 
+/** The migration level the open database is at, recorded in a backup so a restore can refuse a newer file. */
+export async function schemaVersion(): Promise<number> {
+	if (!driver) throw new Error('initDb() must be awaited before using schemaVersion()');
+	const [[version]] = (await driver.query('PRAGMA user_version;', [])) as [[number]];
+	return version;
+}
+
 export function dbInfo(): Pick<SqlDriver, 'kind' | 'persistent'> {
 	if (!driver) throw new Error('initDb() must be awaited before using dbInfo()');
 	return { kind: driver.kind, persistent: driver.persistent };

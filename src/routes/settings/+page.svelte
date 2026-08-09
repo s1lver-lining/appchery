@@ -10,10 +10,25 @@
 		LocationDeniedError
 	} from '$lib/conditions';
 	import { use24Hour } from '$lib/prefs';
+	import {
+		exportBackup,
+		importBackup,
+		parseBackup,
+		backupFilename,
+		BackupError
+	} from '$lib/db/backup';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
 
 	const info = dbInfo();
 	let error = $state<string | null>(null);
+	let backupNotice = $state<string | null>(null);
+	let backupError = $state<string | null>(null);
+	let busy = $state(false);
+	let fileInput = $state<HTMLInputElement | null>(null);
+	/** Held aside until the archer confirms, because restoring replaces everything already stored. */
+	let pendingFile = $state<File | null>(null);
 
 	/**
 	 * Permission is requested the moment the archer opts in, not silently at session start, and a
@@ -35,6 +50,53 @@
 			autoLocation.set(false);
 			error = e instanceof LocationDeniedError ? $t('session.locationDenied') : String(e);
 		}
+	}
+
+	async function exportToFile() {
+		busy = true;
+		backupError = null;
+		backupNotice = null;
+		try {
+			const backup = await exportBackup();
+			const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+			const url = URL.createObjectURL(blob);
+			const link = document.createElement('a');
+			link.href = url;
+			link.download = backupFilename(backup.exportedAt);
+			link.click();
+			// Revoked on the next tick: revoking immediately cancels the download in some browsers.
+			setTimeout(() => URL.revokeObjectURL(url), 10_000);
+			const rows = Object.values(backup.tables).reduce((sum, list) => sum + list.length, 0);
+			backupNotice = $t('backup.exported', { n: rows });
+		} catch (e) {
+			backupError = String(e);
+		}
+		busy = false;
+	}
+
+	function chooseFile(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		pendingFile = input.files?.[0] ?? null;
+		// Cleared so choosing the same file twice still fires a change event.
+		input.value = '';
+	}
+
+	async function restore() {
+		const file = pendingFile;
+		pendingFile = null;
+		if (!file) return;
+
+		busy = true;
+		backupError = null;
+		backupNotice = null;
+		try {
+			const report = await importBackup(parseBackup(await file.text()));
+			backupNotice = $t('backup.imported', { n: report.rows });
+		} catch (e) {
+			backupError =
+				e instanceof BackupError ? $t(`backup.error.${e.message}`) : String(e);
+		}
+		busy = false;
 	}
 </script>
 
@@ -145,4 +207,56 @@
 			· {info.persistent ? $t('settings.persistent') : $t('settings.volatile')}
 		</p>
 	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('backup.title')}</h2>
+		<div class="rounded-xl border border-line bg-surface p-4">
+			<p class="text-sm text-muted">{$t('backup.hint')}</p>
+
+			<div class="mt-3 flex gap-2">
+				<button
+					class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+					disabled={busy}
+					onclick={exportToFile}
+				>
+					{$t('backup.export')}
+				</button>
+				<button
+					class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+					disabled={busy}
+					onclick={() => fileInput?.click()}
+				>
+					{$t('backup.import')}
+				</button>
+			</div>
+
+			<input
+				bind:this={fileInput}
+				type="file"
+				accept="application/json,.json"
+				class="hidden"
+				onchange={chooseFile}
+			/>
+
+			{#if backupNotice}
+				<p class="mt-3 flex items-center gap-1.5 text-sm text-brand-text">
+					<Icon name="target" size={16} />
+					{backupNotice}
+				</p>
+			{/if}
+			{#if backupError}
+				<p class="mt-3 text-sm text-danger">{backupError}</p>
+			{/if}
+		</div>
+	</section>
 </div>
+
+{#if pendingFile}
+	<ConfirmDialog
+		title={$t('backup.confirmTitle')}
+		message={$t('backup.confirmBody', { name: pendingFile.name })}
+		confirmLabel={$t('backup.confirmAction')}
+		onconfirm={restore}
+		oncancel={() => (pendingFile = null)}
+	/>
+{/if}

@@ -215,6 +215,23 @@ export const fr: Dictionary = {
 		rounds: '{n} tirs',
 		bestOn: 'Record le {date}'
 	},
+	backup: {
+		title: 'Sauvegarde',
+		hint: "Tout est stocké sur cet appareil uniquement. Exportez un fichier à conserver ailleurs.",
+		export: 'Exporter',
+		import: 'Importer',
+		exported: '{n} lignes exportées.',
+		imported: '{n} lignes restaurées.',
+		confirmTitle: 'Tout remplacer ?',
+		confirmBody:
+			'Restaurer {name} supprime d\'abord toutes les séances, activités et arcs de cet appareil.',
+		confirmAction: 'Restaurer',
+		error: {
+			notJson: "Ce fichier n'est pas un JSON lisible.",
+			notABackup: "Ce fichier n'est pas une sauvegarde Appchery.",
+			tooNew: "Cette sauvegarde vient d'une version plus récente. Mettez Appchery à jour."
+		}
+	},
 	storage: {
 		volatileWarning:
 			"Le stockage n'est pas persistant dans ce navigateur. Les scores seront perdus au rechargement : installez l'application pour un stockage fiable."

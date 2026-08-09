@@ -214,6 +214,22 @@ export const en = {
 		rounds: '{n} rounds',
 		bestOn: 'Best on {date}'
 	},
+	backup: {
+		title: 'Backup',
+		hint: 'Everything is stored on this device only. Export a file you can keep somewhere else.',
+		export: 'Export',
+		import: 'Import',
+		exported: 'Exported {n} rows.',
+		imported: 'Restored {n} rows.',
+		confirmTitle: 'Replace everything?',
+		confirmBody: 'Restoring {name} deletes every session, activity and bow on this device first.',
+		confirmAction: 'Restore',
+		error: {
+			notJson: 'That file is not readable JSON.',
+			notABackup: 'That file is not an Appchery backup.',
+			tooNew: 'That backup came from a newer version of the app. Update Appchery first.'
+		}
+	},
 	storage: {
 		volatileWarning:
 			'Storage is not persistent in this browser. Scores will be lost on reload: install the app for reliable storage.'
