@@ -139,5 +139,7 @@ export const MIGRATIONS: string[][] = [
 	// 0002 bow photo, shown in the equipment list
 	[`ALTER TABLE bow ADD COLUMN photo TEXT;`],
 	// 0003 nothing ever ended a session or an activity, and completion is derived from the arrows
-	[`ALTER TABLE session DROP COLUMN ended_at;`, `ALTER TABLE activity DROP COLUMN ended_at;`]
+	[`ALTER TABLE session DROP COLUMN ended_at;`, `ALTER TABLE activity DROP COLUMN ended_at;`],
+	// 0004 the file name of the scoring video kept for this end, when recording was on
+	[`ALTER TABLE round_end ADD COLUMN video TEXT;`]
 ];

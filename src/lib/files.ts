@@ -43,9 +43,46 @@ export async function saveFile(blob: Blob, filename: string, title: string): Pro
 	}
 }
 
-/** Where `saveFile` leaves things on a phone, so the app can say so rather than leave you hunting. */
-export function savedLocation(): 'documents' | 'download' {
-	return Capacitor.isNativePlatform() ? 'documents' : 'download';
+/** Folder inside the phone's documents directory that scoring videos are kept in. */
+export const RECORDINGS_FOLDER = 'Appchery/recordings';
+
+/**
+ * Where recordings are written, as a path to show the archer. There is nothing to click here: the
+ * files are meant to be fetched later over a cable or through the phone's own file manager, so what
+ * is needed is somewhere predictable and a way to say where that is.
+ */
+export function recordingsPath(): string {
+	return Capacitor.isNativePlatform()
+		? `Documents/${RECORDINGS_FOLDER}`
+		: 'the browser download folder';
+}
+
+/**
+ * Puts a scoring video where it can be found again, and returns the file name it was stored under.
+ *
+ * Deliberately not the share sheet. A share sheet interrupts the end that has just been shot, and it
+ * is the wrong shape for this anyway: recordings pile up over a session and get collected afterwards,
+ * rather than being sent one at a time.
+ */
+export async function storeRecording(video: Blob, filename: string): Promise<string> {
+	if (!Capacitor.isNativePlatform()) {
+		const url = URL.createObjectURL(video);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		link.click();
+		setTimeout(() => URL.revokeObjectURL(url), 10000);
+		return filename;
+	}
+
+	const { Filesystem, Directory } = await import('@capacitor/filesystem');
+	await Filesystem.writeFile({
+		path: `${RECORDINGS_FOLDER}/${filename}`,
+		data: await toBase64(video),
+		directory: Directory.Documents,
+		recursive: true
+	});
+	return filename;
 }
 
 /**

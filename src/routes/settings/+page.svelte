@@ -18,7 +18,7 @@
 		BackupError
 	} from '$lib/db/backup';
 	import Toggle from '$lib/ui/Toggle.svelte';
-	import { saveFile } from '$lib/files';
+	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 
@@ -208,6 +208,13 @@
 				onchange={(v) => recordCameraVideo.set(v)}
 			/>
 		</div>
+		{#if $recordCameraVideo}
+			<!-- Where to go looking, since nothing here hands the files over one at a time. -->
+			<p class="mt-3 rounded-lg bg-sunk p-3 text-sm text-muted">
+				{$t('settings.recordPath')}
+				<code class="mt-1 block break-all text-xs text-ink">{recordingsPath()}</code>
+			</p>
+		{/if}
 	</section>
 
 	<section>

@@ -109,7 +109,13 @@ export const end = sqliteTable(
 		activityId: text('activity_id').notNull(),
 		stageIndex: integer('stage_index').notNull(),
 		endNo: integer('end_no').notNull(),
-		subtotal: integer('subtotal').notNull().default(0)
+		subtotal: integer('subtotal').notNull().default(0),
+		/**
+		 * File name of the scoring video kept for this end, or null. Recorded against the end rather
+		 * than the detection, so an end filmed by the camera and then typed in by hand is still paired
+		 * with its footage: that pairing is the whole value of the recording as training data.
+		 */
+		video: text('video')
 	},
 	(t) => [index('idx_end_activity').on(t.activityId)]
 );

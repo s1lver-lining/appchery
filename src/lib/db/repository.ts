@@ -254,7 +254,8 @@ export async function recordEnd(
 	activityId: string,
 	stageIndex: number,
 	endNo: number,
-	shots: Omit<Shot, 'ordinal'>[]
+	shots: Omit<Shot, 'ordinal'>[],
+	video: string | null = null
 ) {
 	const endBase = stamp();
 	await db()
@@ -264,7 +265,8 @@ export async function recordEnd(
 			activityId,
 			stageIndex,
 			endNo,
-			subtotal: shots.reduce((sum, s) => sum + s.value, 0)
+			subtotal: shots.reduce((sum, s) => sum + s.value, 0),
+			video
 		});
 	await log('round_end', endBase.id, 'insert');
 

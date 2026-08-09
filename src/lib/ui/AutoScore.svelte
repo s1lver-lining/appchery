@@ -6,7 +6,7 @@
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
 	import { recordCameraVideo } from '$lib/prefs';
-	import { saveFile } from '$lib/files';
+	import { storeRecording } from '$lib/files';
 
 	/**
 	 * Live scoring from the camera. Nothing detected is ever written on its own: the archer keeps or
@@ -15,13 +15,19 @@
 	let {
 		scoreSet,
 		remaining,
+		videoName,
 		onaccept,
+		onrecorded,
 		onclose
 	}: {
 		scoreSet: ScoreSet;
 		/** Arrows still to enter in this end, which caps how many can be taken. */
 		remaining: number;
+		/** File name to record under, identifying the end this footage belongs to. */
+		videoName: string;
 		onaccept: (shots: { x: number; y: number }[]) => void;
+		/** Reports the stored file so the end keeps a reference to its own footage. */
+		onrecorded: (name: string) => void;
 		onclose: () => void;
 	} = $props();
 
@@ -131,10 +137,9 @@
 	}
 
 	function save(video: Blob) {
-		const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-		const name = `appchery-scoring-${stamp}.webm`;
-		// Nothing to await: the modal is closing, and the share sheet outlives it.
-		void saveFile(video, name, $t('auto.title'));
+		// Reported straight away: the end keeps the name whether or not the write itself succeeds.
+		onrecorded(videoName);
+		void storeRecording(video, videoName);
 	}
 
 	function stop() {

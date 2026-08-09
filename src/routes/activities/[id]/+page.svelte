@@ -232,15 +232,35 @@
 	// Writes are chained so ends reach the database in the order they were shot.
 	let writes = Promise.resolve();
 
+	/**
+	 * Footage recorded for the end being scored, if any, kept until that end is written.
+	 *
+	 * Held here rather than in the camera modal because the two can part company: an archer may film
+	 * an end, dismiss the detections, and type the arrows in by hand. The video still belongs to that
+	 * end, and pairing the two is the entire reason the recording is worth keeping.
+	 */
+	let endVideo = $state<string | null>(null);
+
+	/**
+	 * Names the file after the end it belongs to. The activity id makes it unique across the app, and
+	 * the stage and end number make it findable by anyone reading the exported sheet beside it.
+	 */
+	function videoNameFor(slot: EndSlot): string {
+		const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+		return `appchery-${activityId}-s${slot.stageIndex + 1}-e${slot.endNo}-${stamp}.webm`;
+	}
+
 	function enqueueEnd(slot: EndSlot, shots: Omit<Shot, 'ordinal'>[]) {
 		// Stored as shot, so the sheet can present either order without losing what actually happened.
 		const ordered = [...shots];
 		const key = crypto.randomUUID();
+		const video = endVideo;
+		endVideo = null;
 		queued = [...queued, { key, shots: ordered }];
 		pending = [];
 
 		writes = writes.then(async () => {
-			await recordEnd(activityId, slot.stageIndex, slot.endNo, ordered);
+			await recordEnd(activityId, slot.stageIndex, slot.endNo, ordered, video);
 			const fresh = await loadRows();
 			// Swap both together so the row never exists twice or vanishes between the two updates.
 			stored = fresh;
@@ -944,7 +964,9 @@
 	<AutoScore
 		{scoreSet}
 		remaining={currentSlot.arrows - pending.length}
+		videoName={videoNameFor(currentSlot)}
 		onaccept={acceptDetected}
+		onrecorded={(name) => (endVideo = name)}
 		onclose={() => (autoScoring = false)}
 	/>
 {/if}

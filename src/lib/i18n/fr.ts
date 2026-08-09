@@ -275,6 +275,8 @@ export const fr: Dictionary = {
 		recordTitle: "Enregistrer la vidéo du marquage",
 		recordHint:
 			"Enregistre sur cet appareil une vidéo de chaque marquage à la caméra, pour améliorer la détection. Rien n'est envoyé.",
+		recordPath:
+			"Les vidéos sont enregistrées sur cet appareil, une par volée, nommées d'après l'activité et la volée correspondantes. Récupérez-les par câble ou avec le gestionnaire de fichiers.",
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',
 		placeTitle: 'Nommer le lieu',
