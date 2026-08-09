@@ -5,6 +5,8 @@
 	import { groupByWeek, monthGrid, startOfDay } from '$lib/domain/dates';
 	import { defaultBowId, formatTime, dateFormats } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { registerTabs } from '$lib/nav';
 
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
 
@@ -85,12 +87,20 @@
 		{ key: 'list' as const, label: $t('sessions.listTab') },
 		{ key: 'calendar' as const, label: $t('sessions.calendarTab') }
 	]);
+
+	$effect(() =>
+		registerTabs({
+			count: TABS.length,
+			index: TABS.findIndex((item) => item.key === tab),
+			select: (i) => (tab = TABS[i].key)
+		})
+	);
 </script>
 
 <div class="flex min-h-full flex-col">
-<div class="safe-top mx-auto flex w-full max-w-2xl flex-1 flex-col p-4 pt-6">
-	<h1 class="mt-2 mb-3 text-2xl font-bold tracking-tight">{$t('sessions.title')}</h1>
+<PageHeader motif="sessions" title={$t('sessions.title')} />
 
+<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col p-4">
 	<nav class="mb-4 flex gap-1 rounded-lg bg-sunk p-1">
 		{#each TABS as item (item.key)}
 			<button

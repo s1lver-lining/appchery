@@ -11,6 +11,8 @@
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import Icon from '$lib/ui/Icon.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { registerTabs } from '$lib/nav';
 	import { dateFormats, statsRange } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
@@ -88,11 +90,19 @@
 	};
 	const monthLabel = $derived((month: string) => $dateFormats.monthNarrow(firstOfMonth(month)));
 	const monthTitle = $derived((month: string) => $dateFormats.monthYear(firstOfMonth(month)));
+
+	$effect(() =>
+		registerTabs({
+			count: RANGES.length,
+			index: RANGES.findIndex((item) => item.key === range),
+			select: (i) => (range = RANGES[i].key)
+		})
+	);
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
-	<h1 class="mt-2 text-2xl font-bold tracking-tight">{$t('stats.title')}</h1>
+<PageHeader motif="stats" title={$t('stats.title')} />
 
+<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 	<nav class="flex gap-1 rounded-lg bg-sunk p-1">
 		{#each RANGES as item (item.key)}
 			<button

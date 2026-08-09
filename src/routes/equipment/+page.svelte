@@ -5,6 +5,7 @@
 	import { listBows, createBow, type BowRow } from '$lib/db/repository';
 	import { defaultBowId } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	let bows = $state<BowRow[]>([]);
 	let adding = $state(false);
@@ -30,9 +31,8 @@
 	}
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
-	<header class="mt-2 flex items-center justify-between">
-		<h1 class="text-2xl font-bold tracking-tight">{$t('equipment.title')}</h1>
+<PageHeader motif="equipment" title={$t('equipment.title')}>
+	{#snippet actions()}
 		<button
 			class="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
 			onclick={() => (adding = !adding)}
@@ -40,8 +40,10 @@
 			<Icon name="plus" size={18} />
 			{adding ? $t('common.cancel') : $t('equipment.addBow')}
 		</button>
-	</header>
+	{/snippet}
+</PageHeader>
 
+<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 	{#if adding}
 		<section class="space-y-3 rounded-xl border border-line bg-surface p-4">
 			<label class="block text-sm font-semibold">

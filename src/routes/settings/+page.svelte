@@ -18,6 +18,7 @@
 		BackupError
 	} from '$lib/db/backup';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -95,9 +96,9 @@
 	}
 </script>
 
-<div class="safe-top mx-auto w-full max-w-2xl space-y-6 p-4 pt-6">
-	<h1 class="text-2xl font-bold tracking-tight">{$t('settings.title')}</h1>
+<PageHeader motif="settings" title={$t('settings.title')} />
 
+<div class="mx-auto w-full max-w-2xl space-y-6 p-4">
 	<section>
 		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.language')}</h2>
 		<div class="flex gap-2">

@@ -16,6 +16,8 @@
 	} from '$lib/domain/rounds/custom';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { formatDistance } from '$lib/domain/units';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { registerTabs } from '$lib/nav';
 	import {
 		captureConditions,
 		formatTemperature,
@@ -49,6 +51,17 @@
 	let activities = $state<ActivityRow[]>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
 	let tab = $state<'overview' | 'settings'>('overview');
+	const TABS = $derived([
+		{ key: 'overview' as const, label: $t('session.overviewTab') },
+		{ key: 'settings' as const, label: $t('session.settingsTab') }
+	]);
+	$effect(() =>
+		registerTabs({
+			count: TABS.length,
+			index: TABS.findIndex((item) => item.key === tab),
+			select: (i) => (tab = TABS[i].key)
+		})
+	);
 	let adding = $state(false);
 	let fetching = $state(false);
 	let notice = $state<string | null>(null);
@@ -166,8 +179,9 @@
 </script>
 
 {#if session}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
-		<header>
+	<PageHeader motif="session" subtitle={$formatDateTime(session.startedAt)}>
+		{#snippet lead()}
+			{@const named = session}
 			<a href="/sessions" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
 				<Icon name="back" size={22} />
 			</a>
@@ -175,7 +189,7 @@
 				<input
 					bind:this={nameInput}
 					class="mt-1 w-full rounded-lg border-2 border-brand bg-surface px-3 py-2 text-2xl font-bold tracking-tight text-ink outline-none"
-					value={session.label ?? ''}
+					value={named?.label ?? ''}
 					placeholder={$t('sessions.untitled')}
 					onblur={(e) => saveName(e.currentTarget.value)}
 					onkeydown={(e) => {
@@ -186,17 +200,18 @@
 			{:else}
 				<button
 					class="-mx-1 mt-1 rounded-lg px-1 text-left text-2xl font-bold tracking-tight
-						{session.label ? 'text-ink' : 'text-muted'}"
+						{named?.label ? 'text-ink' : 'text-muted'}"
 					onclick={startRename}
 				>
-					{session.label ?? $t('sessions.untitled')}
+					{named?.label ?? $t('sessions.untitled')}
 				</button>
 			{/if}
-			<p class="text-sm text-muted">{$formatDateTime(session.startedAt)}</p>
-		</header>
+		{/snippet}
+	</PageHeader>
 
+	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 		<nav class="flex gap-1 rounded-lg bg-sunk p-1">
-			{#each [{ key: 'overview', label: $t('session.overviewTab') }, { key: 'settings', label: $t('session.settingsTab') }] as item (item.key)}
+			{#each TABS as item (item.key)}
 				<button
 					class="flex-1 rounded-md py-1.5 text-sm font-medium
 						{tab === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
