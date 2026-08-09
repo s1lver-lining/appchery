@@ -1,5 +1,10 @@
 # Scoring data that still needs verification
 
+> **Status: deferred.** The app focuses on target archery for now, where the WA score sets are
+> straightforward and already correct. Field and 3D remain shipped but flagged, and this checklist
+> is picked up when those disciplines become a priority.
+
+
 Every score set in `src/lib/domain/rounds/field.ts` carries `needsVerification: true`. Those values
 were written from general knowledge of the disciplines, **not transcribed from a rulebook**, and the
 organisations revise them between editions.
