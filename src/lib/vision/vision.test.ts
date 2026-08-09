@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { detectFace, toFaceCoords, toImageCoords } from './face';
+import { detectFace, detectFaces, toFaceCoords, toImageCoords } from './face';
+import { refineFace, ringAgreement } from './refine';
 import { Background, findBlobs } from './impacts';
 import { verifyRings, classify, probeRing } from './rings';
 import { ImpactTracker } from './tracker';
@@ -174,7 +175,7 @@ describe('findBlobs', () => {
 describe('ImpactTracker', () => {
 	it('confirms an arrow only once it has held still across frames', () => {
 		const tracker = new ImpactTracker(3);
-		const arrow = { x: 0.2, y: -0.1, area: 12 };
+		const arrow = { x: 0.2, y: -0.1, area: 12, face: 0 };
 
 		expect(tracker.push([arrow])).toHaveLength(0);
 		expect(tracker.push([arrow])).toHaveLength(0);
@@ -184,7 +185,7 @@ describe('ImpactTracker', () => {
 
 	it('never reports the same arrow twice, however long it stays on the face', () => {
 		const tracker = new ImpactTracker(2);
-		const arrow = { x: 0, y: 0, area: 12 };
+		const arrow = { x: 0, y: 0, area: 12, face: 0 };
 		tracker.push([arrow]);
 		tracker.push([arrow]);
 		expect(tracker.arrows).toHaveLength(1);
@@ -195,23 +196,38 @@ describe('ImpactTracker', () => {
 
 	it('lets a one frame flicker decay instead of promoting it', () => {
 		const tracker = new ImpactTracker(3);
-		tracker.push([{ x: 0.5, y: 0.5, area: 9 }]);
+		tracker.push([{ x: 0.5, y: 0.5, area: 9, face: 0 }]);
 		tracker.push([]);
 		tracker.push([]);
 		expect(tracker.arrows).toHaveLength(0);
 		expect(tracker.pending).toHaveLength(0);
 	});
 
+	it('keeps arrows on different faces apart, since each face has its own origin', () => {
+		// A three spot end puts one arrow in each gold, and all three are at the same coordinates.
+		const tracker = new ImpactTracker(2);
+		tracker.push([
+			{ x: 0, y: 0, area: 10, face: 0 },
+			{ x: 0, y: 0, area: 10, face: 1 }
+		]);
+		tracker.push([
+			{ x: 0, y: 0, area: 10, face: 0 },
+			{ x: 0, y: 0, area: 10, face: 1 }
+		]);
+		expect(tracker.arrows).toHaveLength(2);
+		expect(tracker.arrows.map((a) => a.face).sort()).toEqual([0, 1]);
+	});
+
 	it('treats a nearby detection as the same arrow, not a second one', () => {
 		const tracker = new ImpactTracker(2);
-		tracker.push([{ x: 0.3, y: 0.3, area: 10 }]);
-		tracker.push([{ x: 0.31, y: 0.302, area: 10 }]);
+		tracker.push([{ x: 0.3, y: 0.3, area: 10, face: 0 }]);
+		tracker.push([{ x: 0.31, y: 0.302, area: 10, face: 0 }]);
 		expect(tracker.arrows).toHaveLength(1);
 	});
 
 	it('forgets an arrow the archer rejected', () => {
 		const tracker = new ImpactTracker(1);
-		const [arrow] = tracker.push([{ x: 0, y: 0, area: 8 }]);
+		const [arrow] = tracker.push([{ x: 0, y: 0, area: 8, face: 0 }]);
 		tracker.forget(arrow);
 		expect(tracker.arrows).toHaveLength(0);
 	});
@@ -362,5 +378,77 @@ describe('Scanner face gating', () => {
 			result = scanner.push(frame);
 		}
 		expect(result!.arrows.length).toBeLessThanOrEqual(1);
+	});
+});
+
+describe('detectFaces', () => {
+	it('finds every face in the frame, not only the largest gold', () => {
+		// A three spot: three faces in one image, which taking the biggest blob would reduce to one.
+		const frame = blank(240, 420, 235);
+		for (const cy of [70, 210, 350]) {
+			for (const [share, colour] of [
+				[1.0, WHITE],
+				[0.8, BLACK],
+				[0.6, BLUE],
+				[0.4, RED],
+				[0.2, GOLD]
+			] as [number, [number, number, number]][]) {
+				ellipse(frame, 120, cy, 60 * share, 60 * share, colour);
+			}
+		}
+
+		const faces = detectFaces(frame);
+		expect(faces.length).toBeGreaterThanOrEqual(3);
+		const centres = faces.map((f) => Math.round(f.cy)).sort((a, b) => a - b);
+		expect(centres.slice(0, 3)).toEqual([70, 210, 350]);
+	});
+});
+
+describe('refineFace', () => {
+	it('recovers a face whose gold has been split by arrows', () => {
+		// Arrows standing in the ten break the gold into pieces, which drags the blob centroid off
+		// centre and shrinks its area. The rings around it are unaffected, so the fit can be rescued.
+		const frame = waFace(240, 100);
+		ellipse(frame, 108, 120, 3, 26, BLACK);
+		ellipse(frame, 132, 120, 3, 26, BLACK);
+
+		const seeded = detectFaces(frame, { refine: false })[0];
+		const refined = detectFaces(frame)[0];
+
+		expect(refined).toBeDefined();
+		expect(refined.cx).toBeCloseTo(120, 0);
+		expect(refined.cy).toBeCloseTo(120, 0);
+		// Within a few percent of the true 100px radius, and better than the unrefined seed.
+		expect(Math.abs(refined.semiMajor - 100)).toBeLessThan(8);
+		expect(Math.abs(refined.semiMajor - 100)).toBeLessThanOrEqual(
+			Math.abs(seeded.semiMajor - 100) + 1
+		);
+	});
+
+	it('scores a correct fit above a displaced one', () => {
+		const frame = waFace(240, 100);
+		const truth = detectFaces(frame, { refine: false })[0];
+		expect(ringAgreement(frame, truth)).toBeGreaterThan(
+			ringAgreement(frame, { ...truth, cx: truth.cx + 30 })
+		);
+	});
+
+	it('does not shrink a three spot to chase rings that are not printed on it', () => {
+		// The paper stops at the 6 ring, so everything past r = 0.5 is backing. Scoring that against
+		// the full ten ring layout pulled the fit inward by about a tenth.
+		const frame = blank(240, 240, 240);
+		// Printed to the 6 ring, whose outer radius is 0.5 of the notional face.
+		for (const [share, colour] of [
+			[0.5, BLUE],
+			[0.4, RED],
+			[0.2, GOLD]
+		] as [number, [number, number, number]][]) {
+			ellipse(frame, 120, 120, 100 * share, 100 * share, colour);
+		}
+
+		const face = detectFaces(frame)[0];
+		expect(face).toBeDefined();
+		expect(face.semiMajor).toBeGreaterThan(88);
+		expect(face.semiMajor).toBeLessThan(112);
 	});
 });

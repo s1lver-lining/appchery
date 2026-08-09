@@ -37,7 +37,7 @@ export class ImpactTracker {
 	 * Feeds one frame's detections in and returns any newly confirmed arrows. Candidates not seen in
 	 * a frame decay rather than vanish, so one dropped detection does not restart the count.
 	 */
-	push(detections: { x: number; y: number; area: number }[]): Impact[] {
+	push(detections: { x: number; y: number; area: number; face: number }[]): Impact[] {
 		const matched = new Set<Impact>();
 
 		for (const detection of detections) {
@@ -73,10 +73,12 @@ export class ImpactTracker {
 		return promoted;
 	}
 
-	private nearest(list: Impact[], point: { x: number; y: number }): Impact | undefined {
+	private nearest(list: Impact[], point: { x: number; y: number; face: number }): Impact | undefined {
 		let best: Impact | undefined;
 		let bestDistance = this.mergeDistance;
 		for (const item of list) {
+			// Coordinates only mean the same thing within one face, so a match must share it.
+			if (item.face !== point.face) continue;
 			const distance = Math.hypot(item.x - point.x, item.y - point.y);
 			if (distance < bestDistance) {
 				bestDistance = distance;

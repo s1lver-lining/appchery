@@ -38,6 +38,11 @@ export interface Blob {
 export interface Impact {
 	x: number;
 	y: number;
+	/**
+	 * Which face it landed on. A three spot end puts one arrow on each of three faces, and each face
+	 * has its own coordinate frame, so two arrows in two golds are both at the origin.
+	 */
+	face: number;
 	/** Frames this impact has been seen in, which is what promotes a candidate to a real arrow. */
 	seen: number;
 	/** Pixel area of the blob, kept so the UI can flag a suspiciously large detection. */
