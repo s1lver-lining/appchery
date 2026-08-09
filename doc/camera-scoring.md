@@ -341,9 +341,9 @@ that has been shot at for months, so the paper is covered in old holes.
 | measure | result |
 | ------- | ------ |
 | face found | 95.2% |
-| arrows found | **40.5%** |
-| candidates that were arrows | 34.7% |
-| value agreed, of those matched | 78.6% |
+| arrows found | **37.2%** |
+| candidates that were arrows | 41.9% |
+| value agreed, of those matched | 79.2% |
 | impact error | 2.8% of the face radius (median) |
 
 **This is not good enough to score with, and it is not presented as if it were.** Roughly one arrow in
@@ -359,6 +359,11 @@ on dark paper has almost no contrast to find.
 
 For scale, the first version of this stage scored 18.5% recall on the same measure, and its impacts
 were placed by colour anomaly, which put its best candidates on the numbers printed on the face.
+
+Where the last rounds of work went is itself informative: they traded recall for precision rather than
+adding either, which is what a hand written rule set looks like when it runs out of road. `bridge` is
+the knob that sets that trade. A plan for a learned detector on the arrow stage, keeping this one
+alongside it, is in [arrow-detection-ml.md](arrow-detection-ml.md).
 
 ## Testing it
 
