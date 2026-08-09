@@ -174,6 +174,44 @@ describe('findBlobs', () => {
 });
 
 describe('ImpactTracker', () => {
+	it('treats a frame that lights up everywhere as the camera moving, not as arrows', () => {
+		const tracker = new ImpactTracker(2, 0.035, 3);
+		const jolt = [
+			{ x: 0.1, y: 0.1, area: 20, face: 0 },
+			{ x: -0.3, y: 0.2, area: 20, face: 0 },
+			{ x: 0.4, y: -0.4, area: 20, face: 0 },
+			{ x: -0.6, y: -0.1, area: 20, face: 0 }
+		];
+
+		tracker.push(jolt);
+		tracker.push(jolt);
+		tracker.push(jolt);
+		expect(tracker.arrows).toHaveLength(0);
+	});
+
+	it('retires an arrow that stops showing up while it is still on probation', () => {
+		const tracker = new ImpactTracker(2, 0.035, 3, 45, 4);
+		const arrow = { x: 0.2, y: 0.2, area: 12, face: 0 };
+
+		tracker.push([arrow]);
+		tracker.push([arrow]);
+		expect(tracker.arrows).toHaveLength(1);
+
+		// A real arrow keeps differing from the background for seconds; this one vanishes at once.
+		for (let i = 0; i < 6; i++) tracker.push([]);
+		expect(tracker.arrows).toHaveLength(0);
+	});
+
+	it('keeps an arrow that held its place long enough to be believed', () => {
+		const tracker = new ImpactTracker(2, 0.035, 3, 10, 4);
+		const arrow = { x: 0.2, y: 0.2, area: 12, face: 0 };
+
+		for (let i = 0; i < 14; i++) tracker.push([arrow]);
+		// Past probation the background has absorbed it, so it is no longer expected to be seen.
+		for (let i = 0; i < 30; i++) tracker.push([]);
+		expect(tracker.arrows).toHaveLength(1);
+	});
+
 	it('confirms an arrow only once it has held still across frames', () => {
 		const tracker = new ImpactTracker(3);
 		const arrow = { x: 0.2, y: -0.1, area: 12, face: 0 };

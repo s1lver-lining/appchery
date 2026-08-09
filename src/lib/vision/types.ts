@@ -47,4 +47,8 @@ export interface Impact {
 	seen: number;
 	/** Pixel area of the blob, kept so the UI can flag a suspiciously large detection. */
 	area: number;
+	/** Frames since this arrow was confirmed, used to keep it on probation for a while. */
+	held?: number;
+	/** Consecutive frames it has gone unseen, which is what retires one that was never really there. */
+	missed?: number;
 }
