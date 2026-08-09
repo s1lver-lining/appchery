@@ -23,6 +23,7 @@
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import { setPageUp } from '$lib/nav';
 	import {
 		getActivity,
 		getSession,
@@ -47,6 +48,8 @@
 	const activityId = $derived($page.params.id as string);
 
 	let activity = $state<ActivityRow | null>(null);
+	// The route sits at the top level but the activity belongs to a session, so back climbs to it.
+	$effect(() => setPageUp(activity ? `/sessions/${activity.sessionId}` : '/sessions'));
 	let stored = $state<{ end: EndRow; shots: ShotRow[] }[]>([]);
 	/**
 	 * Ends committed locally whose write has not landed yet. Keeping a list rather than a single

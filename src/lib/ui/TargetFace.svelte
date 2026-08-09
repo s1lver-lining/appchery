@@ -164,7 +164,7 @@
 
 </script>
 
-<div class="relative h-full w-full">
+<div class="relative h-full w-full" data-noswipe>
 	<svg
 		bind:this={svg}
 		viewBox="-1.05 -1.05 2.1 2.1"
