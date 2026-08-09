@@ -12,6 +12,7 @@
 	} from '$lib/domain/equipment/schemas';
 	import { mmToInches, inchesToMm } from '$lib/domain/units';
 	import { defaultBowId, dateFormats } from '$lib/prefs';
+	import { startOfDay } from '$lib/domain/dates';
 	import {
 		getBow,
 		updateBow,
@@ -119,7 +120,9 @@
 
 	async function startTuning(templateKey: string) {
 		const sessions = await listSessions();
-		const open = sessions.find((s) => s.endedAt === null && s.bowId === bowId);
+		// Tuning joins today's session for this bow when there is one, rather than opening a new outing.
+		const today = startOfDay(Date.now());
+		const open = sessions.find((s) => s.bowId === bowId && startOfDay(s.startedAt) === today);
 		const sessionId = open?.id ?? (await createSession({ bowId, label: bow?.name }));
 		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
 	}

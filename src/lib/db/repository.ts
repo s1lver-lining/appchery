@@ -97,7 +97,6 @@ export async function updateSession(
 		longitude: number | null;
 		weather: string | null;
 		notes: string | null;
-		endedAt: number | null;
 	}>
 ) {
 	await db()
@@ -179,7 +178,6 @@ export async function updateActivity(
 		adjustmentMade: string | null;
 		notes: string | null;
 		status: string;
-		endedAt: number | null;
 	}>
 ) {
 	await db()

@@ -137,5 +137,7 @@ export const MIGRATIONS: string[][] = [
 		);`
 	],
 	// 0002 bow photo, shown in the equipment list
-	[`ALTER TABLE bow ADD COLUMN photo TEXT;`]
+	[`ALTER TABLE bow ADD COLUMN photo TEXT;`],
+	// 0003 nothing ever ended a session or an activity, and completion is derived from the arrows
+	[`ALTER TABLE session DROP COLUMN ended_at;`, `ALTER TABLE activity DROP COLUMN ended_at;`]
 ];

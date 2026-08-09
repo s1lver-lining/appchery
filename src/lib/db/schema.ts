@@ -53,7 +53,6 @@ export const session = sqliteTable('session', {
 	...syncColumns,
 	label: text('label'),
 	startedAt: integer('started_at').notNull(),
-	endedAt: integer('ended_at'),
 	/** practice | competition | qualification */
 	kind: text('kind').notNull().default('practice'),
 	/** Set when shooting a bow the archer has recorded. */
@@ -91,7 +90,6 @@ export const activity = sqliteTable(
 		adjustmentMade: text('adjustment_made'),
 		resultingRevisionId: text('resulting_revision_id'),
 		startedAt: integer('started_at').notNull(),
-		endedAt: integer('ended_at'),
 		totalScore: integer('total_score').notNull().default(0),
 		count10s: integer('count_10s').notNull().default(0),
 		countX: integer('count_x').notNull().default(0),
