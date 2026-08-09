@@ -60,9 +60,10 @@
 		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;`;
 	}
 
+	/** Just the tenth, as a suffix: the ring is what matters, the depth is a detail beside it. */
 	function detail(arrow: Impact): string {
 		const decimal = decimalScore(scoreSet, arrow.x, arrow.y);
-		return decimal === null ? '' : decimal.toFixed(1);
+		return decimal === null ? '' : `.${Math.round((decimal % 1) * 10)}`;
 	}
 
 	$effect(() => {
@@ -215,28 +216,30 @@
 						: $t('auto.settling')}
 			</p>
 		{:else}
-			<!-- Capped and scrollable: a bad frame must never push the buttons off the screen. -->
-			<div class="flex max-h-24 flex-wrap items-start gap-2 overflow-y-auto">
+			<!--
+				Six to a row, matching the longest common end, so a full end reads as one line. Scrollable
+				as well, because a bad frame must never push the buttons off the screen.
+			-->
+			<div class="grid max-h-28 grid-cols-6 gap-1.5 overflow-y-auto">
 				{#each ranked as arrow, i (i)}
 					<button
-						class="tabular flex h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-base font-bold
+						class="tabular flex h-10 items-center justify-center rounded-lg text-base font-bold
 							{i < remaining ? '' : 'opacity-40'}"
 						style={pillStyle(arrow)}
 						aria-label={$t('auto.drop')}
 						onclick={() => drop(arrow)}
 					>
-						{label(arrow)}
-						<span class="text-[11px] font-medium opacity-70">{detail(arrow)}</span>
-						<Icon name="close" size={14} />
+						{label(arrow)}<span class="ml-0.5 text-[10px] font-semibold opacity-70">
+							{detail(arrow)}
+						</span>
 					</button>
 				{/each}
 			</div>
+			<p class="text-center text-[11px] text-muted">{$t('auto.tapToDrop')}</p>
 			{#if found.length > remaining}
 				<p class="text-xs text-danger">{$t('auto.tooMany', { n: remaining })}</p>
 			{/if}
 		{/if}
-
-		<p class="text-xs text-muted">{$t('auto.hint')}</p>
 
 		<div class="flex gap-2">
 			<button class="flex-1 rounded-lg border border-line py-3 text-sm font-medium" onclick={onclose}>
