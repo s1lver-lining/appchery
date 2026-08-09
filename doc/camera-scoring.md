@@ -182,6 +182,25 @@ drops any that are wrong, and taps to keep the rest. A wrong score written silen
 score at all, so there is no path from the camera to the database that does not pass through a
 person.
 
+## Inspecting a single picture
+
+`./scripts/detect_arrows.sh <image> [-o overlay.png]` runs the face stage over one photograph and
+writes an overlay with the detected rings and candidate arrows drawn on it. Any format the browser
+can decode works, and `--json` prints the raw result instead.
+
+The overlay is the point. Ring circles drawn back onto a real photograph show a bad fit instantly,
+where a percentage does not, and that is how the two worst geometry bugs in this pipeline were
+found.
+
+Arrow detection there is **weaker than the video path and is not a score**. A still has no quiet
+reference frame, so being new is not a signal that exists; the fallback looks for patches whose
+colour does not match the ring they sit in. That alone flagged the numbers printed on the face as
+the largest anomalies on every photograph tried, so a candidate must also be *darker* than the paper
+of its own ring: an arrow and the hole it makes are physically darker, while the printed numbers are
+lighter. Holes, tears, creases and shadows still qualify. Use the camera for actual scoring.
+
+`--scale 2` samples finer and finds more, at the cost of more noise.
+
 ## What it cannot do
 
 Stated plainly, because the limits are real:
