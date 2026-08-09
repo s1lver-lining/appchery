@@ -92,6 +92,36 @@ function rank(label: string): number {
 	return label === 'X' ? 1 : 0;
 }
 
+/**
+ * How deep into its ring an arrow sits, as the ring value plus a tenth: an 8 just inside the 9 line
+ * reads 8.9, one about to drop into the 7 reads 8.0. Archers use this to compare groups that score
+ * the same, and it is what makes a plotted arrow more informative than a tapped one.
+ *
+ * Concentric circular faces only. A field animal or a polygon zone has no single radius to measure
+ * against, so those return null and the caller shows the plain value.
+ */
+export function decimalScore(scoreSet: ScoreSet, x: number, y: number): number | null {
+	const zone = scoreAt(scoreSet, x, y);
+	if (!zone.countsAsHit) return null;
+
+	const radii = scoreSet.zones
+		.filter((z) => z.countsAsHit && z.shape.kind === 'circle' && Number.isFinite(z.shape.r))
+		.map((z) => (z.shape as { r: number }).r)
+		.sort((a, b) => a - b);
+	if (radii.length < 2) return null;
+
+	const outer = (zone.shape as { r?: number }).r;
+	if (outer === undefined || !Number.isFinite(outer)) return null;
+
+	// The next ring in is where this one stops, and the centre for the innermost ring.
+	const inner = radii.filter((r) => r < outer).pop() ?? 0;
+	if (outer <= inner) return null;
+
+	const distance = Math.hypot(x, y);
+	const depth = (outer - Math.min(Math.max(distance, inner), outer)) / (outer - inner);
+	return zone.value + Math.min(0.9, Math.round(depth * 10) / 10);
+}
+
 export function sumShots(shots: Shot[]): number {
 	return shots.reduce((sum, s) => sum + s.value, 0);
 }

@@ -1,7 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import { WA_10_RING, ROUNDS, getRound } from './seed';
 import { scoreAt, maxScore, totalArrows, endSlots, groupMetrics, groupHull,
-	sortShotsDescending
+	sortShotsDescending,
+	decimalScore
 } from './geometry';
 import { buildCustomRound, validateCustomRound } from './custom';
 import type { Shot } from './types';
@@ -162,5 +163,25 @@ describe('sortShotsDescending', () => {
 		];
 		sortShotsDescending(input);
 		expect(input.map((s) => s.zoneLabel)).toEqual(['5', '8']);
+	});
+});
+
+describe('decimalScore', () => {
+	it('reads higher the deeper into the ring the arrow sits', () => {
+		// The 8 ring runs from r = 0.2 to r = 0.3 on a ten ring face.
+		expect(decimalScore(WA_10_RING, 0.299, 0)).toBeCloseTo(8.0, 1);
+		expect(decimalScore(WA_10_RING, 0.25, 0)).toBeCloseTo(8.5, 1);
+		expect(decimalScore(WA_10_RING, 0.201, 0)).toBeCloseTo(8.9, 1);
+	});
+
+	it('agrees with the ring the arrow is actually in', () => {
+		for (const r of [0.05, 0.15, 0.25, 0.35, 0.55, 0.95]) {
+			const decimal = decimalScore(WA_10_RING, r, 0)!;
+			expect(Math.floor(decimal)).toBe(scoreAt(WA_10_RING, r, 0).value);
+		}
+	});
+
+	it('has nothing to say about a miss', () => {
+		expect(decimalScore(WA_10_RING, 1.5, 0)).toBeNull();
 	});
 });
