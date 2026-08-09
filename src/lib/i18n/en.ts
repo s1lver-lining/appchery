@@ -5,6 +5,7 @@ export const en = {
 		tagline: 'Track your shooting. Tune your bow.'
 	},
 	nav: {
+		home: 'Home',
 		sessions: 'Sessions',
 		equipment: 'Equipment',
 		stats: 'Stats',
@@ -27,6 +28,11 @@ export const en = {
 		title: 'Sessions',
 		empty: 'No sessions yet. Start one, then add activities to it.',
 		new: 'New session',
+		listTab: 'List',
+		calendarTab: 'Calendar',
+		week: 'Week {n}',
+		noneThisMonth: 'Nothing shot this month.',
+		dayCount: '{n} sessions',
 		open: 'Open session',
 		finish: 'Finish session',
 		untitled: 'Session',
@@ -173,8 +179,22 @@ export const en = {
 		noRevisions: 'No settings recorded yet. Fill in the settings tab and save.',
 		deleteBow: 'Delete this bow'
 	},
+	home: {
+		title: 'Appchery',
+		greeting: 'Ready to shoot',
+		thisMonth: 'This month',
+		lastSession: 'Last session',
+		neverShot: 'No sessions yet.',
+		recent: 'Recent sessions',
+		seeAll: 'All sessions'
+	},
 	stats: {
 		title: 'Stats',
+		rangeAll: 'All time',
+		rangeYear: 'Year',
+		rangeMonth: 'Month',
+		byRoundOpen: 'Arrows by round',
+		emptyRange: 'Nothing shot in this period.',
 		empty: 'Finish a round and its scores will appear here.',
 		overview: 'Overview',
 		totalArrows: 'Arrows shot',

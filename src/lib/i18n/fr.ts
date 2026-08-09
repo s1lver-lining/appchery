@@ -6,6 +6,7 @@ export const fr: Dictionary = {
 		tagline: 'Suivez vos tirs. Réglez votre arc.'
 	},
 	nav: {
+		home: 'Accueil',
 		sessions: 'Séances',
 		equipment: 'Matériel',
 		stats: 'Stats',
@@ -28,6 +29,11 @@ export const fr: Dictionary = {
 		title: 'Séances',
 		empty: 'Aucune séance. Commencez-en une, puis ajoutez-y des activités.',
 		new: 'Nouvelle séance',
+		listTab: 'Liste',
+		calendarTab: 'Calendrier',
+		week: 'Semaine {n}',
+		noneThisMonth: 'Rien de tiré ce mois-ci.',
+		dayCount: '{n} séances',
 		open: 'Ouvrir la séance',
 		finish: 'Terminer la séance',
 		untitled: 'Séance',
@@ -174,8 +180,22 @@ export const fr: Dictionary = {
 		noRevisions: 'Aucun réglage enregistré. Remplissez l\'onglet Réglages puis enregistrez.',
 		deleteBow: 'Supprimer cet arc'
 	},
+	home: {
+		title: 'Appchery',
+		greeting: 'Prêt à tirer',
+		thisMonth: 'Ce mois-ci',
+		lastSession: 'Dernière séance',
+		neverShot: 'Aucune séance pour le moment.',
+		recent: 'Séances récentes',
+		seeAll: 'Toutes les séances'
+	},
 	stats: {
 		title: 'Statistiques',
+		rangeAll: 'Depuis le début',
+		rangeYear: 'Année',
+		rangeMonth: 'Mois',
+		byRoundOpen: 'Flèches par tir',
+		emptyRange: 'Rien de tiré sur cette période.',
 		empty: 'Terminez un tir et vos scores apparaîtront ici.',
 		overview: "Vue d'ensemble",
 		totalArrows: 'Flèches tirées',

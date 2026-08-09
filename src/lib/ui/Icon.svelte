@@ -1,6 +1,7 @@
 <script lang="ts">
 	// Drawn on a 24 unit grid with stroked geometry so every icon shares one weight and inherits currentColor.
 	export type IconName =
+		| 'home'
 		| 'target'
 		| 'bow'
 		| 'chart'
@@ -39,7 +40,11 @@
 	stroke-linejoin="round"
 	aria-hidden="true"
 >
-	{#if name === 'target'}
+	{#if name === 'home'}
+		<path d="M3.6 10.4 12 3.8l8.4 6.6" />
+		<path d="M5.6 9v10.2a.8.8 0 0 0 .8.8h11.2a.8.8 0 0 0 .8-.8V9" />
+		<path d="M9.8 20V13.6h4.4V20" />
+	{:else if name === 'target'}
 		<circle cx="12" cy="12" r="9" />
 		<circle cx="12" cy="12" r="5.2" />
 		<circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />

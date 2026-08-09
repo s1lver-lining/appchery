@@ -4,18 +4,20 @@
 	import {
 		summariseByRound,
 		overview,
+		inRange,
 		type ScoredActivity,
-		type RoundSummary,
-		type Overview
+		type StatsRange
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
+	import Icon from '$lib/ui/Icon.svelte';
 
-	let summaries = $state<RoundSummary[]>([]);
-	let totals = $state<Overview | null>(null);
+	let scored = $state<ScoredActivity[]>([]);
+	let range = $state<StatsRange>('all');
+	let showByRound = $state(false);
 
 	async function refresh() {
 		const activities = await listAllActivities();
-		const scored: ScoredActivity[] = activities
+		scored = activities
 			.filter((a) => a.kind === 'scoring')
 			.map((a) => ({
 				id: a.id,
@@ -28,15 +30,27 @@
 				roundDefinitionId: a.roundDefinitionId,
 				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 			}));
-		totals = overview(scored);
-		summaries = summariseByRound(scored);
 	}
 	$effect(() => {
 		refresh();
 	});
 
+	/**
+	 * Every figure on the page reads from the selected window, so switching the tab moves the bests
+	 * and the averages with it rather than only the chart.
+	 */
+	const windowed = $derived(inRange(scored, range));
+	const totals = $derived(overview(windowed, range === 'month' ? 6 : 12));
+	const summaries = $derived(summariseByRound(windowed));
+
+	const RANGES: { key: StatsRange; label: string }[] = $derived([
+		{ key: 'all', label: $t('stats.rangeAll') },
+		{ key: 'year', label: $t('stats.rangeYear') },
+		{ key: 'month', label: $t('stats.rangeMonth') }
+	]);
+
 	/** Sparkline over the round's history, scaled to its own range so small moves stay readable. */
-	function sparkline(summary: RoundSummary): string {
+	function sparkline(summary: (typeof summaries)[number]): string {
 		const scores = summary.history.map((a) => a.totalScore);
 		if (scores.length < 2) return '';
 		const min = Math.min(...scores);
@@ -51,8 +65,8 @@
 			.join(' ');
 	}
 
-	const peakMonth = $derived(Math.max(1, ...(totals?.byMonth ?? []).map((m) => m.arrows)));
-	const topRoundArrows = $derived(Math.max(1, ...(totals?.byRound ?? []).map((r) => r.arrows)));
+	const peakMonth = $derived(Math.max(1, ...totals.byMonth.map((m) => m.arrows)));
+	const topRoundArrows = $derived(Math.max(1, ...totals.byRound.map((r) => r.arrows)));
 
 	/** Month labels come from the locale, so the chart reads the same way as every other date. */
 	function monthLabel(month: string): string {
@@ -72,7 +86,19 @@
 <div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 	<h1 class="mt-2 text-2xl font-bold tracking-tight">{$t('stats.title')}</h1>
 
-	{#if totals && totals.rounds > 0}
+	<nav class="flex gap-1 rounded-lg bg-sunk p-1">
+		{#each RANGES as item (item.key)}
+			<button
+				class="flex-1 rounded-md py-1.5 text-sm font-medium
+					{range === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+				onclick={() => (range = item.key)}
+			>
+				{item.label}
+			</button>
+		{/each}
+	</nav>
+
+	{#if totals.rounds > 0}
 		<section class="rounded-xl border border-line bg-surface p-4">
 			<h2 class="text-sm font-semibold">{$t('stats.overview')}</h2>
 
@@ -81,7 +107,7 @@
 					<p class="tabular text-4xl leading-none font-bold text-brand-text">{totals.arrows}</p>
 					<p class="mt-1 text-xs text-muted">{$t('stats.totalArrows')}</p>
 				</div>
-				<dl class="ml-auto grid grid-cols-3 gap-x-4 text-right">
+				<dl class="ml-auto grid grid-cols-2 gap-x-5 text-right">
 					<div>
 						<dd class="tabular text-lg font-semibold">{totals.days}</dd>
 						<dt class="text-[11px] text-muted">{$t('stats.daysShot')}</dt>
@@ -90,16 +116,8 @@
 						<dd class="tabular text-lg font-semibold">{totals.rounds}</dd>
 						<dt class="text-[11px] text-muted">{$t('stats.roundsShot')}</dt>
 					</div>
-					<div>
-						<dd class="tabular text-lg font-semibold">{totals.averagePerArrow.toFixed(2)}</dd>
-						<dt class="text-[11px] text-muted">{$t('stats.perArrow')}</dt>
-					</div>
 				</dl>
 			</div>
-
-			<p class="mt-1 text-xs text-muted">
-				{$t('stats.completeRounds', { n: totals.completeRounds })}
-			</p>
 
 			<h3 class="mt-4 mb-2 text-xs font-semibold text-muted">{$t('stats.volume')}</h3>
 			<div class="flex h-28 items-end gap-1">
@@ -117,29 +135,27 @@
 				{/each}
 			</div>
 
-			<h3 class="mt-4 mb-2 text-xs font-semibold text-muted">{$t('stats.byRound')}</h3>
-			<ul class="space-y-1.5">
-				{#each totals.byRound.slice(0, 5) as row (row.name)}
-					<li class="flex items-center gap-2 text-sm">
-						<span class="w-28 shrink-0 truncate text-muted">{row.name}</span>
-						<span class="h-2 flex-1 rounded-full bg-sunk">
-							<span
-								class="block h-full rounded-full bg-brand"
-								style="width: {(row.arrows / topRoundArrows) * 100}%"
-							></span>
-						</span>
-						<span class="tabular w-10 text-right font-semibold">{row.arrows}</span>
-					</li>
-				{/each}
-			</ul>
-			<p class="mt-2 text-[11px] text-muted">{$t('stats.byRoundHint')}</p>
+			<button
+				class="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm font-medium"
+				onclick={() => (showByRound = true)}
+			>
+				<Icon name="chart" size={16} />
+				{$t('stats.byRoundOpen')}
+			</button>
 		</section>
+	{:else}
+		<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
+			{$t('stats.emptyRange')}
+		</p>
 	{/if}
 
 	{#if summaries.length === 0}
-		<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-			{$t('stats.empty')}
-		</p>
+		<!-- Only worth saying when something was shot: an empty window already says so above. -->
+		{#if totals.rounds > 0}
+			<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
+				{$t('stats.empty')}
+			</p>
+		{/if}
 	{:else}
 		<div>
 			<h2 class="text-sm font-semibold">{$t('stats.perRoundTitle')}</h2>
@@ -201,3 +217,42 @@
 		{/each}
 	{/if}
 </div>
+
+{#if showByRound}
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<button
+			class="absolute inset-0 bg-black/40"
+			aria-label={$t('common.close')}
+			onclick={() => (showByRound = false)}
+		></button>
+
+		<div class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
+			<div class="mb-1 flex items-center justify-between">
+				<h2 class="text-lg font-bold">{$t('stats.byRound')}</h2>
+				<button
+					class="text-muted"
+					aria-label={$t('common.close')}
+					onclick={() => (showByRound = false)}
+				>
+					<Icon name="close" size={20} />
+				</button>
+			</div>
+			<p class="mb-3 text-xs text-muted">{$t('stats.byRoundHint')}</p>
+
+			<ul class="max-h-[60dvh] space-y-1.5 overflow-y-auto">
+				{#each totals.byRound as row (row.name)}
+					<li class="flex items-center gap-2 text-sm">
+						<span class="w-24 shrink-0 truncate text-muted">{row.name}</span>
+						<span class="h-2 flex-1 rounded-full bg-sunk">
+							<span
+								class="block h-full rounded-full bg-brand"
+								style="width: {(row.arrows / topRoundArrows) * 100}%"
+							></span>
+						</span>
+						<span class="tabular w-10 shrink-0 text-right font-semibold">{row.arrows}</span>
+					</li>
+				{/each}
+			</ul>
+		</div>
+	</div>
+{/if}
