@@ -184,22 +184,51 @@ person.
 
 ## Inspecting a single picture
 
-`./scripts/detect_arrows.sh <image> [-o overlay.png]` runs the face stage over one photograph and
-writes an overlay with the detected rings and candidate arrows drawn on it. Any format the browser
-can decode works, and `--json` prints the raw result instead.
+`./scripts/arrow_detector.sh <image> [-o overlay.png]` runs the detector over one photograph and
+writes an overlay with the fitted rings, the shafts it followed and the impact it read for each. Any
+format the browser can decode works, and `--json` prints the raw result instead.
 
 The overlay is the point. Ring circles drawn back onto a real photograph show a bad fit instantly,
-where a percentage does not, and that is how the two worst geometry bugs in this pipeline were
-found.
+where a percentage does not, and that is how the two worst geometry bugs in this pipeline were found.
+It has since done the same for the arrow stage: the overlay is what showed that most of what the
+detector called an arrow was a printed ring line, and later that each arrow was being reported three
+or four times.
 
-Arrow detection there is **weaker than the video path and is not a score**. A still has no quiet
-reference frame, so being new is not a signal that exists; the fallback looks for patches whose
-colour does not match the ring they sit in. That alone flagged the numbers printed on the face as
-the largest anomalies on every photograph tried, so a candidate must also be *darker* than the paper
-of its own ring: an arrow and the hole it makes are physically darker, while the printed numbers are
-lighter. Holes, tears, creases and shadows still qualify. Use the camera for actual scoring.
+### Finding arrows without a reference frame
 
-`--scale 2` samples finer and finds more, at the cost of more noise.
+The video path recognises an arrow by it being *new*, which needs a quiet frame of the boss to
+compare against. A single picture has no such frame, so the signal has to come from the arrow's own
+shape. A shaft sticking out of a face is a long, thin, dark streak, and nothing printed on a face
+looks like that: the numbers are compact, the ring lines are circles, and creases are faint.
+
+Four things had to be true before this worked at all, each one found by measuring, and each one
+having been wrong first:
+
+- **Lines are voted for, not grown.** Region growing was the obvious approach and it fails on exactly
+  the picture that matters: arrows in a group cross each other on their way out of the boss, so three
+  shafts come back as one blob whose axis belongs to none of them. A Hough vote over bearings
+  separates crossing lines by construction.
+- **The impact is the inner end of the streak.** An arrow leans out of the face towards the lens, so
+  on a camera anywhere near the target's axis the buried end is the one nearer the centre.
+- **A shaft is a ridge.** It is darker than the paper *on both sides*. A boss rim, a shadow, and the
+  edge of a broadcast scoreboard graphic are dark on one side only, and those were what survived every
+  test based on shape alone.
+- **A shaft crosses rings; a printed line does not.** A ring line keeps its radius along its whole
+  length. Requiring a streak to spend some of its length climbing outwards removed almost every false
+  positive at once.
+
+The paper it is compared against is modelled per radius *and* per bearing, as a median, so arrows
+cannot drag down their own baseline and one side of a boss being better lit than the other is not
+mistaken for an arrow. The number of radial bins is capped to the face's radius in pixels: a bin
+thinner than a pixel holds so little that its median becomes whatever lies there, which on a face with
+an arrow in it is the arrow.
+
+One arrow answers several times, since the two edges of a shaft are separate lines, a ring crossing
+splits it into fragments, and the run often carries on past the hole to the far side of the face.
+Every repeat sits on the arrow's own line, so duplicates are removed by collinearity rather than by
+distance, and the longest run wins.
+
+`--scale 1` samples finer and finds more, at the cost of noise and time.
 
 ## What it cannot do
 
@@ -212,7 +241,9 @@ Stated plainly, because the limits are real:
   angled boss is not: with real perspective, near and far rings differ in scale and an ellipse fit
   cannot express that. A full homography would need four ring correspondences rather than one blob.
 - **Touching arrows read as one.** Two arrows close enough to merge into a single blob are a single
-  detection.
+  detection, and in a still, two arrows lying on nearly the same line are deliberately merged.
+- **A still is not a score.** See the measured numbers below. Scoring from a single photograph is a
+  reviewing aid, not a scorer.
 - **Perspective is the sharpest limit in practice.** A face photographed from well off to one side,
   or lying at an angle to the camera, fits an ellipse that drifts: the near rings and the far rings
   do not share a scale, and an affine fit cannot express that. The ring fit hides some of it by
@@ -237,11 +268,14 @@ This is what makes an indoor three spot work, where the end is one arrow on each
 
 ## How reliable is it
 
-Measured, not asserted. `scripts/eval-vision.mjs` runs the face stage over a labelled dataset and
-reports recall, false faces, and how accurate the fit is. The imagery is large and third party, so
-it is not in the repository; the script explains the layout it expects.
+Measured, not asserted, and the two stages are measured apart because a single number hides which one
+lost the arrow. Both datasets are large and third party, so neither is in the repository; the scripts
+explain the layout they expect.
 
-Against 2048 annotated faces (650 photographs of indoor three spots, phone cameras, club lighting):
+### Finding the face
+
+`scripts/eval-vision.mjs`, against 2048 annotated faces (650 photographs of indoor three spots, phone
+cameras, club lighting):
 
 | measure | result |
 | ------- | ------ |
@@ -250,17 +284,35 @@ Against 2048 annotated faces (650 photographs of indoor three spots, phone camer
 | centre error | 2.5% of the spot radius (median) |
 | size error | −1.5% (median), 3.6% at p90 |
 
-For scale, the same harness measured **55%** recall before this round of work.
+For scale, the same harness measured **55%** recall before that round of work.
 
-Two things are worth saying about how that number was reached. Every change was kept or discarded on
-what the harness reported, and one plausible idea was discarded that way: fitting an ellipse to the
-gold's *outer boundary* by ray casting, instead of to its area, sounded obviously more robust to
-arrow holes. It measured worse (89% against 91% geometry, and far worse once the ring check ran),
-so it is not in the code.
+### Finding the arrows in a still
 
-The aggregate number also hid a real failure. Drawing the detected rings back onto photographs
-showed faces that scored well on the metric but were visibly off centre, which is what motivated
-fitting to the ring structure. **Look at the overlays, not only at the percentages.**
+`scripts/eval-arrows.mjs`, against the 60cm set: 479 photographs carrying 1640 arrows, each labelled
+with a keypoint and the value the archer wrote down. These are ordinary club photographs of a boss
+that has been shot at for months, so the paper is covered in old holes.
+
+| measure | result |
+| ------- | ------ |
+| face found | 93.1% |
+| arrows found | **44.0%** |
+| candidates that were arrows | 29.5% |
+| value agreed, of those matched | 72.7% |
+| impact error | 2.7% of the face radius (median) |
+
+**This is not good enough to score with, and it is not presented as if it were.** Roughly one arrow in
+three is found *and* given the right value; the tool reports candidates, and the app asks before
+recording anything. The face stage is not the problem: at 93% it is doing its job, and the loss is
+almost entirely in the arrow stage.
+
+The honest reason is that a single photograph is a much harder problem than the video path. Being new
+is by far the strongest signal an arrow gives, and a still does not have it. What is left is shape,
+and shape is ambiguous on a boss where every old hole is a dark mark and every shaft is partly hidden
+behind another. The remaining errors are mostly arrows lost against the black ring, where a dark shaft
+on dark paper has almost no contrast to find.
+
+For scale, the first version of this stage scored 18.5% recall on the same measure, and its impacts
+were placed by colour anomaly, which put its best candidates on the numbers printed on the face.
 
 ## Testing it
 
