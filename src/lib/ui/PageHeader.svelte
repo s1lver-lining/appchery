@@ -45,45 +45,44 @@
 			{/each}
 		</svg>
 	{:else if motif === 'session'}
-		<!-- One arrow held at full draw against the rings it is aimed at. -->
+		<!-- A session is a handful of arrows loosed together, so they fan out from one nock point. -->
 		<svg
-			class="pointer-events-none absolute -top-10 -right-12 h-48 w-48 text-brand"
-			viewBox="0 0 100 100"
+			class="pointer-events-none absolute top-2 right-0 h-28 w-52 text-brand"
+			viewBox="0 0 130 90"
 			fill="none"
 			aria-hidden="true"
 		>
-			{#each [40, 28, 16] as r, i (r)}
-				<circle cx="64" cy="46" {r} stroke="currentColor" stroke-width="5" opacity={0.09 + i * 0.05} />
+			{#each [-8, 6, 20] as tilt, i (tilt)}
+				<g transform="rotate({tilt} 8 68)" opacity={0.34 - i * 0.07}>
+					<path d="M8 68 L104 26" stroke="currentColor" stroke-width="2.5" />
+					<path d="M122 18 L100 20 L106 34 Z" fill="currentColor" />
+					<path
+						d="M8 68 L26 60 L22 70 Z M18 64 L36 56 L32 66 Z"
+						fill="currentColor"
+						opacity="0.8"
+					/>
+				</g>
 			{/each}
-			<circle cx="64" cy="46" r="5" fill="currentColor" opacity="0.4" />
-			<path d="M2 92 L58 48" stroke="currentColor" stroke-width="3" opacity="0.3" />
-			<path d="M58 48 L46 50 L52 40 Z" fill="currentColor" opacity="0.35" />
 		</svg>
 	{:else if motif === 'equipment'}
-		<!-- A recurve profile: both limbs bending away from the string that holds them. -->
+		<!-- A recurve seen side on: limbs recurving off the riser, string nocked, arrow on the rest. -->
 		<svg
-			class="pointer-events-none absolute inset-y-0 right-0 h-full w-48 text-brand"
-			viewBox="0 0 160 70"
-			preserveAspectRatio="none"
+			class="pointer-events-none absolute inset-y-0 right-6 h-full w-32 text-brand"
+			viewBox="0 0 100 120"
 			fill="none"
 			aria-hidden="true"
 		>
 			<path
-				d="M4 2 C46 16, 92 22, 156 20"
+				d="M24 4 C40 12, 50 26, 52 42 M52 78 C50 94, 40 108, 24 116"
 				stroke="currentColor"
-				stroke-width="6"
+				stroke-width="5"
 				stroke-linecap="round"
-				opacity="0.16"
+				opacity="0.2"
 			/>
-			<path
-				d="M4 68 C46 54, 92 48, 156 50"
-				stroke="currentColor"
-				stroke-width="6"
-				stroke-linecap="round"
-				opacity="0.16"
-			/>
-			<path d="M4 2 L20 35 L4 68" stroke="currentColor" stroke-width="2" opacity="0.32" />
-			<circle cx="20" cy="35" r="4" fill="currentColor" opacity="0.35" />
+			<path d="M52 40 L52 80" stroke="currentColor" stroke-width="9" stroke-linecap="round" opacity="0.24" />
+			<path d="M24 4 L30 60 L24 116" stroke="currentColor" stroke-width="1.8" opacity="0.35" />
+			<path d="M30 60 L86 60" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
+			<path d="M86 60 L74 55 L74 65 Z" fill="currentColor" opacity="0.35" />
 		</svg>
 	{:else if motif === 'stats'}
 		<!-- Flight paths climbing to the same point, which is what a tightening group looks like. -->
@@ -106,25 +105,25 @@
 			{/each}
 		</svg>
 	{:else}
-		<!-- A sight ring with its scale, the one piece of geometry that exists to be adjusted. -->
+		<!-- Two meshing cogs: the page is where the app itself is adjusted, not where arrows are shot. -->
 		<svg
-			class="pointer-events-none absolute -top-10 -right-10 h-44 w-44 text-brand"
+			class="pointer-events-none absolute -top-1 -right-6 h-32 w-32 text-brand"
 			viewBox="0 0 100 100"
 			fill="none"
 			aria-hidden="true"
 		>
-			<circle cx="52" cy="50" r="34" stroke="currentColor" stroke-width="4" opacity="0.18" />
-			<circle cx="52" cy="50" r="3" fill="currentColor" opacity="0.35" />
-			<path d="M52 8 V26 M52 74 V92 M10 50 H28 M76 50 H94" stroke="currentColor" stroke-width="3" opacity="0.22" />
-			{#each [20, 65, 110, 155, 200, 245, 290, 335] as angle (angle)}
-				<path
-					d="M52 50 m0 -42 v7"
-					stroke="currentColor"
-					stroke-width="2.5"
-					opacity="0.16"
-					transform="rotate({angle} 52 50)"
-				/>
-			{/each}
+			<g opacity="0.22" fill="currentColor">
+				{#each [0, 45, 90, 135, 180, 225, 270, 315] as angle (angle)}
+					<rect x="44" y="10" width="12" height="26" rx="3" transform="rotate({angle} 50 50)" />
+				{/each}
+				<path fill-rule="evenodd" d="M50 20 a30 30 0 1 0 0.1 0 Z M50 37 a13 13 0 1 0 0.1 0 Z" />
+			</g>
+			<g opacity="0.13" fill="currentColor">
+				{#each [0, 60, 120, 180, 240, 300] as angle (angle)}
+					<rect x="12" y="0" width="8" height="14" rx="2" transform="rotate({angle} 16 16)" />
+				{/each}
+				<path fill-rule="evenodd" d="M16 2 a14 14 0 1 0 0.1 0 Z M16 10 a6 6 0 1 0 0.1 0 Z" />
+			</g>
 		</svg>
 	{/if}
 
