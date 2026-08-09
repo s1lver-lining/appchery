@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { Scanner, toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
-	import { scoreAt } from '$lib/domain/rounds/geometry';
+	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
 
@@ -38,6 +38,23 @@
 	let raf = 0;
 
 	const kept = $derived(found.slice(0, remaining));
+
+	// The scanner stops proposing once the end is full, rather than piling up arrows to discard.
+	$effect(() => {
+		scanner.setLimit(remaining);
+	});
+
+	/** A pill wears the colour of the ring it scored, exactly as the keypad and the sheet do. */
+	function pillStyle(arrow: Impact): string {
+		const zone = scoreAt(scoreSet, arrow.x, arrow.y);
+		if (!zone.countsAsHit) return 'background-color: var(--c-sunk); color: var(--c-muted);';
+		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;`;
+	}
+
+	function detail(arrow: Impact): string {
+		const decimal = decimalScore(scoreSet, arrow.x, arrow.y);
+		return decimal === null ? '' : decimal.toFixed(1);
+	}
 
 	$effect(() => {
 		start();
@@ -179,15 +196,18 @@
 				{face ? $t('auto.watching', { n: pending }) : $t('auto.noFace')}
 			</p>
 		{:else}
-			<div class="flex flex-wrap items-center gap-2">
+			<!-- Capped and scrollable: a bad frame must never push the buttons off the screen. -->
+			<div class="flex max-h-24 flex-wrap items-start gap-2 overflow-y-auto">
 				{#each found as arrow, i (i)}
 					<button
-						class="tabular flex h-10 items-center gap-1 rounded-lg border px-2 text-base font-bold
-							{i < remaining ? 'border-brand' : 'border-line opacity-40'}"
+						class="tabular flex h-10 shrink-0 items-center gap-1 rounded-lg px-2 text-base font-bold
+							{i < remaining ? '' : 'opacity-40'}"
+						style={pillStyle(arrow)}
 						aria-label={$t('auto.drop')}
 						onclick={() => drop(arrow)}
 					>
 						{label(arrow)}
+						<span class="text-[11px] font-medium opacity-70">{detail(arrow)}</span>
 						<Icon name="close" size={14} />
 					</button>
 				{/each}
