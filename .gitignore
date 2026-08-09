@@ -20,3 +20,11 @@ android/local.properties
 # Copied from node_modules by scripts/sync-sqlite.sh, so it cannot drift from the installed version.
 static/sqlite/
 TODO.md
+# Test imagery: large, and mostly third party datasets. The first three pictures are committed as a
+# small fixture; everything else stays local. See doc/camera-scoring.md for where to get them.
+test/datasets/
+test/pictures/*
+!test/pictures/1.png
+!test/pictures/2.png
+!test/pictures/3.png
+!test/pictures/README.md
