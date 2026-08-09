@@ -31,19 +31,10 @@
 	}
 </script>
 
-<PageHeader motif="equipment" title={$t('equipment.title')}>
-	{#snippet actions()}
-		<button
-			class="flex items-center gap-1.5 rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
-			onclick={() => (adding = !adding)}
-		>
-			<Icon name="plus" size={18} />
-			{adding ? $t('common.cancel') : $t('equipment.addBow')}
-		</button>
-	{/snippet}
-</PageHeader>
+<div class="flex min-h-full flex-col">
+<PageHeader motif="equipment" title={$t('equipment.title')} />
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 p-4">
 	{#if adding}
 		<section class="space-y-3 rounded-xl border border-line bg-surface p-4">
 			<label class="block text-sm font-semibold">
@@ -105,4 +96,16 @@
 			{/each}
 		</ul>
 	{/if}
+</div>
+
+<!-- Sticky rather than fixed, so it sits under the list yet never scrolls out of reach. -->
+<div class="sticky bottom-0 border-t border-line bg-bg/95 p-4 backdrop-blur">
+	<button
+		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-3 font-semibold text-brand-ink"
+		onclick={() => (adding = !adding)}
+	>
+		<Icon name="plus" size={20} />
+		{adding ? $t('common.cancel') : $t('equipment.addBow')}
+	</button>
+</div>
 </div>
