@@ -23,6 +23,9 @@
 		onclose: () => void;
 	} = $props();
 
+	/** Rings 9 and 10 of ten equal rings, which is the gold's share of the face radius. */
+	const GOLD_SHARE = 0.2;
+
 	let video = $state<HTMLVideoElement | null>(null);
 	let overlay = $state<HTMLCanvasElement | null>(null);
 	let error = $state<string | null>(null);
@@ -160,19 +163,29 @@
 		context.lineWidth = Math.max(2, width / 300);
 
 		// Every face is outlined, so a three spot shows all three being watched.
-		context.strokeStyle = 'rgba(255,255,255,0.85)';
 		for (const face of located) {
-			context.beginPath();
-			context.ellipse(
-				face.cx * scale,
-				face.cy * scale,
-				face.semiMajor * scale,
-				face.semiMinor * scale,
-				face.rotation,
-				0,
-				Math.PI * 2
-			);
-			context.stroke();
+			const ring = (share: number) => {
+				context.beginPath();
+				context.ellipse(
+					face.cx * scale,
+					face.cy * scale,
+					face.semiMajor * share * scale,
+					face.semiMinor * share * scale,
+					face.rotation,
+					0,
+					Math.PI * 2
+				);
+				context.stroke();
+			};
+
+			context.strokeStyle = 'rgba(255,255,255,0.85)';
+			ring(1);
+			/**
+			 * The gold as well. It is the one ring present on every face including a three spot, and
+			 * seeing it sit on the real gold is how the archer can tell at a glance that the fit is right.
+			 */
+			context.strokeStyle = 'rgba(247,224,60,0.95)';
+			ring(GOLD_SHARE);
 		}
 
 		arrows.forEach((arrow, index) => {
