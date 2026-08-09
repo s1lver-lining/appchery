@@ -339,13 +339,6 @@
 			</div>
 		{/if}
 
-		{#if faces.length === 0 && !starting && !error}
-			<p
-				class="absolute inset-x-4 bottom-4 rounded-lg bg-black/70 p-3 text-center text-sm text-white"
-			>
-				{$t('auto.aiming')}
-			</p>
-		{/if}
 	</div>
 
 
@@ -359,13 +352,15 @@
 		<div class="h-11 overflow-y-auto">
 			{#if found.length === 0}
 				<p class="flex h-full items-center justify-center text-center text-sm text-muted">
+					<!--
+						Two states, not five. The old messages swapped as fast as detection did and were
+						never on screen long enough to read, which made the panel look broken rather than busy.
+					-->
 					{faces.length === 0
 						? $t('auto.noFace')
 						: skewed
 							? $t('auto.angle')
-							: steady
-								? $t('auto.watching', { n: pending })
-								: $t('auto.settling')}
+							: $t('auto.watching')}
 				</p>
 			{:else}
 				<div class="grid grid-cols-6 gap-1.5">
