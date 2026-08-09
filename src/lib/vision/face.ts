@@ -2,14 +2,23 @@ import { rgbToHsv, largestComponent } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
 /**
- * Finds the target face by its gold, which is the one part of a WA face no other object at a range
- * shares: a large, strongly saturated yellow disc. No training data is needed because the face is a
- * specified object, not something to be learned.
+ * Finds the target face by its gold and then checks the rings around it. No training data is needed
+ * because a target face is a specified object with published geometry, not something to be learned.
  *
- * The gold spans rings 9 and 10, which is 40% of the face radius on every WA face size. That fixed
- * ratio is what turns a gold blob into the whole face.
+ * Ten equal width rings means the gold, which is rings 9 and 10, reaches 2/10 of the face radius.
+ * That fixed ratio is what turns a gold blob into the whole face, and it matches the zone map in
+ * `domain/rounds/seed.ts`, where the 9 ring sits at r = 0.2.
  */
-const GOLD_SHARE_OF_FACE = 0.4;
+const GOLD_SHARE_OF_FACE = 0.2;
+
+/**
+ * Radii to probe, in face units, with the colour each must show. A yellow bag or a hazard sign
+ * passes the gold test on its own; nothing but a target face has this sequence around it.
+ */
+const RED_RING = 0.3;
+const MID_RING = 0.5;
+const OUTER_RING = 0.7;
+const GOLD_RING = 0.13;
 
 export interface FaceDetectOptions {
 	/** Hue window for the gold, in degrees. Wide enough to survive warm and cold daylight. */

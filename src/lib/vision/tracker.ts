@@ -18,6 +18,13 @@ export class ImpactTracker {
 		private readonly mergeDistance = 0.035
 	) {}
 
+	/** Arrows still wanted. Promotion stops at this, so a misdetection cannot flood the proposals. */
+	private limit = Number.POSITIVE_INFINITY;
+
+	setLimit(limit: number) {
+		this.limit = Math.max(0, limit);
+	}
+
 	get arrows(): Impact[] {
 		return this.confirmed;
 	}
@@ -56,7 +63,11 @@ export class ImpactTracker {
 			if (!matched.has(candidate)) candidate.seen -= 1;
 		}
 
-		const promoted = this.candidates.filter((c) => c.seen >= this.framesToConfirm);
+		// Sorted by evidence so the best supported candidate takes the last free slot.
+		const promoted = this.candidates
+			.filter((c) => c.seen >= this.framesToConfirm)
+			.sort((a, b) => b.seen - a.seen)
+			.slice(0, Math.max(0, this.limit - this.confirmed.length));
 		this.confirmed.push(...promoted);
 		this.candidates = this.candidates.filter((c) => c.seen > 0 && !promoted.includes(c));
 		return promoted;

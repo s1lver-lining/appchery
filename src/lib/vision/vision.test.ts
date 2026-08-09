@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { detectFace, toFaceCoords, toImageCoords } from './face';
 import { Background, findBlobs } from './impacts';
+import { verifyRings, classify, probeRing } from './rings';
 import { ImpactTracker } from './tracker';
 import { Scanner } from './pipeline';
 import { rgbToHsv, largestComponent } from './pixels';
@@ -39,6 +40,29 @@ function ellipse(
 }
 
 const GOLD: [number, number, number] = [252, 209, 42];
+const RED: [number, number, number] = [232, 69, 60];
+const BLUE: [number, number, number] = [58, 160, 216];
+const BLACK: [number, number, number] = [35, 40, 44];
+const WHITE: [number, number, number] = [244, 241, 234];
+
+/**
+ * A whole WA face: ten equal rings, gold reaching a fifth of the radius. The detector is only
+ * allowed to accept this, not a bare yellow disc, so the tests draw the real thing.
+ */
+function waFace(size = 240, radius = 100, squash = 1): Frame {
+	const frame = blank(size, size, 200);
+	const bands: [number, [number, number, number]][] = [
+		[1.0, WHITE],
+		[0.8, BLACK],
+		[0.6, BLUE],
+		[0.4, RED],
+		[0.2, GOLD]
+	];
+	for (const [share, colour] of bands) {
+		ellipse(frame, size / 2, size / 2, radius * share, radius * share * squash, colour);
+	}
+	return frame;
+}
 
 describe('rgbToHsv', () => {
 	it('places target gold in the yellow band the detector looks for', () => {
@@ -66,9 +90,9 @@ describe('detectFace', () => {
 		expect(face).not.toBeNull();
 		expect(face!.cx).toBeCloseTo(100, 0);
 		expect(face!.cy).toBeCloseTo(90, 0);
-		// A 24px gold means a 60px face.
-		expect(face!.semiMajor).toBeGreaterThan(55);
-		expect(face!.semiMajor).toBeLessThan(65);
+		// The gold reaches a fifth of the radius, so a 24px gold means a 120px face.
+		expect(face!.semiMajor).toBeGreaterThan(110);
+		expect(face!.semiMajor).toBeLessThan(130);
 	});
 
 	it('fits an ellipse, so a camera off to one side still reads the face', () => {
@@ -194,48 +218,149 @@ describe('ImpactTracker', () => {
 });
 
 describe('Scanner', () => {
-	const face = () => ellipse(blank(240, 240), 120, 120, 32, 32, GOLD);
+	const face = () => waFace(240, 100);
 
 	it('locates the face and then reports an arrow that lands on it', () => {
-		const scanner = new Scanner({ scale: 2, framesToConfirm: 3, faceEvery: 1 });
+		const scanner = new Scanner({ scale: 2, framesToConfirm: 3, faceEvery: 1, framesToSettle: 2 });
 
-		// A few quiet frames so the reference settles on an empty boss.
-		for (let i = 0; i < 3; i++) scanner.push(face());
+		// A few quiet frames so the reference settles on an empty boss and the face is judged steady.
+		for (let i = 0; i < 5; i++) scanner.push(face());
 		expect(scanner.located).not.toBeNull();
 
 		let found: ReturnType<Scanner['push']> | null = null;
-		for (let i = 0; i < 4; i++) {
-			found = scanner.push(ellipse(face(), 132, 120, 4, 4, [15, 15, 15]));
+		for (let i = 0; i < 6; i++) {
+			found = scanner.push(ellipse(face(), 150, 120, 4, 4, [15, 15, 15]));
 		}
 
 		expect(found!.arrows).toHaveLength(1);
-		// 12px right of centre on an 80px face radius, so a fifth of the way out.
-		expect(found!.arrows[0].x).toBeGreaterThan(0.1);
-		expect(found!.arrows[0].x).toBeLessThan(0.25);
+		// 30px right of centre on a 100px face radius, so about three tenths of the way out.
+		expect(found!.arrows[0].x).toBeGreaterThan(0.24);
+		expect(found!.arrows[0].x).toBeLessThan(0.36);
 		expect(Math.abs(found!.arrows[0].y)).toBeLessThan(0.05);
 	});
 
 	it('ignores movement outside the face, such as someone walking past the boss', () => {
-		const scanner = new Scanner({ scale: 2, framesToConfirm: 2, faceEvery: 1 });
-		for (let i = 0; i < 3; i++) scanner.push(face());
+		const scanner = new Scanner({ scale: 2, framesToConfirm: 2, faceEvery: 1, framesToSettle: 2 });
+		for (let i = 0; i < 5; i++) scanner.push(face());
 
 		let result: ReturnType<Scanner['push']> | null = null;
 		for (let i = 0; i < 5; i++) {
-			result = scanner.push(ellipse(face(), 10, 220, 6, 6, [20, 20, 20]));
+			result = scanner.push(ellipse(face(), 8, 232, 5, 5, [255, 0, 255]));
 		}
 		expect(result!.arrows).toHaveLength(0);
 	});
 
 	it('takes the arrows into the reference once accepted, so the next end starts clean', () => {
-		const scanner = new Scanner({ scale: 2, framesToConfirm: 2, faceEvery: 1 });
-		for (let i = 0; i < 3; i++) scanner.push(face());
+		const scanner = new Scanner({ scale: 2, framesToConfirm: 2, faceEvery: 1, framesToSettle: 2 });
+		for (let i = 0; i < 5; i++) scanner.push(face());
 
-		const withArrow = () => ellipse(face(), 132, 120, 4, 4, [15, 15, 15]);
-		for (let i = 0; i < 3; i++) scanner.push(withArrow());
+		const withArrow = () => ellipse(face(), 150, 120, 4, 4, [15, 15, 15]);
+		for (let i = 0; i < 4; i++) scanner.push(withArrow());
 		expect(scanner.push(withArrow()).arrows).toHaveLength(1);
 
 		scanner.accept(withArrow());
 		const after = scanner.push(withArrow());
 		expect(after.arrows).toHaveLength(0);
+	});
+});
+
+describe('classify', () => {
+	it('names the five colours a target face is printed in', () => {
+		expect(classify(...GOLD)).toBe('gold');
+		expect(classify(...RED)).toBe('red');
+		expect(classify(...BLUE)).toBe('blue');
+		expect(classify(...BLACK)).toBe('dark');
+		expect(classify(...WHITE)).toBe('light');
+		// Mid grey is not black: a grey wall behind a yellow bag must not read as a dark surround.
+		expect(classify(120, 120, 120)).toBe('grey');
+	});
+});
+
+describe('verifyRings', () => {
+	it('accepts a real face, with the rings landing where the geometry says', () => {
+		const frame = waFace();
+		const face = detectFace(frame)!;
+		const check = verifyRings(frame, face);
+
+		expect(check.ok).toBe(true);
+		expect(check.probes.map((p) => p.colour)).toEqual(['gold', 'red', 'blue', 'dark']);
+		// Measured on real photographs of a WA face, every ring agreed on every sample.
+		expect(Math.min(...check.probes.map((p) => p.agreement))).toBeGreaterThan(0.9);
+	});
+
+	it('rejects a bare yellow disc, which is what made every yellow object a target', () => {
+		const frame = ellipse(blank(240, 240), 120, 120, 24, 24, GOLD);
+		const face = detectFace(frame)!;
+		expect(verifyRings(frame, face).ok).toBe(false);
+	});
+
+	it('rejects a yellow object on grass, since the rings are not there', () => {
+		const frame = blank(240, 240, 90);
+		ellipse(frame, 120, 120, 60, 60, [80, 150, 70]);
+		ellipse(frame, 120, 120, 24, 24, GOLD);
+		const face = detectFace(frame);
+		expect(face === null || verifyRings(frame, face).ok).toBeFalsy();
+	});
+
+	it('still accepts a face whose outer rings run off the edge of the frame', () => {
+		// A camera zoomed in on the boss: the black and white rings are simply not there to sample.
+		const frame = waFace(240, 200);
+		const face = detectFace(frame)!;
+		expect(verifyRings(frame, face).ok).toBe(true);
+	});
+
+	it('reports why it refused, so the screen can say what to point at', () => {
+		const frame = blank(200, 200, 130);
+		const face = detectFace(waFace())!;
+		expect(verifyRings(frame, face).reason).toBe('noGold');
+	});
+});
+
+describe('probeRing', () => {
+	it('reports how much of the ring it could actually see', () => {
+		const frame = waFace();
+		const face = detectFace(frame)!;
+		expect(probeRing(frame, face, 0.3).samples).toBe(32);
+		// Far outside the drawn face, so most samples fall off the frame.
+		expect(probeRing(frame, face, 3).colour).toBeNull();
+	});
+});
+
+describe('Scanner face gating', () => {
+	it('reports no face at all for a yellow object that is not a target', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 1 });
+		let result = null;
+		for (let i = 0; i < 5; i++) {
+			result = scanner.push(ellipse(blank(240, 240), 120, 120, 30, 30, GOLD));
+		}
+		expect(result!.face).toBeNull();
+		expect(result!.check?.ok).toBe(false);
+		expect(result!.arrows).toHaveLength(0);
+	});
+
+	it('waits for the face to hold still before accepting any arrow', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToConfirm: 1, framesToSettle: 6 });
+		const first = scanner.push(waFace());
+		expect(first.steady).toBe(false);
+		expect(first.arrows).toHaveLength(0);
+	});
+
+	it('stops proposing arrows once the end is full', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToConfirm: 2, framesToSettle: 2 });
+		scanner.setLimit(1);
+		for (let i = 0; i < 5; i++) scanner.push(waFace());
+
+		const shots: [number, number][] = [
+			[150, 120],
+			[120, 150],
+			[95, 120]
+		];
+		let result = null;
+		for (let i = 0; i < 6; i++) {
+			const frame = waFace();
+			for (const [x, y] of shots) ellipse(frame, x, y, 4, 4, [15, 15, 15]);
+			result = scanner.push(frame);
+		}
+		expect(result!.arrows.length).toBeLessThanOrEqual(1);
 	});
 });
