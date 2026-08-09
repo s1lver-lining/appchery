@@ -75,6 +75,20 @@ This is only a seed. It is what the next stage starts from, not what gets used.
 
 ### 4. Fit to the ring structure (`refine.ts`)
 
+The fit moves over centre, axes **and tilt**. Tilt was missing at first, and a seed that started at
+the wrong angle could never recover: the axes stretched to cover the error instead, which dragged the
+outer rings off the face. A shaft standing in the gold splits it into a crescent whose moments point
+along the arrow rather than at the target, so the fit is also tried from a circle of the same area,
+and the better of the two is kept. A face photographed anywhere near square on is close to a circle,
+which is what makes the second start worth its cost.
+
+Boundaries are scored as well as interiors. A ring is a tenth of the radius wide, so a fit can be out
+by nearly half a ring and still land every interior sample in the right colour, and that slack grows
+with radius: the gold sits perfectly while the blue and the black creep outwards. Sampling just
+inside and just outside each boundary, and asking for both colours at once, is what pins the geometry
+to the printed rings.
+
+
 The gold blob alone is fragile. Arrows standing in the ten split it into pieces, torn paper eats its
 edge, and both the centroid and the area drift with them. Drawing the detected geometry back over
 real photographs made this obvious in a way the aggregate numbers did not: a fit can be "within 15%
@@ -244,6 +258,8 @@ Stated plainly, because the limits are real:
   detection, and in a still, two arrows lying on nearly the same line are deliberately merged.
 - **A still is not a score.** See the measured numbers below. Scoring from a single photograph is a
   reviewing aid, not a scorer.
+- **Two arrows shot from very different places may not both be found.** Weak candidates are judged
+  against the strongest arrow in the picture, which assumes they are the same shaft at the same lens.
 - **Perspective is the sharpest limit in practice.** A face photographed from well off to one side,
   or lying at an angle to the camera, fits an ellipse that drifts: the near rings and the far rings
   do not share a scale, and an affine fit cannot express that. The ring fit hides some of it by
@@ -255,6 +271,35 @@ Stated plainly, because the limits are real:
 - **Distance limits resolution.** At 70m on a phone camera, the gold may be a few dozen pixels
   across, and an X ring is a fraction of that. The detection still works; the precision does not
   justify trusting the ring it reports.
+
+## Following the face between detections
+
+Detection is far too slow to run on every video frame, and running it there made the overlay visibly
+lag behind whatever the archer was pointing at. The two jobs are therefore separated:
+
+- **Every frame**, the faces already found are refitted from where they were. That is a local descent
+  over a few hundred pixel reads, so the rings track the camera at the display's own rate.
+- **Three times a second**, the full search runs: new faces, the ring check, and the arrow pass. Far
+  more often than an arrow actually arrives.
+
+The frame is reduced to detection scale by drawing the video straight onto a smaller canvas, which
+hands the scaling to the GPU. Doing it in a loop over every pixel, which is what the code used to do,
+cost more than the detection it was feeding.
+
+A face that moves while being tracked resets the settling counter, so arrows are never taken from a
+camera that is being carried.
+
+## Not trusting a single moment
+
+Two things stop the live path inventing arrows, both of which were added because they were needed:
+
+- **A frame that lights up everywhere is movement, not shooting.** Arrows arrive one at a time. A
+  hand across the boss, or a phone gripped harder, changes half the face at once, so a frame with too
+  many detections rolls back the evidence it would otherwise have added.
+- **A confirmed arrow stays on probation.** A confirmed position used to be skipped on every later
+  frame, so it was never asked for evidence again and a single bad moment left a score on the screen
+  for the rest of the end. A real arrow goes on differing from the background for seconds after it
+  lands, until the running mean absorbs it; one that stops immediately is retired.
 
 ## Multiple faces at once
 
@@ -279,12 +324,13 @@ cameras, club lighting):
 
 | measure | result |
 | ------- | ------ |
-| faces found and accepted | **95–97%** |
-| false faces | 0.01 per image |
-| centre error | 2.5% of the spot radius (median) |
-| size error | −1.5% (median), 3.6% at p90 |
+| faces found and accepted | **97.0%** |
+| false faces | 0.02 per image |
+| centre error | 2.3% of the spot radius (median) |
+| size error | −1.0% (median), 4.8% at p90 |
 
-For scale, the same harness measured **55%** recall before that round of work.
+For scale, the same harness measured **55%** recall before this work began, and 96.2% before the fit
+was taught to use ring boundaries.
 
 ### Finding the arrows in a still
 
@@ -294,11 +340,11 @@ that has been shot at for months, so the paper is covered in old holes.
 
 | measure | result |
 | ------- | ------ |
-| face found | 93.1% |
-| arrows found | **44.0%** |
-| candidates that were arrows | 29.5% |
-| value agreed, of those matched | 72.7% |
-| impact error | 2.7% of the face radius (median) |
+| face found | 95.2% |
+| arrows found | **40.5%** |
+| candidates that were arrows | 34.7% |
+| value agreed, of those matched | 78.6% |
+| impact error | 2.8% of the face radius (median) |
 
 **This is not good enough to score with, and it is not presented as if it were.** Roughly one arrow in
 three is found *and* given the right value; the tool reports candidates, and the app asks before
