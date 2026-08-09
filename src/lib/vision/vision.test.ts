@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { detectFace, detectFaces, toFaceCoords, toImageCoords } from './face';
 import { refineFace, ringAgreement } from './refine';
 import { detectArrowsInStill } from './still';
+import { detectArrowsLearned, type ArrowModel } from './learned';
 import { Background, findBlobs } from './impacts';
 import { verifyRings, classify, probeRing } from './rings';
 import { ImpactTracker } from './tracker';
@@ -590,5 +591,72 @@ describe('detectArrowsInStill', () => {
 		}
 
 		expect(detectArrowsInStill(frame, face)).toHaveLength(0);
+	});
+});
+
+describe('detectArrowsLearned', () => {
+	const face = { cx: 63.5, cy: 63.5, semiMajor: 128 / 2.4, semiMinor: 128 / 2.4, rotation: 0, support: 1 };
+
+	/**
+	 * A one layer model that fires on brightness alone, so the convolution, the peak search and the
+	 * offsets can be checked without any weights to trust. The real weights are checked separately, by
+	 * running the exported model through this code and through PyTorch and comparing the two.
+	 */
+	function brightnessModel(grid: number): ArrowModel {
+		return {
+			size: 128,
+			grid,
+			span: 1.2,
+			threshold: 0.5,
+			layers: [
+				{
+					in: 3,
+					out: 3,
+					stride: 128 / grid,
+					dilation: 1,
+					kernel: 1,
+					relu: false,
+					// Presence follows the red channel; both offsets sit at the middle of their cell.
+					weight: [8, 0, 0, 0, 0, 0, 0, 0, 0],
+					bias: [0, 0.5, 0.5]
+				}
+			]
+		};
+	}
+
+	it('reports a bright patch as an impact, in face coordinates', () => {
+		const frame = blank(128, 128, 0);
+		// A patch up and left of centre, which is negative in both face axes.
+		for (let y = 40; y < 44; y++) {
+			for (let x = 40; x < 44; x++) {
+				const p = (y * 128 + x) * 4;
+				frame.data[p] = 255;
+			}
+		}
+
+		const found = detectArrowsLearned(frame, face, brightnessModel(32));
+		expect(found.length).toBeGreaterThan(0);
+		expect(found[0].x).toBeLessThan(0);
+		expect(found[0].y).toBeLessThan(0);
+		// The patch centre sits at about 42 of 128 pixels, which is this far across the span.
+		expect(found[0].x).toBeCloseTo((42 / 128) * 2.4 - 1.2, 1);
+		expect(found[0].y).toBeCloseTo((42 / 128) * 2.4 - 1.2, 1);
+	});
+
+	it('reports one impact per patch rather than one per cell above the threshold', () => {
+		const frame = blank(128, 128, 0);
+		// One sampled cell each, four pixels apart being the stride of this toy model.
+		for (const [cx, cy] of [
+			[40, 40],
+			[80, 84]
+		]) {
+			for (let y = cy; y < cy + 4; y++) {
+				for (let x = cx; x < cx + 4; x++) {
+					frame.data[(y * 128 + x) * 4] = 255;
+				}
+			}
+		}
+
+		expect(detectArrowsLearned(frame, face, brightnessModel(32))).toHaveLength(2);
 	});
 });
