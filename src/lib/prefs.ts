@@ -55,6 +55,12 @@ export const formatTime = derived(dateFormats, ($f) => $f.time);
  */
 export const sortArrowsDescending = flag('appchery.sortArrows', false);
 
+/**
+ * Keeps the video of each camera scoring session. Off by default: it is a debugging aid for improving
+ * detection, not something an archer needs, and video is large. Recordings never leave the device.
+ */
+export const recordCameraVideo = flag('appchery.recordCameraVideo', false);
+
 function storedString(key: string) {
 	const store = writable<string | null>(
 		typeof window === 'undefined' ? null : window.localStorage.getItem(key)

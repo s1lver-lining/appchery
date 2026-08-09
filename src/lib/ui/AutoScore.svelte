@@ -5,6 +5,7 @@
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
+	import { recordCameraVideo } from '$lib/prefs';
 
 	/**
 	 * Live scoring from the camera. Nothing detected is ever written on its own: the archer keeps or
@@ -40,6 +41,14 @@
 	const work = document.createElement('canvas');
 	let stream: MediaStream | null = null;
 	let raf = 0;
+
+	/**
+	 * Optional recording of the session, off unless the archer turned it on in settings. Detection is
+	 * only ever going to get better on footage of real ends on real bosses, and the archer holding the
+	 * phone is the only person who can capture that. The file is saved to the device, never sent.
+	 */
+	let recorder: MediaRecorder | null = null;
+	let recording = $state(false);
 
 	/** Highest first, as a scoresheet reads, so the pills are checked in a predictable order. */
 	const ranked = $derived(
@@ -85,6 +94,7 @@
 				await video.play();
 			}
 			starting = false;
+			if ($recordCameraVideo) startRecording();
 			raf = requestAnimationFrame(tick);
 		} catch (e) {
 			starting = false;
@@ -92,8 +102,39 @@
 		}
 	}
 
+	function startRecording() {
+		if (!stream || typeof MediaRecorder === 'undefined') return;
+		// Whatever the device is willing to encode: asking for a specific codec fails on some phones.
+		try {
+			recorder = new MediaRecorder(stream);
+		} catch {
+			return;
+		}
+
+		const chunks: Blob[] = [];
+		recorder.ondataavailable = (event) => {
+			if (event.data.size > 0) chunks.push(event.data);
+		};
+		recorder.onstop = () => save(new Blob(chunks, { type: recorder?.mimeType ?? 'video/webm' }));
+		recorder.start(1000);
+		recording = true;
+	}
+
+	function save(video: Blob) {
+		const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+		const link = document.createElement('a');
+		link.href = URL.createObjectURL(video);
+		link.download = `appchery-scoring-${stamp}.webm`;
+		link.click();
+		// Revoked on the next turn of the loop, once the download has taken the URL.
+		setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+	}
+
 	function stop() {
 		cancelAnimationFrame(raf);
+		if (recorder && recorder.state !== 'inactive') recorder.stop();
+		recorder = null;
+		recording = false;
 		stream?.getTracks().forEach((track) => track.stop());
 		stream = null;
 	}
@@ -266,12 +307,26 @@
 					</svg>
 					<p class="text-sm text-white/70">{$t('auto.starting')}</p>
 				</div>
-
 			</div>
+		{/if}
 
-		{:else if error}
+		{#if error}
 			<p class="absolute inset-x-4 top-4 rounded-lg bg-danger/90 p-3 text-sm text-white">{error}</p>
-		{:else if faces.length === 0}
+		{/if}
+
+		{#if recording}
+			<!-- Never record without saying so on screen, for as long as it is happening. -->
+			<div
+				class="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1"
+			>
+				<span class="pulse block h-2.5 w-2.5 rounded-full bg-danger"></span>
+				<span class="text-[11px] font-semibold uppercase tracking-wide text-white">
+					{$t('auto.recording')}
+				</span>
+			</div>
+		{/if}
+
+		{#if faces.length === 0 && !starting && !error}
 			<p
 				class="absolute inset-x-4 bottom-4 rounded-lg bg-black/70 p-3 text-center text-sm text-white"
 			>

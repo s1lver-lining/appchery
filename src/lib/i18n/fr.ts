@@ -221,6 +221,7 @@ export const fr: Dictionary = {
 	auto: {
 		title: 'Score auto',
 		starting: "Démarrage de la caméra.",
+		recording: "Enr",
 		open: 'Score auto',
 		hint: 'Les flèches détectées sont des propositions. Touchez-en une pour la retirer, puis gardez le reste.',
 		aiming: "Visez la cible avec la caméra pour que le jaune soit dans le cadre.",
@@ -271,6 +272,9 @@ export const fr: Dictionary = {
 		weatherHint:
 			'Récupère la météo de ce lieu une seule fois, au début de la séance. Nécessite une connexion réseau.',
 		display: 'Affichage',
+		recordTitle: "Enregistrer la vidéo du marquage",
+		recordHint:
+			"Enregistre sur cet appareil une vidéo de chaque marquage à la caméra, pour améliorer la détection. Rien n'est envoyé.",
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',
 		placeTitle: 'Nommer le lieu',

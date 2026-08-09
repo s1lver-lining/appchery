@@ -220,6 +220,7 @@ export const en = {
 	auto: {
 		title: 'Auto score',
 		starting: 'Waking the camera up.',
+		recording: 'Rec',
 		open: 'Auto score',
 		hint: 'Detected arrows are proposals. Tap one to drop it, then keep the rest.',
 		aiming: 'Point the camera at the target so the gold is in frame.',
@@ -268,6 +269,9 @@ export const en = {
 		weatherHint:
 			'Looks up the weather for that location once, at the start of the session. Needs a network connection.',
 		display: 'Display',
+		recordTitle: 'Record scoring video',
+		recordHint:
+			'Saves a video of each camera scoring session to this device, to help improve detection. Nothing is uploaded.',
 		clockTitle: '24 hour clock',
 		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
 		placeTitle: 'Name the place',

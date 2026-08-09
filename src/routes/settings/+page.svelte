@@ -9,7 +9,7 @@
 		requestPosition,
 		LocationDeniedError
 	} from '$lib/conditions';
-	import { use24Hour } from '$lib/prefs';
+	import { use24Hour, recordCameraVideo } from '$lib/prefs';
 	import {
 		exportBackup,
 		importBackup,
@@ -196,6 +196,21 @@
 				checked={$use24Hour}
 				label={$t('settings.clockTitle')}
 				onchange={(v) => use24Hour.set(v)}
+			/>
+		</div>
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('auto.title')}</h2>
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex-1">
+				<p class="font-medium">{$t('settings.recordTitle')}</p>
+				<p class="mt-0.5 text-sm text-muted">{$t('settings.recordHint')}</p>
+			</div>
+			<Toggle
+				checked={$recordCameraVideo}
+				label={$t('settings.recordTitle')}
+				onchange={(v) => recordCameraVideo.set(v)}
 			/>
 		</div>
 	</section>
