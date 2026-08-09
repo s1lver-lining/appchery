@@ -87,6 +87,11 @@ export interface RingCheck {
 }
 
 /**
+ * Probes sit in the *middle* of a ring, never on a boundary. Ring N ends at r = (11 - N)/10, so 0.15
+ * is inside the 9, 0.25 inside the 8, 0.45 inside the 6 and 0.65 inside the 4. This matters most on
+ * a three spot, whose paper stops at the 6 ring: a probe at 0.5 straddled the edge of the spot and
+ * sampled half blue, half backing paper, which failed nearly half of them.
+ *
  * A face passes when the gold is really gold and the rings outside it follow a target pattern:
  * either the full colour face (red, then blue or black further out) or a two colour face with a
  * dark surround. An arrow shaft crossing a ring costs a few samples, hence the agreement threshold
@@ -97,12 +102,13 @@ export function verifyRings(
 	face: FaceLocation,
 	options: { gold?: number; red?: number; mid?: number; outer?: number; agreement?: number } = {}
 ): RingCheck {
-	const minAgreement = options.agreement ?? 0.62;
+	// Measured: 0.55 is the loosest setting that still produced no false face on the annotated set.
+	const minAgreement = options.agreement ?? 0.55;
 	const probes = [
-		probeRing(frame, face, options.gold ?? 0.13),
-		probeRing(frame, face, options.red ?? 0.3),
-		probeRing(frame, face, options.mid ?? 0.5),
-		probeRing(frame, face, options.outer ?? 0.7)
+		probeRing(frame, face, options.gold ?? 0.15),
+		probeRing(frame, face, options.red ?? 0.25),
+		probeRing(frame, face, options.mid ?? 0.45),
+		probeRing(frame, face, options.outer ?? 0.65)
 	];
 	const [gold, red, mid, outer] = probes;
 
