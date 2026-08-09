@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ScoreSet, Shot } from '$lib/domain/rounds/types';
-	import { groupMetrics, groupHull } from '$lib/domain/rounds/geometry';
+	import { groupMetrics, groupHull, scoreAt } from '$lib/domain/rounds/geometry';
 	import Icon from './Icon.svelte';
 
 	/**
@@ -58,12 +58,15 @@
 	const centre = $derived(showCentre ? groupMetrics([...otherShots, ...shots]) : null);
 	const hull = $derived(showPerimeter ? groupHull(shots) : []);
 
+	/** What this position would score, shown while dragging so the value is known before releasing. */
+	const previewZone = $derived(cursor ? scoreAt(scoreSet, cursor.x, cursor.y) : null);
+
 	const ZOOM = 2.6;
 	/**
 	 * The plot sits above the touch point so a finger does not cover the arrow being placed. Roughly
 	 * half a centimetre of clearance on a phone, which is what it takes to see past a thumb.
 	 */
-	const FINGER_OFFSET = 0.28;
+	const FINGER_OFFSET = 0.34;
 
 	function toFace(event: PointerEvent): { x: number; y: number } | null {
 		if (!svg) return null;
@@ -227,6 +230,20 @@
 			</g>
 		</g>
 	</svg>
+
+	{#if previewZone}
+		<!-- The magnifier centres the touch point, so the middle of the face is where the arrow lands. -->
+		<div class="pointer-events-none absolute inset-0 grid place-items-center">
+			<span
+				class="tabular -translate-y-[3.4rem] rounded-lg px-3 py-1 text-2xl font-bold"
+				style={previewZone.countsAsHit
+					? `background-color: ${previewZone.color}; color: ${previewZone.strokeColor}; box-shadow: 0 0 0 2px ${previewZone.strokeColor}`
+					: 'background-color: var(--c-sunk); color: var(--c-muted);'}
+			>
+				{previewZone.label}
+			</span>
+		</div>
+	{/if}
 
 	{#if showOtherToggle || showCentreToggle}
 		<div class="absolute right-1 bottom-1 flex gap-1">

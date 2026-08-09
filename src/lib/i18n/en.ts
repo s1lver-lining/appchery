@@ -121,6 +121,8 @@ export const en = {
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		groupSize: 'Group size',
+		sortArrows: 'Sort arrows highest first',
+		sortArrowsHint: 'Shows each end in scoresheet order instead of the order you entered it.',
 		roundComplete: 'Round complete. Arrows can still be edited.'
 	},
 	activity: {
@@ -213,6 +215,19 @@ export const en = {
 		trend: 'Trend per arrow',
 		rounds: '{n} rounds',
 		bestOn: 'Best on {date}'
+	},
+	auto: {
+		title: 'Auto score',
+		open: 'Auto score',
+		hint: 'Detected arrows are proposals. Tap one to drop it, then keep the rest.',
+		aiming: 'Point the camera at the target so the gold is in frame.',
+		noFace: 'No target face found yet.',
+		watching: 'Watching the face. {n} possible arrows.',
+		keep: 'Keep {n}',
+		drop: 'Drop this arrow',
+		tooMany: 'Only {n} arrows are left in this end. The extra ones are ignored.',
+		denied: 'Camera permission is required to score from the camera.',
+		experimental: 'Camera scoring is experimental. Always check the values before keeping them.'
 	},
 	backup: {
 		title: 'Backup',

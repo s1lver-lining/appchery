@@ -9,8 +9,10 @@
 		missZone,
 		scoreAt,
 		groupMetrics,
+		sortShotsDescending,
 		type EndSlot
 	} from '$lib/domain/rounds/geometry';
+	import { sortArrowsDescending } from '$lib/prefs';
 	import { formatDistance, mmToInches, inchesToMm } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { schemaFor, diffSettings, type BowSettings, type SettingField } from '$lib/domain/equipment/schemas';
@@ -19,6 +21,8 @@
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import AutoScore from '$lib/ui/AutoScore.svelte';
+	import Toggle from '$lib/ui/Toggle.svelte';
 	import {
 		getActivity,
 		getSession,
@@ -55,6 +59,8 @@
 	let editing = $state<{ endId: string; shotId: string; endNo: number; ordinal: number } | null>(
 		null
 	);
+	/** Index into `pending`: the end being entered has no rows yet, so it cannot be edited by shot id. */
+	let editingPending = $state<number | null>(null);
 	let plotting = $state(false);
 	let openEnd = $state<number | null>(null);
 	/** Shot id being retapped inside the end modal. */
@@ -63,6 +69,7 @@
 	let adjustment = $state('');
 	let saved = $state(false);
 	let confirmingDelete = $state(false);
+	let autoScoring = $state(false);
 
 	let bow = $state<BowRow | null>(null);
 	let draft = $state<BowSettings>({});
@@ -93,13 +100,18 @@
 		endId: string | null;
 	}
 
+	function displayOrder<T extends { value: number; zoneLabel: string }>(shots: T[]): T[] {
+		return $sortArrowsDescending ? sortShotsDescending(shots) : shots;
+	}
+
 	const sheetRows = $derived<SheetRow[]>(
 		[
 			...stored.map((row) => ({
 				key: row.end.id,
 				endId: row.end.id,
 				subtotal: row.end.subtotal,
-				shots: row.shots.map((s) => ({
+				// Arrows are stored in the order they were called: the sheet sorts only if asked to.
+				shots: displayOrder(row.shots).map((s) => ({
 					id: s.id,
 					ordinal: s.ordinal,
 					zoneLabel: s.zoneLabel,
@@ -111,7 +123,7 @@
 				key: q.key,
 				endId: null,
 				subtotal: q.shots.reduce((sum, s) => sum + s.value, 0),
-				shots: q.shots.map((s, i) => ({
+				shots: displayOrder(q.shots).map((s, i) => ({
 					id: null,
 					ordinal: i + 1,
 					zoneLabel: s.zoneLabel,
@@ -222,8 +234,8 @@
 	let writes = Promise.resolve();
 
 	function enqueueEnd(slot: EndSlot, shots: Omit<Shot, 'ordinal'>[]) {
-		// Arrows are written highest first, the order a paper scoresheet uses.
-		const ordered = [...shots].sort((a, b) => b.value - a.value);
+		// Stored as shot, so the sheet can present either order without losing what actually happened.
+		const ordered = [...shots];
 		const key = crypto.randomUUID();
 		queued = [...queued, { key, shots: ordered }];
 		pending = [];
@@ -274,6 +286,24 @@
 			return;
 		}
 		enqueueEnd(currentSlot, next);
+	}
+
+	/**
+	 * Detected arrows arrive as a batch, so they are folded in one at a time: the last one completing
+	 * the end commits it, exactly as tapping them in would have.
+	 */
+	async function acceptDetected(points: { x: number; y: number }[]) {
+		autoScoring = false;
+		if (!scoreSet || !currentSlot) return;
+
+		let next = [...pending];
+		for (const point of points) {
+			if (next.length >= currentSlot.arrows) break;
+			next = [...next, shotFromPlot(scoreAt(scoreSet, point.x, point.y), point.x, point.y)];
+		}
+
+		if (next.length >= currentSlot.arrows) enqueueEnd(currentSlot, next);
+		else pending = next;
 	}
 
 	function closeModal() {
@@ -590,16 +620,18 @@
 											{editing?.shotId === shot.id ? cursorClass : ''}"
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
-										onclick={() =>
-											(editing =
-												editing?.shotId === shot.id
-													? null
-													: {
-															endId: row.endId as string,
-															shotId: shot.id as string,
-															endNo: i + 1,
-															ordinal: shot.ordinal
-														})}
+									onclick={() => {
+										editingPending = null;
+										editing =
+											editing?.shotId === shot.id
+												? null
+												: {
+														endId: row.endId as string,
+														shotId: shot.id as string,
+														endNo: i + 1,
+														ordinal: shot.ordinal
+													};
+									}}
 									>
 										{shot.zoneLabel}
 									</button>
@@ -624,16 +656,23 @@
 						<div class="flex flex-1 gap-0.5">
 							{#each Array(currentSlot.arrows) as _, i (i)}
 								{#if pending[i]}
-									<span
-										class="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded text-[13px] font-bold"
+									<!-- Editable before the end is committed, so a mistap is fixed where it was made. -->
+									<button
+										class="tabular h-7 w-7 shrink-0 rounded text-[13px] font-bold
+											{editingPending === i ? cursorClass : ''}"
 										style={chipStyle(pending[i].zoneLabel)}
+										aria-label={$t('score.editArrow', { n: i + 1, end: sheetRows.length + 1 })}
+										onclick={() => {
+											editing = null;
+											editingPending = editingPending === i ? null : i;
+										}}
 									>
 										{pending[i].zoneLabel}
-									</span>
+									</button>
 								{:else}
 									<span
 										class="h-7 w-7 shrink-0 rounded border border-dashed
-											{i === pending.length && !editing
+											{i === pending.length && !editing && editingPending === null
 											? 'border-brand bg-brand/15 ' + cursorClass
 											: 'border-line'}"
 									></span>
@@ -714,20 +753,31 @@
 
 		{#if (currentSlot || editing) && !plotting}
 			<div class="flex items-center gap-2">
-				{#if editing}
+				{#if editing || editingPending !== null}
 					<button
-						class="rounded-lg border border-line px-4 py-2 text-sm"
-						onclick={() => (editing = null)}
+						class="flex-1 rounded-lg border border-line px-4 py-2 text-sm"
+						onclick={() => {
+							editing = null;
+							editingPending = null;
+						}}
 					>
 						{$t('common.cancel')}
 					</button>
 				{:else}
 					<button
-						class="rounded-lg border border-line px-4 py-2 text-sm disabled:opacity-40"
+						class="flex-1 rounded-lg border border-line px-4 py-2 text-sm disabled:opacity-40"
 						disabled={pending.length === 0}
 						onclick={undo}
 					>
 						{$t('common.undo')}
+					</button>
+					<button
+						class="flex flex-[2] items-center justify-center gap-1.5 rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand-text disabled:opacity-40"
+						disabled={!currentSlot}
+						onclick={() => (autoScoring = true)}
+					>
+						<Icon name="camera" size={18} />
+						{$t('auto.open')}
 					</button>
 				{/if}
 			</div>
@@ -766,6 +816,18 @@
 			· {$t('score.tens')} {shownTens} · {$t('score.xs')}
 			{shownXs}
 		</p>
+
+		<div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
+			<div>
+				<p class="text-sm font-medium">{$t('score.sortArrows')}</p>
+				<p class="text-xs text-muted">{$t('score.sortArrowsHint')}</p>
+			</div>
+			<Toggle
+				checked={$sortArrowsDescending}
+				onchange={(v) => sortArrowsDescending.set(v)}
+				label={$t('score.sortArrows')}
+			/>
+		</div>
 
 		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
 			<Icon name="trash" size={16} />
@@ -876,6 +938,15 @@
 			</div>
 		</div>
 	{/if}
+{#if autoScoring && scoreSet && currentSlot}
+	<AutoScore
+		{scoreSet}
+		remaining={currentSlot.arrows - pending.length}
+		onaccept={acceptDetected}
+		onclose={() => (autoScoring = false)}
+	/>
+{/if}
+
 {#if confirmingDelete}
 	<ConfirmDialog
 		title={$t('activity.confirmTitle')}

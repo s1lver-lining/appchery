@@ -122,6 +122,8 @@ export const fr: Dictionary = {
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		groupSize: 'Taille du groupement',
+		sortArrows: 'Trier les flèches par ordre décroissant',
+		sortArrowsHint: "Affiche chaque volée dans l'ordre de la feuille de marque plutôt que dans l'ordre de saisie.",
 		roundComplete: 'Tir terminé. Les flèches restent modifiables.'
 	},
 	activity: {
@@ -214,6 +216,20 @@ export const fr: Dictionary = {
 		trend: 'Tendance par flèche',
 		rounds: '{n} tirs',
 		bestOn: 'Record le {date}'
+	},
+	auto: {
+		title: 'Score auto',
+		open: 'Score auto',
+		hint: 'Les flèches détectées sont des propositions. Touchez-en une pour la retirer, puis gardez le reste.',
+		aiming: "Visez la cible avec la caméra pour que le jaune soit dans le cadre.",
+		noFace: 'Aucun blason détecté pour le moment.',
+		watching: 'Blason suivi. {n} flèches possibles.',
+		keep: 'Garder {n}',
+		drop: 'Retirer cette flèche',
+		tooMany: "Il ne reste que {n} flèches dans cette volée. Les autres sont ignorées.",
+		denied: "L'autorisation caméra est nécessaire pour marquer depuis la caméra.",
+		experimental:
+			'Le marquage par caméra est expérimental. Vérifiez toujours les valeurs avant de les garder.'
 	},
 	backup: {
 		title: 'Sauvegarde',
