@@ -63,13 +63,21 @@ class Net(nn.Module):
         return out[:, 0], out[:, 1:]
 
 
-def load(span):
-    meta = json.load(open(os.path.join(PREPARED, "labels.json")))
+def load(folder):
+    """Crops, their labels, and the mask of where the photograph actually reached.
+
+    Alpha carries the mask. A crop of a close up has most of its area outside the picture, and
+    without this the model would be taught that a black border means "no arrow", which is true but
+    useless, and it would drown the real signal.
+    """
+    meta = json.load(open(os.path.join(folder, "labels.json")))
     examples = []
     for item in meta["examples"]:
-        path = os.path.join(PREPARED, "images", item["file"])
-        image = np.asarray(Image.open(path).convert("RGB"), dtype=np.float32) / 255.0
-        examples.append((image, np.array([[p["x"], p["y"]] for p in item["points"]], dtype=np.float32)))
+        rgba = np.asarray(Image.open(os.path.join(folder, "images", item["file"])).convert("RGBA"), dtype=np.float32)
+        image = rgba[:, :, :3] / 255.0
+        cover = (rgba[:, :, 3] > 0).astype(np.float32)
+        points = np.array([[p["x"], p["y"]] for p in item["points"]], dtype=np.float32).reshape(-1, 2)
+        examples.append((image, points, cover))
     return meta, examples
 
 
@@ -106,16 +114,20 @@ def render(points, span):
     return heat, offset, mask
 
 
-def augment(image, points, span, rng):
+def augment(image, points, cover, span, rng):
     """Rotation is the big one: a target face is round, so any angle is another real example."""
     angle = rng.uniform(0, 2 * math.pi)
     flip = rng.random() < 0.5
 
-    pil = Image.fromarray((image * 255).astype(np.uint8))
+    stacked = np.concatenate([image, cover[:, :, None]], axis=2)
+    pil = Image.fromarray((stacked * 255).astype(np.uint8), mode="RGBA")
     if flip:
         pil = pil.transpose(Image.FLIP_LEFT_RIGHT)
-    pil = pil.rotate(math.degrees(angle), resample=Image.BILINEAR)
-    out = np.asarray(pil, dtype=np.float32) / 255.0
+    # Nearest for the mask's sake: a blurred edge would half count cells that hold no picture.
+    pil = pil.rotate(math.degrees(angle), resample=Image.NEAREST)
+    moved_all = np.asarray(pil, dtype=np.float32) / 255.0
+    out = moved_all[:, :, :3]
+    cover_out = (moved_all[:, :, 3] > 0.5).astype(np.float32)
 
     moved = points.copy()
     if len(moved):
@@ -129,14 +141,18 @@ def augment(image, points, span, rng):
 
     # Light and colour vary far more between clubs than anything else in these pictures.
     out = np.clip(out * rng.uniform(0.6, 1.4) + rng.uniform(-0.12, 0.12), 0, 1)
-    return out, moved
+    return out * cover_out[:, :, None], moved, cover_out
 
 
-def focal(pred, target):
-    """CornerNet's penalty reduced focal loss: near misses beside a true peak are barely punished."""
+def focal(pred, target, valid):
+    """CornerNet's penalty reduced focal loss: near misses beside a true peak are barely punished.
+
+    `valid` is where the photograph reached. Cells outside it are neither positive nor negative,
+    because nothing is known about them.
+    """
     prob = torch.sigmoid(pred).clamp(1e-4, 1 - 1e-4)
-    positive = (target >= 0.999).float()
-    negative = 1 - positive
+    positive = (target >= 0.999).float() * valid
+    negative = (1 - (target >= 0.999).float()) * valid
     loss_pos = -((1 - prob) ** 2) * torch.log(prob) * positive
     loss_neg = -((1 - target) ** 4) * (prob**2) * torch.log(1 - prob) * negative
     count = positive.sum().clamp(min=1)
@@ -163,7 +179,7 @@ def evaluate(model, data, span, threshold, tolerance=0.08):
     truth_total = reported = matched = 0
     offsets = []
     with torch.no_grad():
-        for image, points in data:
+        for image, points, _cover in data:
             x = torch.from_numpy(image.transpose(2, 0, 1))[None] * 2 - 1
             heat, offset = model(x)
             found = peaks(heat[0], offset[0], span, threshold)
@@ -194,7 +210,7 @@ def evaluate(model, data, span, threshold, tolerance=0.08):
     }
 
 
-def export(model, span, threshold):
+def export(model, span, threshold, path=OUT):
     """Folds the batch norms into the convolutions and writes plain arrays for the app to read."""
     model.eval()
     layers = []
@@ -226,7 +242,7 @@ def export(model, span, threshold):
             "bias": [round(v, 5) for v in model.head.bias.detach().flatten().tolist()],
         }
     )
-    with open(OUT, "w") as handle:
+    with open(path, "w") as handle:
         json.dump(
             {"size": SIZE, "grid": GRID, "span": span, "threshold": threshold, "layers": layers},
             handle,
@@ -240,18 +256,27 @@ def main():
     # 0.4 is where the sweep below balances: recall and precision cross at about three quarters each.
     parser.add_argument("--threshold", type=float, default=0.4)
     parser.add_argument("--seed", type=int, default=7)
+    parser.add_argument("--extra", default="")
+    parser.add_argument("--out", default=OUT)
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
     rng = random.Random(args.seed)
-    meta, examples = load(0)
+    meta, examples = load(PREPARED)
     span = meta["span"]
+
+    # A second set from somewhere else entirely, if it has been prepared. Only ever added to training:
+    # accuracy is always reported against the hand placed keypoints of the first.
+    extra = []
+    if args.extra and os.path.exists(os.path.join(args.extra, "labels.json")):
+        _, extra = load(args.extra)
+        print(f"extra {len(extra)} crops from {os.path.relpath(args.extra, ROOT)}")
 
     # Split by photograph, held fixed by seed, so the same test set can be given to either detector.
     order = list(range(len(examples)))
     random.Random(1234).shuffle(order)
     cut = int(len(order) * 0.8)
-    train = [examples[i] for i in order[:cut]]
+    train = [examples[i] for i in order[:cut]] + extra
     test = [examples[i] for i in order[cut:]]
     print(f"train {len(train)} crops, test {len(test)} crops")
 
@@ -271,22 +296,26 @@ def main():
         running = 0.0
         steps = 0
         for start in range(0, len(train) - batch + 1, batch):
-            images, heats, offsets, masks = [], [], [], []
-            for image, points in train[start : start + batch]:
-                aug, moved = augment(image, points, span, rng)
+            images, heats, offsets, masks, valids = [], [], [], [], []
+            for image, points, cover in train[start : start + batch]:
+                aug, moved, cover_out = augment(image, points, cover, span, rng)
                 heat, offset, mask = render(moved, span)
                 images.append(aug.transpose(2, 0, 1))
                 heats.append(heat)
                 offsets.append(offset)
                 masks.append(mask)
+                # A grid cell counts only if the picture reached most of the pixels behind it.
+                cells = cover_out.reshape(GRID, STRIDE, GRID, STRIDE).mean(axis=(1, 3))
+                valids.append((cells > 0.5).astype(np.float32))
 
             x = torch.from_numpy(np.stack(images)) * 2 - 1
             heat_t = torch.from_numpy(np.stack(heats))
             offset_t = torch.from_numpy(np.stack(offsets))
             mask_t = torch.from_numpy(np.stack(masks))
+            valid_t = torch.from_numpy(np.stack(valids))
 
             heat_p, offset_p = model(x)
-            loss = focal(heat_p, heat_t)
+            loss = focal(heat_p, heat_t, valid_t)
             if mask_t.sum() > 0:
                 loss = loss + 1.0 * (
                     (torch.abs(offset_p - offset_t) * mask_t[:, None]).sum() / mask_t.sum()
@@ -315,8 +344,8 @@ def main():
             f"offset {scored['offset'] * 100:.1f}%"
         )
 
-    weights = export(model, span, args.threshold)
-    print(f"\nexported {weights} weights to {os.path.relpath(OUT, ROOT)}")
+    weights = export(model, span, args.threshold, args.out)
+    print(f"\nexported {weights} weights to {os.path.relpath(args.out, ROOT)}")
 
     with open(os.path.join(PREPARED, "split.json"), "w") as handle:
         json.dump(

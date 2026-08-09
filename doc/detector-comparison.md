@@ -104,6 +104,25 @@ Two more consequences worth stating:
 
 Trained on 364 crops, held out 92.
 
+### What it was trained on, precisely
+
+This matters more than the architecture, and it is the thing most likely to be over read from the
+numbers below:
+
+| | 60cm set |
+| - | - |
+| photographs | 479, of which 456 gave a face |
+| arrows | 1640 labelled, 1513 usable |
+| **venues** | **one**, an indoor hall |
+| **cameras** | **one**, an iPhone 12 Pro Max |
+| dates | 16, October 2022 to February 2023 |
+| butts | a handful, straw with different paint |
+
+Every photograph comes from one archer, at one club, with one phone. That is the same criticism
+levelled at aimify above, and it applies here with more photographs but no more variety. **The numbers
+below are in domain.** How this model behaves at another club, on another phone, is not measured, and
+the honest expectation is: worse.
+
 Getting the live path to see what the model was trained on took some care, and two mistakes were
 found by measuring rather than by reading the code:
 

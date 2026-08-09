@@ -62,10 +62,17 @@ same network do the association work that `likeTheBest` does by hand. Not in the
 
 The datasets on hand are not enough, and it is worth being precise about why:
 
-- `test/datasets/60cm` is 479 photographs with 1640 labelled impacts. That is a good **evaluation**
-  set and a poor training set: too few, one boss, one venue, one camera.
-- `DutchTargetData_Kaggle` labels faces, not arrows. Useful for the face stage only.
-- Neither is video, so neither carries the before and after pairing that the live path has.
+- `test/datasets/60cm` is 479 photographs with 1640 labelled impacts. Checked rather than assumed:
+  every one is from a single iPhone 12 Pro Max, in one indoor hall, over 16 dates. A good
+  **evaluation** set and a narrow training set.
+- `DutchTargetData_Kaggle` is 650 photographs with 2048 boxes, and each box is a *spot of a trispot*
+  labelled with the score of the arrow in it. Many devices, judging by eight distinct resolutions, so
+  it is the most varied set to hand. It carries **no impact coordinates**, so it cannot train a
+  keypoint model directly, but it is exactly right for the face stage and is what that is measured on.
+- `aimify`'s set is 140 photographs with polygons for the ten rings and for each arrow. The impact can
+  be derived from an arrow polygon, and it adds real variety: outdoors, wooden shafts, different
+  bosses. Its catch is framing, covered below.
+- None is video, so none carries the before and after pairing that the live path has.
 
 What is needed, roughly, for the first useful model:
 

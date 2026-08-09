@@ -104,10 +104,9 @@ for (const task of tasks) {
 					const x = Math.round(face.cx + px * cos - py * sin);
 					const y = Math.round(face.cy + px * sin + py * cos);
 					const q = (j * size + i) * 4;
-					if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) {
-						scene.data[q + 3] = 255;
-						continue;
-					}
+					// Alpha marks what the photograph actually covers, so the loss can skip the rest.
+					if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
+					scene.data[q + 3] = 255;
 					const p = (y * frame.width + x) * 4;
 					scene.data[q] = frame.data[p];
 					scene.data[q + 1] = frame.data[p + 1];
