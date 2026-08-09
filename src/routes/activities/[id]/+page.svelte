@@ -369,7 +369,7 @@
 	async function remove() {
 		const sessionId = activity?.sessionId;
 		await deleteActivity(activityId);
-		goto(sessionId ? `/sessions/${sessionId}` : '/');
+		goto(sessionId ? `/sessions/${sessionId}` : '/sessions');
 	}
 
 	function zoneFor(label: string): Zone {

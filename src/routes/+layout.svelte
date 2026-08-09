@@ -24,9 +24,9 @@
 	});
 
 	const tabs: { href: string; key: string; icon: IconName }[] = [
-		{ href: '/', key: 'nav.sessions', icon: 'target' },
+		{ href: '/', key: 'nav.stats', icon: 'chart' },
+		{ href: '/sessions', key: 'nav.sessions', icon: 'target' },
 		{ href: '/equipment', key: 'nav.equipment', icon: 'bow' },
-		{ href: '/stats', key: 'nav.stats', icon: 'chart' },
 		{ href: '/settings', key: 'nav.settings', icon: 'sliders' }
 	];
 

@@ -24,6 +24,19 @@ export const formatDateTime = derived(use24Hour, ($use24) => (value: number) =>
 	})
 );
 
+/** The weekday matters in a list: shooting on a Sunday reads differently from shooting on a Tuesday. */
+export const formatDayDateTime = derived(use24Hour, ($use24) => (value: number) =>
+	new Date(value).toLocaleString(undefined, {
+		weekday: 'short',
+		day: 'numeric',
+		month: 'short',
+		year: 'numeric',
+		hour: 'numeric',
+		minute: '2-digit',
+		hour12: !$use24
+	})
+);
+
 export const formatTime = derived(use24Hour, ($use24) => (value: number) =>
 	new Date(value).toLocaleTimeString(undefined, { timeStyle: 'short', hour12: !$use24 })
 );

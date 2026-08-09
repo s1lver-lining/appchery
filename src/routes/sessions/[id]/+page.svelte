@@ -40,6 +40,7 @@
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import { formatDateTime } from '$lib/prefs';
 
 	const sessionId = $derived($page.params.id as string);
@@ -54,6 +55,7 @@
 	/** The name reads as a heading until tapped, so the page does not look like a form. */
 	let editingName = $state(false);
 	let nameInput = $state<HTMLInputElement | null>(null);
+	let confirmingDelete = $state(false);
 
 	let custom = $state<CustomRoundInput>({
 		ends: 6,
@@ -144,7 +146,7 @@
 
 	async function remove() {
 		await deleteSession(sessionId);
-		goto('/');
+		goto('/sessions');
 	}
 
 	function activityTitle(a: ActivityRow) {
@@ -166,7 +168,7 @@
 {#if session}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
-			<a href="/" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+			<a href="/sessions" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
 				<Icon name="back" size={22} />
 			</a>
 			{#if editingName}
@@ -314,7 +316,10 @@
 				{/if}
 			</section>
 
-			<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+			<button
+				class="flex items-center gap-1.5 text-sm text-danger"
+				onclick={() => (confirmingDelete = true)}
+			>
 				<Icon name="trash" size={16} />
 				{$t('session.delete')}
 			</button>
@@ -458,4 +463,13 @@
 	{/if}
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+{/if}
+
+{#if confirmingDelete}
+	<ConfirmDialog
+		title={$t('session.confirmTitle')}
+		message={$t('session.confirmBody')}
+		onconfirm={remove}
+		oncancel={() => (confirmingDelete = false)}
+	/>
 {/if}
