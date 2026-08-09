@@ -201,6 +201,7 @@ export const en = {
 		overview: 'Overview',
 		totalArrows: 'Arrows shot',
 		volume: 'Arrows per month',
+		volumeDaily: 'Arrows per day',
 		byRound: 'By round',
 		daysShot: 'Days shot',
 		roundsShot: 'Rounds',
@@ -226,6 +227,7 @@ export const en = {
 		watching: 'Watching the face. {n} possible arrows.',
 		keep: 'Keep {n}',
 		drop: 'Drop this arrow',
+		tapToDrop: 'Tap an arrow to drop it.',
 		tooMany: 'Only {n} arrows are left in this end. The extra ones are ignored.',
 		denied: 'Camera permission is required to score from the camera.',
 		experimental: 'Camera scoring is experimental. Always check the values before keeping them.'

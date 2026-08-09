@@ -202,6 +202,7 @@ export const fr: Dictionary = {
 		overview: "Vue d'ensemble",
 		totalArrows: 'Flèches tirées',
 		volume: 'Flèches par mois',
+		volumeDaily: 'Flèches par jour',
 		byRound: 'Par tir',
 		daysShot: 'Jours de tir',
 		roundsShot: 'Tirs',
@@ -227,6 +228,7 @@ export const fr: Dictionary = {
 		watching: 'Blason suivi. {n} flèches possibles.',
 		keep: 'Garder {n}',
 		drop: 'Retirer cette flèche',
+		tapToDrop: 'Touchez une flèche pour la retirer.',
 		tooMany: "Il ne reste que {n} flèches dans cette volée. Les autres sont ignorées.",
 		denied: "L'autorisation caméra est nécessaire pour marquer depuis la caméra.",
 		experimental:

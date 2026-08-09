@@ -67,6 +67,9 @@ function storedString(key: string) {
 	return store;
 }
 
+/** The stats window last looked at, so the page opens where it was left rather than at all time. */
+export const statsRange = storedString('appchery.statsRange');
+
 /**
  * The bow preselected on a new session. A device preference rather than user data, since which bow
  * you reach for depends on where you are, so it is deliberately not synced.

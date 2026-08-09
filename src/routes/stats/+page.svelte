@@ -5,15 +5,23 @@
 		summariseByRound,
 		overview,
 		inRange,
+		dailyVolume,
 		type ScoredActivity,
 		type StatsRange
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import Icon from '$lib/ui/Icon.svelte';
-	import { dateFormats } from '$lib/prefs';
+	import { dateFormats, statsRange } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
-	let range = $state<StatsRange>('all');
+	const RANGE_KEYS: StatsRange[] = ['all', 'year', 'month'];
+	// Restored from the last visit, because an archer who cares about this month cares every time.
+	let range = $state<StatsRange>(
+		RANGE_KEYS.includes($statsRange as StatsRange) ? ($statsRange as StatsRange) : 'all'
+	);
+	$effect(() => {
+		statsRange.set(range);
+	});
 	let showByRound = $state(false);
 
 	async function refresh() {
@@ -49,6 +57,10 @@
 		{ key: 'year', label: $t('stats.rangeYear') },
 		{ key: 'month', label: $t('stats.rangeMonth') }
 	]);
+
+	/** A month of monthly bars is one bar, so the short window is charted a day at a time. */
+	const daily = $derived(range === 'month' ? dailyVolume(windowed, 30) : []);
+	const peakDay = $derived(Math.max(1, ...daily.map((d) => d.arrows)));
 
 	/** Sparkline over the round's history, scaled to its own range so small moves stay readable. */
 	function sparkline(summary: (typeof summaries)[number]): string {
@@ -114,21 +126,45 @@
 				</dl>
 			</div>
 
-			<h3 class="mt-4 mb-2 text-xs font-semibold text-muted">{$t('stats.volume')}</h3>
-			<div class="flex h-28 items-end gap-1">
-				{#each totals.byMonth as month (month.month)}
-					<div class="flex flex-1 flex-col items-center gap-1" title={monthTitle(month.month)}>
-						<!-- A hairline for an empty month, so the axis stays legible where nothing was shot. -->
-						<div
-							class="w-full rounded-t {month.arrows > 0 ? 'bg-brand' : 'bg-line'}"
-							style="height: {month.arrows > 0
-								? Math.max(6, (month.arrows / peakMonth) * 88)
-								: 2}px"
-						></div>
-						<span class="text-[10px] leading-none text-muted">{monthLabel(month.month)}</span>
-					</div>
-				{/each}
-			</div>
+			<h3 class="mt-4 mb-2 text-xs font-semibold text-muted">
+				{range === 'month' ? $t('stats.volumeDaily') : $t('stats.volume')}
+			</h3>
+			{#if range === 'month'}
+				<div class="flex h-28 items-end gap-px">
+					{#each daily as day (day.at)}
+						<div class="flex flex-1 flex-col items-center gap-1" title={$dateFormats.date(day.at)}>
+							<!-- A hairline for a rest day, so the axis stays legible where nothing was shot. -->
+							<div
+								class="w-full rounded-t {day.arrows > 0 ? 'bg-brand' : 'bg-line'}"
+								style="height: {day.arrows > 0 ? Math.max(4, (day.arrows / peakDay) * 88) : 2}px"
+							></div>
+						</div>
+					{/each}
+				</div>
+				<!-- One label per week: thirty of them would be unreadable at this width. -->
+				<div class="mt-1 flex gap-px">
+					{#each daily as day, i (day.at)}
+						<span class="flex-1 text-center text-[10px] leading-none text-muted">
+							{i % 7 === 0 ? new Date(day.at).getDate() : ''}
+						</span>
+					{/each}
+				</div>
+			{:else}
+				<div class="flex h-28 items-end gap-1">
+					{#each totals.byMonth as month (month.month)}
+						<div class="flex flex-1 flex-col items-center gap-1" title={monthTitle(month.month)}>
+							<!-- A hairline for an empty month, so the axis stays legible where nothing was shot. -->
+							<div
+								class="w-full rounded-t {month.arrows > 0 ? 'bg-brand' : 'bg-line'}"
+								style="height: {month.arrows > 0
+									? Math.max(6, (month.arrows / peakMonth) * 88)
+									: 2}px"
+							></div>
+							<span class="text-[10px] leading-none text-muted">{monthLabel(month.month)}</span>
+						</div>
+					{/each}
+				</div>
+			{/if}
 
 			<button
 				class="mt-3 flex w-full items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm font-medium"
