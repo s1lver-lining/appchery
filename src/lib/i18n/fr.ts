@@ -277,6 +277,11 @@ export const fr: Dictionary = {
 			"Enregistre sur cet appareil une vidéo de chaque marquage à la caméra, pour améliorer la détection. Rien n'est envoyé.",
 		recordPath:
 			"Les vidéos sont enregistrées sur cet appareil, une par volée, nommées d'après l'activité et la volée correspondantes. Récupérez-les par câble ou avec le gestionnaire de fichiers.",
+		detectorTitle: "Détecteur de flèches",
+		detectorHint:
+			"Méthode de lecture des flèches. Classique par règles de forme et de couleur, apprise par un petit modèle entraîné. Les deux fonctionnent sur cet appareil.",
+		detectorClassical: "Classique",
+		detectorLearned: "Apprise",
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',
 		placeTitle: 'Nommer le lieu',

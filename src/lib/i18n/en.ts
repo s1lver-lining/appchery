@@ -273,6 +273,11 @@ export const en = {
 		recordHint:
 			'Keeps a video of each camera scoring session on this device, to help improve detection. Nothing is uploaded.',
 		recordPath: 'Videos are saved on this device, one per end, named after the activity and end they belong to. Copy them off with a cable or the file manager.',
+		detectorTitle: 'Arrow detector',
+		detectorHint:
+			'Which method reads the arrows. Classical uses shape and colour rules; learned uses a small trained model. Both run on this device.',
+		detectorClassical: 'Classical',
+		detectorLearned: 'Learned',
 		clockTitle: '24 hour clock',
 		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
 		placeTitle: 'Name the place',

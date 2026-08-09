@@ -5,7 +5,7 @@
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
-	import { recordCameraVideo } from '$lib/prefs';
+	import { recordCameraVideo, arrowDetector } from '$lib/prefs';
 	import { storeRecording } from '$lib/files';
 
 	/**
@@ -44,7 +44,28 @@
 	let found = $state<Impact[]>([]);
 	let pending = $state(0);
 
-	const scanner = new Scanner();
+	let scanner = new Scanner();
+
+	/**
+	 * The learned detector's weights, fetched only when it is the one chosen. About a megabyte of
+	 * numbers, which has no business in the bundle of an app most archers will score by hand.
+	 */
+	$effect(() => {
+		if ($arrowDetector !== 'learned') return;
+		let cancelled = false;
+		import('$lib/vision/arrow-model.json')
+			.then((module) => {
+				if (cancelled) return;
+				scanner = new Scanner({ model: (module.default ?? module) as never });
+				scanner.setLimit(remaining);
+			})
+			.catch(() => {
+				// No weights shipped means the classical detector, which is the default anyway.
+			});
+		return () => {
+			cancelled = true;
+		};
+	});
 	const work = document.createElement('canvas');
 	let stream: MediaStream | null = null;
 	let raf = 0;

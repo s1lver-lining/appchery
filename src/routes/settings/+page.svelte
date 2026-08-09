@@ -9,7 +9,7 @@
 		requestPosition,
 		LocationDeniedError
 	} from '$lib/conditions';
-	import { use24Hour, recordCameraVideo } from '$lib/prefs';
+	import { use24Hour, recordCameraVideo, arrowDetector } from '$lib/prefs';
 	import {
 		exportBackup,
 		importBackup,
@@ -197,6 +197,26 @@
 
 	<section>
 		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('auto.title')}</h2>
+		<div class="mb-4">
+			<p class="font-medium">{$t('settings.detectorTitle')}</p>
+			<p class="mt-0.5 text-sm text-muted">{$t('settings.detectorHint')}</p>
+			<div class="mt-2 flex gap-2" role="group" aria-label={$t('settings.detectorTitle')}>
+				{#each [['classical', $t('settings.detectorClassical')], ['learned', $t('settings.detectorLearned')]] as [value, label] (value)}
+					<button
+						type="button"
+						class="flex-1 rounded-lg border py-2 text-sm font-medium
+							{($arrowDetector ?? 'classical') === value
+							? 'border-brand bg-brand text-brand-ink'
+							: 'border-line'}"
+						aria-pressed={($arrowDetector ?? 'classical') === value}
+						onclick={() => arrowDetector.set(value)}
+					>
+						{label}
+					</button>
+				{/each}
+			</div>
+		</div>
+
 		<div class="flex items-start justify-between gap-4">
 			<div class="flex-1">
 				<p class="font-medium">{$t('settings.recordTitle')}</p>
