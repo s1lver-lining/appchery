@@ -4,7 +4,8 @@
 	import { listSessions, listAllActivities, createSession } from '$lib/db/repository';
 	import { overview, inRange, type ScoredActivity } from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
-	import { defaultBowId, formatDayDateTime } from '$lib/prefs';
+	import { defaultBowId, formatTime, dateFormats } from '$lib/prefs';
+	import { startOfDay } from '$lib/domain/dates';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
@@ -43,6 +44,9 @@
 	const month = $derived(overview(inRange(scored, 'month')));
 	const allTime = $derived(overview(scored));
 	const recent = $derived(sessions.slice(0, 3));
+
+	const today = startOfDay(Date.now());
+	const shortDay = $derived((at: number) => $dateFormats.weekdayShort(at).replace(/\.$/, '') + '.');
 </script>
 
 <div class="flex min-h-full flex-col">
@@ -108,14 +112,26 @@
 		{:else}
 			<ul class="space-y-2">
 				{#each recent as s (s.id)}
-					<li>
+					<!-- The same shape as the sessions list: day in the margin, the session in the card. -->
+					<li class="flex items-center gap-3">
+						<div class="w-9 shrink-0 text-center">
+							<p class="text-[11px] leading-none text-muted">{shortDay(s.startedAt)}</p>
+							<p
+								class="tabular mt-0.5 text-lg leading-none font-bold
+									{startOfDay(s.startedAt) === today
+									? 'mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-brand text-brand-ink'
+									: ''}"
+							>
+								{new Date(s.startedAt).getDate()}
+							</p>
+						</div>
 						<a
 							href="/sessions/{s.id}"
-							class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
+							class="flex flex-1 items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
 						>
 							<div class="min-w-0">
 								<p class="truncate font-semibold">{s.label ?? $t('sessions.untitled')}</p>
-								<p class="text-xs text-muted">{$formatDayDateTime(s.startedAt)}</p>
+								<p class="text-xs text-muted">{$formatTime(s.startedAt)}</p>
 							</div>
 							<div class="text-right">
 								<p class="tabular text-lg leading-none font-bold">{counts[s.id] ?? 0}</p>
