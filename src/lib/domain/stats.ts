@@ -1,4 +1,5 @@
 import { isRoundComplete } from './rounds/geometry';
+import { startOfDay } from './dates';
 import type { RoundDefinition } from './rounds/types';
 
 export interface ScoredActivity {
@@ -44,6 +45,33 @@ export interface MonthVolume {
 	/** Sortable and locale free: the UI formats it for display. */
 	month: string;
 	arrows: number;
+}
+
+export interface DayVolume {
+	/** Midnight local time, so the UI can format it however the language asks. */
+	at: number;
+	arrows: number;
+}
+
+/**
+ * One bar per day over the last `days`, contiguous. A month of monthly bars is a single bar, which
+ * says nothing: over a short window the useful grain is the day.
+ */
+export function dailyVolume(activities: ScoredActivity[], days = 30, now = Date.now()): DayVolume[] {
+	const perDay = new Map<number, number>();
+	for (const activity of activities) {
+		if (activity.arrowsShot <= 0) continue;
+		perDay.set(startOfDay(activity.startedAt), (perDay.get(startOfDay(activity.startedAt)) ?? 0) + activity.arrowsShot);
+	}
+
+	const today = new Date(startOfDay(now));
+	const series: DayVolume[] = [];
+	for (let i = days - 1; i >= 0; i--) {
+		// Stepped through the Date constructor so a daylight saving change cannot drop a day.
+		const at = new Date(today.getFullYear(), today.getMonth(), today.getDate() - i).getTime();
+		series.push({ at, arrows: perDay.get(at) ?? 0 });
+	}
+	return series;
 }
 
 export interface Overview {

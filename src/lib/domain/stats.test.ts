@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { summariseByRound, compareScores, overview, inRange, type ScoredActivity } from './stats';
+import {
+	summariseByRound,
+	compareScores,
+	overview,
+	inRange,
+	dailyVolume,
+	type ScoredActivity
+} from './stats';
 import { getRound } from './rounds/seed';
 
 const round = getRound('wa720-70m')!;
@@ -124,5 +131,30 @@ describe('compareScores', () => {
 		const base = activity({ id: 'a' });
 		expect(compareScores(base, activity({ id: 'b', count10s: 19 }))).toBeGreaterThan(0);
 		expect(compareScores(base, activity({ id: 'c', countX: 6 }))).toBeLessThan(0);
+	});
+});
+
+describe('dailyVolume', () => {
+	const now = new Date('2026-08-09T12:00').getTime();
+	const ago = (days: number) => now - days * 86_400_000;
+
+	it('returns one contiguous bar per day, oldest first', () => {
+		const series = dailyVolume([activity({ id: 'a', startedAt: ago(2) })], 7, now);
+		expect(series).toHaveLength(7);
+		expect(series[4].arrows).toBe(72);
+		expect(series[6].arrows).toBe(0);
+		expect(series[6].at).toBeGreaterThan(series[0].at);
+	});
+
+	it('adds up several rounds shot on the same day', () => {
+		const series = dailyVolume(
+			[
+				activity({ id: 'a', startedAt: ago(1), arrowsShot: 36 }),
+				activity({ id: 'b', startedAt: ago(1) - 3600_000, arrowsShot: 36 })
+			],
+			5,
+			now
+		);
+		expect(series[3].arrows).toBe(72);
 	});
 });
