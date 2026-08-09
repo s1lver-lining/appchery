@@ -536,6 +536,33 @@ describe('detectArrowsInStill', () => {
 		expect(Math.hypot(found[0].x - 0.1, found[0].y + 0.1)).toBeLessThan(0.2);
 	});
 
+	it('reads an arrow whose shaft disappears against the black ring', () => {
+		const frame = waFace(600, 200);
+		/**
+		 * A dark shaft on the black ring is invisible, which used to plant the impact on the white to
+		 * black boundary, several rings out from the truth. What saves it is that the length inside the
+		 * black is a run in its own right, and its inner end is the hole.
+		 */
+		shaft(frame, { x: 320, y: 280 }, { x: 460, y: 700 });
+
+		// The black ring hides it: a dark shaft on dark paper is the same colour as the paper.
+		for (let y = 0; y < 600; y++) {
+			for (let x = 0; x < 600; x++) {
+				const r = Math.hypot(x - 300, y - 300) / 200;
+				if (r <= 0.6 || r >= 0.8) continue;
+				const p = (y * 600 + x) * 4;
+				frame.data[p] = BLACK[0];
+				frame.data[p + 1] = BLACK[1];
+				frame.data[p + 2] = BLACK[2];
+			}
+		}
+
+		const found = detectArrowsInStill(frame, face);
+		expect(found.length).toBeGreaterThan(0);
+		// Near the hole in the gold, not out at the black ring's edge, which is r = 0.6.
+		expect(Math.hypot(found[0].x, found[0].y)).toBeLessThan(0.35);
+	});
+
 	it('drops a streak that looks nothing like the arrow it is most sure of', () => {
 		const frame = waFace(600, 200);
 		// Two arrows from the same bow at the same camera, and one mark lying across them.

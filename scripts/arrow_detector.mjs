@@ -14,6 +14,8 @@ const input = args.find((a) => !a.startsWith('-'));
 const outIndex = args.findIndex((a) => a === '-o' || a === '--output');
 const output = outIndex === -1 ? null : args[outIndex + 1];
 const json = args.includes('--json');
+const tuneIndex = args.indexOf('--tune');
+const tune = tuneIndex === -1 ? {} : JSON.parse(args[tuneIndex + 1]);
 const scale = Number(args[args.indexOf('--scale') + 1]) || 2;
 
 if (!input) {
