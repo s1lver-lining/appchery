@@ -1,0 +1,215 @@
+<script lang="ts">
+	import { onDestroy } from 'svelte';
+	import { t } from '$lib/i18n';
+	import { Scanner, toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
+	import { scoreAt } from '$lib/domain/rounds/geometry';
+	import type { ScoreSet } from '$lib/domain/rounds/types';
+	import Icon from './Icon.svelte';
+
+	/**
+	 * Live scoring from the camera. Nothing detected is ever written on its own: the archer keeps or
+	 * drops each arrow, because a wrong score entered silently is worse than no score at all.
+	 */
+	let {
+		scoreSet,
+		remaining,
+		onaccept,
+		onclose
+	}: {
+		scoreSet: ScoreSet;
+		/** Arrows still to enter in this end, which caps how many can be taken. */
+		remaining: number;
+		onaccept: (shots: { x: number; y: number }[]) => void;
+		onclose: () => void;
+	} = $props();
+
+	let video = $state<HTMLVideoElement | null>(null);
+	let overlay = $state<HTMLCanvasElement | null>(null);
+	let error = $state<string | null>(null);
+	let starting = $state(true);
+
+	let face = $state<FaceLocation | null>(null);
+	let found = $state<Impact[]>([]);
+	let pending = $state(0);
+
+	const scanner = new Scanner();
+	const work = document.createElement('canvas');
+	let stream: MediaStream | null = null;
+	let raf = 0;
+
+	const kept = $derived(found.slice(0, remaining));
+
+	$effect(() => {
+		start();
+		return stop;
+	});
+
+	async function start() {
+		try {
+			stream = await navigator.mediaDevices.getUserMedia({
+				video: { facingMode: 'environment', width: { ideal: 1280 } },
+				audio: false
+			});
+			if (video) {
+				video.srcObject = stream;
+				await video.play();
+			}
+			starting = false;
+			raf = requestAnimationFrame(tick);
+		} catch (e) {
+			starting = false;
+			error = e instanceof Error && e.name === 'NotAllowedError' ? $t('auto.denied') : String(e);
+		}
+	}
+
+	function stop() {
+		cancelAnimationFrame(raf);
+		stream?.getTracks().forEach((track) => track.stop());
+		stream = null;
+	}
+	onDestroy(stop);
+
+	function tick() {
+		raf = requestAnimationFrame(tick);
+		if (!video || video.readyState < 2 || !overlay) return;
+
+		const width = video.videoWidth;
+		const height = video.videoHeight;
+		if (width === 0) return;
+
+		work.width = width;
+		work.height = height;
+		const context = work.getContext('2d', { willReadFrequently: true });
+		if (!context) return;
+		context.drawImage(video, 0, 0, width, height);
+		const image = context.getImageData(0, 0, width, height);
+
+		const result = scanner.push({ width, height, data: image.data });
+		face = result.face;
+		found = result.arrows;
+		pending = result.pending.length;
+
+		draw(result.face, result.arrows, overlay, width, height);
+	}
+
+	/** The overlay is drawn in the small image's pixels, so every coordinate scales back up. */
+	function draw(
+		located: FaceLocation | null,
+		arrows: Impact[],
+		canvas: HTMLCanvasElement,
+		width: number,
+		height: number
+	) {
+		canvas.width = width;
+		canvas.height = height;
+		const context = canvas.getContext('2d');
+		if (!context || !located) return;
+
+		const scale = scanner.scaleFactor;
+		context.lineWidth = Math.max(2, width / 300);
+
+		context.strokeStyle = 'rgba(255,255,255,0.85)';
+		context.beginPath();
+		context.ellipse(
+			located.cx * scale,
+			located.cy * scale,
+			located.semiMajor * scale,
+			located.semiMinor * scale,
+			located.rotation,
+			0,
+			Math.PI * 2
+		);
+		context.stroke();
+
+		arrows.forEach((arrow, index) => {
+			const point = toImageCoords(located, arrow.x, arrow.y);
+			context.strokeStyle = index < remaining ? '#3ddc84' : 'rgba(255,255,255,0.4)';
+			context.beginPath();
+			context.arc(point.x * scale, point.y * scale, width / 60, 0, Math.PI * 2);
+			context.stroke();
+		});
+	}
+
+	function label(arrow: Impact): string {
+		return scoreAt(scoreSet, arrow.x, arrow.y).label;
+	}
+
+	function accept() {
+		onaccept(kept.map((a) => ({ x: a.x, y: a.y })));
+	}
+
+	function drop(arrow: Impact) {
+		scanner.reject(arrow);
+		found = found.filter((a) => a !== arrow);
+	}
+</script>
+
+<div class="fixed inset-0 z-[60] flex flex-col bg-black">
+	<header class="safe-top flex items-center justify-between px-4 py-3 pt-6 text-white">
+		<h2 class="text-lg font-bold">{$t('auto.title')}</h2>
+		<button class="opacity-80" aria-label={$t('common.close')} onclick={onclose}>
+			<Icon name="close" size={22} />
+		</button>
+	</header>
+
+	<div class="relative flex-1 overflow-hidden">
+		<!-- svelte-ignore a11y_media_has_caption -->
+		<video bind:this={video} class="h-full w-full object-contain" playsinline muted></video>
+		<canvas
+			bind:this={overlay}
+			class="pointer-events-none absolute inset-0 h-full w-full object-contain"
+		></canvas>
+
+		{#if starting}
+			<p class="absolute inset-0 grid place-items-center text-white">{$t('common.loading')}</p>
+		{:else if error}
+			<p class="absolute inset-x-4 top-4 rounded-lg bg-danger/90 p-3 text-sm text-white">{error}</p>
+		{:else if !face}
+			<p
+				class="absolute inset-x-4 bottom-4 rounded-lg bg-black/70 p-3 text-center text-sm text-white"
+			>
+				{$t('auto.aiming')}
+			</p>
+		{/if}
+	</div>
+
+	<div class="safe-bottom space-y-3 bg-surface p-4">
+		{#if found.length === 0}
+			<p class="text-center text-sm text-muted">
+				{face ? $t('auto.watching', { n: pending }) : $t('auto.noFace')}
+			</p>
+		{:else}
+			<div class="flex flex-wrap items-center gap-2">
+				{#each found as arrow, i (i)}
+					<button
+						class="tabular flex h-10 items-center gap-1 rounded-lg border px-2 text-base font-bold
+							{i < remaining ? 'border-brand' : 'border-line opacity-40'}"
+						aria-label={$t('auto.drop')}
+						onclick={() => drop(arrow)}
+					>
+						{label(arrow)}
+						<Icon name="close" size={14} />
+					</button>
+				{/each}
+			</div>
+			{#if found.length > remaining}
+				<p class="text-xs text-danger">{$t('auto.tooMany', { n: remaining })}</p>
+			{/if}
+		{/if}
+
+		<p class="text-xs text-muted">{$t('auto.hint')}</p>
+
+		<div class="flex gap-2">
+			<button class="flex-1 rounded-lg border border-line py-3 text-sm font-medium" onclick={onclose}>
+				{$t('common.cancel')}
+			</button>
+			<button
+				class="flex-[2] rounded-lg bg-brand py-3 font-semibold text-brand-ink disabled:opacity-40"
+				disabled={kept.length === 0}
+				onclick={accept}
+			>
+				{$t('auto.keep', { n: kept.length })}
+			</button>
+		</div>
+	</div>
+</div>
