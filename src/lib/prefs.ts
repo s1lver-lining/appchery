@@ -45,6 +45,12 @@ export const formatDateTime = derived(dateFormats, ($f) => $f.dateTime);
 export const formatDayDateTime = derived(dateFormats, ($f) => $f.dayDateTime);
 export const formatTime = derived(dateFormats, ($f) => $f.time);
 
+/**
+ * Off by default: an archer checking the sheet against the target reads the arrows in the order they
+ * were called, not sorted. Turning it on shows the paper scoresheet order instead.
+ */
+export const sortArrowsDescending = flag('appchery.sortArrows', false);
+
 function storedString(key: string) {
 	const store = writable<string | null>(
 		typeof window === 'undefined' ? null : window.localStorage.getItem(key)
