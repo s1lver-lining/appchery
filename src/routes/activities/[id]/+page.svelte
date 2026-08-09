@@ -251,6 +251,12 @@
 	}
 
 	async function tapZone(zone: Zone) {
+		// An arrow of the end being entered is replaced in place, never appended as another one.
+		if (editingPending !== null) {
+			pending = pending.map((shot, i) => (i === editingPending ? shotFromZone(zone) : shot));
+			editingPending = null;
+			return;
+		}
 		if (editing) {
 			await updateShot(editing.shotId, editing.endId, activityId, zone);
 			editing = null;
@@ -272,6 +278,13 @@
 		if (!scoreSet) return;
 		const zone = scoreAt(scoreSet, x, y);
 
+		if (editingPending !== null) {
+			pending = pending.map((shot, i) =>
+				i === editingPending ? shotFromPlot(zone, x, y) : shot
+			);
+			editingPending = null;
+			return;
+		}
 		if (editing) {
 			await updateShot(editing.shotId, editing.endId, activityId, zone, { x, y });
 			editing = null;
@@ -587,7 +600,15 @@
 		</div>
 
 		<!-- Sized by its rows rather than stretched: an empty sheet should not draw a tall empty box. -->
-		<section class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface">
+		<!--
+			Arrow squares grow with the screen, capped at 20% over the phone size. The floor is what
+			guarantees six arrows still fit on one line on a narrow phone: 6 x 28px plus gaps sits
+			inside the width left by the end, subtotal and running total columns.
+		-->
+		<section
+			class="flex min-h-0 flex-col overflow-hidden rounded-xl border border-line bg-surface"
+			style="--chip: clamp(1.75rem, 1.441rem + 1.373vw, 2.1rem)"
+		>
 			<div
 				class="flex shrink-0 items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
 			>
@@ -616,7 +637,7 @@
 							{#each row.shots as shot (shot.ordinal)}
 								{#if shot.id}
 									<button
-										class="tabular h-7 w-7 shrink-0 rounded text-[13px] font-bold
+										class="tabular h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editing?.shotId === shot.id ? cursorClass : ''}"
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
@@ -637,7 +658,7 @@
 									</button>
 								{:else}
 									<span
-										class="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded text-[13px] font-bold"
+										class="tabular flex h-[var(--chip)] w-[var(--chip)] shrink-0 items-center justify-center rounded text-[calc(var(--chip)*0.46)] font-bold"
 										style={chipStyle(shot.zoneLabel)}
 									>
 										{shot.zoneLabel}
@@ -658,7 +679,7 @@
 								{#if pending[i]}
 									<!-- Editable before the end is committed, so a mistap is fixed where it was made. -->
 									<button
-										class="tabular h-7 w-7 shrink-0 rounded text-[13px] font-bold
+										class="tabular h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editingPending === i ? cursorClass : ''}"
 										style={chipStyle(pending[i].zoneLabel)}
 										aria-label={$t('score.editArrow', { n: i + 1, end: sheetRows.length + 1 })}
@@ -671,7 +692,7 @@
 									</button>
 								{:else}
 									<span
-										class="h-7 w-7 shrink-0 rounded border border-dashed
+										class="h-[var(--chip)] w-[var(--chip)] shrink-0 rounded border border-dashed
 											{i === pending.length && !editing && editingPending === null
 											? 'border-brand bg-brand/15 ' + cursorClass
 											: 'border-line'}"
