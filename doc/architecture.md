@@ -104,7 +104,7 @@ src/lib/
     stats.ts     personal bests, averages, trends
   i18n/          reference dictionary and locales
   sync/          change log, push/pull, conflict resolution      <- phase 3
-  vision/        onnx session, homography, hole detection        <- phase 4
+  vision/        gold detection, ellipse fit, impact tracking     <- see camera-scoring.md
   ui/            components
 routes/
   sessions/[id]/  activities/[id]/  equipment/[id]/  stats/  settings/
@@ -184,7 +184,11 @@ outside a browser.
 > sets ship with `needsVerification: true`: the app shows a warning banner on any round that uses
 > one, and the picker labels them Unverified rather than showing a maximum. See
 > [scoring-verification.md](./scoring-verification.md) for the checklist that must be completed
-> before a flag is removed.
+> before a flag is removed. **Deferred:** the app focuses on target archery for now.
+
+Camera scoring is implemented with classical computer vision rather than a learned model, because
+the target face is a specified object with published geometry and no training set exists. See
+[camera-scoring.md](./camera-scoring.md).
 
 ### 5.2 Bow configuration is versioned
 
