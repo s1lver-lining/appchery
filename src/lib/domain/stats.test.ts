@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { summariseByRound, compareScores, overview, type ScoredActivity } from './stats';
+import { summariseByRound, compareScores, overview, inRange, type ScoredActivity } from './stats';
 import { getRound } from './rounds/seed';
 
 const round = getRound('wa720-70m')!;
@@ -97,6 +97,25 @@ describe('overview', () => {
 	it('is empty rather than dividing by zero when nothing was shot', () => {
 		expect(overview([]).averagePerArrow).toBe(0);
 		expect(overview([]).arrows).toBe(0);
+	});
+});
+
+describe('inRange', () => {
+	const now = new Date('2026-08-09T12:00').getTime();
+	const ago = (days: number) => now - days * 86_400_000;
+
+	it('keeps everything on the all time range', () => {
+		expect(inRange([activity({ id: 'a', startedAt: ago(900) })], 'all', now)).toHaveLength(1);
+	});
+
+	it('windows on the last year and the last month, rolling from today', () => {
+		const list = [
+			activity({ id: 'a', startedAt: ago(10) }),
+			activity({ id: 'b', startedAt: ago(100) }),
+			activity({ id: 'c', startedAt: ago(400) })
+		];
+		expect(inRange(list, 'year', now).map((a) => a.id)).toEqual(['a', 'b']);
+		expect(inRange(list, 'month', now).map((a) => a.id)).toEqual(['a']);
 	});
 });
 

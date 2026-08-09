@@ -18,6 +18,28 @@ export function isComplete(activity: ScoredActivity): boolean {
 	return isRoundComplete(activity.round, activity.arrowsShot);
 }
 
+export type StatsRange = 'all' | 'year' | 'month';
+
+/**
+ * A rolling window rather than a calendar one: on the second of the month an archer wants the last
+ * thirty days of work, not the two days since the first.
+ */
+export function withinRange(range: StatsRange, at: number, now = Date.now()): boolean {
+	if (range === 'all') return true;
+	const from = new Date(now);
+	if (range === 'year') from.setFullYear(from.getFullYear() - 1);
+	else from.setMonth(from.getMonth() - 1);
+	return at >= from.getTime();
+}
+
+export function inRange(
+	activities: ScoredActivity[],
+	range: StatsRange,
+	now = Date.now()
+): ScoredActivity[] {
+	return activities.filter((a) => withinRange(range, a.startedAt, now));
+}
+
 export interface MonthVolume {
 	/** Sortable and locale free: the UI formats it for display. */
 	month: string;
