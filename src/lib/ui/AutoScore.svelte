@@ -6,6 +6,7 @@
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
 	import { recordCameraVideo } from '$lib/prefs';
+	import { saveFile } from '$lib/files';
 
 	/**
 	 * Live scoring from the camera. Nothing detected is ever written on its own: the archer keeps or
@@ -131,12 +132,9 @@
 
 	function save(video: Blob) {
 		const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-		const link = document.createElement('a');
-		link.href = URL.createObjectURL(video);
-		link.download = `appchery-scoring-${stamp}.webm`;
-		link.click();
-		// Revoked on the next turn of the loop, once the download has taken the URL.
-		setTimeout(() => URL.revokeObjectURL(link.href), 10000);
+		const name = `appchery-scoring-${stamp}.webm`;
+		// Nothing to await: the modal is closing, and the share sheet outlives it.
+		void saveFile(video, name, $t('auto.title'));
 	}
 
 	function stop() {

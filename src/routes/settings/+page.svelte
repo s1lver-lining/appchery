@@ -18,6 +18,7 @@
 		BackupError
 	} from '$lib/db/backup';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import { saveFile } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
 
@@ -59,13 +60,7 @@
 		try {
 			const backup = await exportBackup();
 			const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
-			const url = URL.createObjectURL(blob);
-			const link = document.createElement('a');
-			link.href = url;
-			link.download = backupFilename(backup.exportedAt);
-			link.click();
-			// Revoked on the next tick: revoking immediately cancels the download in some browsers.
-			setTimeout(() => URL.revokeObjectURL(url), 10_000);
+			await saveFile(blob, backupFilename(backup.exportedAt), $t('backup.title'));
 			const rows = Object.values(backup.tables).reduce((sum, list) => sum + list.length, 0);
 			backupNotice = $t('backup.exported', { n: rows });
 		} catch (e) {

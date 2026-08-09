@@ -41,7 +41,9 @@
     "@capacitor-community/sqlite": "^8.1.1",
     "@capacitor/android": "^8.5.0",
     "@capacitor/core": "^8.5.0",
+    "@capacitor/filesystem": "^8.1.2",
     "@capacitor/ios": "^8.5.0",
+    "@capacitor/share": "^8.0.1",
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
     "drizzle-orm": "^0.45.2"
   }
