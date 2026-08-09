@@ -28,7 +28,8 @@
 	let error = $state<string | null>(null);
 	let starting = $state(true);
 
-	let face = $state<FaceLocation | null>(null);
+	let faces = $state<FaceLocation[]>([]);
+	let steady = $state(false);
 	let found = $state<Impact[]>([]);
 	let pending = $state(0);
 
@@ -110,16 +111,17 @@
 		const image = context.getImageData(0, 0, width, height);
 
 		const result = scanner.push({ width, height, data: image.data });
-		face = result.face;
+		faces = result.faces;
+		steady = result.steady;
 		found = result.arrows;
 		pending = result.pending.length;
 
-		draw(result.face, result.arrows, overlay, width, height);
+		draw(result.faces, result.arrows, overlay, width, height);
 	}
 
 	/** The overlay is drawn in the small image's pixels, so every coordinate scales back up. */
 	function draw(
-		located: FaceLocation | null,
+		located: FaceLocation[],
 		arrows: Impact[],
 		canvas: HTMLCanvasElement,
 		width: number,
@@ -128,26 +130,31 @@
 		canvas.width = width;
 		canvas.height = height;
 		const context = canvas.getContext('2d');
-		if (!context || !located) return;
+		if (!context) return;
 
 		const scale = scanner.scaleFactor;
 		context.lineWidth = Math.max(2, width / 300);
 
+		// Every face is outlined, so a three spot shows all three being watched.
 		context.strokeStyle = 'rgba(255,255,255,0.85)';
-		context.beginPath();
-		context.ellipse(
-			located.cx * scale,
-			located.cy * scale,
-			located.semiMajor * scale,
-			located.semiMinor * scale,
-			located.rotation,
-			0,
-			Math.PI * 2
-		);
-		context.stroke();
+		for (const face of located) {
+			context.beginPath();
+			context.ellipse(
+				face.cx * scale,
+				face.cy * scale,
+				face.semiMajor * scale,
+				face.semiMinor * scale,
+				face.rotation,
+				0,
+				Math.PI * 2
+			);
+			context.stroke();
+		}
 
 		arrows.forEach((arrow, index) => {
-			const point = toImageCoords(located, arrow.x, arrow.y);
+			const face = located[arrow.face];
+			if (!face) return;
+			const point = toImageCoords(face, arrow.x, arrow.y);
 			context.strokeStyle = index < remaining ? '#3ddc84' : 'rgba(255,255,255,0.4)';
 			context.beginPath();
 			context.arc(point.x * scale, point.y * scale, width / 60, 0, Math.PI * 2);
@@ -189,7 +196,7 @@
 			<p class="absolute inset-0 grid place-items-center text-white">{$t('common.loading')}</p>
 		{:else if error}
 			<p class="absolute inset-x-4 top-4 rounded-lg bg-danger/90 p-3 text-sm text-white">{error}</p>
-		{:else if !face}
+		{:else if faces.length === 0}
 			<p
 				class="absolute inset-x-4 bottom-4 rounded-lg bg-black/70 p-3 text-center text-sm text-white"
 			>
@@ -201,7 +208,11 @@
 	<div class="safe-bottom space-y-3 bg-surface p-4">
 		{#if found.length === 0}
 			<p class="text-center text-sm text-muted">
-				{face ? $t('auto.watching', { n: pending }) : $t('auto.noFace')}
+				{faces.length === 0
+					? $t('auto.noFace')
+					: steady
+						? $t('auto.watching', { n: pending })
+						: $t('auto.settling')}
 			</p>
 		{:else}
 			<!-- Capped and scrollable: a bad frame must never push the buttons off the screen. -->

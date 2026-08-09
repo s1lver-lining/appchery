@@ -223,6 +223,7 @@ export const fr: Dictionary = {
 		hint: 'Les flèches détectées sont des propositions. Touchez-en une pour la retirer, puis gardez le reste.',
 		aiming: "Visez la cible avec la caméra pour que le jaune soit dans le cadre.",
 		noFace: 'Aucun blason détecté pour le moment.',
+		settling: 'Gardez la caméra immobile pendant la mesure du blason.',
 		watching: 'Blason suivi. {n} flèches possibles.',
 		keep: 'Garder {n}',
 		drop: 'Retirer cette flèche',

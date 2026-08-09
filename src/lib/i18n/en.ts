@@ -222,6 +222,7 @@ export const en = {
 		hint: 'Detected arrows are proposals. Tap one to drop it, then keep the rest.',
 		aiming: 'Point the camera at the target so the gold is in frame.',
 		noFace: 'No target face found yet.',
+		settling: 'Hold the camera still while the face is measured.',
 		watching: 'Watching the face. {n} possible arrows.',
 		keep: 'Keep {n}',
 		drop: 'Drop this arrow',
