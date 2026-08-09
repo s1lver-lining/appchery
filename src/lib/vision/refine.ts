@@ -94,11 +94,11 @@ export function ringAgreement(frame: Frame, face: FaceLocation): number {
 }
 
 /**
- * Coordinate descent over centre and axes, with a shrinking step. Deliberately local: the estimate
- * from the gold blob is already close, and a global search would cost far more than a video frame
- * can afford.
+ * Coordinate descent over centre, axes and tilt, with a shrinking step. Deliberately local: the
+ * estimate from the gold blob is usually close, and a global search would cost far more than a video
+ * frame can afford.
  */
-export function refineFace(frame: Frame, start: FaceLocation): FaceLocation {
+function descend(frame: Frame, start: FaceLocation): FaceLocation {
 	let best = start;
 	let bestScore = ringAgreement(frame, start);
 
@@ -144,4 +144,23 @@ export function refineFace(frame: Frame, start: FaceLocation): FaceLocation {
 	}
 
 	return { ...best, support: bestScore };
+}
+
+/**
+ * Fits a face, from the gold blob's own shape and from a circle of the same area.
+ *
+ * The blob's moments are the better start when the gold is whole. When an arrow splits it, they are
+ * badly wrong: the largest surviving piece is a crescent, and its moments give an ellipse stretched
+ * and rotated along the shaft. Local descent cannot walk back from an error like that, but it does
+ * not have to, because a face photographed anywhere near square on is close to a circle. Trying both
+ * and keeping the better fit costs one extra descent and rescues the case entirely.
+ */
+export function refineFace(frame: Frame, start: FaceLocation): FaceLocation {
+	const fitted = descend(frame, start);
+	const lopsided = Math.abs(start.semiMajor - start.semiMinor) / Math.max(start.semiMajor, 1);
+	if (lopsided < 0.08) return fitted;
+
+	const radius = Math.sqrt(start.semiMajor * start.semiMinor);
+	const round = descend(frame, { ...start, semiMajor: radius, semiMinor: radius, rotation: 0 });
+	return round.support > fitted.support ? round : fitted;
 }
