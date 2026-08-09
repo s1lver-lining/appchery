@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ScoreSet, Shot } from '$lib/domain/rounds/types';
-	import { groupMetrics, groupHull, scoreAt } from '$lib/domain/rounds/geometry';
+	import { groupMetrics, groupHull, scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import Icon from './Icon.svelte';
 
 	/**
@@ -60,15 +60,28 @@
 
 	/** What this position would score, shown while dragging so the value is known before releasing. */
 	const previewZone = $derived(cursor ? scoreAt(scoreSet, cursor.x, cursor.y) : null);
+	/** One decimal of depth into the ring, which is what tells a scraped 8 from a solid one. */
+	const previewDecimal = $derived(cursor ? decimalScore(scoreSet, cursor.x, cursor.y) : null);
 
-	const ZOOM = 2.6;
+	/**
+	 * Pinching sets the magnification, so a distant ring can be worked at whatever zoom the archer
+	 * wants rather than the one chosen here.
+	 */
+	const MIN_ZOOM = 1.4;
+	const MAX_ZOOM = 6;
+	let zoom = $state(2.6);
+
 	/**
 	 * The plot sits above the touch point so a finger does not cover the arrow being placed. Roughly
-	 * half a centimetre of clearance on a phone, which is what it takes to see past a thumb.
+	 * a centimetre of clearance on a phone, which is what it takes to see past a thumb.
 	 */
 	const FINGER_OFFSET = 0.34;
 
-	function toFace(event: PointerEvent): { x: number; y: number } | null {
+	/** Live pointers, so a second finger turns the drag into a pinch rather than moving the arrow. */
+	const active = new Map<number, { x: number; y: number }>();
+	let pinchStart: { distance: number; zoom: number } | null = null;
+
+	function toFace(event: { clientX: number; clientY: number }): { x: number; y: number } | null {
 		if (!svg) return null;
 		const rect = svg.getBoundingClientRect();
 		const x = ((event.clientX - rect.left) / rect.width) * 2.1 - 1.05;
@@ -76,24 +89,71 @@
 		return { x, y };
 	}
 
+	function spread(): number {
+		const [a, b] = [...active.values()];
+		return Math.hypot(a.x - b.x, a.y - b.y);
+	}
+
 	function down(event: PointerEvent) {
 		if (!interactive) return;
 		(event.target as Element).setPointerCapture?.(event.pointerId);
+		active.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+		if (active.size === 2) {
+			// The arrow stays where the first finger left it while the second one only scales.
+			pinchStart = { distance: spread(), zoom };
+			return;
+		}
 		cursor = toFace(event);
 	}
 
 	function move(event: PointerEvent) {
-		if (!interactive || !cursor) return;
-		cursor = toFace(event);
+		if (!interactive) return;
+		if (!active.has(event.pointerId)) return;
+		active.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+		if (active.size >= 2 && pinchStart) {
+			const scale = spread() / (pinchStart.distance || 1);
+			zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStart.zoom * scale));
+			return;
+		}
+		if (cursor) cursor = toFace(event);
 	}
 
 	/** Committing on release is what makes the drag useful: the archer can correct before letting go. */
-	function up() {
-		if (!interactive || !cursor) return;
+	function up(event: PointerEvent) {
+		if (!interactive) return;
+		active.delete(event.pointerId);
+
+		if (pinchStart) {
+			// Lifting out of a pinch must not drop an arrow wherever the fingers happened to be.
+			if (active.size === 0) {
+				pinchStart = null;
+				cursor = null;
+			}
+			return;
+		}
+		if (!cursor) return;
 		const { x, y } = cursor;
 		cursor = null;
 		if (Math.hypot(x, y) <= 1.15) onplot?.(x, y);
 	}
+
+	function cancel(event: PointerEvent) {
+		active.delete(event.pointerId);
+		if (active.size === 0) {
+			pinchStart = null;
+			cursor = null;
+		}
+	}
+
+	/** Trackpad and mouse wheel, so the same control works on the desktop build. */
+	function wheel(event: WheelEvent) {
+		if (!interactive) return;
+		event.preventDefault();
+		zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, zoom * (event.deltaY < 0 ? 1.1 : 1 / 1.1)));
+	}
+
 </script>
 
 <div class="relative h-full w-full">
@@ -105,7 +165,8 @@
 		onpointerdown={down}
 		onpointermove={move}
 		onpointerup={up}
-		onpointercancel={() => (cursor = null)}
+		onpointercancel={cancel}
+		onwheel={wheel}
 		{...interactive ? { role: 'button', tabindex: 0 } : { role: 'img' }}
 	>
 		<defs>
@@ -118,7 +179,7 @@
 			<!-- The whole face scales and translates under the magnifier, so rings stay aligned with arrows. -->
 			<g
 				transform={cursor
-					? `translate(${-cursor.x * (ZOOM - 1)} ${-cursor.y * (ZOOM - 1)}) scale(${ZOOM})`
+					? `translate(${-cursor.x * (zoom - 1)} ${-cursor.y * (zoom - 1)}) scale(${zoom})`
 					: ''}
 			>
 				{#each drawable as zone (zone.label)}
@@ -129,7 +190,7 @@
 							r={zone.shape.r}
 							fill={zone.color}
 							stroke={zone.strokeColor}
-							stroke-width={0.005 / (cursor ? ZOOM : 1)}
+							stroke-width={0.005 / (cursor ? zoom : 1)}
 						/>
 					{:else if zone.shape.kind === 'ellipse'}
 						<ellipse
@@ -139,14 +200,14 @@
 							ry={zone.shape.ry}
 							fill={zone.color}
 							stroke={zone.strokeColor}
-							stroke-width={0.005 / (cursor ? ZOOM : 1)}
+							stroke-width={0.005 / (cursor ? zoom : 1)}
 						/>
 					{:else}
 						<polygon
 							points={polygonPoints(zone.shape.points)}
 							fill={zone.color}
 							stroke={zone.strokeColor}
-							stroke-width={0.005 / (cursor ? ZOOM : 1)}
+							stroke-width={0.005 / (cursor ? zoom : 1)}
 						/>
 					{/if}
 				{/each}
@@ -157,12 +218,12 @@
 						<circle
 							cx={shot.x}
 							cy={shot.y}
-							r={0.028 / (cursor ? ZOOM : 1)}
+							r={0.028 / (cursor ? zoom : 1)}
 							fill="#f4f1ea"
 							fill-opacity="0.55"
 							stroke="#23282c"
 							stroke-opacity="0.3"
-							stroke-width={0.01 / (cursor ? ZOOM : 1)}
+							stroke-width={0.01 / (cursor ? zoom : 1)}
 						/>
 					{/if}
 				{/each}
@@ -173,7 +234,7 @@
 						fill="var(--c-brand)"
 						fill-opacity="0.12"
 						stroke="var(--c-brand)"
-						stroke-width={0.01 / (cursor ? ZOOM : 1)}
+						stroke-width={0.01 / (cursor ? zoom : 1)}
 						stroke-dasharray="0.03 0.02"
 					/>
 				{/if}
@@ -183,10 +244,10 @@
 						<circle
 							cx={shot.x}
 							cy={shot.y}
-							r={0.034 / (cursor ? ZOOM : 1)}
+							r={0.034 / (cursor ? zoom : 1)}
 							fill="var(--c-brand)"
 							stroke="var(--c-ink)"
-							stroke-width={0.012 / (cursor ? ZOOM : 1)}
+							stroke-width={0.012 / (cursor ? zoom : 1)}
 						/>
 					{/if}
 				{/each}
@@ -194,35 +255,45 @@
 				{#if centre}
 					<g
 						stroke="var(--c-danger)"
-						stroke-width={0.014 / (cursor ? ZOOM : 1)}
+						stroke-width={0.014 / (cursor ? zoom : 1)}
 						fill="none"
 						opacity="0.95"
 					>
-						<circle cx={centre.centerX} cy={centre.centerY} r={0.07 / (cursor ? ZOOM : 1)} />
+						<circle cx={centre.centerX} cy={centre.centerY} r={0.07 / (cursor ? zoom : 1)} />
 						<path
-							d="M{centre.centerX - 0.12 / (cursor ? ZOOM : 1)},{centre.centerY}h{0.1 /
-								(cursor ? ZOOM : 1)}M{centre.centerX + 0.02 / (cursor ? ZOOM : 1)},{centre.centerY}h{0.1 /
-								(cursor ? ZOOM : 1)}M{centre.centerX},{centre.centerY -
-								0.12 / (cursor ? ZOOM : 1)}v{0.1 / (cursor ? ZOOM : 1)}M{centre.centerX},{centre.centerY +
-								0.02 / (cursor ? ZOOM : 1)}v{0.1 / (cursor ? ZOOM : 1)}"
+							d="M{centre.centerX - 0.12 / (cursor ? zoom : 1)},{centre.centerY}h{0.1 /
+								(cursor ? zoom : 1)}M{centre.centerX + 0.02 / (cursor ? zoom : 1)},{centre.centerY}h{0.1 /
+								(cursor ? zoom : 1)}M{centre.centerX},{centre.centerY -
+								0.12 / (cursor ? zoom : 1)}v{0.1 / (cursor ? zoom : 1)}M{centre.centerX},{centre.centerY +
+								0.02 / (cursor ? zoom : 1)}v{0.1 / (cursor ? zoom : 1)}"
 						/>
 					</g>
 				{/if}
 
 				{#if cursor}
+					<!-- The crosshair has to be big to be seen past a thumb, so a small dot marks the exact
+					     point the arrow will take. -->
+					<circle
+						cx={cursor.x}
+						cy={cursor.y}
+						r={0.012 / zoom}
+						fill="var(--c-danger)"
+						stroke="#ffffff"
+						stroke-width={0.006 / zoom}
+					/>
 					<!-- Drawn twice: a pale halo under a dark line, so the crosshair reads on gold and on black. -->
 					{#each [{ colour: '#ffffff', width: 0.026 }, { colour: 'var(--c-danger)', width: 0.012 }] as pen (pen.colour)}
 						<g
 							stroke={pen.colour}
-							stroke-width={pen.width / ZOOM}
+							stroke-width={pen.width / zoom}
 							stroke-linecap="round"
 							fill="none"
 						>
-							<circle cx={cursor.x} cy={cursor.y} r={0.07 / ZOOM} />
+							<circle cx={cursor.x} cy={cursor.y} r={0.07 / zoom} />
 							<path
-								d="M{cursor.x - 0.15 / ZOOM},{cursor.y}h{0.09 / ZOOM}M{cursor.x +
-									0.06 / ZOOM},{cursor.y}h{0.09 / ZOOM}M{cursor.x},{cursor.y -
-									0.15 / ZOOM}v{0.09 / ZOOM}M{cursor.x},{cursor.y + 0.06 / ZOOM}v{0.09 / ZOOM}"
+								d="M{cursor.x - 0.15 / zoom},{cursor.y}h{0.09 / zoom}M{cursor.x +
+									0.06 / zoom},{cursor.y}h{0.09 / zoom}M{cursor.x},{cursor.y -
+									0.15 / zoom}v{0.09 / zoom}M{cursor.x},{cursor.y + 0.06 / zoom}v{0.09 / zoom}"
 							/>
 						</g>
 					{/each}
@@ -240,7 +311,7 @@
 					? `background-color: ${previewZone.color}; color: ${previewZone.strokeColor}; box-shadow: 0 0 0 2px ${previewZone.strokeColor}`
 					: 'background-color: var(--c-sunk); color: var(--c-muted);'}
 			>
-				{previewZone.label}
+				{previewDecimal !== null ? previewDecimal.toFixed(1) : previewZone.label}
 			</span>
 		</div>
 	{/if}
