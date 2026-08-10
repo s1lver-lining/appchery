@@ -29,12 +29,12 @@
 	{#if motif === 'sessions'}
 		<!-- Fletching: vanes stacked along a shaft, the mark of arrows already loosed. -->
 		<svg
-			class="pointer-events-none absolute -top-2 right-0 h-28 w-56 text-brand"
+			class="pointer-events-none absolute top-0 right-0 h-28 w-60 text-brand"
 			viewBox="0 0 140 70"
 			fill="none"
 			aria-hidden="true"
 		>
-			<path d="M6 62 L134 6" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
+			<path d="M2 68 L152 -8" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
 			{#each [0, 26, 52] as offset, i (offset)}
 				<path
 					d="M{18 + offset} 58 C{34 + offset} 44, {42 + offset} 26, {44 + offset} 8 C{54 +
@@ -47,42 +47,60 @@
 	{:else if motif === 'session'}
 		<!-- Four waves running together: a session is a run of ends, one after another. -->
 		<svg
-			class="pointer-events-none absolute top-2 right-0 h-24 w-60 text-brand"
-			viewBox="0 0 150 80"
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 160 100"
 			fill="none"
 			aria-hidden="true"
 		>
-			{#each [0, 1, 2, 3] as line (line)}
-				<path
-					d="M-8 22 C 16 22, 22 -2, 48 -2 S 82 26, 108 18 S 140 -8, 154 -12"
-					transform="translate(0 {line * 15})"
-					stroke="currentColor"
-					stroke-width="4"
-					stroke-linecap="round"
-					opacity={0.34 - line * 0.06}
-				/>
-			{/each}
+			<!-- Swung and blown up so the crests read as curves rather than as a stripe pattern. -->
+			<g transform="translate(46 34) rotate(-22) scale(1.6)">
+				{#each [0, 1, 2, 3] as line (line)}
+					<path
+						d="M-40 16 C -22 16, -16 0, 4 0 S 32 20, 52 14 S 84 -6, 100 -8"
+						transform="translate(0 {line * 13})"
+						stroke="currentColor"
+						stroke-width="3.5"
+						stroke-linecap="round"
+						opacity={0.34 - line * 0.06}
+					/>
+				{/each}
+			</g>
 		</svg>
 	{:else if motif === 'equipment'}
-		<!-- A recurve seen side on: limbs recurving off the riser, string nocked, arrow on the rest. -->
+		<!-- The two bows the app knows, side on: a recurve with an arrow on the rest, and a compound. -->
 		<svg
-			class="pointer-events-none absolute inset-y-0 right-0 h-full w-36 text-brand"
-			viewBox="0 0 100 120"
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 180 120"
 			fill="none"
 			aria-hidden="true"
 		>
-			<g transform="translate(50 63) rotate(-30) scale(1.3) translate(-50 -60)">
-			<path
-				d="M24 4 C40 12, 50 26, 52 42 M52 78 C50 94, 40 108, 24 116"
-				stroke="currentColor"
-				stroke-width="5"
-				stroke-linecap="round"
-				opacity="0.2"
-			/>
-			<path d="M52 40 L52 80" stroke="currentColor" stroke-width="9" stroke-linecap="round" opacity="0.24" />
-			<path d="M24 4 L30 60 L24 116" stroke="currentColor" stroke-width="1.8" opacity="0.35" />
-			<path d="M30 60 L86 60" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
-			<path d="M86 60 L74 55 L74 65 Z" fill="currentColor" opacity="0.35" />
+			<g transform="translate(120 63) rotate(-30) scale(1.3) translate(-50 -60)">
+				<path
+					d="M24 4 C40 12, 50 26, 52 42 M52 78 C50 94, 40 108, 24 116"
+					stroke="currentColor"
+					stroke-width="5"
+					stroke-linecap="round"
+					opacity="0.2"
+				/>
+				<path d="M52 40 L52 80" stroke="currentColor" stroke-width="9" stroke-linecap="round" opacity="0.24" />
+				<path d="M24 4 L30 60 L24 116" stroke="currentColor" stroke-width="1.8" opacity="0.35" />
+				<path d="M30 60 L86 60" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
+				<path d="M86 60 L74 55 L74 65 Z" fill="currentColor" opacity="0.35" />
+			</g>
+
+			<g transform="translate(38 60) rotate(-18) scale(0.95) translate(-40 -60)">
+				<path
+					d="M52 46 L30 26 M52 74 L30 94"
+					stroke="currentColor"
+					stroke-width="5"
+					stroke-linecap="round"
+					opacity="0.16"
+				/>
+				<path d="M52 42 L52 78" stroke="currentColor" stroke-width="8" stroke-linecap="round" opacity="0.2" />
+				<circle cx="28" cy="24" r="7" stroke="currentColor" stroke-width="3" opacity="0.22" />
+				<circle cx="28" cy="96" r="7" stroke="currentColor" stroke-width="3" opacity="0.22" />
+				<path d="M28 17 L36 60 L28 103" stroke="currentColor" stroke-width="1.6" opacity="0.28" />
+				<path d="M28 31 C 44 44, 44 76, 28 89" stroke="currentColor" stroke-width="1.6" opacity="0.2" />
 			</g>
 		</svg>
 	{:else if motif === 'stats'}
