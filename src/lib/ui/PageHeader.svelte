@@ -27,21 +27,23 @@
 <!-- The inset lives on the element and the spacing inside it, because both are a padding-top. -->
 <header class="safe-top relative overflow-hidden bg-brand/10">
 	{#if motif === 'sessions'}
-		<!-- Fletching: vanes stacked along a shaft, the mark of arrows already loosed. -->
+		<!-- Flight paths climbing to the same point, which is what a tightening group looks like. -->
 		<svg
-			class="pointer-events-none absolute top-0 right-0 h-28 w-60 text-brand"
-			viewBox="0 0 140 70"
+			class="pointer-events-none absolute -top-4 -right-6 h-40 w-56 text-brand"
+			viewBox="0 0 140 100"
 			fill="none"
 			aria-hidden="true"
 		>
-			<path d="M2 68 L152 -8" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
-			{#each [0, 26, 52] as offset, i (offset)}
+			{#each [0, 12, 24] as drop, i (drop)}
 				<path
-					d="M{18 + offset} 58 C{34 + offset} 44, {42 + offset} 26, {44 + offset} 8 C{54 +
-						offset} 22, {50 + offset} 44, {36 + offset} 62 Z"
-					fill="currentColor"
-					opacity={0.12 + i * 0.07}
+					d="M-6 {96 + drop} C40 {40 + drop}, 84 {14 + drop}, 138 {8 + drop}"
+					stroke="currentColor"
+					stroke-width="3"
+					opacity={0.22 - i * 0.06}
 				/>
+			{/each}
+			{#each [[112, 22], [124, 14], [104, 30]] as [cx, cy] (cx)}
+				<circle {cx} {cy} r="4" fill="currentColor" opacity="0.3" />
 			{/each}
 		</svg>
 	{:else if motif === 'session'}
@@ -108,23 +110,23 @@
 			</g>
 		</svg>
 	{:else if motif === 'stats'}
-		<!-- Flight paths climbing to the same point, which is what a tightening group looks like. -->
+		<!-- Fletching: vanes stacked along a shaft, the mark of arrows already loosed. -->
+		<!-- Sized off the header height rather than a fixed box, so the vanes reach the bottom edge. -->
 		<svg
-			class="pointer-events-none absolute -top-4 -right-6 h-40 w-56 text-brand"
-			viewBox="0 0 140 100"
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 140 70"
+			preserveAspectRatio="xMaxYMid meet"
 			fill="none"
 			aria-hidden="true"
 		>
-			{#each [0, 12, 24] as drop, i (drop)}
+			<path d="M2 74 L152 -8" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
+			{#each [0, 26, 52] as offset, i (offset)}
 				<path
-					d="M-6 {96 + drop} C40 {40 + drop}, 84 {14 + drop}, 138 {8 + drop}"
-					stroke="currentColor"
-					stroke-width="3"
-					opacity={0.22 - i * 0.06}
+					d="M{18 + offset} 72 C{34 + offset} 48, {42 + offset} 26, {44 + offset} 4 C{54 +
+						offset} 22, {50 + offset} 48, {36 + offset} 82 Z"
+					fill="currentColor"
+					opacity={0.12 + i * 0.07}
 				/>
-			{/each}
-			{#each [[112, 22], [124, 14], [104, 30]] as [cx, cy] (cx)}
-				<circle {cx} {cy} r="4" fill="currentColor" opacity="0.3" />
 			{/each}
 		</svg>
 	{:else}
