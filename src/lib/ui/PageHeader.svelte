@@ -53,10 +53,10 @@
 			aria-hidden="true"
 		>
 			<!-- Swung and blown up so the crests read as curves rather than as a stripe pattern. -->
-			<g transform="translate(46 34) rotate(-22) scale(1.6)">
+			<g transform="translate(46 34) rotate(-13) scale(1.6)">
 				{#each [0, 1, 2, 3] as line (line)}
 					<path
-						d="M-40 16 C -22 16, -16 0, 4 0 S 32 20, 52 14 S 84 -6, 100 -8"
+						d="M-70 22 C -40 22, -20 0, 4 0 S 32 20, 52 14 S 84 -6, 100 -8"
 						transform="translate(0 {line * 13})"
 						stroke="currentColor"
 						stroke-width="3.5"
@@ -70,11 +70,12 @@
 		<!-- The two bows the app knows, side on: a recurve with an arrow on the rest, and a compound. -->
 		<svg
 			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
-			viewBox="0 0 180 120"
+			viewBox="0 0 190 120"
+			preserveAspectRatio="xMaxYMid meet"
 			fill="none"
 			aria-hidden="true"
 		>
-			<g transform="translate(120 63) rotate(-30) scale(1.3) translate(-50 -60)">
+			<g transform="translate(176 62) rotate(-30) scale(1.5) translate(-50 -60)">
 				<path
 					d="M24 4 C40 12, 50 26, 52 42 M52 78 C50 94, 40 108, 24 116"
 					stroke="currentColor"
@@ -88,19 +89,22 @@
 				<path d="M86 60 L74 55 L74 65 Z" fill="currentColor" opacity="0.35" />
 			</g>
 
-			<g transform="translate(38 60) rotate(-18) scale(0.95) translate(-40 -60)">
+		<!-- Mirrored so the two bows face away from each other rather than fighting for the same room. -->
+			<g transform="translate(40 62) rotate(12) scale(-1.4 1.4) translate(-50 -60)">
 				<path
-					d="M52 46 L30 26 M52 74 L30 94"
+					d="M52 46 L30 24 M52 74 L30 96"
 					stroke="currentColor"
 					stroke-width="5"
 					stroke-linecap="round"
 					opacity="0.16"
 				/>
 				<path d="M52 42 L52 78" stroke="currentColor" stroke-width="8" stroke-linecap="round" opacity="0.2" />
-				<circle cx="28" cy="24" r="7" stroke="currentColor" stroke-width="3" opacity="0.22" />
-				<circle cx="28" cy="96" r="7" stroke="currentColor" stroke-width="3" opacity="0.22" />
-				<path d="M28 17 L36 60 L28 103" stroke="currentColor" stroke-width="1.6" opacity="0.28" />
-				<path d="M28 31 C 44 44, 44 76, 28 89" stroke="currentColor" stroke-width="1.6" opacity="0.2" />
+				<circle cx="28" cy="22" r="8" stroke="currentColor" stroke-width="3" opacity="0.22" />
+				<circle cx="28" cy="98" r="8" stroke="currentColor" stroke-width="3" opacity="0.22" />
+				<path d="M28 14 L36 60 L28 106" stroke="currentColor" stroke-width="1.6" opacity="0.28" />
+				<path d="M28 30 C 46 44, 46 76, 28 90" stroke="currentColor" stroke-width="1.6" opacity="0.2" />
+				<path d="M36 60 L84 60" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
+				<path d="M84 60 L72 55 L72 65 Z" fill="currentColor" opacity="0.35" />
 			</g>
 		</svg>
 	{:else if motif === 'stats'}
