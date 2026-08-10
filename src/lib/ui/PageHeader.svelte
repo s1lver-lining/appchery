@@ -53,7 +53,7 @@
 			aria-hidden="true"
 		>
 			<!-- Swung and blown up so the crests read as curves rather than as a stripe pattern. -->
-			<g transform="translate(66 26) rotate(-22) scale(1.6)">
+			<g transform="translate(88 26) rotate(-22) scale(1.6)">
 				{#each [0, 1, 2, 3] as line (line)}
 					<path
 						d="M-110 26 C -60 26, -20 0, 4 0 S 32 20, 52 14 S 84 -6, 100 -8"
