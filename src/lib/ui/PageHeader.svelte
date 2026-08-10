@@ -47,19 +47,21 @@
 	{:else if motif === 'session'}
 		<!-- A session is a handful of arrows loosed together, so they fan out from one nock point. -->
 		<svg
-			class="pointer-events-none absolute top-2 right-0 h-28 w-52 text-brand"
-			viewBox="0 0 130 90"
+			class="pointer-events-none absolute top-1 right-2 h-28 w-40 text-brand"
+			viewBox="0 0 140 110"
 			fill="none"
 			aria-hidden="true"
 		>
-			{#each [-8, 6, 20] as tilt, i (tilt)}
-				<g transform="rotate({tilt} 8 68)" opacity={0.34 - i * 0.07}>
-					<path d="M8 68 L104 26" stroke="currentColor" stroke-width="2.5" />
-					<path d="M122 18 L100 20 L106 34 Z" fill="currentColor" />
+			<!-- Each arrow is drawn flat and then swung about its nock, so the vanes keep their shape. -->
+			{#each [-44, -30, -16] as angle, i (angle)}
+				<g transform="rotate({angle} 8 100)" opacity={0.34 - i * 0.07}>
+					<path d="M8 100 H104" stroke="currentColor" stroke-width="2.5" />
+					<path d="M122 100 L102 93 L102 107 Z" fill="currentColor" />
+					<path d="M5 94 V106" stroke="currentColor" stroke-width="3" />
 					<path
-						d="M8 68 L26 60 L22 70 Z M18 64 L36 56 L32 66 Z"
+						d="M12 100 C22 90, 36 87, 48 88 C38 94, 24 98, 12 100 Z
+							M12 100 C22 110, 36 113, 48 112 C38 106, 24 102, 12 100 Z"
 						fill="currentColor"
-						opacity="0.8"
 					/>
 				</g>
 			{/each}
@@ -72,6 +74,7 @@
 			fill="none"
 			aria-hidden="true"
 		>
+			<g transform="translate(50 63) rotate(-20) scale(1.12) translate(-50 -60)">
 			<path
 				d="M24 4 C40 12, 50 26, 52 42 M52 78 C50 94, 40 108, 24 116"
 				stroke="currentColor"
@@ -83,6 +86,7 @@
 			<path d="M24 4 L30 60 L24 116" stroke="currentColor" stroke-width="1.8" opacity="0.35" />
 			<path d="M30 60 L86 60" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
 			<path d="M86 60 L74 55 L74 65 Z" fill="currentColor" opacity="0.35" />
+			</g>
 		</svg>
 	{:else if motif === 'stats'}
 		<!-- Flight paths climbing to the same point, which is what a tightening group looks like. -->
@@ -120,9 +124,9 @@
 			</g>
 			<g opacity="0.13" fill="currentColor">
 				{#each [0, 60, 120, 180, 240, 300] as angle (angle)}
-					<rect x="12" y="0" width="8" height="14" rx="2" transform="rotate({angle} 16 16)" />
+					<rect x="11" y="-4" width="10" height="18" rx="2" transform="rotate({angle} 16 16)" />
 				{/each}
-				<path fill-rule="evenodd" d="M16 2 a14 14 0 1 0 0.1 0 Z M16 10 a6 6 0 1 0 0.1 0 Z" />
+				<path fill-rule="evenodd" d="M16 4 a12 12 0 1 0 0.1 0 Z M16 11 a5 5 0 1 0 0.1 0 Z" />
 			</g>
 		</svg>
 	{/if}
