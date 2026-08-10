@@ -45,36 +45,33 @@
 			{/each}
 		</svg>
 	{:else if motif === 'session'}
-		<!-- A session is a handful of arrows loosed together, so they fan out from one nock point. -->
+		<!-- Four waves running together: a session is a run of ends, one after another. -->
 		<svg
-			class="pointer-events-none absolute top-1 right-2 h-28 w-40 text-brand"
-			viewBox="0 0 140 110"
+			class="pointer-events-none absolute top-2 right-0 h-24 w-60 text-brand"
+			viewBox="0 0 150 80"
 			fill="none"
 			aria-hidden="true"
 		>
-			<!-- Each arrow is drawn flat and then swung about its nock, so the vanes keep their shape. -->
-			{#each [-44, -30, -16] as angle, i (angle)}
-				<g transform="rotate({angle} 8 100)" opacity={0.34 - i * 0.07}>
-					<path d="M8 100 H104" stroke="currentColor" stroke-width="2.5" />
-					<path d="M122 100 L102 93 L102 107 Z" fill="currentColor" />
-					<path d="M5 94 V106" stroke="currentColor" stroke-width="3" />
-					<path
-						d="M12 100 C22 90, 36 87, 48 88 C38 94, 24 98, 12 100 Z
-							M12 100 C22 110, 36 113, 48 112 C38 106, 24 102, 12 100 Z"
-						fill="currentColor"
-					/>
-				</g>
+			{#each [0, 1, 2, 3] as line (line)}
+				<path
+					d="M-8 22 C 16 22, 22 -2, 48 -2 S 82 26, 108 18 S 140 -8, 154 -12"
+					transform="translate(0 {line * 15})"
+					stroke="currentColor"
+					stroke-width="4"
+					stroke-linecap="round"
+					opacity={0.34 - line * 0.06}
+				/>
 			{/each}
 		</svg>
 	{:else if motif === 'equipment'}
 		<!-- A recurve seen side on: limbs recurving off the riser, string nocked, arrow on the rest. -->
 		<svg
-			class="pointer-events-none absolute inset-y-0 right-6 h-full w-32 text-brand"
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-36 text-brand"
 			viewBox="0 0 100 120"
 			fill="none"
 			aria-hidden="true"
 		>
-			<g transform="translate(50 63) rotate(-20) scale(1.12) translate(-50 -60)">
+			<g transform="translate(50 63) rotate(-30) scale(1.3) translate(-50 -60)">
 			<path
 				d="M24 4 C40 12, 50 26, 52 42 M52 78 C50 94, 40 108, 24 116"
 				stroke="currentColor"
@@ -122,11 +119,12 @@
 				{/each}
 				<path fill-rule="evenodd" d="M50 20 a30 30 0 1 0 0.1 0 Z M50 37 a13 13 0 1 0 0.1 0 Z" />
 			</g>
-			<g opacity="0.13" fill="currentColor">
-				{#each [0, 60, 120, 180, 240, 300] as angle (angle)}
-					<rect x="11" y="-4" width="10" height="18" rx="2" transform="rotate({angle} 16 16)" />
+			<!-- The same cog at half size, so the pair reads as one mechanism rather than two shapes. -->
+			<g opacity="0.13" fill="currentColor" transform="translate(16 16) scale(0.46) translate(-50 -50)">
+				{#each [0, 45, 90, 135, 180, 225, 270, 315] as angle (angle)}
+					<rect x="44" y="10" width="12" height="26" rx="3" transform="rotate({angle} 50 50)" />
 				{/each}
-				<path fill-rule="evenodd" d="M16 4 a12 12 0 1 0 0.1 0 Z M16 11 a5 5 0 1 0 0.1 0 Z" />
+				<path fill-rule="evenodd" d="M50 20 a30 30 0 1 0 0.1 0 Z M50 37 a13 13 0 1 0 0.1 0 Z" />
 			</g>
 		</svg>
 	{/if}
