@@ -144,26 +144,62 @@ detector saw during training.
 | detector | reported | recall | precision | value agreed | impact error |
 | -------- | -------- | ------ | --------- | ------------ | ------------ |
 | aimify YOLOv8 * | — | 17.8% | 13.8% | — | 4.8% |
-| ours, classical | 282 | 37.1% | 41.8% | **80.5%** | 2.9% |
-| **ours, learned** | 296 | **70.1%** | **75.3%** | 74.9% | **1.8%** |
+| ours, classical | 282 | 37.1% | 41.8% | 80.5% | 2.9% |
+| **ours, learned** | 273 | **71.4%** | **83.2%** | 78.4% | **1.8%** |
 
 \* measured over the whole 60cm set rather than this fifth, at its best confidence. It trained on none
 of it, so every photograph is unseen either way.
 
 The learned detector's confidence is a dial, and the whole curve is more honest than any single row of
-it:
+it. Both columns are the same code and the same held out photographs; the second was additionally
+shown aimify's 123 crops during training:
 
-| threshold | reported | recall | precision |
-| --------- | -------- | ------ | --------- |
-| 0.2 | 618 | 82.4% | 40.8% |
-| 0.3 | 397 | 78.1% | 60.2% |
-| **0.4** | 301 | 73.5% | 74.8% |
-| 0.5 | 249 | 69.0% | 84.7% |
+| threshold | 60cm only | 60cm + aimify |
+| --------- | --------- | ------------- |
+| 0.2 | 81.7% / 50.6% | 81.7% / 49.0% |
+| 0.3 | 77.8% / 67.6% | 78.4% / 70.6% |
+| **0.4** | 74.2% / 80.2% | **75.5% / 83.4%** |
+| 0.5 | 69.6% / 86.9% | 68.6% / 89.7% |
 
-0.4 is what ships, being where the two meet. The classical detector has a similar dial in `bridge`,
-and at no setting of it does it reach this curve.
+*recall / precision.* 0.4 is what ships, being where the two meet. The classical detector has a similar
+dial in `bridge`, and at no setting of it does it reach this curve.
 
-Two sanity checks, because a number this much better than the one before it deserves them:
+**Does the second venue help?** A little, and less than it looked like mid training. At the shipped
+threshold it is worth about a point of recall and three of precision, which on 318 arrows is four
+detections and nine false ones: **inside the range a different random seed would produce.** The
+defensible claim is not that it helps but that it **does not hurt**, which is the result that matters,
+because it means crops that are 81% empty with labels derived from polygons can be folded in safely,
+and there is no reason not to keep adding sets on those terms. It is shipped because it is at least as
+good and has seen two venues instead of one.
+
+### Away from home
+
+Everything above is one venue. The trispot set is a different venue photographed on at least eight
+different devices, and neither detector has ever trained on it. It labels each *spot* with the score
+shot into it rather than where the arrow is, so it cannot measure placement, but it measures the thing
+that no in domain number can: whether a detector still works somewhere else.
+
+Over 586 labelled spots:
+
+| | classical | learned |
+| - | --------- | ------- |
+| spot located | 97.1% | 97.1% |
+| offered an arrow | 98.9% | 74.7% |
+| ring exactly right | 19.4% | **56.7%** |
+| ring within one | 30.4% | **79.1%** |
+| **end to end** | 18.6% | **41.1%** |
+
+This was the result most likely to go badly, and it did not. The learned detector, trained in one hall
+on one phone, more than doubles the classical one somewhere else entirely. It is also markedly more
+honest about not knowing: it declines a quarter of the spots, where the classical detector answers
+almost all of them and is wrong four times in five.
+
+It is still much worse away from home than at home, 56.7% against 78.4%, so the expectation set out
+above holds. It is simply a smaller gap than the one venue training set deserved.
+
+### Sanity checks
+
+Because a number this much better than the one before it deserves them:
 
 - **On the photographs it trained on** the learned detector scores 77.5% recall and 83.3% precision,
   against 70.1% and 75.3% on the ones it did not. Seven points of gap is a model that has generalised;
@@ -175,19 +211,20 @@ Two sanity checks, because a number this much better than the one before it dese
 ## What this says
 
 **The learned detector is roughly twice the classical one, end to end.** Multiplying the two numbers
-that matter, an arrow found *and* given the right ring: 37.1% × 80.5% = **30%** for classical, 70.1% ×
-74.9% = **53%** for learned. It also places the impacts it finds far more precisely, 1.8% of the face
-radius against 2.9%, which is a third of a ring against a half.
+that matter, an arrow found *and* given the right ring: 37.1% × 80.5% = **30%** for classical, 71.4% ×
+78.4% = **56%** for learned. It also places the impacts it finds far more precisely, 1.8% of the face
+radius against 2.9%, which is a third of a ring against a half. Away from home the same comparison is
+18.6% against 41.1%, so the factor of two survives the trip.
 
 **It is still not good enough to score unsupervised**, and it is not presented as if it were. Half the
 arrows come out right; the app asks before recording anything, and that is not going to change on the
 strength of these numbers.
 
-**Value agreement went slightly down**, 80.5% to 74.9%, and this is worth being straight about rather
-than burying under the recall. The classical detector only finds arrows it is very sure of, which are
-the easy ones, and easy ones are easier to score. The learned detector finds nearly twice as many,
-including hard ones near ring boundaries, and gets a slightly smaller share of a much larger number
-right. That is a good trade, but it is a trade.
+**Value agreement is slightly lower**, 80.5% against 78.4%, and it is worth being straight about that
+rather than burying it under the recall. The classical detector only finds arrows it is very sure of,
+which are the easy ones, and easy ones are easier to score. The learned detector finds nearly twice as
+many, including hard ones near ring boundaries, and gets a slightly smaller share of a much larger
+number right. That is a good trade, but it is a trade.
 
 **What made it work was not the model.** It is six convolutions and a hundred thousand weights, which
 is nothing. What made it work was giving it a problem already stripped of scale, rotation and
@@ -196,9 +233,10 @@ crop another real training example. The bet in
 [arrow-detection-ml.md](arrow-detection-ml.md) — that rectifying first is what makes a few hundred
 photographs enough — is the part that paid.
 
-**And the biggest single lever is still data.** 456 photographs from one dataset produced this. The
+**And the biggest single lever is still data.** 456 photographs from one hall produced this. The
 recording feature exists to gather more, and the next real gain is more bosses and more venues rather
-than more layers.
+than more layers. The aimify experiment says the plumbing for that is sound: a set with a different
+framing and derived labels folded in without doing harm.
 
 ### What would be next
 
