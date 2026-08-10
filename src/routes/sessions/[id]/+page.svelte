@@ -223,6 +223,28 @@
 		</nav>
 
 		{#if tab === 'overview'}
+			<!-- Where and in what weather comes first, because it frames every score below it. -->
+			{#if session.location || session.latitude !== null}
+				<section class="flex items-center gap-4 rounded-xl border border-line bg-surface p-4">
+					{#if weather}
+						<div class="flex flex-col items-center text-brand-text">
+							<Icon name={weatherIcon(weather.code)} size={40} />
+							<span class="mt-1 text-xs text-muted">{$t(weatherLabelKey(weather.code))}</span>
+						</div>
+					{/if}
+					<div class="flex-1">
+						<p class="text-lg font-semibold">{session.location ?? $t('session.unknownPlace')}</p>
+						{#if weather}
+							<p class="tabular text-sm text-muted">
+								{formatTemperature(weather)} · {formatWind(weather)}
+							</p>
+						{:else}
+							<p class="text-sm text-muted">{$t('session.weatherNone')}</p>
+						{/if}
+					</div>
+				</section>
+			{/if}
+
 			<section>
 				<div class="mb-2 flex items-center justify-between">
 					<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
