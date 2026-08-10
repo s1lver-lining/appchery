@@ -53,7 +53,7 @@
 			aria-hidden="true"
 		>
 			<!-- Swung and blown up so the crests read as curves rather than as a stripe pattern. -->
-			<g transform="translate(46 34) rotate(-22) scale(1.6)">
+			<g transform="translate(66 26) rotate(-22) scale(1.6)">
 				{#each [0, 1, 2, 3] as line (line)}
 					<path
 						d="M-110 26 C -60 26, -20 0, 4 0 S 32 20, 52 14 S 84 -6, 100 -8"
@@ -70,7 +70,7 @@
 		<!-- The two bows the app knows, side on: a recurve with an arrow on the rest, and a compound. -->
 		<svg
 			class="pointer-events-none absolute inset-y-0 right-0 h-full w-72 text-brand"
-			viewBox="0 0 230 120"
+			viewBox="-24 0 254 120"
 			preserveAspectRatio="xMaxYMid meet"
 			fill="none"
 			aria-hidden="true"
@@ -90,7 +90,7 @@
 			</g>
 
 		<!-- Mirrored so the two bows face away from each other rather than fighting for the same room. -->
-			<g transform="translate(46 62) rotate(12) scale(-1.4 1.4) translate(-50 -60)">
+			<g transform="translate(32 62) rotate(12) scale(-1.4 1.4) translate(-50 -60)">
 				<path
 					d="M52 46 L30 24 M52 74 L30 96"
 					stroke="currentColor"
