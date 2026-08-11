@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { ScoreSet, Shot } from '$lib/domain/rounds/types';
+	import { plotTapMs } from '$lib/prefs';
 	import { groupMetrics, groupHull, scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import Icon from './Icon.svelte';
 
@@ -86,10 +87,9 @@
 	/**
 	 * A press short enough to be a tap rather than an aim. A tap means "the arrow is here", so it is
 	 * taken at the point touched, with no clearance for a finger that was never in the way long
-	 * enough to hide anything. Generous on purpose: a deliberate tap on a phone runs past a fifth of
-	 * a second, and the alternative is an arrow that lands a centimetre high.
+	 * enough to hide anything. How long that is belongs to the archer, so it is a setting.
 	 */
-	const TAP_MS = 250;
+	const tapMs = $derived($plotTapMs);
 	let tap: { at: number; point: { x: number; y: number } | null } | null = null;
 	/** Where the finger is, so the cursor can appear under it once the press outlives a tap. */
 	let held: { clientX: number; clientY: number } | null = null;
@@ -149,8 +149,11 @@
 		stopHold();
 		holdTimer = setTimeout(() => {
 			holdTimer = null;
-			if (held) cursor = toFace(held);
-		}, TAP_MS);
+			if (!held) return;
+			cursor = toFace(held);
+			// Felt at the moment the press becomes an aim, which is the only moment worth announcing.
+			navigator.vibrate?.(8);
+		}, tapMs);
 	}
 
 	function move(event: PointerEvent) {
@@ -186,7 +189,7 @@
 		}
 
 		stopHold();
-		const tapped = tap && Date.now() - tap.at < TAP_MS ? tap.point : null;
+		const tapped = tap && Date.now() - tap.at < tapMs ? tap.point : null;
 		// The last fallback covers the press that outlived a tap by less than the timer took to fire.
 		const point = tapped ?? cursor ?? (held ? toFace(held) : null);
 		tap = null;
@@ -229,6 +232,7 @@
 		onpointerup={up}
 		onpointercancel={cancel}
 		onwheel={wheel}
+		oncontextmenu={(event) => event.preventDefault()}
 		{...interactive ? { role: 'button', tabindex: 0 } : { role: 'img' }}
 	>
 		<defs>

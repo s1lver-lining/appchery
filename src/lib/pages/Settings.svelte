@@ -9,7 +9,7 @@
 		requestPosition,
 		LocationDeniedError
 	} from '$lib/conditions';
-	import { use24Hour, recordCameraVideo, arrowDetector } from '$lib/prefs';
+	import { use24Hour, recordCameraVideo, arrowDetector, plotTapMs } from '$lib/prefs';
 	import {
 		exportBackup,
 		importBackup,
@@ -186,6 +186,33 @@
 					</div>
 				</section>
 			{:else if key === 'shooting'}
+				<section>
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.plotting')}</h2>
+					<div class="rounded-xl border border-line bg-surface p-4">
+						<div class="flex items-baseline justify-between gap-3">
+							<p class="font-medium">{$t('settings.tapWindowTitle')}</p>
+							<p class="tabular shrink-0 text-sm font-semibold text-brand-text">
+								{$t('settings.milliseconds', { n: $plotTapMs })}
+							</p>
+						</div>
+						<p class="mt-0.5 text-sm text-muted">{$t('settings.tapWindowHint')}</p>
+						<input
+							type="range"
+							min="80"
+							max="500"
+							step="10"
+							class="mt-3 w-full accent-brand"
+							aria-label={$t('settings.tapWindowTitle')}
+							value={$plotTapMs}
+							oninput={(e) => plotTapMs.set(Number(e.currentTarget.value))}
+						/>
+						<div class="tabular flex justify-between text-[11px] text-muted">
+							<span>{$t('settings.tapWindowShort')}</span>
+							<span>{$t('settings.tapWindowLong')}</span>
+						</div>
+					</div>
+				</section>
+
 				<section class="space-y-4">
 					<h2 class="text-sm font-semibold text-muted">{$t('settings.conditions')}</h2>
 

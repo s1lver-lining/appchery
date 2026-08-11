@@ -92,6 +92,17 @@ function storedList(key: string) {
 	return store;
 }
 
+/** A number kept on the device, with a sane value when nothing was ever chosen or the store is junk. */
+function storedNumber(key: string, initial: number) {
+	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	const parsed = Number(saved);
+	const store = writable<number>(saved !== null && Number.isFinite(parsed) ? parsed : initial);
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, String(value));
+	});
+	return store;
+}
+
 function storedString(key: string) {
 	const store = writable<string | null>(
 		typeof window === 'undefined' ? null : window.localStorage.getItem(key)
@@ -122,6 +133,13 @@ export const celebratedBests = storedList('appchery.celebratedBests');
  */
 export const homeStatPrimary = storedString('appchery.homeStatPrimary');
 export const homeStatSecondary = storedString('appchery.homeStatSecondary');
+
+/**
+ * How long a press on the target face may last and still count as a tap. Above it the press is an
+ * aim: the magnifier appears and the arrow follows the finger. Archers differ on this more than any
+ * other timing in the app, so it is theirs to set.
+ */
+export const plotTapMs = storedNumber('appchery.plotTapMs', 200);
 
 /** Which half of the sessions page was last read, list or calendar, kept across app restarts. */
 export const sessionsTab = storedString('appchery.sessionsTab');

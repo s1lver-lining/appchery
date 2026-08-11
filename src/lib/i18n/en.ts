@@ -476,6 +476,13 @@ export const en = {
 		weatherTitle: 'Record weather',
 		weatherHint:
 			'Looks up the weather for that location once, at the start of the session. Needs a network connection.',
+		plotting: 'Plotting arrows',
+		tapWindowTitle: 'Tap or aim',
+		tapWindowHint:
+			'A press shorter than this drops the arrow where you touched. Longer, and the magnifier opens so you can aim before letting go.',
+		tapWindowShort: 'Quicker to aim',
+		tapWindowLong: 'Quicker to tap',
+		milliseconds: '{n} ms',
 		display: 'Display',
 		recordTitle: 'Record scoring video',
 		recordHint:

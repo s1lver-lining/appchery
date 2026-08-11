@@ -479,6 +479,13 @@ export const fr: Dictionary = {
 		weatherTitle: 'Enregistrer la météo',
 		weatherHint:
 			'Récupère la météo de ce lieu une seule fois, au début de la séance. Nécessite une connexion réseau.',
+		plotting: 'Pointage des flèches',
+		tapWindowTitle: 'Toucher ou viser',
+		tapWindowHint:
+			"Un appui plus court dépose la flèche à l'endroit touché. Plus long, la loupe s'ouvre pour viser avant de relâcher.",
+		tapWindowShort: 'Vise plus vite',
+		tapWindowLong: 'Touche plus vite',
+		milliseconds: '{n} ms',
 		display: 'Affichage',
 		recordTitle: "Enregistrer la vidéo du marquage",
 		recordHint:
