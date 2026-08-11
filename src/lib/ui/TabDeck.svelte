@@ -11,12 +11,18 @@
 		tabs,
 		value = $bindable(),
 		pane,
-		paneClass = 'space-y-4'
+		paneClass = 'space-y-4',
+		swipeable = true
 	}: {
 		tabs: { key: K; label: string }[];
 		value: K;
 		pane: Snippet<[K]>;
 		paneClass?: string;
+		/**
+		 * Off on a page that is itself swiped between: on the main pager a sideways drag belongs to
+		 * the pages, and a deck that also answered it would leave the archer between two of each.
+		 */
+		swipeable?: boolean;
 	} = $props();
 
 	/** A gutter between panes, so the block edges of two tabs never touch mid swipe. */
@@ -39,7 +45,7 @@
 
 	// A swipe anywhere else on the page reaches the deck through here, since only the deck itself is
 	// close enough to the finger to follow it.
-	$effect(() => registerTabs({ count: tabs.length, index, select }));
+	$effect(() => (swipeable ? registerTabs({ count: tabs.length, index, select }) : undefined));
 
 	function select(target: number) {
 		if (target === index) return;
@@ -88,13 +94,14 @@
 	{/each}
 </nav>
 
-<!-- Opted out of the page level swipe: the deck follows the finger itself. -->
+<!-- Opted out of the page level swipe when it follows the finger itself, and only then. -->
 <div
-	data-noswipe
+	data-noswipe={swipeable ? true : undefined}
 	class="relative overflow-hidden"
 	style="height: {height}px; transition: height {duration}ms {SNAP_EASE}"
 	bind:clientWidth={width}
 	use:swipe={{
+		enabled: () => swipeable,
 		onMove: (dx) => {
 			duration = 0;
 			offset = damp(dx);

@@ -50,17 +50,21 @@
 
 	let headerHeights = $state<Record<number, number>>({});
 
-	/** Header heights are measured rather than declared, because each page sizes its own motif. */
+	/**
+	 * Header heights are measured rather than declared, because each page sizes its own motif. The
+	 * whole page is watched rather than the header itself: a page that waits on a query has no header
+	 * to measure at mount, and measuring it as zero would raise its neighbour by a header's height.
+	 */
 	function measure(node: HTMLElement, i: number) {
-		const header = node.querySelector<HTMLElement>('[data-page-header]');
-		if (!header) return;
+		const read = () => {
+			const header = node.querySelector<HTMLElement>('[data-page-header]');
+			headerHeights = { ...headerHeights, [i]: header?.offsetHeight ?? 0 };
+		};
 		// Read at once as well as observed: the observer reports after the frame, by which time a page
 		// slid to from the tab bar has already arrived, and its header would drop with nothing to show.
-		headerHeights = { ...headerHeights, [i]: header.offsetHeight };
-		const observer = new ResizeObserver(() => {
-			headerHeights = { ...headerHeights, [i]: header.offsetHeight };
-		});
-		observer.observe(header);
+		read();
+		const observer = new ResizeObserver(read);
+		observer.observe(node);
 		return { destroy: () => observer.disconnect() };
 	}
 
@@ -71,7 +75,11 @@
 	function rise(i: number) {
 		const partner = i === index ? towards : i === towards ? index : null;
 		if (partner === null || progress === 0) return 0;
-		const delta = (headerHeights[i] ?? 0) - (headerHeights[partner] ?? 0);
+		const mine = headerHeights[i];
+		const theirs = headerHeights[partner];
+		// A header not measured yet is not a short header: nothing moves until both are known.
+		if (!mine || !theirs) return 0;
+		const delta = mine - theirs;
 		if (delta <= 0) return 0;
 		return delta * (i === index ? progress : 1 - progress);
 	}

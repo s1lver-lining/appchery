@@ -245,11 +245,7 @@
 					onchange={(e) => rename(e.currentTarget.value)}
 				/>
 			</div>
-			<p class="text-sm text-muted">
-				{$t(`bow.${named?.type}`)}
-				{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
-			</p>
-		{/snippet}
+	{/snippet}
 
 		{#snippet actions()}
 			<MoreMenu
@@ -276,8 +272,17 @@
 	</PageHeader>
 
 	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+		<!--
+			Kept out of the header so the bow wears the same one line header as every other main page:
+			two headers of the same height meet edge to edge as the pager slides, with nothing to animate.
+		-->
+		<p class="-mb-1 text-sm text-muted">
+			{$t(`bow.${bow.type}`)}
+			{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
+		</p>
 
-		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4">
+
+		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4" swipeable={backTo !== null}>
 			{#snippet pane(key)}
 				{#if key === 'overview'}
 					{#if usage}
