@@ -141,5 +141,43 @@ export const MIGRATIONS: string[][] = [
 	// 0003 nothing ever ended a session or an activity, and completion is derived from the arrows
 	[`ALTER TABLE session DROP COLUMN ended_at;`, `ALTER TABLE activity DROP COLUMN ended_at;`],
 	// 0004 the file name of the scoring video kept for this end, when recording was on
-	[`ALTER TABLE round_end ADD COLUMN video TEXT;`]
+	[`ALTER TABLE round_end ADD COLUMN video TEXT;`],
+	// 0005 rounds pinned to the top of the stats page
+	[
+		`CREATE TABLE IF NOT EXISTS favourite_round (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			round_key TEXT NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_favourite_round_key ON favourite_round (round_key);`
+	],
+	// 0006 an arrow count to aim for during one session
+	[`ALTER TABLE session ADD COLUMN arrow_goal INTEGER;`],
+	// 0007 repeating weeks of intended outings
+	[
+		`CREATE TABLE IF NOT EXISTS plan (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			name TEXT NOT NULL
+		);`,
+		`CREATE TABLE IF NOT EXISTS plan_slot (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			plan_id TEXT NOT NULL REFERENCES plan(id),
+			weekday INTEGER NOT NULL,
+			minute_of_day INTEGER NOT NULL,
+			arrow_goal INTEGER,
+			label TEXT
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_plan_slot_plan ON plan_slot (plan_id, weekday);`
+	]
 ];

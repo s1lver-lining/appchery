@@ -23,7 +23,10 @@ export const fr: Dictionary = {
 		done: 'Terminé',
 		close: 'Fermer',
 		loading: 'Chargement…',
-		optional: 'facultatif'
+		optional: 'facultatif',
+		today: "Aujourd'hui",
+		tomorrow: 'Demain',
+		more: 'Plus'
 	},
 	sessions: {
 		title: 'Séances',
@@ -36,10 +39,33 @@ export const fr: Dictionary = {
 		dayCount: '{n} séances',
 		open: 'Ouvrir la séance',
 		finish: 'Terminer la séance',
-		untitled: 'Séance',
-		activityCount: '{n} activités',
+		name: {
+			practice: {
+				morning: 'Séance du matin',
+				afternoon: "Séance de l'après-midi",
+				evening: 'Séance du soir',
+				night: 'Séance de nuit'
+			},
+			competition: {
+				morning: 'Compétition du matin',
+				afternoon: "Compétition de l'après-midi",
+				evening: 'Compétition du soir',
+				night: 'Compétition de nuit'
+			}
+		},
+		newCompetition: 'Nouvelle compétition',
+		moreKinds: 'Autres types de séance',
+		newPlanned: 'Planifier une séance',
+		jumpTo: 'Aller à',
+		prevMonth: 'Mois précédent',
+		nextMonth: 'Mois suivant',
+		month: 'Mois',
+		year: 'Année',
+		thisMonth: 'Ce mois-ci',
+		planned: 'Planifiée',
+		activityCount: '{n} act.',
 		arrows: 'flèches',
-		oneActivity: '1 activité',
+		oneActivity: '1 act.',
 		practice: 'Entraînement',
 		competition: 'Compétition',
 		qualification: 'Qualification'
@@ -51,9 +77,11 @@ export const fr: Dictionary = {
 		myBows: 'Mes arcs',
 		conditions: 'Conditions',
 		location: 'Lieu',
+		place: 'Lieu',
 		fetchConditions: 'Récupérer le lieu et la météo',
 		fetching: 'Récupération…',
 		locationDenied: "L'autorisation de localisation est requise pour récupérer les conditions.",
+		locationOff: 'La localisation est désactivée. Activez « Enregistrer le lieu » dans les réglages.',
 		weatherFailed: 'Météo indisponible. Le lieu a tout de même été enregistré.',
 		activities: 'Activités',
 		overviewTab: 'Aperçu',
@@ -62,8 +90,24 @@ export const fr: Dictionary = {
 		weatherNone: 'Non enregistrée',
 		weatherOff: "L'enregistrement de la météo est désactivé. Activez-le dans les paramètres.",
 		noConditions: 'Rien enregistré pour cette séance.',
-		unknownPlace: 'Lieu enregistré',
+		arrowsShot: 'Flèches tirées',
+		trainingArrows: "Flèches d'entraînement",
+		oneLess: 'Une de moins',
+		customArrows: 'Ajouter des flèches',
+		notes: 'Notes',
+		notesHint: 'Le vent, ce que vous avez réglé, les sensations.',
+		setGoal: 'Définir un objectif',
+		goalTitle: "Objectif de flèches",
+		goalHint: "Le nombre de flèches que cette séance doit compter.",
+		goalLeft: '{n} restantes',
+		goalReached: 'Objectif atteint.',
+		removeGoal: 'Retirer',
+		when: 'Date et heure',
+		date: 'Date',
+		time: 'Heure',
+		days: 'j',
 		addActivity: 'Ajouter une activité',
+		scoringGroup: 'Tir compté',
 		delete: 'Supprimer cette séance',
 		confirmTitle: 'Supprimer cette séance ?',
 		confirmBody: 'Toutes ses activités sont supprimées également. Action irréversible.',
@@ -87,6 +131,7 @@ export const fr: Dictionary = {
 			"Le barème de ce tir n'a pas encore été vérifié avec le règlement en vigueur. Vérifiez les valeurs avant de vous fier à un résultat.",
 		max: 'Max {n}',
 		custom: 'Tir personnalisé',
+		customTitle: 'Tir personnalisé',
 		customHint: 'Renseignez le tir que vous effectuez réellement.',
 		ends: 'Volées',
 		arrowsPerEnd: 'Flèches par volée',
@@ -189,7 +234,43 @@ export const fr: Dictionary = {
 		lastSession: 'Dernière séance',
 		neverShot: 'Aucune séance pour le moment.',
 		recent: 'Séances récentes',
-		seeAll: 'Toutes les séances'
+		seeAll: 'Toutes les séances',
+		moreActions: 'Autres créations',
+		next: 'Prochaine',
+		resume: 'Reprendre',
+		thisWeek: 'Cette semaine',
+		newBest: 'Nouveau record',
+		currentBow: 'Arc courant',
+		revision: 'rév. {n}'
+	},
+	help: {
+		title: 'Comment ça marche',
+		sessionTerm: 'Une séance',
+		sessionBody:
+			"est **une sortie**. Vous vous êtes déplacé, vous avez tiré, vous êtes rentré. Elle porte la date, l'arc emporté et la météo du moment. Tout le reste de l'application s'y rattache : la séance est donc **la première chose que l'on crée**, avant même de savoir ce que l'on va tirer.",
+		activityTerm: 'Une activité',
+		activityBody:
+			"est **une chose faite pendant une séance** : un tir compté, ou une procédure de réglage. Une séance peut en contenir plusieurs. Un tir enregistre **chaque flèche**, ce qui permet de corriger un score plus tard ; un réglage note ce que vous avez changé et écrit une nouvelle révision de l'arc. Les flèches tirées sans être comptées vont dans le **compteur d'entraînement** et comptent tout de même dans votre volume.",
+		planTerm: 'Un programme',
+		planBody:
+			"est **une semaine que vous comptez répéter**. Il contient les sorties prévues, aux jours et aux heures voulus, avec un objectif de flèches facultatif. Un programme est un **modèle, pas un historique** : ses séances apparaissent dans la liste pour les sept jours à venir, et rien n'est enregistré tant que vous n'avez pas tiré. Une semaine sautée ne laisse aucune trace."
+	},
+	plans: {
+		title: 'Programmes',
+		view: "Voir les programmes d'entraînement",
+		slot: 'Prévue',
+		newPlan: 'Nouveau programme',
+		name: 'Nom du programme',
+		empty: "Aucun programme. Un programme est une semaine que vous comptez répéter.",
+		weekTotal: 'Flèches par semaine',
+		addSlot: 'Ajouter une séance',
+		slotTitle: 'Séance prévue',
+		slotName: 'Nom',
+		noSlots: 'Rien de prévu ce jour.',
+		deletePlan: 'Supprimer ce programme',
+		confirmTitle: 'Supprimer ce programme ?',
+		confirmBody: 'Les séances déjà tirées sont conservées.',
+		sessionsCount: '{n} séances par semaine'
 	},
 	stats: {
 		title: 'Statistiques',
@@ -216,7 +297,22 @@ export const fr: Dictionary = {
 		average: 'Moyenne',
 		trend: 'Tendance par flèche',
 		rounds: '{n} tirs',
-		bestOn: 'Record le {date}'
+		bestOn: 'Record le {date}',
+		spread: 'Écart',
+		distribution: 'Où les flèches sont parties',
+		byWind: 'Score selon le vent',
+		byBow: 'Score selon l\'arc',
+		perArrowHint: 'Score par flèche, pour comparer des tirs de longueurs différentes.',
+		wind: {
+			calm: 'Calme',
+			light: 'Léger',
+			moderate: 'Modéré',
+			strong: 'Fort'
+		},
+		more: 'Plus',
+		less: 'Moins',
+		favourite: 'Épingler en haut',
+		unfavourite: 'Retirer du haut'
 	},
 	auto: {
 		title: 'Score auto',

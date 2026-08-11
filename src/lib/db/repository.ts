@@ -90,6 +90,8 @@ export async function updateSession(
 	patch: Partial<{
 		label: string | null;
 		kind: string;
+		startedAt: number;
+		arrowGoal: number | null;
 		bowId: string | null;
 		bowType: string | null;
 		location: string | null;
@@ -117,7 +119,25 @@ export async function deleteSession(id: string) {
 
 /* Activities */
 
+/**
+ * A planned session is one that has not happened yet, so the first activity in it makes it an
+ * ordinary practice: nothing else distinguishes the two once arrows exist.
+ */
+async function unplan(sessionId: string) {
+	const [session] = await db()
+		.select()
+		.from(schema.session)
+		.where(eq(schema.session.id, sessionId));
+	if (session?.kind !== 'planned') return;
+	await db()
+		.update(schema.session)
+		.set({ kind: 'practice', updatedAt: Date.now() })
+		.where(eq(schema.session.id, sessionId));
+	await log('session', sessionId, 'update');
+}
+
 export async function createScoringActivity(sessionId: string, round: RoundDefinition) {
+	await unplan(sessionId);
 	const base = stamp();
 	await db()
 		.insert(schema.activity)
@@ -136,6 +156,7 @@ export async function createScoringActivity(sessionId: string, round: RoundDefin
 }
 
 export async function createTuningActivity(sessionId: string, templateKey: string) {
+	await unplan(sessionId);
 	const base = stamp();
 	await db().insert(schema.activity).values({
 		...base,
@@ -147,6 +168,50 @@ export async function createTuningActivity(sessionId: string, templateKey: strin
 	});
 	await log('activity', base.id, 'insert');
 	return base.id;
+}
+
+/**
+ * Arrows shot without scoring them, kept in one activity per session so the counter has somewhere to
+ * live. They count towards volume everywhere and never reach a score, which is the point of them.
+ */
+export async function addTrainingArrows(sessionId: string, delta: number) {
+	await unplan(sessionId);
+	const [existing] = await db()
+		.select()
+		.from(schema.activity)
+		.where(
+			and(
+				eq(schema.activity.sessionId, sessionId),
+				eq(schema.activity.kind, 'training'),
+				isNull(schema.activity.deletedAt)
+			)
+		);
+
+	const now = Date.now();
+	if (!existing) {
+		if (delta <= 0) return 0;
+		const base = stamp();
+		await db()
+			.insert(schema.activity)
+			.values({
+				...base,
+				sessionId,
+				kind: 'training',
+				startedAt: base.createdAt,
+				arrowsShot: delta,
+				status: 'complete'
+			});
+		await log('activity', base.id, 'insert');
+		return delta;
+	}
+
+	const next = Math.max(0, existing.arrowsShot + delta);
+	await db()
+		.update(schema.activity)
+		.set({ arrowsShot: next, updatedAt: now })
+		.where(eq(schema.activity.id, existing.id));
+	await log('activity', existing.id, 'update');
+	return next;
 }
 
 export async function listActivities(sessionId: string) {
@@ -491,6 +556,157 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 		bestScore: finished.length > 0 ? Math.max(...finished.map((a) => a.totalScore)) : null,
 		lastUsedAt: sessions.length > 0 ? Math.max(...sessions.map((s) => s.startedAt)) : null
 	};
+}
+
+/**
+ * Every arrow ever entered, tagged with the activity it belongs to. Read whole because the stats
+ * page groups it by round: fetching per round would be one query per card.
+ */
+export async function listShotValues() {
+	return db()
+		.select({
+			activityId: schema.end.activityId,
+			value: schema.shot.value,
+			zoneLabel: schema.shot.zoneLabel
+		})
+		.from(schema.shot)
+		.innerJoin(schema.end, eq(schema.shot.endId, schema.end.id))
+		.where(and(isNull(schema.shot.deletedAt), isNull(schema.end.deletedAt)));
+}
+
+/* Plans */
+
+export type PlanRow = Awaited<ReturnType<typeof listPlans>>[number];
+export type PlanSlotRow = Awaited<ReturnType<typeof listPlanSlots>>[number];
+
+export async function listPlans() {
+	return db()
+		.select()
+		.from(schema.plan)
+		.where(isNull(schema.plan.deletedAt))
+		.orderBy(asc(schema.plan.createdAt));
+}
+
+export async function getPlan(id: string) {
+	const [row] = await db()
+		.select()
+		.from(schema.plan)
+		.where(and(eq(schema.plan.id, id), isNull(schema.plan.deletedAt)));
+	return row ?? null;
+}
+
+export async function createPlan(name: string) {
+	const base = stamp();
+	await db().insert(schema.plan).values({ ...base, name });
+	await log('plan', base.id, 'insert');
+	return base.id;
+}
+
+export async function renamePlan(id: string, name: string) {
+	await db()
+		.update(schema.plan)
+		.set({ name, updatedAt: Date.now() })
+		.where(eq(schema.plan.id, id));
+	await log('plan', id, 'update');
+}
+
+export async function deletePlan(id: string) {
+	const now = Date.now();
+	const slots = await listPlanSlots(id);
+	if (slots.length > 0) {
+		await db()
+			.update(schema.planSlot)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(eq(schema.planSlot.planId, id));
+		await logMany('plan_slot', slots.map((s) => s.id), 'delete');
+	}
+	await db().update(schema.plan).set({ deletedAt: now, updatedAt: now }).where(eq(schema.plan.id, id));
+	await log('plan', id, 'delete');
+}
+
+/** Every slot of every plan, since the sessions list draws the week from all of them at once. */
+export async function listPlanSlots(planId?: string) {
+	const where = planId
+		? and(eq(schema.planSlot.planId, planId), isNull(schema.planSlot.deletedAt))
+		: isNull(schema.planSlot.deletedAt);
+	return db().select().from(schema.planSlot).where(where).orderBy(asc(schema.planSlot.minuteOfDay));
+}
+
+export async function createPlanSlot(input: {
+	planId: string;
+	weekday: number;
+	minuteOfDay: number;
+	arrowGoal?: number | null;
+	label?: string | null;
+}) {
+	const base = stamp();
+	await db()
+		.insert(schema.planSlot)
+		.values({
+			...base,
+			planId: input.planId,
+			weekday: input.weekday,
+			minuteOfDay: input.minuteOfDay,
+			arrowGoal: input.arrowGoal ?? null,
+			label: input.label ?? null
+		});
+	await log('plan_slot', base.id, 'insert');
+	return base.id;
+}
+
+export async function updatePlanSlot(
+	id: string,
+	patch: Partial<{ weekday: number; minuteOfDay: number; arrowGoal: number | null; label: string | null }>
+) {
+	await db()
+		.update(schema.planSlot)
+		.set({ ...patch, updatedAt: Date.now() })
+		.where(eq(schema.planSlot.id, id));
+	await log('plan_slot', id, 'update');
+}
+
+export async function deletePlanSlot(id: string) {
+	const now = Date.now();
+	await db()
+		.update(schema.planSlot)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(eq(schema.planSlot.id, id));
+	await log('plan_slot', id, 'delete');
+}
+
+/* Favourite rounds */
+
+export async function listFavouriteRounds(): Promise<string[]> {
+	const rows = await db()
+		.select()
+		.from(schema.favouriteRound)
+		.where(isNull(schema.favouriteRound.deletedAt));
+	return rows.map((row) => row.roundKey);
+}
+
+/** Returns whether the round is a favourite after the call, so the caller can reflect it at once. */
+export async function toggleFavouriteRound(roundKey: string): Promise<boolean> {
+	const [existing] = await db()
+		.select()
+		.from(schema.favouriteRound)
+		.where(
+			and(eq(schema.favouriteRound.roundKey, roundKey), isNull(schema.favouriteRound.deletedAt))
+		);
+
+	if (existing) {
+		const now = Date.now();
+		await db()
+			.update(schema.favouriteRound)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(eq(schema.favouriteRound.id, existing.id));
+		await log('favourite_round', existing.id, 'delete');
+		return false;
+	}
+
+	const base = stamp();
+	await db().insert(schema.favouriteRound).values({ ...base, roundKey });
+	await log('favourite_round', base.id, 'insert');
+	return true;
 }
 
 export function shotFromZone(zone: Zone, source: Shot['source'] = 'manual'): Omit<Shot, 'ordinal'> {

@@ -68,6 +68,30 @@ export const recordCameraVideo = flag('appchery.recordCameraVideo', false);
  */
 export const arrowDetector = storedString('appchery.arrowDetector');
 
+/**
+ * The round cards left open on the stats page. A view preference rather than user data, so it stays
+ * on the device that was scrolled rather than following the archer around.
+ */
+export const expandedRounds = storedList('appchery.expandedRounds');
+
+function storedList(key: string) {
+	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	let initial: string[] = [];
+	// A hand edited or half written value must not take the page down with it.
+	try {
+		const parsed = saved ? JSON.parse(saved) : [];
+		if (Array.isArray(parsed)) initial = parsed.filter((item) => typeof item === 'string');
+	} catch {
+		initial = [];
+	}
+
+	const store = writable<string[]>(initial);
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value));
+	});
+	return store;
+}
+
 function storedString(key: string) {
 	const store = writable<string | null>(
 		typeof window === 'undefined' ? null : window.localStorage.getItem(key)

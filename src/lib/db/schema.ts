@@ -53,8 +53,10 @@ export const session = sqliteTable('session', {
 	...syncColumns,
 	label: text('label'),
 	startedAt: integer('started_at').notNull(),
-	/** practice | competition | qualification */
+	/** practice | competition | qualification | planned */
 	kind: text('kind').notNull().default('practice'),
+	/** Arrows the archer meant to shoot this outing, set by hand. Null when no goal was set. */
+	arrowGoal: integer('arrow_goal'),
 	/** Set when shooting a bow the archer has recorded. */
 	bowId: text('bow_id'),
 	/** Set instead of bowId when the archer only wants to note a generic bow type. */
@@ -136,6 +138,44 @@ export const shot = sqliteTable(
 		arrowId: text('arrow_id')
 	},
 	(t) => [index('idx_shot_end').on(t.endId)]
+);
+
+/** A repeating week of intended outings. Several can run at once: a plan is a habit, not a mode. */
+export const plan = sqliteTable('plan', {
+	...syncColumns,
+	name: text('name').notNull()
+});
+
+/**
+ * One intended outing inside a plan's week. It is a template, never an outing: the session itself
+ * is only written when the archer taps the slot, so a skipped week leaves nothing behind.
+ */
+export const planSlot = sqliteTable(
+	'plan_slot',
+	{
+		...syncColumns,
+		planId: text('plan_id').notNull(),
+		/** 0 is Monday, so the week reads the way the calendar on the sessions page does. */
+		weekday: integer('weekday').notNull(),
+		minuteOfDay: integer('minute_of_day').notNull(),
+		arrowGoal: integer('arrow_goal'),
+		/** Used as the session's name instead of the part of the day it falls in. */
+		label: text('label')
+	},
+	(t) => [index('idx_plan_slot_plan').on(t.planId, t.weekday)]
+);
+
+/**
+ * A round the archer pinned to the top of the stats page. Keyed by the same string the stats
+ * summaries group on, so a custom round keeps its favourite across activities that share its shape.
+ */
+export const favouriteRound = sqliteTable(
+	'favourite_round',
+	{
+		...syncColumns,
+		roundKey: text('round_key').notNull()
+	},
+	(t) => [index('idx_favourite_round_key').on(t.roundKey)]
 );
 
 // Written from phase 1 so sync in phase 3 has a history to reconcile, see doc/architecture.md.

@@ -195,6 +195,106 @@ export function compareScores(a: ScoredActivity, b: ScoredActivity): number {
 	return a.countX - b.countX;
 }
 
+/**
+ * Spread of the last `window` rounds, as a standard deviation of the score per arrow. An archer
+ * plateaus on average long before they plateau on consistency, so the mean alone hides the work.
+ */
+export function consistency(history: ScoredActivity[], window = 10): number | null {
+	const recent = history.slice(-window).filter((a) => a.arrowsShot > 0);
+	if (recent.length < 3) return null;
+	const rates = recent.map((a) => a.totalScore / a.arrowsShot);
+	const mean = rates.reduce((sum, r) => sum + r, 0) / rates.length;
+	const variance = rates.reduce((sum, r) => sum + (r - mean) ** 2, 0) / rates.length;
+	return Math.sqrt(variance);
+}
+
+export interface ProgressionPoint {
+	at: number;
+	score: number;
+	/** Mean of this round and the ones before it, up to `window`, which is the line worth reading. */
+	rolling: number;
+	isBest: boolean;
+}
+
+/** The history of one round, chronological, with the running average and the best marked. */
+export function progression(history: ScoredActivity[], window = 5): ProgressionPoint[] {
+	let best = -Infinity;
+	return history.map((activity, i) => {
+		const slice = history.slice(Math.max(0, i - window + 1), i + 1);
+		const rolling = slice.reduce((sum, a) => sum + a.totalScore, 0) / slice.length;
+		const isBest = activity.totalScore > best;
+		if (isBest) best = activity.totalScore;
+		return { at: activity.startedAt, score: activity.totalScore, rolling, isBest };
+	});
+}
+
+export interface ValueCount {
+	label: string;
+	value: number;
+	count: number;
+}
+
+/**
+ * How the arrows fell, by the zone they landed in rather than by their number: an X and a ten score
+ * the same and say different things.
+ */
+export function distribution(shots: { value: number; zoneLabel: string }[]): ValueCount[] {
+	const counts = new Map<string, ValueCount>();
+	for (const shot of shots) {
+		const entry = counts.get(shot.zoneLabel);
+		if (entry) entry.count += 1;
+		else counts.set(shot.zoneLabel, { label: shot.zoneLabel, value: shot.value, count: 1 });
+	}
+	// Highest scoring first, X ahead of the ten it ties with.
+	return [...counts.values()].sort(
+		(a, b) => b.value - a.value || (a.label === 'X' ? -1 : b.label === 'X' ? 1 : 0)
+	);
+}
+
+export interface Band {
+	key: string;
+	rounds: number;
+	arrows: number;
+	/** Score per arrow, the only figure comparable between two different rounds. */
+	perArrow: number;
+}
+
+const WIND_BANDS = [
+	{ key: 'calm', upTo: 5 },
+	{ key: 'light', upTo: 15 },
+	{ key: 'moderate', upTo: 25 },
+	{ key: 'strong', upTo: Infinity }
+] as const;
+
+export function windBand(speedKmh: number): string {
+	return (WIND_BANDS.find((band) => speedKmh < band.upTo) ?? WIND_BANDS[3]).key;
+}
+
+/** Groups anything with a key into bands of score per arrow, dropping bands nothing was shot in. */
+export function bandBy<T>(
+	activities: ScoredActivity[],
+	keyOf: (activity: ScoredActivity) => string | null,
+	order?: readonly string[]
+): Band[] {
+	const bands = new Map<string, Band>();
+	for (const activity of activities) {
+		const key = keyOf(activity);
+		if (key === null || activity.arrowsShot <= 0) continue;
+		const band = bands.get(key) ?? { key, rounds: 0, arrows: 0, perArrow: 0 };
+		band.rounds += 1;
+		band.arrows += activity.arrowsShot;
+		// perArrow holds the running score until every activity is in, then it is divided out.
+		band.perArrow += activity.totalScore;
+		bands.set(key, band);
+	}
+
+	const result = [...bands.values()].map((band) => ({ ...band, perArrow: band.perArrow / band.arrows }));
+	if (!order) return result.sort((a, b) => b.arrows - a.arrows);
+	return result.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+}
+
+export const WIND_BAND_KEYS = WIND_BANDS.map((band) => band.key);
+
 function trendOf(history: ScoredActivity[]): number | null {
 	// Under six rounds the difference is noise, and showing it invites reading meaning into nothing.
 	if (history.length < 6) return null;

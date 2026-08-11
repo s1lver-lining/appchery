@@ -5,6 +5,11 @@ import {
 	overview,
 	inRange,
 	dailyVolume,
+	consistency,
+	progression,
+	distribution,
+	windBand,
+	bandBy,
 	type ScoredActivity
 } from './stats';
 import { getRound } from './rounds/seed';
@@ -156,5 +161,95 @@ describe('dailyVolume', () => {
 			now
 		);
 		expect(series[3].arrows).toBe(72);
+	});
+});
+
+describe('consistency', () => {
+	it('says nothing until there are enough rounds to spread', () => {
+		expect(consistency([activity({ id: 'a' }), activity({ id: 'b' })])).toBeNull();
+	});
+
+	it('is zero for a shooter who repeats the same score', () => {
+		const history = ['a', 'b', 'c'].map((id) => activity({ id }));
+		expect(consistency(history)).toBeCloseTo(0);
+	});
+
+	it('grows with the spread of the score per arrow', () => {
+		const steady = ['a', 'b', 'c'].map((id) => activity({ id, totalScore: 600 }));
+		const erratic = [
+			activity({ id: 'a', totalScore: 500 }),
+			activity({ id: 'b', totalScore: 600 }),
+			activity({ id: 'c', totalScore: 700 })
+		];
+		expect(consistency(erratic)).toBeGreaterThan(consistency(steady)!);
+	});
+});
+
+describe('progression', () => {
+	it('marks a score only when it beats every one before it', () => {
+		const points = progression([
+			activity({ id: 'a', startedAt: 1, totalScore: 500 }),
+			activity({ id: 'b', startedAt: 2, totalScore: 480 }),
+			activity({ id: 'c', startedAt: 3, totalScore: 520 })
+		]);
+		expect(points.map((p) => p.isBest)).toEqual([true, false, true]);
+	});
+
+	it('averages over the window that ends at each round', () => {
+		const points = progression(
+			[
+				activity({ id: 'a', totalScore: 400 }),
+				activity({ id: 'b', totalScore: 600 }),
+				activity({ id: 'c', totalScore: 500 })
+			],
+			2
+		);
+		expect(points.map((p) => p.rolling)).toEqual([400, 500, 550]);
+	});
+});
+
+describe('distribution', () => {
+	it('keeps an X apart from the ten it ties with', () => {
+		const counts = distribution([
+			{ value: 10, zoneLabel: 'X' },
+			{ value: 10, zoneLabel: '10' },
+			{ value: 9, zoneLabel: '9' },
+			{ value: 10, zoneLabel: 'X' }
+		]);
+		expect(counts.map((c) => [c.label, c.count])).toEqual([
+			['X', 2],
+			['10', 1],
+			['9', 1]
+		]);
+	});
+});
+
+describe('windBand', () => {
+	it('reads the bands at their edges', () => {
+		expect(windBand(0)).toBe('calm');
+		expect(windBand(4.9)).toBe('calm');
+		expect(windBand(5)).toBe('light');
+		expect(windBand(15)).toBe('moderate');
+		expect(windBand(40)).toBe('strong');
+	});
+});
+
+describe('bandBy', () => {
+	it('compares bands on the score per arrow, not on the total', () => {
+		const bands = bandBy(
+			[
+				activity({ id: 'a', totalScore: 600, arrowsShot: 72 }),
+				activity({ id: 'b', totalScore: 270, arrowsShot: 36 }),
+				activity({ id: 'c', totalScore: 500, arrowsShot: 72 })
+			],
+			(a) => (a.id === 'c' ? 'windy' : 'calm')
+		);
+		expect(bands.find((b) => b.key === 'calm')?.perArrow).toBeCloseTo(870 / 108);
+		expect(bands.find((b) => b.key === 'windy')?.perArrow).toBeCloseTo(500 / 72);
+	});
+
+	it('drops what it cannot place', () => {
+		const bands = bandBy([activity({ id: 'a' })], () => null);
+		expect(bands).toEqual([]);
 	});
 });

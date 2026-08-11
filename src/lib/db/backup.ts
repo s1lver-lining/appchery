@@ -19,6 +19,9 @@ const TABLES = [
 	['activity', schema.activity],
 	['end', schema.end],
 	['shot', schema.shot],
+	['favouriteRound', schema.favouriteRound],
+	['plan', schema.plan],
+	['planSlot', schema.planSlot],
 	['syncState', schema.syncState],
 	['changeLog', schema.changeLog]
 ] as const;

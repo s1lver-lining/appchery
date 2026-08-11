@@ -12,6 +12,18 @@ export function startOfDay(at: number): number {
 	return date.getTime();
 }
 
+/**
+ * The part of the day a session took place in, which is what an unnamed session is called. The
+ * night runs from 23h to 6h, so a late finish stays one session rather than turning into a morning.
+ */
+export function timeOfDay(at: number): 'morning' | 'afternoon' | 'evening' | 'night' {
+	const hour = new Date(at).getHours();
+	if (hour >= 6 && hour < 12) return 'morning';
+	if (hour >= 12 && hour < 18) return 'afternoon';
+	if (hour >= 18 && hour < 23) return 'evening';
+	return 'night';
+}
+
 export function startOfWeek(at: number): number {
 	const date = new Date(startOfDay(at));
 	// getDay is Sunday based, so Sunday counts back six days rather than none.
@@ -50,13 +62,14 @@ export function groupByWeek<T>(items: T[], at: (item: T) => number): WeekGroup<T
 		else buckets.set(key, [item]);
 	}
 
+	// Oldest first, the way a calendar reads: the list is scrolled to today, not to its top.
 	return [...buckets.entries()]
-		.sort((a, b) => b[0] - a[0])
+		.sort((a, b) => a[0] - b[0])
 		.map(([start, list]) => ({
 			start,
 			end: start + 6 * DAY,
 			week: isoWeek(start),
-			items: [...list].sort((a, b) => at(b) - at(a))
+			items: [...list].sort((a, b) => at(a) - at(b))
 		}));
 }
 
