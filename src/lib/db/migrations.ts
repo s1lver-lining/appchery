@@ -199,5 +199,7 @@ export const MIGRATIONS: string[][] = [
 			plunger TEXT
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_sight_mark_bow ON sight_mark (bow_id, distance);`
-	]
+	],
+	// 0010 marks worked out from the others rather than shot in
+	[`ALTER TABLE sight_mark ADD COLUMN interpolated INTEGER NOT NULL DEFAULT 0;`]
 ];

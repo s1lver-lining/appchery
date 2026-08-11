@@ -11,6 +11,7 @@
 		type SettingField
 	} from '$lib/domain/equipment/schemas';
 	import { mmToInches, inchesToMm } from '$lib/domain/units';
+	import { interpolateHeight, formatHeight } from '$lib/domain/equipment/sight';
 	import { defaultBowId, dateFormats, sightColumns } from '$lib/prefs';
 	import { startOfDay } from '$lib/domain/dates';
 	import {
@@ -36,6 +37,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	const bowId = $derived($page.params.id as string);
 
@@ -142,21 +144,44 @@
 		);
 	}
 
+	/** A new distance opens with the mark the proved ones imply, flagged as the guess it is. */
 	async function addMark() {
 		const distance = Math.round(Number(newDistance));
 		if (!Number.isFinite(distance) || distance <= 0) return;
-		await createSightMark({ bowId, distance, unit: markUnit });
+		const guess = interpolateHeight(marks, distance, markUnit);
+		await createSightMark({
+			bowId,
+			distance,
+			unit: markUnit,
+			height: guess === null ? null : formatHeight(guess),
+			interpolated: guess !== null
+		});
 		newDistance = '';
-		marks = await listSightMarks(bowId);
+		await reloadMarks();
 	}
 
+	/** Typing a height is proving it: the mark stops being a guess the moment it is entered by hand. */
 	async function setMark(id: string, patch: Parameters<typeof updateSightMark>[1]) {
-		await updateSightMark(id, patch);
-		marks = await listSightMarks(bowId);
+		await updateSightMark(id, 'height' in patch ? { ...patch, interpolated: 0 } : patch);
+		await reloadMarks();
 	}
 
 	async function removeMark(id: string) {
 		await deleteSightMark(id);
+		await reloadMarks();
+	}
+
+	/**
+	 * Every guess is worked out again whenever the proved marks change, so a mark added today moves
+	 * the distances that were only ever estimated from the ones around them.
+	 */
+	async function reloadMarks() {
+		const rows = await listSightMarks(bowId);
+		for (const mark of rows.filter((row) => row.interpolated)) {
+			const guess = interpolateHeight(rows, mark.distance, mark.unit);
+			const height = guess === null ? null : formatHeight(guess);
+			if (height !== mark.height) await updateSightMark(mark.id, { height });
+		}
 		marks = await listSightMarks(bowId);
 	}
 
@@ -199,74 +224,52 @@
 </script>
 
 {#if bow}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
-		<header class="flex items-start gap-3">
-			<div class="min-w-0 flex-1">
-				<a href="/equipment" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
-					<Icon name="back" size={22} />
-				</a>
-				<input
-					class="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
-					value={bow.name}
-					onchange={(e) => rename(e.currentTarget.value)}
-				/>
-				<p class="text-sm text-muted">
-					{$t(`bow.${bow.type}`)}
-					{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
-				</p>
-			</div>
+	<PageHeader motif="bow">
+		{#snippet lead()}
+			{@const named = bow}
+			<a href="/equipment" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+				<Icon name="back" size={22} />
+			</a>
+			<input
+				class="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
+				value={named?.name ?? ''}
+				onchange={(e) => rename(e.currentTarget.value)}
+			/>
+			<p class="text-sm text-muted">
+				{$t(`bow.${named?.type}`)}
+				{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
+			</p>
+		{/snippet}
+
+		{#snippet actions()}
+			{@const named = bow}
 			<label class="cursor-pointer">
-				{#if bow.photo}
-					<img src={bow.photo} alt="" class="h-20 w-20 rounded-lg object-cover" />
+				{#if named?.photo}
+					<img src={named.photo} alt="" class="h-20 w-20 rounded-lg object-cover" />
 				{:else}
-					<span class="flex h-20 w-20 items-center justify-center rounded-lg bg-sunk text-muted">
+					<span class="flex h-20 w-20 items-center justify-center rounded-lg bg-sunk/60 text-muted">
 						<Icon name="camera" size={24} />
 					</span>
 				{/if}
 				<input type="file" accept="image/*" class="hidden" onchange={pickPhoto} />
 			</label>
-		</header>
+		{/snippet}
+	</PageHeader>
+
+	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 
 		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4">
 			{#snippet pane(key)}
 				{#if key === 'overview'}
 					{#if usage}
-						<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+						<section class="grid grid-cols-4 gap-2">
 							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBest') }] as stat (stat.label)}
-								<div class="rounded-xl border border-line bg-surface p-3">
-									<p class="tabular text-2xl font-bold">{stat.value}</p>
-									<p class="text-xs text-muted">{stat.label}</p>
+								<div class="rounded-xl border border-line bg-surface p-2.5">
+									<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
+									<p class="mt-1 text-[10px] leading-tight text-muted">{stat.label}</p>
 								</div>
 							{/each}
 						</section>
-						{#if usage.lastUsedAt}
-							<p class="text-sm text-muted">
-								{$t('equipment.lastUsed', {
-									date: $dateFormats.date(usage.lastUsedAt)
-								})}
-							</p>
-						{/if}
-					{/if}
-
-					<section class="rounded-xl border border-line bg-surface p-4">
-						<h2 class="mb-2 text-sm font-semibold">{$t('equipment.currentSetup')}</h2>
-						{#if filledSettings.length === 0}
-							<p class="text-sm text-muted">{$t('equipment.noRevisions')}</p>
-						{:else}
-							<dl class="space-y-1 text-sm">
-								{#each filledSettings as row (row.field.key)}
-									<div class="flex justify-between gap-2">
-										<dt class="text-muted">{row.field.label}</dt>
-										<dd class="font-medium">{formatStored(row.field, row.value)}</dd>
-									</div>
-								{/each}
-							</dl>
-							<p class="mt-2 text-xs text-muted">
-								{$t('equipment.revision', { n: revisions[0].revisionNo })}
-							</p>
-						{/if}
-					</section>
-
 					<!-- The one page an archer opens on the shooting line, so it is a list, not a form. -->
 					<section class="overflow-hidden rounded-xl border border-line bg-surface">
 						<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
@@ -296,14 +299,32 @@
 										>
 											{mark.distance}<span class="text-xs font-normal text-muted">{mark.unit}</span>
 										</span>
-										<input
-											class="tabular min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
-											inputmode="decimal"
-											aria-label={$t('sight.height')}
-											placeholder={$t('sight.height')}
-											value={mark.height ?? ''}
-											onchange={(e) => setMark(mark.id, { height: e.currentTarget.value.trim() || null })}
-										/>
+										<!-- A worked out mark is drawn as what it is: dashed, quieter, and led by a tilde.
+										Typing over it proves it, and the styling goes with the guess. -->
+										<span class="relative min-w-0 flex-1">
+											{#if mark.interpolated}
+												<span
+													class="pointer-events-none absolute inset-y-0 left-2 flex items-center text-sm text-brand-text"
+													aria-hidden="true"
+												>
+													~
+												</span>
+											{/if}
+											<input
+												class="tabular w-full rounded-lg border bg-bg py-1.5 text-sm
+													{mark.interpolated
+													? 'border-dashed border-brand/50 pr-2 pl-5 text-muted italic'
+													: 'border-line px-2 text-ink'}"
+												inputmode="decimal"
+												aria-label={mark.interpolated
+													? $t('sight.interpolatedHeight')
+													: $t('sight.height')}
+												placeholder={$t('sight.height')}
+												value={mark.height ?? ''}
+												onchange={(e) =>
+													setMark(mark.id, { height: e.currentTarget.value.trim() || null })}
+											/>
+										</span>
 										{#each shownExtras as key (key)}
 											<input
 												class="min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
@@ -346,6 +367,14 @@
 							</button>
 						</div>
 
+						{#if marks.some((mark) => mark.interpolated)}
+							<!-- Said once, at the foot of the list, rather than on every row it applies to. -->
+							<p class="border-t border-line px-4 py-2 text-xs text-muted">
+								<span class="text-brand-text">~</span>
+								{$t('sight.interpolatedHint')}
+							</p>
+						{/if}
+
 						<!-- The extra columns live behind chips: they are the exception, not the shape. -->
 						<div class="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5">
 							{#each EXTRAS as key (key)}
@@ -359,6 +388,34 @@
 								</button>
 							{/each}
 						</div>
+					</section>
+
+						{#if usage.lastUsedAt}
+							<p class="text-sm text-muted">
+								{$t('equipment.lastUsed', {
+									date: $dateFormats.date(usage.lastUsedAt)
+								})}
+							</p>
+						{/if}
+					{/if}
+
+					<section class="rounded-xl border border-line bg-surface p-4">
+						<h2 class="mb-2 text-sm font-semibold">{$t('equipment.currentSetup')}</h2>
+						{#if filledSettings.length === 0}
+							<p class="text-sm text-muted">{$t('equipment.noRevisions')}</p>
+						{:else}
+							<dl class="space-y-1 text-sm">
+								{#each filledSettings as row (row.field.key)}
+									<div class="flex justify-between gap-2">
+										<dt class="text-muted">{row.field.label}</dt>
+										<dd class="font-medium">{formatStored(row.field, row.value)}</dd>
+									</div>
+								{/each}
+							</dl>
+							<p class="mt-2 text-xs text-muted">
+								{$t('equipment.revision', { n: revisions[0].revisionNo })}
+							</p>
+						{/if}
 					</section>
 
 					<section class="rounded-xl border border-line bg-surface p-4">

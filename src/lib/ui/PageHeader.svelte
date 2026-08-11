@@ -7,7 +7,7 @@
 	 * Each page carries its own piece of archery geometry: rings, fletching, a limb, a trajectory, a
 	 * sight ring. The motif names the page before the title is read, which is why no two repeat.
 	 */
-	export type HeaderMotif = 'sessions' | 'session' | 'equipment' | 'stats' | 'settings';
+	export type HeaderMotif = 'sessions' | 'session' | 'equipment' | 'bow' | 'stats' | 'settings';
 
 	let {
 		motif,
@@ -116,6 +116,34 @@
 				<path d="M28 30 C 46 44, 46 76, 28 90" stroke="currentColor" stroke-width="1.6" opacity="0.2" />
 				<path d="M36 60 L84 60" stroke="currentColor" stroke-width="2.5" opacity="0.3" />
 				<path d="M84 60 L72 55 L72 65 Z" fill="currentColor" opacity="0.35" />
+			</g>
+		</svg>
+	{:else if motif === 'bow'}
+		<!--
+			One limb bending under draw: the same curve struck four times, opening as it goes, which is
+			what a limb does as it is pulled. The bow page is about one bow, so it wears one limb.
+		-->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-72 text-brand"
+			viewBox="0 0 160 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			<g transform="translate(96 50) rotate(-14)">
+				{#each [0, 1, 2, 3] as step (step)}
+					<path
+						d="M-70 {-42 + step * 4} C {-18 - step * 6} {-30 + step * 2}, {14 + step * 8} {step *
+							3}, {-70 + step * 2} {42 - step * 4}"
+						stroke="currentColor"
+						stroke-width={3.4 - step * 0.4}
+						stroke-linecap="round"
+						opacity={0.3 - step * 0.06}
+					/>
+				{/each}
+				<!-- The string, straight against every curve: the one line in the drawing that does not bend. -->
+				<path d="M-70 -42 L-70 42" stroke="currentColor" stroke-width="1.6" opacity="0.3" />
+				<circle cx="-70" cy="0" r="3.2" fill="currentColor" opacity="0.32" />
 			</g>
 		</svg>
 	{:else if motif === 'stats'}

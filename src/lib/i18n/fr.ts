@@ -235,6 +235,8 @@ export const fr: Dictionary = {
 		distance: 'Distance',
 		addMark: 'Ajouter',
 		height: 'Hauteur',
+		interpolatedHeight: 'Hauteur estimée',
+		interpolatedHint: 'Estimée à partir de vos repères réglés. Tirez la distance, puis saisissez ce que vous trouvez.',
 		windage: 'Dérive',
 		clicker: 'Clicker',
 		plunger: 'Berger'

@@ -699,6 +699,7 @@ export async function createSightMark(input: {
 	distance: number;
 	unit: string;
 	height?: string | null;
+	interpolated?: boolean;
 }) {
 	const base = stamp();
 	await db()
@@ -708,7 +709,8 @@ export async function createSightMark(input: {
 			bowId: input.bowId,
 			distance: input.distance,
 			unit: input.unit,
-			height: input.height ?? null
+			height: input.height ?? null,
+			interpolated: input.interpolated ? 1 : 0
 		});
 	await log('sight_mark', base.id, 'insert');
 	return base.id;
@@ -720,6 +722,7 @@ export async function updateSightMark(
 		distance: number;
 		unit: string;
 		height: string | null;
+		interpolated: number;
 		windage: string | null;
 		clicker: string | null;
 		plunger: string | null;

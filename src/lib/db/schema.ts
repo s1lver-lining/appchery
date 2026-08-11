@@ -184,6 +184,11 @@ export const sightMark = sqliteTable(
 		unit: text('unit').notNull(),
 		/** Free text, because sight scales are read off the sight, not measured in any unit. */
 		height: text('height'),
+		/**
+		 * Worked out from the marks around it rather than shot in. Kept as a row like any other so it
+		 * can be read at the line, and flagged so it is never mistaken for a mark that was proved.
+		 */
+		interpolated: integer('interpolated').notNull().default(0),
 		windage: text('windage'),
 		clicker: text('clicker'),
 		plunger: text('plunger')

@@ -234,6 +234,8 @@ export const en = {
 		distance: 'Distance',
 		addMark: 'Add',
 		height: 'Sight height',
+		interpolatedHeight: 'Sight height, worked out',
+		interpolatedHint: 'Worked out from the marks you shot in. Shoot it, then type what you found.',
 		windage: 'Windage',
 		clicker: 'Clicker',
 		plunger: 'Plunger'
