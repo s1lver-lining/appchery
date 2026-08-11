@@ -1,0 +1,300 @@
+<script lang="ts">
+	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
+	import { theme, THEMES } from '$lib/theme';
+	import { dbInfo } from '$lib/db';
+	import {
+		autoLocation,
+		autoWeather,
+		autoPlaceName,
+		requestPosition,
+		LocationDeniedError
+	} from '$lib/conditions';
+	import { use24Hour, recordCameraVideo, arrowDetector } from '$lib/prefs';
+	import {
+		exportBackup,
+		importBackup,
+		parseBackup,
+		backupFilename,
+		BackupError
+	} from '$lib/db/backup';
+	import Toggle from '$lib/ui/Toggle.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { saveFile, recordingsPath } from '$lib/files';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
+
+	const info = dbInfo();
+	let error = $state<string | null>(null);
+	let backupNotice = $state<string | null>(null);
+	let backupError = $state<string | null>(null);
+	let busy = $state(false);
+	let fileInput = $state<HTMLInputElement | null>(null);
+	/** Held aside until the archer confirms, because restoring replaces everything already stored. */
+	let pendingFile = $state<File | null>(null);
+
+	/**
+	 * Permission is requested the moment the archer opts in, not silently at session start, and a
+	 * refusal leaves the setting off rather than enabled but quietly broken.
+	 */
+	async function toggleLocation(enabled: boolean) {
+		error = null;
+		if (!enabled) {
+			autoLocation.set(false);
+			// Both are derived from coordinates, so neither can outlive location being switched off.
+			autoWeather.set(false);
+			autoPlaceName.set(false);
+			return;
+		}
+		try {
+			await requestPosition();
+			autoLocation.set(true);
+		} catch (e) {
+			autoLocation.set(false);
+			error = e instanceof LocationDeniedError ? $t('session.locationDenied') : String(e);
+		}
+	}
+
+	async function exportToFile() {
+		busy = true;
+		backupError = null;
+		backupNotice = null;
+		try {
+			const backup = await exportBackup();
+			const blob = new Blob([JSON.stringify(backup)], { type: 'application/json' });
+			await saveFile(blob, backupFilename(backup.exportedAt), $t('backup.title'));
+			const rows = Object.values(backup.tables).reduce((sum, list) => sum + list.length, 0);
+			backupNotice = $t('backup.exported', { n: rows });
+		} catch (e) {
+			backupError = String(e);
+		}
+		busy = false;
+	}
+
+	function chooseFile(event: Event) {
+		const input = event.currentTarget as HTMLInputElement;
+		pendingFile = input.files?.[0] ?? null;
+		// Cleared so choosing the same file twice still fires a change event.
+		input.value = '';
+	}
+
+	async function restore() {
+		const file = pendingFile;
+		pendingFile = null;
+		if (!file) return;
+
+		busy = true;
+		backupError = null;
+		backupNotice = null;
+		try {
+			const report = await importBackup(parseBackup(await file.text()));
+			backupNotice = $t('backup.imported', { n: report.rows });
+		} catch (e) {
+			backupError =
+				e instanceof BackupError ? $t(`backup.error.${e.message}`) : String(e);
+		}
+		busy = false;
+	}
+</script>
+
+<PageHeader motif="settings" title={$t('settings.title')} />
+
+<div class="mx-auto w-full max-w-2xl space-y-6 p-4">
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.language')}</h2>
+		<div class="flex gap-2">
+			{#each LOCALES as code (code)}
+				<button
+					class="rounded-lg border px-4 py-2 text-sm
+						{$locale === code ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+					onclick={() => locale.set(code)}
+				>
+					{LOCALE_NAMES[code]}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.theme')}</h2>
+		<div class="flex gap-2">
+			{#each THEMES as option (option)}
+				<button
+					class="rounded-lg border px-4 py-2 text-sm
+						{$theme === option ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+					onclick={() => theme.set(option)}
+				>
+					{$t(
+						option === 'light'
+							? 'settings.themeLight'
+							: option === 'dark'
+								? 'settings.themeDark'
+								: 'settings.themeSystem'
+					)}
+				</button>
+			{/each}
+		</div>
+	</section>
+
+	<section class="space-y-4">
+		<h2 class="text-sm font-semibold text-muted">{$t('settings.conditions')}</h2>
+
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex-1">
+				<p class="font-medium">{$t('settings.locationTitle')}</p>
+				<p class="mt-0.5 text-sm text-muted">{$t('settings.locationHint')}</p>
+			</div>
+			<Toggle
+				checked={$autoLocation}
+				label={$t('settings.locationTitle')}
+				onchange={toggleLocation}
+			/>
+		</div>
+
+		{#if $autoLocation}
+			<div class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
+				<div class="flex-1">
+					<p class="font-medium">{$t('settings.weatherTitle')}</p>
+					<p class="mt-0.5 text-sm text-muted">{$t('settings.weatherHint')}</p>
+				</div>
+				<Toggle
+					checked={$autoWeather}
+					label={$t('settings.weatherTitle')}
+					onchange={(v) => autoWeather.set(v)}
+				/>
+			</div>
+
+			<div class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
+				<div class="flex-1">
+					<p class="font-medium">{$t('settings.placeTitle')}</p>
+					<p class="mt-0.5 text-sm text-muted">{$t('settings.placeHint')}</p>
+				</div>
+				<Toggle
+					checked={$autoPlaceName}
+					label={$t('settings.placeTitle')}
+					onchange={(v) => autoPlaceName.set(v)}
+				/>
+			</div>
+		{/if}
+
+		{#if error}
+			<p class="text-sm text-danger">{error}</p>
+		{/if}
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.display')}</h2>
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex-1">
+				<p class="font-medium">{$t('settings.clockTitle')}</p>
+				<p class="mt-0.5 text-sm text-muted">{$t('settings.clockHint')}</p>
+			</div>
+			<Toggle
+				checked={$use24Hour}
+				label={$t('settings.clockTitle')}
+				onchange={(v) => use24Hour.set(v)}
+			/>
+		</div>
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('auto.title')}</h2>
+		<div class="mb-4">
+			<p class="font-medium">{$t('settings.detectorTitle')}</p>
+			<p class="mt-0.5 text-sm text-muted">{$t('settings.detectorHint')}</p>
+			<div class="mt-2 flex gap-2" role="group" aria-label={$t('settings.detectorTitle')}>
+				{#each [['classical', $t('settings.detectorClassical')], ['learned', $t('settings.detectorLearned')]] as [value, label] (value)}
+					<button
+						type="button"
+						class="flex-1 rounded-lg border py-2 text-sm font-medium
+							{($arrowDetector ?? 'classical') === value
+							? 'border-brand bg-brand text-brand-ink'
+							: 'border-line'}"
+						aria-pressed={($arrowDetector ?? 'classical') === value}
+						onclick={() => arrowDetector.set(value)}
+					>
+						{label}
+					</button>
+				{/each}
+			</div>
+		</div>
+
+		<div class="flex items-start justify-between gap-4">
+			<div class="flex-1">
+				<p class="font-medium">{$t('settings.recordTitle')}</p>
+				<p class="mt-0.5 text-sm text-muted">{$t('settings.recordHint')}</p>
+			</div>
+			<Toggle
+				checked={$recordCameraVideo}
+				label={$t('settings.recordTitle')}
+				onchange={(v) => recordCameraVideo.set(v)}
+			/>
+		</div>
+		{#if $recordCameraVideo}
+			<!-- Where to go looking, since nothing here hands the files over one at a time. -->
+			<p class="mt-3 rounded-lg bg-sunk p-3 text-sm text-muted">
+				{$t('settings.recordPath')}
+				<code class="mt-1 block break-all text-xs text-ink">{recordingsPath()}</code>
+			</p>
+		{/if}
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.storage')}</h2>
+		<p class="text-sm">
+			<code class="rounded bg-sunk px-1">{info.kind}</code>
+			· {info.persistent ? $t('settings.persistent') : $t('settings.volatile')}
+		</p>
+	</section>
+
+	<section>
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('backup.title')}</h2>
+		<div class="rounded-xl border border-line bg-surface p-4">
+			<p class="text-sm text-muted">{$t('backup.hint')}</p>
+
+			<div class="mt-3 flex gap-2">
+				<button
+					class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+					disabled={busy}
+					onclick={exportToFile}
+				>
+					{$t('backup.export')}
+				</button>
+				<button
+					class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+					disabled={busy}
+					onclick={() => fileInput?.click()}
+				>
+					{$t('backup.import')}
+				</button>
+			</div>
+
+			<input
+				bind:this={fileInput}
+				type="file"
+				accept="application/json,.json"
+				class="hidden"
+				onchange={chooseFile}
+			/>
+
+			{#if backupNotice}
+				<p class="mt-3 flex items-center gap-1.5 text-sm text-brand-text">
+					<Icon name="target" size={16} />
+					{backupNotice}
+				</p>
+			{/if}
+			{#if backupError}
+				<p class="mt-3 text-sm text-danger">{backupError}</p>
+			{/if}
+		</div>
+	</section>
+</div>
+
+{#if pendingFile}
+	<ConfirmDialog
+		title={$t('backup.confirmTitle')}
+		message={$t('backup.confirmBody', { name: pendingFile.name })}
+		confirmLabel={$t('backup.confirmAction')}
+		onconfirm={restore}
+		oncancel={() => (pendingFile = null)}
+	/>
+{/if}
