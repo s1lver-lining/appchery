@@ -120,8 +120,8 @@
 		</svg>
 	{:else if motif === 'bow'}
 		<!--
-			One limb bending under draw: the same curve struck four times, opening as it goes, which is
-			what a limb does as it is pulled. The bow page is about one bow, so it wears one limb.
+			The limb curve stood on end: parabolas rising out of the header, each one opening wider than
+			the last, overlapping the way a limb does through the draw.
 		-->
 		<svg
 			class="pointer-events-none absolute inset-y-0 right-0 h-full w-72 text-brand"
@@ -130,7 +130,8 @@
 			fill="none"
 			aria-hidden="true"
 		>
-			<g transform="translate(96 50) rotate(-14)">
+			<!-- Turned a quarter anticlockwise and blown up, so the arcs rise out of the header edge. -->
+			<g transform="translate(118 22) rotate(-90) scale(1.35)">
 				{#each [0, 1, 2, 3] as step (step)}
 					<path
 						d="M-70 {-42 + step * 4} C {-18 - step * 6} {-30 + step * 2}, {14 + step * 8} {step *
@@ -141,9 +142,6 @@
 						opacity={0.3 - step * 0.06}
 					/>
 				{/each}
-				<!-- The string, straight against every curve: the one line in the drawing that does not bend. -->
-				<path d="M-70 -42 L-70 42" stroke="currentColor" stroke-width="1.6" opacity="0.3" />
-				<circle cx="-70" cy="0" r="3.2" fill="currentColor" opacity="0.32" />
 			</g>
 		</svg>
 	{:else if motif === 'stats'}

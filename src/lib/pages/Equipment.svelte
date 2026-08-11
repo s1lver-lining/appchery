@@ -88,15 +88,9 @@
 						class="flex items-center gap-3 rounded-xl border bg-surface p-3
 							{$defaultBowId === bow.id ? 'border-brand ring-1 ring-brand' : 'border-line'}"
 					>
-						{#if bow.photo}
-							<img src={bow.photo} alt="" class="h-14 w-14 rounded-lg object-cover" />
-						{:else}
-							<span
-								class="flex h-14 w-14 items-center justify-center rounded-lg bg-sunk text-muted"
-							>
-								<Icon name="bow" size={26} />
-							</span>
-						{/if}
+						<span class="flex h-14 w-14 items-center justify-center rounded-lg bg-sunk text-muted">
+							<Icon name="bow" size={26} />
+						</span>
 						<div class="flex-1">
 							<p class="font-semibold">{bow.name}</p>
 							<p class="text-sm text-muted">

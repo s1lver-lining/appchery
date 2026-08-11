@@ -6,6 +6,7 @@
 	import { initDb, dbInfo } from '$lib/db';
 	import { backGuards, isMainPage, pageTabs, pageUp, parentPath, runBackGuards } from '$lib/nav';
 	import { t } from '$lib/i18n';
+	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import Pager from '$lib/ui/Pager.svelte';
@@ -72,6 +73,44 @@
 		swipe(dx < 0 ? 1 : -1);
 	}
 
+	/**
+	 * A tab can stand for a page inside its section: with one bow set as the default, the equipment tab
+	 * opens that bow, since the list of one is a step nobody wanted. Holding the tab still opens the
+	 * list, which is the way back to every other bow.
+	 */
+	const shortcutOf = (href: string) =>
+		href === '/equipment' && $defaultBowId ? `/equipment/${$defaultBowId}` : null;
+
+	let held = false;
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function holdTab(href: string) {
+		cancelHold();
+		if (!shortcutOf(href)) return;
+		holdTimer = setTimeout(() => {
+			held = true;
+			goto(href);
+		}, 450);
+	}
+
+	function cancelHold() {
+		if (holdTimer) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
+
+	function openTab(event: MouseEvent, href: string) {
+		const shortcut = shortcutOf(href);
+		// The press that opened the list already navigated: the click behind it must not undo that.
+		if (held) {
+			held = false;
+			event.preventDefault();
+			return;
+		}
+		if (!shortcut) return;
+		event.preventDefault();
+		goto(shortcut);
+	}
+
 	const isActive = (href: string) =>
 		href === '/' ? $page.url.pathname === '/' : $page.url.pathname.startsWith(href);
 </script>
@@ -116,6 +155,16 @@
 					class="flex flex-1 flex-col items-center gap-0.5 py-2
 						{isActive(tab.href) ? 'text-brand-text' : 'text-muted'}"
 					aria-current={isActive(tab.href) ? 'page' : undefined}
+					onclick={(event) => openTab(event, tab.href)}
+					onpointerdown={() => holdTab(tab.href)}
+					onpointerup={cancelHold}
+					onpointerleave={cancelHold}
+					onpointercancel={cancelHold}
+					oncontextmenu={(event) => {
+						if (!shortcutOf(tab.href)) return;
+						event.preventDefault();
+						goto(tab.href);
+					}}
 				>
 					<Icon name={tab.icon} size={24} filled={isActive(tab.href)} />
 					<span class="text-[11px] leading-none font-medium">{$t(tab.key)}</span>

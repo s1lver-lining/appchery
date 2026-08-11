@@ -37,6 +37,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
+	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	const bowId = $derived($page.params.id as string);
@@ -160,6 +161,20 @@
 		await reloadMarks();
 	}
 
+	/**
+	 * Written on leaving the field rather than on change, because the field is emptied on focus and a
+	 * change event cannot tell that apart from an archer clearing a mark they no longer trust.
+	 */
+	function saveHeight(mark: SightMarkRow, input: HTMLInputElement) {
+		const value = input.value.trim();
+		if (value === (mark.height ?? '')) return;
+		if (!value && mark.interpolated) {
+			input.value = mark.height ?? '';
+			return;
+		}
+		setMark(mark.id, { height: value || null });
+	}
+
 	/** Typing a height is proving it: the mark stops being a guess the moment it is entered by hand. */
 	async function setMark(id: string, patch: Parameters<typeof updateSightMark>[1]) {
 		await updateSightMark(id, 'height' in patch ? { ...patch, interpolated: 0 } : patch);
@@ -183,21 +198,6 @@
 			if (height !== mark.height) await updateSightMark(mark.id, { height });
 		}
 		marks = await listSightMarks(bowId);
-	}
-
-	async function pickPhoto(event: Event) {
-		const file = (event.target as HTMLInputElement).files?.[0];
-		if (!file) return;
-		// Downscaled to a data URL so the photo stays on device and does not bloat the database.
-		const bitmap = await createImageBitmap(file);
-		const size = 480;
-		const scale = Math.min(size / bitmap.width, size / bitmap.height, 1);
-		const canvas = document.createElement('canvas');
-		canvas.width = Math.round(bitmap.width * scale);
-		canvas.height = Math.round(bitmap.height * scale);
-		canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-		await updateBow(bowId, { photo: canvas.toDataURL('image/jpeg', 0.8) });
-		await refresh();
 	}
 
 	async function startTuning(templateKey: string) {
@@ -242,17 +242,17 @@
 		{/snippet}
 
 		{#snippet actions()}
-			{@const named = bow}
-			<label class="cursor-pointer">
-				{#if named?.photo}
-					<img src={named.photo} alt="" class="h-20 w-20 rounded-lg object-cover" />
-				{:else}
-					<span class="flex h-20 w-20 items-center justify-center rounded-lg bg-sunk/60 text-muted">
-						<Icon name="camera" size={24} />
-					</span>
-				{/if}
-				<input type="file" accept="image/*" class="hidden" onchange={pickPhoto} />
-			</label>
+			<MoreMenu
+				label={$t('common.more')}
+				icon="dots"
+				placement="down"
+				wrapperClass=""
+				triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
+				items={[
+					{ label: $t('equipment.viewList'), icon: 'bow', onselect: () => goto('/equipment') },
+					{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/equipment') }
+				]}
+			/>
 		{/snippet}
 	</PageHeader>
 
@@ -262,11 +262,14 @@
 			{#snippet pane(key)}
 				{#if key === 'overview'}
 					{#if usage}
+						<!-- Four across, so the captions are shortened rather than allowed to wrap under them. -->
 						<section class="grid grid-cols-4 gap-2">
-							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBest') }] as stat (stat.label)}
-								<div class="rounded-xl border border-line bg-surface p-2.5">
+							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShotShort') }, { value: usage.sessions, label: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBestShort') }] as stat (stat.label)}
+								<div class="overflow-hidden rounded-xl border border-line bg-surface p-2.5">
 									<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
-									<p class="mt-1 text-[10px] leading-tight text-muted">{stat.label}</p>
+									<p class="mt-1 truncate text-[10px] leading-tight whitespace-nowrap text-muted">
+										{stat.label}
+									</p>
 								</div>
 							{/each}
 						</section>
@@ -321,8 +324,13 @@
 													: $t('sight.height')}
 												placeholder={$t('sight.height')}
 												value={mark.height ?? ''}
-												onchange={(e) =>
-													setMark(mark.id, { height: e.currentTarget.value.trim() || null })}
+												onfocus={(e) => {
+													// A guess gets out of the way of the mark being typed over it, and comes
+													// back untouched if the archer walks away without entering one.
+													if (mark.interpolated) e.currentTarget.value = '';
+												}}
+												onblur={(e) => saveHeight(mark, e.currentTarget)}
+												onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
 											/>
 										</span>
 										{#each shownExtras as key (key)}
