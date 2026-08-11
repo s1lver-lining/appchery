@@ -1,16 +1,20 @@
 import type { BowType } from '../tuning/templates';
+import { mmToInches, inchesToMm } from '../units';
 
 /**
  * Setting fields per bow type. Adding a bow type means adding a schema here, never touching a form,
  * because the schema drives rendering, validation, and the revision diff alike.
  */
-export type FieldKind = 'lengthMm' | 'number' | 'text' | 'select';
+export type FieldKind = 'lengthMm' | 'lengthCm' | 'number' | 'text' | 'select';
 
 export interface SettingField {
 	key: string;
 	label: string;
 	kind: FieldKind;
-	/** Shown beside the input. Length fields store mm and display inches, see doc/architecture.md. */
+	/**
+	 * Shown beside the input. Length fields store mm; `lengthMm` is read in inches and `lengthCm` in
+	 * centimetres, which is how brace height and tiller are actually measured. See doc/architecture.md.
+	 */
 	unit?: string;
 	step?: number;
 	options?: string[];
@@ -20,28 +24,20 @@ export interface SettingField {
 const ARROW_FIELDS: SettingField[] = [
 	{ key: 'arrowSpine', label: 'Arrow spine', kind: 'number', group: 'Arrows' },
 	{ key: 'arrowLength', label: 'Arrow length', kind: 'lengthMm', unit: 'in', group: 'Arrows' },
-	{ key: 'pointWeight', label: 'Point weight', kind: 'number', unit: 'gr', group: 'Arrows' },
-	{ key: 'fletching', label: 'Fletching', kind: 'text', group: 'Arrows' },
-	{ key: 'nock', label: 'Nock', kind: 'text', group: 'Arrows' }
+	{ key: 'pointWeight', label: 'Point weight', kind: 'number', unit: 'gr', group: 'Arrows' }
 ];
 
 const STRING_FIELDS: SettingField[] = [
 	{ key: 'stringMaterial', label: 'String material', kind: 'text', group: 'String' },
-	{ key: 'stringStrands', label: 'Strands', kind: 'number', group: 'String' },
-	{ key: 'nockingPoint', label: 'Nocking point height', kind: 'lengthMm', unit: 'in', group: 'String' }
+	{ key: 'stringStrands', label: 'Strands', kind: 'number', group: 'String' }
 ];
 
 const RECURVE: SettingField[] = [
-	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthMm', unit: 'in', group: 'Bow' },
+	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight on fingers', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'limbSize', label: 'Limb size', kind: 'select', options: ['Short', 'Medium', 'Long'], group: 'Bow' },
-	{ key: 'tillerUpper', label: 'Tiller upper', kind: 'lengthMm', unit: 'in', group: 'Bow' },
-	{ key: 'tillerLower', label: 'Tiller lower', kind: 'lengthMm', unit: 'in', group: 'Bow' },
-	{ key: 'plungerTension', label: 'Plunger tension', kind: 'text', group: 'Rest' },
-	{ key: 'plungerPosition', label: 'Plunger position', kind: 'text', group: 'Rest' },
-	{ key: 'clickerPosition', label: 'Clicker position', kind: 'text', group: 'Rest' },
-	{ key: 'sightWindage', label: 'Sight windage', kind: 'text', group: 'Sight' },
-	{ key: 'sightExtension', label: 'Sight extension', kind: 'text', group: 'Sight' }
+	{ key: 'tillerUpper', label: 'Tiller upper', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
+	{ key: 'tillerLower', label: 'Tiller lower', kind: 'lengthCm', unit: 'cm', group: 'Bow' }
 ];
 
 const COMPOUND: SettingField[] = [
@@ -49,28 +45,25 @@ const COMPOUND: SettingField[] = [
 	{ key: 'peakWeight', label: 'Peak weight', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'letOff', label: 'Let-off', kind: 'number', unit: '%', group: 'Bow' },
 	{ key: 'axleToAxle', label: 'Axle to axle', kind: 'lengthMm', unit: 'in', group: 'Bow' },
-	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthMm', unit: 'in', group: 'Bow' },
+	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'camTiming', label: 'Cam timing', kind: 'text', group: 'Cams' },
 	{ key: 'drawStop', label: 'Draw stop', kind: 'text', group: 'Cams' },
 	{ key: 'peepHeight', label: 'Peep height', kind: 'lengthMm', unit: 'in', group: 'String' },
-	{ key: 'dLoopLength', label: 'D-loop length', kind: 'lengthMm', unit: 'in', group: 'String' },
-	{ key: 'restPosition', label: 'Rest position', kind: 'text', group: 'Rest' },
-	{ key: 'sightHousing', label: 'Sight housing', kind: 'text', group: 'Sight' }
+	{ key: 'dLoopLength', label: 'D-loop length', kind: 'lengthMm', unit: 'in', group: 'String' }
 ];
 
 const BAREBOW: SettingField[] = [
-	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthMm', unit: 'in', group: 'Bow' },
+	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight on fingers', kind: 'number', unit: 'lb', group: 'Bow' },
-	{ key: 'tillerUpper', label: 'Tiller upper', kind: 'lengthMm', unit: 'in', group: 'Bow' },
-	{ key: 'tillerLower', label: 'Tiller lower', kind: 'lengthMm', unit: 'in', group: 'Bow' },
+	{ key: 'tillerUpper', label: 'Tiller upper', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
+	{ key: 'tillerLower', label: 'Tiller lower', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'weightSystem', label: 'Weight system', kind: 'text', group: 'Bow' },
-	{ key: 'plungerTension', label: 'Plunger tension', kind: 'text', group: 'Rest' },
 	{ key: 'crawlTable', label: 'Crawl marks', kind: 'text', group: 'Aiming' },
 	{ key: 'anchor', label: 'Anchor', kind: 'text', group: 'Aiming' }
 ];
 
 const LONGBOW: SettingField[] = [
-	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthMm', unit: 'in', group: 'Bow' },
+	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight at your draw', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'bowLength', label: 'Bow length', kind: 'lengthMm', unit: 'in', group: 'Bow' },
 	{ key: 'anchor', label: 'Anchor', kind: 'text', group: 'Aiming' }
@@ -91,6 +84,34 @@ export function schemaFor(type: BowType): SettingField[] {
 
 export function groupsOf(fields: SettingField[]): string[] {
 	return [...new Set(fields.map((f) => f.group))];
+}
+
+/**
+ * Every length is stored in millimetres and read in whatever unit the field is measured in, so the
+ * three pages that show settings never disagree about what a stored number means.
+ */
+export function displaySetting(field: SettingField, value: string | number | null): string {
+	if (value === null || value === undefined || value === '') return '';
+	if (field.kind === 'lengthMm') return String(Math.round(mmToInches(Number(value)) * 100) / 100);
+	if (field.kind === 'lengthCm') return String(Math.round(Number(value) / 10 / 0.01) * 0.01);
+	return String(value);
+}
+
+/** The value to store for what was typed. An empty field is not set, which is not the same as zero. */
+export function parseSetting(field: SettingField, raw: string): string | number | null {
+	if (raw.trim() === '') return null;
+	if (field.kind === 'lengthMm') return Math.round(inchesToMm(Number(raw)) * 10) / 10;
+	if (field.kind === 'lengthCm') return Math.round(Number(raw) * 10 * 10) / 10;
+	if (field.kind === 'number') return Number(raw);
+	return raw;
+}
+
+/** The same value said out loud, with its unit, for a summary or a diff. */
+export function formatSetting(field: SettingField, value: string | number | null): string {
+	if (value === null || value === '') return '—';
+	if (field.kind === 'lengthMm') return `${displaySetting(field, value)}"`;
+	if (field.kind === 'lengthCm') return `${displaySetting(field, value)} cm`;
+	return field.unit ? `${value} ${field.unit}` : String(value);
 }
 
 export interface SettingChange {

@@ -7,10 +7,12 @@
 		schemaFor,
 		groupsOf,
 		diffSettings,
+		displaySetting,
+		parseSetting,
+		formatSetting,
 		type BowSettings,
 		type SettingField
 	} from '$lib/domain/equipment/schemas';
-	import { mmToInches, inchesToMm } from '$lib/domain/units';
 	import { interpolateHeight, formatHeight } from '$lib/domain/equipment/sight';
 	import { defaultBowId, dateFormats, sightColumns } from '$lib/prefs';
 	import { startOfDay } from '$lib/domain/dates';
@@ -76,30 +78,22 @@
 		refresh();
 	});
 
-	/** Length fields store mm and are entered in inches, so the input never sees the stored unit. */
-	function displayValue(field: SettingField): string {
-		const value = draft[field.key];
-		if (value === null || value === undefined || value === '') return '';
-		if (field.kind === 'lengthMm') return String(Math.round(mmToInches(Number(value)) * 100) / 100);
-		return String(value);
-	}
+	/** The group whose sheet is open. Values are written to the draft as they are typed and the
+	 * sheet has nothing to confirm: leaving it is the save, and the revision is what gets confirmed. */
+	let editingGroup = $state<string | null>(null);
+
+	const fieldsOf = $derived((group: string) => fields.filter((field) => field.group === group));
+
+	/** What the row says without opening it: the settings that carry a value, in schema order. */
+	const summaryOf = $derived((group: string) => {
+		const filled = fieldsOf(group)
+			.filter((field) => draft[field.key] !== null && draft[field.key] !== undefined && draft[field.key] !== '')
+			.map((field) => `${field.label} ${formatSetting(field, draft[field.key] ?? null)}`);
+		return filled.length > 0 ? filled.join(' · ') : $t('equipment.groupEmpty');
+	});
 
 	function setValue(field: SettingField, raw: string) {
-		if (raw === '') {
-			draft = { ...draft, [field.key]: null };
-		} else if (field.kind === 'lengthMm') {
-			draft = { ...draft, [field.key]: Math.round(inchesToMm(Number(raw)) * 10) / 10 };
-		} else if (field.kind === 'number') {
-			draft = { ...draft, [field.key]: Number(raw) };
-		} else {
-			draft = { ...draft, [field.key]: raw };
-		}
-	}
-
-	function formatStored(field: SettingField, value: string | number | null): string {
-		if (value === null || value === '') return '—';
-		if (field.kind === 'lengthMm') return `${Math.round(mmToInches(Number(value)) * 100) / 100}"`;
-		return field.unit ? `${value} ${field.unit}` : String(value);
+		draft = { ...draft, [field.key]: parseSetting(field, raw) };
 	}
 
 	/** Only settings the archer actually filled in, so the overview stays a summary not a blank form. */
@@ -136,10 +130,11 @@
 		clicker: $t('sight.clicker'),
 		plunger: $t('sight.plunger')
 	});
-	/** Shown when asked for, and whenever a mark already carries one: data is never hidden. */
-	const shownExtras = $derived(
-		EXTRAS.filter((key) => $sightColumns.includes(key) || marks.some((mark) => mark[key]))
-	);
+	/**
+	 * Shown only when asked for. Hiding a column hides it: what was entered stays in the row and
+	 * comes back untouched the moment the column is asked for again.
+	 */
+	const shownExtras = $derived(EXTRAS.filter((key) => $sightColumns.includes(key)));
 
 	function toggleExtra(key: Extra) {
 		sightColumns.update((list) =>
@@ -225,18 +220,24 @@
 	}
 </script>
 
+<!-- A press anywhere else puts a spelled out caption away, the way a tooltip goes. -->
+<svelte:window onpointerdown={() => (explained = null)} />
+
 {#if bow}
 	<PageHeader motif="bow">
 		{#snippet lead()}
 			{@const named = bow}
-			<a href="/equipment" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
-				<Icon name="back" size={22} />
-			</a>
-			<input
-				class="w-full border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
-				value={named?.name ?? ''}
-				onchange={(e) => rename(e.currentTarget.value)}
-			/>
+			<!-- Arrow and name on one line, as on the session page: the name is the page, not a field. -->
+			<div class="flex items-center gap-2">
+				<a href="/equipment" class="-ml-1 shrink-0 text-muted" aria-label={$t('common.back')}>
+					<Icon name="back" size={22} />
+				</a>
+				<input
+					class="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
+					value={named?.name ?? ''}
+					onchange={(e) => rename(e.currentTarget.value)}
+				/>
+			</div>
 			<p class="text-sm text-muted">
 				{$t(`bow.${named?.type}`)}
 				{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
@@ -271,7 +272,11 @@
 								<button
 									class="relative overflow-visible rounded-xl border border-line bg-surface p-2.5 text-left"
 									title={stat.full}
-									onclick={() => (explained = explained === stat.full ? null : stat.full)}
+									onpointerdown={(event) => {
+										// Ahead of the window handler that closes it, or it would never open.
+										event.stopPropagation();
+										explained = explained === stat.full ? null : stat.full;
+									}}
 								>
 									<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
 									<p
@@ -280,8 +285,9 @@
 										{stat.label}
 									</p>
 									{#if explained === stat.full}
+										<!-- Below the tile, because the deck above it is clipped to the pane. -->
 										<span
-											class="absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-bg shadow-lg"
+											class="absolute -bottom-1 left-1/2 z-10 translate-y-full -translate-x-1/2 rounded-lg bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-bg shadow-lg"
 										>
 											{stat.full}
 										</span>
@@ -432,7 +438,7 @@
 								{#each filledSettings as row (row.field.key)}
 									<div class="flex justify-between gap-2">
 										<dt class="text-muted">{row.field.label}</dt>
-										<dd class="font-medium">{formatStored(row.field, row.value)}</dd>
+										<dd class="font-medium">{formatSetting(row.field, row.value)}</dd>
 									</div>
 								{/each}
 							</dl>
@@ -474,39 +480,37 @@
 						</div>
 					</section>
 
-					{#each groups as group (group)}
-						<section class="rounded-xl border border-line bg-surface p-4">
-							<h2 class="mb-3 text-sm font-semibold text-muted">{group}</h2>
-							<div class="grid gap-3 sm:grid-cols-2">
-								{#each fields.filter((f) => f.group === group) as field (field.key)}
-									<label class="text-sm">
-										{field.label}
-										{#if field.unit}<span class="text-muted">({field.unit})</span>{/if}
-										{#if field.kind === 'select'}
-											<select
-												class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-												value={displayValue(field)}
-												oninput={(e) => setValue(field, e.currentTarget.value)}
-											>
-												<option value=""></option>
-												{#each field.options ?? [] as option (option)}
-													<option value={option}>{option}</option>
-												{/each}
-											</select>
-										{:else}
-											<input
-												type={field.kind === 'text' ? 'text' : 'number'}
-												step={field.kind === 'lengthMm' ? '0.05' : 'any'}
-												class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-												value={displayValue(field)}
-												oninput={(e) => setValue(field, e.currentTarget.value)}
-											/>
-										{/if}
-									</label>
-								{/each}
-							</div>
-						</section>
-					{/each}
+					<!--
+						A list rather than a page of inputs: what a bow is set to is read far more often than
+						it is changed, so the page says what it is and a tap opens the one group being changed.
+					-->
+					<section class="overflow-hidden rounded-xl border border-line bg-surface">
+						{#each groups as group, i (group)}
+							<button
+								class="flex w-full items-center gap-3 p-4 text-left {i > 0
+									? 'border-t border-line'
+									: ''}"
+								onclick={() => (editingGroup = group)}
+							>
+								<div class="min-w-0 flex-1">
+									<p class="font-medium">{group}</p>
+									<p class="mt-0.5 truncate text-sm text-muted">{summaryOf(group)}</p>
+								</div>
+								<span class="shrink-0 rotate-180 text-muted"><Icon name="back" size={18} /></span>
+							</button>
+						{/each}
+					</section>
+
+					<!-- Anything the schema has no field for: a shim thickness, a serial, a note to self. -->
+					<section class="rounded-xl border border-line bg-surface p-4">
+						<h2 class="mb-2 text-sm font-semibold">{$t('equipment.remarks')}</h2>
+						<textarea
+							class="min-h-24 w-full resize-y rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+							placeholder={$t('equipment.remarksHint')}
+							value={bow?.notes ?? ''}
+							onchange={(e) => updateBow(bowId, { notes: e.currentTarget.value.trim() || null })}
+						></textarea>
+					</section>
 
 					<section class="rounded-xl border border-line bg-surface p-4">
 						{#if pending.length === 0}
@@ -520,8 +524,8 @@
 									<li class="flex justify-between gap-2">
 										<span class="text-muted">{change.field.label}</span>
 										<span>
-											{formatStored(change.field, change.before)} → <strong
-												>{formatStored(change.field, change.after)}</strong
+											{formatSetting(change.field, change.before)} → <strong
+												>{formatSetting(change.field, change.after)}</strong
 											>
 										</span>
 									</li>
@@ -573,8 +577,8 @@
 											<li class="flex justify-between gap-2">
 												<span class="text-muted">{change.field.label}</span>
 												<span>
-													{formatStored(change.field, change.before)} → <strong
-														>{formatStored(change.field, change.after)}</strong
+													{formatSetting(change.field, change.before)} → <strong
+														>{formatSetting(change.field, change.after)}</strong
 													>
 												</span>
 											</li>
@@ -593,3 +597,68 @@
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
 {/if}
+
+{#if editingGroup}
+	<!-- One group at a time. Typing writes to the draft, so closing the sheet is the save; what turns
+		a draft into history is the revision below it, which is the thing worth confirming. -->
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<button
+			class="absolute inset-0 bg-black/40"
+			aria-label={$t('common.close')}
+			onclick={() => (editingGroup = null)}
+		></button>
+
+		<div
+			class="relative m-4 max-h-[80dvh] w-full max-w-sm overflow-y-auto rounded-2xl border border-line bg-surface p-4 shadow-xl"
+		>
+			<div class="mb-3 flex items-center justify-between">
+				<h2 class="text-lg font-bold">{editingGroup}</h2>
+				<button
+					class="text-muted"
+					aria-label={$t('common.close')}
+					onclick={() => (editingGroup = null)}
+				>
+					<Icon name="close" size={20} />
+				</button>
+			</div>
+
+			<div class="space-y-3">
+				{#each fieldsOf(editingGroup) as field (field.key)}
+					<label class="block text-sm">
+						{field.label}
+						{#if field.unit}<span class="text-muted">({field.unit})</span>{/if}
+						{#if field.kind === 'select'}
+							<select
+								class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+								value={displaySetting(field, draft[field.key] ?? null)}
+								oninput={(e) => setValue(field, e.currentTarget.value)}
+							>
+								<option value=""></option>
+								{#each field.options ?? [] as option (option)}
+									<option value={option}>{option}</option>
+								{/each}
+							</select>
+						{:else}
+							<input
+								type={field.kind === 'text' ? 'text' : 'number'}
+								step={field.kind === 'text' ? undefined : '0.05'}
+								inputmode={field.kind === 'text' ? undefined : 'decimal'}
+								class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+								value={displaySetting(field, draft[field.key] ?? null)}
+								oninput={(e) => setValue(field, e.currentTarget.value)}
+							/>
+						{/if}
+					</label>
+				{/each}
+			</div>
+
+			<button
+				class="mt-4 w-full rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+				onclick={() => (editingGroup = null)}
+			>
+				{$t('common.done')}
+			</button>
+		</div>
+	</div>
+{/if}
+

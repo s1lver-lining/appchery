@@ -66,6 +66,25 @@ export const ROUNDS: RoundDefinition[] = [
 		scoreSetId: WA_10_RING.id,
 		isBuiltin: true,
 		stages: [{ distance: { value: 18, unit: 'm' }, faceSize: 40, ends: 20, arrowsPerEnd: 3 }]
+	},
+	// Halves of the two above: same face and same rings, half the ends. Shot as a practice distance.
+	{
+		id: 'wa360-70m',
+		name: 'WA 360 (70m)',
+		discipline: 'target',
+		governingBody: 'WA',
+		scoreSetId: WA_10_RING.id,
+		isBuiltin: true,
+		stages: [{ distance: { value: 70, unit: 'm' }, faceSize: 122, ends: 6, arrowsPerEnd: 6 }]
+	},
+	{
+		id: 'wa-indoor-300-18m',
+		name: 'WA Indoor 300 (18m)',
+		discipline: 'target',
+		governingBody: 'WA',
+		scoreSetId: WA_10_RING.id,
+		isBuiltin: true,
+		stages: [{ distance: { value: 18, unit: 'm' }, faceSize: 40, ends: 10, arrowsPerEnd: 3 }]
 	}
 ];
 

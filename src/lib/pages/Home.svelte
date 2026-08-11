@@ -461,9 +461,12 @@
 				<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
 				<p class="text-right text-xs text-muted">
 					{#if weekGoal > 0}
-						{weekDone >= 1
-							? $t('session.goalReached')
-							: $t('session.goalLeft', { n: weekGoal - weekArrows })}
+						{#if weekDone >= 1}
+							<!-- The one week in the log that deserves an emoji is the one that was finished. -->
+							🎉 {$t('session.goalReached')}
+						{:else}
+							{$t('session.goalLeft', { n: weekGoal - weekArrows })}
+						{/if}
 					{:else}
 						{$t('home.weekSessions', { n: weekSessions })}
 					{/if}

@@ -19,6 +19,9 @@
 		paneClass?: string;
 	} = $props();
 
+	/** A gutter between panes, so the block edges of two tabs never touch mid swipe. */
+	const GUTTER = 24;
+
 	let width = $state(1);
 	let offset = $state(0);
 	let duration = $state(0);
@@ -102,7 +105,7 @@
 	{#each tabs as item, i (item.key)}
 		<div
 			class="absolute inset-x-0 top-0"
-			style="transform: translate3d({(i - index) * width +
+			style="transform: translate3d({(i - index) * (width + GUTTER) +
 				offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
 			inert={i !== index || undefined}
 		>
