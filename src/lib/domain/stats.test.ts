@@ -14,6 +14,7 @@ import {
 	type ScoredActivity
 } from './stats';
 import { getRound } from './rounds/seed';
+import { buildCustomRound } from './rounds/custom';
 
 const round = getRound('wa720-70m')!;
 
@@ -65,6 +66,17 @@ describe('isPersonalBest', () => {
 		});
 		expect(isPersonalBest(best, [...history, best, later, elsewhere])).toBe(false);
 		expect(isPersonalBest(activity({ id: 'c', startedAt: 3, totalScore: 660 }), [...history, later, elsewhere])).toBe(true);
+	});
+
+	it('compares a custom round against others of the same shape', () => {
+		// A round built by hand has no id, so 6x6 at 18m is measured against every other 6x6 at 18m.
+		const shape = buildCustomRound({ ends: 6, arrowsPerEnd: 6, faceSize: 40, distance: 18, unit: 'm', name: '' });
+		const custom = (id: string, startedAt: number, totalScore: number) =>
+			activity({ id, startedAt, totalScore, arrowsShot: 36, roundDefinitionId: null, round: shape });
+		const earlier = custom('a', 1, 300);
+		const best = custom('b', 2, 320);
+		expect(isPersonalBest(best, [earlier, best])).toBe(true);
+		expect(isPersonalBest(custom('c', 3, 310), [earlier, best])).toBe(false);
 	});
 
 	it('rejects an unfinished round, whatever it scored' , () => {

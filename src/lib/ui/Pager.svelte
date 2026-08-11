@@ -54,6 +54,9 @@
 	function measure(node: HTMLElement, i: number) {
 		const header = node.querySelector<HTMLElement>('[data-page-header]');
 		if (!header) return;
+		// Read at once as well as observed: the observer reports after the frame, by which time a page
+		// slid to from the tab bar has already arrived, and its header would drop with nothing to show.
+		headerHeights = { ...headerHeights, [i]: header.offsetHeight };
 		const observer = new ResizeObserver(() => {
 			headerHeights = { ...headerHeights, [i]: header.offsetHeight };
 		});

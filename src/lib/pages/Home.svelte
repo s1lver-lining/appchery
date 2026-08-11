@@ -157,6 +157,8 @@
 			.reduce((sum, s) => sum + (counts[s.id] ?? 0), 0)
 	);
 	const weekGoal = $derived(weekArrowGoal(slots));
+	const weekSessions = $derived(sessions.filter((s) => s.startedAt >= weekStart).length);
+	const weekDone = $derived(weekGoal > 0 ? Math.min(1, weekArrows / weekGoal) : 0);
 
 	/** A record is worth saying out loud for a few days, and then it is just the number to beat. */
 	const PB_WINDOW = 5 * 24 * 60 * 60 * 1000;
@@ -238,97 +240,35 @@
 		<p class="text-sm font-medium text-brand-text">{$t('home.greeting')}</p>
 		<h1 class="text-3xl font-bold tracking-tight">{$t('home.title')}</h1>
 
-		<!-- The figures sit in the header rather than under it, so the curves frame real data. -->
-		<dl class="mt-5 grid grid-cols-3 gap-2">
-			{#each [{ value: month.arrows, label: $t('home.thisMonth'), lead: true }, { value: month.days, label: $t('home.daysOut'), lead: false }, { value: allTime.arrows, label: $t('stats.totalArrows'), lead: false }] as tile (tile.label)}
-				<div class="rounded-xl border border-brand/15 bg-surface/60 px-3 py-2.5 backdrop-blur">
-					<dd
-						class="tabular text-2xl leading-none font-bold {tile.lead
-							? 'text-brand-text'
-							: 'text-ink'}"
-					>
-						{tile.value}
-					</dd>
-					<dt class="mt-1 truncate text-[11px] text-muted">{tile.label}</dt>
-				</div>
-			{/each}
+		<!-- The two figures sit in the header rather than under it, so the curves frame real data. -->
+		<dl class="mt-5 flex items-end gap-6">
+			<div>
+				<dd class="tabular text-4xl leading-none font-bold text-brand-text">{month.arrows}</dd>
+				<dt class="mt-1 text-xs text-muted">{$t('home.thisMonth')}</dt>
+			</div>
+			<div class="h-8 w-px bg-line"></div>
+			<div>
+				<dd class="tabular text-2xl leading-none font-semibold">{allTime.arrows}</dd>
+				<dt class="mt-1 text-xs text-muted">{$t('stats.totalArrows')}</dt>
+			</div>
 		</dl>
 	</div>
 
 	<HeaderEdge />
 </header>
 
-<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 p-4">
-	{#if next}
-		<!-- The next outing leads the page: what is coming matters more than what is done. -->
-		<button
-			class="flex w-full items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3 text-left shadow-sm"
-			onclick={openNext}
-		>
-			<span
-				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
-			>
-				<Icon name="target" size={22} />
-			</span>
-			<div class="min-w-0 flex-1">
-				<p class="text-[11px] font-semibold tracking-wide text-muted uppercase">{$t('home.next')}</p>
-				<p class="truncate font-semibold">
-					{whenLabel(next.at)}
-					{#if next.occurrence?.label ?? next.session?.label}
-						<span class="font-normal text-muted">
-							· {next.occurrence?.label ?? next.session?.label}
-						</span>
-					{/if}
-				</p>
-			</div>
-			<span class="shrink-0 rotate-180 text-brand-text"><Icon name="back" size={20} /></span>
-		</button>
-	{/if}
+<!-- One rule for the whole page: every block sits under a heading that says what it is. -->
+{#snippet heading(text: string, link?: { href: string; label: string })}
+	<div class="mb-2 flex items-baseline justify-between px-1">
+		<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">{text}</h2>
+		{#if link}<a class="text-xs font-medium text-brand-text" href={link.href}>{link.label}</a>{/if}
+	</div>
+{/snippet}
 
-	{#if unfinished}
-		<!-- Only while the outing is still warm: after that it is history, not something to resume. -->
-		<a
-			href="/activities/{unfinished.id}"
-			class="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
-		>
-			<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk text-muted">
-				<Icon name="sight" size={22} />
-			</span>
-			<div class="min-w-0 flex-1">
-				<p class="text-[11px] font-semibold tracking-wide text-muted uppercase">
-					{$t('home.resume')}
-				</p>
-				<p class="truncate font-semibold">{roundName(unfinished)}</p>
-			</div>
-			<p class="tabular shrink-0 text-sm text-muted">
-				{$t('round.arrows', { n: unfinished.arrowsShot })}
-			</p>
-		</a>
-	{/if}
-
-	{#if weekGoal > 0}
-		{@const done = Math.min(1, weekArrows / weekGoal)}
-		<section class="rounded-2xl border border-line bg-surface p-3.5">
-			<div class="flex items-end justify-between gap-2">
-				<p class="tabular text-[2rem] leading-none font-bold text-brand-text">{weekArrows}</p>
-				<p class="tabular text-sm font-semibold text-muted">/ {weekGoal}</p>
-			</div>
-			<p class="mt-0.5 text-xs text-muted">
-				{$t('home.thisWeek')}{done >= 1 ? ` · ${$t('session.goalReached')}` : `, ${$t('session.goalLeft', { n: weekGoal - weekArrows })}`}
-			</p>
-			<div class="mt-2 h-2 overflow-hidden rounded-full bg-sunk">
-				<div
-					class="h-full rounded-full transition-[width] duration-500 {done >= 1
-						? 'bg-accent'
-						: 'bg-brand'}"
-					style="width: {Math.max(done * 100, weekArrows > 0 ? 4 : 0)}%"
-				></div>
-			</div>
-		</section>
-	{/if}
-
+<div class="mx-auto w-full max-w-2xl flex-1 space-y-5 p-4">
 	{#if freshBest}
-		<!-- Said once, for a few days: a record that stays on the page stops being one. -->
+		<!-- Said once, for a few days: a record that stays on the page stops being one. It leads the
+			page while it lasts, because it is the only thing here that just happened. -->
 		<div
 			class="relative flex items-center gap-3 rounded-2xl border border-accent/40 bg-gradient-to-r from-accent/12 to-surface p-3 shadow-sm"
 		>
@@ -357,13 +297,93 @@
 		</div>
 	{/if}
 
+	{#if next || unfinished}
+		<!-- What is coming and what was left half done: the two things worth a tap before anything else. -->
+		<section>
+			{@render heading($t('home.upNext'))}
+			<div class="space-y-2">
+				{#if next}
+					<button
+						class="flex w-full items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3 text-left shadow-sm"
+						onclick={openNext}
+					>
+						<span
+							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
+						>
+							<Icon name="target" size={22} />
+						</span>
+						<div class="min-w-0 flex-1">
+							<p class="truncate font-semibold">{whenLabel(next.at)}</p>
+							<p class="truncate text-xs text-muted">
+								{next.occurrence?.label ?? next.session?.label ?? $t('home.next')}
+							</p>
+						</div>
+						<span class="shrink-0 rotate-180 text-brand-text"><Icon name="back" size={20} /></span>
+					</button>
+				{/if}
+
+				{#if unfinished}
+					<!-- Only while the outing is still warm: after that it is history, not something to resume. -->
+					<a
+						href="/activities/{unfinished.id}"
+						class="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
+					>
+						<span
+							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk text-muted"
+						>
+							<Icon name="sight" size={22} />
+						</span>
+						<div class="min-w-0 flex-1">
+							<p class="truncate font-semibold">{roundName(unfinished)}</p>
+							<p class="truncate text-xs text-muted">{$t('home.resume')}</p>
+						</div>
+						<p class="tabular shrink-0 text-sm text-muted">
+							{$t('round.arrows', { n: unfinished.arrowsShot })}
+						</p>
+					</a>
+				{/if}
+			</div>
+		</section>
+	{/if}
+
 	<section>
-		<div class="mb-2 flex items-baseline justify-between">
-			<h2 class="text-sm font-semibold">{$t('home.recent')}</h2>
-			{#if sessions.length > recent.length}
-				<a class="text-xs text-brand-text" href="/sessions">{$t('home.seeAll')}</a>
+		{@render heading($t('home.thisWeek'), { href: '/stats', label: $t('home.seeStats') })}
+		<div class="rounded-2xl border border-line bg-surface p-3.5">
+			<div class="flex items-end justify-between gap-3">
+				<p class="tabular text-[2rem] leading-none font-bold text-brand-text">
+					{weekArrows}
+					{#if weekGoal > 0}<span class="text-sm font-semibold text-muted">/ {weekGoal}</span>{/if}
+				</p>
+				<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
+				<p class="text-right text-xs text-muted">
+					{#if weekGoal > 0}
+						{weekDone >= 1
+							? $t('session.goalReached')
+							: $t('session.goalLeft', { n: weekGoal - weekArrows })}
+					{:else}
+						{$t('home.weekSessions', { n: weekSessions })}
+					{/if}
+				</p>
+			</div>
+
+			{#if weekGoal > 0}
+				<div class="mt-2.5 h-2 overflow-hidden rounded-full bg-sunk">
+					<div
+						class="h-full rounded-full transition-[width] duration-500 {weekDone >= 1
+							? 'bg-accent'
+							: 'bg-brand'}"
+						style="width: {Math.max(weekDone * 100, weekArrows > 0 ? 4 : 0)}%"
+					></div>
+				</div>
 			{/if}
 		</div>
+	</section>
+
+	<section>
+		{@render heading(
+			$t('home.recent'),
+			sessions.length > recent.length ? { href: '/sessions', label: $t('home.seeAll') } : undefined
+		)}
 
 		{#if recent.length === 0}
 			<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">

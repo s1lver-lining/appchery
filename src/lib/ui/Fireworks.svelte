@@ -9,19 +9,24 @@
 	let { score, roundName, onclose }: { score: number; roundName: string; onclose: () => void } =
 		$props();
 
-	const LIFE = 4200;
+	const LIFE = 5600;
 	$effect(() => {
 		const timer = setTimeout(onclose, LIFE);
 		return () => clearTimeout(timer);
 	});
 
-	/** Three shells at different heights and times, so the sky is never lit all at once. */
+	/** A volley rather than one bang: shells go up across the screen, none of them together. */
 	const SHELLS = [
-		{ x: 26, y: 28, delay: 0, hue: 'var(--color-brand)' },
-		{ x: 72, y: 20, delay: 420, hue: 'var(--color-accent)' },
-		{ x: 50, y: 44, delay: 900, hue: 'var(--color-brand)' }
+		{ x: 26, y: 30, delay: 0, size: 1, hue: 'var(--color-brand)' },
+		{ x: 72, y: 20, delay: 260, size: 1.2, hue: 'var(--color-accent)' },
+		{ x: 50, y: 46, delay: 620, size: 0.85, hue: 'var(--color-brand)' },
+		{ x: 14, y: 58, delay: 980, size: 0.7, hue: 'var(--color-accent)' },
+		{ x: 86, y: 52, delay: 1260, size: 0.8, hue: 'var(--color-brand)' },
+		{ x: 40, y: 14, delay: 1640, size: 1.1, hue: 'var(--color-accent)' },
+		{ x: 64, y: 66, delay: 2040, size: 0.9, hue: 'var(--color-brand)' },
+		{ x: 30, y: 74, delay: 2420, size: 1, hue: 'var(--color-accent)' }
 	];
-	const SPARKS = Array.from({ length: 14 }, (_, i) => (i * 360) / 14);
+	const SPARKS = Array.from({ length: 18 }, (_, i) => (i * 360) / 18);
 </script>
 
 <!-- Over everything and through to everything: the tap that dismisses it is the card's own. -->
@@ -31,7 +36,8 @@
 			<span
 				class="spark"
 				style="left: {shell.x}%; top: {shell.y}%; background: {shell.hue};
-					--angle: {angle}deg; --reach: {58 + (angle % 3) * 16}px; --delay: {shell.delay + (angle % 5) * 24}ms"
+					--angle: {angle}deg; --reach: {(64 + (angle % 3) * 18) * shell.size}px;
+					--size: {8 * shell.size}px; --delay: {shell.delay + (angle % 5) * 22}ms"
 			></span>
 		{/each}
 	{/each}
@@ -56,9 +62,9 @@
 <style>
 	.spark {
 		position: absolute;
-		width: 9px;
-		height: 9px;
-		margin: -4.5px 0 0 -4.5px;
+		width: var(--size, 8px);
+		height: var(--size, 8px);
+		margin: calc(var(--size, 8px) / -2) 0 0 calc(var(--size, 8px) / -2);
 		border-radius: 999px;
 		opacity: 0;
 		animation: burst 1400ms var(--delay, 0ms) cubic-bezier(0.15, 0.75, 0.35, 1) forwards;

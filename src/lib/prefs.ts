@@ -110,6 +110,12 @@ function storedString(key: string) {
  */
 export const dismissedBest = storedString('appchery.dismissedBest');
 
+/**
+ * Records already celebrated, by the activity that holds them. A record is a moment, so reopening
+ * the round that set it must not set the sky alight a second time.
+ */
+export const celebratedBests = storedList('appchery.celebratedBests');
+
 /** The stats window last looked at, so the page opens where it was left rather than at all time. */
 export const statsRange = storedString('appchery.statsRange');
 

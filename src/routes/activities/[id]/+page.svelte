@@ -12,7 +12,7 @@
 		sortShotsDescending,
 		type EndSlot
 	} from '$lib/domain/rounds/geometry';
-	import { sortArrowsDescending } from '$lib/prefs';
+	import { celebratedBests, sortArrowsDescending } from '$lib/prefs';
 	import { formatDistance, mmToInches, inchesToMm } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { schemaFor, diffSettings, type BowSettings, type SettingField } from '$lib/domain/equipment/schemas';
@@ -146,12 +146,13 @@
 
 	/**
 	 * A record is announced the moment the last arrow lands, rather than being read off the stats page
-	 * later. Armed only while the round is still unfinished, so reopening a finished one is silent.
+	 * later. Armed only once the sheet is on screen and the round is still unfinished, so opening a
+	 * round that was finished long ago is silent.
 	 */
 	let armed = false;
 	let celebrating = $state<{ score: number; roundName: string } | null>(null);
 	$effect(() => {
-		if (!round) return;
+		if (!round || !sheetLoaded) return;
 		if (!complete) {
 			armed = true;
 			return;
@@ -164,6 +165,7 @@
 	async function announceBest() {
 		// The end that finished the round has to be written before the history can be asked about it.
 		await writes;
+		if ($celebratedBests.includes(activityId)) return;
 		const history = (await listAllActivities())
 			.filter((a) => a.kind === 'scoring')
 			.map((a) => ({
@@ -178,8 +180,10 @@
 				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 			}));
 		const mine = history.find((a) => a.id === activityId);
-		if (mine && isPersonalBest(mine, history))
-			celebrating = { score: mine.totalScore, roundName: mine.round?.name ?? $t('round.custom') };
+		if (!mine || !isPersonalBest(mine, history)) return;
+		// Remembered before it is shown, and only the recent ones: this is a guard, not a history.
+		celebratedBests.update((list) => [...list, activityId].slice(-50));
+		celebrating = { score: mine.totalScore, roundName: mine.round?.name ?? $t('round.custom') };
 	}
 
 	const runningTotals = $derived(
@@ -255,11 +259,15 @@
 		return ends.map((end) => ({ end, shots: shotsByEnd.get(end.id) ?? [] }));
 	}
 
+	/** Until the ends are read back, an unfinished round and a finished one look exactly alike. */
+	let sheetLoaded = $state(false);
+
 	async function refresh() {
 		activity = await getActivity(activityId);
 		observations = activity?.observations ?? '';
 		adjustment = activity?.adjustmentMade ?? '';
 		stored = await loadRows();
+		sheetLoaded = true;
 
 		if (activity?.kind === 'tuning') {
 			const session = await getSession(activity.sessionId);
