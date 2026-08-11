@@ -143,7 +143,12 @@ export const shot = sqliteTable(
 /** A repeating week of intended outings. Several can run at once: a plan is a habit, not a mode. */
 export const plan = sqliteTable('plan', {
 	...syncColumns,
-	name: text('name').notNull()
+	name: text('name').notNull(),
+	/**
+	 * Arrows the week asks for that belong to no particular outing: shoot them whenever, they still
+	 * have to be shot. They add to the week's total alongside the slot goals.
+	 */
+	freeArrows: integer('free_arrows')
 });
 
 /**
@@ -163,6 +168,27 @@ export const planSlot = sqliteTable(
 		label: text('label')
 	},
 	(t) => [index('idx_plan_slot_plan').on(t.planId, t.weekday)]
+);
+
+/**
+ * Where the sight sits for one distance. Kept as its own rows rather than inside a bow revision,
+ * because a sight mark is a list that grows a distance at a time, not a setting that gets changed.
+ */
+export const sightMark = sqliteTable(
+	'sight_mark',
+	{
+		...syncColumns,
+		bowId: text('bow_id').notNull(),
+		distance: integer('distance').notNull(),
+		/** m | yd, held per mark: an archer shooting both keeps both without converting either. */
+		unit: text('unit').notNull(),
+		/** Free text, because sight scales are read off the sight, not measured in any unit. */
+		height: text('height'),
+		windage: text('windage'),
+		clicker: text('clicker'),
+		plunger: text('plunger')
+	},
+	(t) => [index('idx_sight_mark_bow').on(t.bowId, t.distance)]
 );
 
 /**

@@ -602,12 +602,19 @@ export async function createPlan(name: string) {
 	return base.id;
 }
 
-export async function renamePlan(id: string, name: string) {
+export async function updatePlan(
+	id: string,
+	patch: Partial<{ name: string; freeArrows: number | null }>
+) {
 	await db()
 		.update(schema.plan)
-		.set({ name, updatedAt: Date.now() })
+		.set({ ...patch, updatedAt: Date.now() })
 		.where(eq(schema.plan.id, id));
 	await log('plan', id, 'update');
+}
+
+export async function renamePlan(id: string, name: string) {
+	await updatePlan(id, { name });
 }
 
 export async function deletePlan(id: string) {
@@ -672,6 +679,66 @@ export async function deletePlanSlot(id: string) {
 		.set({ deletedAt: now, updatedAt: now })
 		.where(eq(schema.planSlot.id, id));
 	await log('plan_slot', id, 'delete');
+}
+
+/* Sight marks */
+
+export type SightMarkRow = Awaited<ReturnType<typeof listSightMarks>>[number];
+
+/** Nearest distance first, which is the order a sight tape is read in. */
+export async function listSightMarks(bowId: string) {
+	return db()
+		.select()
+		.from(schema.sightMark)
+		.where(and(eq(schema.sightMark.bowId, bowId), isNull(schema.sightMark.deletedAt)))
+		.orderBy(asc(schema.sightMark.distance));
+}
+
+export async function createSightMark(input: {
+	bowId: string;
+	distance: number;
+	unit: string;
+	height?: string | null;
+}) {
+	const base = stamp();
+	await db()
+		.insert(schema.sightMark)
+		.values({
+			...base,
+			bowId: input.bowId,
+			distance: input.distance,
+			unit: input.unit,
+			height: input.height ?? null
+		});
+	await log('sight_mark', base.id, 'insert');
+	return base.id;
+}
+
+export async function updateSightMark(
+	id: string,
+	patch: Partial<{
+		distance: number;
+		unit: string;
+		height: string | null;
+		windage: string | null;
+		clicker: string | null;
+		plunger: string | null;
+	}>
+) {
+	await db()
+		.update(schema.sightMark)
+		.set({ ...patch, updatedAt: Date.now() })
+		.where(eq(schema.sightMark.id, id));
+	await log('sight_mark', id, 'update');
+}
+
+export async function deleteSightMark(id: string) {
+	const now = Date.now();
+	await db()
+		.update(schema.sightMark)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(eq(schema.sightMark.id, id));
+	await log('sight_mark', id, 'delete');
 }
 
 /* Favourite rounds */

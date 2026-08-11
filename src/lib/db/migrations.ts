@@ -179,5 +179,25 @@ export const MIGRATIONS: string[][] = [
 			label TEXT
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_plan_slot_plan ON plan_slot (plan_id, weekday);`
+	],
+	// 0008 arrows a plan asks for that are not tied to any one outing
+	[`ALTER TABLE plan ADD COLUMN free_arrows INTEGER;`],
+	// 0009 sight marks, one row per distance the bow is sighted in at
+	[
+		`CREATE TABLE IF NOT EXISTS sight_mark (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			bow_id TEXT NOT NULL REFERENCES bow(id),
+			distance INTEGER NOT NULL,
+			unit TEXT NOT NULL,
+			height TEXT,
+			windage TEXT,
+			clicker TEXT,
+			plunger TEXT
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_sight_mark_bow ON sight_mark (bow_id, distance);`
 	]
 ];

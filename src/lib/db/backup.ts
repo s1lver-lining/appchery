@@ -22,6 +22,7 @@ const TABLES = [
 	['favouriteRound', schema.favouriteRound],
 	['plan', schema.plan],
 	['planSlot', schema.planSlot],
+	['sightMark', schema.sightMark],
 	['syncState', schema.syncState],
 	['changeLog', schema.changeLog]
 ] as const;

@@ -79,7 +79,18 @@ export function nextUp<T extends { at: number }>(candidates: T[], now = Date.now
 	return ahead[0] ?? null;
 }
 
-/** What a week of this plan asks for, which is the figure that says whether it is realistic. */
-export function weekArrowGoal(slots: PlanSlotLike[]): number {
-	return slots.reduce((sum, slot) => sum + (slot.arrowGoal ?? 0), 0);
+export interface PlanLike {
+	/** Arrows the week asks for that belong to no outing in particular. */
+	freeArrows: number | null;
+}
+
+/**
+ * What a week of these plans asks for, which is the figure that says whether they are realistic.
+ * Free arrows count towards it: they are owed by the end of the week like any other.
+ */
+export function weekArrowGoal(slots: PlanSlotLike[], plans: PlanLike[] = []): number {
+	return (
+		slots.reduce((sum, slot) => sum + (slot.arrowGoal ?? 0), 0) +
+		plans.reduce((sum, plan) => sum + (plan.freeArrows ?? 0), 0)
+	);
 }

@@ -116,6 +116,19 @@ export const dismissedBest = storedString('appchery.dismissedBest');
  */
 export const celebratedBests = storedList('appchery.celebratedBests');
 
+/**
+ * What the two figures in the home header count. A device preference: which numbers an archer wants
+ * in front of them depends on how they train, not on the data itself.
+ */
+export const homeStatPrimary = storedString('appchery.homeStatPrimary');
+export const homeStatSecondary = storedString('appchery.homeStatSecondary');
+
+/**
+ * Which optional sight mark columns are on. A view preference: an archer who records windage wants
+ * that column on every bow, and one who does not should never see it.
+ */
+export const sightColumns = storedList('appchery.sightColumns');
+
 /** The stats window last looked at, so the page opens where it was left rather than at all time. */
 export const statsRange = storedString('appchery.statsRange');
 

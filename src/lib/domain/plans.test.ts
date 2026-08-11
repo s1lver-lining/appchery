@@ -78,4 +78,10 @@ describe('weekArrowGoal', () => {
 			weekArrowGoal([slot({ id: 'a', arrowGoal: 60 }), slot({ id: 'b', arrowGoal: null }), slot({ id: 'c', arrowGoal: 72 })])
 		).toBe(132);
 	});
+
+	it('counts the free arrows of every plan given, which are owed whenever they are shot', () => {
+		const slots = [slot({ id: 'a', arrowGoal: 60 })];
+		expect(weekArrowGoal(slots, [{ freeArrows: 90 }, { freeArrows: null }])).toBe(150);
+		expect(weekArrowGoal([], [{ freeArrows: 90 }])).toBe(90);
+	});
 });
