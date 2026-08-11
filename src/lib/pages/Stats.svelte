@@ -235,7 +235,10 @@
 			placement="down"
 			wrapperClass=""
 			triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
-			items={[{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/stats') }]}
+			items={[
+				{ label: $t('badges.title'), icon: 'medal', onselect: () => goto('/badges?from=/stats') },
+				{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/stats') }
+			]}
 		/>
 	{/snippet}
 </PageHeader>

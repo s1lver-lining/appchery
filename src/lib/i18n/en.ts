@@ -500,6 +500,72 @@ export const en = {
 			'Looks up the nearest town. This sends your coordinates to a third party, which recording them on the device does not.',
 		storage: 'Storage',
 		persistent: 'Persistent',
-		volatile: 'In memory, lost on reload'
+		volatile: 'In memory, lost on reload',
+		linkBadges: 'Badges',
+		recalcTitle: 'Recheck badges',
+		recalcHint:
+			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',
+		recalcAction: 'Recheck',
+		recalcResult: '{awarded} awarded, {revoked} taken back.'
+	},
+	badges: {
+		title: 'Badges',
+		hint: 'Earned by shooting, kept once won.',
+		earnedCount: '{n} of {total} earned',
+		earnedOn: 'Earned {date}',
+		locked: 'Not earned yet',
+		progress: '{current} / {target}',
+		empty: 'Nothing earned yet. Shoot something.',
+		new: 'Badge earned',
+		/** The progression arrows all read the same way, so their rule is written once. */
+		arrowHint: '36 arrows at {metres}m on a {face}cm face, {score} points',
+		arrowHintBow: '36 arrows at {metres}m on a {face}cm face with a {bow}, {score} points',
+		families: {
+			volume: 'Arrows shot',
+			habit: 'Habit',
+			record: 'Records',
+			accuracy: 'Accuracy',
+			milestone: 'Firsts',
+			ffta: 'FFTA progression arrows'
+		},
+		list: {
+			thousandArrows: { name: 'Quiver Emptier', hint: 'A thousand arrows shot.' },
+			fiveThousandArrows: {
+				name: "Fletcher's Best Customer",
+				hint: 'Five thousand arrows shot.'
+			},
+			tenThousandArrows: { name: "The Boss's Nightmare", hint: 'Ten thousand arrows shot.' },
+			twentyFiveThousandArrows: {
+				name: 'Bow Arm of Steel',
+				hint: 'Twenty five thousand arrows shot.'
+			},
+			sevenDays: { name: 'Regular Offender', hint: 'Shot on seven different days.' },
+			thirtyDays: { name: 'Creature of Habit', hint: 'Shot on thirty different days.' },
+			hundredDays: { name: 'Part of the Furniture', hint: 'Shot on a hundred different days.' },
+			everyWeek: { name: 'Never Missed a Tuesday', hint: 'Shot in eight weeks running.' },
+			onPlan: { name: 'Sticks to the Plan', hint: "Hit your plan's weekly arrows four weeks running." },
+			threeRecords: { name: 'Show Off', hint: 'Set a personal best in three different rounds.' },
+			firstXAt70: { name: 'X Marks the Spot', hint: 'Shot an X in a WA round at 70m.' },
+			thirtyAt18: { name: 'Three of a Kind', hint: 'Shot an end of 30 in a WA indoor round at 18m.' },
+			goldenEnd: { name: 'All That Glitters', hint: 'Put a whole end of six arrows in the gold.' },
+			firstCompetition: { name: 'Nerves of Jelly', hint: 'Finished a round at a competition.' },
+			twoBowTypes: { name: 'Two Timer', hint: 'Scored a round with two different kinds of bow.' },
+			seventyMetres: { name: 'The Long Walk', hint: 'Finished a round at 70m or further.' },
+			ninetyMetres: { name: 'Bring a Packed Lunch', hint: 'Finished a round at 90m or further.' },
+			firstTuning: { name: 'Never Leave It Alone', hint: 'Carried out a tuning procedure.' },
+			fiveSightMarks: { name: 'Sight Whisperer', hint: 'Recorded five sight marks on one bow.' },
+			stormArcher: { name: 'Weather Warning', hint: 'Finished a round in a strong wind.' },
+			fftaWhite: { name: 'White Arrow' },
+			fftaBlack: { name: 'Black Arrow' },
+			fftaBlue: { name: 'Blue Arrow' },
+			fftaRed: { name: 'Red Arrow' },
+			fftaYellow: { name: 'Yellow Arrow' },
+			fftaBronzeRecurve: { name: 'Bronze Arrow' },
+			fftaSilverRecurve: { name: 'Silver Arrow' },
+			fftaGoldRecurve: { name: 'Gold Arrow' },
+			fftaBronzeCompound: { name: 'Bronze Arrow' },
+			fftaSilverCompound: { name: 'Silver Arrow' },
+			fftaGoldCompound: { name: 'Gold Arrow' }
+		}
 	}
 };

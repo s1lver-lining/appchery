@@ -504,6 +504,74 @@ export const fr: Dictionary = {
 			"Recherche la ville la plus proche. Vos coordonnées sont envoyées à un tiers, ce que leur enregistrement local ne fait pas.",
 		storage: 'Stockage',
 		persistent: 'Persistant',
-		volatile: 'En mémoire, perdu au rechargement'
+		volatile: 'En mémoire, perdu au rechargement',
+		linkBadges: 'Badges',
+		recalcTitle: 'Revérifier les badges',
+		recalcHint:
+			"Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.",
+		recalcAction: 'Vérifier',
+		recalcResult: '{awarded} obtenus, {revoked} retirés.'
+	},
+	badges: {
+		title: 'Badges',
+		hint: "Gagnés en tirant, gardés une fois acquis.",
+		earnedCount: '{n} sur {total} obtenus',
+		earnedOn: 'Obtenu le {date}',
+		locked: 'Pas encore obtenu',
+		progress: '{current} / {target}',
+		empty: 'Rien encore obtenu. Va tirer.',
+		new: 'Badge obtenu',
+		arrowHint: '36 flèches à {metres} m sur blason de {face} cm, {score} points',
+		arrowHintBow: '36 flèches à {metres} m sur blason de {face} cm en {bow}, {score} points',
+		families: {
+			volume: 'Flèches tirées',
+			habit: 'Régularité',
+			record: 'Records',
+			accuracy: 'Précision',
+			milestone: 'Premières fois',
+			ffta: 'Flèches de progression FFTA'
+		},
+		list: {
+			thousandArrows: { name: 'Videur de carquois', hint: 'Mille flèches décochées.' },
+			fiveThousandArrows: {
+				name: 'Meilleur client du plumassier',
+				hint: 'Cinq mille flèches décochées.'
+			},
+			tenThousandArrows: { name: 'Le cauchemar de la botte', hint: 'Dix mille flèches décochées.' },
+			twentyFiveThousandArrows: {
+				name: "Bras d'acier",
+				hint: 'Vingt cinq mille flèches décochées.'
+			},
+			sevenDays: { name: 'Récidiviste', hint: 'Tiré sur sept jours différents.' },
+			thirtyDays: { name: "Bête d'habitude", hint: 'Tiré sur trente jours différents.' },
+			hundredDays: { name: 'Meuble du pas de tir', hint: 'Tiré sur cent jours différents.' },
+			everyWeek: { name: 'Jamais un mardi de manqué', hint: 'Tiré huit semaines de suite.' },
+			onPlan: {
+				name: 'Fidèle au programme',
+				hint: "Objectif hebdomadaire du programme atteint quatre semaines de suite."
+			},
+			threeRecords: { name: 'Le frimeur', hint: 'Un record personnel sur trois tirs différents.' },
+			firstXAt70: { name: 'La croix des braves', hint: 'Un X sur un tir WA à 70 m.' },
+			thirtyAt18: { name: "Brelan d'or", hint: 'Une volée à 30 sur un tir WA en salle à 18 m.' },
+			goldenEnd: { name: 'Tout ce qui brille', hint: "Une volée entière de six flèches dans l'or." },
+			firstCompetition: { name: 'Les jambes en coton', hint: 'Un tir terminé en compétition.' },
+			twoBowTypes: { name: "Cœur d'artichaut", hint: 'Un tir marqué avec deux types d\'arc.' },
+			seventyMetres: { name: 'La longue marche', hint: 'Un tir terminé à 70 m ou plus.' },
+			ninetyMetres: { name: 'Prévois le casse-croûte', hint: 'Un tir terminé à 90 m ou plus.' },
+			firstTuning: { name: 'Touche-à-tout', hint: 'Une procédure de réglage menée à bien.' },
+			fiveSightMarks: { name: 'Le murmureur de viseur', hint: 'Cinq repères de viseur sur un arc.' },
+			stormArcher: { name: 'Avis de tempête', hint: 'Un tir terminé par vent fort.' },
+			fftaWhite: { name: 'Flèche blanche' },
+			fftaBlack: { name: 'Flèche noire' },
+			fftaBlue: { name: 'Flèche bleue' },
+			fftaRed: { name: 'Flèche rouge' },
+			fftaYellow: { name: 'Flèche jaune' },
+			fftaBronzeRecurve: { name: 'Flèche bronze' },
+			fftaSilverRecurve: { name: 'Flèche argent' },
+			fftaGoldRecurve: { name: 'Flèche or' },
+			fftaBronzeCompound: { name: 'Flèche bronze' },
+			fftaSilverCompound: { name: 'Flèche argent' },
+			fftaGoldCompound: { name: 'Flèche or' }
+		}
 	}
 };

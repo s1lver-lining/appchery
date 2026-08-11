@@ -1,0 +1,67 @@
+<script lang="ts">
+	import { page } from '$app/stores';
+	import { t } from '$lib/i18n';
+	import { awardBadges, listBadges, loadBadgeInput } from '$lib/db/repository';
+	import { evaluateBadges, sortBadges, type BadgeFamily, type EarnedBadge } from '$lib/domain/badges';
+	import { originOf, setPageUp } from '$lib/nav';
+	import Icon from '$lib/ui/Icon.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import BadgeCard from '$lib/ui/BadgeCard.svelte';
+
+	// Reached from the stats menu and from the settings page, so back goes where the link came from.
+	const origin = $derived(originOf($page.url, '/stats'));
+	$effect(() => setPageUp(origin));
+
+	const FAMILIES: BadgeFamily[] = ['volume', 'habit', 'record', 'accuracy', 'milestone', 'ffta'];
+
+	let badges = $state<EarnedBadge[]>([]);
+
+	/**
+	 * The stored rows decide what is earned, not the rules: a badge is kept once won, so a round
+	 * deleted afterwards leaves it standing. The rules are still run, for the progress on the rest.
+	 */
+	async function refresh() {
+		await awardBadges();
+		const held = new Map((await listBadges()).map((row) => [row.key, row.earnedAt]));
+		badges = evaluateBadges(await loadBadgeInput()).map((badge) => ({
+			...badge,
+			earnedAt: held.get(badge.definition.key) ?? null
+		}));
+	}
+
+	$effect(() => {
+		refresh();
+	});
+
+	const earned = $derived(badges.filter((badge) => badge.earnedAt !== null).length);
+	const inFamily = (family: BadgeFamily) =>
+		sortBadges(badges.filter((badge) => badge.definition.family === family));
+</script>
+
+<PageHeader motif="stats" title={$t('badges.title')} subtitle={$t('badges.hint')}>
+	{#snippet lead()}
+		<a href={origin} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+			<Icon name="back" size={22} />
+		</a>
+	{/snippet}
+</PageHeader>
+
+<div class="mx-auto w-full max-w-2xl space-y-6 p-4">
+	<p class="text-sm text-muted">
+		{$t('badges.earnedCount', { n: earned, total: badges.length })}
+	</p>
+
+	{#each FAMILIES as family (family)}
+		{@const list = inFamily(family)}
+		{#if list.length > 0}
+			<section>
+				<h2 class="mb-2 text-sm font-semibold text-muted">{$t(`badges.families.${family}`)}</h2>
+				<div class="space-y-2">
+					{#each list as badge (badge.definition.key)}
+						<BadgeCard {badge} />
+					{/each}
+				</div>
+			</section>
+		{/if}
+	{/each}
+</div>
