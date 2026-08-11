@@ -235,26 +235,25 @@
 	<PageHeader motif="bow">
 		{#snippet lead()}
 			{@const named = bow}
-		<!--
-				Arrow, name and what the bow is, all on one line: the name is the page, not a field, and a
-				header the same height as its neighbours has nothing to animate as the pager slides.
+			<!--
+				Name over what the bow is, as a title and its subtitle. The pair is pulled up by half the
+				line it adds (a 20px subtitle against a 32px title), so the header still ends where every
+				other main page header ends and the pager has nothing to animate between them.
 			-->
-			<div class="flex items-baseline gap-2">
-				{#if backTo}
-					<a
-						href={backTo}
-						class="-ml-1 shrink-0 self-center text-muted"
-						aria-label={$t('common.back')}
-					>
-						<Icon name="back" size={22} />
-					</a>
-				{/if}
-				<input
-					class="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
-					value={named?.name ?? ''}
-					onchange={(e) => rename(e.currentTarget.value)}
-				/>
-				<p class="shrink-0 truncate text-sm text-muted">
+			<div class="-my-2.5">
+				<div class="flex items-center gap-2">
+					{#if backTo}
+						<a href={backTo} class="-ml-1 shrink-0 text-muted" aria-label={$t('common.back')}>
+							<Icon name="back" size={22} />
+						</a>
+					{/if}
+					<input
+						class="min-w-0 flex-1 border-0 bg-transparent p-0 text-2xl font-bold tracking-tight text-ink outline-none"
+						value={named?.name ?? ''}
+						onchange={(e) => rename(e.currentTarget.value)}
+					/>
+				</div>
+				<p class="truncate text-sm text-muted {backTo ? 'ml-6' : ''}">
 					{$t(`bow.${named?.type}`)}
 					{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
 				</p>
