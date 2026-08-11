@@ -201,6 +201,26 @@ observation → change → new setup → subsequent scores.
 
 ---
 
+## Badges
+
+### `badge`
+
+| Column | Type | Notes |
+|---|---|---|
+| `key` | TEXT | Names a rule in the catalogue, see `src/lib/domain/badges.ts` |
+| `earned_at` | INTEGER | When the shooting that won it happened, not when the row was written |
+
+The one place a derived figure is stored on purpose. A personal best is a query because editing an
+arrow must move it; a badge is a row because editing an arrow must **not** take it away. The rules
+are still evaluated on every visit, but only to award what is missing and to measure progress
+towards what is not held yet.
+
+The recheck in the settings data tab is the only thing that deletes a badge, for the case the
+storage creates: shooting that has since been deleted. A badge that survives a recheck keeps its
+original `earned_at`. See doc/badges.md for the catalogue and the rules data behind it.
+
+---
+
 ## Sync scaffolding (written from phase 1, consumed in phase 3)
 
 ### `change_log`

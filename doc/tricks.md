@@ -63,6 +63,22 @@ A column holding data always shows, whatever the chips say.
 **Through the round.** The last block averages your score per arrow at each end position, filtered to
 one round. It is the figure that says whether you fall apart at end nine.
 
+## Badges
+
+**They find you.** Badges are awarded as you shoot, and the one that finishes a round announces
+itself with the same fireworks a personal best does. The list is behind the dots menu on the stats
+page, or the medal in the settings grid.
+
+**Locked ones show their progress.** A badge you have not earned still says what it wants and how
+far along you are, because 840 arrows of a thousand is worth knowing.
+
+**A badge is dated by the shooting, not by the app.** Score an old session and any badge it earns
+appears with the date of that session, wherever it lands in the list.
+
+**Once earned, kept.** Deleting a session never takes a badge back. If you want the list to match
+the history exactly, the recheck in the settings data tab is the button that does it, and it is the
+only thing in the app that can take a badge away.
+
 ## Sharing
 
 **A round is a picture.** The share button in the scoring header opens the round as a card built to
