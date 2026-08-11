@@ -23,7 +23,7 @@
 		type ScoredActivity
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
-	import { defaultBowId, formatTime, dateFormats } from '$lib/prefs';
+	import { defaultBowId, dismissedBest, formatTime, dateFormats } from '$lib/prefs';
 	import { startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -42,9 +42,10 @@
 
 	/**
 	 * The target takes a stone once, when the app opens. Held in the module rather than in the
-	 * component, because the pager mounts this page again every time it is swiped back to.
+	 * component, because the pager mounts this page again every time it is swiped back to, and
+	 * dropped again the moment it has run so nothing can restart an animation that is over.
 	 */
-	const ripple = !rippled;
+	let ripple = $state(!rippled);
 	rippled = true;
 
 	async function refresh() {
@@ -163,7 +164,7 @@
 		summariseByRound(scored)
 			.filter((summary) => summary.history.length > 1)
 			.map((summary) => ({ name: summary.name, best: summary.best }))
-			.find(({ best }) => Date.now() - best.startedAt < PB_WINDOW)
+			.find(({ best }) => Date.now() - best.startedAt < PB_WINDOW && best.id !== $dismissedBest)
 	);
 
 	/** The bow the app reaches for, and which revision of it is current. */
@@ -202,8 +203,9 @@
 	class="safe-top relative overflow-hidden bg-brand/10 pt-6 pb-9"
 	style="transform: var(--header-shift, none); transition: transform var(--header-ease, 0ms) {SNAP_EASE}"
 >
+	<!-- Drawn overflowing its own box: the outermost ring swells past r=50 as the front passes it. -->
 	<svg
-		class="pointer-events-none absolute -top-16 -right-24 h-72 w-72 text-brand"
+		class="pointer-events-none absolute -top-16 -right-24 h-72 w-72 overflow-visible text-brand"
 		viewBox="0 0 100 100"
 		fill="none"
 		aria-hidden="true"
@@ -228,6 +230,7 @@
 			fill="currentColor"
 			opacity="0.35"
 			class={ripple ? 'ripple-core' : ''}
+			onanimationend={() => (ripple = false)}
 		/>
 	</svg>
 
@@ -235,17 +238,20 @@
 		<p class="text-sm font-medium text-brand-text">{$t('home.greeting')}</p>
 		<h1 class="text-3xl font-bold tracking-tight">{$t('home.title')}</h1>
 
-		<!-- The two figures sit in the header rather than under it, so the curves frame real data. -->
-		<dl class="mt-5 flex items-end gap-6">
-			<div>
-				<dd class="tabular text-4xl leading-none font-bold text-brand-text">{month.arrows}</dd>
-				<dt class="mt-1 text-xs text-muted">{$t('home.thisMonth')}</dt>
-			</div>
-			<div class="h-8 w-px bg-line"></div>
-			<div>
-				<dd class="tabular text-2xl leading-none font-semibold">{allTime.arrows}</dd>
-				<dt class="mt-1 text-xs text-muted">{$t('stats.totalArrows')}</dt>
-			</div>
+		<!-- The figures sit in the header rather than under it, so the curves frame real data. -->
+		<dl class="mt-5 grid grid-cols-3 gap-2">
+			{#each [{ value: month.arrows, label: $t('home.thisMonth'), lead: true }, { value: month.days, label: $t('home.daysOut'), lead: false }, { value: allTime.arrows, label: $t('stats.totalArrows'), lead: false }] as tile (tile.label)}
+				<div class="rounded-xl border border-brand/15 bg-surface/60 px-3 py-2.5 backdrop-blur">
+					<dd
+						class="tabular text-2xl leading-none font-bold {tile.lead
+							? 'text-brand-text'
+							: 'text-ink'}"
+					>
+						{tile.value}
+					</dd>
+					<dt class="mt-1 truncate text-[11px] text-muted">{tile.label}</dt>
+				</div>
+			{/each}
 		</dl>
 	</div>
 
@@ -256,11 +262,16 @@
 	{#if next}
 		<!-- The next outing leads the page: what is coming matters more than what is done. -->
 		<button
-			class="flex w-full items-center justify-between gap-3 rounded-xl border border-brand/40 bg-brand/5 p-3 text-left"
+			class="flex w-full items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3 text-left shadow-sm"
 			onclick={openNext}
 		>
-			<div class="min-w-0">
-				<p class="text-[11px] tracking-wide text-muted uppercase">{$t('home.next')}</p>
+			<span
+				class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
+			>
+				<Icon name="target" size={22} />
+			</span>
+			<div class="min-w-0 flex-1">
+				<p class="text-[11px] font-semibold tracking-wide text-muted uppercase">{$t('home.next')}</p>
 				<p class="truncate font-semibold">
 					{whenLabel(next.at)}
 					{#if next.occurrence?.label ?? next.session?.label}
@@ -278,10 +289,15 @@
 		<!-- Only while the outing is still warm: after that it is history, not something to resume. -->
 		<a
 			href="/activities/{unfinished.id}"
-			class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
+			class="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
 		>
-			<div class="min-w-0">
-				<p class="text-[11px] tracking-wide text-muted uppercase">{$t('home.resume')}</p>
+			<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk text-muted">
+				<Icon name="sight" size={22} />
+			</span>
+			<div class="min-w-0 flex-1">
+				<p class="text-[11px] font-semibold tracking-wide text-muted uppercase">
+					{$t('home.resume')}
+				</p>
 				<p class="truncate font-semibold">{roundName(unfinished)}</p>
 			</div>
 			<p class="tabular shrink-0 text-sm text-muted">
@@ -292,7 +308,7 @@
 
 	{#if weekGoal > 0}
 		{@const done = Math.min(1, weekArrows / weekGoal)}
-		<section class="rounded-xl border border-line bg-surface p-3.5">
+		<section class="rounded-2xl border border-line bg-surface p-3.5">
 			<div class="flex items-end justify-between gap-2">
 				<p class="tabular text-[2rem] leading-none font-bold text-brand-text">{weekArrows}</p>
 				<p class="tabular text-sm font-semibold text-muted">/ {weekGoal}</p>
@@ -313,17 +329,32 @@
 
 	{#if freshBest}
 		<!-- Said once, for a few days: a record that stays on the page stops being one. -->
-		<a
-			href="/activities/{freshBest.best.id}"
-			class="flex items-center gap-3 rounded-xl border border-accent/40 bg-gradient-to-r from-accent/12 to-surface p-3"
+		<div
+			class="relative flex items-center gap-3 rounded-2xl border border-accent/40 bg-gradient-to-r from-accent/12 to-surface p-3 shadow-sm"
 		>
-			<span class="shrink-0 text-accent"><Icon name="medal" size={22} /></span>
-			<div class="min-w-0 flex-1">
-				<p class="text-[11px] tracking-wide text-accent uppercase">{$t('home.newBest')}</p>
-				<p class="truncate font-semibold">{freshBest.name}</p>
-			</div>
-			<p class="tabular shrink-0 text-xl font-bold">{freshBest.best.totalScore}</p>
-		</a>
+			<a href="/activities/{freshBest.best.id}" class="flex min-w-0 flex-1 items-center gap-3">
+				<span
+					class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-accent/15 text-accent"
+				>
+					<Icon name="medal" size={24} filled />
+				</span>
+				<div class="min-w-0 flex-1">
+					<p class="text-[11px] font-semibold tracking-wide text-accent uppercase">
+						{$t('home.newBest')}
+					</p>
+					<p class="truncate font-semibold">{freshBest.name}</p>
+				</div>
+				<p class="tabular shrink-0 text-xl font-bold">{freshBest.best.totalScore}</p>
+			</a>
+			<!-- Acknowledged rather than hidden: the next record is a different round and says so again. -->
+			<button
+				class="-mr-1 shrink-0 self-start rounded-lg p-1 text-muted"
+				aria-label={$t('common.close')}
+				onclick={() => dismissedBest.set(freshBest!.best.id)}
+			>
+				<Icon name="close" size={16} />
+			</button>
+		</div>
 	{/if}
 
 	<section>
@@ -356,7 +387,7 @@
 						</div>
 						<a
 							href="/sessions/{s.id}"
-							class="flex flex-1 items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
+							class="flex flex-1 items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3"
 						>
 							<div class="min-w-0">
 								<p class="truncate font-semibold">{sessionName(s)}</p>

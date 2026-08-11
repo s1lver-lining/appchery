@@ -22,10 +22,13 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
+	import Fireworks from '$lib/ui/Fireworks.svelte';
+	import { isPersonalBest } from '$lib/domain/stats';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { setPageUp } from '$lib/nav';
 	import {
 		getActivity,
+		listAllActivities,
 		getSession,
 		getBow,
 		currentRevision,
@@ -140,6 +143,44 @@
 	/** Counted from what is on screen, so the next end opens the moment the last one is entered. */
 	const currentSlot = $derived(slots[sheetRows.length] ?? null);
 	const complete = $derived(slots.length > 0 && sheetRows.length >= slots.length);
+
+	/**
+	 * A record is announced the moment the last arrow lands, rather than being read off the stats page
+	 * later. Armed only while the round is still unfinished, so reopening a finished one is silent.
+	 */
+	let armed = false;
+	let celebrating = $state<{ score: number; roundName: string } | null>(null);
+	$effect(() => {
+		if (!round) return;
+		if (!complete) {
+			armed = true;
+			return;
+		}
+		if (!armed) return;
+		armed = false;
+		announceBest();
+	});
+
+	async function announceBest() {
+		// The end that finished the round has to be written before the history can be asked about it.
+		await writes;
+		const history = (await listAllActivities())
+			.filter((a) => a.kind === 'scoring')
+			.map((a) => ({
+				id: a.id,
+				sessionId: a.sessionId,
+				startedAt: a.startedAt,
+				totalScore: a.totalScore,
+				arrowsShot: a.arrowsShot,
+				count10s: a.count10s,
+				countX: a.countX,
+				roundDefinitionId: a.roundDefinitionId,
+				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
+			}));
+		const mine = history.find((a) => a.id === activityId);
+		if (mine && isPersonalBest(mine, history))
+			celebrating = { score: mine.totalScore, roundName: mine.round?.name ?? $t('round.custom') };
+	}
 
 	const runningTotals = $derived(
 		sheetRows.reduce<number[]>((acc, row) => {
@@ -980,6 +1021,14 @@
 		message={$t('activity.confirmBody')}
 		onconfirm={remove}
 		oncancel={() => (confirmingDelete = false)}
+	/>
+{/if}
+
+{#if celebrating}
+	<Fireworks
+		score={celebrating.score}
+		roundName={celebrating.roundName}
+		onclose={() => (celebrating = null)}
 	/>
 {/if}
 

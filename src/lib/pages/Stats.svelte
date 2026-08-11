@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import {
 		listAllActivities,
@@ -27,6 +28,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Progression from '$lib/ui/Progression.svelte';
+	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import { dateFormats, expandedRounds, statsRange } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
@@ -199,7 +201,18 @@
 	</dl>
 {/snippet}
 
-<PageHeader motif="stats" title={$t('stats.title')} />
+<PageHeader motif="stats" title={$t('stats.title')}>
+	{#snippet actions()}
+		<MoreMenu
+			label={$t('common.more')}
+			icon="dots"
+			placement="down"
+			wrapperClass=""
+			triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
+			items={[{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/stats') }]}
+		/>
+	{/snippet}
+</PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 	<nav class="flex gap-1 rounded-lg bg-sunk p-1">

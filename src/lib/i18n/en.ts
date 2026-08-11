@@ -230,6 +230,7 @@ export const en = {
 		title: 'Appchery',
 		greeting: 'Ready to shoot',
 		thisMonth: 'This month',
+		daysOut: 'Days out',
 		lastSession: 'Last session',
 		neverShot: 'No sessions yet.',
 		recent: 'Recent sessions',
@@ -252,7 +253,25 @@ export const en = {
 			'is **one thing done inside a session**: a scored round, or a tuning procedure. A session can hold several. A round records **every arrow**, so a score can be corrected later; a tuning run records what you changed and writes a new revision of the bow. Arrows shot without scoring them go in the **training counter** instead, and still count towards your volume.',
 		planTerm: 'A plan',
 		planBody:
-			'is **a week you mean to repeat**. It holds the outings you intend, on the days and at the times you intend them, with an optional arrow goal each. Plans are **templates, not history**: their sessions show up in your list for the coming week, and nothing is written until you actually shoot one. A week you skip leaves no trace.'
+			'is **a week you mean to repeat**. It holds the outings you intend, on the days and at the times you intend them, with an optional arrow goal each. Plans are **templates, not history**: their sessions show up in your list for the coming week, and nothing is written until you actually shoot one. A week you skip leaves no trace.',
+		bowTerm: 'A bow',
+		bowBody:
+			'is anything you shoot: yours, a club bow, a barebow you set up for a weekend. Give it a name you would recognise on the rack. Its **type** decides which settings the app asks for and which tuning procedures it offers, so a compound is never asked about tiller.',
+		revisionTerm: 'A revision',
+		revisionBody:
+			'is **the settings of a bow at one point in time**, kept rather than overwritten. Change a setting and the old numbers stay readable, so a score shot last month can still be matched to the bow that shot it. A tuning activity writes a revision when you record what you changed.',
+		defaultBowTerm: 'The default bow',
+		defaultBowBody:
+			'is the one preselected on a new session, marked on this page. It is **kept on this device** rather than synced, because which bow you reach for depends on where you are.',
+		rangeTerm: 'The window',
+		rangeBody:
+			'at the top of the page decides what every figure below it reads from: the last month, the last year, or everything. It is a **rolling window**, not a calendar one, so on the second of the month you still see thirty days of work.',
+		bestTerm: 'A personal best',
+		bestBody:
+			'is the highest score of **one kind of round**, and only finished rounds count: a round you walked away from scores lower for reasons that say nothing about how you shot. Ties break on tens, then on Xs, the usual way. Pin the rounds you care about to keep them at the top.',
+		consistencyTerm: 'Consistency',
+		consistencyBody:
+			'is the spread of your recent scores rather than their average. It is the figure worth watching once the average stops moving: **archers plateau on average long before they plateau on consistency**, and a smaller spread is a more repeatable shot.'
 	},
 	plans: {
 		title: 'Plans',

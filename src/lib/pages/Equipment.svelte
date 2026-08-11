@@ -7,6 +7,7 @@
 	import { defaultBowId } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 
 	let bows = $state<BowRow[]>([]);
 	// Opened straight into the form when the archer came here to add a bow rather than to read one.
@@ -34,7 +35,18 @@
 </script>
 
 <div class="flex min-h-full flex-col">
-<PageHeader motif="equipment" title={$t('equipment.title')} />
+<PageHeader motif="equipment" title={$t('equipment.title')}>
+	{#snippet actions()}
+		<MoreMenu
+			label={$t('common.more')}
+			icon="dots"
+			placement="down"
+			wrapperClass=""
+			triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
+			items={[{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/equipment') }]}
+		/>
+	{/snippet}
+</PageHeader>
 
 <div class="mx-auto w-full max-w-2xl flex-1 space-y-4 p-4">
 	{#if adding}

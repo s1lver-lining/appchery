@@ -181,6 +181,23 @@ export function summariseByRound(activities: ScoredActivity[]): RoundSummary[] {
 		.sort((a, b) => b.history[b.history.length - 1].startedAt - a.history[a.history.length - 1].startedAt);
 }
 
+/** What a round is compared against: its identity, or its shape when it was built by hand. */
+export function roundKey(activity: ScoredActivity): string {
+	return activity.roundDefinitionId ?? shapeKey(activity.round);
+}
+
+/**
+ * Whether a finished round beats every earlier one of its kind. A first round of a kind is not a
+ * record: there is nothing it improved on, and saying so cheapens the ones that follow.
+ */
+export function isPersonalBest(activity: ScoredActivity, history: ScoredActivity[]): boolean {
+	if (!isComplete(activity)) return false;
+	const earlier = history.filter(
+		(a) => a.id !== activity.id && a.startedAt <= activity.startedAt && isComplete(a) && roundKey(a) === roundKey(activity)
+	);
+	return earlier.length > 0 && earlier.every((a) => compareScores(activity, a) > 0);
+}
+
 function shapeKey(round: RoundDefinition | null): string {
 	if (!round) return 'unknown';
 	return round.stages

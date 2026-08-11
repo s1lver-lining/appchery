@@ -104,6 +104,12 @@ function storedString(key: string) {
 	return store;
 }
 
+/**
+ * The record already celebrated on the home page, by the activity that holds it. Dismissing one is
+ * saying "I know", so the next record has to be a different activity before the card comes back.
+ */
+export const dismissedBest = storedString('appchery.dismissedBest');
+
 /** The stats window last looked at, so the page opens where it was left rather than at all time. */
 export const statsRange = storedString('appchery.statsRange');
 

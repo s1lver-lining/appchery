@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
 	summariseByRound,
+	isPersonalBest,
 	compareScores,
 	overview,
 	inRange,
@@ -29,6 +30,48 @@ function activity(partial: Partial<ScoredActivity> & { id: string }): ScoredActi
 		...partial
 	};
 }
+
+describe('isPersonalBest', () => {
+	const history = [
+		activity({ id: 'a', startedAt: 1, totalScore: 600 }),
+		activity({ id: 'b', startedAt: 2, totalScore: 640 })
+	];
+
+	it('holds a round above every earlier one of its kind', () => {
+		const best = activity({ id: 'c', startedAt: 3, totalScore: 650 });
+		expect(isPersonalBest(best, [...history, best])).toBe(true);
+	});
+
+	it('rejects a round that only beats the most recent one', () => {
+		const middling = activity({ id: 'c', startedAt: 3, totalScore: 620 });
+		expect(isPersonalBest(middling, [...history, middling])).toBe(false);
+	});
+
+	it('rejects the first round of its kind, which improved on nothing', () => {
+		const first = activity({ id: 'a', totalScore: 700 });
+		expect(isPersonalBest(first, [first])).toBe(false);
+	});
+
+	it('ignores rounds of another kind and rounds shot after it', () => {
+		const other = getRound('wa-indoor-18m')!;
+		const best = activity({ id: 'c', startedAt: 3, totalScore: 610 });
+		const later = activity({ id: 'd', startedAt: 9, totalScore: 700 });
+		const elsewhere = activity({
+			id: 'e',
+			totalScore: 900,
+			arrowsShot: 60,
+			roundDefinitionId: other.id,
+			round: other
+		});
+		expect(isPersonalBest(best, [...history, best, later, elsewhere])).toBe(false);
+		expect(isPersonalBest(activity({ id: 'c', startedAt: 3, totalScore: 660 }), [...history, later, elsewhere])).toBe(true);
+	});
+
+	it('rejects an unfinished round, whatever it scored' , () => {
+		const half = activity({ id: 'c', startedAt: 3, totalScore: 700, arrowsShot: 36 });
+		expect(isPersonalBest(half, [...history, half])).toBe(false);
+	});
+});
 
 describe('summariseByRound', () => {
 	it('ignores activities that were never finished', () => {

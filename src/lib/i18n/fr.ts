@@ -231,6 +231,7 @@ export const fr: Dictionary = {
 		title: 'Appchery',
 		greeting: 'Prêt à tirer',
 		thisMonth: 'Ce mois-ci',
+		daysOut: 'Jours de tir',
 		lastSession: 'Dernière séance',
 		neverShot: 'Aucune séance pour le moment.',
 		recent: 'Séances récentes',
@@ -253,7 +254,25 @@ export const fr: Dictionary = {
 			"est **une chose faite pendant une séance** : un tir compté, ou une procédure de réglage. Une séance peut en contenir plusieurs. Un tir enregistre **chaque flèche**, ce qui permet de corriger un score plus tard ; un réglage note ce que vous avez changé et écrit une nouvelle révision de l'arc. Les flèches tirées sans être comptées vont dans le **compteur d'entraînement** et comptent tout de même dans votre volume.",
 		planTerm: 'Un programme',
 		planBody:
-			"est **une semaine que vous comptez répéter**. Il contient les sorties prévues, aux jours et aux heures voulus, avec un objectif de flèches facultatif. Un programme est un **modèle, pas un historique** : ses séances apparaissent dans la liste pour les sept jours à venir, et rien n'est enregistré tant que vous n'avez pas tiré. Une semaine sautée ne laisse aucune trace."
+			"est **une semaine que vous comptez répéter**. Il contient les sorties prévues, aux jours et aux heures voulus, avec un objectif de flèches facultatif. Un programme est un **modèle, pas un historique** : ses séances apparaissent dans la liste pour les sept jours à venir, et rien n'est enregistré tant que vous n'avez pas tiré. Une semaine sautée ne laisse aucune trace.",
+		bowTerm: 'Un arc',
+		bowBody:
+			"est tout ce avec quoi vous tirez : le vôtre, celui du club, un arc nu monté pour un week end. Donnez lui un nom que vous reconnaîtrez sur le râtelier. Son **type** détermine les réglages demandés et les procédures proposées : on ne demandera jamais le tiller d'une poulies.",
+		revisionTerm: 'Une révision',
+		revisionBody:
+			"est **l'état des réglages d'un arc à un instant donné**, conservé plutôt qu'écrasé. Modifiez un réglage et les anciennes valeurs restent lisibles : un score tiré le mois dernier reste rattaché à l'arc qui l'a tiré. Une activité de réglage écrit une révision dès que vous notez ce que vous avez changé.",
+		defaultBowTerm: "L'arc par défaut",
+		defaultBowBody:
+			"est celui présélectionné sur une nouvelle séance, signalé sur cette page. Il est **conservé sur cet appareil** plutôt que synchronisé, car l'arc que vous prenez dépend de l'endroit où vous êtes.",
+		rangeTerm: 'La période',
+		rangeBody:
+			"en haut de la page détermine ce que lisent tous les chiffres en dessous : le dernier mois, la dernière année, ou tout. C'est une **période glissante**, pas un calendrier : le 2 du mois, vous voyez toujours trente jours de travail.",
+		bestTerm: 'Un record personnel',
+		bestBody:
+			"est le meilleur score d'**un même type de tir**, et seuls les tirs terminés comptent : un tir abandonné affiche un total plus bas pour une raison qui ne dit rien de votre tir. Les égalités se départagent aux dix, puis aux X, comme d'usage. Épinglez les tirs qui comptent pour les garder en haut.",
+		consistencyTerm: 'La régularité',
+		consistencyBody:
+			"est la dispersion de vos derniers scores plutôt que leur moyenne. C'est le chiffre à suivre une fois la moyenne stabilisée : **on plafonne en moyenne bien avant de plafonner en régularité**, et une dispersion plus faible signale un geste plus reproductible."
 	},
 	plans: {
 		title: 'Programmes',
