@@ -10,6 +10,7 @@
 		LocationDeniedError
 	} from '$lib/conditions';
 	import { use24Hour, recordCameraVideo, arrowDetector, plotTapMs } from '$lib/prefs';
+	import { recalculateBadges } from '$lib/db/repository';
 	import {
 		exportBackup,
 		importBackup,
@@ -35,7 +36,8 @@
 	const SHORTCUTS = $derived<{ href: string; icon: IconName; label: string }[]>([
 		{ href: withOrigin('/equipment?list=1', '/settings'), icon: 'bow', label: $t('settings.linkEquipment') },
 		{ href: withOrigin('/plans', '/settings'), icon: 'chart', label: $t('plans.title') },
-		{ href: withOrigin('/tuning', '/settings'), icon: 'wrench', label: $t('tuning.guideTitle') }
+		{ href: withOrigin('/tuning', '/settings'), icon: 'wrench', label: $t('tuning.guideTitle') },
+		{ href: withOrigin('/badges', '/settings'), icon: 'medal', label: $t('settings.linkBadges') }
 	]);
 
 	const TABS = $derived([
@@ -71,6 +73,17 @@
 			autoLocation.set(false);
 			error = e instanceof LocationDeniedError ? $t('session.locationDenied') : String(e);
 		}
+	}
+
+	let badgeNotice = $state<string | null>(null);
+
+	/** Kept behind a button rather than run on load: it is the one thing that can take a badge away. */
+	async function recheckBadges() {
+		busy = true;
+		badgeNotice = null;
+		const { awarded, revoked } = await recalculateBadges();
+		badgeNotice = $t('settings.recalcResult', { awarded: awarded.length, revoked: revoked.length });
+		busy = false;
 	}
 
 	async function exportToFile() {
@@ -350,6 +363,26 @@
 						{/if}
 						{#if backupError}
 							<p class="mt-3 text-sm text-danger">{backupError}</p>
+						{/if}
+					</div>
+				</section>
+
+				<section>
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.recalcTitle')}</h2>
+					<div class="rounded-xl border border-line bg-surface p-4">
+						<p class="text-sm text-muted">{$t('settings.recalcHint')}</p>
+						<button
+							class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+							disabled={busy}
+							onclick={recheckBadges}
+						>
+							{$t('settings.recalcAction')}
+						</button>
+						{#if badgeNotice}
+							<p class="mt-3 flex items-center gap-1.5 text-sm text-brand-text">
+								<Icon name="medal" size={16} />
+								{badgeNotice}
+							</p>
 						{/if}
 					</div>
 				</section>
