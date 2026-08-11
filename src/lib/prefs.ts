@@ -130,6 +130,15 @@ export const homeStatSecondary = storedString('appchery.homeStatSecondary');
 export const showWeekGoal = flag('appchery.showWeekGoal', false);
 
 /**
+ * What the share card shows, by option name. Held per device: it is how this archer likes their
+ * rounds to go out, and it should not have to be set again for every round.
+ */
+export const shareCardOptions = storedList('appchery.shareCardOptions');
+
+/** Set once the card has been opened, so an empty option list reads as "off" rather than "unset". */
+export const shareCardChosen = flag('appchery.shareCardChosen', false);
+
+/**
  * Which optional sight mark columns are on. A view preference: an archer who records windage wants
  * that column on every bow, and one who does not should never see it.
  */

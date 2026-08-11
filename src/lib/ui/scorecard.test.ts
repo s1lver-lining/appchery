@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { scorecardSvg, type CardData } from './scorecard';
+import { scorecardSvg, DEFAULT_CARD_OPTIONS, type CardData } from './scorecard';
 
 function card(partial: Partial<CardData> = {}): CardData {
 	return {
@@ -16,7 +16,10 @@ function card(partial: Partial<CardData> = {}): CardData {
 		date: '11 Aug 2026',
 		place: 'Club de Lyon',
 		bow: 'Formula',
+		category: 'Practice',
+		weather: null,
 		isBest: false,
+		options: { ...DEFAULT_CARD_OPTIONS, theme: 'dark' as const },
 		labels: {
 			points: 'Total',
 			arrows: 'Arrows',

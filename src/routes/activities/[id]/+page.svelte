@@ -24,7 +24,8 @@
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks from '$lib/ui/Fireworks.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
-	import type { CardData } from '$lib/ui/scorecard';
+	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
+	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
 	import { isPersonalBest } from '$lib/domain/stats';
 	import { maxScore } from '$lib/domain/rounds/geometry';
 	import { dateFormats } from '$lib/prefs';
@@ -216,6 +217,17 @@
 	let sharing = $state(false);
 	let shareIsBest = $state(false);
 
+	/** The sky at the time, in the shapes the card can draw. Null when nothing was recorded. */
+	const cardWeather = $derived.by(() => {
+		const raw = session?.weather ? JSON.parse(session.weather) : null;
+		if (!raw) return null;
+		return {
+			icon: weatherIcon(raw.code) as WeatherGlyph,
+			temperature: formatTemperature(raw),
+			wind: formatWind(raw)
+		};
+	});
+
 	async function openShare() {
 		// Asked once, when the card is opened: a record is worth saying on the card that goes out.
 		const history = (await listAllActivities())
@@ -236,7 +248,7 @@
 		sharing = true;
 	}
 
-	const cardData = $derived<CardData>({
+	const cardData = $derived<Omit<CardData, 'options'>>({
 		roundName: round?.name ?? $t('round.custom'),
 		score: shownTotal,
 		max: round && scoreSet && complete ? maxScore(round, scoreSet) : null,
@@ -251,6 +263,8 @@
 		date: activity ? $dateFormats.date(activity.startedAt) : '',
 		place: session?.location ?? null,
 		bow: bow?.name ?? null,
+		category: session ? $t(`sessions.${session.kind}`) : null,
+		weather: cardWeather,
 		isBest: shareIsBest,
 		labels: {
 			points: $t('score.total'),
@@ -851,101 +865,122 @@
 			</div>
 		</section>
 
-		<div class="shrink-0">
-			{#if currentSlot}
-				<p class="mb-2 text-sm text-muted">
-					{$t('score.endOf', { n: sheetRows.length + 1, total: slots.length })} ·
-					{currentSlot.stage.distance
-						? formatDistance(currentSlot.stage.distance.value, currentSlot.stage.distance.unit)
-						: $t('round.unmarked')} ·
-					{$t('round.face', { size: currentSlot.stage.faceSize })}
-				</p>
-			{/if}
+		<!--
+			The input is one block, walled off from the sheet above it: a strip that says which end is
+			being shot and how it is being entered, the keypad or the face under it, and the actions
+			along the bottom. Everything about entering an arrow lives inside this border.
+		-->
+		{#if currentSlot || editing || complete}
+			<section class="shrink-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
+				<header
+					class="flex items-center gap-2 border-b border-line bg-sunk/60 px-3 py-2 text-[11px] text-muted"
+				>
+					{#if currentSlot}
+						<span class="min-w-0 flex-1 truncate">
+							<span class="font-semibold text-ink">
+								{$t('score.endOf', { n: sheetRows.length + 1, total: slots.length })}
+							</span>
+							·
+							{currentSlot.stage.distance
+								? formatDistance(currentSlot.stage.distance.value, currentSlot.stage.distance.unit)
+								: $t('round.unmarked')}
+							· {$t('round.face', { size: currentSlot.stage.faceSize })}
+						</span>
+					{:else}
+						<span class="min-w-0 flex-1 truncate font-semibold text-ink">
+							{editing ? $t('score.editing') : $t('score.roundComplete')}
+						</span>
+					{/if}
 
-			<!-- Kept on screen after the last arrow, so the face stays available for review and edits. -->
-			{#if currentSlot || editing || complete}
-				<div class="mb-2 flex gap-2">
-					<button
-						class="rounded-lg border px-3 py-1.5 text-sm font-medium
-							{plotting ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
-						onclick={() => (plotting = !plotting)}
-					>
-						{$t('score.plotMode')}
-					</button>
-					{#if sheetRows.length > 0 && !editing}
-						<button class="rounded-lg border border-line px-3 py-1.5 text-sm" onclick={undoEnd}>
-							{$t('score.undoEnd')}
-						</button>
+					<!-- The two ways of entering an arrow, as one switch rather than as a button that toggles. -->
+					<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
+						{#each [{ plot: false, label: $t('score.byNumber') }, { plot: true, label: $t('score.plotMode') }] as mode (mode.label)}
+							<button
+								class="rounded-md px-2 py-1 text-[11px] font-medium
+									{plotting === mode.plot ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+								onclick={() => (plotting = mode.plot)}
+							>
+								{mode.label}
+							</button>
+						{/each}
+					</div>
+				</header>
+
+				<div class="p-3">
+					{#if plotting}
+						<div class="mx-auto aspect-square w-full max-w-80">
+							<TargetFace
+								{scoreSet}
+								shots={faceShots}
+								otherShots={faceOther}
+								interactive={scoringNow}
+								showOtherToggle
+								showCentreToggle
+								onplot={plot}
+							/>
+						</div>
+						<p class="mt-2 text-center text-xs text-muted">{$t('score.plotHint')}</p>
+					{:else}
+						<div class="grid grid-cols-4 gap-1.5 {scoringNow ? '' : 'opacity-40'}">
+							{#each keypad as zone (zone.label)}
+								<button
+									class="tabular rounded-xl py-3 text-lg font-bold shadow-sm transition-transform active:scale-95"
+									style={chipStyle(zone.label)}
+									onclick={() => tapZone(zone)}
+								>
+									{zone.label}
+								</button>
+							{/each}
+							<button
+								class="rounded-xl border border-line py-3 text-lg font-bold text-muted transition-transform active:scale-95"
+								onclick={() => tapZone(missZone(scoreSet))}
+							>
+								{$t('score.miss')}
+							</button>
+						</div>
 					{/if}
 				</div>
 
-				{#if plotting}
-					<div
-						class="mx-auto aspect-square w-full max-w-80 rounded-xl border border-line bg-surface p-2"
-					>
-						<TargetFace
-							{scoreSet}
-							shots={faceShots}
-							otherShots={faceOther}
-							interactive={scoringNow}
-							showOtherToggle
-							showCentreToggle
-							onplot={plot}
-						/>
-					</div>
-					<p class="mt-2 text-center text-xs text-muted">{$t('score.plotHint')}</p>
-				{:else}
-					<div class="grid grid-cols-4 gap-2 {scoringNow ? '' : 'opacity-40'}">
-						{#each keypad as zone (zone.label)}
-							<button
-								class="tabular rounded-lg py-3 text-lg font-bold"
-								style={chipStyle(zone.label)}
-								onclick={() => tapZone(zone)}
-							>
-								{zone.label}
-							</button>
-						{/each}
+				<!-- The row below the keys: undoing, filming, and dropping the end already written. -->
+				<div class="flex items-center gap-2 border-t border-line bg-sunk/60 px-3 py-2">
+					{#if editing || editingPending !== null}
 						<button
-							class="rounded-lg border border-line py-3 text-lg font-bold"
-							onclick={() => tapZone(missZone(scoreSet))}
+							class="flex-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm"
+							onclick={() => {
+								editing = null;
+								editingPending = null;
+							}}
 						>
-							{$t('score.miss')}
+							{$t('common.cancel')}
 						</button>
-					</div>
-				{/if}
-			{/if}
-		</div>
-
-		{#if (currentSlot || editing) && !plotting}
-			<div class="flex items-center gap-2">
-				{#if editing || editingPending !== null}
-					<button
-						class="flex-1 rounded-lg border border-line px-4 py-2 text-sm"
-						onclick={() => {
-							editing = null;
-							editingPending = null;
-						}}
-					>
-						{$t('common.cancel')}
-					</button>
-				{:else}
-					<button
-						class="flex-1 rounded-lg border border-line px-4 py-2 text-sm disabled:opacity-40"
-						disabled={pending.length === 0}
-						onclick={undo}
-					>
-						{$t('common.undo')}
-					</button>
-					<button
-						class="flex flex-[2] items-center justify-center gap-1.5 rounded-lg border border-brand px-4 py-2 text-sm font-semibold text-brand-text disabled:opacity-40"
-						disabled={!currentSlot}
-						onclick={() => (autoScoring = true)}
-					>
-						<Icon name="camera" size={18} />
-						{$t('auto.open')}
-					</button>
-				{/if}
-			</div>
+					{:else}
+						{#if currentSlot && !plotting}
+							<button
+								class="rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
+								disabled={pending.length === 0}
+								onclick={undo}
+							>
+								{$t('common.undo')}
+							</button>
+							<button
+								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand-text disabled:opacity-40"
+								onclick={() => (autoScoring = true)}
+							>
+								<Icon name="camera" size={18} />
+								{$t('auto.open')}
+							</button>
+						{/if}
+						{#if sheetRows.length > 0}
+							<button
+								class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted"
+								onclick={undoEnd}
+							>
+								{$t('score.undoEnd')}
+							</button>
+						{/if}
+					{/if}
+				</div>
+			</section>
 		{/if}
 
 		</div>
