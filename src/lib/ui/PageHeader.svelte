@@ -1,5 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
+	import HeaderEdge from './HeaderEdge.svelte';
+	import { SNAP_EASE } from './swipe';
 
 	/**
 	 * Each page carries its own piece of archery geometry: rings, fletching, a limb, a trajectory, a
@@ -25,7 +27,14 @@
 </script>
 
 <!-- The inset lives on the element and the spacing inside it, because both are a padding-top. -->
-<header class="safe-top relative overflow-hidden bg-brand/10">
+<!-- The rise is set by the pager mid swipe: the header alone climbs, so nothing below it moves. -->
+<header
+	data-page-header
+	class="safe-top relative bg-brand/10"
+	style="transform: var(--header-shift, none); transition: transform var(--header-ease, 0ms) {SNAP_EASE}"
+>
+	<!-- The motif is clipped here rather than on the header, which would cut a menu opened inside it. -->
+	<div class="pointer-events-none absolute inset-0 overflow-hidden">
 	{#if motif === 'sessions'}
 		<!-- Flight paths climbing to the same point, which is what a tightening group looks like. -->
 		<svg
@@ -153,6 +162,8 @@
 		</svg>
 	{/if}
 
+	</div>
+
 	<div class="relative mx-auto flex w-full max-w-2xl items-start gap-3 px-4 pt-5 pb-8">
 		<div class="min-w-0 flex-1">
 			{#if lead}{@render lead()}{/if}
@@ -163,23 +174,5 @@
 		{#if actions}<div class="shrink-0">{@render actions()}</div>{/if}
 	</div>
 
-	<!-- A drawn edge instead of a hard line, so the block stops reading as a coloured box. -->
-	<svg
-		class="absolute inset-x-0 -bottom-px h-6 w-full text-bg"
-		viewBox="0 0 100 12"
-		preserveAspectRatio="none"
-		aria-hidden="true"
-	>
-		{#if motif === 'sessions'}
-			<path d="M0 12 V7 C30 -2 68 3 100 7 V12 Z" fill="currentColor" />
-		{:else if motif === 'session'}
-			<path d="M0 12 V6 C26 12 62 -2 100 5 V12 Z" fill="currentColor" />
-		{:else if motif === 'equipment'}
-			<path d="M0 12 V4 C34 14 66 14 100 4 V12 Z" fill="currentColor" />
-		{:else if motif === 'stats'}
-			<path d="M0 12 V9 C38 -3 70 9 100 2 V12 Z" fill="currentColor" />
-		{:else}
-			<path d="M0 12 V5 C20 0 40 10 60 6 C78 3 90 8 100 6 V12 Z" fill="currentColor" />
-		{/if}
-	</svg>
+	<HeaderEdge />
 </header>

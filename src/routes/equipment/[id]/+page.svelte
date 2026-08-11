@@ -30,6 +30,7 @@
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import TabDeck from '$lib/ui/TabDeck.svelte';
 
 	const bowId = $derived($page.params.id as string);
 
@@ -37,6 +38,11 @@
 	let revisions = $state<RevisionRow[]>([]);
 	let usage = $state<BowUsage | null>(null);
 	let tab = $state<'overview' | 'settings' | 'history'>('overview');
+	const TABS = $derived([
+		{ key: 'overview' as const, label: $t('equipment.overviewTab') },
+		{ key: 'settings' as const, label: $t('equipment.settingsTab') },
+		{ key: 'history' as const, label: $t('equipment.historyTab') }
+	]);
 	let draft = $state<BowSettings>({});
 	let reason = $state('');
 	let saving = $state(false);
@@ -170,184 +176,121 @@
 			</label>
 		</header>
 
-		<nav class="flex gap-1 rounded-lg bg-sunk p-1">
-			{#each [{ key: 'overview', label: $t('equipment.overviewTab') }, { key: 'settings', label: $t('equipment.settingsTab') }, { key: 'history', label: $t('equipment.historyTab') }] as item (item.key)}
-				<button
-					class="flex-1 rounded-md py-1.5 text-sm font-medium
-						{tab === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
-					onclick={() => (tab = item.key as typeof tab)}
-				>
-					{item.label}
-				</button>
-			{/each}
-		</nav>
-
-		{#if tab === 'overview'}
-			{#if usage}
-				<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
-					{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBest') }] as stat (stat.label)}
-						<div class="rounded-xl border border-line bg-surface p-3">
-							<p class="tabular text-2xl font-bold">{stat.value}</p>
-							<p class="text-xs text-muted">{stat.label}</p>
-						</div>
-					{/each}
-				</section>
-				{#if usage.lastUsedAt}
-					<p class="text-sm text-muted">
-						{$t('equipment.lastUsed', {
-							date: $dateFormats.date(usage.lastUsedAt)
-						})}
-					</p>
-				{/if}
-			{/if}
-
-			<section class="rounded-xl border border-line bg-surface p-4">
-				<h2 class="mb-2 text-sm font-semibold">{$t('equipment.currentSetup')}</h2>
-				{#if filledSettings.length === 0}
-					<p class="text-sm text-muted">{$t('equipment.noRevisions')}</p>
-				{:else}
-					<dl class="space-y-1 text-sm">
-						{#each filledSettings as row (row.field.key)}
-							<div class="flex justify-between gap-2">
-								<dt class="text-muted">{row.field.label}</dt>
-								<dd class="font-medium">{formatStored(row.field, row.value)}</dd>
-							</div>
-						{/each}
-					</dl>
-					<p class="mt-2 text-xs text-muted">
-						{$t('equipment.revision', { n: revisions[0].revisionNo })}
-					</p>
-				{/if}
-			</section>
-
-			<section class="rounded-xl border border-line bg-surface p-4">
-				<h2 class="mb-1 text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
-				<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow.name })}</p>
-				<ul class="space-y-1">
-					{#each templatesForBowType(type) as template (template.key)}
-						<li>
-							<button
-								class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm"
-								onclick={() => startTuning(template.key)}
-							>
-								<Icon name="wrench" size={16} />
-								{template.name}
-							</button>
-						</li>
-					{/each}
-				</ul>
-			</section>
-		{:else if tab === 'settings'}
-			<section class="rounded-xl border border-line bg-surface p-4">
-				<div class="flex items-start justify-between gap-4">
-					<div class="flex-1">
-						<p class="font-medium">{$t('equipment.defaultTitle')}</p>
-						<p class="mt-0.5 text-sm text-muted">{$t('equipment.defaultHint')}</p>
-					</div>
-					<Toggle
-						checked={isDefault}
-						label={$t('equipment.defaultTitle')}
-						onchange={(v) => defaultBowId.set(v ? bowId : null)}
-					/>
-				</div>
-			</section>
-
-			{#each groups as group (group)}
-				<section class="rounded-xl border border-line bg-surface p-4">
-					<h2 class="mb-3 text-sm font-semibold text-muted">{group}</h2>
-					<div class="grid gap-3 sm:grid-cols-2">
-						{#each fields.filter((f) => f.group === group) as field (field.key)}
-							<label class="text-sm">
-								{field.label}
-								{#if field.unit}<span class="text-muted">({field.unit})</span>{/if}
-								{#if field.kind === 'select'}
-									<select
-										class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-										value={displayValue(field)}
-										oninput={(e) => setValue(field, e.currentTarget.value)}
-									>
-										<option value=""></option>
-										{#each field.options ?? [] as option (option)}
-											<option value={option}>{option}</option>
-										{/each}
-									</select>
-								{:else}
-									<input
-										type={field.kind === 'text' ? 'text' : 'number'}
-										step={field.kind === 'lengthMm' ? '0.05' : 'any'}
-										class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-										value={displayValue(field)}
-										oninput={(e) => setValue(field, e.currentTarget.value)}
-									/>
-								{/if}
-							</label>
-						{/each}
-					</div>
-				</section>
-			{/each}
-
-			<section class="rounded-xl border border-line bg-surface p-4">
-				{#if pending.length === 0}
-					<p class="text-sm text-muted">{$t('equipment.noChanges')}</p>
-				{:else}
-					<h2 class="mb-2 text-sm font-semibold">
-						{$t('equipment.pendingChanges', { n: pending.length })}
-					</h2>
-					<ul class="mb-3 space-y-1 text-sm">
-						{#each pending as change (change.field.key)}
-							<li class="flex justify-between gap-2">
-								<span class="text-muted">{change.field.label}</span>
-								<span>
-									{formatStored(change.field, change.before)} → <strong
-										>{formatStored(change.field, change.after)}</strong
-									>
-								</span>
-							</li>
-						{/each}
-					</ul>
-					<input
-						class="mb-2 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-						placeholder={$t('equipment.reason')}
-						bind:value={reason}
-					/>
-					<button
-						class="w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
-						disabled={saving}
-						onclick={save}
-					>
-						{$t('equipment.saveRevision')}
-					</button>
-				{/if}
-			</section>
-
-			<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
-				<Icon name="trash" size={16} />
-				{$t('equipment.deleteBow')}
-			</button>
-		{:else if revisions.length === 0}
-			<p class="rounded-xl border border-dashed border-line p-6 text-center text-muted">
-				{$t('equipment.noRevisions')}
-			</p>
-		{:else}
-			<ul class="space-y-2">
-				{#each revisions as revision, i (revision.id)}
-					{@const previous = revisions[i + 1]}
-					{@const changes = previous
-						? diffSettings(type, JSON.parse(previous.settings), JSON.parse(revision.settings))
-						: []}
-					<li class="rounded-xl border border-line bg-surface p-3">
-						<div class="flex items-baseline justify-between">
-							<p class="font-semibold">{$t('equipment.revision', { n: revision.revisionNo })}</p>
-							<p class="text-xs text-muted">
-								{$dateFormats.date(revision.effectiveFrom)}
+		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4">
+			{#snippet pane(key)}
+				{#if key === 'overview'}
+					{#if usage}
+						<section class="grid grid-cols-2 gap-3 sm:grid-cols-4">
+							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBest') }] as stat (stat.label)}
+								<div class="rounded-xl border border-line bg-surface p-3">
+									<p class="tabular text-2xl font-bold">{stat.value}</p>
+									<p class="text-xs text-muted">{stat.label}</p>
+								</div>
+							{/each}
+						</section>
+						{#if usage.lastUsedAt}
+							<p class="text-sm text-muted">
+								{$t('equipment.lastUsed', {
+									date: $dateFormats.date(usage.lastUsedAt)
+								})}
 							</p>
-						</div>
-						{#if revision.reason}
-							<p class="mt-1 text-sm italic text-muted">{revision.reason}</p>
 						{/if}
-						{#if changes.length > 0}
-							<ul class="mt-2 space-y-0.5 text-sm">
-								{#each changes as change (change.field.key)}
+					{/if}
+
+					<section class="rounded-xl border border-line bg-surface p-4">
+						<h2 class="mb-2 text-sm font-semibold">{$t('equipment.currentSetup')}</h2>
+						{#if filledSettings.length === 0}
+							<p class="text-sm text-muted">{$t('equipment.noRevisions')}</p>
+						{:else}
+							<dl class="space-y-1 text-sm">
+								{#each filledSettings as row (row.field.key)}
+									<div class="flex justify-between gap-2">
+										<dt class="text-muted">{row.field.label}</dt>
+										<dd class="font-medium">{formatStored(row.field, row.value)}</dd>
+									</div>
+								{/each}
+							</dl>
+							<p class="mt-2 text-xs text-muted">
+								{$t('equipment.revision', { n: revisions[0].revisionNo })}
+							</p>
+						{/if}
+					</section>
+
+					<section class="rounded-xl border border-line bg-surface p-4">
+						<h2 class="mb-1 text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
+						<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow?.name ?? '' })}</p>
+						<ul class="space-y-1">
+							{#each templatesForBowType(type) as template (template.key)}
+								<li>
+									<button
+										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm"
+										onclick={() => startTuning(template.key)}
+									>
+										<Icon name="wrench" size={16} />
+										{template.name}
+									</button>
+								</li>
+							{/each}
+						</ul>
+					</section>
+				{:else if key === 'settings'}
+					<section class="rounded-xl border border-line bg-surface p-4">
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('equipment.defaultTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('equipment.defaultHint')}</p>
+							</div>
+							<Toggle
+								checked={isDefault}
+								label={$t('equipment.defaultTitle')}
+								onchange={(v) => defaultBowId.set(v ? bowId : null)}
+							/>
+						</div>
+					</section>
+
+					{#each groups as group (group)}
+						<section class="rounded-xl border border-line bg-surface p-4">
+							<h2 class="mb-3 text-sm font-semibold text-muted">{group}</h2>
+							<div class="grid gap-3 sm:grid-cols-2">
+								{#each fields.filter((f) => f.group === group) as field (field.key)}
+									<label class="text-sm">
+										{field.label}
+										{#if field.unit}<span class="text-muted">({field.unit})</span>{/if}
+										{#if field.kind === 'select'}
+											<select
+												class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+												value={displayValue(field)}
+												oninput={(e) => setValue(field, e.currentTarget.value)}
+											>
+												<option value=""></option>
+												{#each field.options ?? [] as option (option)}
+													<option value={option}>{option}</option>
+												{/each}
+											</select>
+										{:else}
+											<input
+												type={field.kind === 'text' ? 'text' : 'number'}
+												step={field.kind === 'lengthMm' ? '0.05' : 'any'}
+												class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+												value={displayValue(field)}
+												oninput={(e) => setValue(field, e.currentTarget.value)}
+											/>
+										{/if}
+									</label>
+								{/each}
+							</div>
+						</section>
+					{/each}
+
+					<section class="rounded-xl border border-line bg-surface p-4">
+						{#if pending.length === 0}
+							<p class="text-sm text-muted">{$t('equipment.noChanges')}</p>
+						{:else}
+							<h2 class="mb-2 text-sm font-semibold">
+								{$t('equipment.pendingChanges', { n: pending.length })}
+							</h2>
+							<ul class="mb-3 space-y-1 text-sm">
+								{#each pending as change (change.field.key)}
 									<li class="flex justify-between gap-2">
 										<span class="text-muted">{change.field.label}</span>
 										<span>
@@ -358,13 +301,68 @@
 									</li>
 								{/each}
 							</ul>
-						{:else if !previous}
-							<p class="mt-1 text-sm text-muted">{$t('equipment.initialRevision')}</p>
+							<input
+								class="mb-2 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+								placeholder={$t('equipment.reason')}
+								bind:value={reason}
+							/>
+							<button
+								class="w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
+								disabled={saving}
+								onclick={save}
+							>
+								{$t('equipment.saveRevision')}
+							</button>
 						{/if}
-					</li>
-				{/each}
-			</ul>
-		{/if}
+					</section>
+
+					<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+						<Icon name="trash" size={16} />
+						{$t('equipment.deleteBow')}
+					</button>
+				{:else if revisions.length === 0}
+					<p class="rounded-xl border border-dashed border-line p-6 text-center text-muted">
+						{$t('equipment.noRevisions')}
+					</p>
+				{:else}
+					<ul class="space-y-2">
+						{#each revisions as revision, i (revision.id)}
+							{@const previous = revisions[i + 1]}
+							{@const changes = previous
+								? diffSettings(type, JSON.parse(previous.settings), JSON.parse(revision.settings))
+								: []}
+							<li class="rounded-xl border border-line bg-surface p-3">
+								<div class="flex items-baseline justify-between">
+									<p class="font-semibold">{$t('equipment.revision', { n: revision.revisionNo })}</p>
+									<p class="text-xs text-muted">
+										{$dateFormats.date(revision.effectiveFrom)}
+									</p>
+								</div>
+								{#if revision.reason}
+									<p class="mt-1 text-sm italic text-muted">{revision.reason}</p>
+								{/if}
+								{#if changes.length > 0}
+									<ul class="mt-2 space-y-0.5 text-sm">
+										{#each changes as change (change.field.key)}
+											<li class="flex justify-between gap-2">
+												<span class="text-muted">{change.field.label}</span>
+												<span>
+													{formatStored(change.field, change.before)} → <strong
+														>{formatStored(change.field, change.after)}</strong
+													>
+												</span>
+											</li>
+										{/each}
+									</ul>
+								{:else if !previous}
+									<p class="mt-1 text-sm text-muted">{$t('equipment.initialRevision')}</p>
+								{/if}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			{/snippet}
+		</TabDeck>
 	</div>
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>

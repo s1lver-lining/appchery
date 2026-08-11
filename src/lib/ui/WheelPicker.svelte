@@ -11,16 +11,22 @@
 		value,
 		label,
 		format = (v: T) => String(v),
-		onchange
+		onchange,
+		item = 44,
+		labelHidden = false
 	}: {
 		values: T[];
 		value: T;
 		label: string;
 		format?: (value: T) => string;
 		onchange: (value: T) => void;
+		/** Row height. Shrunk where several wheels share a screen that has to fit without scrolling. */
+		item?: number;
+		/** The label still names the wheel for a screen reader, but the page draws its own heading. */
+		labelHidden?: boolean;
 	} = $props();
 
-	const ITEM = 44;
+	const ITEM = $derived(item);
 	let list = $state<HTMLDivElement | null>(null);
 	let settling: ReturnType<typeof setTimeout> | null = null;
 
@@ -51,11 +57,15 @@
 </script>
 
 <div class="text-sm">
-	<span class="text-muted">{label}</span>
-	<div class="relative mt-1 h-[132px] overflow-hidden rounded-lg border border-line bg-bg">
+	{#if !labelHidden}<span class="text-muted">{label}</span>{/if}
+	<div
+		class="relative mt-1 overflow-hidden rounded-lg border border-line bg-bg"
+		style="height: {ITEM * 3}px"
+	>
 		<!-- The selected row sits in the middle band, marked so the wheel reads as a dial. -->
 		<div
-			class="pointer-events-none absolute inset-x-0 top-[44px] h-[44px] border-y border-brand bg-brand/10"
+			class="pointer-events-none absolute inset-x-0 border-y border-brand bg-brand/10"
+			style="top: {ITEM}px; height: {ITEM}px"
 		></div>
 		<div
 			bind:this={list}
@@ -65,23 +75,24 @@
 			aria-label={label}
 			tabindex="0"
 		>
-			<div style="height: 44px"></div>
-			{#each values as item (item)}
+			<div style="height: {ITEM}px"></div>
+			{#each values as option (option)}
 				<button
 					type="button"
 					role="option"
-					aria-selected={item === value}
-					class="flex h-[44px] w-full snap-center items-center justify-center text-base tabular
-						{item === value ? 'font-bold text-ink' : 'text-muted'}"
+					aria-selected={option === value}
+					class="tabular flex w-full snap-center items-center justify-center text-base
+						{option === value ? 'font-bold text-ink' : 'text-muted'}"
+					style="height: {ITEM}px"
 					onclick={() => {
-						onchange(item);
-						scrollToValue(item);
+						onchange(option);
+						scrollToValue(option);
 					}}
 				>
-					{format(item)}
+					{format(option)}
 				</button>
 			{/each}
-			<div style="height: 44px"></div>
+			<div style="height: {ITEM}px"></div>
 		</div>
 	</div>
 </div>

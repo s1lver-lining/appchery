@@ -1,21 +1,39 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { listAllActivities, listFavouriteRounds, toggleFavouriteRound } from '$lib/db/repository';
+	import {
+		listAllActivities,
+		listBows,
+		listFavouriteRounds,
+		listSessions,
+		listShotValues,
+		toggleFavouriteRound
+	} from '$lib/db/repository';
 	import {
 		summariseByRound,
 		overview,
 		inRange,
 		dailyVolume,
+		consistency,
+		progression,
+		distribution,
+		bandBy,
+		windBand,
+		type Band,
+		WIND_BAND_KEYS,
 		type ScoredActivity,
 		type StatsRange
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import { dateFormats, statsRange } from '$lib/prefs';
+	import Progression from '$lib/ui/Progression.svelte';
+	import { dateFormats, expandedRounds, statsRange } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
 	let favourites = $state<Set<string>>(new Set());
+	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
+	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
+	let shots = $state<Awaited<ReturnType<typeof listShotValues>>>([]);
 	const RANGE_KEYS: StatsRange[] = ['all', 'year', 'month'];
 	// Restored from the last visit, because an archer who cares about this month cares every time.
 	let range = $state<StatsRange>(
@@ -28,6 +46,9 @@
 
 	async function refresh() {
 		favourites = new Set(await listFavouriteRounds());
+		sessions = await listSessions();
+		bows = await listBows();
+		shots = await listShotValues();
 		const activities = await listAllActivities();
 		scored = activities
 			.filter((a) => a.kind === 'scoring')
@@ -60,6 +81,51 @@
 			return pinned !== 0 ? pinned : b.history.length - a.history.length;
 		})
 	);
+
+	/** The conditions and the bow live on the session, so every per session figure reads through this. */
+	const sessionById = $derived(new Map(sessions.map((session) => [session.id, session])));
+
+	const wind = $derived((activity: ScoredActivity) => {
+		const weather = sessionById.get(activity.sessionId)?.weather;
+		if (!weather) return null;
+		const speed = (JSON.parse(weather) as { windSpeedKmh?: number }).windSpeedKmh;
+		return typeof speed === 'number' ? windBand(speed) : null;
+	});
+
+	const bowName = $derived((activity: ScoredActivity) => {
+		const session = sessionById.get(activity.sessionId);
+		if (!session) return null;
+		const bow = bows.find((b) => b.id === session.bowId);
+		if (bow) return bow.name;
+		return session.bowType ? $t(`bow.${session.bowType}`) : null;
+	});
+
+	/** Only worth drawing once two bands hold something: one band compares with nothing. */
+	const byWind = $derived(bandBy(windowed, wind, WIND_BAND_KEYS));
+	const byBow = $derived(bandBy(windowed, bowName));
+
+	const shotsByActivity = $derived(
+		shots.reduce<Map<string, { value: number; zoneLabel: string }[]>>((acc, shot) => {
+			const bucket = acc.get(shot.activityId);
+			if (bucket) bucket.push(shot);
+			else acc.set(shot.activityId, [shot]);
+			return acc;
+		}, new Map())
+	);
+
+	/** Where the arrows of one round landed, over every round of that kind in the window. */
+	const arrowsOf = $derived((summary: (typeof summaries)[number]) =>
+		distribution(summary.history.flatMap((a) => shotsByActivity.get(a.id) ?? []))
+	);
+
+	/** Open cards are a reading preference, kept apart from the star, which only ever sorts. */
+	const isOpen = $derived((key: string) => $expandedRounds.includes(key));
+
+	function toggleDetails(key: string) {
+		expandedRounds.update((keys) =>
+			keys.includes(key) ? keys.filter((k) => k !== key) : [...keys, key]
+		);
+	}
 
 	async function toggleFavourite(key: string) {
 		const now = await toggleFavouriteRound(key);
@@ -106,6 +172,32 @@
 	const monthLabel = $derived((month: string) => $dateFormats.monthNarrow(firstOfMonth(month)));
 	const monthTitle = $derived((month: string) => $dateFormats.monthYear(firstOfMonth(month)));
 </script>
+
+<!--
+	A dot on a shared scale rather than a bar from zero: the differences between two conditions are
+	tenths of a point, and a bar chart either flattens them or lies about how big they are.
+-->
+{#snippet bands(rows: Band[], label: (band: Band) => string)}
+	{@const low = Math.min(...rows.map((b) => b.perArrow))}
+	{@const high = Math.max(...rows.map((b) => b.perArrow))}
+	<dl class="mt-3 space-y-2.5">
+		{#each rows as band (band.key)}
+			<div class="flex items-center gap-3">
+				<dt class="w-20 shrink-0 truncate text-sm text-muted">{label(band)}</dt>
+				<span class="relative h-1.5 flex-1 rounded-full bg-sunk">
+					<span
+						class="absolute top-1/2 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full bg-brand"
+						style="left: {high === low ? 50 : ((band.perArrow - low) / (high - low)) * 92 + 4}%"
+					></span>
+				</span>
+				<dd class="tabular w-20 shrink-0 text-right text-sm font-semibold">
+					{band.perArrow.toFixed(2)}
+					<span class="text-xs font-normal text-muted">· {band.arrows}</span>
+				</dd>
+			</div>
+		{/each}
+	</dl>
+{/snippet}
 
 <PageHeader motif="stats" title={$t('stats.title')} />
 
@@ -254,29 +346,100 @@
 							<p class="text-xs text-muted">{$t('stats.trend')}</p>
 						</div>
 					{/if}
+					{#if consistency(summary.history) !== null}
+						<div>
+							<!-- Lower is steadier, which is the opposite of every other figure on the card. -->
+							<p class="tabular text-xl font-semibold">±{consistency(summary.history)!.toFixed(2)}</p>
+							<p class="text-xs text-muted">{$t('stats.spread')}</p>
+						</div>
+					{/if}
 				</div>
 
 				{#if summary.history.length > 1}
-					<svg viewBox="0 0 100 26" preserveAspectRatio="none" class="mt-3 h-12 w-full">
-						<path
-							d={sparkline(summary)}
-							fill="none"
-							stroke="currentColor"
-							class="text-brand-text"
-							stroke-width="1.4"
-							vector-effect="non-scaling-stroke"
+					{#if isOpen(summary.key)}
+						<!-- A pinned round earns the room for the running average and the record marks. -->
+						<Progression
+							points={progression(summary.history)}
+							lowLabel={$dateFormats.shortDate(summary.history[0].startedAt)}
+							highLabel={$dateFormats.shortDate(
+								summary.history[summary.history.length - 1].startedAt
+							)}
 						/>
-					</svg>
+					{:else}
+						<svg viewBox="0 0 100 26" preserveAspectRatio="none" class="mt-3 h-12 w-full">
+							<path
+								d={sparkline(summary)}
+								fill="none"
+								stroke="currentColor"
+								class="text-brand-text"
+								stroke-width="1.4"
+								vector-effect="non-scaling-stroke"
+							/>
+						</svg>
+					{/if}
 				{/if}
 
-				<p class="mt-2 text-xs text-muted">
-					{$t('stats.bestOn', { date: $dateFormats.date(summary.best.startedAt) })}
-					· {summary.best.count10s}
-					{$t('score.tens')} · {summary.best.countX}
-					{$t('score.xs')}
-				</p>
+				{#if isOpen(summary.key)}
+					{@const arrows = arrowsOf(summary)}
+					{#if arrows.length > 0}
+						{@const peak = Math.max(...arrows.map((a) => a.count))}
+						{@const total = arrows.reduce((sum, a) => sum + a.count, 0)}
+						<h4 class="mt-4 text-xs font-semibold text-muted">{$t('stats.distribution')}</h4>
+						<!-- Where the arrows actually landed: the total alone never says which zone to work on. -->
+						<div class="mt-2 flex h-20 items-end gap-1">
+							{#each arrows as zone (zone.label)}
+								<div
+									class="flex flex-1 flex-col items-center gap-1"
+									title="{zone.count} · {((zone.count / total) * 100).toFixed(0)}%"
+								>
+									<span class="tabular text-[10px] leading-none text-muted">{zone.count}</span>
+									<div
+										class="w-full rounded-t bg-brand/70"
+										style="height: {Math.max(2, (zone.count / peak) * 52)}px"
+									></div>
+									<span class="tabular text-[10px] leading-none font-medium">{zone.label}</span>
+								</div>
+							{/each}
+						</div>
+					{/if}
+				{/if}
+
+				<div class="mt-2 flex items-end justify-between gap-3">
+					<p class="text-xs text-muted">
+						{$t('stats.bestOn', { date: $dateFormats.date(summary.best.startedAt) })}
+						· {summary.best.count10s}
+						{$t('score.tens')} · {summary.best.countX}
+						{$t('score.xs')}
+					</p>
+					<button
+						class="-mr-1 -mb-1 flex shrink-0 items-center gap-1 p-1 text-xs font-medium text-muted"
+						aria-expanded={isOpen(summary.key)}
+						onclick={() => toggleDetails(summary.key)}
+					>
+						{isOpen(summary.key) ? $t('stats.less') : $t('stats.more')}
+						<span class="transition-transform {isOpen(summary.key) ? '' : 'rotate-180'}">
+							<Icon name="chevronUp" size={16} />
+						</span>
+					</button>
+				</div>
 			</section>
 		{/each}
+	{/if}
+
+	{#if byWind.length > 1}
+		<section class="rounded-xl border border-line bg-surface p-4">
+			<h2 class="text-sm font-semibold">{$t('stats.byWind')}</h2>
+			<p class="text-xs text-muted">{$t('stats.perArrowHint')}</p>
+			{@render bands(byWind, (band) => $t(`stats.wind.${band.key}`))}
+		</section>
+	{/if}
+
+	{#if byBow.length > 1}
+		<section class="rounded-xl border border-line bg-surface p-4">
+			<h2 class="text-sm font-semibold">{$t('stats.byBow')}</h2>
+			<p class="text-xs text-muted">{$t('stats.perArrowHint')}</p>
+			{@render bands(byBow, (band) => band.key)}
+		</section>
 	{/if}
 </div>
 

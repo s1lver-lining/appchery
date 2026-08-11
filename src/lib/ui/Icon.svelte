@@ -20,7 +20,13 @@
 		| 'rain'
 		| 'snow'
 		| 'fog'
-		| 'storm';
+		| 'storm'
+		| 'star'
+		| 'medal'
+		| 'chevronUp'
+		| 'edit'
+		| 'dots'
+		| 'help';
 
 	let {
 		name,
@@ -109,5 +115,28 @@
 		<path d="M13 16.4l-2.6 3.6h3l-2 2.4" />
 	{:else if name === 'wrench'}
 		<path d="M15.6 3.6a5.4 5.4 0 0 0-5.1 8.9L4 19a2 2 0 0 0 2.8 2.8l6.5-6.5a5.4 5.4 0 0 0 6.6-7.4l-3 3-2.5-2.5 3-3a5.4 5.4 0 0 0-1.8-1.8z" />
+	{:else if name === 'medal'}
+		<!-- A medal on its ribbon: what a competition leaves behind. -->
+		<path d="M8 3l3.2 6M16 3l-3.2 6" />
+		<circle cx="12" cy="15.4" r="6.2" fill={filled ? 'currentColor' : 'none'} />
+		<path d="M12 12.2l1.2 2.4 2.6.4-1.9 1.8.5 2.6-2.4-1.2-2.4 1.2.5-2.6-1.9-1.8 2.6-.4z" />
+	{:else if name === 'edit'}
+		<path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16z" />
+		<path d="M13.5 6.5l4 4" />
+	{:else if name === 'help'}
+		<circle cx="12" cy="12" r="9" />
+		<path d="M9.5 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6" />
+		<circle cx="12" cy="17.4" r="1" fill="currentColor" stroke="none" />
+	{:else if name === 'dots'}
+		<circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none" />
+		<circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
+		<circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none" />
+	{:else if name === 'chevronUp'}
+		<path d="M6 14.5L12 8.5l6 6" />
+	{:else if name === 'star'}
+		<path
+			d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"
+			fill={filled ? 'currentColor' : 'none'}
+		/>
 	{/if}
 </svg>

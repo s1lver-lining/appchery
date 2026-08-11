@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { BOW_TYPES, type BowType } from '$lib/domain/tuning/templates';
 	import { listBows, createBow, type BowRow } from '$lib/db/repository';
@@ -8,7 +9,8 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	let bows = $state<BowRow[]>([]);
-	let adding = $state(false);
+	// Opened straight into the form when the archer came here to add a bow rather than to read one.
+	let adding = $state($page.url.searchParams.has('add'));
 	let name = $state('');
 	let type = $state<BowType>('recurve');
 
@@ -99,9 +101,9 @@
 </div>
 
 <!-- Sticky rather than fixed, so it sits under the list yet never scrolls out of reach. -->
-<div class="sticky bottom-0 border-t border-line bg-bg/95 p-4 backdrop-blur">
+<div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-3 font-semibold text-brand-ink"
+		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
 		onclick={() => (adding = !adding)}
 	>
 		<Icon name="plus" size={20} />

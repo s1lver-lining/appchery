@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isMainPage, parentPath, neighbourPage } from './nav';
+import { isMainPage, parentPath, mainPageIndex, runBackGuards } from './nav';
 
 describe('parentPath', () => {
 	it('has no parent for the pages in the tab bar', () => {
@@ -25,15 +25,35 @@ describe('isMainPage', () => {
 	});
 });
 
-describe('neighbourPage', () => {
-	it('walks the tab bar order', () => {
-		expect(neighbourPage('/', 1)).toBe('/sessions');
-		expect(neighbourPage('/stats', -1)).toBe('/equipment');
+describe('runBackGuards', () => {
+	it('lets the key through when nothing claims it', () => {
+		expect(runBackGuards([])).toBe(false);
+		expect(runBackGuards([() => false])).toBe(false);
 	});
 
-	it('stops at the ends and ignores pages outside the tab bar', () => {
-		expect(neighbourPage('/', -1)).toBeNull();
-		expect(neighbourPage('/settings', 1)).toBeNull();
-		expect(neighbourPage('/sessions/abc', 1)).toBeNull();
+	it('offers the key to the innermost guard first and stops there', () => {
+		const seen: string[] = [];
+		const guard = (name: string, takes: boolean) => () => {
+			seen.push(name);
+			return takes;
+		};
+		expect(runBackGuards([guard('outer', true), guard('inner', true)])).toBe(true);
+		expect(seen).toEqual(['inner']);
+	});
+
+	it('falls through to an outer guard when the inner one declines', () => {
+		expect(runBackGuards([() => true, () => false])).toBe(true);
+	});
+});
+
+describe('mainPageIndex', () => {
+	it('places a page in the tab bar order', () => {
+		expect(mainPageIndex('/')).toBe(0);
+		expect(mainPageIndex('/stats')).toBe(3);
+		expect(mainPageIndex('/settings/')).toBe(4);
+	});
+
+	it('rejects a page that is not in the tab bar', () => {
+		expect(mainPageIndex('/sessions/abc')).toBe(-1);
 	});
 });

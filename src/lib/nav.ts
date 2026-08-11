@@ -28,6 +28,24 @@ export function setPageUp(href: string) {
 	return () => pageUp.update((c) => (c === href ? null : c));
 }
 
+/**
+ * A page showing something dismissable claims the back key here, so pressing it closes that thing
+ * instead of leaving the page behind it.
+ */
+const guards = writable<(() => boolean)[]>([]);
+export const backGuards = { subscribe: guards.subscribe };
+
+export function registerBackGuard(guard: () => boolean) {
+	guards.update((list) => [...list, guard]);
+	return () => guards.update((list) => list.filter((g) => g !== guard));
+}
+
+/** The last guard registered answers first: it is the innermost thing on screen. */
+export function runBackGuards(list: (() => boolean)[]): boolean {
+	for (let i = list.length - 1; i >= 0; i--) if (list[i]()) return true;
+	return false;
+}
+
 export type TabNav = { count: number; index: number; select: (index: number) => void };
 
 /** The in page tabs of the current page, so a swipe moves between them instead of between pages. */
@@ -38,10 +56,7 @@ export function registerTabs(nav: TabNav) {
 	return () => pageTabs.update((current) => (current === nav ? null : current));
 }
 
-/** The main page reached by swiping `direction` from `path`, or null when there is none. */
-export function neighbourPage(path: string, direction: 1 | -1): string | null {
-	const at = (MAIN_PAGES as readonly string[]).indexOf(strip(path));
-	if (at < 0) return null;
-	const next = at + direction;
-	return next >= 0 && next < MAIN_PAGES.length ? MAIN_PAGES[next] : null;
+/** Where `path` sits in the pager, or -1 when it is not one of the swipeable main pages. */
+export function mainPageIndex(path: string): number {
+	return (MAIN_PAGES as readonly string[]).indexOf(strip(path));
 }

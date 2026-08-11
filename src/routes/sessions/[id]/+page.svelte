@@ -4,20 +4,13 @@
 	import { t } from '$lib/i18n';
 	import { ROUNDS, UNVERIFIED_ROUNDS, getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
-	import {
-		buildCustomRound,
-		validateCustomRound,
-		FACE_SIZES,
-		DISTANCES_M,
-		DISTANCES_YD,
-		END_COUNTS,
-		ARROWS_PER_END,
-		type CustomRoundInput
-	} from '$lib/domain/rounds/custom';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { formatDistance } from '$lib/domain/units';
+	import { defaultNameKey } from '$lib/domain/sessions';
+	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import { registerTabs } from '$lib/nav';
+	import TabDeck from '$lib/ui/TabDeck.svelte';
+	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import {
 		captureConditions,
 		formatTemperature,
@@ -32,20 +25,33 @@
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import {
 		getSession,
+		createSession,
 		updateSession,
+		listPlanSlots,
 		deleteSession,
 		listActivities,
 		listBows,
 		createScoringActivity,
 		createTuningActivity,
-		type ActivityRow
+		addTrainingArrows,
+		type ActivityRow,
+		type PlanSlotRow
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
-	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
-	import { formatDateTime } from '$lib/prefs';
+	import { defaultBowId, formatDateTime } from '$lib/prefs';
 
 	const sessionId = $derived($page.params.id as string);
+
+	/**
+	 * A slot from a plan opens as a session that does not exist yet. Nothing is written until
+	 * something is actually entered, so a week nobody shot leaves no empty sessions behind. The id
+	 * carries the slot and the date it stands for: `plan-<slot>-<startedAt>`.
+	 */
+	const virtualSlotId = $derived(
+		sessionId.startsWith('plan-') ? sessionId.slice(5, sessionId.lastIndexOf('-')) : null
+	);
+	const virtualAt = $derived(Number(sessionId.slice(sessionId.lastIndexOf('-') + 1)));
 
 	let session = $state<Awaited<ReturnType<typeof getSession>>>(null);
 	let activities = $state<ActivityRow[]>([]);
@@ -55,13 +61,6 @@
 		{ key: 'overview' as const, label: $t('session.overviewTab') },
 		{ key: 'settings' as const, label: $t('session.settingsTab') }
 	]);
-	$effect(() =>
-		registerTabs({
-			count: TABS.length,
-			index: TABS.findIndex((item) => item.key === tab),
-			select: (i) => (tab = TABS[i].key)
-		})
-	);
 	let adding = $state(false);
 	let fetching = $state(false);
 	let notice = $state<string | null>(null);
@@ -70,27 +69,213 @@
 	let nameInput = $state<HTMLInputElement | null>(null);
 	let confirmingDelete = $state(false);
 
-	let custom = $state<CustomRoundInput>({
-		ends: 6,
-		arrowsPerEnd: 6,
-		faceSize: 40,
-		distance: 18,
-		unit: 'm',
-		name: ''
-	});
-	const customErrors = $derived(validateCustomRound(custom));
-	const distances = $derived(custom.unit === 'm' ? DISTANCES_M : DISTANCES_YD);
-
 	const weather = $derived(session?.weather ? JSON.parse(session.weather) : null);
+	/** Arrows tapped in but not yet written, counted everywhere at once so the page never lags a tap. */
+	let pending = $state(0);
+	/** The point of the page: every arrow entered in this session, whatever it was shot at. */
+	const sessionArrows = $derived(
+		activities.reduce((sum, a) => sum + a.arrowsShot, 0) + pending
+	);
+	/** Arrows shot without scoring them. They live in one activity, shown as a counter, not a row. */
+	const training = $derived(activities.find((a) => a.kind === 'training'));
+	const listedActivities = $derived(activities.filter((a) => a.kind !== 'training'));
+
+	/**
+	 * Counted locally and written once the finger stops. A long press ticks several times a second,
+	 * and each tick reaching the database would cost a row in the change log for an arrow nobody
+	 * counted separately.
+	 */
+	const trainingArrows = $derived(Math.max(0, (training?.arrowsShot ?? 0) + pending));
+	let flushTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function countArrows(delta: number) {
+		if (trainingArrows + delta < 0) return;
+		pending += delta;
+		if (flushTimer) clearTimeout(flushTimer);
+		flushTimer = setTimeout(flushArrows, 500);
+	}
+
+	async function flushArrows() {
+		if (flushTimer) clearTimeout(flushTimer);
+		flushTimer = null;
+		const delta = pending;
+		if (delta === 0) return;
+		const id = await materialise();
+		await addTrainingArrows(id, delta);
+		await refresh();
+		// Dropped only once the reload holds it, otherwise the counter blinks back for a frame.
+		pending -= delta;
+	}
+
+	/** Held down, the minus runs away with itself, faster the longer it is held. */
+	let repeat: ReturnType<typeof setTimeout> | null = null;
+	function startRepeat() {
+		let wait = 380;
+		const tick = () => {
+			countArrows(-1);
+			wait = Math.max(45, wait * 0.72);
+			repeat = setTimeout(tick, wait);
+		};
+		repeat = setTimeout(tick, 450);
+	}
+
+	function stopRepeat() {
+		if (repeat) clearTimeout(repeat);
+		repeat = null;
+	}
+
+	/** The sheet exists to take a number, so the keyboard comes up with it rather than after a tap. */
+	function focusNow(node: HTMLInputElement) {
+		node.focus();
+		node.select();
+	}
+
+	let countDialog = $state<'add' | 'set' | null>(null);
+	let countDraft = $state<number | string>('');
+
+	function openCount(mode: 'add' | 'set') {
+		countDraft = mode === 'set' ? trainingArrows : '';
+		countDialog = mode;
+	}
+
+	async function applyCount() {
+		const value = Number(countDraft);
+		const mode = countDialog;
+		countDialog = null;
+		if (!Number.isFinite(value)) return;
+		countArrows(mode === 'set' ? Math.max(0, value) - trainingArrows : value);
+		await flushArrows();
+	}
+
+	let notes = $state('');
+	let notesLoaded = $state<string | null>(null);
+	// Loaded once per session rather than on every refresh, so typing is never overwritten mid word.
+	$effect(() => {
+		if (!session || notesLoaded === session.id) return;
+		notesLoaded = session.id;
+		notes = session.notes ?? '';
+	});
+
+	let notesTimer: ReturnType<typeof setTimeout> | null = null;
+	function saveNotes() {
+		if (notesTimer) clearTimeout(notesTimer);
+		// Written after a pause rather than per keystroke: every write costs a change log row.
+		notesTimer = setTimeout(async () => {
+			const id = await materialise();
+			await updateSession(id, { notes: notes.trim() || null });
+		}, 600);
+	}
+	/** Weather without a place still says something; a place name alone does too. */
+	const hasConditions = $derived(Boolean(weather || session?.location));
+
+	/** Local time, split the way the two native fields want it, so no timezone maths reaches the DB. */
+	const pad = (n: number) => String(n).padStart(2, '0');
+	const dateField = (at: number) => {
+		const d = new Date(at);
+		return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+	};
+	const timeField = (at: number) => {
+		const d = new Date(at);
+		return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+	};
+
+	/** A session entered days later is the common case, so whole days are one tap away. */
+	const DAY_SHIFTS = [-7, -1, 1, 7];
+
+	async function setStartedAt(date: string, time: string) {
+		const [year, month, day] = date.split('-').map(Number);
+		const [hour, minute] = time.split(':').map(Number);
+		if (!year || !month || !day) return;
+		const at = new Date(year, month - 1, day, hour || 0, minute || 0).getTime();
+		const id = await materialise();
+		await updateSession(id, { startedAt: at });
+		await refresh();
+	}
+
+	async function shiftDays(days: number) {
+		if (!session) return;
+		const moved = new Date(session.startedAt);
+		// Stepped through the Date constructor so a daylight saving change cannot drop an hour.
+		moved.setDate(moved.getDate() + days);
+		const id = await materialise();
+		await updateSession(id, { startedAt: moved.getTime() });
+		await refresh();
+	}
+
+	let goalDraft = $state<number | string>('');
+	let editingGoal = $state(false);
+	const GOAL_PRESETS = [36, 60, 72, 90, 120, 144];
+
+	function openGoal() {
+		goalDraft = session?.arrowGoal ?? '';
+		editingGoal = true;
+	}
+
+	async function saveGoal(value: number | null) {
+		editingGoal = false;
+		const id = await materialise();
+		await updateSession(id, { arrowGoal: value });
+		await refresh();
+	}
+
+	const defaultName = $derived(
+		session ? $t(defaultNameKey(session.kind, session.startedAt)) : ''
+	);
 	const selectedBowType = $derived<BowType | null>(
 		(bows.find((b) => b.id === session?.bowId)?.type ?? session?.bowType ?? null) as BowType | null
 	);
 	const tuningTemplates = $derived(selectedBowType ? templatesForBowType(selectedBowType) : []);
 
 	async function refresh() {
+		bows = await listBows();
+		if (virtualSlotId) {
+			const slot = (await listPlanSlots()).find((s) => s.id === virtualSlotId);
+			session = slot ? virtualSession(slot) : null;
+			activities = [];
+			return;
+		}
 		session = await getSession(sessionId);
 		activities = await listActivities(sessionId);
-		bows = await listBows();
+	}
+
+	/** Shaped like a row so every part of the page reads it the same way, stored nowhere. */
+	function virtualSession(slot: PlanSlotRow) {
+		const now = Date.now();
+		return {
+			id: sessionId,
+			createdAt: now,
+			updatedAt: now,
+			deletedAt: null,
+			deviceId: '',
+			label: slot.label,
+			startedAt: virtualAt,
+			kind: 'planned',
+			arrowGoal: slot.arrowGoal,
+			bowId: $defaultBowId,
+			bowType: null,
+			bowRevisionId: null,
+			location: null,
+			latitude: null,
+			longitude: null,
+			weather: null,
+			notes: null
+		};
+	}
+
+	/**
+	 * Writes the session a virtual page stands for and moves the URL onto it. Every write on this
+	 * page goes through here, so anything the archer enters is kept and nothing else is.
+	 */
+	async function materialise(): Promise<string> {
+		if (!virtualSlotId || !session) return sessionId;
+		const id = await createSession({ kind: 'planned', bowId: $defaultBowId });
+		await updateSession(id, {
+			startedAt: session.startedAt,
+			label: session.label,
+			arrowGoal: session.arrowGoal
+		});
+		await goto(`/sessions/${id}`, { replaceState: true });
+		return id;
 	}
 	$effect(() => {
 		refresh();
@@ -104,19 +289,32 @@
 		fetchConditions();
 	});
 
+	async function setPlace(value: string) {
+		const id = await materialise();
+		await updateSession(id, { location: value.trim() || null });
+		await refresh();
+	}
+
 	async function setBow(value: string) {
-		if (value.startsWith('bow:'))
-			await updateSession(sessionId, { bowId: value.slice(4), bowType: null });
-		else await updateSession(sessionId, { bowId: null, bowType: value || null });
+		const id = await materialise();
+		if (value.startsWith('bow:')) await updateSession(id, { bowId: value.slice(4), bowType: null });
+		else await updateSession(id, { bowId: null, bowType: value || null });
 		await refresh();
 	}
 
 	async function fetchConditions() {
-		fetching = true;
 		notice = null;
+		// Nothing asks the system for a position while the setting is off, since granting it would
+		// still leave the archer with a switch that says location is not recorded.
+		if (!$autoLocation) {
+			notice = $t('session.locationOff');
+			return;
+		}
+		const id = await materialise();
+		fetching = true;
 		try {
 			const conditions = await captureConditions($autoWeather, $autoPlaceName);
-			await updateSession(sessionId, {
+			await updateSession(id, {
 				latitude: conditions.latitude,
 				longitude: conditions.longitude,
 				location: conditions.place,
@@ -133,17 +331,23 @@
 	}
 
 	async function startRound(round: RoundDefinition) {
-		goto(`/activities/${await createScoringActivity(sessionId, round)}`);
-	}
-
-	async function startCustom() {
-		if (customErrors.length > 0) return;
-		await startRound(buildCustomRound(custom));
+		const id = await materialise();
+		goto(`/activities/${await createScoringActivity(id, round)}`);
 	}
 
 	async function startTuning(key: string) {
-		goto(`/activities/${await createTuningActivity(sessionId, key)}`);
+		const id = await materialise();
+		goto(`/activities/${await createTuningActivity(id, key)}`);
 	}
+
+	// While the name is open the back key belongs to the editor, not to the way out of the session.
+	$effect(() => {
+		if (!editingName) return;
+		return registerBackGuard(() => {
+			editingName = false;
+			return true;
+		});
+	});
 
 	function startRename() {
 		editingName = true;
@@ -153,12 +357,14 @@
 
 	async function saveName(value: string) {
 		editingName = false;
-		await updateSession(sessionId, { label: value.trim() || null });
+		const id = await materialise();
+		await updateSession(id, { label: value.trim() || null });
 		await refresh();
 	}
 
 	async function remove() {
-		await deleteSession(sessionId);
+		// A session that was never written has nothing to delete: leaving the page is the whole of it.
+		if (!virtualSlotId) await deleteSession(sessionId);
 		goto('/sessions');
 	}
 
@@ -190,7 +396,7 @@
 					bind:this={nameInput}
 					class="mt-1 w-full rounded-lg border-2 border-brand bg-surface px-3 py-2 text-2xl font-bold tracking-tight text-ink outline-none"
 					value={named?.label ?? ''}
-					placeholder={$t('sessions.untitled')}
+					placeholder={defaultName}
 					onblur={(e) => saveName(e.currentTarget.value)}
 					onkeydown={(e) => {
 						if (e.key === 'Enter') e.currentTarget.blur();
@@ -203,164 +409,314 @@
 						{named?.label ? 'text-ink' : 'text-muted'}"
 					onclick={startRename}
 				>
-					{named?.label ?? $t('sessions.untitled')}
+					{named?.label ?? defaultName}
 				</button>
 			{/if}
 		{/snippet}
 	</PageHeader>
 
 	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-		<nav class="flex gap-1 rounded-lg bg-sunk p-1">
-			{#each TABS as item (item.key)}
-				<button
-					class="flex-1 rounded-md py-1.5 text-sm font-medium
-						{tab === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
-					onclick={() => (tab = item.key as typeof tab)}
-				>
-					{item.label}
-				</button>
-			{/each}
-		</nav>
-
-		{#if tab === 'overview'}
-			<!-- Where and in what weather comes first, because it frames every score below it. -->
-			{#if session.location || session.latitude !== null}
-				<section class="flex items-center gap-4 rounded-xl border border-line bg-surface p-4">
-					{#if weather}
-						<div class="flex flex-col items-center text-brand-text">
-							<Icon name={weatherIcon(weather.code)} size={40} />
-							<span class="mt-1 text-xs text-muted">{$t(weatherLabelKey(weather.code))}</span>
-						</div>
-					{/if}
-					<div class="flex-1">
-						<p class="text-lg font-semibold">{session.location ?? $t('session.unknownPlace')}</p>
-						{#if weather}
-							<p class="tabular text-sm text-muted">
-								{formatTemperature(weather)} · {formatWind(weather)}
-							</p>
-						{:else}
-							<p class="text-sm text-muted">{$t('session.weatherNone')}</p>
-						{/if}
-					</div>
-				</section>
-			{/if}
-
-			<section>
-				<div class="mb-2 flex items-center justify-between">
-					<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
-					<button
-						class="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
-						onclick={() => (adding = true)}
-					>
-						<Icon name="plus" size={16} />
-						{$t('common.add')}
-					</button>
-				</div>
-
-				{#if activities.length === 0}
-					<p class="rounded-xl border border-dashed border-line p-6 text-center text-muted">
-						{$t('session.noActivities')}
-					</p>
-				{:else}
-					<ul class="space-y-2">
-						{#each activities as a (a.id)}
-							<li>
-								<a
-									href="/activities/{a.id}"
-									class="flex items-center justify-between rounded-xl border border-line bg-surface p-3"
-								>
-									<div>
-										<p class="font-medium">{activityTitle(a)}</p>
-										<p class="text-xs text-muted">
-											{a.kind === 'tuning'
-												? $t('tuning.title')
-												: `${a.arrowsShot} ${$t('score.arrow')}`}
-										</p>
-									</div>
-									{#if a.kind === 'scoring'}
-										<span class="tabular text-xl font-bold">{a.totalScore}</span>
+		<TabDeck tabs={TABS} bind:value={tab}>
+			{#snippet pane(key)}
+				<!-- Guarded again here: the check outside does not narrow inside a snippet. -->
+				{#if session}
+					{#if key === 'overview'}
+						<!-- What was shot leads, with the conditions beside it: they frame the figure. -->
+						<div class="grid grid-cols-3 gap-3">
+							<section
+								class="rounded-xl border border-line bg-surface p-3.5 {hasConditions
+									? 'col-span-2'
+									: 'col-span-3'}"
+							>
+								<div class="flex items-end justify-between gap-2">
+									<p class="tabular text-[2rem] leading-none font-bold text-brand-text">
+										{sessionArrows}
+									</p>
+									{#if session.arrowGoal}
+										<button class="tabular shrink-0 text-sm font-semibold text-muted" onclick={openGoal}>
+											/ {session.arrowGoal}
+										</button>
 									{/if}
-								</a>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</section>
-		{:else}
-			<section class="rounded-xl border border-line bg-surface p-4">
-				<label class="mb-1 block text-sm font-semibold" for="bow">{$t('session.bow')}</label>
-				<select
-					id="bow"
-					class="w-full rounded-lg border border-line bg-bg p-2 text-ink"
-					value={session.bowId ? `bow:${session.bowId}` : (session.bowType ?? '')}
-					onchange={(e) => setBow(e.currentTarget.value)}
-				>
-					<option value="">{$t('session.noBow')}</option>
-					{#if bows.length > 0}
-						<optgroup label={$t('session.myBows')}>
-							{#each bows as b (b.id)}
-								<option value="bow:{b.id}">{b.name}</option>
-							{/each}
-						</optgroup>
-					{/if}
-					<optgroup label={$t('session.genericBow')}>
-						{#each BOW_TYPES as type (type)}
-							<option value={type}>{$t(`bow.${type}`)}</option>
-						{/each}
-					</optgroup>
-				</select>
-			</section>
+								</div>
 
-			<section class="overflow-hidden rounded-xl border border-line bg-surface">
-				<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
-					<h2 class="text-sm font-semibold">{$t('session.conditions')}</h2>
-					<button
-						class="text-sm font-medium text-brand-text disabled:opacity-50"
-						disabled={fetching}
-						onclick={fetchConditions}
-					>
-						{fetching ? $t('session.fetching') : $t('session.fetchConditions')}
-					</button>
-				</div>
-
-				{#if session.location || session.latitude !== null}
-					<div class="flex items-center gap-4 p-4">
-						{#if weather}
-							<div class="flex flex-col items-center text-brand-text">
-								<Icon name={weatherIcon(weather.code)} size={40} />
-								<span class="mt-1 text-xs text-muted">{$t(weatherLabelKey(weather.code))}</span>
-							</div>
-						{/if}
-						<div class="flex-1">
-							<p class="text-lg font-semibold">
-								{session.location ?? $t('session.unknownPlace')}
-							</p>
-							{#if weather}
-								<p class="tabular text-sm text-muted">
-									{formatTemperature(weather)} · {formatWind(weather)}
+								<!-- Label and goal share one line, which is the line this block used to spend twice. -->
+								<p class="mt-0.5 flex flex-wrap items-center gap-1 text-xs text-muted">
+									<span>
+										{$t('session.arrowsShot')}{session.arrowGoal ? ',' : ''}
+									</span>
+									{#if session.arrowGoal}
+										<span>
+											{Math.min(1, sessionArrows / session.arrowGoal) >= 1
+												? $t('session.goalReached')
+												: $t('session.goalLeft', { n: session.arrowGoal - sessionArrows })}
+										</span>
+										<!-- A goal set before the outing is the one most likely to need changing during it. -->
+										<button
+											class="text-brand-text"
+											aria-label={$t('session.goalTitle')}
+											onclick={openGoal}
+										>
+											<Icon name="edit" size={13} />
+										</button>
+									{:else}
+										<span>·</span>
+										<button
+											class="flex items-center gap-0.5 font-medium text-brand-text"
+											onclick={openGoal}
+										>
+											<Icon name="plus" size={13} />
+											{$t('session.setGoal')}
+										</button>
+									{/if}
 								</p>
-							{:else}
-								<p class="text-sm text-muted">{$t('session.weatherNone')}</p>
+
+								{#if session.arrowGoal}
+									{@const done = Math.min(1, sessionArrows / session.arrowGoal)}
+									<!-- One bar, no numbers repeated: the count above already says where it stands. -->
+									<div class="mt-2 h-2 overflow-hidden rounded-full bg-sunk">
+										<div
+											class="h-full rounded-full transition-[width] duration-500 {done >= 1
+												? 'bg-accent'
+												: 'bg-brand'}"
+											style="width: {Math.max(done * 100, sessionArrows > 0 ? 4 : 0)}%"
+										></div>
+									</div>
+								{/if}
+							</section>
+
+							{#if hasConditions}
+								<section
+									class="flex flex-col items-center justify-center rounded-xl border border-line bg-surface p-3 text-center"
+								>
+									{#if weather}
+										<!-- Icon and reading side by side once a place name takes the line below them. -->
+										<div class="flex items-center justify-center gap-1.5">
+											<Icon name={weatherIcon(weather.code)} size={session.location ? 26 : 30} />
+											<p class="tabular text-sm leading-tight font-semibold">
+												{formatTemperature(weather)}
+											</p>
+										</div>
+										<p class="tabular text-[11px] leading-tight text-muted">{formatWind(weather)}</p>
+									{/if}
+									{#if session.location}
+										<p class="mt-0.5 w-full truncate text-[11px] leading-tight text-muted">
+											{session.location}
+										</p>
+									{/if}
+								</section>
 							{/if}
 						</div>
-					</div>
-				{:else}
-					<p class="p-4 text-sm text-muted">{$t('session.noConditions')}</p>
-				{/if}
 
-				{#if notice}
-					<p class="border-t border-line px-4 py-2 text-sm text-danger">{notice}</p>
-				{/if}
-			</section>
+						<!-- Arrows shot at nothing in particular still count: warm ups, blank bale, form work. -->
+						<section class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3.5">
+							<!-- The total is a button: correcting a count is faster than tapping it down. -->
+							<button class="text-left" onclick={() => openCount('set')}>
+								<p class="tabular text-2xl leading-none font-bold">{trainingArrows}</p>
+								<p class="mt-1 text-xs text-muted">{$t('session.trainingArrows')}</p>
+							</button>
+							<div class="flex items-center gap-1.5">
+								<button
+									class="touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
+									disabled={trainingArrows === 0}
+									aria-label={$t('session.oneLess')}
+									onclick={() => countArrows(-1)}
+									onpointerdown={startRepeat}
+									onpointerup={stopRepeat}
+									onpointerleave={stopRepeat}
+									onpointercancel={stopRepeat}
+								>
+									−
+								</button>
+								{#each [1, 3, 6] as step (step)}
+									<button
+										class="tabular rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium"
+										onclick={() => countArrows(step)}
+									>
+										+{step}
+									</button>
+								{/each}
+								<button
+									class="rounded-lg bg-brand px-2.5 py-1.5 text-sm font-semibold text-brand-ink"
+									aria-label={$t('session.customArrows')}
+									onclick={() => openCount('add')}
+								>
+									<Icon name="plus" size={16} />
+								</button>
+							</div>
+						</section>
 
-			<button
-				class="flex items-center gap-1.5 text-sm text-danger"
-				onclick={() => (confirmingDelete = true)}
-			>
-				<Icon name="trash" size={16} />
-				{$t('session.delete')}
-			</button>
-		{/if}
+						<section>
+							<div class="mb-2 flex items-center justify-between">
+								<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
+								<button
+									class="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+									onclick={() => (adding = true)}
+								>
+									<Icon name="plus" size={16} />
+									{$t('common.add')}
+								</button>
+							</div>
+
+							{#if listedActivities.length === 0}
+								<p class="rounded-xl border border-dashed border-line p-6 text-center text-muted">
+									{$t('session.noActivities')}
+								</p>
+							{:else}
+								<ul class="space-y-2">
+									{#each listedActivities as a (a.id)}
+										<li>
+											<a
+												href="/activities/{a.id}"
+												class="flex items-center justify-between rounded-xl border border-line bg-surface p-3"
+											>
+												<div>
+													<p class="font-medium">{activityTitle(a)}</p>
+													<p class="text-xs text-muted">
+														{a.kind === 'tuning'
+															? $t('tuning.title')
+															: `${a.arrowsShot} ${$t('score.arrow')}`}
+													</p>
+												</div>
+												{#if a.kind === 'scoring'}
+													<span class="tabular text-xl font-bold">{a.totalScore}</span>
+												{/if}
+											</a>
+										</li>
+									{/each}
+								</ul>
+							{/if}
+						</section>
+
+						<section class="rounded-xl border border-line bg-surface p-3.5">
+							<h2 class="mb-2 text-sm font-semibold">{$t('session.notes')}</h2>
+							<textarea
+								class="min-h-24 w-full resize-y rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+								placeholder={$t('session.notesHint')}
+								bind:value={notes}
+								oninput={saveNotes}
+								onblur={saveNotes}
+							></textarea>
+						</section>
+					{:else}
+						<section class="rounded-xl border border-line bg-surface p-4">
+							<h2 class="mb-2 text-sm font-semibold">{$t('session.when')}</h2>
+							<div class="flex gap-2">
+								<input
+									type="date"
+									class="tabular flex-1 rounded-lg border border-line bg-bg p-2 text-ink"
+									aria-label={$t('session.date')}
+									value={dateField(session.startedAt)}
+									onchange={(e) => setStartedAt(e.currentTarget.value, timeField(session!.startedAt))}
+								/>
+								<input
+									type="time"
+									class="tabular flex-1 rounded-lg border border-line bg-bg p-2 text-ink"
+									aria-label={$t('session.time')}
+									value={timeField(session.startedAt)}
+									onchange={(e) => setStartedAt(dateField(session!.startedAt), e.currentTarget.value)}
+								/>
+							</div>
+							<div class="mt-2 flex gap-2">
+								{#each DAY_SHIFTS as shift (shift)}
+									<button
+										class="flex-1 rounded-lg border border-line py-1.5 text-xs font-medium text-muted"
+										onclick={() => shiftDays(shift)}
+									>
+										{shift > 0 ? '+' : ''}{shift}
+										{$t('session.days')}
+									</button>
+								{/each}
+							</div>
+						</section>
+
+						<section class="rounded-xl border border-line bg-surface p-4">
+							<label class="mb-1 block text-sm font-semibold" for="bow">{$t('session.bow')}</label>
+							<select
+								id="bow"
+								class="w-full rounded-lg border border-line bg-bg p-2 text-ink"
+								value={session.bowId ? `bow:${session.bowId}` : (session.bowType ?? '')}
+								onchange={(e) => setBow(e.currentTarget.value)}
+							>
+								<option value="">{$t('session.noBow')}</option>
+								{#if bows.length > 0}
+									<optgroup label={$t('session.myBows')}>
+										{#each bows as b (b.id)}
+											<option value="bow:{b.id}">{b.name}</option>
+										{/each}
+									</optgroup>
+								{/if}
+								<optgroup label={$t('session.genericBow')}>
+									{#each BOW_TYPES as type (type)}
+										<option value={type}>{$t(`bow.${type}`)}</option>
+									{/each}
+								</optgroup>
+							</select>
+						</section>
+
+						<section class="overflow-hidden rounded-xl border border-line bg-surface">
+							<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+								<h2 class="text-sm font-semibold">{$t('session.conditions')}</h2>
+								<button
+									class="text-sm font-medium text-brand-text disabled:opacity-50"
+									disabled={fetching}
+									onclick={fetchConditions}
+								>
+									{fetching ? $t('session.fetching') : $t('session.fetchConditions')}
+								</button>
+							</div>
+
+							<!-- Typed in by hand as well as fetched: a club has a name the geocoder never guesses. -->
+							<label class="block border-b border-line px-4 py-3 text-sm">
+								<span class="text-muted">{$t('session.place')}</span>
+								<input
+									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+									value={session.location ?? ''}
+									onchange={(e) => setPlace(e.currentTarget.value)}
+								/>
+							</label>
+
+							{#if session.location || session.latitude !== null}
+								<div class="flex items-center gap-4 p-4">
+									{#if weather}
+										<div class="flex flex-col items-center text-brand-text">
+											<Icon name={weatherIcon(weather.code)} size={40} />
+											<span class="mt-1 text-xs text-muted">{$t(weatherLabelKey(weather.code))}</span>
+										</div>
+									{/if}
+									<div class="flex-1">
+										<!-- Only a real place name is worth a heading: coordinates say nothing to read. -->
+										{#if session.location}
+											<p class="text-lg font-semibold">{session.location}</p>
+										{/if}
+										{#if weather}
+											<p class="tabular text-sm text-muted">
+												{formatTemperature(weather)} · {formatWind(weather)}
+											</p>
+										{:else}
+											<p class="text-sm text-muted">{$t('session.weatherNone')}</p>
+										{/if}
+									</div>
+								</div>
+							{:else}
+								<p class="p-4 text-sm text-muted">{$t('session.noConditions')}</p>
+							{/if}
+
+							{#if notice}
+								<p class="border-t border-line px-4 py-2 text-sm text-danger">{notice}</p>
+							{/if}
+						</section>
+
+						<button
+							class="flex items-center gap-1.5 text-sm text-danger"
+							onclick={() => (confirmingDelete = true)}
+						>
+							<Icon name="trash" size={16} />
+							{$t('session.delete')}
+						</button>
+					{/if}
+				{/if}
+			{/snippet}
+		</TabDeck>
 	</div>
 
 	{#if adding}
@@ -374,125 +730,58 @@
 				</button>
 			</header>
 
-			<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto p-4">
-				<section class="rounded-xl border border-line bg-surface p-4">
-					<div class="grid grid-cols-2 gap-3">
-						<WheelPicker
-							values={END_COUNTS}
-							value={custom.ends}
-							label={$t('round.ends')}
-							onchange={(v) => (custom.ends = v)}
-						/>
-						<WheelPicker
-							values={ARROWS_PER_END}
-							value={custom.arrowsPerEnd}
-							label={$t('round.arrowsPerEnd')}
-							onchange={(v) => (custom.arrowsPerEnd = v)}
-						/>
-					</div>
-
-					<div class="mt-3">
-						<span class="text-sm text-muted">{$t('round.faceSize')}</span>
-						<div class="mt-1 flex gap-2">
-							{#each FACE_SIZES as size (size)}
-								<button
-									class="flex-1 rounded-lg border py-2 text-sm font-medium
-										{custom.faceSize === size
-										? 'border-brand bg-brand text-brand-ink'
-										: 'border-line'}"
-									onclick={() => (custom.faceSize = size)}
-								>
-									{size}
-								</button>
-							{/each}
-						</div>
-					</div>
-
-					<div class="mt-3">
-						<span class="text-sm text-muted">{$t('round.unit')}</span>
-						<div class="mt-1 flex gap-2">
-							{#each ['m', 'yd'] as const as unit (unit)}
-								<button
-									class="flex-1 rounded-lg border py-2 text-sm font-medium
-										{custom.unit === unit ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
-									onclick={() => {
-										custom.unit = unit;
-										// Keep the value on the new unit's scale rather than leaving an impossible one.
-										const list = unit === 'm' ? DISTANCES_M : DISTANCES_YD;
-										if (!list.includes(custom.distance)) custom.distance = list[0];
-									}}
-								>
-									{unit}
-								</button>
-							{/each}
-						</div>
-						<div class="mt-2">
-							<WheelPicker
-								values={distances}
-								value={custom.distance}
-								label={$t('round.distance')}
-								format={(v) => `${v} ${custom.unit}`}
-								onchange={(v) => (custom.distance = v)}
-							/>
-						</div>
-					</div>
-
-					<label class="mt-3 block text-sm">
-						{$t('round.name')} <span class="text-muted">({$t('common.optional')})</span>
-						<input
-							class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-							bind:value={custom.name}
-						/>
-					</label>
-
-					<button
-						class="mt-3 w-full rounded-lg bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
-						disabled={customErrors.length > 0}
-						onclick={startCustom}
-					>
-						{$t('round.create')}
-					</button>
-				</section>
-
+			<div class="mx-auto w-full max-w-2xl flex-1 space-y-6 overflow-y-auto p-4">
 				<section>
-					<div class="space-y-2">
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.scoringGroup')}</h3>
+					<div class="grid grid-cols-2 gap-2">
+						<!-- The custom round leads: it is the one entry that is not a name to recognise. -->
+						<a
+							href="/sessions/{sessionId}/custom"
+							class="flex flex-col justify-between rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
+						>
+							<span class="flex items-center gap-1.5 font-medium text-brand-text">
+								<Icon name="plus" size={18} />
+								{$t('round.custom')}
+							</span>
+							<span class="mt-2 text-xs text-muted">{$t('round.customHint')}</span>
+						</a>
+
 						{#each [...ROUNDS, ...UNVERIFIED_ROUNDS] as round (round.id)}
 							<button
-								class="w-full rounded-xl border border-line bg-surface p-3 text-left"
+								class="flex flex-col justify-between rounded-xl border border-line bg-surface p-3 text-left"
 								onclick={() => startRound(round)}
 							>
-								<div class="flex items-baseline justify-between gap-2">
-									<span class="font-medium">{round.name}</span>
-									<span class="text-xs text-muted">
-										{roundNeedsVerification(round)
-											? $t('round.unverifiedShort')
-											: $t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
-									</span>
-								</div>
-								<p class="text-sm text-muted">{summarise(round)}</p>
+								<span class="font-medium">{round.name}</span>
+								<span class="mt-2 text-xs text-muted">
+									{summarise(round)} · {roundNeedsVerification(round)
+										? $t('round.unverifiedShort')
+										: $t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
+								</span>
 							</button>
 						{/each}
 					</div>
 				</section>
 
-				<section class="rounded-xl border border-line bg-surface p-4">
-					<h3 class="mb-2 font-medium">{$t('tuning.title')}</h3>
+				<section>
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('tuning.title')}</h3>
 					{#if !selectedBowType}
-						<p class="text-sm text-muted">{$t('tuning.noBowSelected')}</p>
+						<p class="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
+							{$t('tuning.noBowSelected')}
+						</p>
 					{:else}
-						<ul class="space-y-1">
+						<div class="grid grid-cols-2 gap-2">
 							{#each tuningTemplates as template (template.key)}
-								<li>
-									<button
-										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm"
-										onclick={() => startTuning(template.key)}
-									>
+								<button
+									class="flex flex-col justify-between rounded-xl border border-line bg-surface p-3 text-left"
+									onclick={() => startTuning(template.key)}
+								>
+									<span class="flex items-center gap-1.5 font-medium">
 										<Icon name="wrench" size={16} />
 										{template.name}
-									</button>
-								</li>
+									</span>
+								</button>
 							{/each}
-						</ul>
+						</div>
 					{/if}
 				</section>
 			</div>
@@ -500,6 +789,99 @@
 	{/if}
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+{/if}
+
+{#if editingGoal}
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<button
+			class="absolute inset-0 bg-black/40"
+			aria-label={$t('common.close')}
+			onclick={() => (editingGoal = false)}
+		></button>
+
+		<div class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
+			<h2 class="text-lg font-bold">{$t('session.goalTitle')}</h2>
+			<p class="mt-0.5 mb-3 text-xs text-muted">{$t('session.goalHint')}</p>
+
+			<!-- One field holds the number; the presets are shortcuts into it, not a second answer. -->
+			<input
+				type="number"
+				inputmode="numeric"
+				min="1"
+				class="tabular w-full rounded-lg border border-line bg-bg p-3 text-2xl font-bold text-ink"
+				aria-label={$t('session.goalTitle')}
+				bind:value={goalDraft}
+			/>
+
+			<div class="mt-2 flex flex-wrap gap-1.5">
+				{#each GOAL_PRESETS as preset (preset)}
+					<button
+						class="tabular rounded-lg border px-3 py-1.5 text-sm font-medium
+							{Number(goalDraft) === preset ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+						onclick={() => (goalDraft = preset)}
+					>
+						{preset}
+					</button>
+				{/each}
+			</div>
+
+			<div class="mt-4 flex gap-2">
+				{#if session?.arrowGoal}
+					<button
+						class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium text-danger"
+						onclick={() => saveGoal(null)}
+					>
+						{$t('session.removeGoal')}
+					</button>
+				{/if}
+				<button
+					class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+					onclick={() => saveGoal(Number(goalDraft) > 0 ? Number(goalDraft) : null)}
+				>
+					{$t('common.save')}
+				</button>
+			</div>
+		</div>
+	</div>
+{/if}
+
+{#if countDialog}
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<button
+			class="absolute inset-0 bg-black/40"
+			aria-label={$t('common.close')}
+			onclick={() => (countDialog = null)}
+		></button>
+
+		<div class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
+			<h2 class="mb-3 text-lg font-bold">
+				{countDialog === 'set' ? $t('session.trainingArrows') : $t('session.customArrows')}
+			</h2>
+			<input
+				type="number"
+				inputmode="numeric"
+				min="0"
+				class="tabular w-full rounded-lg border border-line bg-bg p-3 text-2xl font-bold text-ink"
+				aria-label={$t('session.trainingArrows')}
+				bind:value={countDraft}
+				use:focusNow
+			/>
+			<div class="mt-4 flex gap-2">
+				<button
+					class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
+					onclick={() => (countDialog = null)}
+				>
+					{$t('common.cancel')}
+				</button>
+				<button
+					class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+					onclick={applyCount}
+				>
+					{countDialog === 'set' ? $t('common.save') : $t('common.add')}
+				</button>
+			</div>
+		</div>
+	</div>
 {/if}
 
 {#if confirmingDelete}
