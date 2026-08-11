@@ -170,7 +170,7 @@ export const fr: Dictionary = {
 		meanRadius: 'Rayon moyen',
 		plottedArrows: '{n} pointées',
 		smallSample: 'Trop peu de flèches pointées pour que ces chiffres soient significatifs.',
-		plotHint: 'Maintenez et déplacez pour placer la flèche, relâchez pour valider.',
+		plotHint: "Touchez l'impact, ou maintenez et déplacez avant de relâcher.",
 		movePlot: 'La flèche entourée est celle que vous déplacez : replacez-la.',
 		placePlot: "Cette flèche n'a pas encore de position : placez-la où elle a touché.",
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",

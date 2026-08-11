@@ -169,7 +169,7 @@ export const en = {
 		meanRadius: 'Mean radius',
 		plottedArrows: '{n} plotted',
 		smallSample: 'Too few plotted arrows for these numbers to mean much yet.',
-		plotHint: 'Press and drag to place the arrow, release to record it.',
+		plotHint: 'Tap where the arrow landed, or press and drag to aim before letting go.',
 		movePlot: 'The ringed arrow is the one you are moving: place it again.',
 		placePlot: 'This arrow has no place on the face yet: plot where it landed.',
 		noPlots: 'No arrows were plotted on the face for this end.',

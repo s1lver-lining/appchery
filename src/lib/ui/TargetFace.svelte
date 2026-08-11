@@ -83,6 +83,14 @@
 	 */
 	const FINGER_OFFSET = 0.34;
 
+	/**
+	 * A press short enough to be a tap rather than an aim. A tap means "the arrow is here", so it is
+	 * taken at the point touched, with no clearance for a finger that was never in the way long
+	 * enough to hide anything.
+	 */
+	const TAP_MS = 100;
+	let tap: { at: number; point: { x: number; y: number } | null } | null = null;
+
 	/** Live pointers, so a second finger turns the drag into a pinch rather than moving the arrow. */
 	const active = new Map<number, { x: number; y: number }>();
 	let pinchStart: { distance: number; zoom: number } | null = null;
@@ -94,11 +102,14 @@
 	const badgeLeft = $derived(cursor ? ((cursor.x + 1.05) / 2.1) * 100 : 50);
 	const badgeTop = $derived(cursor ? ((cursor.y + 1.05) / 2.1) * 100 : 50);
 
-	function toFace(event: { clientX: number; clientY: number }): { x: number; y: number } | null {
+	function toFace(
+		event: { clientX: number; clientY: number },
+		offset = FINGER_OFFSET
+	): { x: number; y: number } | null {
 		if (!svg) return null;
 		const rect = svg.getBoundingClientRect();
 		const x = ((event.clientX - rect.left) / rect.width) * 2.1 - 1.05;
-		const y = ((event.clientY - rect.top) / rect.height) * 2.1 - 1.05 - FINGER_OFFSET;
+		const y = ((event.clientY - rect.top) / rect.height) * 2.1 - 1.05 - offset;
 		return { x, y };
 	}
 
@@ -116,8 +127,10 @@
 			// A pinch is a zoom, not a placement: the cursor goes away so nothing looks selectable.
 			pinchStart = { distance: spread(), zoom };
 			cursor = null;
+			tap = null;
 			return;
 		}
+		tap = { at: Date.now(), point: toFace(event, 0) };
 		cursor = toFace(event);
 	}
 
@@ -134,7 +147,10 @@
 		if (cursor) cursor = toFace(event);
 	}
 
-	/** Committing on release is what makes the drag useful: the archer can correct before letting go. */
+	/**
+	 * Committing on release is what makes the drag useful: the archer can correct before letting go.
+	 * A tap commits too, at the point it touched: both are ways of saying where the arrow went.
+	 */
 	function up(event: PointerEvent) {
 		if (!interactive) return;
 		active.delete(event.pointerId);
@@ -144,13 +160,17 @@
 			if (active.size === 0) {
 				pinchStart = null;
 				cursor = null;
+				tap = null;
 			}
 			return;
 		}
-		if (!cursor) return;
-		const { x, y } = cursor;
+
+		const tapped = tap && Date.now() - tap.at < TAP_MS ? tap.point : null;
+		const point = tapped ?? cursor;
+		tap = null;
 		cursor = null;
-		if (Math.hypot(x, y) <= 1.15) onplot?.(x, y);
+		if (!point) return;
+		if (Math.hypot(point.x, point.y) <= 1.15) onplot?.(point.x, point.y);
 	}
 
 	function cancel(event: PointerEvent) {
@@ -158,6 +178,7 @@
 		if (active.size === 0) {
 			pinchStart = null;
 			cursor = null;
+			tap = null;
 		}
 	}
 
