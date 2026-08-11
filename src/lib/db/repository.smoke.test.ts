@@ -44,3 +44,21 @@ describe('session persistence', () => {
 		expect(rows[0].startedAt).toBe(now);
 	});
 });
+
+describe('badge persistence', () => {
+	it('writes a badge and reads back the day it was earned', async () => {
+		const now = Date.now();
+		await proxy.insert(schema.badge).values({
+			id: 'badge-1',
+			createdAt: now,
+			updatedAt: now,
+			deviceId: 'device',
+			key: 'thousandArrows',
+			earnedAt: now - 86_400_000
+		});
+
+		const [row] = await proxy.select().from(schema.badge);
+		expect(row.key).toBe('thousandArrows');
+		expect(row.earnedAt).toBe(now - 86_400_000);
+	});
+});

@@ -201,5 +201,18 @@ export const MIGRATIONS: string[][] = [
 		`CREATE INDEX IF NOT EXISTS idx_sight_mark_bow ON sight_mark (bow_id, distance);`
 	],
 	// 0010 marks worked out from the others rather than shot in
-	[`ALTER TABLE sight_mark ADD COLUMN interpolated INTEGER NOT NULL DEFAULT 0;`]
+	[`ALTER TABLE sight_mark ADD COLUMN interpolated INTEGER NOT NULL DEFAULT 0;`],
+	// 0011 goals the archer has reached, kept once earned
+	[
+		`CREATE TABLE IF NOT EXISTS badge (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			key TEXT NOT NULL,
+			earned_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_badge_key ON badge (key);`
+	]
 ];

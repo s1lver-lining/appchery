@@ -2,6 +2,8 @@ import { eq, and, isNull, desc, asc, inArray } from 'drizzle-orm';
 import { db, schema } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
+import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
+import { weekArrowGoal } from '$lib/domain/plans';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -806,6 +808,144 @@ export async function toggleFavouriteRound(roundKey: string): Promise<boolean> {
 	await db().insert(schema.favouriteRound).values({ ...base, roundKey });
 	await log('favourite_round', base.id, 'insert');
 	return true;
+}
+
+/* Badges */
+
+/** An arrow in the gold, which on a ten ring face is a 9 or better. */
+const GOLD_VALUE = 9;
+
+export async function listBadges() {
+	return db().select().from(schema.badge).where(isNull(schema.badge.deletedAt));
+}
+
+/**
+ * Everything the badge rules read, gathered in one pass. Assembled here rather than in the domain
+ * because the rules must stay testable without a database, see doc/dev_guidelines.md.
+ */
+export async function loadBadgeInput(): Promise<BadgeInput> {
+	const activities = await listAllActivities();
+	const sessions = await listSessions();
+	const bows = await listBows();
+	const ends = await db().select().from(schema.end).where(isNull(schema.end.deletedAt));
+	const shots = await db()
+		.select({ endId: schema.shot.endId, value: schema.shot.value })
+		.from(schema.shot)
+		.where(isNull(schema.shot.deletedAt));
+	const marks = await db()
+		.select({ bowId: schema.sightMark.bowId, createdAt: schema.sightMark.createdAt })
+		.from(schema.sightMark)
+		.where(isNull(schema.sightMark.deletedAt));
+	const slots = await listPlanSlots();
+	const plans = await listPlans();
+
+	const bowTypes = new Map(bows.map((bow) => [bow.id, bow.type]));
+	const sessionsById = new Map(sessions.map((session) => [session.id, session]));
+
+	const tallies = new Map<string, { arrows: number; golds: number }>();
+	for (const shot of shots) {
+		const tally = tallies.get(shot.endId) ?? { arrows: 0, golds: 0 };
+		tally.arrows += 1;
+		if (shot.value >= GOLD_VALUE) tally.golds += 1;
+		tallies.set(shot.endId, tally);
+	}
+
+	const endsByActivity = new Map<string, BadgeEnd[]>();
+	for (const end of ends) {
+		const tally = tallies.get(end.id) ?? { arrows: 0, golds: 0 };
+		const list = endsByActivity.get(end.activityId) ?? [];
+		list.push({ arrows: tally.arrows, subtotal: end.subtotal, golds: tally.golds });
+		endsByActivity.set(end.activityId, list);
+	}
+
+	return {
+		activities: activities.map((activity) => {
+			const session = sessionsById.get(activity.sessionId);
+			const weather = session?.weather ? JSON.parse(session.weather) : null;
+			return {
+				id: activity.id,
+				sessionId: activity.sessionId,
+				startedAt: activity.startedAt,
+				totalScore: activity.totalScore,
+				arrowsShot: activity.arrowsShot,
+				count10s: activity.count10s,
+				countX: activity.countX,
+				roundDefinitionId: activity.roundDefinitionId,
+				round: activity.roundDefinition
+					? (JSON.parse(activity.roundDefinition) as RoundDefinition)
+					: null,
+				kind: activity.kind,
+				sessionKind: session?.kind ?? 'practice',
+				// The bow the outing named, or the generic type when it only recorded that much.
+				bowType: (session?.bowId ? bowTypes.get(session.bowId) : session?.bowType) ?? null,
+				windKmh: typeof weather?.windSpeedKmh === 'number' ? weather.windSpeedKmh : null,
+				ends: endsByActivity.get(activity.id) ?? []
+			};
+		}),
+		sightMarks: marks,
+		weekArrowGoal: weekArrowGoal(slots, plans)
+	};
+}
+
+async function writeBadges(keys: { key: string; earnedAt: number }[]) {
+	const rows = keys.map((entry) => ({ ...stamp(), key: entry.key, earnedAt: entry.earnedAt }));
+	if (rows.length === 0) return;
+	await db().insert(schema.badge).values(rows);
+	await logMany(
+		'badge',
+		rows.map((row) => row.id),
+		'insert'
+	);
+}
+
+/**
+ * Awards whatever the shooting so far has earned and is not already held. Never takes one back: a
+ * badge is kept once won, and only the recalculation in settings can revoke it.
+ *
+ * Returns the keys awarded by this call, so the caller can celebrate them.
+ */
+export async function awardBadges(): Promise<string[]> {
+	const held = new Set((await listBadges()).map((row) => row.key));
+	const earned = evaluateBadges(await loadBadgeInput()).filter(
+		(badge) => badge.earnedAt !== null && !held.has(badge.definition.key)
+	);
+	await writeBadges(earned.map((badge) => ({ key: badge.definition.key, earnedAt: badge.earnedAt! })));
+	return earned.map((badge) => badge.definition.key);
+}
+
+/**
+ * Checks every badge against the shooting that is left and revokes the ones nothing supports any
+ * more, after a session was deleted or a score corrected. A badge that still stands keeps the date
+ * it was first earned, because that is the day it was shot.
+ */
+export async function recalculateBadges(): Promise<{ awarded: string[]; revoked: string[] }> {
+	const rows = await listBadges();
+	const badges = evaluateBadges(await loadBadgeInput());
+	const earned = new Map(
+		badges.filter((badge) => badge.earnedAt !== null).map((badge) => [badge.definition.key, badge.earnedAt!])
+	);
+
+	const now = Date.now();
+	const stale = rows.filter((row) => !earned.has(row.key));
+	for (const row of stale) {
+		await db()
+			.update(schema.badge)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(eq(schema.badge.id, row.id));
+	}
+	await logMany(
+		'badge',
+		stale.map((row) => row.id),
+		'delete'
+	);
+
+	const held = new Set(rows.filter((row) => earned.has(row.key)).map((row) => row.key));
+	const missing = [...earned.entries()]
+		.filter(([key]) => !held.has(key))
+		.map(([key, earnedAt]) => ({ key, earnedAt }));
+	await writeBadges(missing);
+
+	return { awarded: missing.map((entry) => entry.key), revoked: stale.map((row) => row.key) };
 }
 
 export function shotFromZone(zone: Zone, source: Shot['source'] = 'manual'): Omit<Shot, 'ordinal'> {

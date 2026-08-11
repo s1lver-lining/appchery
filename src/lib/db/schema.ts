@@ -209,6 +209,23 @@ export const favouriteRound = sqliteTable(
 	(t) => [index('idx_favourite_round_key').on(t.roundKey)]
 );
 
+/**
+ * A goal the archer has reached. Stored rather than derived, unlike a personal best: a badge is
+ * earned once and kept, so editing the round that won it never takes it away. Only the recalculation
+ * in settings revokes one, when the shooting behind it is gone.
+ */
+export const badge = sqliteTable(
+	'badge',
+	{
+		...syncColumns,
+		/** Matches a key in the badge catalogue, see src/lib/domain/badges.ts. */
+		key: text('key').notNull(),
+		/** When the shooting that earned it happened, not when the row was written. */
+		earnedAt: integer('earned_at').notNull()
+	},
+	(t) => [index('idx_badge_key').on(t.key)]
+);
+
 // Written from phase 1 so sync in phase 3 has a history to reconcile, see doc/architecture.md.
 export const changeLog = sqliteTable(
 	'change_log',

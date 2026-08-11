@@ -23,6 +23,7 @@ const TABLES = [
 	['plan', schema.plan],
 	['planSlot', schema.planSlot],
 	['sightMark', schema.sightMark],
+	['badge', schema.badge],
 	['syncState', schema.syncState],
 	['changeLog', schema.changeLog]
 ] as const;
