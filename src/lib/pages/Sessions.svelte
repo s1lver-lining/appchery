@@ -9,10 +9,10 @@
 		createSession,
 		updateSession
 	} from '$lib/db/repository';
-	import { upcoming, weekdayOf, type Occurrence } from '$lib/domain/plans';
+	import { upcoming, weekdayOf, weekArrowGoal, type Occurrence } from '$lib/domain/plans';
 	import { groupByWeek, monthGrid, startOfDay } from '$lib/domain/dates';
 	import { defaultNameKey } from '$lib/domain/sessions';
-	import { defaultBowId, formatTime, dateFormats } from '$lib/prefs';
+	import { defaultBowId, formatTime, dateFormats, showWeekGoal } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
@@ -94,6 +94,8 @@
 		...occurrences.map((occurrence) => ({ at: occurrence.at, occurrence }))
 	]);
 	const weeks = $derived(groupByWeek(rows, (row) => row.at));
+	/** What every plan asks of a week together, which is what a week's total is measured against. */
+	const weekGoal = $derived(weekArrowGoal(slots, plans));
 	const weekArrows = $derived((group: (typeof weeks)[number]) =>
 		group.items.reduce(
 			(sum, row) => sum + (row.session ? (counts[row.session.id]?.arrows ?? 0) : 0),
@@ -370,7 +372,12 @@
 				wrapperClass=""
 				triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
 				items={[
-					{ label: $t('plans.view'), icon: 'chart', onselect: () => goto('/plans') },
+					{
+							label: $showWeekGoal ? $t('sessions.hideWeekGoal') : $t('sessions.showWeekGoal'),
+							icon: 'target',
+							onselect: () => showWeekGoal.set(!$showWeekGoal)
+						},
+						{ label: $t('plans.view'), icon: 'chart', onselect: () => goto('/plans') },
 					{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help') }
 				]}
 			/>
@@ -405,14 +412,19 @@
 				<div class="space-y-5">
 					{#each weeks as group (group.start)}
 						<!-- The week the list opens on, held so the effect above can bring it into view. -->
+						{@const reached = weekGoal > 0 && weekArrows(group) >= weekGoal}
 						<section use:markAnchor={group.start}>
 							<header class="mb-2 flex items-baseline gap-2 border-b border-line pb-1">
 								<h2 class="text-sm font-semibold">{$t('sessions.week', { n: group.week })}</h2>
-								<!-- The week's volume, quiet enough that the dates still read as the header. -->
+								<!-- The week's volume, quiet enough that the dates still read as the header. Against
+									the plan when asked for, and said out loud only once the week is done. -->
 								<span
-									class="tabular rounded-full bg-sunk px-2 py-0.5 text-[11px] leading-none text-muted"
+									class="tabular rounded-full px-2 py-0.5 text-[11px] leading-none
+										{$showWeekGoal && reached
+										? 'bg-brand/20 font-semibold text-brand-text'
+										: 'bg-sunk text-muted'}"
 								>
-									{weekArrows(group)}
+									{weekArrows(group)}{#if $showWeekGoal && weekGoal > 0}/{weekGoal}{/if}
 									{$t('sessions.arrows')}
 								</span>
 								<span class="ml-auto text-xs text-muted">

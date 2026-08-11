@@ -266,29 +266,32 @@
 	quiet on purpose: the header is not a settings page, it just refuses to be the wrong two numbers.
 -->
 {#snippet figure(slot: 'primary' | 'secondary', key: StatKey, lead: boolean)}
-	{#if key !== 'none'}
-		<button
-			class="text-left"
-			oncontextmenu={(e) => {
-				e.preventDefault();
-				picking = slot;
-			}}
-			onpointerdown={() => hold(slot)}
-			onpointerup={cancelHold}
-			onpointerleave={cancelHold}
-			onpointercancel={cancelHold}
-			onclick={() => (picking = slot)}
+	<button
+		class="text-left"
+		aria-label={key === 'none' ? $t('home.pickStat') : undefined}
+		oncontextmenu={(e) => {
+			e.preventDefault();
+			picking = slot;
+		}}
+		onpointerdown={() => hold(slot)}
+		onpointerup={cancelHold}
+		onpointerleave={cancelHold}
+		onpointercancel={cancelHold}
+		onclick={() => (picking = slot)}
+	>
+		<!-- Showing nothing still holds its place: the header must not resize as figures come and go,
+			and the space is the only way back to a figure that was switched off. -->
+		<dd
+			class="tabular leading-none {lead
+				? 'text-4xl font-bold text-brand-text'
+				: 'text-2xl font-semibold'} {key === 'none' ? 'invisible' : ''}"
 		>
-			<dd
-				class="tabular leading-none {lead
-					? 'text-4xl font-bold text-brand-text'
-					: 'text-2xl font-semibold'}"
-			>
-				{stats[key].value}
-			</dd>
-			<dt class="mt-1 text-xs text-muted">{stats[key].label}</dt>
-		</button>
-	{/if}
+			{key === 'none' ? '0' : stats[key].value}
+		</dd>
+		<dt class="mt-1 text-xs text-muted {key === 'none' ? 'invisible' : ''}">
+			{key === 'none' ? stats.monthArrows.label : stats[key].label}
+		</dt>
+	</button>
 {/snippet}
 
 <div class="flex min-h-full flex-col">

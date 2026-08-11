@@ -124,6 +124,12 @@ export const homeStatPrimary = storedString('appchery.homeStatPrimary');
 export const homeStatSecondary = storedString('appchery.homeStatSecondary');
 
 /**
+ * Whether the sessions list measures each week against what the plans ask of it. Off by default:
+ * an archer without a plan has nothing to measure against, and the pill should stay a plain count.
+ */
+export const showWeekGoal = flag('appchery.showWeekGoal', false);
+
+/**
  * Which optional sight mark columns are on. A view preference: an archer who records windage wants
  * that column on every bow, and one who does not should never see it.
  */

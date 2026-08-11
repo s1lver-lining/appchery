@@ -62,6 +62,8 @@ export const en = {
 		year: 'Year',
 		thisMonth: 'This month',
 		planned: 'Planned',
+		showWeekGoal: 'Show the weekly goal',
+		hideWeekGoal: 'Hide the weekly goal',
 		activityCount: '{n} act.',
 		arrows: 'arrows',
 		oneActivity: '1 act.',

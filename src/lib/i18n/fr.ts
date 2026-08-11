@@ -63,6 +63,8 @@ export const fr: Dictionary = {
 		year: 'Année',
 		thisMonth: 'Ce mois-ci',
 		planned: 'Planifiée',
+		showWeekGoal: "Afficher l'objectif hebdomadaire",
+		hideWeekGoal: "Masquer l'objectif hebdomadaire",
 		activityCount: '{n} act.',
 		arrows: 'flèches',
 		oneActivity: '1 act.',
