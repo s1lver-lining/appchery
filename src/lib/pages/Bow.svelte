@@ -235,10 +235,17 @@
 	<PageHeader motif="bow">
 		{#snippet lead()}
 			{@const named = bow}
-			<!-- Arrow and name on one line, as on the session page: the name is the page, not a field. -->
-			<div class="flex items-center gap-2">
+		<!--
+				Arrow, name and what the bow is, all on one line: the name is the page, not a field, and a
+				header the same height as its neighbours has nothing to animate as the pager slides.
+			-->
+			<div class="flex items-baseline gap-2">
 				{#if backTo}
-					<a href={backTo} class="-ml-1 shrink-0 text-muted" aria-label={$t('common.back')}>
+					<a
+						href={backTo}
+						class="-ml-1 shrink-0 self-center text-muted"
+						aria-label={$t('common.back')}
+					>
 						<Icon name="back" size={22} />
 					</a>
 				{/if}
@@ -247,8 +254,12 @@
 					value={named?.name ?? ''}
 					onchange={(e) => rename(e.currentTarget.value)}
 				/>
+				<p class="shrink-0 truncate text-sm text-muted">
+					{$t(`bow.${named?.type}`)}
+					{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
+				</p>
 			</div>
-	{/snippet}
+		{/snippet}
 
 		{#snippet actions()}
 			<MoreMenu
@@ -275,16 +286,6 @@
 	</PageHeader>
 
 	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-		<!--
-			Kept out of the header so the bow wears the same one line header as every other main page:
-			two headers of the same height meet edge to edge as the pager slides, with nothing to animate.
-		-->
-		<p class="-mb-1 text-sm text-muted">
-			{$t(`bow.${bow.type}`)}
-			{#if isDefault}· <span class="text-brand-text">{$t('equipment.default')}</span>{/if}
-		</p>
-
-
 		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4" swipeable={backTo !== null}>
 			{#snippet pane(key)}
 				{#if key === 'overview'}
