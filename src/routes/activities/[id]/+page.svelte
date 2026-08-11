@@ -264,6 +264,7 @@
 		place: session?.location ?? null,
 		bow: bow?.name ?? null,
 		category: session ? $t(`sessions.${session.kind}`) : null,
+		sessionName: session?.label ?? null,
 		weather: cardWeather,
 		isBest: shareIsBest,
 		labels: {

@@ -46,6 +46,21 @@ export function runBackGuards(list: (() => boolean)[]): boolean {
 	return false;
 }
 
+/**
+ * Where a page was opened from, when it can be reached from more than one place. The link carries
+ * it, because the alternative is unwinding history: a page reached twice by different routes has to
+ * go back to the one the archer actually came from, not to the one its URL sits under.
+ */
+export function originOf(url: URL, fallback: string): string {
+	const from = url.searchParams.get('from');
+	// Only in app paths, so a crafted link cannot send the back arrow somewhere else entirely.
+	return from && from.startsWith('/') && !from.startsWith('//') ? from : fallback;
+}
+
+export function withOrigin(href: string, from: string): string {
+	return `${href}?from=${encodeURIComponent(from)}`;
+}
+
 export type TabNav = { count: number; index: number; select: (index: number) => void };
 
 /** The in page tabs of the current page, so a swipe moves between them instead of between pages. */

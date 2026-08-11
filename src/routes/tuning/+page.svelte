@@ -12,14 +12,16 @@
 		createTuningActivity,
 		type BowRow
 	} from '$lib/db/repository';
-	import { setPageUp } from '$lib/nav';
+	import { originOf, registerBackGuard, setPageUp } from '$lib/nav';
+	import { page } from '$app/stores';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 
-	// Reached from the settings page and from a bow, so the back key goes to the settings root.
-	$effect(() => setPageUp('/settings'));
+	// Reached from the settings page and from a bow, so back goes wherever the link came from.
+	const origin = $derived(originOf($page.url, '/settings'));
+	$effect(() => setPageUp(origin));
 
 	let bow = $state<'recurve' | 'compound'>('recurve');
 	let open = $state<GuideStep | null>(null);
@@ -28,6 +30,15 @@
 
 	$effect(() => {
 		listBows().then((rows) => (bows = rows));
+	});
+
+	/** The step sheet is a page in its own right to the archer, so the back key closes it first. */
+	$effect(() => {
+		if (!open) return;
+		return registerBackGuard(() => {
+			open = null;
+			return true;
+		});
 	});
 
 	const TABS = $derived([
@@ -60,7 +71,7 @@
 
 <PageHeader motif="bow" title={$t('tuning.guideTitle')}>
 	{#snippet lead()}
-		<a href="/settings" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+		<a href={origin} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
 			<Icon name="back" size={22} />
 		</a>
 	{/snippet}

@@ -218,8 +218,8 @@ const EN: Record<string, StepText> = {
 		]
 	},
 	'arrow-spine': {
-		title: 'Arrow spine',
-		why: 'A shaft that is wrong for the bow cannot be tuned straight, only compensated for until something else is wrong.',
+		title: 'Choose the shaft: spine and point weight',
+		why: 'Everything above set the bow up; this step picks the arrow to match it. A shaft that is wrong for the bow cannot be tuned straight, only compensated for until something else is wrong.',
 		steps: [
 			'Take the draw weight on your fingers at your draw length, not the number on the limbs.',
 			'Read a spine chart with that weight, your arrow length and your point weight.',
@@ -233,8 +233,8 @@ const EN: Record<string, StepText> = {
 		]
 	},
 	'bare-shaft': {
-		title: 'Bare shaft tuning',
-		why: 'This is where the geometry above is proved: an unfletched arrow shows what the bow does before the vanes hide it.',
+		title: 'Prove the setup with bare shafts',
+		why: 'The last step, and the only one that tests bow and arrow together: an unfletched arrow shows what the shot really does before the vanes hide it, and sends you back to the button or the nocking point with an answer.',
 		steps: [
 			'Shoot three fletched arrows and one bare shaft at the same mark, at 10 to 15 metres.',
 			'Note where the bare shaft sits relative to the fletched group.',
@@ -504,8 +504,8 @@ const FR: Record<string, StepText> = {
 			'Modifiez-le aux vis de branches, en gardant la puissance en tête : serrer augmente la force.'
 		],
 		results: [
-			{ observation: 'Tube nu systématiquement haut', suggests: 'Augmentez légèrement le tiller, ou baissez d’abord le point d’encochage' },
-			{ observation: 'Tube nu systématiquement bas', suggests: 'Réduisez légèrement le tiller, ou montez d’abord le point d’encochage' },
+			{ observation: 'Flèche non empennée toujours haute', suggests: 'Augmentez légèrement le tiller, ou baissez d’abord le point d’encochage' },
+			{ observation: 'Flèche non empennée toujours basse', suggests: 'Réduisez légèrement le tiller, ou montez d’abord le point d’encochage' },
 			{ observation: "L'arc saute bizarrement à la décoche", suggests: 'Revenez au tiller de départ et refaites le point d’encochage' }
 		]
 	},
@@ -516,12 +516,12 @@ const FR: Record<string, StepText> = {
 			"Posez une équerre d'arc sur le repose-flèche et clipsez-la sur la corde.",
 			'Placez le haut du nock-set inférieur à environ 0,5 cm au-dessus de l’équerre pour commencer.',
 			'Ajoutez le second nock-set au-dessus de l’encoche pour que la flèche ne glisse pas.',
-			'Validez au tube nu à courte distance une fois le reste de la géométrie posé.'
+			'Validez à la flèche non empennée à courte distance une fois le reste de la géométrie posé.'
 		],
 		results: [
-			{ observation: 'Tube nu haut', suggests: 'Montez le point d’encochage' },
-			{ observation: 'Tube nu bas', suggests: 'Descendez le point d’encochage' },
-			{ observation: 'Le tube nu marsouine', suggests: 'Le point est loin du compte : corrigez par pas plus grands' }
+			{ observation: 'Flèche non empennée haute', suggests: 'Montez le point d’encochage' },
+			{ observation: 'Flèche non empennée basse', suggests: 'Descendez le point d’encochage' },
+			{ observation: 'La flèche non empennée marsouine', suggests: 'Le point est loin du compte : corrigez par pas plus grands' }
 		]
 	},
 	'draw-length': {
@@ -539,8 +539,8 @@ const FR: Record<string, StepText> = {
 		]
 	},
 	'arrow-spine': {
-		title: 'Spine des flèches',
-		why: "Un tube inadapté ne se règle pas, il se compense, jusqu'à ce qu'autre chose cloche.",
+		title: 'Choisir la flèche : spine et poids de pointe',
+		why: "Tout ce qui précède règle l'arc ; cette étape choisit la flèche qui lui correspond. Un tube inadapté ne se règle pas, il se compense, jusqu'à ce qu'autre chose cloche.",
 		steps: [
 			'Prenez la puissance réellement ressentie aux doigts à votre allonge, pas celle marquée sur les branches.',
 			'Lisez un tableau de spine avec cette puissance, la longueur de vos tubes et le poids de pointe.',
@@ -548,24 +548,24 @@ const FR: Record<string, StepText> = {
 			'Jouez sur le poids de pointe pour déplacer le spine dynamique : plus lourd assouplit.'
 		],
 		results: [
-			{ observation: 'Le tube nu part toujours faible', suggests: 'Pointe plus légère, tube plus court, ou spine plus raide' },
-			{ observation: 'Le tube nu part toujours raide', suggests: 'Pointe plus lourde, tube plus long, ou spine plus souple' },
+			{ observation: 'La flèche non empennée part toujours faible', suggests: 'Pointe plus légère, tube plus court, ou spine plus raide' },
+			{ observation: 'La flèche non empennée part toujours raide', suggests: 'Pointe plus lourde, tube plus long, ou spine plus souple' },
 			{ observation: 'FOC inférieur à 10 %', suggests: 'Alourdissez la pointe : la flèche se tiendra mal dans le vent' }
 		]
 	},
 	'bare-shaft': {
-		title: 'Réglage au tube nu',
-		why: "C'est ici que la géométrie précédente se vérifie : une flèche sans plumes montre ce que fait l'arc avant que l'empennage ne le masque.",
+		title: "Valider l'ensemble aux flèches non empennées",
+		why: "La dernière étape, et la seule qui éprouve l'arc et la flèche ensemble : sans empennage, le tir montre ce qu'il fait réellement et vous renvoie au bouton ou au point d'encochage avec une réponse.",
 		steps: [
-			'Tirez trois flèches empennées et un tube nu sur le même point, à 10 ou 15 mètres.',
+			'Tirez trois flèches empennées et une non empennée sur le même point, à 10 ou 15 mètres.',
 			'Notez la position du tube nu par rapport au groupement empenné.',
 			'Corrigez d’abord le vertical au point d’encochage, puis le latéral au bouton.',
 			'Ne changez qu’une chose à la fois, puis retirez la série.'
 		],
 		results: [
-			{ observation: 'Tube nu à gauche du groupement, droitier', suggests: 'Réaction raide : assouplissez le ressort ou alourdissez la pointe' },
-			{ observation: 'Tube nu à droite du groupement, droitier', suggests: 'Réaction faible : durcissez le ressort ou allégez la pointe' },
-			{ observation: 'Tube nu haut ou bas', suggests: 'Corrigez le point d’encochage avant toute correction latérale' }
+			{ observation: 'Flèche non empennée à gauche du groupement, droitier', suggests: 'Réaction raide : assouplissez le ressort ou alourdissez la pointe' },
+			{ observation: 'Flèche non empennée à droite du groupement, droitier', suggests: 'Réaction faible : durcissez le ressort ou allégez la pointe' },
+			{ observation: 'Flèche non empennée haute ou basse', suggests: 'Corrigez le point d’encochage avant toute correction latérale' }
 		]
 	},
 
@@ -593,7 +593,7 @@ const FR: Record<string, StepText> = {
 		],
 		results: [
 			{ observation: 'La came du haut arrive la première', suggests: 'Ajoutez des tours au câble qui commande la came du haut' },
-			{ observation: 'L’encoche bascule au départ', suggests: 'Synchronisez avant de toucher au repose-flèche ou à la boucle' }
+			{ observation: 'L’encoche bascule au départ', suggests: 'Synchronisez avant de toucher au repose-flèche ou au D-loop' }
 		]
 	},
 	'draw-stop': {
@@ -623,12 +623,12 @@ const FR: Record<string, StepText> = {
 		]
 	},
 	'd-loop': {
-		title: 'Boucle en D et encochage',
-		why: "La boucle fixe la hauteur d'encochage et la façon dont le décocheur tire la corde : ensemble, elles donnent l'angle vertical du tir.",
+		title: 'D-loop et encochage',
+		why: "Le D-loop fixe la hauteur d'encochage et la façon dont le décocheur tire la corde : ensemble, elles donnent l'angle vertical du tir.",
 		steps: [
-			'Nouez la boucle pour que la flèche soit d’équerre à la corde, ou un cheveu au-dessus.',
-			'Gardez-la assez courte pour ne pas changer sensiblement votre allonge.',
-			'Serrez-la fermement : une boucle qui glisse change le réglage d’une semaine à l’autre.'
+			'Nouez le D-loop pour que la flèche soit d’équerre à la corde, ou un cheveu au-dessus.',
+			'Gardez-le assez court pour ne pas changer sensiblement votre allonge.',
+			'Serrez-le fermement : un D-loop qui glisse change le réglage d’une semaine à l’autre.'
 		],
 		results: [
 			{ observation: 'Déchirure queue haute', suggests: 'Baissez le point d’encochage, ou remontez légèrement le repose-flèche' },
@@ -663,7 +663,7 @@ const FR: Record<string, StepText> = {
 	},
 	'paper-tune': {
 		title: 'Réglage au papier',
-		why: "Le papier montre l'attitude de la flèche à l'instant où elle part : c'est le moyen le plus rapide de voir ce que font le repose-flèche et la boucle.",
+		why: "Le papier montre l'attitude de la flèche à l'instant où elle part : c'est le moyen le plus rapide de voir ce que font le repose-flèche et le D-loop.",
 		steps: [
 			'Placez-vous à environ deux mètres d’une feuille, avec une cible bien derrière.',
 			'Tirez à travers le papier avec une flèche empennée et lisez la déchirure.',
@@ -690,16 +690,16 @@ const FR: Record<string, StepText> = {
 		]
 	},
 	'compound-bare-shaft': {
-		title: 'Contrôle au tube nu',
+		title: 'Contrôle à la flèche non empennée',
 		why: "La confirmation finale : sur un poulies réglé au papier et en reculant, le tube nu doit rejoindre le groupement empenné.",
 		steps: [
-			'Tirez trois flèches empennées et un tube nu à 15 ou 20 mètres.',
+			'Tirez trois flèches empennées et une non empennée à 15 ou 20 mètres.',
 			'Comparez les centres de groupement plutôt que des flèches isolées.',
 			'Acceptez de petits écarts : un poulies au dégagement propre ne demande guère plus.'
 		],
 		results: [
-			{ observation: 'Tube nu franchement à gauche ou à droite', suggests: 'Vérifiez le dégagement, puis le spine, puis le repose-flèche' },
-			{ observation: 'Tube nu dans le groupement', suggests: 'L’arc est réglé : enregistrez les valeurs comme révision' }
+			{ observation: 'Flèche non empennée franchement à gauche ou à droite', suggests: 'Vérifiez le dégagement, puis le spine, puis le repose-flèche' },
+			{ observation: 'Flèche non empennée dans le groupement', suggests: 'L’arc est réglé : enregistrez les valeurs comme révision' }
 		]
 	},
 	'third-axis': {

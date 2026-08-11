@@ -22,6 +22,8 @@ export interface CardData {
 	bow: string | null;
 	/** Practice, competition, and so on: said only when the archer wants it said. */
 	category: string | null;
+	/** What the outing was called, which for a competition is the name of the competition. */
+	sessionName: string | null;
 	weather: { icon: WeatherGlyph; temperature: string; wind: string } | null;
 	isBest: boolean;
 	options: CardOptions;
@@ -42,6 +44,7 @@ export interface CardData {
 /** What the card shows. Every one of these is the archer's to turn off before it goes anywhere. */
 export interface CardOptions {
 	date: boolean;
+	sessionName: boolean;
 	place: boolean;
 	bow: boolean;
 	category: boolean;
@@ -55,6 +58,7 @@ export interface CardOptions {
 
 export const CARD_OPTION_KEYS = [
 	'date',
+	'sessionName',
 	'place',
 	'bow',
 	'category',
@@ -70,9 +74,12 @@ export type CardOptionKey = (typeof CARD_OPTION_KEYS)[number];
 /** What a card says unless it is told otherwise: the round, and the day it was shot. */
 export const DEFAULT_CARD_OPTIONS: Omit<CardOptions, 'theme'> = {
 	date: true,
+	// Off by default: the name of an outing means something to the archer and little to anyone else,
+	// and the kind of session is usually already obvious from the round.
+	sessionName: false,
 	place: true,
 	bow: true,
-	category: true,
+	category: false,
 	recap: true,
 	sheet: true,
 	weatherIcon: false,
@@ -325,7 +332,9 @@ export function scorecardSvg(data: CardData): string {
 		.filter(Boolean)
 		.join(' · ');
 
-	const statTop = nameTop + (nameLines.length > 1 ? 62 : 0);
+	// The session name pushes the score down rather than crowding against the round it was shot in.
+	const statTop =
+		nameTop + (nameLines.length > 1 ? 62 : 0) + (options.sessionName && data.sessionName ? 40 : 0);
 	const sheetTop = statTop + (options.recap ? 390 : 250);
 
 	const sky = data.weather;
@@ -361,17 +370,23 @@ export function scorecardSvg(data: CardData): string {
 
 	${best ? ribbon(data.labels.personalBest) : ''}
 	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
+	${
+		options.sessionName && data.sessionName
+			? text(data.sessionName, 80, nameTop + (nameLines.length - 1) * 62 + 42, {
+					size: 30,
+					weight: 600,
+					fill: MUTED
+				})
+			: ''
+	}
 
 	${text(String(data.score), 74, statTop + 172, { size: 170, weight: 800, fill: 'url(#score)' })}
 	${data.max ? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
 	${text(data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: MUTED, spacing: 5 })}
 
-	${
-		sky && options.weatherIcon
-			? weatherMark(sky.icon, 1000 - (reading ? 300 : 60), statTop + 190, 52)
-			: ''
-	}
-	${reading ? text(reading, 1000, statTop + 222, { size: 30, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
+	<!-- The sky sits above the ceiling score, on its own two lines, rather than beside a number. -->
+	${sky && options.weatherIcon ? weatherMark(sky.icon, 922, statTop + 6, 78) : ''}
+	${reading ? text(reading, 1000, statTop + 122, { size: 30, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
 
 	${
 		options.recap

@@ -36,6 +36,7 @@
 		type BowUsage,
 		type SightMarkRow
 	} from '$lib/db/repository';
+	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
@@ -253,7 +254,11 @@
 				triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
 				items={[
 					{ label: $t('equipment.viewList'), icon: 'bow', onselect: () => goto('/equipment') },
-					{ label: $t('tuning.guideTitle'), icon: 'wrench', onselect: () => goto('/tuning') },
+					{
+							label: $t('tuning.guideTitle'),
+							icon: 'wrench',
+							onselect: () => goto(withOrigin('/tuning', `/equipment/${bowId}`))
+						},
 					{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/equipment') }
 				]}
 			/>
@@ -266,34 +271,38 @@
 			{#snippet pane(key)}
 				{#if key === 'overview'}
 					{#if usage}
-					<!-- Four across, so the captions are shortened rather than allowed to wrap under them,
-						and a tap spells the whole word out under the row, where nothing can crop it. -->
-					<section>
-						<div class="grid grid-cols-4 gap-2">
-							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShotShort'), full: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount'), full: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount'), full: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBestShort'), full: $t('stats.personalBest') }] as stat (stat.label)}
-								<button
-									class="overflow-hidden rounded-xl border bg-surface p-2.5 text-left
-										{explained === stat.full ? 'border-brand' : 'border-line'}"
-									title={stat.full}
-									onpointerdown={(event) => {
-										// Ahead of the window handler that closes it, or it would never open.
-										event.stopPropagation();
-										explained = explained === stat.full ? null : stat.full;
-									}}
+				<!-- Four across, so the captions are shortened rather than allowed to wrap under them,
+						and a tap spells the whole word out in a bubble, leaning back into the page at the
+						ends of the row rather than hanging off it. -->
+					<section class="grid grid-cols-4 gap-2">
+						{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShotShort'), full: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount'), full: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount'), full: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBestShort'), full: $t('stats.personalBest') }] as stat, i (stat.label)}
+							<button
+								class="relative rounded-xl border bg-surface p-2.5 text-left
+									{explained === stat.full ? 'border-brand' : 'border-line'}"
+								title={stat.full}
+								onpointerdown={(event) => {
+									// Ahead of the window handler that closes it, or it would never open.
+									event.stopPropagation();
+									explained = explained === stat.full ? null : stat.full;
+								}}
+							>
+								<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
+								<p
+									class="mt-1 truncate text-[10px] leading-tight whitespace-nowrap text-muted first-letter:uppercase"
 								>
-									<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
-									<p
-										class="mt-1 truncate text-[10px] leading-tight whitespace-nowrap text-muted first-letter:uppercase"
-									>
-										{stat.label}
-									</p>
-								</button>
-							{/each}
-						</div>
+									{stat.label}
+								</p>
 
-						{#if explained}
-							<p class="mt-1.5 rounded-lg bg-sunk px-2.5 py-1.5 text-xs text-muted">{explained}</p>
-						{/if}
+								{#if explained === stat.full}
+									<span
+										class="absolute top-full z-10 mt-1.5 rounded-lg bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-bg shadow-lg
+											{i === 0 ? 'left-0' : i === 3 ? 'right-0' : 'left-1/2 -translate-x-1/2'}"
+									>
+										{stat.full}
+									</span>
+								{/if}
+							</button>
+						{/each}
 					</section>
 
 					{#if usage.lastUsedAt}

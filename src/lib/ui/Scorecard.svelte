@@ -37,6 +37,7 @@
 	/** Nothing to say means nothing to show: an option with no data behind it cannot be turned on. */
 	const available = $derived<Record<CardOptionKey, boolean>>({
 		date: true,
+		sessionName: Boolean(data.sessionName),
 		place: Boolean(data.place),
 		bow: Boolean(data.bow),
 		category: Boolean(data.category),
@@ -66,6 +67,7 @@
 
 	const LABELS = $derived<Record<CardOptionKey, string>>({
 		date: $t('share.optionDate'),
+		sessionName: $t('share.optionSessionName'),
 		place: $t('share.optionPlace'),
 		bow: $t('share.optionBow'),
 		category: $t('share.optionCategory'),

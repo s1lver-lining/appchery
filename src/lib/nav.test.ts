@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { isMainPage, parentPath, mainPageIndex, runBackGuards } from './nav';
+import { isMainPage, parentPath, mainPageIndex, runBackGuards, originOf, withOrigin } from './nav';
 
 describe('parentPath', () => {
 	it('has no parent for the pages in the tab bar', () => {
@@ -22,6 +22,28 @@ describe('isMainPage', () => {
 	it('rejects detail pages', () => {
 		expect(isMainPage('/sessions')).toBe(true);
 		expect(isMainPage('/sessions/abc')).toBe(false);
+	});
+});
+
+describe('originOf', () => {
+	const at = (query: string) => new URL(`https://app.local/tuning${query}`);
+
+	it('sends the archer back where they came from', () => {
+		expect(originOf(at('?from=%2Fequipment%2Fabc'), '/settings')).toBe('/equipment/abc');
+	});
+
+	it('falls back to the page it sits under when nothing was carried', () => {
+		expect(originOf(at(''), '/settings')).toBe('/settings');
+	});
+
+	it('refuses anything that is not an in app path', () => {
+		expect(originOf(at('?from=https%3A%2F%2Felsewhere.example'), '/settings')).toBe('/settings');
+		expect(originOf(at('?from=%2F%2Felsewhere.example'), '/settings')).toBe('/settings');
+	});
+
+	it('round trips through withOrigin', () => {
+		const href = withOrigin('/tuning', '/equipment/a b');
+		expect(originOf(new URL(`https://app.local${href}`), '/settings')).toBe('/equipment/a b');
 	});
 });
 

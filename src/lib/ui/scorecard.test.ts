@@ -17,6 +17,7 @@ function card(partial: Partial<CardData> = {}): CardData {
 		place: 'Club de Lyon',
 		bow: 'Formula',
 		category: 'Practice',
+		sessionName: 'Club shoot',
 		weather: null,
 		isBest: false,
 		options: { ...DEFAULT_CARD_OPTIONS, theme: 'dark' as const },
