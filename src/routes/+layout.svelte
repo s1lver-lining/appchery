@@ -4,7 +4,15 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { initDb, dbInfo } from '$lib/db';
-	import { backGuards, isMainPage, pageTabs, pageUp, parentPath, runBackGuards } from '$lib/nav';
+	import {
+		backGuards,
+		isMainPage,
+		originOf,
+		pageTabs,
+		pageUp,
+		parentPath,
+		runBackGuards
+	} from '$lib/nav';
 	import { t } from '$lib/i18n';
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
@@ -41,7 +49,9 @@
 	$effect(() => {
 		const listener = App.addListener('backButton', () => {
 			if (runBackGuards($backGuards)) return;
-			const up = $pageUp ?? parentPath($page.url.pathname);
+			// A page opened from somewhere other than its own section goes back there first: a main
+			// page has no parent to climb to, and would otherwise leave the app.
+			const up = $pageUp ?? originOf($page.url, null) ?? parentPath($page.url.pathname);
 			if (up) goto(up);
 			else App.exitApp();
 		});

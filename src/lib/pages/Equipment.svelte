@@ -5,6 +5,7 @@
 	import { BOW_TYPES, type BowType } from '$lib/domain/tuning/templates';
 	import { listBows, createBow, type BowRow } from '$lib/db/repository';
 	import { defaultBowId } from '$lib/prefs';
+	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
@@ -84,7 +85,7 @@
 			{#each bows as bow (bow.id)}
 				<li>
 					<a
-						href="/equipment/{bow.id}"
+						href={withOrigin(`/equipment/${bow.id}`, '/equipment')}
 						class="flex items-center gap-3 rounded-xl border bg-surface p-3
 							{$defaultBowId === bow.id ? 'border-brand ring-1 ring-brand' : 'border-line'}"
 					>

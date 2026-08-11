@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import HelpTopic from '$lib/ui/HelpTopic.svelte';
+	import { originOf } from '$lib/nav';
+	import { page } from '$app/stores';
 
 	/** The three words the whole app is built on, in the order they are met. */
 	const TERMS = $derived([
@@ -10,4 +12,4 @@
 	]);
 </script>
 
-<HelpTopic motif="sessions" from="/sessions" terms={TERMS} />
+<HelpTopic motif="sessions" from={originOf($page.url, '/sessions')} terms={TERMS} />

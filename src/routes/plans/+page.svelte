@@ -3,12 +3,14 @@
 	import { t } from '$lib/i18n';
 	import { listPlans, listPlanSlots, createPlan, type PlanRow } from '$lib/db/repository';
 	import { weekArrowGoal } from '$lib/domain/plans';
-	import { setPageUp } from '$lib/nav';
+	import { originOf, setPageUp } from '$lib/nav';
+	import { page } from '$app/stores';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
-	// Reached from the sessions list, which is where the back key belongs.
-	$effect(() => setPageUp('/sessions'));
+	// Reached from the sessions list and from the settings page, so back goes where the link came from.
+	const origin = $derived(originOf($page.url, '/sessions'));
+	$effect(() => setPageUp(origin));
 
 	let plans = $state<PlanRow[]>([]);
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
@@ -30,7 +32,7 @@
 
 <PageHeader motif="sessions" title={$t('plans.title')}>
 	{#snippet lead()}
-		<a href="/sessions" class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
+		<a href={origin} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
 			<Icon name="back" size={22} />
 		</a>
 	{/snippet}

@@ -51,7 +51,7 @@ export function runBackGuards(list: (() => boolean)[]): boolean {
  * it, because the alternative is unwinding history: a page reached twice by different routes has to
  * go back to the one the archer actually came from, not to the one its URL sits under.
  */
-export function originOf(url: URL, fallback: string): string {
+export function originOf<T extends string | null>(url: URL, fallback: T): string | T {
 	const from = url.searchParams.get('from');
 	// Only in app paths, so a crafted link cannot send the back arrow somewhere else entirely.
 	return from && from.startsWith('/') && !from.startsWith('//') ? from : fallback;

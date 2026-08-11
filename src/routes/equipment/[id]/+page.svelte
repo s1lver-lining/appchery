@@ -36,7 +36,7 @@
 		type BowUsage,
 		type SightMarkRow
 	} from '$lib/db/repository';
-	import { withOrigin } from '$lib/nav';
+	import { originOf, withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
@@ -44,6 +44,8 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
 	const bowId = $derived($page.params.id as string);
+	/** Opened from the list, from the home page, or straight from the tab bar: back follows the link. */
+	const origin = $derived(originOf($page.url, '/equipment'));
 
 	let bow = $state<BowRow | null>(null);
 	let revisions = $state<RevisionRow[]>([]);
@@ -230,7 +232,7 @@
 			{@const named = bow}
 			<!-- Arrow and name on one line, as on the session page: the name is the page, not a field. -->
 			<div class="flex items-center gap-2">
-				<a href="/equipment" class="-ml-1 shrink-0 text-muted" aria-label={$t('common.back')}>
+				<a href={origin} class="-ml-1 shrink-0 text-muted" aria-label={$t('common.back')}>
 					<Icon name="back" size={22} />
 				</a>
 				<input
@@ -259,7 +261,11 @@
 							icon: 'wrench',
 							onselect: () => goto(withOrigin('/tuning', `/equipment/${bowId}`))
 						},
-					{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/equipment') }
+					{
+							label: $t('help.title'),
+							icon: 'help',
+							onselect: () => goto(withOrigin('/help/equipment', `/equipment/${bowId}`))
+						}
 				]}
 			/>
 		{/snippet}
@@ -303,6 +309,131 @@
 								{/if}
 							</button>
 						{/each}
+					</section>
+
+					<!-- The one page an archer opens on the shooting line, so it is a list, not a form. -->
+					<section class="overflow-hidden rounded-xl border border-line bg-surface">
+						<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+							<h2 class="text-sm font-semibold">{$t('sight.title')}</h2>
+							<!-- Unit belongs to the mark being added: an archer shooting both keeps both. -->
+							<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
+								{#each ['m', 'yd'] as const as unit (unit)}
+									<button
+										class="rounded-md px-2 py-1 text-xs font-medium
+											{markUnit === unit ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+										onclick={() => (markUnit = unit)}
+									>
+										{unit}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						{#if marks.length === 0}
+							<p class="px-4 pt-3 text-sm text-muted">{$t('sight.empty')}</p>
+						{:else}
+							<ul class="divide-y divide-line">
+								{#each marks as mark (mark.id)}
+									<li class="flex items-center gap-2 px-4 py-2">
+										<span
+											class="tabular w-14 shrink-0 text-sm font-semibold"
+										>
+											{mark.distance}<span class="text-xs font-normal text-muted">{mark.unit}</span>
+										</span>
+										<!-- A worked out mark is drawn as what it is: dashed, quieter, and led by a tilde.
+										Typing over it proves it, and the styling goes with the guess. -->
+										<span class="relative min-w-0 flex-1">
+											{#if mark.interpolated}
+												<span
+													class="pointer-events-none absolute inset-y-0 left-2 flex items-center text-sm text-brand-text"
+													aria-hidden="true"
+												>
+													~
+												</span>
+											{/if}
+											<input
+												class="tabular w-full rounded-lg border bg-bg py-1.5 text-sm
+													{mark.interpolated
+													? 'border-dashed border-brand/50 pr-2 pl-5 text-muted italic'
+													: 'border-line px-2 text-ink'}"
+												inputmode="decimal"
+												aria-label={mark.interpolated
+													? $t('sight.interpolatedHeight')
+													: $t('sight.height')}
+												placeholder={$t('sight.height')}
+												value={mark.height ?? ''}
+												onfocus={(e) => {
+													// A guess gets out of the way of the mark being typed over it, and comes
+													// back untouched if the archer walks away without entering one.
+													if (mark.interpolated) e.currentTarget.value = '';
+												}}
+												onblur={(e) => saveHeight(mark, e.currentTarget)}
+												onkeydown={(e) => e.key === 'Enter' && e.currentTarget.blur()}
+											/>
+										</span>
+										{#each shownExtras as key (key)}
+											<input
+												class="min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
+												aria-label={extraLabel[key]}
+												placeholder={extraLabel[key]}
+												value={mark[key] ?? ''}
+												onchange={(e) =>
+													setMark(mark.id, { [key]: e.currentTarget.value.trim() || null })}
+											/>
+										{/each}
+										<button
+											class="shrink-0 rounded-lg p-1 text-muted"
+											aria-label={$t('common.delete')}
+											onclick={() => removeMark(mark.id)}
+										>
+											<Icon name="close" size={16} />
+										</button>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+
+						<div class="flex items-center gap-2 border-t border-line px-4 py-2.5">
+							<input
+								type="number"
+								inputmode="numeric"
+								min="1"
+								class="tabular w-20 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
+								placeholder={$t('sight.distance')}
+								aria-label={$t('sight.distance')}
+								bind:value={newDistance}
+								onkeydown={(e) => e.key === 'Enter' && addMark()}
+							/>
+							<button
+								class="flex items-center gap-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+								onclick={addMark}
+							>
+								<Icon name="plus" size={16} />
+								{$t('sight.addMark')}
+							</button>
+						</div>
+
+						{#if marks.some((mark) => mark.interpolated)}
+							<!-- Said once, at the foot of the list, rather than on every row it applies to. -->
+							<p class="border-t border-line px-4 py-2 text-xs text-muted">
+								<span class="text-brand-text">~</span>
+								{$t('sight.interpolatedHint')}
+							</p>
+						{/if}
+
+						<!-- The extra columns live behind chips: they are the exception, not the shape. -->
+						<div class="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5">
+							{#each EXTRAS as key (key)}
+								<button
+									class="rounded-full border px-2.5 py-1 text-xs font-medium
+										{shownExtras.includes(key) ? 'border-brand text-brand-text' : 'border-line text-muted'}"
+									aria-pressed={shownExtras.includes(key)}
+									onclick={() => toggleExtra(key)}
+								>
+									{extraLabel[key]}
+								</button>
+							{/each}
+						</div>
 					</section>
 
 					{#if usage.lastUsedAt}

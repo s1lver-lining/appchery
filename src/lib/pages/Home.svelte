@@ -35,6 +35,7 @@
 	} from '$lib/prefs';
 	import { startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey } from '$lib/domain/sessions';
+	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
@@ -533,7 +534,7 @@
 
 	{#if bow}
 		<!-- A line, not a card: which bow the app will reach for is worth knowing, not worth a block. -->
-		<a href="/equipment/{bow.id}" class="flex items-center gap-2 px-1 text-xs text-muted">
+		<a href={withOrigin(`/equipment/${bow.id}`, '/')} class="flex items-center gap-2 px-1 text-xs text-muted">
 			<Icon name="bow" size={14} />
 			<span class="truncate">{bow.name}</span>
 			{#if revisions.length > 0}

@@ -384,9 +384,9 @@ export function scorecardSvg(data: CardData): string {
 	${data.max ? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
 	${text(data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: MUTED, spacing: 5 })}
 
-	<!-- The sky sits above the ceiling score, on its own two lines, rather than beside a number. -->
-	${sky && options.weatherIcon ? weatherMark(sky.icon, 922, statTop + 6, 78) : ''}
-	${reading ? text(reading, 1000, statTop + 122, { size: 30, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
+	<!-- The sky sits well above the ceiling score, on its own two lines, rather than beside a number. -->
+	${sky && options.weatherIcon ? weatherMark(sky.icon, 900, statTop - 52, 100) : ''}
+	${reading ? text(reading, 1000, statTop + 74, { size: 30, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
 
 	${
 		options.recap

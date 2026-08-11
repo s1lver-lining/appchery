@@ -33,8 +33,8 @@
 	let tab = $state<'app' | 'shooting' | 'data'>('app');
 	/** Pages that live nowhere else in the tab bar, gathered where an archer goes looking for them. */
 	const SHORTCUTS = $derived<{ href: string; icon: IconName; label: string }[]>([
-		{ href: '/equipment', icon: 'bow', label: $t('settings.linkEquipment') },
-		{ href: '/plans', icon: 'chart', label: $t('plans.title') },
+		{ href: withOrigin('/equipment', '/settings'), icon: 'bow', label: $t('settings.linkEquipment') },
+		{ href: withOrigin('/plans', '/settings'), icon: 'chart', label: $t('plans.title') },
 		{ href: withOrigin('/tuning', '/settings'), icon: 'wrench', label: $t('tuning.guideTitle') }
 	]);
 

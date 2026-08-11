@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import HelpTopic from '$lib/ui/HelpTopic.svelte';
+	import { originOf } from '$lib/nav';
+	import { page } from '$app/stores';
 
 	/** What the figures on the stats page mean, and which of them are worth acting on. */
 	const TERMS = $derived([
@@ -10,4 +12,4 @@
 	]);
 </script>
 
-<HelpTopic motif="stats" from="/stats" terms={TERMS} />
+<HelpTopic motif="stats" from={originOf($page.url, '/stats')} terms={TERMS} />
