@@ -268,11 +268,14 @@ export const en = {
 	},
 	share: {
 		title: 'Share this round',
-		action: 'Save the image',
+		action: 'Share',
+		save: 'Save',
 		saving: 'Preparing…',
 		hint: 'A square-ish card, ready for a phone gallery or a feed.',
 		average: 'Per arrow',
-		ends: 'End by end',
+		end: 'End',
+		endTotal: 'E/T',
+		running: 'Total',
 		tagline: 'shot with Appchery'
 	},
 	help: {

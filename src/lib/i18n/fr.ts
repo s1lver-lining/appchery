@@ -269,11 +269,14 @@ export const fr: Dictionary = {
 	},
 	share: {
 		title: 'Partager ce tir',
-		action: "Enregistrer l'image",
+		action: 'Partager',
+		save: 'Enregistrer',
 		saving: 'Préparation…',
 		hint: 'Une carte au format portrait, prête pour la galerie ou un fil.',
 		average: 'Par flèche',
-		ends: 'Volée par volée',
+		end: 'Volée',
+		endTotal: 'T/V',
+		running: 'Total',
 		tagline: 'tiré avec Appchery'
 	},
 	help: {

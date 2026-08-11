@@ -9,7 +9,10 @@ function card(partial: Partial<CardData> = {}): CardData {
 		arrows: 72,
 		tens: 31,
 		xs: 12,
-		ends: [56, 54, 57, 52],
+		sheet: [
+			{ arrows: ['X', '10', '9'], subtotal: 29, running: 29 },
+			{ arrows: ['9', '9', '8'], subtotal: 26, running: 55 }
+		],
 		date: '11 Aug 2026',
 		place: 'Club de Lyon',
 		bow: 'Formula',
@@ -20,7 +23,9 @@ function card(partial: Partial<CardData> = {}): CardData {
 			tens: '10s',
 			xs: 'Xs',
 			average: 'Per arrow',
-			ends: 'End by end',
+			end: 'End',
+			endTotal: 'E/T',
+			runningTotal: 'Total',
 			personalBest: 'Personal best',
 			tagline: 'shot with Appchery'
 		},
@@ -48,7 +53,7 @@ describe('scorecardSvg', () => {
 	});
 
 	it('never draws a number it does not have', () => {
-		const svg = scorecardSvg(card({ max: null, arrows: 0, score: 0, ends: [], place: null, bow: null }));
+		const svg = scorecardSvg(card({ max: null, arrows: 0, score: 0, sheet: [], place: null, bow: null }));
 		expect(svg).not.toMatch(/NaN|undefined|Infinity/);
 	});
 });

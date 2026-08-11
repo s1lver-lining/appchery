@@ -43,6 +43,25 @@ export async function saveFile(blob: Blob, filename: string, title: string): Pro
 	}
 }
 
+/**
+ * Handing a file to another app rather than to storage. The browser share sheet takes files
+ * directly where it exists; everywhere else this falls back to saving, which on a phone opens the
+ * system share sheet anyway. Nothing is uploaded by this app either way.
+ */
+export async function shareFile(blob: Blob, filename: string, title: string): Promise<void> {
+	const file = new File([blob], filename, { type: blob.type });
+	if (typeof navigator !== 'undefined' && navigator.canShare?.({ files: [file] })) {
+		try {
+			await navigator.share({ files: [file], title });
+			return;
+		} catch (error) {
+			// Dismissing the sheet is not a failure, and there is nothing left to fall back to.
+			if (error instanceof DOMException && error.name === 'AbortError') return;
+		}
+	}
+	await saveFile(blob, filename, title);
+}
+
 /** Folder inside the phone's documents directory that scoring videos are kept in. */
 export const RECORDINGS_FOLDER = 'Appchery/recordings';
 

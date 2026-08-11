@@ -124,6 +124,8 @@
 	 */
 	let marks = $state<SightMarkRow[]>([]);
 	let markUnit = $state<'m' | 'yd'>('m');
+	/** Which shortened caption is spelled out, since four across leaves no room to spell them all. */
+	let explained = $state<string | null>(null);
 	let newDistance = $state<number | string>('');
 
 	/** The extra columns, off until asked for: most archers only ever record a height. */
@@ -262,15 +264,29 @@
 			{#snippet pane(key)}
 				{#if key === 'overview'}
 					{#if usage}
-						<!-- Four across, so the captions are shortened rather than allowed to wrap under them. -->
+						<!-- Four across, so the captions are shortened rather than allowed to wrap under them,
+							and a tap says the whole word for the ones that had to be cut short. -->
 						<section class="grid grid-cols-4 gap-2">
-							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShotShort') }, { value: usage.sessions, label: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBestShort') }] as stat (stat.label)}
-								<div class="overflow-hidden rounded-xl border border-line bg-surface p-2.5">
+							{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShotShort'), full: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount'), full: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount'), full: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBestShort'), full: $t('stats.personalBest') }] as stat (stat.label)}
+								<button
+									class="relative overflow-visible rounded-xl border border-line bg-surface p-2.5 text-left"
+									title={stat.full}
+									onclick={() => (explained = explained === stat.full ? null : stat.full)}
+								>
 									<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
-									<p class="mt-1 truncate text-[10px] leading-tight whitespace-nowrap text-muted">
+									<p
+										class="mt-1 truncate text-[10px] leading-tight whitespace-nowrap text-muted first-letter:uppercase"
+									>
 										{stat.label}
 									</p>
-								</div>
+									{#if explained === stat.full}
+										<span
+											class="absolute -top-1 left-1/2 z-10 -translate-x-1/2 -translate-y-full rounded-lg bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-bg shadow-lg"
+										>
+											{stat.full}
+										</span>
+									{/if}
+								</button>
 							{/each}
 						</section>
 					<!-- The one page an archer opens on the shooting line, so it is a list, not a form. -->

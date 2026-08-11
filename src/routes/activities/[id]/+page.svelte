@@ -243,7 +243,11 @@
 		arrows: shownShots.length,
 		tens: shownTens,
 		xs: shownXs,
-		ends: sheetRows.map((row) => row.subtotal),
+		sheet: sheetRows.map((row, i) => ({
+			arrows: row.shots.map((shot) => shot.zoneLabel),
+			subtotal: row.subtotal,
+			running: runningTotals[i] ?? 0
+		})),
 		date: activity ? $dateFormats.date(activity.startedAt) : '',
 		place: session?.location ?? null,
 		bow: bow?.name ?? null,
@@ -254,7 +258,9 @@
 			tens: $t('score.tens'),
 			xs: $t('score.xs'),
 			average: $t('share.average'),
-			ends: $t('share.ends'),
+			end: $t('share.end'),
+			endTotal: $t('share.endTotal'),
+			runningTotal: $t('share.running'),
 			personalBest: $t('stats.personalBest'),
 			tagline: $t('share.tagline')
 		}

@@ -15,8 +15,8 @@ export interface CardData {
 	arrows: number;
 	tens: number;
 	xs: number;
-	/** Every end in the order it was shot, which is the shape of the round. */
-	ends: number[];
+	/** The sheet itself, in the order it was shot: the card is a scoresheet before it is a poster. */
+	sheet: { arrows: string[]; subtotal: number; running: number }[];
 	date: string;
 	place: string | null;
 	bow: string | null;
@@ -28,7 +28,9 @@ export interface CardData {
 		xs: string;
 		average: string;
 		personalBest: string;
-		ends: string;
+		end: string;
+		endTotal: string;
+		runningTotal: string;
 		tagline: string;
 	};
 }
@@ -83,7 +85,7 @@ function text(
 /** One figure and its caption, the unit the middle band of the card is built from. */
 function stat(value: string, label: string, x: number, y: number): string {
 	return (
-		text(value, x, y, { size: 62, weight: 700, anchor: 'middle' }) +
+		text(value, x, y, { size: 52, weight: 700, anchor: 'middle' }) +
 		text(label.toUpperCase(), x, y + 40, {
 			size: 24,
 			weight: 600,
@@ -110,42 +112,78 @@ function rings(isBest: boolean): string {
 }
 
 /**
- * The run of ends as a line rather than as bars. Ends of one round sit within a few points of each
- * other, so bars from zero draw twelve identical blocks; the line is scaled to the round's own
- * spread, which is where its story actually is, and is labelled as a shape rather than read off.
+ * The sheet as it was scored: every arrow, its end total and the running total beside it. This is
+ * the part another archer reads. It is drawn to fit whatever room is left, so a twelve end round and
+ * a twenty end round both come out as one page rather than one page and a spill.
  */
-function endLine(ends: number[], isBest: boolean, label: string): string {
-	if (ends.length < 2) return '';
+function sheet(
+	rows: CardData['sheet'],
+	labels: CardData['labels'],
+	from: number,
+	bottom: number,
+	isBest: boolean
+): string {
+	let top = from;
+	if (rows.length === 0) return '';
 	const left = 80;
-	const width = 920;
-	const top = 990;
-	const height = 130;
-	const base = top + height;
+	const right = 1000;
+	const headRoom = 46;
+	const rowHeight = Math.min(52, (bottom - from - headRoom) / rows.length);
+	// A short round is centred in the room a long one would have filled, rather than left hanging.
+	const headTop = from + Math.max(0, (bottom - from - (headRoom + rowHeight * rows.length)) / 2);
+	const size = Math.min(28, rowHeight * 0.62);
+	const widest = Math.max(...rows.map((row) => row.arrows.length));
+	const arrowsLeft = left + 78;
+	const pitch = Math.min(70, (right - 230 - arrowsLeft) / Math.max(widest, 1));
 
-	const low = Math.min(...ends);
-	const high = Math.max(...ends);
-	const span = high - low || 1;
-	const points = ends.map((subtotal, i) => ({
-		x: left + (i / (ends.length - 1)) * width,
-		y: base - ((subtotal - low) / span) * height
-	}));
+	top = headTop;
+	const head =
+		text(labels.end.toUpperCase(), left, top, { size: 22, weight: 700, fill: MUTED, spacing: 2 }) +
+		text(labels.endTotal.toUpperCase(), right - 130, top, {
+			size: 22,
+			weight: 700,
+			fill: MUTED,
+			anchor: 'end',
+			spacing: 2
+		}) +
+		text(labels.runningTotal.toUpperCase(), right, top, {
+			size: 22,
+			weight: 700,
+			fill: MUTED,
+			anchor: 'end',
+			spacing: 2
+		}) +
+		`<line x1="${left}" y1="${top + 16}" x2="${right}" y2="${top + 16}" stroke="${LINE}" stroke-width="2" />`;
 
-	const line = points.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
-	const area = `${line} L${(left + width).toFixed(1)},${base} L${left},${base} Z`;
-	const colour = isBest ? GOLD : BRONZE;
-	const dots = points
-		.map((p) => `<circle cx="${p.x.toFixed(1)}" cy="${p.y.toFixed(1)}" r="7" fill="${colour}" />`)
+	const body = rows
+		.map((row, i) => {
+			const y = top + headRoom + rowHeight * (i + 0.72);
+			const arrows = row.arrows
+				.map((label, j) =>
+					// The golds carry the colour, so a good end is visible before a number is read.
+					text(label, arrowsLeft + j * pitch, y, {
+						size,
+						weight: label === 'X' || label === '10' ? 700 : 500,
+						fill: label === 'X' || label === '10' ? GOLD : INK,
+						anchor: 'middle'
+					})
+				)
+				.join('');
+			return (
+				text(String(i + 1), left, y, { size: size * 0.8, weight: 600, fill: MUTED }) +
+				arrows +
+				text(String(row.subtotal), right - 130, y, { size, weight: 700, anchor: 'end' }) +
+				text(String(row.running), right, y, { size, weight: 600, fill: MUTED, anchor: 'end' }) +
+				(i < rows.length - 1
+					? `<line x1="${left}" y1="${(y + rowHeight * 0.3).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * 0.3).toFixed(1)}" stroke="${LINE}" stroke-width="1" opacity="0.7" />`
+					: '')
+			);
+		})
 		.join('');
 
-	return `
-	<g>
-		<path d="${area}" fill="${colour}" opacity="0.12" />
-		<path d="${line}" fill="none" stroke="${colour}" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
-		${dots}
-		<line x1="${left}" y1="${base + 24}" x2="${left + width}" y2="${base + 24}" stroke="${LINE}" stroke-width="2" />
-		${text(label.toUpperCase(), left, base + 62, { size: 24, weight: 600, fill: MUTED, spacing: 2 })}
-		${text(`${low}–${high}`, left + width, base + 62, { size: 24, weight: 600, fill: MUTED, anchor: 'end' })}
-	</g>`;
+	// The totals column sits on its own band, behind the figures rather than over them.
+	const band = `<rect x="${right - 210}" y="${top + 20}" width="210" height="${(headRoom + rowHeight * rows.length - 16).toFixed(1)}" fill="${isBest ? GOLD : BRONZE}" opacity="0.05" />`;
+	return `<g>${band}${head}${body}</g>`;
 }
 
 /** The ribbon a record wears. Nothing else on the card changes shape, only its colour and this. */
@@ -155,21 +193,22 @@ function ribbon(label: string): string {
 	const width = 128 + caption.length * 19;
 	return `
 	<g>
-		<rect x="80" y="206" width="${width}" height="66" rx="33" fill="${GOLD}" />
-		<g transform="translate(120 239)">
+		<rect x="80" y="168" width="${width}" height="66" rx="33" fill="${GOLD}" />
+		<g transform="translate(120 201)">
 			<path d="M-9 -17 l4 8 M9 -17 l-4 8" stroke="#2a1d10" stroke-width="3.4" stroke-linecap="round" fill="none" />
 			<circle cx="0" cy="5" r="12" fill="none" stroke="#2a1d10" stroke-width="3.4" />
 			<circle cx="0" cy="5" r="4" fill="#2a1d10" />
 		</g>
-		${text(caption, 152, 262, { size: 30, weight: 800, fill: '#2a1d10', spacing: 3 })}
+		${text(caption, 152, 224, { size: 30, weight: 800, fill: '#2a1d10', spacing: 3 })}
 	</g>`;
 }
 
 export function scorecardSvg(data: CardData): string {
 	const best = data.isBest;
-	const nameLines = wrap(data.roundName, 22);
-	const nameTop = best ? 430 : 390;
+	const nameLines = wrap(data.roundName, 24);
+	const nameTop = best ? 312 : 262;
 	const average = data.arrows > 0 ? data.score / data.arrows : 0;
+	const statTop = nameTop + (nameLines.length > 1 ? 62 : 0);
 
 	return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${CARD_WIDTH} ${CARD_HEIGHT}" width="${CARD_WIDTH}" height="${CARD_HEIGHT}">
 	<defs>
@@ -190,29 +229,29 @@ export function scorecardSvg(data: CardData): string {
 	<g clip-path="url(#frame)">${rings(best)}</g>
 	<rect x="18" y="18" width="${CARD_WIDTH - 36}" height="${CARD_HEIGHT - 36}" rx="34" fill="none" stroke="${best ? GOLD : LINE}" stroke-width="${best ? 4 : 3}" opacity="${best ? 0.7 : 1}" />
 
-	${text('APPCHERY', 80, 132, { size: 30, weight: 800, fill: GOLD, spacing: 8 })}
-	${text(data.date, 1000, 132, { size: 28, fill: MUTED, anchor: 'end' })}
-	<line x1="80" y1="168" x2="1000" y2="168" stroke="${LINE}" stroke-width="2" />
+	${text('APPCHERY', 80, 112, { size: 30, weight: 800, fill: GOLD, spacing: 8 })}
+	${text(data.date, 1000, 112, { size: 28, fill: MUTED, anchor: 'end' })}
+	<line x1="80" y1="146" x2="1000" y2="146" stroke="${LINE}" stroke-width="2" />
 
 	${best ? ribbon(data.labels.personalBest) : ''}
-	${nameLines.map((line, i) => text(line, 80, nameTop + i * 64, { size: 56, weight: 700 })).join('')}
+	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
 
-	${text(String(data.score), 74, 700, { size: 260, weight: 800, fill: 'url(#score)' })}
-	${text(data.labels.points.toUpperCase(), 80, 758, { size: 28, weight: 700, fill: MUTED, spacing: 5 })}
-	${data.max ? text(`/ ${data.max}`, 1000, 700, { size: 60, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
+	${text(String(data.score), 74, statTop + 172, { size: 170, weight: 800, fill: 'url(#score)' })}
+	${data.max ? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
+	${text(data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: MUTED, spacing: 5 })}
 
-	<line x1="80" y1="812" x2="1000" y2="812" stroke="${LINE}" stroke-width="2" />
-	${stat(String(data.arrows), data.labels.arrows, 195, 890)}
-	${stat(String(data.tens), data.labels.tens, 425, 890)}
-	${stat(String(data.xs), data.labels.xs, 655, 890)}
-	${stat(average.toFixed(2), data.labels.average, 885, 890)}
+	${stat(String(data.arrows), data.labels.arrows, 195, statTop + 300)}
+	${stat(String(data.tens), data.labels.tens, 425, statTop + 300)}
+	${stat(String(data.xs), data.labels.xs, 655, statTop + 300)}
+	${stat(average.toFixed(2), data.labels.average, 885, statTop + 300)}
 
-	${endLine(data.ends, best, data.labels.ends)}
+	${sheet(data.sheet, data.labels, statTop + 390, 1220, best)}
 
-	${text([data.place, data.bow].filter(Boolean).join(' · '), 80, 1268, { size: 28, fill: MUTED })}
-	${text(data.labels.tagline, 1000, 1268, { size: 28, weight: 600, fill: GOLD, anchor: 'end' })}
+	${text([data.place, data.bow].filter(Boolean).join(' · '), 80, 1290, { size: 28, fill: MUTED })}
+	${text(data.labels.tagline, 1000, 1290, { size: 28, weight: 600, fill: GOLD, anchor: 'end' })}
 </svg>`;
 }
+
 /**
  * The card as a PNG. Drawn through an image rather than exported by the browser, because nothing
  * else turns SVG into a file a share sheet will take.
