@@ -84,22 +84,20 @@
 	}
 
 	/**
-	 * A tab can stand for a page inside its section: with one bow set as the default, the equipment tab
-	 * opens that bow, since the list of one is a step nobody wanted. Holding the tab still opens the
-	 * list, which is the way back to every other bow.
+	 * The equipment slot shows the default bow, so the tab needs no shortcut of its own. Holding it
+	 * asks for the list instead, which is the only thing the tap cannot reach.
 	 */
-	const shortcutOf = (href: string) =>
-		href === '/equipment' && $defaultBowId ? `/equipment/${$defaultBowId}` : null;
+	const holdsList = (href: string) => href === '/equipment' && Boolean($defaultBowId);
 
 	let held = false;
 	let holdTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function holdTab(href: string) {
 		cancelHold();
-		if (!shortcutOf(href)) return;
+		if (!holdsList(href)) return;
 		holdTimer = setTimeout(() => {
 			held = true;
-			goto(href);
+			goto('/equipment?list=1');
 		}, 450);
 	}
 
@@ -108,17 +106,11 @@
 		holdTimer = null;
 	}
 
-	function openTab(event: MouseEvent, href: string) {
-		const shortcut = shortcutOf(href);
+	function openTab(event: MouseEvent) {
 		// The press that opened the list already navigated: the click behind it must not undo that.
-		if (held) {
-			held = false;
-			event.preventDefault();
-			return;
-		}
-		if (!shortcut) return;
+		if (!held) return;
+		held = false;
 		event.preventDefault();
-		goto(shortcut);
 	}
 
 	const isActive = (href: string) =>
@@ -165,15 +157,15 @@
 					class="flex flex-1 flex-col items-center gap-0.5 py-2
 						{isActive(tab.href) ? 'text-brand-text' : 'text-muted'}"
 					aria-current={isActive(tab.href) ? 'page' : undefined}
-					onclick={(event) => openTab(event, tab.href)}
+					onclick={openTab}
 					onpointerdown={() => holdTab(tab.href)}
 					onpointerup={cancelHold}
 					onpointerleave={cancelHold}
 					onpointercancel={cancelHold}
 					oncontextmenu={(event) => {
-						if (!shortcutOf(tab.href)) return;
+						if (!holdsList(tab.href)) return;
 						event.preventDefault();
-						goto(tab.href);
+						goto('/equipment?list=1');
 					}}
 				>
 					<Icon name={tab.icon} size={24} filled={isActive(tab.href)} />

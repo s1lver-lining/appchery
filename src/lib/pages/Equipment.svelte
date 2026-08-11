@@ -8,13 +8,25 @@
 	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import Bow from './Bow.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
+
+	/**
+	 * With a default bow set, the equipment slot of the pager is that bow rather than a list of one
+	 * thing to tap through. The list is still here, a long press on the tab or a menu away, and it
+	 * says so in the URL so swiping back to this page does not undo the choice.
+	 */
+	const listed = $derived($page.url.searchParams.has('list'));
 
 	let bows = $state<BowRow[]>([]);
 	// Opened straight into the form when the archer came here to add a bow rather than to read one.
 	let adding = $state($page.url.searchParams.has('add'));
 	let name = $state('');
 	let type = $state<BowType>('recurve');
+
+	const openBow = $derived(
+		!listed && $defaultBowId && bows.some((row) => row.id === $defaultBowId) ? $defaultBowId : null
+	);
 
 	async function refresh() {
 		bows = await listBows();
@@ -35,6 +47,9 @@
 	}
 </script>
 
+{#if openBow}
+	<Bow bowId={openBow} />
+{:else}
 <div class="flex min-h-full flex-col">
 <PageHeader motif="equipment" title={$t('equipment.title')}>
 	{#snippet actions()}
@@ -44,7 +59,7 @@
 			placement="down"
 			wrapperClass=""
 			triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
-			items={[{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/equipment') }]}
+			items={[{ label: $t('help.title'), icon: 'help', onselect: () => goto(withOrigin('/help/equipment', '/equipment?list=1')) }]}
 		/>
 	{/snippet}
 </PageHeader>
@@ -85,7 +100,7 @@
 			{#each bows as bow (bow.id)}
 				<li>
 					<a
-						href={withOrigin(`/equipment/${bow.id}`, '/equipment')}
+						href={withOrigin(`/equipment/${bow.id}`, '/equipment?list=1')}
 						class="flex items-center gap-3 rounded-xl border bg-surface p-3
 							{$defaultBowId === bow.id ? 'border-brand ring-1 ring-brand' : 'border-line'}"
 					>
@@ -118,3 +133,4 @@
 	</button>
 </div>
 </div>
+{/if}

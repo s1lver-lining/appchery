@@ -320,6 +320,9 @@ export function scorecardSvg(data: CardData): string {
 	RIBBON_INK = palette.ribbonInk;
 
 	const best = data.isBest;
+	// Trimmed rather than wrapped: the top line has the date at the other end of it.
+	const named = options.sessionName && data.sessionName ? data.sessionName.slice(0, 28) : null;
+	const title = named ?? 'APPCHERY';
 	const nameLines = wrap(data.roundName, 24);
 	const nameTop = best ? 312 : 262;
 	const average = data.arrows > 0 ? data.score / data.arrows : 0;
@@ -332,9 +335,7 @@ export function scorecardSvg(data: CardData): string {
 		.filter(Boolean)
 		.join(' · ');
 
-	// The session name pushes the score down rather than crowding against the round it was shot in.
-	const statTop =
-		nameTop + (nameLines.length > 1 ? 62 : 0) + (options.sessionName && data.sessionName ? 40 : 0);
+	const statTop = nameTop + (nameLines.length > 1 ? 62 : 0);
 	const sheetTop = statTop + (options.recap ? 390 : 250);
 
 	const sky = data.weather;
@@ -364,21 +365,17 @@ export function scorecardSvg(data: CardData): string {
 	<g clip-path="url(#frame)">${rings(best)}</g>
 	<rect x="18" y="18" width="${CARD_WIDTH - 36}" height="${CARD_HEIGHT - 36}" rx="34" fill="none" stroke="${best ? GOLD : LINE}" stroke-width="${best ? 4 : 3}" opacity="${best ? 0.7 : 1}" />
 
-	${text('APPCHERY', 80, 112, { size: 30, weight: 800, fill: GOLD, spacing: 8 })}
+	<!-- The outing's own name takes the top line when it has one, and the app name steps aside. -->
+	${
+		title === 'APPCHERY'
+			? text(title, 80, 112, { size: 30, weight: 800, fill: GOLD, spacing: 8 })
+			: text(title, 80, 112, { size: 30, weight: 700, fill: GOLD })
+	}
 	${options.date ? text(data.date, 1000, 112, { size: 28, fill: MUTED, anchor: 'end' }) : ''}
 	<line x1="80" y1="146" x2="1000" y2="146" stroke="${LINE}" stroke-width="2" />
 
 	${best ? ribbon(data.labels.personalBest) : ''}
 	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
-	${
-		options.sessionName && data.sessionName
-			? text(data.sessionName, 80, nameTop + (nameLines.length - 1) * 62 + 42, {
-					size: 30,
-					weight: 600,
-					fill: MUTED
-				})
-			: ''
-	}
 
 	${text(String(data.score), 74, statTop + 172, { size: 170, weight: 800, fill: 'url(#score)' })}
 	${data.max ? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' }) : ''}

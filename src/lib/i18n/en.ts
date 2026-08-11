@@ -229,7 +229,7 @@ export const en = {
 		forBow: 'Tuning steps for {bow}'
 	},
 	equipment: {
-		title: 'Equipment',
+		title: 'Equipment list',
 		empty: 'No bows yet. Add one to record its settings and tuning history.',
 		addBow: 'Add a bow',
 		bowName: 'Name',

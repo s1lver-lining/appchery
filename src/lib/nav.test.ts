@@ -41,9 +41,14 @@ describe('originOf', () => {
 		expect(originOf(at('?from=%2F%2Felsewhere.example'), '/settings')).toBe('/settings');
 	});
 
-	it('round trips through withOrigin', () => {
-		const href = withOrigin('/tuning', '/equipment/a b');
-		expect(originOf(new URL(`https://app.local${href}`), '/settings')).toBe('/equipment/a b');
+	it('round trips through withOrigin, whether or not the link already asks for something', () => {
+		const plain = withOrigin('/tuning', '/equipment/a b');
+		expect(originOf(new URL(`https://app.local${plain}`), '/settings')).toBe('/equipment/a b');
+
+		const asking = withOrigin('/equipment?list=1', '/settings');
+		const url = new URL(`https://app.local${asking}`);
+		expect(url.searchParams.get('list')).toBe('1');
+		expect(originOf(url, '/')).toBe('/settings');
 	});
 });
 

@@ -58,7 +58,7 @@ export function originOf<T extends string | null>(url: URL, fallback: T): string
 }
 
 export function withOrigin(href: string, from: string): string {
-	return `${href}?from=${encodeURIComponent(from)}`;
+	return `${href}${href.includes('?') ? '&' : '?'}from=${encodeURIComponent(from)}`;
 }
 
 export type TabNav = { count: number; index: number; select: (index: number) => void };

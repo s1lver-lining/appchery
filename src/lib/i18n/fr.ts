@@ -230,7 +230,7 @@ export const fr: Dictionary = {
 		forBow: 'Étapes de réglage pour {bow}'
 	},
 	equipment: {
-		title: 'Matériel',
+		title: 'Liste du matériel',
 		empty: 'Aucun arc. Ajoutez-en un pour suivre ses réglages et son historique.',
 		addBow: 'Ajouter un arc',
 		bowName: 'Nom',
