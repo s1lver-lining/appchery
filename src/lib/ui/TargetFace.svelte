@@ -90,6 +90,14 @@
 	 */
 	const TAP_MS = 100;
 	let tap: { at: number; point: { x: number; y: number } | null } | null = null;
+	/** Where the finger is, so the cursor can appear under it once the press outlives a tap. */
+	let held: { clientX: number; clientY: number } | null = null;
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function stopHold() {
+		if (holdTimer) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
 
 	/** Live pointers, so a second finger turns the drag into a pinch rather than moving the arrow. */
 	const active = new Map<number, { x: number; y: number }>();
@@ -128,10 +136,20 @@
 			pinchStart = { distance: spread(), zoom };
 			cursor = null;
 			tap = null;
+			stopHold();
 			return;
 		}
+
+		// Nothing is drawn for the first tenth of a second: a tap wants the face left alone, and the
+		// magnifier appearing under every touch reads as a jump. Past that, the press is an aim.
 		tap = { at: Date.now(), point: toFace(event, 0) };
-		cursor = toFace(event);
+		held = { clientX: event.clientX, clientY: event.clientY };
+		cursor = null;
+		stopHold();
+		holdTimer = setTimeout(() => {
+			holdTimer = null;
+			if (held) cursor = toFace(held);
+		}, TAP_MS);
 	}
 
 	function move(event: PointerEvent) {
@@ -144,6 +162,7 @@
 			zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStart.zoom * scale));
 			return;
 		}
+		held = { clientX: event.clientX, clientY: event.clientY };
 		if (cursor) cursor = toFace(event);
 	}
 
@@ -165,9 +184,12 @@
 			return;
 		}
 
+		stopHold();
 		const tapped = tap && Date.now() - tap.at < TAP_MS ? tap.point : null;
-		const point = tapped ?? cursor;
+		// The last fallback covers the press that outlived a tap by less than the timer took to fire.
+		const point = tapped ?? cursor ?? (held ? toFace(held) : null);
 		tap = null;
+		held = null;
 		cursor = null;
 		if (!point) return;
 		if (Math.hypot(point.x, point.y) <= 1.15) onplot?.(point.x, point.y);
@@ -176,9 +198,11 @@
 	function cancel(event: PointerEvent) {
 		active.delete(event.pointerId);
 		if (active.size === 0) {
+			stopHold();
 			pinchStart = null;
 			cursor = null;
 			tap = null;
+			held = null;
 		}
 	}
 
