@@ -54,5 +54,5 @@ APK="android/app/build/outputs/apk/debug/app-debug.apk"
 echo "Installing $APK"
 "$ADB" install -r "$APK"
 
-echo "Done. Launching…"
-"$ADB" shell monkey -p com.appchery.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
+# echo "Done. Launching…"
+# "$ADB" shell monkey -p com.appchery.app -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1 || true
