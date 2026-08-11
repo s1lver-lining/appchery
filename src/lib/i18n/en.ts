@@ -2,7 +2,10 @@
 export const en = {
 	app: {
 		name: 'Appchery',
-		tagline: 'Track your shooting. Tune your bow.'
+		tagline: 'Track your shooting. Tune your bow.',
+		exitTitle: 'Close Appchery?',
+		exitBody: 'Everything is already saved on this device.',
+		exitAction: 'Close'
 	},
 	nav: {
 		home: 'Home',
@@ -167,6 +170,8 @@ export const en = {
 		plottedArrows: '{n} plotted',
 		smallSample: 'Too few plotted arrows for these numbers to mean much yet.',
 		plotHint: 'Press and drag to place the arrow, release to record it.',
+		movePlot: 'The ringed arrow is the one you are moving: place it again.',
+		placePlot: 'This arrow has no place on the face yet: plot where it landed.',
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		groupSize: 'Group size',

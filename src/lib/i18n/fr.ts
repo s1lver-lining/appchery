@@ -3,7 +3,10 @@ import type { Dictionary } from './index';
 export const fr: Dictionary = {
 	app: {
 		name: 'Appchery',
-		tagline: 'Suivez vos tirs. Réglez votre arc.'
+		tagline: 'Suivez vos tirs. Réglez votre arc.',
+		exitTitle: 'Fermer Appchery ?',
+		exitBody: 'Tout est déjà enregistré sur cet appareil.',
+		exitAction: 'Fermer'
 	},
 	nav: {
 		home: 'Accueil',
@@ -168,6 +171,8 @@ export const fr: Dictionary = {
 		plottedArrows: '{n} pointées',
 		smallSample: 'Trop peu de flèches pointées pour que ces chiffres soient significatifs.',
 		plotHint: 'Maintenez et déplacez pour placer la flèche, relâchez pour valider.',
+		movePlot: 'La flèche entourée est celle que vous déplacez : replacez-la.',
+		placePlot: "Cette flèche n'a pas encore de position : placez-la où elle a touché.",
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		groupSize: 'Taille du groupement',

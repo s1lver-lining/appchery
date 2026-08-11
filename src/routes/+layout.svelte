@@ -17,6 +17,7 @@
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Pager from '$lib/ui/Pager.svelte';
 
 	let { children } = $props();
@@ -24,6 +25,7 @@
 	let ready = $state(false);
 	let error = $state<string | null>(null);
 	let volatileStorage = $state(false);
+	let confirmingExit = $state(false);
 
 	$effect(() => {
 		// Touch the store so the theme attribute is applied before the shell first paints.
@@ -49,11 +51,20 @@
 	$effect(() => {
 		const listener = App.addListener('backButton', () => {
 			if (runBackGuards($backGuards)) return;
-			// A page opened from somewhere other than its own section goes back there first: a main
-			// page has no parent to climb to, and would otherwise leave the app.
+			// A page opened from somewhere other than its own section goes back there first.
 			const up = $pageUp ?? originOf($page.url, null) ?? parentPath($page.url.pathname);
-			if (up) goto(up);
-			else App.exitApp();
+			if (up) {
+				goto(up);
+				return;
+			}
+			// A main page has no parent to climb to, so the key falls back to home, which slides in
+			// the way a tab tap does. Only home itself asks whether to leave, and only the answer
+			// closes the app: the key alone never does.
+			if ($page.url.pathname !== '/') {
+				goto('/');
+				return;
+			}
+			confirmingExit = true;
 		});
 		return () => {
 			listener.then((l) => l.remove());
@@ -175,3 +186,13 @@
 		</nav>
 	{/if}
 </div>
+
+{#if confirmingExit}
+	<ConfirmDialog
+		title={$t('app.exitTitle')}
+		message={$t('app.exitBody')}
+		confirmLabel={$t('app.exitAction')}
+		onconfirm={() => App.exitApp()}
+		oncancel={() => (confirmingExit = false)}
+	/>
+{/if}

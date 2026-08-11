@@ -17,6 +17,7 @@
 		showCentreToggle = false,
 		showCentreDefault = false,
 		showPerimeter = false,
+		highlight = null,
 		onplot
 	}: {
 		scoreSet: ScoreSet;
@@ -31,6 +32,11 @@
 		showCentreDefault?: boolean;
 		/** Outline around the group, which reads its spread faster than a radius figure. */
 		showPerimeter?: boolean;
+		/**
+		 * The arrow being replaced, ringed so the archer can see which one the next tap will move.
+		 * Null when nothing is being edited, or when the arrow was typed in and has no place yet.
+		 */
+		highlight?: { x: number; y: number } | null;
 		onplot?: (x: number, y: number) => void;
 	} = $props();
 
@@ -259,6 +265,31 @@
 						/>
 					{/if}
 				{/each}
+
+				<!--
+					The arrow the next tap will move, ringed rather than recoloured: it is still an arrow.
+					Laid over a pale halo so the ring is visible on gold, red, blue and black alike.
+				-->
+				{#if highlight}
+					<g fill="none">
+						<circle
+							cx={highlight.x}
+							cy={highlight.y}
+							r={0.075 / (cursor ? zoom : 1)}
+							stroke="var(--c-bg)"
+							stroke-width={0.03 / (cursor ? zoom : 1)}
+							opacity="0.85"
+						/>
+						<circle
+							cx={highlight.x}
+							cy={highlight.y}
+							r={0.075 / (cursor ? zoom : 1)}
+							stroke="var(--c-danger)"
+							stroke-width={0.016 / (cursor ? zoom : 1)}
+							stroke-dasharray="0.05 0.035"
+						/>
+					</g>
+				{/if}
 
 				{#if centre}
 					<g

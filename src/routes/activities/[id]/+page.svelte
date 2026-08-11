@@ -296,12 +296,32 @@
 	const storedPlotted = $derived<Shot[]>(toShots(shownShots).filter((s) => s.x !== null));
 	const livePlotted = $derived<Shot[]>(toShots(pending).filter((s) => s.x !== null));
 
+	/** The arrow being replaced, wherever it lives: one of this end's, or one already written. */
+	const selectedShot = $derived.by(() => {
+		if (editingPending !== null) return pending[editingPending] ?? null;
+		if (!editing) return null;
+		return stored.flatMap((row) => row.shots).find((shot) => shot.id === editing?.shotId) ?? null;
+	});
+	const selecting = $derived(editing !== null || editingPending !== null);
+	/** Only an arrow that was plotted has a place to ring: one typed in as a number has none yet. */
+	const selectedPlot = $derived(
+		selectedShot && selectedShot.x !== null && selectedShot.y !== null
+			? { x: selectedShot.x, y: selectedShot.y }
+			: null
+	);
+
 	/**
 	 * While shooting, the end in progress stands out against the faded ones already entered. Once the
-	 * round is over there is no end in progress, so every arrow is drawn alike.
+	 * round is over there is no end in progress, so every arrow is drawn alike. An arrow being
+	 * replaced joins the full strength layer wherever it came from, so the ring always sits on a mark.
 	 */
 	const scoringNow = $derived(currentSlot !== null || editing !== null);
-	const faceShots = $derived(scoringNow ? livePlotted : storedPlotted);
+	const editedPlot = $derived<Shot[]>(
+		editing && selectedPlot
+			? [{ ordinal: 1, value: 0, zoneLabel: '', x: selectedPlot.x, y: selectedPlot.y, source: 'plotted' }]
+			: []
+	);
+	const faceShots = $derived(scoringNow ? [...livePlotted, ...editedPlot] : storedPlotted);
 	const faceOther = $derived(scoringNow ? storedPlotted : []);
 
 	const openRow = $derived(openEnd !== null ? sheetRows[openEnd] : null);
@@ -923,10 +943,19 @@
 								interactive={scoringNow}
 								showOtherToggle
 								showCentreToggle
+								highlight={selectedPlot}
 								onplot={plot}
 							/>
 						</div>
-						<p class="mt-2 text-center text-xs text-muted">{$t('score.plotHint')}</p>
+						<!-- The line under the face says what the next touch will do, which changes with what
+							is selected: place a new arrow, move the ringed one, or give a typed one a place. -->
+						<p class="mt-2 text-center text-xs {selecting ? 'text-brand-text' : 'text-muted'}">
+							{selecting
+								? selectedPlot
+									? $t('score.movePlot')
+									: $t('score.placePlot')
+								: $t('score.plotHint')}
+						</p>
 					{:else}
 						<div class="grid grid-cols-4 gap-1.5 {scoringNow ? '' : 'opacity-40'}">
 							{#each keypad as zone (zone.label)}
