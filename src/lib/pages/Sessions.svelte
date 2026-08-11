@@ -1,10 +1,10 @@
 <script lang="ts" module>
 	/**
-	 * Which tab was open, which month was on show and which day was picked, held for the life of the
-	 * app rather than of the component: opening a session unmounts this page, and coming back to a
-	 * list when you left a calendar day open is the app forgetting what you were doing.
+	 * Which month was on show and which day was picked, held for the life of the app rather than of
+	 * the component: opening a session unmounts this page, and coming back to a list when you left a
+	 * calendar day open is the app forgetting what you were doing. Which tab was open outlives the
+	 * app itself and is a stored preference, since an archer who reads the calendar reads it always.
 	 */
-	let lastTab: 'list' | 'calendar' = 'list';
 	let lastViewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
 	let lastDay: number | null = null;
 </script>
@@ -23,7 +23,7 @@
 	import { upcoming, weekdayOf, weekArrowGoal, type Occurrence } from '$lib/domain/plans';
 	import { groupByWeek, monthGrid, startOfDay } from '$lib/domain/dates';
 	import { defaultNameKey } from '$lib/domain/sessions';
-	import { defaultBowId, formatTime, dateFormats, showWeekGoal } from '$lib/prefs';
+	import { defaultBowId, formatTime, dateFormats, sessionsTab, showWeekGoal } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
@@ -35,7 +35,7 @@
 
 	let sessions = $state<Session[]>([]);
 	let counts = $state<Record<string, { activities: number; arrows: number }>>({});
-	let tab = $state<'list' | 'calendar'>(lastTab);
+	let tab = $state<'list' | 'calendar'>($sessionsTab === 'calendar' ? 'calendar' : 'list');
 	/** The month on show, held outright rather than as an offset, so any month can be jumped to. */
 	let viewed = $state({ ...lastViewed });
 	let pickingMonth = $state(false);
@@ -43,7 +43,7 @@
 
 	// Written back as they change, so the page is found as it was left.
 	$effect(() => {
-		lastTab = tab;
+		sessionsTab.set(tab);
 		lastViewed = { ...viewed };
 		lastDay = selectedDay;
 	});

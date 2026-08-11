@@ -123,6 +123,9 @@ export const celebratedBests = storedList('appchery.celebratedBests');
 export const homeStatPrimary = storedString('appchery.homeStatPrimary');
 export const homeStatSecondary = storedString('appchery.homeStatSecondary');
 
+/** Which half of the sessions page was last read, list or calendar, kept across app restarts. */
+export const sessionsTab = storedString('appchery.sessionsTab');
+
 /**
  * Whether the sessions list measures each week against what the plans ask of it. Off by default:
  * an archer without a plan has nothing to measure against, and the pill should stay a plain count.

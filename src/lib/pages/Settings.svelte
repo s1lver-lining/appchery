@@ -118,7 +118,7 @@
 <PageHeader motif="settings" title={$t('settings.title')} />
 
 <div class="mx-auto w-full max-w-2xl p-4">
-	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4">
+	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4" swipeable={false}>
 		{#snippet pane(key)}
 			{#if key === 'app'}
 				<!-- The rest of the app, from the page that is always one tap away. Four across, icon
