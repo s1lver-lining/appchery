@@ -86,9 +86,10 @@
 	/**
 	 * A press short enough to be a tap rather than an aim. A tap means "the arrow is here", so it is
 	 * taken at the point touched, with no clearance for a finger that was never in the way long
-	 * enough to hide anything.
+	 * enough to hide anything. Generous on purpose: a deliberate tap on a phone runs past a fifth of
+	 * a second, and the alternative is an arrow that lands a centimetre high.
 	 */
-	const TAP_MS = 100;
+	const TAP_MS = 250;
 	let tap: { at: number; point: { x: number; y: number } | null } | null = null;
 	/** Where the finger is, so the cursor can appear under it once the press outlives a tap. */
 	let held: { clientX: number; clientY: number } | null = null;
@@ -140,8 +141,8 @@
 			return;
 		}
 
-		// Nothing is drawn for the first tenth of a second: a tap wants the face left alone, and the
-		// magnifier appearing under every touch reads as a jump. Past that, the press is an aim.
+		// Nothing is drawn while the press could still be a tap: a tap wants the face left alone, and
+		// the magnifier appearing under every touch reads as a jump. Past that, the press is an aim.
 		tap = { at: Date.now(), point: toFace(event, 0) };
 		held = { clientX: event.clientX, clientY: event.clientY };
 		cursor = null;
