@@ -189,6 +189,7 @@ export const en = {
 	},
 	tuning: {
 		title: 'Tuning',
+		guideTitle: 'Tuning steps',
 		applyTitle: 'Apply the adjustment',
 		applyHint:
 			'Change what you actually adjusted. Saving records a new bow revision and links it to this test.',
@@ -433,6 +434,7 @@ export const en = {
 		appTab: 'App',
 		shootingTab: 'Shooting',
 		dataTab: 'Data',
+		linkEquipment: 'Equipment list',
 		language: 'Language',
 		theme: 'Theme',
 		themeLight: 'Light',

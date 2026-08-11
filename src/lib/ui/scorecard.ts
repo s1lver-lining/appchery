@@ -316,7 +316,7 @@ export function scorecardSvg(data: CardData): string {
 	const nameLines = wrap(data.roundName, 24);
 	const nameTop = best ? 312 : 262;
 	const average = data.arrows > 0 ? data.score / data.arrows : 0;
-	/** The line under the name: what the round was, where, and with what. */
+	/** The footer line: what the round was, where, and with what. */
 	const subtitle = [
 		options.category ? data.category : null,
 		options.place ? data.place : null,
@@ -325,8 +325,7 @@ export function scorecardSvg(data: CardData): string {
 		.filter(Boolean)
 		.join(' · ');
 
-	// The subtitle pushes everything under it down, rather than crowding the score against the name.
-	const statTop = nameTop + (nameLines.length > 1 ? 62 : 0) + (subtitle ? 30 : 0);
+	const statTop = nameTop + (nameLines.length > 1 ? 62 : 0);
 	const sheetTop = statTop + (options.recap ? 390 : 250);
 
 	const sky = data.weather;
@@ -362,7 +361,6 @@ export function scorecardSvg(data: CardData): string {
 
 	${best ? ribbon(data.labels.personalBest) : ''}
 	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
-	${subtitle ? text(subtitle, 80, nameTop + (nameLines.length - 1) * 62 + 44, { size: 28, fill: MUTED }) : ''}
 
 	${text(String(data.score), 74, statTop + 172, { size: 170, weight: 800, fill: 'url(#score)' })}
 	${data.max ? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
@@ -386,6 +384,7 @@ export function scorecardSvg(data: CardData): string {
 
 	${options.sheet ? sheet(data.sheet, data.labels, sheetTop, 1220, best) : ''}
 
+	${subtitle ? text(subtitle, 80, 1290, { size: 28, fill: MUTED }) : ''}
 	${text(data.labels.tagline, 1000, 1290, { size: 28, weight: 600, fill: GOLD, anchor: 'end' })}
 </svg>`;
 }

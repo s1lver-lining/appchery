@@ -190,6 +190,7 @@ export const fr: Dictionary = {
 	},
 	tuning: {
 		title: 'Réglages',
+		guideTitle: 'Étapes de réglage',
 		applyTitle: "Appliquer le réglage",
 		applyHint:
 			'Modifiez ce que vous avez réellement ajusté. Enregistrer crée une révision de l\'arc liée à ce test.',
@@ -436,6 +437,7 @@ export const fr: Dictionary = {
 		appTab: 'Application',
 		shootingTab: 'Tir',
 		dataTab: 'Données',
+		linkEquipment: 'Liste du matériel',
 		language: 'Langue',
 		theme: 'Thème',
 		themeLight: 'Clair',

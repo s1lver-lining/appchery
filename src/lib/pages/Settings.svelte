@@ -22,7 +22,7 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
-	import Icon from '$lib/ui/Icon.svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 
 	const info = dbInfo();
 	/**
@@ -30,6 +30,14 @@
 	 * app looks, what it records while shooting, and what happens to the data afterwards.
 	 */
 	let tab = $state<'app' | 'shooting' | 'data'>('app');
+	/** Pages that live nowhere else in the tab bar, gathered where an archer goes looking for them. */
+	const SHORTCUTS = $derived<{ href: string; icon: IconName; label: string }[]>([
+		{ href: '/equipment', icon: 'bow', label: $t('settings.linkEquipment') },
+		{ href: '/plans', icon: 'chart', label: $t('plans.title') },
+		{ href: '/tuning', icon: 'wrench', label: $t('tuning.guideTitle') },
+		{ href: '/help', icon: 'help', label: $t('help.title') }
+	]);
+
 	const TABS = $derived([
 		{ key: 'app' as const, label: $t('settings.appTab') },
 		{ key: 'shooting' as const, label: $t('settings.shootingTab') },
@@ -110,6 +118,19 @@
 <PageHeader motif="settings" title={$t('settings.title')} />
 
 <div class="mx-auto w-full max-w-2xl p-4">
+	<!-- The rest of the app, from the page that is always one tap away. Four across, icon over word. -->
+	<nav class="mb-4 grid grid-cols-4 gap-2">
+		{#each SHORTCUTS as item (item.href)}
+			<a
+				href={item.href}
+				class="flex flex-col items-center gap-1.5 rounded-xl border border-line bg-surface px-1 py-3 text-center"
+			>
+				<span class="text-brand-text"><Icon name={item.icon} size={22} /></span>
+				<span class="text-[11px] leading-tight text-muted">{item.label}</span>
+			</a>
+		{/each}
+	</nav>
+
 	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4">
 		{#snippet pane(key)}
 			{#if key === 'app'}
