@@ -19,6 +19,7 @@ export const fr: Dictionary = {
 		start: 'Commencer',
 		cancel: 'Annuler',
 		save: 'Enregistrer',
+		saved: 'Enregistré dans {where}.',
 		add: 'Ajouter',
 		delete: 'Supprimer',
 		back: 'Retour',

@@ -402,29 +402,41 @@ export function scorecardSvg(data: CardData): string {
 }
 
 /**
- * The card as a PNG. Drawn through an image rather than exported by the browser, because nothing
- * else turns SVG into a file a share sheet will take.
+ * The card as an image file.
+ *
+ * JPEG rather than PNG: the ground is a gradient, so PNG cannot index it and comes out at a megabyte
+ * or more. That size is not the file, it is the wait: on a phone the bytes cross the bridge to the
+ * filesystem plugin as base64, and a megabyte of it costs seconds. At this quality and this size the
+ * difference is not visible, and the wait is gone.
+ *
+ * Drawn through an object URL rather than a data URL so the markup is never turned into one long
+ * string on its way into the image.
  */
-export async function scorecardPng(svg: string, scale = 1): Promise<Blob> {
-	const source = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
-	const image = new Image();
-	await new Promise<void>((resolve, reject) => {
-		image.onload = () => resolve();
-		image.onerror = () => reject(new Error('The card could not be drawn'));
-		image.src = source;
-	});
+export async function scorecardImage(svg: string, type = 'image/jpeg', quality = 0.94): Promise<Blob> {
+	const source = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' }));
+	try {
+		const image = new Image();
+		await new Promise<void>((resolve, reject) => {
+			image.onload = () => resolve();
+			image.onerror = () => reject(new Error('The card could not be drawn'));
+			image.src = source;
+		});
 
-	const canvas = document.createElement('canvas');
-	canvas.width = CARD_WIDTH * scale;
-	canvas.height = CARD_HEIGHT * scale;
-	const context = canvas.getContext('2d');
-	if (!context) throw new Error('The card could not be drawn');
-	context.drawImage(image, 0, 0, canvas.width, canvas.height);
+		const canvas = document.createElement('canvas');
+		canvas.width = CARD_WIDTH;
+		canvas.height = CARD_HEIGHT;
+		const context = canvas.getContext('2d');
+		if (!context) throw new Error('The card could not be drawn');
+		context.drawImage(image, 0, 0, canvas.width, canvas.height);
 
-	return new Promise<Blob>((resolve, reject) => {
-		canvas.toBlob(
-			(blob) => (blob ? resolve(blob) : reject(new Error('The card could not be drawn'))),
-			'image/png'
-		);
-	});
+		return await new Promise<Blob>((resolve, reject) => {
+			canvas.toBlob(
+				(blob) => (blob ? resolve(blob) : reject(new Error('The card could not be drawn'))),
+				type,
+				quality
+			);
+		});
+	} finally {
+		URL.revokeObjectURL(source);
+	}
 }

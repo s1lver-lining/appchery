@@ -18,6 +18,7 @@ export const en = {
 		start: 'Start',
 		cancel: 'Cancel',
 		save: 'Save',
+		saved: 'Saved to {where}.',
 		add: 'Add',
 		delete: 'Delete',
 		back: 'Back',

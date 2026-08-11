@@ -196,12 +196,8 @@
 	 * The three latest, oldest first, so the page reads in the same direction as the sessions list.
 	 * Only outings that have happened: what is still ahead is announced above, not recalled here.
 	 */
-	const recent = $derived(
-		sessions
-			.filter((s) => s.kind !== 'planned' && s.startedAt <= Date.now())
-			.slice(0, 3)
-			.reverse()
-	);
+	const shot = $derived(sessions.filter((s) => s.kind !== 'planned' && s.startedAt <= Date.now()));
+	const recent = $derived(shot.slice(0, 3).reverse());
 
 	const today = startOfDay(Date.now());
 
@@ -494,7 +490,7 @@
 	<section>
 		{@render heading(
 			$t('home.recent'),
-			sessions.length > recent.length ? { href: '/sessions', label: $t('home.seeAll') } : undefined
+			shot.length > recent.length ? { href: '/sessions', label: $t('home.seeAll') } : undefined
 		)}
 
 		{#if recent.length === 0}

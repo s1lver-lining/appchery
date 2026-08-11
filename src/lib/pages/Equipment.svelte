@@ -16,11 +16,18 @@
 	 * thing to tap through. The list is still here, a long press on the tab or a menu away, and it
 	 * says so in the URL so swiping back to this page does not undo the choice.
 	 */
-	const listed = $derived($page.url.searchParams.has('list'));
+	// Asking to add a bow is asking for the list: the form lives on it, not on a bow.
+	const listed = $derived(
+		$page.url.searchParams.has('list') || $page.url.searchParams.has('add')
+	);
 
 	let bows = $state<BowRow[]>([]);
 	// Opened straight into the form when the archer came here to add a bow rather than to read one.
-	let adding = $state($page.url.searchParams.has('add'));
+	let adding = $state(false);
+	// Watched rather than read once: the page is already mounted in the pager when the link is used.
+	$effect(() => {
+		if ($page.url.searchParams.has('add')) adding = true;
+	});
 	let name = $state('');
 	let type = $state<BowType>('recurve');
 

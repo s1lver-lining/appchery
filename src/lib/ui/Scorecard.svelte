@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { saveFile, shareFile } from '$lib/files';
+	import { CARDS_FOLDER, shareFile, storeFile } from '$lib/files';
 	import { theme } from '$lib/theme';
 	import { shareCardOptions, shareCardChosen } from '$lib/prefs';
 	import Icon from './Icon.svelte';
@@ -8,7 +8,7 @@
 	import { closeOnBack } from './dismiss.svelte';
 	import {
 		scorecardSvg,
-		scorecardPng,
+		scorecardImage,
 		CARD_OPTION_KEYS,
 		DEFAULT_CARD_OPTIONS,
 		type CardData,
@@ -90,21 +90,51 @@
 		() => picking,
 		() => (picking = false)
 	);
+
 	const svg = $derived(scorecardSvg({ ...data, options }));
 	let busy = $state<'share' | 'save' | null>(null);
 	let error = $state<string | null>(null);
+	let saved = $state<string | null>(null);
 
 	const filename = $derived(
-		`appchery-${data.roundName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.png`
+		`appchery-${data.roundName.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${new Date().toISOString().slice(0, 10)}.jpg`
 	);
+
+	/**
+	 * The image is drawn as soon as the card is on screen, and again a moment after any option is
+	 * changed, so that pressing share or save hands over a file that already exists. Encoding is the
+	 * slow part, and it has no business happening while the archer waits on a button.
+	 */
+	let rendered = $state<{ svg: string; blob: Blob } | null>(null);
+	$effect(() => {
+		const markup = svg;
+		if (rendered?.svg === markup) return;
+		const timer = setTimeout(async () => {
+			try {
+				const blob = await scorecardImage(markup);
+				rendered = { svg: markup, blob };
+			} catch {
+				// Drawn again on demand: a failure here is not worth saying anything about yet.
+			}
+		}, 150);
+		return () => clearTimeout(timer);
+	});
+
+	async function imageOf(markup: string): Promise<Blob> {
+		if (rendered?.svg === markup) return rendered.blob;
+		const blob = await scorecardImage(markup);
+		rendered = { svg: markup, blob };
+		return blob;
+	}
 
 	async function send(how: 'share' | 'save') {
 		busy = how;
 		error = null;
+		saved = null;
 		try {
-			const blob = await scorecardPng(svg);
+			const blob = await imageOf(svg);
 			if (how === 'share') await shareFile(blob, filename, data.roundName);
-			else await saveFile(blob, filename, data.roundName);
+			else saved = await storeFile(blob, filename, CARDS_FOLDER);
 		} catch (e) {
 			error = e instanceof Error ? e.message : String(e);
 		}
@@ -132,6 +162,9 @@
 	<div class="safe-bottom px-4 pt-2 pb-4">
 		{#if error}
 			<p class="mb-2 text-center text-sm text-danger">{error}</p>
+		{:else if saved}
+			<!-- Said rather than shown through a share sheet: saving is not sending. -->
+			<p class="mb-2 text-center text-sm text-brand-text">{$t('share.saved', { where: saved })}</p>
 		{/if}
 		<!-- Two ways out: to another app, or onto the phone. Neither needs the width of the screen. -->
 		<div class="mx-auto flex max-w-md items-center justify-center gap-2">

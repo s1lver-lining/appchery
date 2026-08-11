@@ -62,6 +62,34 @@ export async function shareFile(blob: Blob, filename: string, title: string): Pr
 	await saveFile(blob, filename, title);
 }
 
+/** Folder inside the phone's documents directory that shared cards are written to. */
+export const CARDS_FOLDER = 'Appchery/cards';
+
+/**
+ * Putting a file on the device and saying where it went, with no share sheet in the way. Saving and
+ * sharing are two different intentions, and a sheet in front of a save is a question nobody asked.
+ */
+export async function storeFile(blob: Blob, filename: string, folder: string): Promise<string> {
+	if (!Capacitor.isNativePlatform()) {
+		const url = URL.createObjectURL(blob);
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = filename;
+		link.click();
+		setTimeout(() => URL.revokeObjectURL(url), 10000);
+		return 'the browser download folder';
+	}
+
+	const { Filesystem, Directory } = await import('@capacitor/filesystem');
+	await Filesystem.writeFile({
+		path: `${folder}/${filename}`,
+		data: await toBase64(blob),
+		directory: Directory.Documents,
+		recursive: true
+	});
+	return `Documents/${folder}`;
+}
+
 /** Folder inside the phone's documents directory that scoring videos are kept in. */
 export const RECORDINGS_FOLDER = 'Appchery/recordings';
 
