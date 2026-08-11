@@ -85,6 +85,15 @@
 	const FINGER_OFFSET = 0.34;
 
 	/**
+	 * How far out an arrow may be placed. A little past the face itself, because a miss is worth
+	 * recording where it went, but not into the corners of the box: nothing is shown out there, since
+	 * showing a cursor where an arrow cannot land is the drawing promising something it will not do.
+	 */
+	const PLOT_RADIUS = 1.15;
+	const plottable = (point: { x: number; y: number } | null) =>
+		point && Math.hypot(point.x, point.y) <= PLOT_RADIUS ? point : null;
+
+	/**
 	 * A press short enough to be a tap rather than an aim. A tap means "the arrow is here", so it is
 	 * taken at the point touched, with no clearance for a finger that was never in the way long
 	 * enough to hide anything. How long that is belongs to the archer, so it is a setting.
@@ -143,16 +152,16 @@
 
 		// Nothing is drawn while the press could still be a tap: a tap wants the face left alone, and
 		// the magnifier appearing under every touch reads as a jump. Past that, the press is an aim.
-		tap = { at: Date.now(), point: toFace(event, 0) };
+		tap = { at: Date.now(), point: plottable(toFace(event, 0)) };
 		held = { clientX: event.clientX, clientY: event.clientY };
 		cursor = null;
 		stopHold();
 		holdTimer = setTimeout(() => {
 			holdTimer = null;
 			if (!held) return;
-			cursor = toFace(held);
+			cursor = plottable(toFace(held));
 			// Felt at the moment the press becomes an aim, which is the only moment worth announcing.
-			navigator.vibrate?.(8);
+			if (cursor) navigator.vibrate?.(8);
 		}, tapMs);
 	}
 
@@ -166,8 +175,10 @@
 			zoom = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, pinchStart.zoom * scale));
 			return;
 		}
+		const wasAiming = cursor !== null || holdTimer === null;
 		held = { clientX: event.clientX, clientY: event.clientY };
-		if (cursor) cursor = toFace(event);
+		// The cursor comes and goes as the finger leaves and re-enters the reachable area.
+		if (wasAiming) cursor = plottable(toFace(event));
 	}
 
 	/**
@@ -191,12 +202,11 @@
 		stopHold();
 		const tapped = tap && Date.now() - tap.at < tapMs ? tap.point : null;
 		// The last fallback covers the press that outlived a tap by less than the timer took to fire.
-		const point = tapped ?? cursor ?? (held ? toFace(held) : null);
+		const point = tapped ?? cursor ?? plottable(held ? toFace(held) : null);
 		tap = null;
 		held = null;
 		cursor = null;
-		if (!point) return;
-		if (Math.hypot(point.x, point.y) <= 1.15) onplot?.(point.x, point.y);
+		if (point) onplot?.(point.x, point.y);
 	}
 
 	function cancel(event: PointerEvent) {
