@@ -196,7 +196,10 @@
 							</p>
 						</div>
 						<p class="mt-0.5 text-sm text-muted">{$t('settings.tapWindowHint')}</p>
+						<!-- Opted out of the page swipe: dragging the handle is sideways too, and the pager
+							would take the gesture and slide the page instead of moving the slider. -->
 						<input
+							data-noswipe
 							type="range"
 							min="80"
 							max="500"
