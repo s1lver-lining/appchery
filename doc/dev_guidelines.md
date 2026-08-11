@@ -67,3 +67,8 @@ without a browser or a device, because a wrong score is a silently corrupted rec
 Round definitions and zone maps are rules data. Verify every value against the governing body's
 current published rulebook before adding it. Shipping a wrong zone map corrupts scores in a way
 nobody notices until a result is disputed.
+
+
+## Tricks
+
+When a feature is implemented in a way that is not obvious, add a comment explaining the trick in /home/u/scripts/appchery/doc/tricks.md.
