@@ -102,6 +102,104 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		]
 	},
 	{
+		key: 'limb-alignment',
+		name: 'Limb alignment',
+		appliesTo: ['recurve', 'barebow', 'longbow'],
+		steps: [
+			'Brace the bow and sight down the string from behind, bow upright.',
+			'Note where the string falls on each limb against its centre line.',
+			'Move the limb pockets a small step at a time, rechecking both limbs after each.'
+		],
+		interpretation: [
+			{ observation: 'String left of the limb centre', suggests: 'Move that limb right, a small turn at a time' },
+			{ observation: 'Cannot be brought in', suggests: 'Suspect a twisted limb rather than a pocket setting' }
+		]
+	},
+	{
+		key: 'rest-position',
+		name: 'Rest position',
+		appliesTo: ['recurve', 'barebow', 'longbow', 'compound'],
+		steps: [
+			'Sit the arrow over the pivot point of the grip.',
+			'Set the arm height so the shaft meets the centre of the pressure button.',
+			'Shoot a group and check nothing marks the rest.'
+		],
+		interpretation: [
+			{ observation: 'Shaft above the button centre', suggests: 'Lower the rest arm' },
+			{ observation: 'Marks on the rest arm', suggests: 'Reduce the overhang or rotate the nock' }
+		]
+	},
+	{
+		key: 'centre-shot',
+		name: 'Centre shot',
+		appliesTo: ['recurve', 'barebow', 'compound'],
+		steps: [
+			'Sight down the string with an arrow nocked and the bow upright.',
+			'Set the shaft slightly inside the string line, a millimetre or two for a right handed bow.',
+			'Shoot a bare shaft or a paper tear to confirm.'
+		],
+		interpretation: [
+			{ observation: 'Bare shaft left of the group, right handed', suggests: 'Reading stiff: soften the button or wind it out' },
+			{ observation: 'Bare shaft right of the group, right handed', suggests: 'Reading weak: stiffen the button or wind it in' }
+		]
+	},
+	{
+		key: 'tiller',
+		name: 'Tiller',
+		appliesTo: ['recurve', 'barebow', 'longbow'],
+		steps: [
+			'Measure string to limb at both pockets, square to the limb.',
+			'Subtract the lower from the upper and record the difference.',
+			'Adjust with the limb bolts, then reshoot a bare shaft group.'
+		],
+		interpretation: [
+			{ observation: 'Bare shaft consistently high', suggests: 'Increase tiller slightly, or lower the nocking point first' },
+			{ observation: 'Bare shaft consistently low', suggests: 'Reduce tiller slightly, or raise the nocking point first' }
+		]
+	},
+	{
+		key: 'draw-stop',
+		name: 'Draw stops',
+		appliesTo: ['compound'],
+		steps: [
+			'Draw to the wall and feel both stops make contact.',
+			'Have someone watch which stop lands first.',
+			'Correct with cable twists rather than with the stops themselves.'
+		],
+		interpretation: [
+			{ observation: 'One stop touches first', suggests: 'Sync the cams: this is a timing fault' },
+			{ observation: 'Mushy wall', suggests: 'The stops are not sharing the load: recheck timing and draw length' }
+		]
+	},
+	{
+		key: 'peep-alignment',
+		name: 'Peep alignment',
+		appliesTo: ['compound'],
+		steps: [
+			'Draw with the eyes closed, then open them at anchor.',
+			'Note where the peep sits and whether it comes round square.',
+			'Correct height by moving it, rotation by string twists.'
+		],
+		interpretation: [
+			{ observation: 'Peep low at anchor', suggests: 'Raise it a few millimetres and shoot again before serving' },
+			{ observation: 'Peep turns away', suggests: 'Adjust string twists, then recheck draw length and timing' }
+		]
+	},
+	{
+		key: 'clearance',
+		name: 'Clearance check',
+		appliesTo: ['recurve', 'barebow', 'longbow', 'compound'],
+		steps: [
+			'Dust the vanes and the rest with powder or foot spray.',
+			'Shoot a few arrows and look for contact marks.',
+			'Rotate the nock a little at a time until nothing touches.'
+		],
+		interpretation: [
+			{ observation: 'Marks along one vane', suggests: 'Rotate the nock a few degrees and shoot again' },
+			{ observation: 'Marks on the riser or cable guard', suggests: 'Check rest travel and nocking point before nock rotation' }
+		]
+	},
+	{
 		key: 'cam-timing',
 		name: 'Cam timing',
 		appliesTo: ['compound'],

@@ -253,6 +253,7 @@
 				triggerClass="flex items-center justify-center rounded-lg p-1.5 text-muted"
 				items={[
 					{ label: $t('equipment.viewList'), icon: 'bow', onselect: () => goto('/equipment') },
+					{ label: $t('tuning.guideTitle'), icon: 'wrench', onselect: () => goto('/tuning') },
 					{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help/equipment') }
 				]}
 			/>
