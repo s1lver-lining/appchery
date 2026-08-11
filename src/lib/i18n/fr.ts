@@ -298,9 +298,7 @@ export const fr: Dictionary = {
 		next: 'Prochaine',
 		resume: 'Reprendre',
 		thisWeek: 'Cette semaine',
-		newBest: 'Nouveau record',
-		currentBow: 'Arc courant',
-		revision: 'rév. {n}'
+		newBest: 'Nouveau record'
 	},
 	share: {
 		title: 'Partager ce tir',

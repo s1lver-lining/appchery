@@ -297,9 +297,7 @@ export const en = {
 		next: 'Next',
 		resume: 'Carry on',
 		thisWeek: 'This week',
-		newBest: 'New personal best',
-		currentBow: 'Current bow',
-		revision: 'rev {n}'
+		newBest: 'New personal best'
 	},
 	share: {
 		title: 'Share this round',

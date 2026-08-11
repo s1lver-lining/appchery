@@ -11,8 +11,6 @@
 		listAllActivities,
 		listPlanSlots,
 		listPlans,
-		listBows,
-		listRevisions,
 		createSession,
 		updateSession
 	} from '$lib/db/repository';
@@ -35,7 +33,6 @@
 	} from '$lib/prefs';
 	import { startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey } from '$lib/domain/sessions';
-	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
@@ -48,8 +45,6 @@
 	let counts = $state<Record<string, number>>({});
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
-	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
-	let revisions = $state<Awaited<ReturnType<typeof listRevisions>>>([]);
 	let planningAt = $state<number | null>(null);
 
 	/**
@@ -64,7 +59,6 @@
 		sessions = await listSessions();
 		slots = await listPlanSlots();
 		plans = await listPlans();
-		bows = await listBows();
 		const activities = await listAllActivities();
 		unfinished = activities.find(
 			(a) =>
@@ -181,13 +175,6 @@
 			.map((summary) => ({ name: summary.name, best: summary.best }))
 			.find(({ best }) => Date.now() - best.startedAt < PB_WINDOW && best.id !== $dismissedBest)
 	);
-
-	/** The bow the app reaches for, and which revision of it is current. */
-	const bow = $derived(bows.find((b) => b.id === $defaultBowId) ?? (bows.length === 1 ? bows[0] : undefined));
-	$effect(() => {
-		if (bow) listRevisions(bow.id).then((rows) => (revisions = rows));
-		else revisions = [];
-	});
 
 	const month = $derived(overview(inRange(scored, 'month')));
 	const year = $derived(overview(inRange(scored, 'year')));
@@ -532,18 +519,6 @@
 		{/if}
 	</section>
 
-	{#if bow}
-		<!-- A line, not a card: which bow the app will reach for is worth knowing, not worth a block. -->
-		<a href={withOrigin(`/equipment/${bow.id}`, '/')} class="flex items-center gap-2 px-1 text-xs text-muted">
-			<Icon name="bow" size={14} />
-			<span class="truncate">{bow.name}</span>
-			{#if revisions.length > 0}
-				<span class="text-line">·</span>
-				<span class="tabular">{$t('home.revision', { n: revisions[0].revisionNo })}</span>
-			{/if}
-			<span class="ml-auto shrink-0 rotate-180"><Icon name="back" size={14} /></span>
-		</a>
-	{/if}
 </div>
 
 <!-- The one action this page exists for, kept where the thumb lands, with the rest behind the arrow. -->
