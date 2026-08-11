@@ -265,6 +265,15 @@ export const fr: Dictionary = {
 		currentBow: 'Arc courant',
 		revision: 'rév. {n}'
 	},
+	share: {
+		title: 'Partager ce tir',
+		action: "Enregistrer l'image",
+		saving: 'Préparation…',
+		hint: 'Une carte au format portrait, prête pour la galerie ou un fil.',
+		average: 'Par flèche',
+		ends: 'Volée par volée',
+		tagline: 'tiré avec Appchery'
+	},
 	help: {
 		title: 'Comment ça marche',
 		sessionTerm: 'Une séance',

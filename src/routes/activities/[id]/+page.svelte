@@ -23,7 +23,11 @@
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks from '$lib/ui/Fireworks.svelte';
+	import Scorecard from '$lib/ui/Scorecard.svelte';
+	import type { CardData } from '$lib/ui/scorecard';
 	import { isPersonalBest } from '$lib/domain/stats';
+	import { maxScore } from '$lib/domain/rounds/geometry';
+	import { dateFormats } from '$lib/prefs';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { setPageUp } from '$lib/nav';
 	import {
@@ -78,6 +82,7 @@
 	let autoScoring = $state(false);
 
 	let bow = $state<BowRow | null>(null);
+	let session = $state<Awaited<ReturnType<typeof getSession>>>(null);
 	let draft = $state<BowSettings>({});
 	let savedSettings = $state<BowSettings>({});
 	let applied = $state(false);
@@ -204,6 +209,57 @@
 	);
 	const shownXs = $derived(shownShots.filter((s) => s.zoneLabel === 'X').length);
 
+	/**
+	 * The round as a card worth sharing. Read from the sheet on screen rather than from the stored
+	 * row, for the same reason the header is: the row is a moment behind every arrow.
+	 */
+	let sharing = $state(false);
+	let shareIsBest = $state(false);
+
+	async function openShare() {
+		// Asked once, when the card is opened: a record is worth saying on the card that goes out.
+		const history = (await listAllActivities())
+			.filter((a) => a.kind === 'scoring')
+			.map((a) => ({
+				id: a.id,
+				sessionId: a.sessionId,
+				startedAt: a.startedAt,
+				totalScore: a.totalScore,
+				arrowsShot: a.arrowsShot,
+				count10s: a.count10s,
+				countX: a.countX,
+				roundDefinitionId: a.roundDefinitionId,
+				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
+			}));
+		const mine = history.find((a) => a.id === activityId);
+		shareIsBest = mine ? isPersonalBest(mine, history) : false;
+		sharing = true;
+	}
+
+	const cardData = $derived<CardData>({
+		roundName: round?.name ?? $t('round.custom'),
+		score: shownTotal,
+		max: round && scoreSet && complete ? maxScore(round, scoreSet) : null,
+		arrows: shownShots.length,
+		tens: shownTens,
+		xs: shownXs,
+		ends: sheetRows.map((row) => row.subtotal),
+		date: activity ? $dateFormats.date(activity.startedAt) : '',
+		place: session?.location ?? null,
+		bow: bow?.name ?? null,
+		isBest: shareIsBest,
+		labels: {
+			points: $t('score.total'),
+			arrows: $t('score.arrowsColumn'),
+			tens: $t('score.tens'),
+			xs: $t('score.xs'),
+			average: $t('share.average'),
+			ends: $t('share.ends'),
+			personalBest: $t('stats.personalBest'),
+			tagline: $t('share.tagline')
+		}
+	});
+
 	function toShots(list: { x: number | null; y: number | null; zoneLabel: string }[]): Shot[] {
 		return list.map((s, i) => ({
 			ordinal: i + 1,
@@ -269,9 +325,11 @@
 		stored = await loadRows();
 		sheetLoaded = true;
 
+		// The session carries the place and the bow, which the card names and tuning adjusts.
+		session = activity ? await getSession(activity.sessionId) : null;
+		bow = session?.bowId ? await getBow(session.bowId) : null;
+
 		if (activity?.kind === 'tuning') {
-			const session = await getSession(activity.sessionId);
-			bow = session?.bowId ? await getBow(session.bowId) : null;
 			const revision = bow ? await currentRevision(bow.id) : null;
 			savedSettings = revision ? JSON.parse(revision.settings) : {};
 			draft = { ...savedSettings };
@@ -657,6 +715,15 @@
 					<Icon name="back" size={22} />
 				</a>
 				<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">{round.name}</h1>
+				<!-- The round as a picture, which is the only form of it worth showing anyone else. -->
+				<button
+					class="shrink-0 rounded-lg p-1.5 text-muted disabled:opacity-30"
+					aria-label={$t('share.title')}
+					disabled={shownShots.length === 0}
+					onclick={openShare}
+				>
+					<Icon name="share" size={20} />
+				</button>
 				<div class="shrink-0 text-right">
 					<p class="tabular text-xl leading-none font-bold">{shownTotal}</p>
 					<p class="text-[10px] text-muted">{$t('score.total')}</p>
@@ -1038,6 +1105,10 @@
 		roundName={celebrating.roundName}
 		onclose={() => (celebrating = null)}
 	/>
+{/if}
+
+{#if sharing}
+	<Scorecard data={cardData} onclose={() => (sharing = false)} />
 {/if}
 
 {:else}

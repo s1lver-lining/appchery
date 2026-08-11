@@ -26,6 +26,7 @@
 		| 'chevronUp'
 		| 'edit'
 		| 'dots'
+		| 'share'
 		| 'help';
 
 	let {
@@ -123,6 +124,11 @@
 	{:else if name === 'edit'}
 		<path d="M4 20h4l10-10a2.8 2.8 0 0 0-4-4L4 16z" />
 		<path d="M13.5 6.5l4 4" />
+	{:else if name === 'share'}
+		<!-- A card going out: the arrow leaves the box rather than pointing into it. -->
+		<path d="M12 3.6v11" />
+		<path d="M8.4 7.2 12 3.6l3.6 3.6" />
+		<path d="M5.5 12.4v6.4a1.6 1.6 0 0 0 1.6 1.6h9.8a1.6 1.6 0 0 0 1.6-1.6v-6.4" />
 	{:else if name === 'help'}
 		<circle cx="12" cy="12" r="9" />
 		<path d="M9.5 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6" />

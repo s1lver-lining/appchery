@@ -264,6 +264,15 @@ export const en = {
 		currentBow: 'Current bow',
 		revision: 'rev {n}'
 	},
+	share: {
+		title: 'Share this round',
+		action: 'Save the image',
+		saving: 'Preparing…',
+		hint: 'A square-ish card, ready for a phone gallery or a feed.',
+		average: 'Per arrow',
+		ends: 'End by end',
+		tagline: 'shot with Appchery'
+	},
 	help: {
 		title: 'How this works',
 		sessionTerm: 'A session',
