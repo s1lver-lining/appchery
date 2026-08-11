@@ -34,6 +34,7 @@
 	import {
 		getActivity,
 		listAllActivities,
+		awardBadges,
 		getSession,
 		getBow,
 		currentRevision,
@@ -157,7 +158,8 @@
 	 * round that was finished long ago is silent.
 	 */
 	let armed = false;
-	let celebrating = $state<{ score: number; roundName: string } | null>(null);
+	/** Shown one at a time: a round can set a record and earn a badge with the same last arrow. */
+	let celebrations = $state<{ title: string; subtitle: string; score: number | null }[]>([]);
 	$effect(() => {
 		if (!round || !sheetLoaded) return;
 		if (!complete) {
@@ -172,7 +174,17 @@
 	async function announceBest() {
 		// The end that finished the round has to be written before the history can be asked about it.
 		await writes;
-		if ($celebratedBests.includes(activityId)) return;
+		const queue: typeof celebrations = [];
+		if (!$celebratedBests.includes(activityId)) queue.push(...(await recordWon()));
+		// A badge is only ever awarded once, so it needs no guard of its own against a second look.
+		for (const key of await awardBadges()) {
+			queue.push({ title: $t('badges.new'), subtitle: $t(`badges.list.${key}.name`), score: null });
+		}
+		celebrations = queue;
+	}
+
+	/** The record this round set, if it set one, as the card that announces it. */
+	async function recordWon() {
 		const history = (await listAllActivities())
 			.filter((a) => a.kind === 'scoring')
 			.map((a) => ({
@@ -187,10 +199,16 @@
 				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 			}));
 		const mine = history.find((a) => a.id === activityId);
-		if (!mine || !isPersonalBest(mine, history)) return;
+		if (!mine || !isPersonalBest(mine, history)) return [];
 		// Remembered before it is shown, and only the recent ones: this is a guard, not a history.
 		celebratedBests.update((list) => [...list, activityId].slice(-50));
-		celebrating = { score: mine.totalScore, roundName: mine.round?.name ?? $t('round.custom') };
+		return [
+			{
+				title: $t('home.newBest'),
+				subtitle: mine.round?.name ?? $t('round.custom'),
+				score: mine.totalScore
+			}
+		];
 	}
 
 	const runningTotals = $derived(
@@ -498,7 +516,7 @@
 	// Each sheet over the sheet: the camera, an end being reviewed, the card, the record itself.
 	closeOnBack(() => autoScoring, () => (autoScoring = false));
 	closeOnBack(() => openEnd !== null, closeModal);
-	closeOnBack(() => celebrating !== null, () => (celebrating = null));
+	closeOnBack(() => celebrations.length > 0, () => (celebrations = celebrations.slice(1)));
 
 	/** Editing from the modal keeps it open, so several arrows of one end can be fixed in a row. */
 	async function editModalShot(zone: Zone) {
@@ -1176,12 +1194,17 @@
 	/>
 {/if}
 
-{#if celebrating}
-	<Fireworks
-		score={celebrating.score}
-		roundName={celebrating.roundName}
-		onclose={() => (celebrating = null)}
-	/>
+{#if celebrations.length > 0}
+	{@const current = celebrations[0]}
+	<!-- Keyed so the next card is a new one: its own life runs from the moment it appears. -->
+	{#key current.subtitle}
+		<Fireworks
+			title={current.title}
+			subtitle={current.subtitle}
+			score={current.score}
+			onclose={() => (celebrations = celebrations.slice(1))}
+		/>
+	{/key}
 {/if}
 
 {#if sharing}

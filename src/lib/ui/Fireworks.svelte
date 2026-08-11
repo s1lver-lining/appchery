@@ -4,11 +4,15 @@
 	import { closeOnBack } from './dismiss.svelte';
 
 	/**
-	 * A record is the one moment in this app worth interrupting for. It says what was beaten, then
-	 * gets out of the way on its own, because the archer is still stood on the shooting line.
+	 * A record and a badge are the moments in this app worth interrupting for. It says what was won,
+	 * then gets out of the way on its own, because the archer is still stood on the shooting line.
 	 */
-	let { score, roundName, onclose }: { score: number; roundName: string; onclose: () => void } =
-		$props();
+	let {
+		title,
+		subtitle,
+		score = null,
+		onclose
+	}: { title: string; subtitle: string; score?: number | null; onclose: () => void } = $props();
 
 	// A record is dismissed by the back key like anything else sitting on top of the page.
 	closeOnBack(
@@ -57,11 +61,13 @@
 			<span class="text-accent"><Icon name="medal" size={30} filled /></span>
 			<span class="text-left">
 				<span class="block text-[11px] font-semibold tracking-wide text-accent uppercase">
-					{$t('home.newBest')}
+					{title}
 				</span>
-				<span class="block truncate text-base font-bold">{roundName}</span>
+				<span class="block truncate text-base font-bold">{subtitle}</span>
 			</span>
-			<span class="tabular text-3xl leading-none font-bold">{score}</span>
+			{#if score !== null}
+				<span class="tabular text-3xl leading-none font-bold">{score}</span>
+			{/if}
 		</button>
 	</div>
 </div>
