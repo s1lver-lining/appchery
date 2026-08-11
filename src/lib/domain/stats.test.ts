@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
 	summariseByRound,
 	isPersonalBest,
+	scoreByEndPosition,
 	compareScores,
 	overview,
 	inRange,
@@ -31,6 +32,39 @@ function activity(partial: Partial<ScoredActivity> & { id: string }): ScoredActi
 		...partial
 	};
 }
+
+describe('scoreByEndPosition', () => {
+	const end = (activityId: string, stageIndex: number, endNo: number, subtotal: number) => ({
+		activityId,
+		stageIndex,
+		endNo,
+		subtotal,
+		arrows: 6
+	});
+
+	it('averages each position per arrow across every round shot', () => {
+		const series = scoreByEndPosition([
+			end('a', 0, 1, 54),
+			end('a', 0, 2, 48),
+			end('b', 0, 1, 48),
+			end('b', 0, 2, 42)
+		]);
+		expect(series).toEqual([
+			{ position: 1, perArrow: 8.5, ends: 2 },
+			{ position: 2, perArrow: 7.5, ends: 2 }
+		]);
+	});
+
+	it('counts straight through the stages, since a drop off does not stop at a stage line', () => {
+		const series = scoreByEndPosition([end('a', 1, 1, 30), end('a', 0, 1, 60), end('a', 0, 2, 48)]);
+		expect(series.map((point) => point.perArrow)).toEqual([10, 8, 5]);
+	});
+
+	it('ignores an end nothing was entered in, which would read as a zero score', () => {
+		const series = scoreByEndPosition([end('a', 0, 1, 54), { ...end('a', 0, 2, 0), arrows: 0 }]);
+		expect(series).toHaveLength(1);
+	});
+});
 
 describe('isPersonalBest', () => {
 	const history = [

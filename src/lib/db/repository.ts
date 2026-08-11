@@ -574,6 +574,35 @@ export async function listShotValues() {
 		.where(and(isNull(schema.shot.deletedAt), isNull(schema.end.deletedAt)));
 }
 
+/**
+ * Every end ever shot, with how many arrows were in it. Read whole rather than per activity because
+ * the stats page asks the same question of the entire history: how a score moves through a round.
+ */
+export async function listEndTotals() {
+	const ends = await db()
+		.select({
+			id: schema.end.id,
+			activityId: schema.end.activityId,
+			stageIndex: schema.end.stageIndex,
+			endNo: schema.end.endNo,
+			subtotal: schema.end.subtotal
+		})
+		.from(schema.end)
+		.where(isNull(schema.end.deletedAt));
+
+	const shots = await db()
+		.select({ endId: schema.shot.endId })
+		.from(schema.shot)
+		.where(isNull(schema.shot.deletedAt));
+
+	// Counted here rather than in SQL: one grouped query per table beats a join drizzle has to shape.
+	const arrows = shots.reduce<Record<string, number>>((acc, row) => {
+		acc[row.endId] = (acc[row.endId] ?? 0) + 1;
+		return acc;
+	}, {});
+	return ends.map((end) => ({ ...end, arrows: arrows[end.id] ?? 0 }));
+}
+
 /* Plans */
 
 export type PlanRow = Awaited<ReturnType<typeof listPlans>>[number];

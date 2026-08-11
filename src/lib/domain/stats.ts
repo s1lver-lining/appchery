@@ -245,6 +245,58 @@ export function progression(history: ScoredActivity[], window = 5): ProgressionP
 	});
 }
 
+export interface EndLike {
+	activityId: string;
+	stageIndex: number;
+	endNo: number;
+	subtotal: number;
+	arrows: number;
+}
+
+export interface EndPosition {
+	/** 1 for the first end of the round, counting straight through the stages. */
+	position: number;
+	perArrow: number;
+	/** How many rounds contributed an end here, which is what says whether the figure means anything. */
+	ends: number;
+}
+
+/**
+ * How the score moves through a round, end by end. Averaged per arrow so stages of different
+ * lengths compare, and positioned by where the end fell rather than by its number inside its stage:
+ * the thing being looked for is the point in a round where an archer starts to drop, and that runs
+ * across stage boundaries.
+ */
+export function scoreByEndPosition(ends: EndLike[]): EndPosition[] {
+	const byActivity = new Map<string, EndLike[]>();
+	for (const end of ends) {
+		if (end.arrows <= 0) continue;
+		const list = byActivity.get(end.activityId);
+		if (list) list.push(end);
+		else byActivity.set(end.activityId, [end]);
+	}
+
+	const slots = new Map<number, { score: number; arrows: number; ends: number }>();
+	for (const list of byActivity.values()) {
+		const ordered = [...list].sort((a, b) => a.stageIndex - b.stageIndex || a.endNo - b.endNo);
+		ordered.forEach((end, i) => {
+			const slot = slots.get(i + 1) ?? { score: 0, arrows: 0, ends: 0 };
+			slot.score += end.subtotal;
+			slot.arrows += end.arrows;
+			slot.ends += 1;
+			slots.set(i + 1, slot);
+		});
+	}
+
+	return [...slots.entries()]
+		.map(([position, slot]) => ({
+			position,
+			perArrow: slot.arrows > 0 ? slot.score / slot.arrows : 0,
+			ends: slot.ends
+		}))
+		.sort((a, b) => a.position - b.position);
+}
+
 export interface ValueCount {
 	label: string;
 	value: number;

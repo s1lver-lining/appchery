@@ -7,6 +7,7 @@
 		listFavouriteRounds,
 		listSessions,
 		listShotValues,
+		listEndTotals,
 		toggleFavouriteRound
 	} from '$lib/db/repository';
 	import {
@@ -19,6 +20,7 @@
 		distribution,
 		bandBy,
 		windBand,
+		scoreByEndPosition,
 		type Band,
 		WIND_BAND_KEYS,
 		type ScoredActivity,
@@ -36,6 +38,7 @@
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
 	let shots = $state<Awaited<ReturnType<typeof listShotValues>>>([]);
+	let ends = $state<Awaited<ReturnType<typeof listEndTotals>>>([]);
 	const RANGE_KEYS: StatsRange[] = ['all', 'year', 'month'];
 	// Restored from the last visit, because an archer who cares about this month cares every time.
 	let range = $state<StatsRange>(
@@ -51,6 +54,7 @@
 		sessions = await listSessions();
 		bows = await listBows();
 		shots = await listShotValues();
+		ends = await listEndTotals();
 		const activities = await listAllActivities();
 		scored = activities
 			.filter((a) => a.kind === 'scoring')
@@ -105,6 +109,25 @@
 	/** Only worth drawing once two bands hold something: one band compares with nothing. */
 	const byWind = $derived(bandBy(windowed, wind, WIND_BAND_KEYS));
 	const byBow = $derived(bandBy(windowed, bowName));
+
+	/**
+	 * How the score moves through a round, one kind of round at a time: a 6 arrow end and a 3 arrow
+	 * end are different questions, and mixing them makes the shape of neither.
+	 */
+	let endRound = $state('all');
+	const endActivities = $derived(
+		endRound === 'all'
+			? windowed
+			: (summaries.find((summary) => summary.key === endRound)?.history ?? [])
+	);
+	const endCurve = $derived(
+		scoreByEndPosition(
+			ends.filter((end) => endActivities.some((activity) => activity.id === end.activityId))
+		)
+	);
+	const endBest = $derived(Math.max(...endCurve.map((point) => point.perArrow)));
+	const endWorst = $derived(Math.min(...endCurve.map((point) => point.perArrow)));
+	const endSpread = $derived(endBest - endWorst);
 
 	const shotsByActivity = $derived(
 		shots.reduce<Map<string, { value: number; zoneLabel: string }[]>>((acc, shot) => {
@@ -452,6 +475,52 @@
 			<h2 class="text-sm font-semibold">{$t('stats.byBow')}</h2>
 			<p class="text-xs text-muted">{$t('stats.perArrowHint')}</p>
 			{@render bands(byBow, (band) => band.key)}
+		</section>
+	{/if}
+
+	{#if endCurve.length > 1}
+		<!-- Where a round is won and lost: the first end cold, the last end tired. -->
+		<section class="rounded-xl border border-line bg-surface p-4">
+			<h2 class="text-sm font-semibold">{$t('stats.byEnd')}</h2>
+			<p class="text-xs text-muted">{$t('stats.byEndHint')}</p>
+
+			<!-- One round at a time, because a 6 arrow end and a 3 arrow end are different questions. -->
+			<select
+				class="mt-3 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+				aria-label={$t('stats.byEndFilter')}
+				bind:value={endRound}
+			>
+				<option value="all">{$t('stats.allRounds')}</option>
+				{#each summaries as summary (summary.key)}
+					<option value={summary.key}>{summary.name}</option>
+				{/each}
+			</select>
+
+			<ul class="mt-3 space-y-1">
+				{#each endCurve as point (point.position)}
+					<li class="flex items-center gap-2 text-sm">
+						<span class="tabular w-8 shrink-0 text-xs text-muted">
+							{$t('score.end', { n: point.position })}
+						</span>
+						<span class="h-2.5 flex-1 rounded-full bg-sunk">
+							<!-- Scaled between the weakest and strongest position: a bar from zero would make
+								every end look alike, and the whole point is the difference between them. -->
+							<span
+								class="block h-full rounded-full {point.perArrow === endBest
+									? 'bg-accent'
+									: 'bg-brand'}"
+								style="width: {endSpread === 0
+									? 100
+									: 12 + ((point.perArrow - endWorst) / endSpread) * 88}%"
+							></span>
+						</span>
+						<span class="tabular w-10 shrink-0 text-right font-semibold">
+							{point.perArrow.toFixed(2)}
+						</span>
+					</li>
+				{/each}
+			</ul>
+			<p class="mt-2 text-xs text-muted">{$t('stats.byEndCount', { n: endCurve[0].ends })}</p>
 		</section>
 	{/if}
 </div>
