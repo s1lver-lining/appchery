@@ -11,7 +11,7 @@
 		type SettingField
 	} from '$lib/domain/equipment/schemas';
 	import { mmToInches, inchesToMm } from '$lib/domain/units';
-	import { defaultBowId, dateFormats } from '$lib/prefs';
+	import { defaultBowId, dateFormats, sightColumns } from '$lib/prefs';
 	import { startOfDay } from '$lib/domain/dates';
 	import {
 		getBow,
@@ -21,12 +21,17 @@
 		currentRevision,
 		createRevision,
 		bowUsage,
+		listSightMarks,
+		createSightMark,
+		updateSightMark,
+		deleteSightMark,
 		listSessions,
 		createSession,
 		createTuningActivity,
 		type BowRow,
 		type RevisionRow,
-		type BowUsage
+		type BowUsage,
+		type SightMarkRow
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
@@ -60,6 +65,7 @@
 		bow = await getBow(bowId);
 		revisions = await listRevisions(bowId);
 		usage = await bowUsage(bowId);
+		marks = await listSightMarks(bowId);
 		const latest = await currentRevision(bowId);
 		draft = latest ? JSON.parse(latest.settings) : {};
 	}
@@ -107,6 +113,51 @@
 		reason = '';
 		await refresh();
 		saving = false;
+	}
+
+	/**
+	 * Sight marks: one row a distance, kept as their own rows rather than as a bow setting, because
+	 * a mark list grows a distance at a time and is read at the shooting line, not in a form.
+	 */
+	let marks = $state<SightMarkRow[]>([]);
+	let markUnit = $state<'m' | 'yd'>('m');
+	let newDistance = $state<number | string>('');
+
+	/** The extra columns, off until asked for: most archers only ever record a height. */
+	const EXTRAS = ['windage', 'clicker', 'plunger'] as const;
+	type Extra = (typeof EXTRAS)[number];
+	const extraLabel = $derived<Record<Extra, string>>({
+		windage: $t('sight.windage'),
+		clicker: $t('sight.clicker'),
+		plunger: $t('sight.plunger')
+	});
+	/** Shown when asked for, and whenever a mark already carries one: data is never hidden. */
+	const shownExtras = $derived(
+		EXTRAS.filter((key) => $sightColumns.includes(key) || marks.some((mark) => mark[key]))
+	);
+
+	function toggleExtra(key: Extra) {
+		sightColumns.update((list) =>
+			list.includes(key) ? list.filter((item) => item !== key) : [...list, key]
+		);
+	}
+
+	async function addMark() {
+		const distance = Math.round(Number(newDistance));
+		if (!Number.isFinite(distance) || distance <= 0) return;
+		await createSightMark({ bowId, distance, unit: markUnit });
+		newDistance = '';
+		marks = await listSightMarks(bowId);
+	}
+
+	async function setMark(id: string, patch: Parameters<typeof updateSightMark>[1]) {
+		await updateSightMark(id, patch);
+		marks = await listSightMarks(bowId);
+	}
+
+	async function removeMark(id: string) {
+		await deleteSightMark(id);
+		marks = await listSightMarks(bowId);
 	}
 
 	async function pickPhoto(event: Event) {
@@ -214,6 +265,100 @@
 								{$t('equipment.revision', { n: revisions[0].revisionNo })}
 							</p>
 						{/if}
+					</section>
+
+					<!-- The one page an archer opens on the shooting line, so it is a list, not a form. -->
+					<section class="overflow-hidden rounded-xl border border-line bg-surface">
+						<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">
+							<h2 class="text-sm font-semibold">{$t('sight.title')}</h2>
+							<!-- Unit belongs to the mark being added: an archer shooting both keeps both. -->
+							<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
+								{#each ['m', 'yd'] as const as unit (unit)}
+									<button
+										class="rounded-md px-2 py-1 text-xs font-medium
+											{markUnit === unit ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+										onclick={() => (markUnit = unit)}
+									>
+										{unit}
+									</button>
+								{/each}
+							</div>
+						</div>
+
+						{#if marks.length === 0}
+							<p class="px-4 pt-3 text-sm text-muted">{$t('sight.empty')}</p>
+						{:else}
+							<ul class="divide-y divide-line">
+								{#each marks as mark (mark.id)}
+									<li class="flex items-center gap-2 px-4 py-2">
+										<span
+											class="tabular w-14 shrink-0 text-sm font-semibold"
+										>
+											{mark.distance}<span class="text-xs font-normal text-muted">{mark.unit}</span>
+										</span>
+										<input
+											class="tabular min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
+											inputmode="decimal"
+											aria-label={$t('sight.height')}
+											placeholder={$t('sight.height')}
+											value={mark.height ?? ''}
+											onchange={(e) => setMark(mark.id, { height: e.currentTarget.value.trim() || null })}
+										/>
+										{#each shownExtras as key (key)}
+											<input
+												class="min-w-0 flex-1 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
+												aria-label={extraLabel[key]}
+												placeholder={extraLabel[key]}
+												value={mark[key] ?? ''}
+												onchange={(e) =>
+													setMark(mark.id, { [key]: e.currentTarget.value.trim() || null })}
+											/>
+										{/each}
+										<button
+											class="shrink-0 rounded-lg p-1 text-muted"
+											aria-label={$t('common.delete')}
+											onclick={() => removeMark(mark.id)}
+										>
+											<Icon name="close" size={16} />
+										</button>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+
+						<div class="flex items-center gap-2 border-t border-line px-4 py-2.5">
+							<input
+								type="number"
+								inputmode="numeric"
+								min="1"
+								class="tabular w-20 rounded-lg border border-line bg-bg px-2 py-1.5 text-sm text-ink"
+								placeholder={$t('sight.distance')}
+								aria-label={$t('sight.distance')}
+								bind:value={newDistance}
+								onkeydown={(e) => e.key === 'Enter' && addMark()}
+							/>
+							<button
+								class="flex items-center gap-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+								onclick={addMark}
+							>
+								<Icon name="plus" size={16} />
+								{$t('sight.addMark')}
+							</button>
+						</div>
+
+						<!-- The extra columns live behind chips: they are the exception, not the shape. -->
+						<div class="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5">
+							{#each EXTRAS as key (key)}
+								<button
+									class="rounded-full border px-2.5 py-1 text-xs font-medium
+										{shownExtras.includes(key) ? 'border-brand text-brand-text' : 'border-line text-muted'}"
+									aria-pressed={shownExtras.includes(key)}
+									onclick={() => toggleExtra(key)}
+								>
+									{extraLabel[key]}
+								</button>
+							{/each}
+						</div>
 					</section>
 
 					<section class="rounded-xl border border-line bg-surface p-4">

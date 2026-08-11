@@ -281,10 +281,15 @@
 		refresh();
 	});
 
-	// Fetch once for a session that has none yet, so a slow permission prompt never blocks the UI.
+	/**
+	 * Fetch once for a session that has none yet, so a slow permission prompt never blocks the UI.
+	 * Never for a slot still standing in for a session: writing the conditions would write the
+	 * session, and merely looking at a planned outing must not create one.
+	 */
 	let attempted = false;
 	$effect(() => {
-		if (!session || attempted || !$autoLocation || session.latitude !== null) return;
+		if (virtualSlotId || !session || attempted || !$autoLocation || session.latitude !== null)
+			return;
 		attempted = true;
 		fetchConditions();
 	});

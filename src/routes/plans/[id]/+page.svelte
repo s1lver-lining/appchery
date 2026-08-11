@@ -9,6 +9,7 @@
 		updatePlanSlot,
 		deletePlanSlot,
 		renamePlan,
+		updatePlan,
 		deletePlan,
 		type PlanRow,
 		type PlanSlotRow
@@ -45,7 +46,14 @@
 	);
 
 	const byDay = $derived((weekday: number) => slots.filter((slot) => slot.weekday === weekday));
-	const weekTotal = $derived(weekArrowGoal(slots));
+	const weekTotal = $derived(weekArrowGoal(slots, plan ? [plan] : []));
+
+	async function setFreeArrows(raw: string) {
+		const value = Number(raw);
+		// An empty field is no free arrows at all, which is not the same as a goal of zero.
+		await updatePlan(planId, { freeArrows: raw.trim() && value > 0 ? Math.round(value) : null });
+		await refresh();
+	}
 
 	/* The slot sheet, used for both a new slot and an existing one. */
 	let editing = $state<PlanSlotRow | null>(null);
@@ -131,12 +139,30 @@
 
 	<div class="mx-auto w-full max-w-2xl space-y-3 p-4">
 		<!-- What the week asks for, which is the number that says whether the plan is realistic. -->
-		<section class="flex items-baseline justify-between rounded-xl border border-line bg-surface p-3.5">
-			<div>
-				<p class="tabular text-3xl leading-none font-bold text-brand-text">{weekTotal}</p>
-				<p class="mt-1 text-xs text-muted">{$t('plans.weekTotal')}</p>
+		<section class="rounded-xl border border-line bg-surface p-3.5">
+			<div class="flex items-baseline justify-between">
+				<div>
+					<p class="tabular text-3xl leading-none font-bold text-brand-text">{weekTotal}</p>
+					<p class="mt-1 text-xs text-muted">{$t('plans.weekTotal')}</p>
+				</div>
+				<p class="text-xs text-muted">{$t('plans.sessionsCount', { n: slots.length })}</p>
 			</div>
-			<p class="text-xs text-muted">{$t('plans.sessionsCount', { n: slots.length })}</p>
+
+			<!-- Arrows owed by the week rather than by an outing: warm ups, form work, a bale session. -->
+			<label class="mt-3 flex items-center justify-between gap-3 border-t border-line pt-3 text-sm">
+				<span class="min-w-0">
+					<span class="block font-medium">{$t('plans.freeArrows')}</span>
+					<span class="block text-xs text-muted">{$t('plans.freeArrowsHint')}</span>
+				</span>
+				<input
+					type="number"
+					inputmode="numeric"
+					min="0"
+					class="tabular w-24 shrink-0 rounded-lg border border-line bg-bg p-2 text-right text-ink"
+					value={plan.freeArrows ?? ''}
+					onchange={(e) => setFreeArrows(e.currentTarget.value)}
+				/>
+			</label>
 		</section>
 
 		<!-- The week as it repeats: one column a day, so a heavy Thursday is visible without reading. -->

@@ -44,6 +44,7 @@
 	{:else}
 		{#each plans as plan (plan.id)}
 			{@const list = slotsOf(plan.id)}
+			{@const total = weekArrowGoal(list, [plan])}
 			<a
 				href="/plans/{plan.id}"
 				class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
@@ -52,9 +53,9 @@
 					<p class="truncate font-semibold">{plan.name}</p>
 					<p class="text-xs text-muted">{$t('plans.sessionsCount', { n: list.length })}</p>
 				</div>
-				{#if weekArrowGoal(list) > 0}
+				{#if total > 0}
 					<div class="shrink-0 text-right">
-						<p class="tabular text-lg leading-none font-bold">{weekArrowGoal(list)}</p>
+						<p class="tabular text-lg leading-none font-bold">{total}</p>
 						<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
 					</div>
 				{/if}

@@ -286,7 +286,8 @@
 				{sessionName(s)}
 			</p>
 
-			<p class="mt-1 flex min-w-0 items-center gap-1.5 text-xs text-muted">
+			<!-- One line while it fits: flex-wrap drops the place name to its own line only when it must. -->
+			<p class="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
 				{#if s.kind === 'planned'}
 					<!-- Said out loud, because an empty session that was meant to be empty reads as a mistake. -->
 					<span
@@ -305,12 +306,14 @@
 					<span class="text-line">·</span>
 					<span class="shrink-0">{activityLabel(s.id)}</span>
 				{/if}
+				{#if s.location}
+					<!-- Dot and place travel together, so a wrapped place name still reads as one item. -->
+					<span class="flex max-w-full min-w-0 items-center gap-1.5">
+						<span class="text-line">·</span>
+						<span class="truncate">{s.location}</span>
+					</span>
+				{/if}
 			</p>
-
-			{#if s.location}
-				<!-- On its own line: squeezed onto the one above it, a place name clips to a letter. -->
-				<p class="mt-0.5 truncate text-xs text-muted">{s.location}</p>
-			{/if}
 		</div>
 
 		<div class="shrink-0 text-right">

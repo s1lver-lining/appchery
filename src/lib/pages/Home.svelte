@@ -3,12 +3,14 @@
 </script>
 
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import {
 		listSessions,
 		listAllActivities,
 		listPlanSlots,
+		listPlans,
 		listBows,
 		listRevisions,
 		createSession,
@@ -23,7 +25,14 @@
 		type ScoredActivity
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
-	import { defaultBowId, dismissedBest, formatTime, dateFormats } from '$lib/prefs';
+	import {
+		defaultBowId,
+		dismissedBest,
+		homeStatPrimary,
+		homeStatSecondary,
+		formatTime,
+		dateFormats
+	} from '$lib/prefs';
 	import { startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -36,6 +45,7 @@
 	let scored = $state<ScoredActivity[]>([]);
 	let counts = $state<Record<string, number>>({});
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
+	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
 	let revisions = $state<Awaited<ReturnType<typeof listRevisions>>>([]);
 	let planningAt = $state<number | null>(null);
@@ -51,6 +61,7 @@
 	async function refresh() {
 		sessions = await listSessions();
 		slots = await listPlanSlots();
+		plans = await listPlans();
 		bows = await listBows();
 		const activities = await listAllActivities();
 		unfinished = activities.find(
@@ -156,7 +167,7 @@
 			.filter((s) => s.startedAt >= weekStart)
 			.reduce((sum, s) => sum + (counts[s.id] ?? 0), 0)
 	);
-	const weekGoal = $derived(weekArrowGoal(slots));
+	const weekGoal = $derived(weekArrowGoal(slots, plans));
 	const weekSessions = $derived(sessions.filter((s) => s.startedAt >= weekStart).length);
 	const weekDone = $derived(weekGoal > 0 ? Math.min(1, weekArrows / weekGoal) : 0);
 
@@ -177,9 +188,18 @@
 	});
 
 	const month = $derived(overview(inRange(scored, 'month')));
+	const year = $derived(overview(inRange(scored, 'year')));
 	const allTime = $derived(overview(scored));
-	/** The three latest, oldest first, so the page reads in the same direction as the sessions list. */
-	const recent = $derived([...sessions].slice(0, 3).reverse());
+	/**
+	 * The three latest, oldest first, so the page reads in the same direction as the sessions list.
+	 * Only outings that have happened: what is still ahead is announced above, not recalled here.
+	 */
+	const recent = $derived(
+		sessions
+			.filter((s) => s.kind !== 'planned' && s.startedAt <= Date.now())
+			.slice(0, 3)
+			.reverse()
+	);
 
 	const today = startOfDay(Date.now());
 
@@ -188,11 +208,88 @@
 	);
 	const shortDay = $derived((at: number) => $dateFormats.weekdayShort(at).replace(/\.$/, '') + '.');
 
+	/**
+	 * Either header figure can be swapped for another, so an archer training to a weekly plan is not
+	 * stuck reading a monthly total. Held per device: it is how this phone is read, not archer data.
+	 */
+	const STAT_KEYS = ['monthArrows', 'weekArrows', 'yearArrows', 'totalArrows', 'weekGoal', 'none'] as const;
+	type StatKey = (typeof STAT_KEYS)[number];
+
+	const stats = $derived<Record<StatKey, { label: string; value: number }>>({
+		monthArrows: { label: $t('home.thisMonth'), value: month.arrows },
+		weekArrows: { label: $t('home.thisWeek'), value: weekArrows },
+		yearArrows: { label: $t('home.thisYear'), value: year.arrows },
+		totalArrows: { label: $t('stats.totalArrows'), value: allTime.arrows },
+		weekGoal: { label: $t('home.weekGoalStat'), value: weekGoal },
+		none: { label: $t('home.statNone'), value: 0 }
+	});
+
+	const asStat = (value: string | null, fallback: StatKey): StatKey =>
+		STAT_KEYS.includes(value as StatKey) ? (value as StatKey) : fallback;
+	const primary = $derived(asStat($homeStatPrimary, 'monthArrows'));
+	const secondary = $derived(asStat($homeStatSecondary, 'totalArrows'));
+
+	/** Which figure is being chosen for, and the press that has to be held to get here. */
+	let picking = $state<'primary' | 'secondary' | null>(null);
+	let holdTimer: ReturnType<typeof setTimeout> | null = null;
+
+	function hold(slot: 'primary' | 'secondary') {
+		cancelHold();
+		holdTimer = setTimeout(() => (picking = slot), 450);
+	}
+
+	function cancelHold() {
+		if (holdTimer) clearTimeout(holdTimer);
+		holdTimer = null;
+	}
+
+	function chooseStat(key: StatKey) {
+		(picking === 'primary' ? homeStatPrimary : homeStatSecondary).set(key);
+		picking = null;
+	}
+
+	/** Replaying the ripple means restarting it: the class has to leave the elements to come back. */
+	async function strike() {
+		ripple = false;
+		await tick();
+		ripple = true;
+	}
+
 	const roundName = (a: Awaited<ReturnType<typeof listAllActivities>>[number]) => {
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 		return round?.name ?? $t('round.custom');
 	};
 </script>
+
+<!--
+	A figure and its caption, held down or right clicked to change what it counts. The gesture is
+	quiet on purpose: the header is not a settings page, it just refuses to be the wrong two numbers.
+-->
+{#snippet figure(slot: 'primary' | 'secondary', key: StatKey, lead: boolean)}
+	{#if key !== 'none'}
+		<button
+			class="text-left"
+			oncontextmenu={(e) => {
+				e.preventDefault();
+				picking = slot;
+			}}
+			onpointerdown={() => hold(slot)}
+			onpointerup={cancelHold}
+			onpointerleave={cancelHold}
+			onpointercancel={cancelHold}
+			onclick={() => (picking = slot)}
+		>
+			<dd
+				class="tabular leading-none {lead
+					? 'text-4xl font-bold text-brand-text'
+					: 'text-2xl font-semibold'}"
+			>
+				{stats[key].value}
+			</dd>
+			<dt class="mt-1 text-xs text-muted">{stats[key].label}</dt>
+		</button>
+	{/if}
+{/snippet}
 
 <div class="flex min-h-full flex-col">
 <!--
@@ -242,17 +339,21 @@
 
 		<!-- The two figures sit in the header rather than under it, so the curves frame real data. -->
 		<dl class="mt-5 flex items-end gap-6">
-			<div>
-				<dd class="tabular text-4xl leading-none font-bold text-brand-text">{month.arrows}</dd>
-				<dt class="mt-1 text-xs text-muted">{$t('home.thisMonth')}</dt>
-			</div>
-			<div class="h-8 w-px bg-line"></div>
-			<div>
-				<dd class="tabular text-2xl leading-none font-semibold">{allTime.arrows}</dd>
-				<dt class="mt-1 text-xs text-muted">{$t('stats.totalArrows')}</dt>
-			</div>
+			{@render figure('primary', primary, true)}
+			<!-- The rule separates two figures; with one of them off there is nothing to separate. -->
+			{#if primary !== 'none' && secondary !== 'none'}
+				<div class="h-8 w-px bg-line"></div>
+			{/if}
+			{@render figure('secondary', secondary, false)}
 		</dl>
 	</div>
+
+	<!-- Last, so it sits over the rings and under nothing: the corner is the one place they show. -->
+	<button
+		class="absolute top-0 right-0 h-24 w-32"
+		aria-label={$t('home.replayRings')}
+		onclick={strike}
+	></button>
 
 	<HeaderEdge />
 </header>
@@ -460,6 +561,33 @@
 	</div>
 </div>
 </div>
+
+{#if picking}
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<button
+			class="absolute inset-0 bg-black/40"
+			aria-label={$t('common.close')}
+			onclick={() => (picking = null)}
+		></button>
+
+		<div class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
+			<h2 class="mb-3 text-lg font-bold">{$t('home.pickStat')}</h2>
+			<div class="space-y-1">
+				{#each STAT_KEYS as key (key)}
+					{@const chosen = (picking === 'primary' ? primary : secondary) === key}
+					<button
+						class="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm
+							{chosen ? 'border-brand bg-brand/10 font-semibold' : 'border-line'}"
+						onclick={() => chooseStat(key)}
+					>
+						{stats[key].label}
+						{#if key !== 'none'}<span class="tabular text-muted">{stats[key].value}</span>{/if}
+					</button>
+				{/each}
+			</div>
+		</div>
+	</div>
+{/if}
 
 {#if planningAt !== null}
 	<DateTimeDialog
