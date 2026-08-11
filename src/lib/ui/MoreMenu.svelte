@@ -1,5 +1,6 @@
 <script lang="ts">
 	import Icon, { type IconName } from './Icon.svelte';
+	import { closeOnBack } from './dismiss.svelte';
 
 	/**
 	 * The narrow half of a split action bar: the primary button does the usual thing, this one opens
@@ -24,6 +25,12 @@
 	} = $props();
 
 	let open = $state(false);
+
+	// An open menu is the innermost thing on screen: back shuts it rather than leaving the page.
+	closeOnBack(
+		() => open,
+		() => (open = false)
+	);
 	let root = $state<HTMLElement | undefined>();
 </script>
 

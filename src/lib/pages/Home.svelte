@@ -41,6 +41,7 @@
 	import { SNAP_EASE } from '$lib/ui/swipe';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let scored = $state<ScoredActivity[]>([]);
@@ -248,6 +249,9 @@
 		(picking === 'primary' ? homeStatPrimary : homeStatSecondary).set(key);
 		picking = null;
 	}
+
+	closeOnBack(() => picking !== null, () => (picking = null));
+	closeOnBack(() => planningAt !== null, () => (planningAt = null));
 
 	/** Replaying the ripple means restarting it: the class has to leave the elements to come back. */
 	async function strike() {

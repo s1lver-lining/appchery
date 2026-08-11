@@ -32,6 +32,7 @@
 	import Progression from '$lib/ui/Progression.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import { dateFormats, expandedRounds, statsRange } from '$lib/prefs';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	let scored = $state<ScoredActivity[]>([]);
 	let favourites = $state<Set<string>>(new Set());
@@ -73,6 +74,8 @@
 	$effect(() => {
 		refresh();
 	});
+
+	closeOnBack(() => showByRound, () => (showByRound = false));
 
 	/**
 	 * Every figure on the page reads from the selected window, so switching the tab moves the bests

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { closeOnBack } from './dismiss.svelte';
 
 	/**
 	 * Deletions here remove scores that exist nowhere else, so they ask first. The confirming button
@@ -18,6 +19,12 @@
 		onconfirm: () => void;
 		oncancel: () => void;
 	} = $props();
+
+	// A dialog is a place: the back key leaves it, not the page underneath it.
+	closeOnBack(
+		() => true,
+		() => oncancel()
+	);
 </script>
 
 <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">

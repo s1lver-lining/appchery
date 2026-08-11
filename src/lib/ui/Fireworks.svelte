@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import Icon from './Icon.svelte';
+	import { closeOnBack } from './dismiss.svelte';
 
 	/**
 	 * A record is the one moment in this app worth interrupting for. It says what was beaten, then
@@ -8,6 +9,12 @@
 	 */
 	let { score, roundName, onclose }: { score: number; roundName: string; onclose: () => void } =
 		$props();
+
+	// A record is dismissed by the back key like anything else sitting on top of the page.
+	closeOnBack(
+		() => true,
+		() => onclose()
+	);
 
 	const LIFE = 5600;
 	$effect(() => {

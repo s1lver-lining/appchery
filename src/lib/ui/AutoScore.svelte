@@ -7,6 +7,7 @@
 	import Icon from './Icon.svelte';
 	import { recordCameraVideo, arrowDetector } from '$lib/prefs';
 	import { storeRecording } from '$lib/files';
+	import { closeOnBack } from './dismiss.svelte';
 
 	/**
 	 * Live scoring from the camera. Nothing detected is ever written on its own: the archer keeps or
@@ -30,6 +31,12 @@
 		onrecorded: (name: string) => void;
 		onclose: () => void;
 	} = $props();
+
+	// The camera fills the screen, so the back key is the way out of it rather than out of the round.
+	closeOnBack(
+		() => true,
+		() => onclose()
+	);
 
 	/** Rings 9 and 10 of ten equal rings, which is the gold's share of the face radius. */
 	const GOLD_SHARE = 0.2;

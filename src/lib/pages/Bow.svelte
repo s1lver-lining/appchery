@@ -41,6 +41,7 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	/**
 	 * One bow, as a page. It is rendered twice: as its own route, and as the equipment slot of the
@@ -86,6 +87,8 @@
 	/** The group whose sheet is open. Values are written to the draft as they are typed and the
 	 * sheet has nothing to confirm: leaving it is the save, and the revision is what gets confirmed. */
 	let editingGroup = $state<string | null>(null);
+
+	closeOnBack(() => editingGroup !== null, () => (editingGroup = null));
 
 	const fieldsOf = $derived((group: string) => fields.filter((field) => field.group === group));
 

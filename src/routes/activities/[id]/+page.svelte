@@ -52,6 +52,7 @@
 		type ShotRow,
 		type BowRow
 	} from '$lib/db/repository';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	const activityId = $derived($page.params.id as string);
 
@@ -473,6 +474,11 @@
 		openEnd = null;
 		modalEditing = null;
 	}
+
+	// Each sheet over the sheet: the camera, an end being reviewed, the card, the record itself.
+	closeOnBack(() => autoScoring, () => (autoScoring = false));
+	closeOnBack(() => openEnd !== null, closeModal);
+	closeOnBack(() => celebrating !== null, () => (celebrating = null));
 
 	/** Editing from the modal keeps it open, so several arrows of one end can be fixed in a row. */
 	async function editModalShot(zone: Zone) {

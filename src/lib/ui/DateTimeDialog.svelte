@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { untrack } from 'svelte';
 	import { t } from '$lib/i18n';
+	import { closeOnBack } from './dismiss.svelte';
 
 	/**
 	 * When something is meant to happen. Native fields rather than a hand-rolled calendar, so the
@@ -20,6 +21,12 @@
 		onconfirm: (at: number) => void;
 		oncancel: () => void;
 	} = $props();
+
+	// A dialog is a place: the back key leaves it, not the page underneath it.
+	closeOnBack(
+		() => true,
+		() => oncancel()
+	);
 
 	const pad = (n: number) => String(n).padStart(2, '0');
 	// Read once on purpose: the dialog opens on the value it was given and is then the archer's.

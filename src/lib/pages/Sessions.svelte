@@ -1,3 +1,14 @@
+<script lang="ts" module>
+	/**
+	 * Which tab was open, which month was on show and which day was picked, held for the life of the
+	 * app rather than of the component: opening a session unmounts this page, and coming back to a
+	 * list when you left a calendar day open is the app forgetting what you were doing.
+	 */
+	let lastTab: 'list' | 'calendar' = 'list';
+	let lastViewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
+	let lastDay: number | null = null;
+</script>
+
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
@@ -18,16 +29,24 @@
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
 
 	let sessions = $state<Session[]>([]);
 	let counts = $state<Record<string, { activities: number; arrows: number }>>({});
-	let tab = $state<'list' | 'calendar'>('list');
+	let tab = $state<'list' | 'calendar'>(lastTab);
 	/** The month on show, held outright rather than as an offset, so any month can be jumped to. */
-	let viewed = $state({ year: new Date().getFullYear(), month: new Date().getMonth() });
+	let viewed = $state({ ...lastViewed });
 	let pickingMonth = $state(false);
-	let selectedDay = $state<number | null>(null);
+	let selectedDay = $state<number | null>(lastDay);
+
+	// Written back as they change, so the page is found as it was left.
+	$effect(() => {
+		lastTab = tab;
+		lastViewed = { ...viewed };
+		lastDay = selectedDay;
+	});
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
 	let planningAt = $state<number | null>(null);
@@ -67,6 +86,9 @@
 		await updateSession(id, { startedAt: at });
 		goto(`/sessions/${id}`);
 	}
+
+	closeOnBack(() => pickingMonth, () => (pickingMonth = false));
+	closeOnBack(() => planningAt !== null, () => (planningAt = null));
 
 	/**
 	 * A plan's slots are not sessions until something is entered in one. Until then they only show,

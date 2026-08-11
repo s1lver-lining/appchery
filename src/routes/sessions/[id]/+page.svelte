@@ -40,6 +40,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import { defaultBowId, formatDateTime } from '$lib/prefs';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -334,6 +335,11 @@
 		}
 		fetching = false;
 	}
+
+	/** Every sheet on this page is a place of its own, and the back key leaves the innermost one. */
+	closeOnBack(() => adding, () => (adding = false));
+	closeOnBack(() => editingGoal, () => (editingGoal = false));
+	closeOnBack(() => countDialog !== null, () => (countDialog = null));
 
 	async function startRound(round: RoundDefinition) {
 		const id = await materialise();

@@ -22,6 +22,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	const planId = $derived($page.params.id as string);
 	$effect(() => setPageUp('/plans'));
@@ -89,6 +90,8 @@
 		editing = null;
 		creatingOn = null;
 	}
+
+	closeOnBack(() => editing !== null || creatingOn !== null, closeSheet);
 
 	async function saveSlot() {
 		const goal = Number(draftGoal);

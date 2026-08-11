@@ -5,6 +5,7 @@
 	import { shareCardOptions, shareCardChosen } from '$lib/prefs';
 	import Icon from './Icon.svelte';
 	import Toggle from './Toggle.svelte';
+	import { closeOnBack } from './dismiss.svelte';
 	import {
 		scorecardSvg,
 		scorecardPng,
@@ -79,6 +80,16 @@
 	});
 
 	let picking = $state(false);
+
+	// The options sheet sits over the card, and the card over the page: back peels them off in order.
+	closeOnBack(
+		() => true,
+		() => onclose()
+	);
+	closeOnBack(
+		() => picking,
+		() => (picking = false)
+	);
 	const svg = $derived(scorecardSvg({ ...data, options }));
 	let busy = $state<'share' | 'save' | null>(null);
 	let error = $state<string | null>(null);
