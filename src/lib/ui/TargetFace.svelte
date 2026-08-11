@@ -219,7 +219,9 @@
 	<svg
 		bind:this={svg}
 		viewBox="-1.05 -1.05 2.1 2.1"
-		class="h-full w-full touch-none select-none {interactive ? 'cursor-crosshair' : ''}"
+		class="h-full w-full touch-none select-none outline-none focus-visible:outline-2
+			focus-visible:outline-offset-2 focus-visible:outline-brand
+			{interactive ? 'cursor-crosshair' : ''}"
 		aria-label="Target face"
 		onpointerdown={down}
 		onpointermove={move}
