@@ -21,7 +21,7 @@
 		updateSession
 	} from '$lib/db/repository';
 	import { upcoming, weekdayOf, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
-	import { groupByWeek, monthGrid, startOfDay } from '$lib/domain/dates';
+	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import {
@@ -156,12 +156,17 @@
 	const weeks = $derived(groupByWeek(rows, (row) => row.at));
 	/** What every plan asks of a week together, which is what a week's total is measured against. */
 	const weekGoal = $derived(weekArrowGoal(live.slots, live.plans));
-	const weekArrows = $derived((group: (typeof weeks)[number]) =>
-		group.items.reduce(
-			(sum, row) => sum + (row.session ? (counts[row.session.id]?.arrows ?? 0) : 0),
-			0
-		)
+	/**
+	 * Counted off every session rather than off the rows on screen: a search narrows what is listed,
+	 * and a week that reads 48 arrows because two of its outings match is a figure nobody asked for.
+	 */
+	const arrowsByWeek = $derived(
+		sessions.reduce<Map<number, number>>((acc, s) => {
+			const week = startOfWeek(s.startedAt);
+			return acc.set(week, (acc.get(week) ?? 0) + (counts[s.id]?.arrows ?? 0));
+		}, new Map())
 	);
+	const weekArrows = $derived((group: (typeof weeks)[number]) => arrowsByWeek.get(group.start) ?? 0);
 
 	/**
 	 * The list runs oldest to newest, so it opens on today the way a calendar does rather than on the
