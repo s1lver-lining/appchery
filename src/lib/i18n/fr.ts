@@ -185,8 +185,7 @@ export const fr: Dictionary = {
 		drawn: 'Nul',
 		inProgress: 'En cours',
 		against: 'contre {name}',
-		forOtherBadge: 'Tenue pour quelqu’un d’autre',
-		timerSoon: 'Le chronométrage viendra plus tard',
+		unrecorded: 'Non comptabilisé',
 		deleteEnd: 'Effacer cette volée',
 		noArrows: 'Totaux seuls'
 	},
@@ -255,6 +254,7 @@ export const fr: Dictionary = {
 		roundComplete: 'Tir terminé. Les flèches restent modifiables.'
 	},
 	activity: {
+		timerSoon: 'Le chronométrage viendra plus tard',
 		delete: 'Supprimer cette activité',
 		confirmTitle: 'Supprimer cette activité ?',
 		confirmBody: 'Ses volées et ses flèches sont supprimées avec elle. Action irréversible.'

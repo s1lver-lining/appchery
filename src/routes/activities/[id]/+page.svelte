@@ -783,6 +783,15 @@
 					<Icon name="back" size={22} />
 				</a>
 				<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">{round.name}</h1>
+				<!-- Shooting on the clock is a feature of its own still to come: the space is kept for it. -->
+				<button
+					class="shrink-0 rounded-lg p-1.5 text-muted opacity-40"
+					disabled
+					title={$t('activity.timerSoon')}
+					aria-label={$t('activity.timerSoon')}
+				>
+					<Icon name="clock" size={20} />
+				</button>
 				<!-- The round as a picture, which is the only form of it worth showing anyone else. -->
 				<button
 					class="shrink-0 rounded-lg p-1.5 text-muted disabled:opacity-30"

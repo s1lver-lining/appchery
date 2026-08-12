@@ -397,41 +397,46 @@
 	<div class="mx-auto flex w-full max-w-2xl flex-col">
 		<div class="safe-top flex max-h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">
 			<div class="shrink-0 space-y-3">
-				<header class="flex items-start gap-2">
+				<!-- The header every activity wears: back, the name in the middle, its actions to the right. -->
+				<header class="flex items-center gap-2">
 					<a
 						href="/sessions/{activity.sessionId}"
-						class="mt-1 -ml-1 shrink-0 text-muted"
+						class="shrink-0 text-muted"
 						aria-label={$t('common.back')}
 					>
 						<Icon name="back" size={22} />
 					</a>
-					<div class="min-w-0 flex-1">
-						<h1 class="truncate text-xl font-bold tracking-tight">{ourLabel} · {theirLabel}</h1>
-						<p class="truncate text-xs text-muted">
-							{$t(`match.format.${config.format}`)} · {$t(`match.system.${config.system}`)}
-							{#if config.distance}
-								· {formatDistance(config.distance.value, config.distance.unit)}
-							{/if}
-						</p>
-					</div>
-
+					<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">
+						{ourLabel} · {theirLabel}
+					</h1>
 					<!-- A match is shot on the clock, and the clock is a feature of its own still to come. -->
 					<button
-						class="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted opacity-40"
+						class="shrink-0 rounded-lg p-1.5 text-muted opacity-40"
 						disabled
-						title={$t('match.timerSoon')}
-						aria-label={$t('match.timerSoon')}
+						title={$t('activity.timerSoon')}
+						aria-label={$t('activity.timerSoon')}
 					>
 						<Icon name="clock" size={20} />
 					</button>
 					<button
-						class="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted"
+						class="shrink-0 rounded-lg p-1.5 text-muted"
 						aria-label={$t('common.more')}
 						onclick={() => (editingSetup = true)}
 					>
 						<Icon name="sliders" size={20} />
 					</button>
 				</header>
+
+				<!-- What the match is, and whether it is the archer's own, on one quiet line. -->
+				<p class="-mt-1 truncate text-center text-xs text-muted">
+					{$t(`match.format.${config.format}`)} · {$t(`match.system.${config.system}`)}
+					{#if config.distance}
+						· {formatDistance(config.distance.value, config.distance.unit)}
+					{/if}
+					{#if !config.forSelf}
+						· <span class="font-medium">{$t('match.unrecorded')}</span>
+					{/if}
+				</p>
 
 				<!-- Pinned above the sheet: the running result is what an archer reads between ends. -->
 				<section class="rounded-xl border border-line bg-surface px-4 py-2.5">
@@ -461,11 +466,6 @@
 					</div>
 				</section>
 
-				{#if !config.forSelf}
-					<p class="rounded-lg border border-dashed border-line px-3 py-1.5 text-xs text-muted">
-						{$t('match.forOtherBadge')}
-					</p>
-				{/if}
 			</div>
 
 			<!-- The sheet: our arrows to the left of the line, theirs to the right, an end to a row. -->

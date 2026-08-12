@@ -183,8 +183,7 @@ export const en = {
 		drawn: 'Drawn',
 		inProgress: 'In progress',
 		against: 'against {name}',
-		forOtherBadge: 'Kept for someone else',
-		timerSoon: 'Timing a match comes later',
+		unrecorded: 'Unrecorded',
 		deleteEnd: 'Clear this end',
 		noArrows: 'Totals only'
 	},
@@ -252,6 +251,7 @@ export const en = {
 		roundComplete: 'Round complete. Arrows can still be edited.'
 	},
 	activity: {
+		timerSoon: 'Timing comes later',
 		delete: 'Delete this activity',
 		confirmTitle: 'Delete this activity?',
 		confirmBody: 'Its ends and arrows are deleted with it. This cannot be undone.'
