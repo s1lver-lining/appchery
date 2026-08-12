@@ -1109,17 +1109,18 @@
 		onclose={() => (draftMatch = null)}
 	>
 		<div class="space-y-3">
-			<!-- Set play or straight totals. Recurve shoots sets, compound adds its arrows up. -->
-			<div class="flex gap-1 rounded-lg bg-sunk p-1">
-				{#each ['set', 'cumulative'] as const as system (system)}
-					<button
-						class="flex-1 rounded-md py-1.5 text-sm font-medium
-							{draftMatch.system === system ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
-						onclick={() => draftMatch && (draftMatch = { ...draftMatch, system })}
-					>
-						{$t(`match.system.${system}`)}
-					</button>
-				{/each}
+			<!-- Sets unless asked otherwise: recurve shoots sets, and compound adds its arrows up. -->
+			<div class="flex items-start justify-between gap-3">
+				<div class="min-w-0">
+					<p class="text-sm font-medium">{$t('match.onTotalTitle')}</p>
+					<p class="text-xs text-muted">{$t('match.onTotalHint')}</p>
+				</div>
+				<Toggle
+					checked={draftMatch.system === 'cumulative'}
+					label={$t('match.onTotalTitle')}
+					onchange={(v) =>
+						draftMatch && (draftMatch = { ...draftMatch, system: v ? 'cumulative' : 'set' })}
+				/>
 			</div>
 
 			<div class="flex gap-2">

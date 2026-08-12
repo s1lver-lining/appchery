@@ -357,7 +357,7 @@
 
 		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
 			<Icon name="trash" size={16} />
-			{$t('session.deleteActivity')}
+			{$t('activity.delete')}
 		</button>
 	</div>
 
@@ -546,8 +546,8 @@
 
 	{#if confirmingDelete}
 		<ConfirmDialog
-			title={$t('session.deleteActivity')}
-			message={$t('session.deleteActivityBody')}
+			title={$t('activity.confirmTitle')}
+			message={$t('activity.confirmBody')}
 			confirmLabel={$t('common.delete')}
 			onconfirm={remove}
 			oncancel={() => (confirmingDelete = false)}
