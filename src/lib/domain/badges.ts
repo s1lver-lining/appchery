@@ -6,6 +6,7 @@ import {
 	STRONG_WIND_KMH,
 	type ScoredActivity
 } from './stats';
+import { BOT_LEVELS } from './bots';
 import { startOfDay, startOfWeek } from './dates';
 import { yardsToMetres } from './units';
 
@@ -60,7 +61,7 @@ export interface BadgeActivity extends ScoredActivity {
 	 * How a match ended, on match activities the archer shot themselves. Null everywhere else, and on
 	 * a card kept for somebody else: their win is not the archer's to be given a badge for.
 	 */
-	match?: { won: boolean; fromBehind: boolean } | null;
+	match?: { won: boolean; fromBehind: boolean; bot: string | null } | null;
 }
 
 export interface BadgeInput {
@@ -476,6 +477,15 @@ export const BADGES: BadgeDefinition[] = [
 		icon: 'star',
 		earnedAt: (h) => h.won.find((a) => a.match?.fromBehind)?.startedAt ?? null
 	},
+	// One a level: the bots are a ladder, and each rung is worth saying you climbed.
+	...BOT_LEVELS.map(
+		(level): BadgeDefinition => ({
+			key: `beat${level[0].toUpperCase()}${level.slice(1)}`,
+			family: 'milestone',
+			icon: 'target',
+			earnedAt: (h) => h.won.find((a) => a.match?.bot === level)?.startedAt ?? null
+		})
+	),
 	{
 		key: 'halfMarathon',
 		family: 'volume',

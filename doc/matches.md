@@ -69,6 +69,21 @@ that belongs to no bracket. The session page draws the day's staged matches in t
 what makes a competition read as one climb rather than as four unrelated outings. Nothing groups
 matches across sessions: a bracket is a day.
 
+## Bots
+
+An opponent can be the app itself. A match config carries `bot`, one of four levels, and the card
+names that side `Bot (Advanced)` rather than an opponent.
+
+A bot is a **group, not a score**. `src/lib/domain/bots.ts` gives each level a spread and a drift:
+the point of aim wanders once an end, every arrow scatters around it, and the arrows land on the face
+as normalised coordinates. They are then scored by the same zone map the archer's own arrows are, so
+a bot's total is something it shot. On a ten ring face that comes out at roughly five points an arrow
+for a beginner, seven for an amateur, eight and a half for an advanced, and nine and a half for a
+professional, with the beginner missing the boss now and then.
+
+The bot answers as soon as our end is in, whether the end was plotted arrow by arrow or typed as a
+total. Beating each level is its own badge.
+
 ## Not built yet
 
 - **Head to head history.** Opponents are free text, offered back as suggestions from the cards

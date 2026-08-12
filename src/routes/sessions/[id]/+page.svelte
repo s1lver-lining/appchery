@@ -22,6 +22,7 @@
 		ARROWS_PER_END
 	} from '$lib/domain/rounds/custom';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import { BOT_LEVELS } from '$lib/domain/bots';
 	import {
 		newMatch,
 		parseConfig,
@@ -1201,6 +1202,31 @@
 					{/each}
 				</div>
 			</div>
+
+			<!-- Nobody on the next target: the app takes the other end of the line instead. -->
+			<div class="flex items-center justify-between gap-3">
+				<p class="text-sm font-medium">{$t('match.botTitle')}</p>
+				<Toggle
+					checked={draftMatch.bot !== null}
+					label={$t('match.botTitle')}
+					onchange={(v) =>
+						draftMatch && (draftMatch = { ...draftMatch, bot: v ? 'amateur' : null })}
+				/>
+			</div>
+
+			{#if draftMatch.bot}
+				<div class="flex gap-2">
+					{#each BOT_LEVELS as level (level)}
+						<button
+							class="flex-1 rounded-lg border py-2 text-xs font-medium
+								{draftMatch.bot === level ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+							onclick={() => draftMatch && (draftMatch = { ...draftMatch, bot: level })}
+						>
+							{$t(`match.bot.${level}`)}
+						</button>
+					{/each}
+				</div>
+			{/if}
 
 			<!-- Where it sits in the ladder, which is what makes a day of matches read in order. -->
 			<div class="flex items-center justify-between gap-3">

@@ -184,6 +184,14 @@ export const fr: Dictionary = {
 		},
 		winCondition: 'Condition de victoire',
 		system: { set: 'Points de set', cumulative: 'Score total' },
+		botTitle: 'Jouer contre un bot',
+		botName: 'Bot ({level})',
+		bot: {
+			beginner: 'Débutant',
+			amateur: 'Amateur',
+			advanced: 'Confirmé',
+			professional: 'Professionnel'
+		},
 		bracket: 'Tableau',
 		stageLabel: 'Tour',
 		stage: {
@@ -739,6 +747,22 @@ export const fr: Dictionary = {
 			ffta: 'Flèches de progression FFTA'
 		},
 		list: {
+			beatBeginner: {
+				name: 'Premier circuit',
+				hint: 'Battre le bot débutant.'
+			},
+			beatAmateur: {
+				name: 'Niveau club',
+				hint: 'Battre le bot amateur.'
+			},
+			beatAdvanced: {
+				name: 'Assez affûté',
+				hint: 'Battre le bot confirmé.'
+			},
+			beatProfessional: {
+				name: 'Briseur de machine',
+				hint: 'Battre le bot professionnel.'
+			},
 			firstMatchWon: {
 				name: 'Premier sang',
 				hint: 'Gagner un match.'

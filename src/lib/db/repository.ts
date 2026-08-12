@@ -1149,7 +1149,7 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 	const live = onlyActive(plans, slots);
 
 	// A match's result is worked out from its ends, and only ever the archer's own matches.
-	const matchResults = new Map<string, { won: boolean; fromBehind: boolean }>();
+	const matchResults = new Map<string, { won: boolean; fromBehind: boolean; bot: string | null }>();
 	for (const activity of activities.filter((a) => a.kind === 'match')) {
 		const card = await loadMatch(activity.id);
 		if (!card.config?.forSelf) continue;
@@ -1162,7 +1162,8 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 		}));
 		matchResults.set(activity.id, {
 			won: tally(card.config, plain).winner === 'us',
-			fromBehind: wonFromBehind(card.config, plain)
+			fromBehind: wonFromBehind(card.config, plain),
+			bot: card.config.bot
 		});
 	}
 

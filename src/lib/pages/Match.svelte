@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { getScoreSet } from '$lib/domain/rounds/seed';
 	import { scoreAt, sortShotsDescending } from '$lib/domain/rounds/geometry';
+	import { botEnd } from '$lib/domain/bots';
 	import { sortArrowsDescending, showArrowNumbers, dateFormats } from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import {
@@ -102,7 +103,12 @@
 	const scoreSet = $derived(config ? getScoreSet(config.scoreSetId) : null);
 
 	const ourLabel = $derived(config?.ourName || $t('match.ourSide'));
-	const theirLabel = $derived(config?.opponent || $t('match.opponent'));
+	/** A bot says which bot it is: beating a professional is not beating a beginner. */
+	const theirLabel = $derived(
+		config?.bot
+			? $t('match.botName', { level: $t(`match.bot.${config.bot}`) })
+			: config?.opponent || $t('match.opponent')
+	);
 
 	/** What the match is at a glance, which is the only thing a match really records. */
 	const outcome = $derived(() => {
@@ -194,7 +200,7 @@
 				: { endNo, side, index, shootOff };
 	}
 
-	/** The next empty slot: down our side, across to theirs, then done. */
+	/** The next empty slot: down our side, across to theirs, then done. A bot fills its own side. */
 	function advance() {
 		if (!cursor) return;
 		const slots = slotsFor(cursor.shootOff);
@@ -202,7 +208,8 @@
 			cursor = { ...cursor, index: cursor.index + 1 };
 			return;
 		}
-		cursor = cursor.side === 'us' ? { ...cursor, side: 'them', index: 0 } : null;
+		if (cursor.side === 'them' || config?.bot) cursor = null;
+		else cursor = { ...cursor, side: 'them', index: 0 };
 	}
 
 	async function write(shot: Omit<Shot, 'ordinal'>) {
@@ -226,8 +233,30 @@
 		advance();
 		await setMatchArrows(activity.id, endNo, side, kept, shootOff);
 		await refresh();
+		if (side === 'us') await botReplies(endNo, shootOff);
 		if (shootOff) await decideFromPlot();
 		await celebrate();
+	}
+
+	/**
+	 * The bot shoots the moment our end is complete, the way an opponent on the next target would:
+	 * its arrows land on the face and are scored by the same zone map ours are, so its total is
+	 * something it shot rather than a number that was chosen.
+	 */
+	async function botReplies(endNo: number, shootOff: boolean, ourEndIsIn = false) {
+		if (!config?.bot || !scoreSet) return;
+		const slots = slotsFor(shootOff);
+		const row = rows.find((entry) => entry.endNo === endNo);
+		// Our end has to be finished first: a bot answers an end, it does not shoot into an empty one.
+		if (!ourEndIsIn && arrowsOf(row, 'us').length < slots) return;
+		if (arrowsOf(row, 'them').length > 0 || row?.theirs !== null) return;
+
+		const shots = botEnd(config.bot, slots).map((shot) =>
+			shotFromPlot(scoreAt(scoreSet, shot.x, shot.y), shot.x, shot.y)
+		);
+		// Straight to the other side of the sheet: the cursor stays where the archer left it.
+		await setMatchArrows(activity.id, endNo, 'them', shots, shootOff);
+		await refresh();
 	}
 
 	const pick = (zone: Zone) => write(shotFromZone(zone));
@@ -286,6 +315,7 @@
 		cursor = null;
 		await setMatchEndTotal(activity.id, endNo, side, value, shootOff);
 		await refresh();
+		if (side === 'us' && value !== null) await botReplies(endNo, shootOff, true);
 		await celebrate();
 	}
 

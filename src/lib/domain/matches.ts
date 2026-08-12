@@ -7,6 +7,8 @@
  * personal bests and round averages everywhere else in the app.
  */
 
+import { BOT_LEVELS, type BotLevel } from './bots';
+
 export type MatchSystem = 'set' | 'cumulative';
 
 /**
@@ -50,6 +52,11 @@ export interface MatchConfig {
 	forSelf: boolean;
 	/** Which round of the bracket this was, or none for a match that belongs to no ladder. */
 	stage: MatchStage;
+	/**
+	 * The level of the opponent when it is the app shooting rather than a person. A bot shoots its own
+	 * arrows onto the face as soon as an end of ours is complete.
+	 */
+	bot: BotLevel | null;
 	/** Free text: an opponent is a name on a card, not somebody the app needs to know about. */
 	opponent: string | null;
 	/** Whether a level match may be taken to a single arrow. Off makes a draw a legal result. */
@@ -112,6 +119,7 @@ export function newMatch(format: MatchFormat, system: MatchSystem = 'set'): Matc
 		...preset,
 		forSelf: true,
 		stage: 'none',
+		bot: null,
 		shootOff: true,
 		scoreSetId: DEFAULT_SCORE_SET,
 		faceSize: null,
@@ -143,6 +151,7 @@ export function parseConfig(raw: string | null): MatchConfig | null {
 			stage: MATCH_STAGES.includes(parsed.stage as MatchStage)
 				? (parsed.stage as MatchStage)
 				: 'none',
+			bot: BOT_LEVELS.includes(parsed.bot as BotLevel) ? (parsed.bot as BotLevel) : null,
 			shootOff: parsed.shootOff !== false,
 			scoreSetId: typeof parsed.scoreSetId === 'string' ? parsed.scoreSetId : base.scoreSetId,
 			faceSize: positiveOrNull(parsed.faceSize),

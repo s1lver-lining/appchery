@@ -182,6 +182,14 @@ export const en = {
 		},
 		winCondition: 'Win condition',
 		system: { set: 'Set points', cumulative: 'Total score' },
+		botTitle: 'Play a bot',
+		botName: 'Bot ({level})',
+		bot: {
+			beginner: 'Beginner',
+			amateur: 'Amateur',
+			advanced: 'Advanced',
+			professional: 'Professional'
+		},
 		bracket: 'Bracket',
 		stageLabel: 'Round',
 		stage: {
@@ -733,6 +741,22 @@ export const en = {
 			ffta: 'FFTA progression arrows'
 		},
 		list: {
+			beatBeginner: {
+				name: 'First Blood, Silicon',
+				hint: 'Beat the beginner bot.'
+			},
+			beatAmateur: {
+				name: 'Club Level',
+				hint: 'Beat the amateur bot.'
+			},
+			beatAdvanced: {
+				name: 'Sharp Enough',
+				hint: 'Beat the advanced bot.'
+			},
+			beatProfessional: {
+				name: 'Machine Breaker',
+				hint: 'Beat the professional bot.'
+			},
 			firstMatchWon: {
 				name: 'First Blood',
 				hint: 'Win a match.'

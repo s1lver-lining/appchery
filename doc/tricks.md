@@ -57,6 +57,9 @@ for three, two for a team's six, eighty seconds for a mixed team, twenty for alt
 the clock; zero sounds three. The sounds are synthesised on the device rather than recorded, so
 nothing is shipped that belongs to somebody else, and they can be turned off.
 
+**The times are yours to change.** The rules' times are what the clock starts from, and the edit
+sheet puts any of them on a different number of seconds. Emptying a field puts the rule back.
+
 **The clock is read, never ticked.** Time left is worked out from the moment it started, so a phone
 that slept through half an end wakes up with the right number, and the screen is held awake while it
 runs.
@@ -76,6 +79,10 @@ yours: nothing on the card then reaches your volume or your badges.
 
 **Correct an end after the match is over.** Every figure is recomputed from the ends every time, so
 fixing end two moves the winner, the arrows counted and the badges with it.
+
+**Shoot against the app.** A match can be set against a bot at one of four levels. It shoots real
+arrows onto the face rather than picking a number, so its group looks like a group, and it answers
+the moment your end is in. Each level has a badge for beating it.
 
 **A bracket is a day, not a list.** Give each match its round and the session page draws the ladder
 in the order it was climbed, from the eighths to the final.
