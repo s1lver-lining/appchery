@@ -103,10 +103,10 @@ const GOLD_ARROW_END = 6;
 /** Arrows in the end a group has to hold before its tightness says anything. */
 const GROUP_ARROWS = 6;
 /**
- * How wide a group may be and still be a handful, as a share of the face radius. The gold runs from
- * the centre to 0.2 of the radius, so 0.4 is a group the gold would cover: a hand's width at 70m on
- * a 122 face, and the same end shot at 18m on a 40. Measured against the face rather than in
- * centimetres, because 12cm is a perfect end outdoors and a loose one indoors.
+ * How far apart a group's two widest arrows may be and still be a handful, in face radii. The gold
+ * ends at 0.2 of the radius, so it is 0.4 across, and a group that spans no more is one the gold
+ * would cover: 24cm at 70m on a 122 face, 8cm at 18m on a 40. Held against the face rather than in
+ * centimetres, because a fixed 12cm is a perfect end outdoors and a loose one indoors.
  */
 const HANDFUL_SPREAD = 0.4;
 /** The lowest arrow a round may hold and still be all in the red. */

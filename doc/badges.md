@@ -47,8 +47,9 @@ golden end, a handful of arrows: all of them are looked for in complete rounds o
 in a full end of one. A round abandoned after one good volley is not what any of them mark.
 
 **A group is measured against the face, not in centimetres.** Twelve centimetres is a perfect end at
-70m and a loose one at 18m. A handful of arrows is a group the gold would cover, which is the same
-demand at every distance.
+70m and a loose one at 18m. A handful of arrows is a group the gold would cover: the gold ends at 0.2
+of the face radius, so it is 0.4 across, and that is the width the two widest arrows of the end are
+held to. The same demand at every distance.
 
 ## Rules data
 
