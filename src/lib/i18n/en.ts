@@ -28,7 +28,10 @@ export const en = {
 		optional: 'optional',
 		today: 'Today',
 		tomorrow: 'Tomorrow',
-		more: 'More'
+		more: 'More',
+		hour: 'Hour',
+		minute: 'Minute',
+		dayPeriod: 'AM or PM'
 	},
 	sessions: {
 		title: 'Sessions',

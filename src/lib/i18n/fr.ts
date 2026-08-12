@@ -29,7 +29,10 @@ export const fr: Dictionary = {
 		optional: 'facultatif',
 		today: "Aujourd'hui",
 		tomorrow: 'Demain',
-		more: 'Plus'
+		more: 'Plus',
+		hour: 'Heure',
+		minute: 'Minute',
+		dayPeriod: 'AM ou PM'
 	},
 	sessions: {
 		title: 'Séances',
