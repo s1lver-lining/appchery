@@ -389,3 +389,29 @@ describe('the weather badges', () => {
 		expect(badge([inside], 'stormArcher').earnedAt).toBeNull();
 	});
 });
+
+describe('rounds the ten ring rules do not apply to', () => {
+	const field = buildCustomRound({ distance: 40, unit: 'm', faceSize: 60, ends: 4, arrowsPerEnd: 6 });
+	const fieldRound = { ...field, discipline: 'field' as const, scoreSetId: 'field-6-ring' };
+
+	it('keeps the golden end to faces where a nine is the gold', () => {
+		const six = [end({ arrows: 6, subtotal: 36, golds: 6 })];
+		expect(badge([activity({ id: 'a', roundDefinitionId: null, round: fieldRound, ends: six })], 'goldenEnd').earnedAt).toBeNull();
+		expect(badge([activity({ id: 'b', ends: six })], 'goldenEnd').earnedAt).toBe(MONDAY);
+	});
+
+	it('counts an unmarked field course as outdoors, because that is where it is', () => {
+		const unmarked = {
+			...fieldRound,
+			stages: fieldRound.stages.map((stage) => ({ ...stage, distance: null }))
+		};
+		const cold = activity({
+			id: 'a',
+			roundDefinitionId: null,
+			round: unmarked,
+			arrowsShot: 24,
+			temperatureC: 3
+		});
+		expect(badge([cold], 'frostbite').earnedAt).toBe(MONDAY);
+	});
+});

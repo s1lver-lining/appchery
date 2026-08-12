@@ -919,11 +919,12 @@ async function writeBadges(keys: { key: string; earnedAt: number }[]) {
  * Awards whatever the shooting so far has earned and is not already held. Never takes one back: a
  * badge is kept once won, and only the recalculation in settings can revoke it.
  *
- * Returns the keys awarded by this call, so the caller can celebrate them.
+ * Returns the keys awarded by this call, so the caller can celebrate them. A caller that has already
+ * loaded the input passes it in rather than paying for a second pass over every arrow ever shot.
  */
-export async function awardBadges(): Promise<string[]> {
+export async function awardBadges(preloaded?: BadgeInput): Promise<string[]> {
 	const held = new Set((await listBadges()).map((row) => row.key));
-	const earned = evaluateBadges(await loadBadgeInput()).filter(
+	const earned = evaluateBadges(preloaded ?? (await loadBadgeInput())).filter(
 		(badge) => badge.earnedAt !== null && !held.has(badge.definition.key)
 	);
 	await writeBadges(earned.map((badge) => ({ key: badge.definition.key, earnedAt: badge.earnedAt! })));

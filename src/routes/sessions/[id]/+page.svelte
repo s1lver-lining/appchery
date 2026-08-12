@@ -119,7 +119,10 @@
 	let celebrations = $state<Award[]>([]);
 
 	async function announceBadges() {
-		celebrations = (await awardBadges()).map((key) => ({
+		const won = await awardBadges();
+		// Left alone when nothing was won, so counting on past a badge does not clear it off the screen.
+		if (won.length === 0) return;
+		celebrations = won.map((key) => ({
 			title: $t('badges.new'),
 			subtitle: $t(`badges.list.${key}.name`)
 		}));

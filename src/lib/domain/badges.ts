@@ -319,8 +319,13 @@ function placeOf(activity: BadgeActivity): string | null {
 	return place ? place : null;
 }
 
-/** A round shot far enough away to have been shot outdoors, whatever the weather says. */
+/**
+ * A round that was shot outdoors. Field, 3D and clout courses always are, whatever distance they
+ * record: half of them are unmarked, and an unmarked course is not an indoor one.
+ */
 function outdoors(activity: BadgeActivity): boolean {
+	const discipline = activity.round?.discipline;
+	if (discipline === 'field' || discipline === '3d' || discipline === 'clout') return true;
 	return longestDistance(activity) >= OUTDOOR_METRES;
 }
 
@@ -361,11 +366,6 @@ function habitDays(key: string, target: number): BadgeDefinition {
 	};
 }
 
-/**
- * The FFTA progression arrows, from the federation's Règlements Généraux (édition février 2023),
- * see doc/badges.md. Thirty six arrows on the competition face for the distance, and a score to
- * beat. The first five are open to any bow, the metal ones ask for the bow they were written for.
- */
 /** The colour the arrow is named for, which is the whole of its identity. */
 export type ArrowColour =
 	| 'white'
@@ -386,6 +386,11 @@ export interface ProgressionArrow {
 	bowType?: string;
 }
 
+/**
+ * The FFTA progression arrows, from the federation's Règlements Généraux (édition février 2023),
+ * see doc/badges.md. Thirty six arrows on the competition face for the distance, and a score to
+ * beat. The first five are open to any bow, the metal ones ask for the bow they were written for.
+ */
 export const PROGRESSION_ARROWS: ProgressionArrow[] = [
 	{ key: 'fftaWhite', colour: 'white', metres: 10, faceSize: 80, score: 280 },
 	{ key: 'fftaBlack', colour: 'black', metres: 15, faceSize: 80, score: 280 },
@@ -530,9 +535,13 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'goldenEnd',
 		family: 'accuracy',
 		icon: 'target',
+		// Ten ring rounds only: a 9 is the gold there, and means nothing on a field or 3D face.
 		earnedAt: (h) =>
-			first(h.scoring, (a) =>
-				a.ends.some((end) => end.arrows >= GOLD_ARROW_END && end.golds === end.arrows)
+			first(
+				h.scoring,
+				(a) =>
+					a.round?.scoreSetId === TEN_RING &&
+					a.ends.some((end) => end.arrows >= GOLD_ARROW_END && end.golds === end.arrows)
 			)
 	},
 

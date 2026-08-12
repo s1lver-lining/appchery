@@ -3,10 +3,7 @@
 	import Icon from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 
-	/**
-	 * A record and a badge are the moments in this app worth interrupting for. It says what was won,
-	 * then gets out of the way on its own, because the archer is still stood on the shooting line.
-	 */
+	/** One thing worth interrupting for: a record, or a badge. */
 	export interface Award {
 		title: string;
 		subtitle: string;
@@ -14,9 +11,9 @@
 	}
 
 	/**
-	 * A last arrow can win several things at once: the record, and the badge the round pushed over
-	 * the line. They are shown together under one volley rather than queued, because they were one
-	 * moment and the archer is still stood on the shooting line.
+	 * A last arrow can win several things at once: the record, and the badge the round pushed over the
+	 * line. They are shown together under one volley rather than queued, because they were one moment,
+	 * and the whole thing gets out of the way on its own: the archer is still stood on the line.
 	 */
 	let { awards, onclose }: { awards: Award[]; onclose: () => void } = $props();
 
@@ -61,7 +58,8 @@
 	{/each}
 
 	<div class="absolute inset-x-0 top-[22%] flex flex-col items-center gap-2 px-6">
-		{#each awards as award, i (award.subtitle)}
+		<!-- Keyed by position: two things won at once can carry the same words, a record and its badge. -->
+		{#each awards as award, i (i)}
 			<button
 				class="pointer-events-auto card flex w-full max-w-sm items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 px-5 py-4 shadow-2xl backdrop-blur"
 				style="--card-delay: {i * 260}ms"

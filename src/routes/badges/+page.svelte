@@ -26,9 +26,11 @@
 	 * deleted afterwards leaves it standing. The rules are still run, for the progress on the rest.
 	 */
 	async function refresh() {
-		await awardBadges();
+		// Read once and used twice: awarding and measuring progress ask the same question of the data.
+		const history = await loadBadgeInput();
+		await awardBadges(history);
 		const held = new Map((await listBadges()).map((row) => [row.key, row.earnedAt]));
-		badges = evaluateBadges(await loadBadgeInput()).map((badge) => ({
+		badges = evaluateBadges(history).map((badge) => ({
 			...badge,
 			earnedAt: held.get(badge.definition.key) ?? null
 		}));
