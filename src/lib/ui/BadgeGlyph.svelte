@@ -15,9 +15,9 @@
 		blue: 'var(--color-face-blue)',
 		red: 'var(--color-face-red)',
 		yellow: 'var(--color-face-gold)',
-		bronze: '#c07a3e',
-		silver: '#b7bec6',
-		gold: '#d9a441'
+		bronze: 'var(--c-medal-bronze)',
+		silver: 'var(--c-medal-silver)',
+		gold: 'var(--c-medal-gold)'
 	};
 
 	const arrow = $derived(PROGRESSION_ARROWS.find((a) => a.key === badge.definition.key));

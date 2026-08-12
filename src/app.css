@@ -23,6 +23,17 @@
 }
 
 /*
+ * Chart colours live outside @theme because a chart paints them through an inline style, and
+ * Tailwind only emits the theme variables its generated classes mention.
+ */
+:root {
+	/* The awarded metals, which name the badge the way the face colours name the arrows. */
+	--c-medal-bronze: #c07a3e;
+	--c-medal-silver: #b7bec6;
+	--c-medal-gold: #d9a441;
+}
+
+/*
  * Bronze and target gold on warm paper: leather, cedar limbs and the gold ring, which reads as
  * archery without competing with the regulated face colours used for scores.
  */
@@ -39,6 +50,11 @@
 	--c-brand-text: #8a5320;
 	--c-accent: #d99b20;
 	--c-danger: #a3392c;
+
+	/* Bronze, red and blue, checked for separation under deuteranopia against the light surface. */
+	--c-kind-practice: #b87a26;
+	--c-kind-competition: #a3392c;
+	--c-kind-qualification: #1a6ba8;
 
 	color-scheme: light;
 }
@@ -58,6 +74,11 @@
 		--c-accent: #e8b45c;
 		--c-danger: #e0776a;
 
+		/* Their own steps rather than the light ones: a flipped theme loses the separation. */
+		--c-kind-practice: #b58430;
+		--c-kind-competition: #c04a55;
+		--c-kind-qualification: #4f9ac9;
+
 		color-scheme: dark;
 	}
 }
@@ -74,6 +95,11 @@
 	--c-brand-text: #e0a95c;
 	--c-accent: #e8b45c;
 	--c-danger: #e0776a;
+
+	/* Their own steps rather than the light ones: a flipped theme loses the separation. */
+	--c-kind-practice: #b58430;
+	--c-kind-competition: #c04a55;
+	--c-kind-qualification: #4f9ac9;
 
 	color-scheme: dark;
 }

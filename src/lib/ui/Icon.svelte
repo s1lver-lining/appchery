@@ -24,6 +24,7 @@
 		| 'star'
 		| 'medal'
 		| 'chevronUp'
+		| 'check'
 		| 'edit'
 		| 'dots'
 		| 'grid'
@@ -148,6 +149,8 @@
 		<path d="M4 6.5h16M4 12h16M4 17.5h16" />
 	{:else if name === 'chevronUp'}
 		<path d="M6 14.5L12 8.5l6 6" />
+	{:else if name === 'check'}
+		<path d="M5 12.5l4.5 4.5L19 7" />
 	{:else if name === 'star'}
 		<path
 			d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"
