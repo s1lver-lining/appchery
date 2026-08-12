@@ -557,13 +557,15 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 	const finished = activities.filter((a) =>
 		isRoundComplete(a.roundDefinition ? JSON.parse(a.roundDefinition) : null, a.arrowsShot)
 	);
+	// Read off the outings that count, so "last used" can never be a session nothing happened in.
+	const outings = sessions.filter((s) => used.has(s.id));
 	return {
-		sessions: sessions.filter((s) => used.has(s.id)).length,
+		sessions: outings.length,
 		activities: activities.length,
 		// Every arrow the bow sent, training included: wear is wear, whether or not it was scored.
 		arrowsShot: done.reduce((sum, a) => sum + a.arrowsShot, 0),
 		bestScore: finished.length > 0 ? Math.max(...finished.map((a) => a.totalScore)) : null,
-		lastUsedAt: sessions.length > 0 ? Math.max(...sessions.map((s) => s.startedAt)) : null
+		lastUsedAt: outings.length > 0 ? Math.max(...outings.map((s) => s.startedAt)) : null
 	};
 }
 
