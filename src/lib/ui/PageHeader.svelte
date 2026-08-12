@@ -131,14 +131,15 @@
 			the last, overlapping the way a limb does through the draw.
 		-->
 		<svg
-			class="pointer-events-none absolute inset-y-0 right-0 h-full w-72 text-brand"
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-80 text-brand"
 			viewBox="0 0 160 100"
 			preserveAspectRatio="xMaxYMid meet"
 			fill="none"
 			aria-hidden="true"
 		>
-			<!-- Turned a quarter anticlockwise and blown up, so the arcs rise out of the header edge. -->
-			<g transform="translate(118 22) rotate(-90) scale(1.35)">
+			<!-- Turned a quarter anticlockwise and blown up, so the arcs rise out of the header edge.
+				Held left of the corner, which belongs to the menu button rather than to the motif. -->
+			<g transform="translate(94 22) rotate(-90) scale(1.55)">
 				{#each [0, 1, 2, 3] as step (step)}
 					<path
 						d="M-70 {-42 + step * 4} C {-18 - step * 6} {-30 + step * 2}, {14 + step * 8} {step *
