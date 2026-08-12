@@ -484,7 +484,7 @@
 				</span>
 				<input
 					class="w-full rounded-full border border-line bg-surface py-1.5 pr-8 pl-8 text-sm text-ink outline-none placeholder:text-muted"
-					type="search"
+					type="text"
 					placeholder={$t('sessions.search')}
 					aria-label={$t('sessions.search')}
 					bind:value={query}
