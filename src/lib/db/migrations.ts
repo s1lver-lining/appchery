@@ -216,5 +216,13 @@ export const MIGRATIONS: string[][] = [
 		`CREATE INDEX IF NOT EXISTS idx_badge_key ON badge (key);`
 	],
 	// 0012 a plan put aside without being thrown away
-	[`ALTER TABLE plan ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;`]
+	[`ALTER TABLE plan ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;`],
+	// 0013 head to head matches, which are scored against somebody rather than against a round
+	[
+		`ALTER TABLE activity ADD COLUMN match_config TEXT;`,
+		`ALTER TABLE round_end ADD COLUMN opponent_subtotal INTEGER;`,
+		`ALTER TABLE round_end ADD COLUMN is_shoot_off INTEGER NOT NULL DEFAULT 0;`,
+		`ALTER TABLE round_end ADD COLUMN winner TEXT;`,
+		`ALTER TABLE shot ADD COLUMN side TEXT NOT NULL DEFAULT 'us';`
+	]
 ];

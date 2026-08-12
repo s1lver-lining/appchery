@@ -87,6 +87,8 @@ export const activity = sqliteTable(
 		roundDefinition: text('round_definition'),
 		/** Set for tuning activities. */
 		templateKey: text('template_key'),
+		/** The rules of a head to head match as JSON, set on match activities and null everywhere else. */
+		matchConfig: text('match_config'),
 		observations: text('observations'),
 		conclusion: text('conclusion'),
 		adjustmentMade: text('adjustment_made'),
@@ -113,6 +115,15 @@ export const end = sqliteTable(
 		endNo: integer('end_no').notNull(),
 		subtotal: integer('subtotal').notNull().default(0),
 		/**
+		 * The other side's total for this end of a match. Held on the same row as ours because an end
+		 * of a match is one thing that happened, not two, and neither total means anything alone.
+		 */
+		opponentSubtotal: integer('opponent_subtotal'),
+		/** The single arrow that separates a level match, which stands outside the regulation ends. */
+		isShootOff: integer('is_shoot_off').notNull().default(0),
+		/** us | them, recorded only when a judge had to separate two equal shoot-off arrows. */
+		winner: text('winner'),
+		/**
 		 * File name of the scoring video kept for this end, or null. Recorded against the end rather
 		 * than the detection, so an end filmed by the camera and then typed in by hand is still paired
 		 * with its footage: that pairing is the whole value of the recording as training data.
@@ -130,6 +141,8 @@ export const shot = sqliteTable(
 		ordinal: integer('ordinal').notNull(),
 		value: integer('value').notNull(),
 		zoneLabel: text('zone_label').notNull(),
+		/** us | them. The opponent's arrows are kept to work out who won and count for nobody. */
+		side: text('side').notNull().default('us'),
 		/** Normalised face coordinates, null when the arrow was entered as a bare number. */
 		x: real('x'),
 		y: real('y'),

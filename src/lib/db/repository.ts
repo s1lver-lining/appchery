@@ -4,6 +4,7 @@ import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
 import { weekArrowGoal, onlyActive } from '$lib/domain/plans';
+import { parseConfig, tally, arrowsShot, matchScore, type MatchConfig } from '$lib/domain/matches';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -407,6 +408,202 @@ export async function refreshActivityTotals(activityId: string) {
 			count10s: countLabel(all, '10') + countLabel(all, 'X'),
 			countX: countLabel(all, 'X'),
 			arrowsShot: all.length,
+			updatedAt: Date.now()
+		})
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
+}
+
+/* Matches */
+
+/**
+ * A head to head match. It is an activity like any other so it lands in the session it was shot in,
+ * but it carries its rules rather than a round: there is no round to shoot, only somebody to beat.
+ */
+export async function createMatchActivity(sessionId: string, config: MatchConfig) {
+	await unplan(sessionId);
+	const base = stamp();
+	await db().insert(schema.activity).values({
+		...base,
+		sessionId,
+		kind: 'match',
+		matchConfig: JSON.stringify(config),
+		startedAt: base.createdAt,
+		status: 'in_progress'
+	});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+export async function updateMatchConfig(activityId: string, config: MatchConfig) {
+	await db()
+		.update(schema.activity)
+		.set({ matchConfig: JSON.stringify(config), updatedAt: Date.now() })
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
+	// The rules decide what counts as shot, so changing them changes the totals underneath.
+	await refreshMatchTotals(activityId);
+}
+
+/**
+ * One end of a match, both sides at once. Ends are written by number rather than appended, so an end
+ * corrected after the match is over lands on the row it belongs to and the result follows it.
+ */
+export async function saveMatchEnd(
+	activityId: string,
+	endNo: number,
+	input: { ours: number | null; theirs: number | null; shootOff?: boolean; winner?: 'us' | 'them' | null }
+) {
+	const existing = (await listEnds(activityId)).find((row) => row.endNo === endNo);
+	const patch = {
+		subtotal: input.ours ?? 0,
+		opponentSubtotal: input.theirs,
+		isShootOff: input.shootOff ? 1 : 0,
+		winner: input.winner ?? null
+	};
+
+	if (existing) {
+		await db()
+			.update(schema.end)
+			.set({ ...patch, updatedAt: Date.now() })
+			.where(eq(schema.end.id, existing.id));
+		await log('round_end', existing.id, 'update');
+	} else {
+		const base = stamp();
+		await db()
+			.insert(schema.end)
+			.values({ ...base, activityId, stageIndex: 0, endNo, ...patch });
+		await log('round_end', base.id, 'insert');
+	}
+
+	await refreshMatchTotals(activityId);
+}
+
+/** Arrows for one side of one end, replacing whatever was there: an end is entered, not appended to. */
+export async function setMatchArrows(
+	activityId: string,
+	endNo: number,
+	side: 'us' | 'them',
+	shots: Omit<Shot, 'ordinal'>[]
+) {
+	const end = (await listEnds(activityId)).find((row) => row.endNo === endNo);
+	if (!end) return;
+
+	const previous = (await listShots(end.id)).filter((shot) => shot.side === side);
+	if (previous.length > 0) {
+		const now = Date.now();
+		await db()
+			.update(schema.shot)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(
+				inArray(
+					schema.shot.id,
+					previous.map((shot) => shot.id)
+				)
+			);
+		await logMany('shot', previous.map((shot) => shot.id), 'delete');
+	}
+
+	if (shots.length > 0) {
+		const rows = shots.map((shot, index) => ({
+			...stamp(),
+			endId: end.id,
+			ordinal: index + 1,
+			value: shot.value,
+			zoneLabel: shot.zoneLabel,
+			side,
+			x: shot.x,
+			y: shot.y,
+			source: shot.source
+		}));
+		await db().insert(schema.shot).values(rows);
+		await logMany('shot', rows.map((row) => row.id), 'insert');
+	}
+
+	// Arrows are the truth once they exist: the end total follows them rather than the other way.
+	const total = shots.reduce((sum, shot) => sum + shot.value, 0);
+	await db()
+		.update(schema.end)
+		.set(
+			side === 'us'
+				? { subtotal: total, updatedAt: Date.now() }
+				: { opponentSubtotal: total, updatedAt: Date.now() }
+		)
+		.where(eq(schema.end.id, end.id));
+	await log('round_end', end.id, 'update');
+
+	await refreshMatchTotals(activityId);
+}
+
+export async function deleteMatchEnd(activityId: string, endNo: number) {
+	const end = (await listEnds(activityId)).find((row) => row.endNo === endNo);
+	if (!end) return;
+	const now = Date.now();
+	const shots = await listShots(end.id);
+	if (shots.length > 0) {
+		await db()
+			.update(schema.shot)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(
+				inArray(
+					schema.shot.id,
+					shots.map((shot) => shot.id)
+				)
+			);
+		await logMany('shot', shots.map((shot) => shot.id), 'delete');
+	}
+	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, end.id));
+	await log('round_end', end.id, 'delete');
+	await refreshMatchTotals(activityId);
+}
+
+/** The card as the match page reads it: the rules, the ends, and whatever arrows were plotted. */
+export async function loadMatch(activityId: string) {
+	const activity = await getActivity(activityId);
+	const config = parseConfig(activity?.matchConfig ?? null);
+	const { ends, shotsByEnd } = await loadSheet(activityId);
+	return {
+		config,
+		ends: ends.map((row) => ({
+			id: row.id,
+			endNo: row.endNo,
+			// A row exists because something was entered, so our total is a number from that moment on.
+			ours: row.subtotal,
+			theirs: row.opponentSubtotal,
+			shootOff: row.isShootOff === 1,
+			winner: (row.winner as 'us' | 'them' | null) ?? null,
+			shots: shotsByEnd.get(row.id) ?? []
+		}))
+	};
+}
+
+/**
+ * Totals for a match. The score is the result rather than a sum of arrows, and the arrows counted
+ * are the ones the archer shot: none at all while the card is being kept for somebody else.
+ */
+export async function refreshMatchTotals(activityId: string) {
+	const { config, ends } = await loadMatch(activityId);
+	if (!config) return;
+
+	const plain = ends.map((end) => ({
+		endNo: end.endNo,
+		ours: end.ours,
+		theirs: end.theirs,
+		shootOff: end.shootOff,
+		winner: end.winner
+	}));
+	const result = tally(config, plain);
+	const ours = ends.flatMap((end) => end.shots.filter((shot) => shot.side === 'us'));
+
+	await db()
+		.update(schema.activity)
+		.set({
+			totalScore: matchScore(config, plain),
+			// Read off the plotted arrows when there are any: an end typed as a total has no tens to count.
+			count10s: ours.filter((s) => s.zoneLabel === '10' || s.zoneLabel === 'X').length,
+			countX: ours.filter((s) => s.zoneLabel === 'X').length,
+			arrowsShot: arrowsShot(config, plain),
+			status: result.decided ? 'complete' : 'in_progress',
 			updatedAt: Date.now()
 		})
 		.where(eq(schema.activity.id, activityId));

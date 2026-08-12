@@ -27,6 +27,13 @@ export interface MatchConfig {
 	forSelf: boolean;
 	/** Free text: an opponent is a name on a card, not somebody the app needs to know about. */
 	opponent: string | null;
+	/** Whether a level match may be taken to a single arrow. Off makes a draw a legal result. */
+	shootOff: boolean;
+	/** The face the plotted arrows are drawn on. A match carries no round to read it from. */
+	scoreSetId: string;
+	/** Display only, for a card that says what was shot rather than only who won. */
+	faceSize: number | null;
+	distance: { value: number; unit: 'm' | 'yd' } | null;
 	/** Who our side is, when it is not simply the archer. Names only, and all of them optional. */
 	ourName: string | null;
 	teammates: string[];
@@ -39,6 +46,11 @@ export interface MatchEnd {
 	theirs: number | null;
 	/** The single arrow that decides a tie, which stands outside the regulation ends. */
 	shootOff?: boolean;
+	/**
+	 * Who took a shoot-off the arrows cannot separate. Two tens are decided by a judge with a tape
+	 * measure, so the app records the call rather than inventing one.
+	 */
+	winner?: Side | null;
 }
 
 export interface MatchTally {
@@ -72,11 +84,18 @@ export function newMatch(format: MatchFormat, system: MatchSystem = 'set'): Matc
 		system,
 		...preset,
 		forSelf: true,
+		shootOff: true,
+		scoreSetId: DEFAULT_SCORE_SET,
+		faceSize: null,
+		distance: null,
 		opponent: null,
 		ourName: null,
 		teammates: []
 	};
 }
+
+/** The ten ring every target match is shot at, and the sane default for anything else. */
+export const DEFAULT_SCORE_SET = 'wa-10-ring';
 
 /** A hand written config that survives a reload: anything missing falls back to a legal match. */
 export function parseConfig(raw: string | null): MatchConfig | null {
@@ -93,6 +112,13 @@ export function parseConfig(raw: string | null): MatchConfig | null {
 			maxEnds: positive(parsed.maxEnds, base.maxEnds),
 			setPointsToWin: positive(parsed.setPointsToWin, base.setPointsToWin),
 			forSelf: parsed.forSelf !== false,
+			shootOff: parsed.shootOff !== false,
+			scoreSetId: typeof parsed.scoreSetId === 'string' ? parsed.scoreSetId : base.scoreSetId,
+			faceSize: positiveOrNull(parsed.faceSize),
+			distance:
+				parsed.distance && typeof parsed.distance.value === 'number' && parsed.distance.value > 0
+					? { value: parsed.distance.value, unit: parsed.distance.unit === 'yd' ? 'yd' : 'm' }
+					: null,
 			opponent: typeof parsed.opponent === 'string' ? parsed.opponent : null,
 			ourName: typeof parsed.ourName === 'string' ? parsed.ourName : null,
 			teammates: Array.isArray(parsed.teammates)
@@ -102,6 +128,10 @@ export function parseConfig(raw: string | null): MatchConfig | null {
 	} catch {
 		return null;
 	}
+}
+
+function positiveOrNull(value: unknown): number | null {
+	return typeof value === 'number' && Number.isFinite(value) && value > 0 ? Math.round(value) : null;
 }
 
 function positive(value: unknown, fallback: number): number {
@@ -163,13 +193,14 @@ export function tally(config: MatchConfig, ends: MatchEnd[]): MatchTally {
 	const tiedAfterRegulation =
 		!winner && allShot && (config.system === 'set' ? ourPoints === theirPoints : ourTotal === theirTotal);
 
-	// One arrow each. Equal arrows leave it to the judge, so the card waits rather than guessing.
+	// One arrow each. Equal arrows are decided by a tape measure, so the call is recorded, not guessed.
 	if (tiedAfterRegulation && shootOff && entered(shootOff)) {
 		ourTotal += shootOff.ours as number;
 		theirTotal += shootOff.theirs as number;
 		rows.push({ end: shootOff, ourPoints: 0, theirPoints: 0 });
 		if ((shootOff.ours as number) > (shootOff.theirs as number)) winner = 'us';
 		else if ((shootOff.theirs as number) > (shootOff.ours as number)) winner = 'them';
+		else winner = shootOff.winner ?? null;
 	}
 
 	return {
@@ -181,7 +212,7 @@ export function tally(config: MatchConfig, ends: MatchEnd[]): MatchTally {
 		endsPlayed,
 		decided: winner !== null,
 		winner,
-		needsShootOff: tiedAfterRegulation && winner === null
+		needsShootOff: config.shootOff && tiedAfterRegulation && winner === null
 	};
 }
 
@@ -212,4 +243,25 @@ export function arrowsShot(config: MatchConfig, ends: MatchEnd[]): number {
 export function matchScore(config: MatchConfig, ends: MatchEnd[]): number {
 	const result = tally(config, ends);
 	return config.system === 'set' ? result.ourPoints : result.ourTotal;
+}
+
+/** How far from the centre an arrow landed, which is what separates two shoot-off arrows of equal value. */
+export function distanceFromCentre(shot: { x: number | null; y: number | null }): number | null {
+	return shot.x === null || shot.y === null ? null : Math.hypot(shot.x, shot.y);
+}
+
+/**
+ * Who won a shoot-off, read off the arrows themselves. Values first, then the plot: two tens are
+ * separated by the closer one, which is exactly what the judge does with a tape measure.
+ */
+export function shootOffWinner(
+	ours: { value: number; x: number | null; y: number | null } | null,
+	theirs: { value: number; x: number | null; y: number | null } | null
+): Side | null {
+	if (!ours || !theirs) return null;
+	if (ours.value !== theirs.value) return ours.value > theirs.value ? 'us' : 'them';
+	const here = distanceFromCentre(ours);
+	const there = distanceFromCentre(theirs);
+	if (here === null || there === null || here === there) return null;
+	return here < there ? 'us' : 'them';
 }
