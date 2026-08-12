@@ -334,9 +334,22 @@
 
 	/** The same three ways to start an outing, whichever shape the bottom of the page is in. */
 	const NEW_KINDS = $derived([
-		{ label: $t('sessions.new'), onselect: () => start('practice'), accent: true },
-		{ label: $t('sessions.newCompetition'), onselect: () => start('competition') },
-		{ label: $t('sessions.newPlanned'), onselect: () => (planningAt = Date.now()) }
+		{
+			label: $t('sessions.new'),
+			icon: 'target' as const,
+			onselect: () => start('practice'),
+			accent: true
+		},
+		{
+			label: $t('sessions.newCompetition'),
+			icon: 'medal' as const,
+			onselect: () => start('competition')
+		},
+		{
+			label: $t('sessions.newPlanned'),
+			icon: 'calendar' as const,
+			onselect: () => (planningAt = Date.now())
+		}
 	]);
 </script>
 
