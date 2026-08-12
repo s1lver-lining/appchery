@@ -13,6 +13,7 @@
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import {
 		FACE_SIZES,
 		DISTANCES_M,
@@ -65,6 +66,7 @@
 		createTuningActivity,
 		createMatchActivity,
 		loadMatch,
+		listMatchNames,
 		addTrainingArrows,
 		awardBadges,
 		type ActivityRow,
@@ -425,6 +427,12 @@
 	 * what a match is, and asking for it on the card while a first end is waiting is asking too late.
 	 */
 	let draftMatch = $state<MatchConfig | null>(null);
+
+	/** Everybody named on a card before, read once the picker is opened rather than with the session. */
+	let knownNames = $state<{ opponents: string[]; ours: string[] }>({ opponents: [], ours: [] });
+	$effect(() => {
+		if (adding) listMatchNames().then((names) => (knownNames = names));
+	});
 
 	function openMatch(format: MatchFormat) {
 		// Seeded rather than left null: the wheel shows a distance, so the card had better record it.
@@ -1338,23 +1346,17 @@
 			{#if showAdvanced}
 				<div class="space-y-3 border-l-2 border-line pl-3">
 					<div class="flex gap-2">
-						<input
-							class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+						<NamePicker
+							value={draftMatch.ourName}
+							known={knownNames.ours}
 							placeholder={$t('match.ourSide')}
-							aria-label={$t('match.ourSide')}
-							value={draftMatch.ourName ?? ''}
-							onchange={(e) =>
-								draftMatch &&
-								(draftMatch = { ...draftMatch, ourName: e.currentTarget.value.trim() || null })}
+							onchange={(name) => draftMatch && (draftMatch = { ...draftMatch, ourName: name })}
 						/>
-						<input
-							class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+						<NamePicker
+							value={draftMatch.opponent}
+							known={knownNames.opponents}
 							placeholder={$t('match.opponent')}
-							aria-label={$t('match.opponent')}
-							value={draftMatch.opponent ?? ''}
-							onchange={(e) =>
-								draftMatch &&
-								(draftMatch = { ...draftMatch, opponent: e.currentTarget.value.trim() || null })}
+							onchange={(name) => draftMatch && (draftMatch = { ...draftMatch, opponent: name })}
 						/>
 					</div>
 

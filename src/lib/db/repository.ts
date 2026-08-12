@@ -632,6 +632,27 @@ export async function deleteMatchEnd(activityId: string, endNo: number) {
 	await refreshMatchTotals(activityId);
 }
 
+/**
+ * Everybody named on a match card before, most recent first. Opponents are free text on purpose, so
+ * this is what keeps the spelling of a name steady from one meeting to the next.
+ */
+export async function listMatchNames() {
+	const rows = await db()
+		.select({ config: schema.activity.matchConfig, at: schema.activity.startedAt })
+		.from(schema.activity)
+		.where(and(eq(schema.activity.kind, 'match'), isNull(schema.activity.deletedAt)))
+		.orderBy(desc(schema.activity.startedAt));
+
+	const opponents = new Set<string>();
+	const ours = new Set<string>();
+	for (const row of rows) {
+		const config = parseConfig(row.config);
+		if (config?.opponent) opponents.add(config.opponent);
+		if (config?.ourName) ours.add(config.ourName);
+	}
+	return { opponents: [...opponents], ours: [...ours] };
+}
+
 /** The card as the match page reads it: the rules, the ends, and whatever arrows were plotted. */
 export async function loadMatch(activityId: string) {
 	const activity = await getActivity(activityId);

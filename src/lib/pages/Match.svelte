@@ -21,6 +21,7 @@
 		setMatchEndTotal,
 		deleteMatchEnd,
 		updateMatchConfig,
+		listMatchNames,
 		deleteActivity,
 		awardBadges,
 		shotFromZone,
@@ -35,6 +36,7 @@
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	/**
@@ -50,6 +52,11 @@
 	let rows = $state<Row[]>([]);
 	let confirmingDelete = $state(false);
 	let editingSetup = $state(false);
+	/** Names used on other cards, so the same opponent is spelled the same way every time. */
+	let knownNames = $state<{ opponents: string[]; ours: string[] }>({ opponents: [], ours: [] });
+	$effect(() => {
+		if (editingSetup) listMatchNames().then((names) => (knownNames = names));
+	});
 
 	let loaded = false;
 	async function refresh() {
@@ -629,29 +636,19 @@
 	<Sheet open={editingSetup} title={$t('match.title')} onclose={() => (editingSetup = false)}>
 		<div class="space-y-3">
 			<div class="flex gap-2">
-				<input
-					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+				<NamePicker
+					value={config.ourName}
+					known={knownNames.ours}
 					placeholder={$t('match.ourSide')}
-					aria-label={$t('match.ourSide')}
-					value={config.ourName ?? ''}
-					onchange={(e) =>
-						config &&
-						updateMatchConfig(activity.id, {
-							...config,
-							ourName: e.currentTarget.value.trim() || null
-						}).then(refresh)}
+					onchange={(name) =>
+						config && updateMatchConfig(activity.id, { ...config, ourName: name }).then(refresh)}
 				/>
-				<input
-					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+				<NamePicker
+					value={config.opponent}
+					known={knownNames.opponents}
 					placeholder={$t('match.opponent')}
-					aria-label={$t('match.opponent')}
-					value={config.opponent ?? ''}
-					onchange={(e) =>
-						config &&
-						updateMatchConfig(activity.id, {
-							...config,
-							opponent: e.currentTarget.value.trim() || null
-						}).then(refresh)}
+					onchange={(name) =>
+						config && updateMatchConfig(activity.id, { ...config, opponent: name }).then(refresh)}
 				/>
 			</div>
 
