@@ -563,15 +563,26 @@
 							</header>
 
 							<ul class="space-y-2">
-								{#each group.items as row (row.session?.id ?? `${row.occurrence?.slotId}-${row.at}`)}
+								{#each group.items as row, i (row.session?.id ?? `${row.occurrence?.slotId}-${row.at}`)}
+									{@const onToday = startOfDay(row.at) === today}
+									<!-- Carried into the gap while the next row is still today, so a day of several
+										outings reads as one run rather than as three unrelated cards. -->
+									{@const runs = onToday && startOfDay(group.items[i + 1]?.at ?? 0) === today}
 									<li
-										class="flex items-center gap-3"
-										use:markToday={startOfDay(row.at) === today}
+										class="relative flex items-center gap-3"
+										use:markToday={onToday}
 									>
+										{#if onToday}
+											<!-- The stem hangs off the pill: today is where the list is, not just a date. -->
+											<span
+												class="pointer-events-none absolute top-11 left-[17px] w-0.5 rounded-full bg-brand/40
+													{runs ? '-bottom-2' : 'bottom-0'}"
+											></span>
+										{/if}
 										<div class="w-9 shrink-0 text-center">
 											<!-- The weekday joins the pill on today, so the margin says it twice over. -->
 											<p
-												class="text-[11px] leading-none {startOfDay(row.at) === today
+												class="text-[11px] leading-none {onToday
 													? 'font-semibold text-brand-text'
 													: 'text-muted'}"
 											>
@@ -580,7 +591,7 @@
 											<!-- Today wears a filled pill, so the current day is findable without reading dates. -->
 											<p
 												class="tabular mt-0.5 text-lg leading-none font-bold
-													{startOfDay(row.at) === today
+													{onToday
 													? 'mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-brand text-brand-ink'
 													: ''}"
 											>
