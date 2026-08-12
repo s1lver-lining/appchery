@@ -4,7 +4,14 @@ import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
 import { weekArrowGoal, onlyActive } from '$lib/domain/plans';
-import { parseConfig, tally, arrowsShot, matchScore, type MatchConfig } from '$lib/domain/matches';
+import {
+	parseConfig,
+	tally,
+	arrowsShot,
+	matchScore,
+	wonFromBehind,
+	type MatchConfig
+} from '$lib/domain/matches';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -1052,6 +1059,24 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 	// A plan put aside stops setting the bar a weekly badge is measured against.
 	const live = onlyActive(plans, slots);
 
+	// A match's result is worked out from its ends, and only ever the archer's own matches.
+	const matchResults = new Map<string, { won: boolean; fromBehind: boolean }>();
+	for (const activity of activities.filter((a) => a.kind === 'match')) {
+		const card = await loadMatch(activity.id);
+		if (!card.config?.forSelf) continue;
+		const plain = card.ends.map((end) => ({
+			endNo: end.endNo,
+			ours: end.ours,
+			theirs: end.theirs,
+			shootOff: end.shootOff,
+			winner: end.winner
+		}));
+		matchResults.set(activity.id, {
+			won: tally(card.config, plain).winner === 'us',
+			fromBehind: wonFromBehind(card.config, plain)
+		});
+	}
+
 	const bowTypes = new Map(bows.map((bow) => [bow.id, bow.type]));
 	const sessionsById = new Map(sessions.map((session) => [session.id, session]));
 
@@ -1104,7 +1129,8 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 				windKmh: typeof weather?.windSpeedKmh === 'number' ? weather.windSpeedKmh : null,
 				temperatureC: typeof weather?.temperatureC === 'number' ? weather.temperatureC : null,
 				location: session?.location ?? null,
-				ends: endsByActivity.get(activity.id) ?? []
+				ends: endsByActivity.get(activity.id) ?? [],
+				match: matchResults.get(activity.id) ?? null
 			};
 		}),
 		sightMarks: marks,

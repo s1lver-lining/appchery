@@ -56,6 +56,11 @@ export interface BadgeActivity extends ScoredActivity {
 	temperatureC: number | null;
 	location: string | null;
 	ends: BadgeEnd[];
+	/**
+	 * How a match ended, on match activities the archer shot themselves. Null everywhere else, and on
+	 * a card kept for somebody else: their win is not the archer's to be given a badge for.
+	 */
+	match?: { won: boolean; fromBehind: boolean } | null;
 }
 
 export interface BadgeInput {
@@ -77,6 +82,8 @@ interface History extends BadgeInput {
 	scoring: BadgeActivity[];
 	/** Of those, the ones shot to the end. */
 	finished: BadgeActivity[];
+	/** Matches the archer shot and won, oldest first. */
+	won: BadgeActivity[];
 }
 
 export interface BadgeDefinition {
@@ -124,7 +131,8 @@ function prepare(input: BadgeInput): History {
 		...input,
 		shooting: byDate.filter((a) => a.arrowsShot > 0),
 		scoring,
-		finished: scoring.filter(isComplete)
+		finished: scoring.filter(isComplete),
+		won: byDate.filter((a) => a.match?.won === true)
 	};
 }
 
@@ -447,6 +455,27 @@ function progressionArrow(arrow: ProgressionArrow): BadgeDefinition {
 }
 
 export const BADGES: BadgeDefinition[] = [
+	{
+		key: 'firstMatchWon',
+		family: 'milestone',
+		icon: 'medal',
+		earnedAt: (h) => h.won[0]?.startedAt ?? null
+	},
+	{
+		key: 'tenMatchesWon',
+		family: 'milestone',
+		icon: 'medal',
+		hintParams: { matches: 10 },
+		earnedAt: (h) => h.won[9]?.startedAt ?? null,
+		progress: (h) => ({ current: h.won.length, target: 10 })
+	},
+	{
+		// Two sets down is the point where a match is usually gone, which is what makes it a badge.
+		key: 'comebackWin',
+		family: 'milestone',
+		icon: 'star',
+		earnedAt: (h) => h.won.find((a) => a.match?.fromBehind)?.startedAt ?? null
+	},
 	{
 		key: 'halfMarathon',
 		family: 'volume',

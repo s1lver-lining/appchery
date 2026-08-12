@@ -698,6 +698,18 @@ export const fr: Dictionary = {
 			ffta: 'Flèches de progression FFTA'
 		},
 		list: {
+			firstMatchWon: {
+				name: 'Premier sang',
+				hint: 'Gagner un match.'
+			},
+			tenMatchesWon: {
+				name: 'Dix scalps',
+				hint: 'Gagner {matches} matchs.'
+			},
+			comebackWin: {
+				name: 'Remontada',
+				hint: 'Gagner un match mené de deux sets.'
+			},
 			halfMarathon: {
 				name: 'Le semi-marathon',
 				hint: '{arrows} flèches en une seule séance.'

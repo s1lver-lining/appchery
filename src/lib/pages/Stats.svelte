@@ -47,6 +47,8 @@
 	import { expandedRounds, statsFilter, statsBlocks, dateFormats } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
+	/** Match arrows, kept apart from the rounds: they count towards volume and towards nothing else. */
+	let matches = $state<ScoredActivity[]>([]);
 	let favourites = $state<Set<string>>(new Set());
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
@@ -62,6 +64,23 @@
 		shots = await listShotValues();
 		ends = await listEndTotals();
 		const activities = await listAllActivities();
+		/**
+		 * Matches are arrows shot, so they belong in the volume, and they are not rounds, so they
+		 * belong nowhere else on this page: a set system result is not a score to average or beat.
+		 */
+		matches = activities
+			.filter((a) => a.kind === 'match' && a.arrowsShot > 0)
+			.map((a) => ({
+				id: a.id,
+				sessionId: a.sessionId,
+				startedAt: a.startedAt,
+				totalScore: 0,
+				arrowsShot: a.arrowsShot,
+				count10s: 0,
+				countX: 0,
+				roundDefinitionId: null,
+				round: null
+			}));
 		scored = activities
 			.filter((a) => a.kind === 'scoring')
 			.map((a) => ({
@@ -105,12 +124,15 @@
 	/** Every figure on the page reads the same slice, so a chip moves the bests with the chart. */
 	const windowed = $derived(applyFilter(scored, ctx, $statsFilter));
 	const totals = $derived(overview(windowed));
+	/** Rounds and matches together, which is the only figure on the page that counts both. */
+	const windowedVolume = $derived(applyFilter([...scored, ...matches], ctx, $statsFilter));
+	const arrowsShot = $derived(windowedVolume.reduce((sum, a) => sum + a.arrowsShot, 0));
 	const bounds = $derived(periodBounds($statsFilter, scored));
 	const grain = $derived(pickGrain(bounds.from, bounds.to));
 	/** Fixed so a filtered out kind never repaints the ones that are left. */
 	const KINDS = ['practice', 'competition', 'qualification'];
 	const buckets = $derived(
-		volumeSeries(windowed, bounds.from, bounds.to, grain, (a) => kindOf(a) ?? 'practice')
+		volumeSeries(windowedVolume, bounds.from, bounds.to, grain, (a) => kindOf(a) ?? 'practice')
 	);
 
 	const bowLabel = (key: string) => {
@@ -301,11 +323,11 @@
 			bind:filter={$statsFilter}
 			{facetsOf}
 			{labelOf}
-			summary={$t('stats.slice', { rounds: totals.rounds, arrows: totals.arrows })}
+			summary={$t('stats.slice', { rounds: totals.rounds, arrows: arrowsShot })}
 		/>
 	</div>
 
-	{#if totals.rounds === 0}
+	{#if totals.rounds === 0 && arrowsShot === 0}
 		<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
 			{$t('stats.emptyRange')}
 		</p>

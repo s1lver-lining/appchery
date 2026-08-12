@@ -265,3 +265,22 @@ export function shootOffWinner(
 	if (here === null || there === null || here === there) return null;
 	return here < there ? 'us' : 'them';
 }
+
+/**
+ * Whether a match was won from two sets down, which is the one thing about a match worth a badge:
+ * the score says nothing, but coming back from 0-4 says plenty. Read over the ends in order.
+ */
+export function wonFromBehind(config: MatchConfig, ends: MatchEnd[]): boolean {
+	const result = tally(config, ends);
+	if (result.winner !== 'us' || config.system !== 'set') return false;
+
+	let ours = 0;
+	let theirs = 0;
+	let behind = false;
+	for (const row of result.ends) {
+		ours += row.ourPoints;
+		theirs += row.theirPoints;
+		if (theirs - ours >= 4) behind = true;
+	}
+	return behind;
+}

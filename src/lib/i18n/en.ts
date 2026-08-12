@@ -692,6 +692,18 @@ export const en = {
 			ffta: 'FFTA progression arrows'
 		},
 		list: {
+			firstMatchWon: {
+				name: 'First Blood',
+				hint: 'Win a match.'
+			},
+			tenMatchesWon: {
+				name: 'Ten Scalps',
+				hint: 'Win {matches} matches.'
+			},
+			comebackWin: {
+				name: 'Comeback',
+				hint: 'Win a match after being two sets down.'
+			},
 			halfMarathon: {
 				name: 'Half Marathon',
 				hint: '{arrows} arrows in a single outing.'

@@ -7,6 +7,7 @@ import {
 	nextEndNo,
 	arrowsShot,
 	matchScore,
+	wonFromBehind,
 	type MatchEnd
 } from './matches';
 
@@ -145,5 +146,25 @@ describe('parseConfig', () => {
 			format: 'individual',
 			arrowsPerEnd: 3
 		});
+	});
+});
+
+describe('wonFromBehind', () => {
+	const config = newMatch('individual');
+
+	it('sees a win from two sets down', () => {
+		// 0-2, 0-4, then three sets taken: the comeback the badge is for.
+		const comeback = ends([25, 27], [25, 27], [28, 26], [28, 26], [28, 26]);
+		expect(wonFromBehind(config, comeback)).toBe(true);
+	});
+
+	it('is not a comeback when the match was never two sets down', () => {
+		expect(wonFromBehind(config, ends([28, 26], [25, 27], [28, 26], [28, 26]))).toBe(false);
+	});
+
+	it('says nothing about a match that was lost, or one shot on totals', () => {
+		expect(wonFromBehind(config, ends([25, 27], [25, 27], [25, 27]))).toBe(false);
+		const level = ends([25, 27], [25, 27], [30, 20], [30, 20], [30, 20]);
+		expect(wonFromBehind(newMatch('individual', 'cumulative'), level)).toBe(false);
 	});
 });
