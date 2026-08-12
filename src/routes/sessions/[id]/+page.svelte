@@ -5,6 +5,8 @@
 	import { ROUNDS, UNVERIFIED_ROUNDS, getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
+	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
+	import { summariseByRound, shapeKey, type ScoredActivity } from '$lib/domain/stats';
 	import { formatDistance } from '$lib/domain/units';
 	import { defaultNameKey } from '$lib/domain/sessions';
 	import { registerBackGuard } from '$lib/nav';
@@ -30,6 +32,7 @@
 		listPlanSlots,
 		deleteSession,
 		listActivities,
+		listAllActivities,
 		listBows,
 		createScoringActivity,
 		createTuningActivity,
@@ -39,9 +42,11 @@
 		type PlanSlotRow
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
+	import TargetFace from '$lib/ui/TargetFace.svelte';
+	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
-	import { defaultBowId, formatDateTime } from '$lib/prefs';
+	import { defaultBowId, formatDateTime, dateFormats } from '$lib/prefs';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	const sessionId = $derived($page.params.id as string);
@@ -406,15 +411,143 @@
 		return round?.name ?? '';
 	}
 
-	function summarise(round: RoundDefinition) {
-		const stages = round.stages
-			.map((s) =>
-				s.distance ? formatDistance(s.distance.value, s.distance.unit) : $t('round.unmarked')
-			)
-			.join(' · ');
-		return `${stages} · ${$t('round.arrows', { n: totalArrows(round) })}`;
+	/**
+	 * What a stage is shot at, or nothing when there is no one answer: a marked field course carries
+	 * a zero distance because every peg has its own, and "0m" is a distance nobody is standing at.
+	 */
+	function stageDistance(stage: RoundDefinition['stages'][number]): string | null {
+		if (!stage.distance) return $t('round.unmarked');
+		return stage.distance.value > 0
+			? formatDistance(stage.distance.value, stage.distance.unit)
+			: null;
 	}
+
+	function summarise(round: RoundDefinition) {
+		const stages = round.stages.map(stageDistance).filter(Boolean).join(' · ');
+		const arrows = $t('round.arrows', { n: totalArrows(round) });
+		return stages ? `${stages} · ${arrows}` : arrows;
+	}
+
+	/**
+	 * Every round ever scored, read once the picker is opened rather than with the session: it is a
+	 * whole table, and it is only ever wanted by the cards that say what you usually score.
+	 */
+	let scored = $state<ScoredActivity[]>([]);
+	let historyLoaded = false;
+	$effect(() => {
+		if (!adding || historyLoaded) return;
+		historyLoaded = true;
+		listAllActivities().then((rows) => {
+			scored = rows
+				.filter((a) => a.kind === 'scoring')
+				.map((a) => ({
+					id: a.id,
+					sessionId: a.sessionId,
+					startedAt: a.startedAt,
+					totalScore: a.totalScore,
+					arrowsShot: a.arrowsShot,
+					count10s: a.count10s,
+					countX: a.countX,
+					roundDefinitionId: a.roundDefinitionId,
+					round: a.roundDefinition ? JSON.parse(a.roundDefinition) : null
+				}));
+		});
+	});
+
+	const summaries = $derived(summariseByRound(scored));
+	/** Matched on the shape rather than on the id, so a custom round of the same shape still counts. */
+	const statsOf = (round: RoundDefinition) =>
+		summaries.find((summary) => summary.key === shapeKey(round));
+
+	const lastShotAt = $derived(
+		scored.reduce<Map<string, number>>((acc, activity) => {
+			const key = shapeKey(activity.round);
+			return acc.set(key, Math.max(acc.get(key) ?? 0, activity.startedAt));
+		}, new Map())
+	);
+
+	const CATALOGUE = [...ROUNDS, ...UNVERIFIED_ROUNDS];
+
+	/** What this archer actually shoots, which is what the picker should open on. */
+	const recent = $derived(
+		CATALOGUE.filter((round) => lastShotAt.has(shapeKey(round)))
+			.sort((a, b) => (lastShotAt.get(shapeKey(b)) ?? 0) - (lastShotAt.get(shapeKey(a)) ?? 0))
+			.slice(0, 3)
+	);
+
+	/** Disciplines in the order the catalogue lists them, so target comes before the rarer shapes. */
+	const disciplines = $derived([...new Set(CATALOGUE.map((round) => round.discipline))]);
+	const roundsOf = (discipline: string) =>
+		CATALOGUE.filter((round) => round.discipline === discipline);
+
+	/** The picture a tuning procedure earns, taken from the guide that already names them. */
+	const diagramOf = (templateKey: string) =>
+		GUIDE_STEPS.find((step) => step.templateKey === templateKey)?.diagram ?? null;
+
+	const whenShot = (round: RoundDefinition) => {
+		const at = lastShotAt.get(shapeKey(round));
+		return at ? $t('round.lastShot', { when: $dateFormats.date(at) }) : null;
+	};
 </script>
+
+<!--
+	One round, read at a glance: the face it is shot at, what it is made of, and what this archer
+	usually scores on it. The face is drawn from the same zone map that scores a tap, so the picture
+	on the card and the target in the activity cannot disagree.
+-->
+{#snippet roundCard(round: RoundDefinition, withDate: boolean)}
+	{@const stats = statsOf(round)}
+	<button
+		class="flex items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+		onclick={() => startRound(round)}
+	>
+		<span class="h-11 w-11 shrink-0">
+			<TargetFace scoreSet={getScoreSet(round.scoreSetId)} />
+		</span>
+
+		<span class="min-w-0 flex-1">
+			<span class="flex items-start gap-1.5">
+				<span class="min-w-0 flex-1 truncate font-medium">{round.name}</span>
+				{#if round.governingBody}
+					<!-- The body in the app's own type rather than its mark: a logo is somebody's property. -->
+					<span
+						class="shrink-0 rounded border border-line px-1 py-px text-[10px] font-semibold tracking-wide text-muted uppercase"
+					>
+						{round.governingBody}
+					</span>
+				{/if}
+			</span>
+
+			<span class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
+				{#each round.stages as stage, i (i)}
+					{@const distance = stageDistance(stage)}
+					{#if distance}
+						<span class="tabular rounded bg-sunk px-1.5 py-0.5 font-medium">{distance}</span>
+					{/if}
+				{/each}
+				<span class="tabular">{$t('round.arrows', { n: totalArrows(round) })}</span>
+				<span class="text-line">·</span>
+				<span class="tabular">
+					{roundNeedsVerification(round)
+						? $t('round.unverifiedShort')
+						: $t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
+				</span>
+			</span>
+
+			<!-- What you usually score on it, which is what turns a list of names into a choice. -->
+			{#if stats}
+				<span class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-brand-text">
+					<span class="tabular">{$t('round.yourAverage', { n: Math.round(stats.average) })}</span>
+					<span class="text-line">·</span>
+					<span class="tabular">{$t('round.yourBest', { n: stats.best.totalScore })}</span>
+				</span>
+			{/if}
+			{#if withDate}
+				<span class="mt-0.5 block text-[11px] text-muted">{whenShot(round)}</span>
+			{/if}
+		</span>
+	</button>
+{/snippet}
 
 {#if session}
 	<PageHeader motif="session" subtitle={$formatDateTime(session.startedAt)}>
@@ -763,33 +896,49 @@
 			</header>
 
 			<div class="mx-auto w-full max-w-2xl flex-1 space-y-6 overflow-y-auto p-4">
+				<!-- Most archers shoot two or three rounds, so the ones already shot come first. -->
+				{#if recent.length > 0}
+					<section>
+						<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.recentGroup')}</h3>
+						<div class="grid gap-2 sm:grid-cols-2">
+							{#each recent as round (round.id)}
+								{@render roundCard(round, true)}
+							{/each}
+						</div>
+					</section>
+				{/if}
+
 				<section>
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.scoringGroup')}</h3>
-					<div class="grid grid-cols-2 gap-2">
-						<!-- The custom round leads: it is the one entry that is not a name to recognise. -->
-						<a
-							href="/sessions/{sessionId}/custom"
-							class="flex flex-col justify-between rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
+					<!-- The custom round leads: it is the one entry that is not a name to recognise. -->
+					<a
+						href="/sessions/{sessionId}/custom"
+						class="mb-2 flex items-center gap-3 rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
+					>
+						<span
+							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-text"
 						>
-							<span class="flex items-center gap-1.5 font-medium text-brand-text">
-								<Icon name="plus" size={18} />
-								{$t('round.custom')}
-							</span>
-							<span class="mt-2 text-xs text-muted">{$t('round.customHint')}</span>
-						</a>
+							<Icon name="plus" size={20} />
+						</span>
+						<span class="min-w-0">
+							<span class="block font-medium text-brand-text">{$t('round.custom')}</span>
+							<span class="mt-0.5 block text-xs text-muted">{$t('round.customHint')}</span>
+						</span>
+					</a>
 
-						{#each [...ROUNDS, ...UNVERIFIED_ROUNDS] as round (round.id)}
-							<button
-								class="flex flex-col justify-between rounded-xl border border-line bg-surface p-3 text-left"
-								onclick={() => startRound(round)}
-							>
-								<span class="font-medium">{round.name}</span>
-								<span class="mt-2 text-xs text-muted">
-									{summarise(round)} · {roundNeedsVerification(round)
-										? $t('round.unverifiedShort')
-										: $t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
-								</span>
-							</button>
+					<!-- One section per discipline: a field course and an indoor round are different errands. -->
+					<div class="space-y-4">
+						{#each disciplines as discipline (discipline)}
+							<div>
+								<h4 class="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
+									{$t(`round.discipline.${discipline}`)}
+								</h4>
+								<div class="grid gap-2 sm:grid-cols-2">
+									{#each roundsOf(discipline) as round (round.id)}
+										{@render roundCard(round, false)}
+									{/each}
+								</div>
+							</div>
 						{/each}
 					</div>
 				</section>
@@ -801,16 +950,22 @@
 							{$t('tuning.noBowSelected')}
 						</p>
 					{:else}
-						<div class="grid grid-cols-2 gap-2">
+						<div class="grid gap-2 sm:grid-cols-2">
 							{#each tuningTemplates as template (template.key)}
+								{@const diagram = diagramOf(template.key)}
 								<button
-									class="flex flex-col justify-between rounded-xl border border-line bg-surface p-3 text-left"
+									class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 									onclick={() => startTuning(template.key)}
 								>
-									<span class="flex items-center gap-1.5 font-medium">
-										<Icon name="wrench" size={16} />
-										{template.name}
+									<!-- The same drawing the guide uses, which says what the procedure looks at. -->
+									<span class="flex h-11 w-14 shrink-0 items-center justify-center overflow-hidden">
+										{#if diagram}
+											<TuningDiagram name={diagram} />
+										{:else}
+											<Icon name="wrench" size={20} />
+										{/if}
 									</span>
+									<span class="min-w-0 flex-1 font-medium">{template.name}</span>
 								</button>
 							{/each}
 						</div>

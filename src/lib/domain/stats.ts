@@ -344,7 +344,7 @@ export function isPersonalBest(activity: ScoredActivity, history: ScoredActivity
 }
 
 /** The score set is part of the shape: identical geometry on a field face is a different round. */
-function shapeKey(round: RoundDefinition | null): string {
+export function shapeKey(round: RoundDefinition | null): string {
 	if (!round) return 'unknown';
 	const stages = round.stages
 		.map(

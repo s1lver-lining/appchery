@@ -124,6 +124,7 @@ export const fr: Dictionary = {
 		days: 'j',
 		addActivity: 'Ajouter une activité',
 		scoringGroup: 'Tir compté',
+		recentGroup: 'Tirés récemment',
 		delete: 'Supprimer cette séance',
 		confirmTitle: 'Supprimer cette séance ?',
 		confirmBody: 'Toutes ses activités sont supprimées également. Action irréversible.',
@@ -138,6 +139,16 @@ export const fr: Dictionary = {
 		longbow: 'Longbow'
 	},
 	round: {
+		yourAverage: 'Moy. {n}',
+		yourBest: 'Record {n}',
+		lastShot: 'Dernier tir {when}',
+		discipline: {
+			target: 'Cible',
+			field: 'Campagne',
+			'3d': '3D',
+			clout: 'Clout',
+			custom: 'Libre'
+		},
 		arrows: '{n} flèches',
 		endsOf: '{ends} volées de {arrows}',
 		face: 'blason {size} cm',

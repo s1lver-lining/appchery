@@ -122,6 +122,7 @@ export const en = {
 		days: 'd',
 		addActivity: 'Add an activity',
 		scoringGroup: 'Scoring',
+		recentGroup: 'Recently shot',
 		delete: 'Delete this session',
 		confirmTitle: 'Delete this session?',
 		confirmBody: 'Every activity in it is deleted too. This cannot be undone.',
@@ -137,6 +138,16 @@ export const en = {
 	},
 	round: {
 		arrows: '{n} arrows',
+		yourAverage: 'Avg {n}',
+		yourBest: 'Best {n}',
+		lastShot: 'Last shot {when}',
+		discipline: {
+			target: 'Target',
+			field: 'Field',
+			'3d': '3D',
+			clout: 'Clout',
+			custom: 'Custom'
+		},
 		endsOf: '{ends} ends of {arrows}',
 		face: '{size}cm face',
 		unmarked: 'Unmarked',
