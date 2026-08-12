@@ -379,7 +379,7 @@ export const fr: Dictionary = {
 		empty: 'Aucun programme. Un programme est une semaine que vous comptez répéter.',
 		activeTitle: 'Programme actif',
 		activeHint:
-			"Désactivé, ce programme ne remplit plus la liste des séances et ne compte plus dans l'objectif hebdomadaire. Rien de ce qui a été tiré ne change.",
+			"Désactivé, ce programme ne remplit plus la liste des séances et ne compte plus dans l'objectif hebdomadaire.",
 		paused: 'En pause',
 		weekTotal: 'Flèches par semaine',
 		freeArrows: 'Flèches libres',

@@ -374,7 +374,7 @@ export const en = {
 		empty: 'No plans yet. A plan is a week you mean to repeat.',
 		activeTitle: 'Plan active',
 		activeHint:
-			'Off, this plan stops filling the sessions list and stops counting towards the weekly goal. Nothing already shot changes.',
+			'Off, this plan stops filling the sessions list and stops counting towards the weekly goal.',
 		paused: 'Paused',
 		weekTotal: 'Arrows a week',
 		freeArrows: 'Free arrows',
