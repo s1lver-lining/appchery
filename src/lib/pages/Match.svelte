@@ -106,6 +106,16 @@
 		(row?.shots ?? []).filter((shot) => shot.side === side).sort((a, b) => a.ordinal - b.ordinal);
 	const slotsFor = (shootOff: boolean) => (shootOff ? 1 : (config?.arrowsPerEnd ?? 3));
 
+	/**
+	 * How wide the block of arrows is drawn. Ends split the way they are shot: six as two threes,
+	 * four as two twos. A last line holding one arrow is a line that reads as a mistake.
+	 */
+	function columnsFor(slots: number): number {
+		if (slots <= 3) return slots;
+		if (slots % 3 === 0) return 3;
+		return slots % 2 === 0 ? 2 : 3;
+	}
+
 	const points = $derived((endNo: number, side: Side) => {
 		const entry = result?.ends.find((row) => row.end.endNo === endNo);
 		if (!entry || config?.system !== 'set' || entry.end.shootOff) return null;
@@ -350,7 +360,7 @@
 		-->
 		<div
 			class="grid gap-0.5 {mirrored ? 'ml-auto' : 'mr-auto'}"
-			style="grid-template-columns: repeat({Math.min(3, slotsFor(shootOff))}, var(--chip))"
+			style="grid-template-columns: repeat({columnsFor(slotsFor(shootOff))}, var(--chip))"
 		>
 			{#each Array(slotsFor(shootOff)) as _, index (index)}
 				{@const shot = shots[index]}
@@ -533,7 +543,6 @@
 						flush
 						{scoreSet}
 						bind:mode
-						oncamera={() => (scanning = true)}
 						onclose={() => (cursor = null)}
 						shots={asFaceShots(cursorShots)}
 						otherShots={asFaceShots(otherShots)}
@@ -549,16 +558,24 @@
 						{/snippet}
 					</ArrowPad>
 
-					<div class="flex items-center gap-2 px-4 pt-2">
+					<!-- The row below the keys, laid out the way the round page lays its own out. -->
+					<div class="flex items-center gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 						<button
-							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
+							class="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
 							onclick={() => (cursor = null)}
 						>
 							{$t('common.done')}
 						</button>
+						<button
+							class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand-text"
+							onclick={() => (scanning = true)}
+						>
+							<Icon name="camera" size={18} />
+							{$t('auto.open')}
+						</button>
 						{#if rows.some((row) => row.endNo === cursor?.endNo)}
 							<button
-								class="rounded-lg border border-line px-3 py-2 text-sm text-danger"
+								class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
 								onclick={() => cursor && clearEnd(cursor.endNo)}
 							>
 								{$t('match.deleteEnd')}

@@ -21,7 +21,6 @@
 		title,
 		onpick,
 		onplot,
-		oncamera,
 		onclose
 	}: {
 		scoreSet: ScoreSet;
@@ -38,13 +37,39 @@
 		title?: Snippet;
 		onpick: (zone: Zone) => void;
 		onplot: (x: number, y: number) => void;
-		/** Opens the camera, which reads a whole end off the boss at once. */
-		oncamera?: () => void;
 		/** Puts the pad away. A panel that rises has to say how it goes back down. */
 		onclose?: () => void;
 	} = $props();
 
 	const keypad = $derived(scorableZones(scoreSet));
+
+	/**
+	 * The bar looks like something to pull, so it is: a drag downwards puts the pad away. Handled
+	 * here rather than through the page swipe, which reads sideways and would take the gesture.
+	 */
+	const PULL_AWAY = 36;
+	let pulledFrom = $state<number | null>(null);
+	let pulled = $state(0);
+
+	function grab(event: PointerEvent) {
+		if (!onclose) return;
+		pulledFrom = event.clientY;
+		pulled = 0;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+	}
+
+	function drag(event: PointerEvent) {
+		if (pulledFrom === null) return;
+		pulled = Math.max(0, event.clientY - pulledFrom);
+	}
+
+	function release() {
+		if (pulledFrom === null) return;
+		const far = pulled >= PULL_AWAY;
+		pulledFrom = null;
+		pulled = 0;
+		if (far) onclose?.();
+	}
 
 	/** A miss has no fill of its own, so it borrows the surface instead of rendering invisible. */
 	function chipStyle(zone: Zone): string {
@@ -54,14 +79,23 @@
 </script>
 
 <div
-	class="overflow-hidden bg-surface {flush
-		? ''
-		: 'rounded-2xl border border-line'}"
+	class="overflow-hidden bg-surface {flush ? '' : 'rounded-2xl border border-line'}"
+	style={pulled > 0 ? `transform: translateY(${Math.min(pulled, PULL_AWAY * 2)}px)` : ''}
 >
 	{#if flush}
-		<!-- The bar every sheet on a phone wears, which is what says this panel can be pushed away. -->
-		<div class="flex justify-center pt-1.5 pb-0.5">
-			<span class="h-1 w-9 rounded-full bg-line"></span>
+		<!-- The bar every sheet on a phone wears, and it does what it looks like it does. -->
+		<div
+			class="flex touch-none justify-center pt-1.5 pb-1"
+			role="presentation"
+			data-noswipe
+			onpointerdown={grab}
+			onpointermove={drag}
+			onpointerup={release}
+			onpointercancel={release}
+		>
+			<span
+				class="h-1 w-9 rounded-full transition-colors {pulledFrom !== null ? 'bg-muted' : 'bg-line'}"
+			></span>
 		</div>
 	{/if}
 
@@ -77,15 +111,6 @@
 			{#if title}{@render title()}{/if}
 		</span>
 
-		{#if oncamera}
-			<button
-				class="shrink-0 rounded-lg p-1 text-muted"
-				aria-label={$t('auto.title')}
-				onclick={oncamera}
-			>
-				<Icon name="camera" size={18} />
-			</button>
-		{/if}
 
 		<!-- The two ways of entering an arrow, as one switch rather than as a button that toggles. -->
 		<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
