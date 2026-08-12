@@ -47,6 +47,23 @@ the date field for the common case of entering an outing a few days late.
 **Back closes the editor.** While renaming a session, the hardware back key closes the name editor
 rather than leaving the session.
 
+## Matches
+
+**A match is won, not scored.** The number on a match card is its set points, and it deliberately
+never reaches your personal bests or your round averages. Its arrows still count as arrows shot.
+
+**Totals first, arrows when there is time.** An end needs only the two totals, because a match is
+shot on the clock. Plot the arrows afterwards and the totals are read from them instead.
+
+**Keep the card for somebody else.** The toggle in the match settings says these arrows are not
+yours: nothing on the card then reaches your volume or your badges.
+
+**Correct an end after the match is over.** Every figure is recomputed from the ends every time, so
+fixing end two moves the winner, the arrows counted and the badges with it.
+
+**Two equal shoot-off arrows are the judge's call.** The card asks who won rather than guessing.
+Plot both arrows and it works it out from which one is closer to the centre.
+
 ## Scoring
 
 **The sheet is editable after the fact.** Tap any arrow already entered to retap its value; tap an

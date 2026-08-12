@@ -54,8 +54,18 @@ Use these words consistently in code, UI, and documentation.
 | **Shot** | One arrow. |
 | **Round** | The definition of what to shoot: distances, faces, ends, arrows. |
 | **Bow revision** | An immutable snapshot of a bow's settings at a point in time. |
+| **Match** | An activity shot head to head against somebody, scored end by end rather than as a round. |
+| **Set** | One end of a match under the set system, worth two points to whoever wins it. |
+| **Set point** | What winning or drawing a set is worth. A match is won on set points, not on score. |
+| **Shoot-off** | The single arrow each side shoots to separate a level match. |
+| **Our side / opponent** | The two sides of a match. Our side is the archer unless the card says otherwise. |
 
 A session holds many activities. Never call an activity a session.
+
+A match is an activity, so it lives in a session like a round does. A match is won or lost, never
+scored: the number it carries is its set points, and it is deliberately kept out of personal bests
+and round averages. Its arrows still count as arrows shot, unless the card is being kept for
+somebody else.
 
 ## Layering
 

@@ -1,0 +1,72 @@
+# Matches
+
+A match is shot against somebody rather than against a round. That one difference decides everything
+else here: a match has no maximum, its result is not a score, and two matches are not comparable the
+way two 720s are. A 27 that beats a 26 is worth exactly as much as a 30 that beats a 20.
+
+## What a match is made of
+
+A match is an `activity` with `kind = 'match'`, so it lives in a session beside the rounds shot the
+same day. It carries no round definition. Instead it carries a `match_config` JSON blob holding the
+rules, read and written through `parseConfig` in `src/lib/domain/matches.ts`:
+
+| Field | Meaning |
+| --- | --- |
+| `format` | individual, team, mixedTeam or custom. Names the preset, nothing more. |
+| `system` | `set` (two points a set, first to `setPointsToWin`) or `cumulative` (highest total). |
+| `arrowsPerEnd` | Arrows one side shoots in one end: 3 individually, 6 as a team, 4 mixed. |
+| `maxEnds` | Ends shot before a level match goes to a shoot-off. |
+| `setPointsToWin` | Ignored under the cumulative system. |
+| `forSelf` | False while the card is kept for somebody else. |
+| `shootOff` | Whether a level match may be taken to a single arrow. Off makes a draw legal. |
+| `scoreSetId` | The face plotted arrows are drawn on, since no round says which one. |
+| `opponent`, `ourName`, `teammates` | Free text. Nobody is stored as a person anywhere. |
+
+The World Archery presets are five sets of three to six points individually, and four ends to five
+points for teams (six arrows) and mixed teams (four).
+
+## How an end is stored
+
+One `round_end` row per end of the match, holding **both** sides:
+
+- `subtotal` is our total, `opponent_subtotal` is theirs.
+- `is_shoot_off` marks the arrow that stands outside the regulation ends.
+- `winner` is set only when a judge had to separate two equal shoot-off arrows.
+
+Arrows are optional on either side. When they are plotted they hang off the same end row as `shot`
+rows carrying `side = 'us' | 'them'`, and the end total is then read from them rather than typed.
+This is why the fast path and the plotted path cannot disagree: the arrows win.
+
+## What counts
+
+- **Volume.** `arrowsShot` on the activity is `endsPlayed × arrowsPerEnd`, plus one for a shoot-off,
+  and **zero** when `forSelf` is false. The opponent's arrows never count for anybody: they are on
+  the card to work out who won.
+- **Score.** `totalScore` holds our set points under the set system and our arrow total under the
+  cumulative one. Everything that reads a score as a round's score already filters
+  `kind === 'scoring'`, so a match cannot set a personal best or move a round average.
+- **The statistics page** adds match arrows to the volume chart and to the arrow count in the filter
+  summary, and to nothing else. Round cards, records and per-arrow averages stay rounds only.
+- **Badges.** Volume and habit badges count match arrows because they read every activity with
+  arrows in it. Three badges are matches' own: a first win, ten wins, and a win from two sets down.
+  None of them is awarded on a card kept for somebody else.
+
+## Rules the engine holds
+
+`tally()` reads the ends in order and stops at the moment one side has won, so an end entered after
+that cannot change the result. Everything is recomputed from the stored ends on every read, which is
+what makes an end editable after the match is over: correct end two and the rest of the match, the
+winner, the arrows counted and the badges all follow.
+
+An equal shoot-off is **not** decided by the app. Two tens are separated by a judge with a tape
+measure, so the card asks who won and records the answer. When both shoot-off arrows are plotted the
+app reads the distance from the centre and answers the question itself.
+
+## Not built yet
+
+- **A clock.** Matches are timed, 120 seconds an end and 20 alternating. The match header reserves
+  the button; timing belongs with general activity timers rather than only here.
+- **Brackets.** Matches are a flat list inside a session. Grouping them into a bracket, with 1/8 to
+  final as stages, is the obvious next step and nothing in the storage prevents it.
+- **Head to head history.** Opponents are free text, so the app cannot say you are 3-1 against
+  somebody. That needs opponents to become rows, which is a real feature and a real cost.
