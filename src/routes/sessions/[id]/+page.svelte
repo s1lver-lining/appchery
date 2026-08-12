@@ -2,7 +2,12 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
-	import { ROUNDS, UNVERIFIED_ROUNDS, getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
+	import {
+		ROUNDS,
+		FIELD_AND_3D_ROUNDS,
+		getScoreSet,
+		roundNeedsVerification
+	} from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
@@ -466,7 +471,7 @@
 		}, new Map())
 	);
 
-	const CATALOGUE = [...ROUNDS, ...UNVERIFIED_ROUNDS];
+	const CATALOGUE = [...ROUNDS, ...FIELD_AND_3D_ROUNDS];
 
 	/** What this archer actually shoots, which is what the picker should open on. */
 	const recent = $derived(

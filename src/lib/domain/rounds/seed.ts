@@ -88,8 +88,11 @@ export const ROUNDS: RoundDefinition[] = [
 	}
 ];
 
-/** Field and 3D rounds are listed apart, because their score sets still need rulebook checking. */
-export const UNVERIFIED_ROUNDS: RoundDefinition[] = FIELD_ROUNDS;
+/**
+ * Field and 3D rounds, listed apart from the target catalogue. Most of their score sets still need
+ * a rulebook read, which `roundNeedsVerification` answers per round rather than by this list.
+ */
+export const FIELD_AND_3D_ROUNDS: RoundDefinition[] = FIELD_ROUNDS;
 
 export const ALL_ROUNDS: RoundDefinition[] = [...ROUNDS, ...FIELD_ROUNDS];
 

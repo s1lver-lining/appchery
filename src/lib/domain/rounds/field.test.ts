@@ -3,15 +3,37 @@ import { WA_FIELD, IFAA_FIELD, IBO_3D, ASA_3D, FIELD_ROUNDS, FIELD_SCORE_SETS } 
 import { scoreAt, insidePolygon, totalArrows, endSlots } from './geometry';
 import { getScoreSet, roundNeedsVerification } from './seed';
 
-// These score sets are unverified by design, so the tests guard the engine, not the point values.
+// The sets still unread from a rulebook are unverified by design, so those tests guard the engine
+// rather than the point values. What has been transcribed is pinned, so an edit cannot drift it back.
 
 describe('field score sets', () => {
-	it('marks every field and 3D set as needing verification', () => {
-		for (const set of FIELD_SCORE_SETS) expect(set.needsVerification).toBe(true);
+	it('keeps the sets nobody has read out of a rulebook flagged', () => {
+		for (const set of [WA_FIELD, IBO_3D, ASA_3D]) expect(set.needsVerification).toBe(true);
+		expect(IFAA_FIELD.needsVerification).toBeUndefined();
 	});
 
-	it('flags rounds that use an unverified set, so the UI can warn', () => {
-		for (const round of FIELD_ROUNDS) expect(roundNeedsVerification(round)).toBe(true);
+	it('warns on a round whose set is still unverified, and stays quiet on one that is not', () => {
+		for (const round of FIELD_ROUNDS.filter((r) => r.scoreSetId !== IFAA_FIELD.id))
+			expect(roundNeedsVerification(round)).toBe(true);
+		for (const round of FIELD_ROUNDS.filter((r) => r.scoreSetId === IFAA_FIELD.id))
+			expect(roundNeedsVerification(round)).toBe(false);
+	});
+
+	/* IFAA Book of Rules 2019-2020, Article V.A: five for the spot, four for the inner ring, three
+	   for the outer, with the rings at 4/12/20, 7/21/35, 10/30/50 and 13/39/65 cm per face size. */
+	it('scores an IFAA field face five, four and three at the published ring fractions', () => {
+		expect(scoreAt(IFAA_FIELD, 0, 0).value).toBe(5);
+		expect(scoreAt(IFAA_FIELD, 0.19, 0).value).toBe(5);
+		expect(scoreAt(IFAA_FIELD, 0.21, 0).value).toBe(4);
+		expect(scoreAt(IFAA_FIELD, 0.59, 0).value).toBe(4);
+		expect(scoreAt(IFAA_FIELD, 0.61, 0).value).toBe(3);
+		expect(scoreAt(IFAA_FIELD, 0.99, 0).value).toBe(3);
+		expect(scoreAt(IFAA_FIELD, 1.01, 0).countsAsHit).toBe(false);
+	});
+
+	it('shoots an IFAA field round as 28 targets of four arrows', () => {
+		const round = FIELD_ROUNDS.find((r) => r.id === 'ifaa-field-28')!;
+		expect(totalArrows(round)).toBe(112);
 	});
 
 	it('resolves every field round to a registered score set', () => {
@@ -20,7 +42,6 @@ describe('field score sets', () => {
 
 	it('scores the centre of a concentric field face as the innermost zone', () => {
 		expect(scoreAt(WA_FIELD, 0, 0).label).toBe('X');
-		expect(scoreAt(IFAA_FIELD, 0, 0).label).toBe('X');
 	});
 
 	it('scores outside any field face as a miss', () => {
