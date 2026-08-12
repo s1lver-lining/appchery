@@ -23,6 +23,7 @@
 	} from '$lib/db/repository';
 	import { upcoming, weekdayOf, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
 	import { parseConfig } from '$lib/domain/matches';
+	import { withOrigin } from '$lib/nav';
 	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -510,6 +511,7 @@
 							onselect: () => showWeekGoal.set(!$showWeekGoal)
 						},
 						{ label: $t('plans.view'), icon: 'chart', onselect: () => goto('/plans') },
+					{ label: $t('timer.title'), icon: 'clock', onselect: () => goto(withOrigin('/timer', '/sessions')) },
 					{ label: $t('help.title'), icon: 'help', onselect: () => goto('/help') }
 				]}
 			/>

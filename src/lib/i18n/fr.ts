@@ -138,6 +138,32 @@ export const fr: Dictionary = {
 		barebow: 'Arc nu',
 		longbow: 'Longbow'
 	},
+	timer: {
+		title: 'Temps de tir',
+		start: 'Appeler la ligne',
+		stop: 'Arrêter',
+		reset: 'Réinitialiser',
+		nextTurn: 'Tour suivant',
+		turn: 'Tour {n}',
+		times: 'Temps de tir',
+		preset: {
+			qualification6: 'Qualification, six flèches',
+			qualification3: 'Qualification, trois flèches',
+			match3: 'Match, trois flèches',
+			team6: 'Équipe, six flèches',
+			mixed4: 'Équipe mixte, quatre flèches',
+			alternating: 'Alterné, une flèche'
+		},
+		soundTitle: 'Jouer les signaux',
+		soundHint: 'Deux coups pour venir sur la ligne, un pour commencer, trois pour ramasser. Synthétisés sur l’appareil, non enregistrés.',
+		signal: {
+			lineUp: 'Venir sur la ligne',
+			start: 'Commencer',
+			end: 'Ramasser les flèches',
+			stop: 'Arrêter le tir'
+		},
+		signalHint: 'Touchez un signal pour l’entendre. Cinq coups ou plus veut dire tout arrêter.'
+	},
 	match: {
 		group: 'Match',
 		title: 'Match',
@@ -251,7 +277,6 @@ export const fr: Dictionary = {
 		roundComplete: 'Tir terminé. Les flèches restent modifiables.'
 	},
 	activity: {
-		timerSoon: 'Le chronométrage viendra plus tard',
 		delete: 'Supprimer cette activité',
 		confirmTitle: 'Supprimer cette activité ?',
 		confirmBody: 'Ses volées et ses flèches sont supprimées avec elle. Action irréversible.'

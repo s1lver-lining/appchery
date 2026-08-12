@@ -31,7 +31,7 @@
 	import { maxScore } from '$lib/domain/rounds/geometry';
 	import { dateFormats } from '$lib/prefs';
 	import Toggle from '$lib/ui/Toggle.svelte';
-	import { setPageUp } from '$lib/nav';
+	import { setPageUp, withOrigin } from '$lib/nav';
 	import {
 		getActivity,
 		listAllActivities,
@@ -783,15 +783,14 @@
 					<Icon name="back" size={22} />
 				</a>
 				<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">{round.name}</h1>
-				<!-- Shooting on the clock is a feature of its own still to come: the space is kept for it. -->
-				<button
-					class="shrink-0 rounded-lg p-1.5 text-muted opacity-40"
-					disabled
-					title={$t('activity.timerSoon')}
-					aria-label={$t('activity.timerSoon')}
+				<!-- The shooting clock, which belongs to the line rather than to this round in particular. -->
+				<a
+					class="shrink-0 rounded-lg p-1.5 text-muted"
+					href={withOrigin('/timer', `/activities/${activityId}`)}
+					aria-label={$t('timer.title')}
 				>
 					<Icon name="clock" size={20} />
-				</button>
+				</a>
 				<!-- The round as a picture, which is the only form of it worth showing anyone else. -->
 				<button
 					class="shrink-0 rounded-lg p-1.5 text-muted disabled:opacity-30"

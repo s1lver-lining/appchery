@@ -26,6 +26,7 @@
 		type ActivityRow
 	} from '$lib/db/repository';
 	import { goto } from '$app/navigation';
+	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import ArrowPad from '$lib/ui/ArrowPad.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
@@ -434,15 +435,14 @@
 					<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">
 						{ourLabel} · {theirLabel}
 					</h1>
-					<!-- A match is shot on the clock, and the clock is a feature of its own still to come. -->
-					<button
-						class="shrink-0 rounded-lg p-1.5 text-muted opacity-40"
-						disabled
-						title={$t('activity.timerSoon')}
-						aria-label={$t('activity.timerSoon')}
+					<!-- A match is shot on the clock, so the clock is one tap from the card. -->
+					<a
+						class="shrink-0 rounded-lg p-1.5 text-muted"
+						href={withOrigin('/timer', `/activities/${activity.id}`)}
+						aria-label={$t('timer.title')}
 					>
 						<Icon name="clock" size={20} />
-					</button>
+					</a>
 					<button
 						class="shrink-0 rounded-lg p-1.5 text-muted"
 						aria-label={$t('common.more')}
@@ -593,7 +593,7 @@
 									{$t('common.done')}
 								</button>
 								<button
-									class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand-text"
+									class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-2 py-2 text-sm font-semibold whitespace-nowrap text-brand-text"
 									onclick={() => (scanning = true)}
 								>
 									<Icon name="camera" size={18} />

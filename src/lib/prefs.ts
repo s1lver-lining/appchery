@@ -236,6 +236,16 @@ function legacy(key: string): StatsFilter {
 }
 
 /**
+ * Whether the shooting clock sounds its signals. On by default: a timer nobody can hear while their
+ * back is turned to the phone is a timer that has to be watched, which is the thing it is there to
+ * save. Sound is unlocked by the first tap on the page, as every browser insists.
+ */
+export const timerSound = flag('appchery.timerSound', true);
+
+/** The shooting time last chosen, so the clock opens on the one this archer keeps using. */
+export const timerPreset = storedString('appchery.timerPreset');
+
+/**
  * Whether everything that moves on its own is stopped: the ripple when the app opens, the ring on
  * the sessions list, the fireworks over a record. Off by default, and turning it on is a choice
  * about the app rather than about the device, which is why it is not read from the system setting.

@@ -136,6 +136,32 @@ export const en = {
 		barebow: 'Barebow',
 		longbow: 'Longbow'
 	},
+	timer: {
+		title: 'Shooting time',
+		start: 'Call the line',
+		stop: 'Stop',
+		reset: 'Reset',
+		nextTurn: 'Next turn',
+		turn: 'Turn {n}',
+		times: 'Shooting times',
+		preset: {
+			qualification6: 'Qualification, six arrows',
+			qualification3: 'Qualification, three arrows',
+			match3: 'Match, three arrows',
+			team6: 'Team, six arrows',
+			mixed4: 'Mixed team, four arrows',
+			alternating: 'Alternating, one arrow'
+		},
+		soundTitle: 'Sound the signals',
+		soundHint: 'Two blasts to come to the line, one to start, three to collect. Synthesised on the device, not recorded.',
+		signal: {
+			lineUp: 'Come to the line',
+			start: 'Start',
+			end: 'Collect arrows',
+			stop: 'Stop shooting'
+		},
+		signalHint: 'Tap a signal to hear it. Five blasts or more means stop everything at once.'
+	},
 	match: {
 		group: 'Match',
 		title: 'Match',
@@ -248,7 +274,6 @@ export const en = {
 		roundComplete: 'Round complete. Arrows can still be edited.'
 	},
 	activity: {
-		timerSoon: 'Timing comes later',
 		delete: 'Delete this activity',
 		confirmTitle: 'Delete this activity?',
 		confirmBody: 'Its ends and arrows are deleted with it. This cannot be undone.'
