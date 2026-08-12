@@ -6,11 +6,20 @@
 		ROUNDS,
 		FIELD_AND_3D_ROUNDS,
 		getScoreSet,
-		roundNeedsVerification
+		roundNeedsVerification,
+		SCORE_SETS
 	} from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
+	import Sheet from '$lib/ui/Sheet.svelte';
+	import Toggle from '$lib/ui/Toggle.svelte';
+	import {
+		newMatch,
+		MATCH_FORMATS,
+		type MatchConfig,
+		type MatchFormat
+	} from '$lib/domain/matches';
 	import { summariseByRound, shapeKey, type ScoredActivity } from '$lib/domain/stats';
 	import { formatDistance } from '$lib/domain/units';
 	import { defaultNameKey } from '$lib/domain/sessions';
@@ -41,6 +50,7 @@
 		listBows,
 		createScoringActivity,
 		createTuningActivity,
+		createMatchActivity,
 		addTrainingArrows,
 		awardBadges,
 		type ActivityRow,
@@ -381,6 +391,30 @@
 		const id = await materialise();
 		goto(`/activities/${await createTuningActivity(id, key)}`);
 	}
+
+	/**
+	 * A match is set up before it is opened: who it is against and under which rules is the whole of
+	 * what a match is, and asking for it on the card while a first end is waiting is asking too late.
+	 */
+	let draftMatch = $state<MatchConfig | null>(null);
+
+	function openMatch(format: MatchFormat) {
+		draftMatch = newMatch(format, 'set');
+	}
+
+	async function startMatch() {
+		if (!draftMatch) return;
+		const config = draftMatch;
+		draftMatch = null;
+		adding = false;
+		const id = await materialise();
+		goto(`/activities/${await createMatchActivity(id, config)}`);
+	}
+
+	closeOnBack(
+		() => draftMatch !== null,
+		() => (draftMatch = null)
+	);
 
 	// While the name is open the back key belongs to the editor, not to the way out of the session.
 	$effect(() => {
@@ -950,6 +984,31 @@
 					</div>
 				</section>
 
+				<!-- Shot against somebody rather than against a round, which is why it is its own section. -->
+				<section>
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('match.group')}</h3>
+					<div class="grid gap-2 sm:grid-cols-2">
+						{#each MATCH_FORMATS as format (format)}
+							<button
+								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+								onclick={() => openMatch(format)}
+							>
+								<span
+									class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
+								>
+									<Icon name={format === 'custom' ? 'sliders' : 'medal'} size={20} />
+								</span>
+								<span class="min-w-0 flex-1">
+									<span class="block font-medium">{$t(`match.format.${format}`)}</span>
+									<span class="mt-0.5 block text-xs text-muted">
+										{$t(`match.formatHint.${format}`)}
+									</span>
+								</span>
+							</button>
+						{/each}
+					</div>
+				</section>
+
 				<section>
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('tuning.title')}</h3>
 					{#if !selectedBowType}
@@ -983,6 +1042,189 @@
 	{/if}
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+{/if}
+
+{#if draftMatch}
+	<!-- Set up before it is opened: who it is against and under which rules is what a match is. -->
+	<Sheet
+		open={true}
+		title={$t(`match.format.${draftMatch.format}`)}
+		onclose={() => (draftMatch = null)}
+	>
+		<div class="space-y-3">
+			<!-- Set play or straight totals. Recurve shoots sets, compound adds its arrows up. -->
+			<div class="flex gap-1 rounded-lg bg-sunk p-1">
+				{#each ['set', 'cumulative'] as const as system (system)}
+					<button
+						class="flex-1 rounded-md py-1.5 text-sm font-medium
+							{draftMatch.system === system ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+						onclick={() => draftMatch && (draftMatch = { ...draftMatch, system })}
+					>
+						{$t(`match.system.${system}`)}
+					</button>
+				{/each}
+			</div>
+
+			<div class="flex gap-2">
+				<input
+					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+					placeholder={$t('match.ourSide')}
+					aria-label={$t('match.ourSide')}
+					value={draftMatch.ourName ?? ''}
+					onchange={(e) =>
+						draftMatch && (draftMatch = { ...draftMatch, ourName: e.currentTarget.value.trim() || null })}
+				/>
+				<input
+					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+					placeholder={$t('match.opponent')}
+					aria-label={$t('match.opponent')}
+					value={draftMatch.opponent ?? ''}
+					onchange={(e) =>
+						draftMatch && (draftMatch = { ...draftMatch, opponent: e.currentTarget.value.trim() || null })}
+				/>
+			</div>
+
+			{#if draftMatch.format !== 'individual'}
+				<!-- Optional throughout: a team match is scored the same whether or not anybody is named. -->
+				<div>
+					<p class="mb-1 text-xs font-semibold text-muted">{$t('match.teammates')}</p>
+					<div class="space-y-1">
+						{#each [...draftMatch.teammates, ''] as name, i (i)}
+							<input
+								class="w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+								placeholder={$t('match.teammate', { n: i + 1 })}
+								aria-label={$t('match.teammate', { n: i + 1 })}
+								value={name}
+								onchange={(e) => {
+									if (!draftMatch) return;
+									const next = [...draftMatch.teammates];
+									const typed = e.currentTarget.value.trim();
+									if (typed) next[i] = typed;
+									else next.splice(i, 1);
+									draftMatch = { ...draftMatch, teammates: next.filter(Boolean) };
+								}}
+							/>
+						{/each}
+					</div>
+				</div>
+			{/if}
+
+			<div class="flex items-start justify-between gap-3 border-t border-line pt-3">
+				<div class="min-w-0">
+					<p class="text-sm font-medium">{$t('match.forOtherTitle')}</p>
+					<p class="text-xs text-muted">{$t('match.forOtherHint')}</p>
+				</div>
+				<Toggle
+					checked={!draftMatch.forSelf}
+					label={$t('match.forOtherTitle')}
+					onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, forSelf: !v })}
+				/>
+			</div>
+
+			<!-- The face the plotted arrows land on: a match carries no round to read it from. -->
+			<div class="flex gap-2 border-t border-line pt-3">
+				<label class="min-w-0 flex-1 text-xs text-muted">
+					{$t('match.face')}
+					<select
+						class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+						value={draftMatch.scoreSetId}
+						onchange={(e) =>
+							draftMatch && (draftMatch = { ...draftMatch, scoreSetId: e.currentTarget.value })}
+					>
+						{#each SCORE_SETS as set (set.id)}
+							<option value={set.id}>{set.name}</option>
+						{/each}
+					</select>
+				</label>
+				<label class="w-24 shrink-0 text-xs text-muted">
+					{$t('match.faceSize')}
+					<input
+						type="number"
+						inputmode="numeric"
+						min="1"
+						class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+						value={draftMatch.faceSize ?? ''}
+						onchange={(e) =>
+							draftMatch &&
+							(draftMatch = { ...draftMatch, faceSize: Number(e.currentTarget.value) || null })}
+					/>
+				</label>
+			</div>
+
+			{#if draftMatch.format === 'custom'}
+				<div class="grid grid-cols-3 gap-2 border-t border-line pt-3">
+					<label class="text-xs text-muted">
+						{$t('match.arrowsPerEnd')}
+						<input
+							type="number"
+							inputmode="numeric"
+							min="1"
+							class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+							value={draftMatch.arrowsPerEnd}
+							onchange={(e) =>
+								draftMatch &&
+								(draftMatch = {
+									...draftMatch,
+									arrowsPerEnd: Math.max(1, Number(e.currentTarget.value) || 1)
+								})}
+						/>
+					</label>
+					<label class="text-xs text-muted">
+						{$t('match.ends')}
+						<input
+							type="number"
+							inputmode="numeric"
+							min="1"
+							class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+							value={draftMatch.maxEnds}
+							onchange={(e) =>
+								draftMatch &&
+								(draftMatch = { ...draftMatch, maxEnds: Math.max(1, Number(e.currentTarget.value) || 1) })}
+						/>
+					</label>
+					{#if draftMatch.system === 'set'}
+						<label class="text-xs text-muted">
+							{$t('match.setPoints')}
+							<input
+								type="number"
+								inputmode="numeric"
+								min="1"
+								class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+								value={draftMatch.setPointsToWin}
+								onchange={(e) =>
+									draftMatch &&
+									(draftMatch = {
+										...draftMatch,
+										setPointsToWin: Math.max(1, Number(e.currentTarget.value) || 1)
+									})}
+							/>
+						</label>
+					{/if}
+				</div>
+			{/if}
+
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<p class="text-sm font-medium">{$t('match.allowShootOff')}</p>
+				<Toggle
+					checked={draftMatch.shootOff}
+					label={$t('match.allowShootOff')}
+					onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, shootOff: v })}
+				/>
+			</div>
+		</div>
+
+		{#snippet footer()}
+			<button
+				class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+				onclick={() => (draftMatch = null)}
+			>
+				{$t('common.cancel')}
+			</button>
+			<button class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink" onclick={startMatch}>
+				{$t('match.start')}
+			</button>
+		{/snippet}
+	</Sheet>
 {/if}
 
 {#if editingGoal}
