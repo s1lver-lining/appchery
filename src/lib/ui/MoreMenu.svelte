@@ -1,4 +1,5 @@
 <script lang="ts">
+	import type { Snippet } from 'svelte';
 	import Icon, { type IconName } from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 
@@ -14,7 +15,9 @@
 		placement = 'up',
 		align = 'left',
 		wrapperClass = 'w-1/5',
-		triggerClass = 'flex w-full items-center justify-center rounded-xl border border-line bg-surface py-2.5 font-semibold'
+		triggerClass = 'flex w-full items-center justify-center rounded-xl border border-line bg-surface py-2.5 font-semibold',
+		onpress,
+		children
 	}: {
 		items: { label: string; onselect: () => void; icon?: IconName | null; accent?: boolean }[];
 		label: string;
@@ -25,7 +28,34 @@
 		align?: 'left' | 'right';
 		wrapperClass?: string;
 		triggerClass?: string;
+		/**
+		 * What a plain tap does. Given one, the button is a button first and the menu is what a long
+		 * press reveals, which is how one full width action can still carry the rarer ones behind it.
+		 */
+		onpress?: () => void;
+		/** The trigger's face. Left out, the button is the icon and nothing else. */
+		children?: Snippet;
 	} = $props();
+
+	/** Long enough not to fire while tapping, short enough to find by accident once and remember. */
+	const LONG_PRESS_MS = 450;
+	let held: ReturnType<typeof setTimeout> | null = null;
+	let opened = false;
+
+	function hold() {
+		if (!onpress) return;
+		opened = false;
+		held = setTimeout(() => {
+			held = null;
+			opened = true;
+			open = true;
+		}, LONG_PRESS_MS);
+	}
+
+	function release() {
+		if (held) clearTimeout(held);
+		held = null;
+	}
 
 	let open = $state(false);
 
@@ -93,10 +123,27 @@
 		aria-haspopup="menu"
 		aria-expanded={open}
 		aria-label={label}
-		onclick={() => (open = !open)}
+		onpointerdown={hold}
+		onpointerup={release}
+		onpointercancel={release}
+		onpointerleave={release}
+		oncontextmenu={(event) => onpress && event.preventDefault()}
+		onclick={() => {
+			if (!onpress) {
+				open = !open;
+				return;
+			}
+			// The press that opened the menu is not also a tap on the button underneath it.
+			if (opened) opened = false;
+			else onpress();
+		}}
 	>
-		<span class="transition-transform {open && icon === 'chevronUp' ? 'rotate-180' : ''}">
-			<Icon name={icon} size={20} />
-		</span>
+		{#if children}
+			{@render children()}
+		{:else}
+			<span class="transition-transform {open && icon === 'chevronUp' ? 'rotate-180' : ''}">
+				<Icon name={icon} size={20} />
+			</span>
+		{/if}
 	</button>
 </div>

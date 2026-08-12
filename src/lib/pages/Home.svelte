@@ -526,23 +526,28 @@
 
 <!-- The one action this page exists for, kept where the thumb lands, with the rest behind the arrow. -->
 <div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
-	<div class="mx-auto flex w-full max-w-2xl gap-2">
+	<!-- One button across the bar: starting an outing is what this page is for, and the rarer ways
+		to start one are held behind a long press rather than given a permanent fifth of the width. -->
+	<div class="mx-auto w-full max-w-2xl">
 		<MoreMenu
 			label={$t('home.moreActions')}
+			wrapperClass="w-full"
+			triggerClass="relative flex w-full items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink select-none"
+			onpress={() => start()}
 			items={[
-				{ label: $t('sessions.new'), onselect: () => start('practice') },
-				{ label: $t('sessions.newCompetition'), onselect: () => start('competition') },
-				{ label: $t('sessions.newPlanned'), onselect: () => (planningAt = Date.now()) },
-				{ label: $t('equipment.addBow'), onselect: () => goto('/equipment?add=1') }
+				{ label: $t('sessions.new'), icon: 'target', onselect: () => start('practice'), accent: true },
+				{ label: $t('sessions.newCompetition'), icon: 'medal', onselect: () => start('competition') },
+				{ label: $t('sessions.newPlanned'), icon: 'calendar', onselect: () => (planningAt = Date.now()) },
+				{ label: $t('equipment.addBow'), icon: 'bow', onselect: () => goto('/equipment?add=1') }
 			]}
-		/>
-		<button
-			class="flex w-4/5 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
-			onclick={() => start()}
 		>
-			<Icon name="plus" size={20} />
-			{$t('sessions.new')}
-		</button>
+			{#snippet children()}
+				<Icon name="plus" size={20} />
+				{$t('sessions.new')}
+				<!-- The only sign that the button holds more: a long press has to be findable once. -->
+				<span class="absolute right-3 opacity-60"><Icon name="chevronUp" size={14} /></span>
+			{/snippet}
+		</MoreMenu>
 	</div>
 </div>
 </div>
