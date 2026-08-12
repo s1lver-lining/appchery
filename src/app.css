@@ -126,3 +126,29 @@ body {
 .safe-bottom {
 	padding-bottom: env(safe-area-inset-bottom);
 }
+
+/*
+ * A single ring on the row the sessions list opened on, so the eye is told where it landed rather
+ * than having to find the date. Skipped where motion is unwelcome: it says nothing the pill does not.
+ */
+@keyframes anchor-pulse {
+	0% {
+		box-shadow: 0 0 0 0 color-mix(in srgb, var(--c-brand) 55%, transparent);
+	}
+	35% {
+		box-shadow: 0 0 0 4px color-mix(in srgb, var(--c-brand) 45%, transparent);
+	}
+	100% {
+		box-shadow: 0 0 0 8px transparent;
+	}
+}
+
+.anchor-pulse {
+	animation: anchor-pulse 1.3s ease-out 1;
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.anchor-pulse {
+		animation: none;
+	}
+}

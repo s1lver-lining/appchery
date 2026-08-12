@@ -203,6 +203,9 @@
 		};
 	}
 
+	/** Rung once, on the row the list settled on, and never again for the life of the page. */
+	let pulsing = $state(false);
+
 	let scrolled = false;
 	$effect(() => {
 		if (scrolled || !loaded || !anchor || tab !== 'list') return;
@@ -213,6 +216,9 @@
 			// The whole week when it fits, since the days around today are what says how the week went.
 			if (anchor.offsetHeight <= scrollPane.clientHeight || !todayRow) bring(anchor, 0);
 			else bring(todayRow, (scrollPane.clientHeight - todayRow.offsetHeight) / 2);
+			if (!todayRow) return;
+			pulsing = true;
+			setTimeout(() => (pulsing = false), 1400);
 		});
 	});
 
@@ -569,7 +575,8 @@
 										outings reads as one run rather than as three unrelated cards. -->
 									{@const runs = onToday && startOfDay(group.items[i + 1]?.at ?? 0) === today}
 									<li
-										class="relative flex items-center gap-3"
+										class="relative flex items-center gap-3 rounded-xl
+											{pulsing && onToday ? 'anchor-pulse' : ''}"
 										use:markToday={onToday}
 									>
 										{#if onToday}
