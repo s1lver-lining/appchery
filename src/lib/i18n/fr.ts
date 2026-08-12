@@ -590,6 +590,16 @@ export const fr: Dictionary = {
 		newButtonTitle: 'Bouton de séance complet',
 		newButtonHint:
 			'Termine la liste des séances par le bouton large et son menu. Désactivé, un bouton rond se place dans le coin et ouvre les mêmes choix.',
+		competitionColourTitle: 'Couleur des compétitions',
+		competitionColourHint: 'La couleur des compétitions dans la liste des séances et sur la page statistiques.',
+		colour: {
+			default: 'Par défaut',
+			gold: 'Or',
+			red: 'Rouge',
+			blue: 'Bleu',
+			black: 'Noir',
+			white: 'Blanc'
+		},
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',
 		placeTitle: 'Nommer le lieu',

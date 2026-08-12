@@ -236,6 +236,23 @@ function legacy(key: string): StatsFilter {
 }
 
 /**
+ * The colour a competition wears, by target face name, or null for the one the theme picks. Written
+ * onto the root as the kind's own variable, so the sessions list and the statistics page move
+ * together: one kind of outing has one colour wherever it is drawn.
+ */
+export const COMPETITION_COLOURS = ['gold', 'red', 'blue', 'black', 'white'] as const;
+export const competitionColour = storedString('appchery.competitionColour');
+
+if (typeof document !== 'undefined') {
+	competitionColour.subscribe((value) => {
+		const root = document.documentElement.style;
+		if (value && (COMPETITION_COLOURS as readonly string[]).includes(value))
+			root.setProperty('--c-kind-competition', `var(--color-face-${value})`);
+		else root.removeProperty('--c-kind-competition');
+	});
+}
+
+/**
  * The bow preselected on a new session. A device preference rather than user data, since which bow
  * you reach for depends on where you are, so it is deliberately not synced.
  */

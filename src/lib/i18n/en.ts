@@ -583,6 +583,16 @@ export const en = {
 		newButtonTitle: 'Full new session button',
 		newButtonHint:
 			'Ends the sessions list with the wide button and its menu. Off, a round plus button sits in the corner and opens the same choices.',
+		competitionColourTitle: 'Competition colour',
+		competitionColourHint: 'The colour a competition wears in the sessions list and on the statistics page.',
+		colour: {
+			default: 'Default',
+			gold: 'Gold',
+			red: 'Red',
+			blue: 'Blue',
+			black: 'Black',
+			white: 'White'
+		},
 		clockTitle: '24 hour clock',
 		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
 		placeTitle: 'Name the place',

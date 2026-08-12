@@ -55,7 +55,9 @@
 
 	/* Bronze, red and blue, checked for separation under deuteranopia against the light surface. */
 	--c-kind-practice: #b87a26;
-	--c-kind-competition: #a3392c;
+	/* Named apart from the kind variable, which a chosen competition colour overwrites at runtime. */
+	--c-kind-competition-base: #a3392c;
+	--c-kind-competition: var(--c-kind-competition-base);
 	--c-kind-qualification: #1a6ba8;
 
 	color-scheme: light;
@@ -78,7 +80,8 @@
 
 		/* Their own steps rather than the light ones: a flipped theme loses the separation. */
 		--c-kind-practice: #b58430;
-		--c-kind-competition: #c04a55;
+		--c-kind-competition-base: #c04a55;
+		--c-kind-competition: var(--c-kind-competition-base);
 		--c-kind-qualification: #4f9ac9;
 
 		color-scheme: dark;
@@ -100,7 +103,8 @@
 
 	/* Their own steps rather than the light ones: a flipped theme loses the separation. */
 	--c-kind-practice: #b58430;
-	--c-kind-competition: #c04a55;
+	--c-kind-competition-base: #c04a55;
+	--c-kind-competition: var(--c-kind-competition-base);
 	--c-kind-qualification: #4f9ac9;
 
 	color-scheme: dark;

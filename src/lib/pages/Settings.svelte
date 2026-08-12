@@ -14,7 +14,9 @@
 		recordCameraVideo,
 		arrowDetector,
 		plotTapMs,
-		fullNewSessionButton
+		fullNewSessionButton,
+		competitionColour,
+		COMPETITION_COLOURS
 	} from '$lib/prefs';
 	import { recalculateBadges } from '$lib/db/repository';
 	import {
@@ -215,6 +217,31 @@
 								label={$t('settings.newButtonTitle')}
 								onchange={(v) => fullNewSessionButton.set(v)}
 							/>
+						</div>
+
+						<!-- The target face colours, because those are the colours this app already owns. -->
+						<div>
+							<p class="font-medium">{$t('settings.competitionColourTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.competitionColourHint')}</p>
+							<div class="mt-2 flex flex-wrap gap-2">
+								{#each [null, ...COMPETITION_COLOURS] as choice (choice ?? 'default')}
+									{@const on = $competitionColour === choice}
+									<button
+										class="flex items-center gap-2 rounded-full border py-1 pr-3 pl-1.5 text-sm
+											{on ? 'border-brand font-semibold' : 'border-line text-muted'}"
+										aria-pressed={on}
+										onclick={() => competitionColour.set(choice)}
+									>
+										<span
+											class="h-4 w-4 rounded-full border border-line"
+											style="background: {choice
+												? `var(--color-face-${choice})`
+												: 'var(--c-kind-competition-base)'}"
+										></span>
+										{choice ? $t(`settings.colour.${choice}`) : $t('settings.colour.default')}
+									</button>
+								{/each}
+							</div>
 						</div>
 					</div>
 				</section>
