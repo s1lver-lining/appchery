@@ -2,7 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { dateFormats } from '$lib/prefs';
 	import { PROGRESSION_ARROWS, type EarnedBadge } from '$lib/domain/badges';
-	import Icon from './Icon.svelte';
+	import BadgeGlyph from './BadgeGlyph.svelte';
 
 	/**
 	 * One badge, earned or not. A locked badge is shown in full rather than hidden: what the app
@@ -13,14 +13,15 @@
 	const key = $derived(badge.definition.key);
 	const arrow = $derived(PROGRESSION_ARROWS.find((a) => a.key === key));
 
-	/** The progression arrows all read the same way, so their rule is written from the data. */
-	const hint = $derived.by(() => {
-		if (!arrow) return $t(`badges.list.${key}.hint`);
-		const params = { metres: arrow.metres, face: arrow.faceSize, score: arrow.score };
-		return arrow.bowType
-			? $t('badges.arrowHintBow', { ...params, bow: $t(`bow.${arrow.bowType}`) })
-			: $t('badges.arrowHint', params);
-	});
+	/**
+	 * The progression arrows all read the same way, so their rule is written from the data. The bow
+	 * an arrow demands is in its name rather than here, where it would only be said twice.
+	 */
+	const hint = $derived(
+		arrow
+			? $t('badges.arrowHint', { metres: arrow.metres, face: arrow.faceSize, score: arrow.score })
+			: $t(`badges.list.${key}.hint`, badge.definition.hintParams)
+	);
 
 	const filled = $derived(badge.earnedAt !== null);
 	const share = $derived(
@@ -35,9 +36,7 @@
 		? 'border-accent/40 bg-surface'
 		: 'border-line bg-surface/60'}"
 >
-	<span class={filled ? 'text-accent' : 'text-muted/50'}>
-		<Icon name={badge.definition.icon} size={28} {filled} />
-	</span>
+	<BadgeGlyph {badge} />
 	<div class="min-w-0 flex-1">
 		<p class="truncate font-semibold {filled ? '' : 'text-muted'}">
 			{$t(`badges.list.${key}.name`)}

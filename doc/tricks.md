@@ -65,12 +65,20 @@ one round. It is the figure that says whether you fall apart at end nine.
 
 ## Badges
 
-**They find you.** Badges are awarded as you shoot, and the one that finishes a round announces
-itself with the same fireworks a personal best does. The list is behind the dots menu on the stats
+**They find you.** Badges are awarded as you shoot, and the ones that finish a round announce
+themselves with the same fireworks a personal best does. A last arrow that sets a record and earns
+two badges shows all three cards under one volley. The list is behind the dots menu on the stats
 page, or the medal in the settings grid.
+
+**Two ways to read the list.** The grid of icons is the default; the dots menu swaps it for the list
+with every rule spelled out, and remembers which you chose. Tapping a badge in the grid opens what
+it wants and how close you are either way.
 
 **Locked ones show their progress.** A badge you have not earned still says what it wants and how
 far along you are, because 840 arrows of a thousand is worth knowing.
+
+**The FFTA arrows look like arrows.** Each progression arrow is drawn in the colour it is named for,
+and greys out until it is shot.
 
 **A badge is dated by the shooting, not by the app.** Score an old session and any badge it earns
 appears with the date of that session, wherever it lands in the list.

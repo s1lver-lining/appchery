@@ -516,10 +516,11 @@ export const en = {
 		locked: 'Not earned yet',
 		progress: '{current} / {target}',
 		empty: 'Nothing earned yet. Shoot something.',
+		viewGrid: 'Show the grid',
+		viewDetail: 'Show the rules',
 		new: 'Badge earned',
 		/** The progression arrows all read the same way, so their rule is written once. */
 		arrowHint: '36 arrows at {metres}m on a {face}cm face, {score} points',
-		arrowHintBow: '36 arrows at {metres}m on a {face}cm face with a {bow}, {score} points',
 		families: {
 			volume: 'Arrows shot',
 			habit: 'Habit',
@@ -554,18 +555,21 @@ export const en = {
 			ninetyMetres: { name: 'Bring a Packed Lunch', hint: 'Finished a round at 90m or further.' },
 			firstTuning: { name: 'Never Leave It Alone', hint: 'Carried out a tuning procedure.' },
 			fiveSightMarks: { name: 'Sight Whisperer', hint: 'Recorded five sight marks on one bow.' },
-			stormArcher: { name: 'Weather Warning', hint: 'Finished a round in a strong wind.' },
+			stormArcher: {
+				name: 'Weather Warning',
+				hint: 'Finished a round in a wind of {kmh} km/h or more.'
+			},
 			fftaWhite: { name: 'White Arrow' },
 			fftaBlack: { name: 'Black Arrow' },
 			fftaBlue: { name: 'Blue Arrow' },
 			fftaRed: { name: 'Red Arrow' },
 			fftaYellow: { name: 'Yellow Arrow' },
-			fftaBronzeRecurve: { name: 'Bronze Arrow' },
-			fftaSilverRecurve: { name: 'Silver Arrow' },
-			fftaGoldRecurve: { name: 'Gold Arrow' },
-			fftaBronzeCompound: { name: 'Bronze Arrow' },
-			fftaSilverCompound: { name: 'Silver Arrow' },
-			fftaGoldCompound: { name: 'Gold Arrow' }
+			fftaBronzeRecurve: { name: 'Bronze Arrow recurve' },
+			fftaSilverRecurve: { name: 'Silver Arrow recurve' },
+			fftaGoldRecurve: { name: 'Gold Arrow recurve' },
+			fftaBronzeCompound: { name: 'Bronze Arrow compound' },
+			fftaSilverCompound: { name: 'Silver Arrow compound' },
+			fftaGoldCompound: { name: 'Gold Arrow compound' }
 		}
 	}
 };

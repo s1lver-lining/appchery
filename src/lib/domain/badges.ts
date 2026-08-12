@@ -1,4 +1,11 @@
-import { isComplete, isPersonalBest, roundKey, windBand, type ScoredActivity } from './stats';
+import {
+	isComplete,
+	isPersonalBest,
+	roundKey,
+	windBand,
+	STRONG_WIND_KMH,
+	type ScoredActivity
+} from './stats';
 import { startOfDay, startOfWeek } from './dates';
 import { yardsToMetres } from './units';
 
@@ -55,6 +62,8 @@ export interface BadgeDefinition {
 	icon: BadgeIcon;
 	/** Set on the award badges that only count when a particular bow was used. */
 	bowType?: string;
+	/** Figures the description quotes, so the rule and the words it is explained in cannot drift. */
+	hintParams?: Record<string, string | number>;
 	earnedAt: (history: History) => number | null;
 	/** How far along an unearned badge is, when counting up to it means anything. */
 	progress?: (history: History) => { current: number; target: number };
@@ -216,8 +225,20 @@ function habitDays(key: string, target: number): BadgeDefinition {
  * see doc/badges.md. Thirty six arrows on the competition face for the distance, and a score to
  * beat. The first five are open to any bow, the metal ones ask for the bow they were written for.
  */
+/** The colour the arrow is named for, which is the whole of its identity. */
+export type ArrowColour =
+	| 'white'
+	| 'black'
+	| 'blue'
+	| 'red'
+	| 'yellow'
+	| 'bronze'
+	| 'silver'
+	| 'gold';
+
 export interface ProgressionArrow {
 	key: string;
+	colour: ArrowColour;
 	metres: number;
 	faceSize: number;
 	score: number;
@@ -225,17 +246,17 @@ export interface ProgressionArrow {
 }
 
 export const PROGRESSION_ARROWS: ProgressionArrow[] = [
-	{ key: 'fftaWhite', metres: 10, faceSize: 80, score: 280 },
-	{ key: 'fftaBlack', metres: 15, faceSize: 80, score: 280 },
-	{ key: 'fftaBlue', metres: 20, faceSize: 80, score: 280 },
-	{ key: 'fftaRed', metres: 25, faceSize: 80, score: 280 },
-	{ key: 'fftaYellow', metres: 30, faceSize: 80, score: 280 },
-	{ key: 'fftaBronzeRecurve', metres: 40, faceSize: 80, score: 280, bowType: 'recurve' },
-	{ key: 'fftaSilverRecurve', metres: 60, faceSize: 122, score: 280, bowType: 'recurve' },
-	{ key: 'fftaGoldRecurve', metres: 70, faceSize: 122, score: 280, bowType: 'recurve' },
-	{ key: 'fftaBronzeCompound', metres: 40, faceSize: 80, score: 310, bowType: 'compound' },
-	{ key: 'fftaSilverCompound', metres: 50, faceSize: 80, score: 310, bowType: 'compound' },
-	{ key: 'fftaGoldCompound', metres: 50, faceSize: 80, score: 330, bowType: 'compound' }
+	{ key: 'fftaWhite', colour: 'white', metres: 10, faceSize: 80, score: 280 },
+	{ key: 'fftaBlack', colour: 'black', metres: 15, faceSize: 80, score: 280 },
+	{ key: 'fftaBlue', colour: 'blue', metres: 20, faceSize: 80, score: 280 },
+	{ key: 'fftaRed', colour: 'red', metres: 25, faceSize: 80, score: 280 },
+	{ key: 'fftaYellow', colour: 'yellow', metres: 30, faceSize: 80, score: 280 },
+	{ key: 'fftaBronzeRecurve', colour: 'bronze', metres: 40, faceSize: 80, score: 280, bowType: 'recurve' },
+	{ key: 'fftaSilverRecurve', colour: 'silver', metres: 60, faceSize: 122, score: 280, bowType: 'recurve' },
+	{ key: 'fftaGoldRecurve', colour: 'gold', metres: 70, faceSize: 122, score: 280, bowType: 'recurve' },
+	{ key: 'fftaBronzeCompound', colour: 'bronze', metres: 40, faceSize: 80, score: 310, bowType: 'compound' },
+	{ key: 'fftaSilverCompound', colour: 'silver', metres: 50, faceSize: 80, score: 310, bowType: 'compound' },
+	{ key: 'fftaGoldCompound', colour: 'gold', metres: 50, faceSize: 80, score: 330, bowType: 'compound' }
 ];
 
 /**
@@ -395,6 +416,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'stormArcher',
 		family: 'milestone',
 		icon: 'storm',
+		hintParams: { kmh: STRONG_WIND_KMH },
 		earnedAt: (h) =>
 			first(h.finished, (a) => a.windKmh !== null && windBand(a.windKmh) === 'strong')
 	},

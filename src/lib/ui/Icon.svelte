@@ -26,6 +26,8 @@
 		| 'chevronUp'
 		| 'edit'
 		| 'dots'
+		| 'grid'
+		| 'list'
 		| 'share'
 		| 'help';
 
@@ -137,6 +139,13 @@
 		<circle cx="12" cy="5" r="1.6" fill="currentColor" stroke="none" />
 		<circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none" />
 		<circle cx="12" cy="19" r="1.6" fill="currentColor" stroke="none" />
+	{:else if name === 'grid'}
+		<rect x="3.6" y="3.6" width="7" height="7" rx="1.4" />
+		<rect x="13.4" y="3.6" width="7" height="7" rx="1.4" />
+		<rect x="3.6" y="13.4" width="7" height="7" rx="1.4" />
+		<rect x="13.4" y="13.4" width="7" height="7" rx="1.4" />
+	{:else if name === 'list'}
+		<path d="M4 6.5h16M4 12h16M4 17.5h16" />
 	{:else if name === 'chevronUp'}
 		<path d="M6 14.5L12 8.5l6 6" />
 	{:else if name === 'star'}

@@ -7,12 +7,18 @@
 	 * A record and a badge are the moments in this app worth interrupting for. It says what was won,
 	 * then gets out of the way on its own, because the archer is still stood on the shooting line.
 	 */
-	let {
-		title,
-		subtitle,
-		score = null,
-		onclose
-	}: { title: string; subtitle: string; score?: number | null; onclose: () => void } = $props();
+	export interface Award {
+		title: string;
+		subtitle: string;
+		score?: number | null;
+	}
+
+	/**
+	 * A last arrow can win several things at once: the record, and the badge the round pushed over
+	 * the line. They are shown together under one volley rather than queued, because they were one
+	 * moment and the archer is still stood on the shooting line.
+	 */
+	let { awards, onclose }: { awards: Award[]; onclose: () => void } = $props();
 
 	// A record is dismissed by the back key like anything else sitting on top of the page.
 	closeOnBack(
@@ -20,7 +26,8 @@
 		() => onclose()
 	);
 
-	const LIFE = 5600;
+	/** Long enough to read what was won, and a little longer for each thing that has to be read. */
+	const LIFE = $derived(5600 + (awards.length - 1) * 1200);
 	$effect(() => {
 		const timer = setTimeout(onclose, LIFE);
 		return () => clearTimeout(timer);
@@ -53,22 +60,25 @@
 		{/each}
 	{/each}
 
-	<div class="absolute inset-x-0 top-[22%] flex justify-center px-6">
-		<button
-			class="pointer-events-auto card flex items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 px-5 py-4 shadow-2xl backdrop-blur"
-			onclick={onclose}
-		>
-			<span class="text-accent"><Icon name="medal" size={30} filled /></span>
-			<span class="text-left">
-				<span class="block text-[11px] font-semibold tracking-wide text-accent uppercase">
-					{title}
+	<div class="absolute inset-x-0 top-[22%] flex flex-col items-center gap-2 px-6">
+		{#each awards as award, i (award.subtitle)}
+			<button
+				class="pointer-events-auto card flex w-full max-w-sm items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 px-5 py-4 shadow-2xl backdrop-blur"
+				style="--card-delay: {i * 260}ms"
+				onclick={onclose}
+			>
+				<span class="text-accent"><Icon name="medal" size={30} filled /></span>
+				<span class="min-w-0 flex-1 text-left">
+					<span class="block text-[11px] font-semibold tracking-wide text-accent uppercase">
+						{award.title}
+					</span>
+					<span class="block truncate text-base font-bold">{award.subtitle}</span>
 				</span>
-				<span class="block truncate text-base font-bold">{subtitle}</span>
-			</span>
-			{#if score !== null}
-				<span class="tabular text-3xl leading-none font-bold">{score}</span>
-			{/if}
-		</button>
+				{#if award.score != null}
+					<span class="tabular text-3xl leading-none font-bold">{award.score}</span>
+				{/if}
+			</button>
+		{/each}
 	</div>
 </div>
 
@@ -102,8 +112,9 @@
 		}
 	}
 
+	/* Stacked cards arrive one after another, so several wins read as several rather than as a block. */
 	.card {
-		animation: rise 420ms cubic-bezier(0.22, 0.61, 0.36, 1) both;
+		animation: rise 420ms var(--card-delay, 0ms) cubic-bezier(0.22, 0.61, 0.36, 1) both;
 	}
 
 	@keyframes rise {

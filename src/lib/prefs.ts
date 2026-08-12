@@ -128,6 +128,12 @@ export const dismissedBest = storedString('appchery.dismissedBest');
 export const celebratedBests = storedList('appchery.celebratedBests');
 
 /**
+ * Whether the badges page lists badges with their rules rather than showing the grid of icons. The
+ * grid is the default: a wall of badges is the point of them, and the detail is one tap away.
+ */
+export const badgeDetailView = flag('appchery.badgeDetailView', false);
+
+/**
  * What the two figures in the home header count. A device preference: which numbers an archer wants
  * in front of them depends on how they train, not on the data itself.
  */

@@ -520,9 +520,10 @@ export const fr: Dictionary = {
 		locked: 'Pas encore obtenu',
 		progress: '{current} / {target}',
 		empty: 'Rien encore obtenu. Va tirer.',
+		viewGrid: 'Afficher la grille',
+		viewDetail: 'Afficher les règles',
 		new: 'Badge obtenu',
 		arrowHint: '36 flèches à {metres} m sur blason de {face} cm, {score} points',
-		arrowHintBow: '36 flèches à {metres} m sur blason de {face} cm en {bow}, {score} points',
 		families: {
 			volume: 'Flèches tirées',
 			habit: 'Régularité',
@@ -560,18 +561,21 @@ export const fr: Dictionary = {
 			ninetyMetres: { name: 'Prévois le casse-croûte', hint: 'Un tir terminé à 90 m ou plus.' },
 			firstTuning: { name: 'Touche-à-tout', hint: 'Une procédure de réglage menée à bien.' },
 			fiveSightMarks: { name: 'Le murmureur de viseur', hint: 'Cinq repères de viseur sur un arc.' },
-			stormArcher: { name: 'Avis de tempête', hint: 'Un tir terminé par vent fort.' },
+			stormArcher: {
+				name: 'Avis de tempête',
+				hint: 'Un tir terminé par un vent de {kmh} km/h ou plus.'
+			},
 			fftaWhite: { name: 'Flèche blanche' },
 			fftaBlack: { name: 'Flèche noire' },
 			fftaBlue: { name: 'Flèche bleue' },
 			fftaRed: { name: 'Flèche rouge' },
 			fftaYellow: { name: 'Flèche jaune' },
-			fftaBronzeRecurve: { name: 'Flèche bronze' },
-			fftaSilverRecurve: { name: 'Flèche argent' },
-			fftaGoldRecurve: { name: 'Flèche or' },
-			fftaBronzeCompound: { name: 'Flèche bronze' },
-			fftaSilverCompound: { name: 'Flèche argent' },
-			fftaGoldCompound: { name: 'Flèche or' }
+			fftaBronzeRecurve: { name: 'Flèche bronze classique' },
+			fftaSilverRecurve: { name: 'Flèche argent classique' },
+			fftaGoldRecurve: { name: 'Flèche or classique' },
+			fftaBronzeCompound: { name: 'Flèche bronze poulies' },
+			fftaSilverCompound: { name: 'Flèche argent poulies' },
+			fftaGoldCompound: { name: 'Flèche or poulies' }
 		}
 	}
 };

@@ -328,10 +328,13 @@ export interface Band {
 	perArrow: number;
 }
 
+/** Where a strong wind starts. Named because the storm badge quotes the figure it is judged on. */
+export const STRONG_WIND_KMH = 25;
+
 const WIND_BANDS = [
 	{ key: 'calm', upTo: 5 },
 	{ key: 'light', upTo: 15 },
-	{ key: 'moderate', upTo: 25 },
+	{ key: 'moderate', upTo: STRONG_WIND_KMH },
 	{ key: 'strong', upTo: Infinity }
 ] as const;
 

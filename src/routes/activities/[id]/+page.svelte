@@ -22,7 +22,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
-	import Fireworks from '$lib/ui/Fireworks.svelte';
+	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
 	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
 	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
@@ -158,8 +158,8 @@
 	 * round that was finished long ago is silent.
 	 */
 	let armed = false;
-	/** Shown one at a time: a round can set a record and earn a badge with the same last arrow. */
-	let celebrations = $state<{ title: string; subtitle: string; score: number | null }[]>([]);
+	/** A round can set a record and earn badges with the same last arrow: they are shown together. */
+	let celebrations = $state<Award[]>([]);
 	$effect(() => {
 		if (!round || !sheetLoaded) return;
 		if (!complete) {
@@ -516,7 +516,7 @@
 	// Each sheet over the sheet: the camera, an end being reviewed, the card, the record itself.
 	closeOnBack(() => autoScoring, () => (autoScoring = false));
 	closeOnBack(() => openEnd !== null, closeModal);
-	closeOnBack(() => celebrations.length > 0, () => (celebrations = celebrations.slice(1)));
+	closeOnBack(() => celebrations.length > 0, () => (celebrations = []));
 
 	/** Editing from the modal keeps it open, so several arrows of one end can be fixed in a row. */
 	async function editModalShot(zone: Zone) {
@@ -1195,16 +1195,7 @@
 {/if}
 
 {#if celebrations.length > 0}
-	{@const current = celebrations[0]}
-	<!-- Keyed so the next card is a new one: its own life runs from the moment it appears. -->
-	{#key current.subtitle}
-		<Fireworks
-			title={current.title}
-			subtitle={current.subtitle}
-			score={current.score}
-			onclose={() => (celebrations = celebrations.slice(1))}
-		/>
-	{/key}
+	<Fireworks awards={celebrations} onclose={() => (celebrations = [])} />
 {/if}
 
 {#if sharing}
