@@ -232,7 +232,7 @@
 							/>
 						</div>
 
-						<!-- The target face colours, because those are the colours this app already owns. -->
+						<!-- A short palette: every option has to stay readable on the surface, in both themes. -->
 						<div>
 							<p class="font-medium">{$t('settings.competitionColourTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.competitionColourHint')}</p>
@@ -248,7 +248,7 @@
 										<span
 											class="h-4 w-4 rounded-full border border-line"
 											style="background: {choice
-												? `var(--color-face-${choice})`
+												? `var(--c-comp-${choice})`
 												: 'var(--c-kind-competition-base)'}"
 										></span>
 										{choice ? $t(`settings.colour.${choice}`) : $t('settings.colour.default')}

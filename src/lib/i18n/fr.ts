@@ -598,11 +598,9 @@ export const fr: Dictionary = {
 			'La couleur des compétitions dans la liste des séances et sur la page statistiques.',
 		colour: {
 			default: 'Par défaut',
-			gold: 'Or',
-			red: 'Rouge',
 			blue: 'Bleu',
-			black: 'Noir',
-			white: 'Blanc'
+			ink: 'Encre',
+			green: 'Vert'
 		},
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',

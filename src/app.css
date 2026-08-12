@@ -58,6 +58,14 @@
 	/* Named apart from the kind variable, which a chosen competition colour overwrites at runtime. */
 	--c-kind-competition-base: #a3392c;
 	--c-kind-competition: var(--c-kind-competition-base);
+
+	/*
+	 * What a competition may be painted instead, kept to colours that hold their own against the
+	 * surface: the face palette is set by the rules and its gold and white all but vanish on paper.
+	 */
+	--c-comp-blue: #1a6ba8;
+	--c-comp-ink: #23282c;
+	--c-comp-green: #2f7d4f;
 	--c-kind-qualification: #1a6ba8;
 
 	color-scheme: light;
@@ -82,6 +90,11 @@
 		--c-kind-practice: #b58430;
 		--c-kind-competition-base: #c04a55;
 		--c-kind-competition: var(--c-kind-competition-base);
+
+		/* Their own steps again: ink turns pale here, or a competition would sink into the surface. */
+		--c-comp-blue: #4f9ac9;
+		--c-comp-ink: #d7cfc2;
+		--c-comp-green: #5fb07f;
 		--c-kind-qualification: #4f9ac9;
 
 		color-scheme: dark;
@@ -105,6 +118,11 @@
 	--c-kind-practice: #b58430;
 	--c-kind-competition-base: #c04a55;
 	--c-kind-competition: var(--c-kind-competition-base);
+
+	/* Their own steps again: ink turns pale here, or a competition would sink into the surface. */
+	--c-comp-blue: #4f9ac9;
+	--c-comp-ink: #d7cfc2;
+	--c-comp-green: #5fb07f;
 	--c-kind-qualification: #4f9ac9;
 
 	color-scheme: dark;

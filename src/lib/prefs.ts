@@ -248,18 +248,20 @@ if (typeof document !== 'undefined') {
 }
 
 /**
- * The colour a competition wears, by target face name, or null for the one the theme picks. Written
+ * The colour a competition wears, or null for the one the theme picks. Its own short palette rather
+ * than the target face colours: those are set by the rules, and gold and white are unreadable on the
+ * surface whichever theme is on. Written
  * onto the root as the kind's own variable, so the sessions list and the statistics page move
  * together: one kind of outing has one colour wherever it is drawn.
  */
-export const COMPETITION_COLOURS = ['gold', 'red', 'blue', 'black', 'white'] as const;
+export const COMPETITION_COLOURS = ['blue', 'ink', 'green'] as const;
 export const competitionColour = storedString('appchery.competitionColour');
 
 if (typeof document !== 'undefined') {
 	competitionColour.subscribe((value) => {
 		const root = document.documentElement.style;
 		if (value && (COMPETITION_COLOURS as readonly string[]).includes(value))
-			root.setProperty('--c-kind-competition', `var(--color-face-${value})`);
+			root.setProperty('--c-kind-competition', `var(--c-comp-${value})`);
 		else root.removeProperty('--c-kind-competition');
 	});
 }

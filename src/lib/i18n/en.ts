@@ -591,11 +591,9 @@ export const en = {
 			'The colour a competition wears in the sessions list and on the statistics page.',
 		colour: {
 			default: 'Default',
-			gold: 'Gold',
-			red: 'Red',
 			blue: 'Blue',
-			black: 'Black',
-			white: 'White'
+			ink: 'Ink',
+			green: 'Green'
 		},
 		clockTitle: '24 hour clock',
 		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
