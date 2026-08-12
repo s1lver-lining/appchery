@@ -543,8 +543,11 @@
 		if (a.kind === 'match') {
 			const config = matchOf(a);
 			const stage = config && config.stage !== 'none' ? $t(`match.stage.${config.stage}`) : null;
-			const name = config?.opponent
-				? `${$t('match.title')} ${$t('match.against', { name: config.opponent })}`
+			const against = config?.bot
+				? $t('match.botName', { level: $t(`match.bot.${config.bot}`) })
+				: config?.opponent;
+			const name = against
+				? `${$t('match.title')} ${$t('match.against', { name: against })}`
 				: $t('match.title');
 			return stage ? `${stage} · ${name}` : name;
 		}
@@ -878,7 +881,9 @@
 												class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line px-2 py-1.5"
 											>
 												<span class="min-w-0 flex-1 truncate text-sm">
-													{config?.opponent ?? $t('match.opponent')}
+													{config?.bot
+														? $t('match.botName', { level: $t(`match.bot.${config.bot}`) })
+														: (config?.opponent ?? $t('match.opponent'))}
 												</span>
 												<span
 													class="shrink-0 text-xs font-semibold {state.winner === 'us'

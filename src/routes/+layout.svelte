@@ -110,6 +110,8 @@
 	 */
 	function pressTab(event: PointerEvent, href: string) {
 		holdTab(href);
+		// Cleared first: a click always follows its own press, so the flag never outlives one.
+		pressed = false;
 		// Left button and primary touch only: the middle click and the long press have their own jobs.
 		if (event.button !== 0) return;
 		if (onGestureBar(event, href)) return;

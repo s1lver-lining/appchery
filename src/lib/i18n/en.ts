@@ -143,6 +143,7 @@ export const en = {
 		reset: 'Reset',
 		nextTurn: 'Next turn',
 		turn: 'Turn {n}',
+		resetTimes: 'Back to the rules',
 		edit: 'Edit the times',
 		ruleTime: 'World Archery: {time}',
 		seconds: 'sec',

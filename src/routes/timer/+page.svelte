@@ -102,14 +102,20 @@
 		turn = 1;
 	}
 
-	/** Two blasts, then one, then the clock: the start is a sequence, not a button. */
+	/**
+	 * Two blasts, then one, then the clock: the start is a sequence, not a button. The sequence can be
+	 * called off part way through, so each one carries a token and a stale one starts nothing.
+	 */
+	let calling = 0;
 	async function callUp() {
 		unlockSound();
+		const token = ++calling;
 		if (!$timerSound) return start();
 		whistle('lineUp');
 		await new Promise((done) => setTimeout(done, whistleMs('lineUp') + 400));
+		if (token !== calling) return;
 		whistle('start');
-		setTimeout(start, whistleMs('start'));
+		setTimeout(() => token === calling && start(), whistleMs('start'));
 	}
 
 	function start() {
@@ -118,11 +124,13 @@
 	}
 
 	function stop() {
+		calling += 1;
 		startedAt = null;
 		if ($timerSound) whistle('stop');
 	}
 
 	function reset() {
+		calling += 1;
 		startedAt = null;
 		turn = preset.alternating ? (turn === 1 ? 2 : 1) : 1;
 	}
@@ -272,7 +280,7 @@
 			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
 			onclick={() => timerTimes.set({})}
 		>
-			{$t('timer.reset')}
+			{$t('timer.resetTimes')}
 		</button>
 		<button
 			class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
