@@ -153,8 +153,6 @@ export const fr: Dictionary = {
 			mixedTeam: 'Quatre volées de quatre flèches, en cinq points de set.',
 			custom: 'Choisissez les volées, les flèches et la façon de gagner.'
 		},
-		onTotalTitle: 'Décider au score total',
-		onTotalHint: 'Désactivé, le match se joue en sets. Activé, le total le plus élevé sur toutes les volées l’emporte, comme en poulies.',
 		winCondition: 'Condition de victoire',
 		system: { set: 'Points de set', cumulative: 'Score total' },
 		ourSide: 'Notre côté',

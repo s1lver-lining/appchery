@@ -151,8 +151,6 @@ export const en = {
 			mixedTeam: 'Four ends of four arrows, played to five set points.',
 			custom: 'Set the ends, the arrows and how it is won.'
 		},
-		onTotalTitle: 'Decide on total score',
-		onTotalHint: 'Off, the match is played in sets. On, the highest total over every end wins, the way compound matches are shot.',
 		winCondition: 'Win condition',
 		system: { set: 'Set points', cumulative: 'Total score' },
 		ourSide: 'Our side',
