@@ -614,6 +614,21 @@ export async function deleteMatchEnd(activityId: string, endNo: number) {
 	}
 	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, end.id));
 	await log('round_end', end.id, 'delete');
+
+	/**
+	 * The ends that came after it close the gap. A match is a run of ends played in order, and an
+	 * end four with no end three reads as a mistake rather than as a match with a hole in it.
+	 */
+	for (const later of (await listEnds(activityId)).filter(
+		(row) => !row.isShootOff && row.endNo > endNo
+	)) {
+		await db()
+			.update(schema.end)
+			.set({ endNo: later.endNo - 1, updatedAt: now })
+			.where(eq(schema.end.id, later.id));
+		await log('round_end', later.id, 'update');
+	}
+
 	await refreshMatchTotals(activityId);
 }
 
