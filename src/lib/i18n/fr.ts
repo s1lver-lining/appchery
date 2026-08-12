@@ -557,12 +557,12 @@ export const fr: Dictionary = {
 				hint: "Objectif hebdomadaire du programme atteint quatre semaines de suite."
 			},
 			threeRecords: { name: 'Le frimeur', hint: 'Un record personnel sur trois tirs différents.' },
-			firstXAt70: { name: 'La croix des braves', hint: 'Un X sur un tir WA à 70 m.' },
-			thirtyAt18: { name: "Brelan d'or", hint: 'Une volée à 30 sur un tir WA en salle à 18 m.' },
-			goldenEnd: { name: 'Tout ce qui brille', hint: "Une volée entière de six flèches dans l'or." },
+			firstXAt70: { name: 'La croix des braves', hint: 'Un X sur un tir WA à 70 m terminé.' },
+			thirtyAt18: { name: "Brelan d'or", hint: 'Une volée à 30 sur un tir WA en salle à 18 m terminé.' },
+			goldenEnd: { name: 'Tout ce qui brille', hint: "Une volée entière de six flèches dans l'or, sur un tir terminé." },
 			handfulOfArrows: {
 				name: 'Une poignée de flèches',
-				hint: 'Une volée de {arrows} flèches pointées tenant dans {cm} cm sur le blason.'
+				hint: "Une volée de {arrows} flèches pointées tenant dans l'or, sur un tir terminé."
 			},
 			iSeeRed: { name: 'Je vois rouge', hint: 'Un tir terminé sans aucune flèche sous {value}.' },
 			tourist: { name: 'Le touriste', hint: 'Tiré dans cinq lieux différents.' },

@@ -102,8 +102,13 @@ export interface EarnedBadge {
 const GOLD_ARROW_END = 6;
 /** Arrows in the end a group has to hold before its tightness says anything. */
 const GROUP_ARROWS = 6;
-/** How wide a group may be and still be covered by a hand, in centimetres on the face. */
-const HANDFUL_CM = 12;
+/**
+ * How wide a group may be and still be a handful, as a share of the face radius. The gold runs from
+ * the centre to 0.2 of the radius, so 0.4 is a group the gold would cover: a hand's width at 70m on
+ * a 122 face, and the same end shot at 18m on a 40. Measured against the face rather than in
+ * centimetres, because 12cm is a perfect end outdoors and a loose one indoors.
+ */
+const HANDFUL_SPREAD = 0.4;
 /** The lowest arrow a round may hold and still be all in the red. */
 const RED_VALUE = 7;
 /** Outdoor rounds only, so a warm hall never earns the badges the weather is for. */
@@ -275,8 +280,9 @@ function biggestSession(history: History): number {
 }
 
 /**
- * Whether the end holds every arrow the round asks for. A badge for what an end did has to be judged
- * on a whole one: three good arrows out of six is half a story, and the archer stopped for a reason.
+ * Whether the end holds every arrow the round asks for. A badge for what an end did is only ever
+ * looked for in a round that was finished, and then only in a full end of it: a round abandoned
+ * after one good volley is not what any of these are meant to mark.
  */
 function fullEnd(activity: BadgeActivity, end: BadgeEnd): boolean {
 	const asked = activity.round?.stages[end.stageIndex]?.arrowsPerEnd;
@@ -284,13 +290,11 @@ function fullEnd(activity: BadgeActivity, end: BadgeEnd): boolean {
 }
 
 /**
- * How wide the group of an end was, in centimetres on the face it was shot at. Coordinates are
- * normalised to a unit circle, so the radius of that circle is half the face.
+ * How far apart the two widest arrows of an end fell, in face radii. Every arrow has to have been
+ * plotted: six tight arrows out of seven say nothing about where the seventh went.
  */
-function groupWidthCm(activity: BadgeActivity, end: BadgeEnd): number | null {
+function groupSpread(end: BadgeEnd): number | null {
 	if (end.plots.length < GROUP_ARROWS || end.plots.length < end.arrows) return null;
-	const faceSize = activity.round?.stages[end.stageIndex]?.faceSize;
-	if (!faceSize) return null;
 
 	let widest = 0;
 	for (let i = 0; i < end.plots.length; i++) {
@@ -300,7 +304,7 @@ function groupWidthCm(activity: BadgeActivity, end: BadgeEnd): number | null {
 			widest = Math.max(widest, Math.hypot(a.x - b.x, a.y - b.y));
 		}
 	}
-	return (widest * faceSize) / 2;
+	return widest;
 }
 
 /** How many times a round of each kind was shot to the end, in the order they were shot. */
@@ -524,7 +528,7 @@ export const BADGES: BadgeDefinition[] = [
 		icon: 'target',
 		earnedAt: (h) =>
 			first(
-				h.scoring,
+				h.finished,
 				(a) => a.countX > 0 && SEVENTY_METRE_ROUNDS.includes(a.roundDefinitionId ?? '')
 			)
 	},
@@ -534,7 +538,7 @@ export const BADGES: BadgeDefinition[] = [
 		icon: 'target',
 		earnedAt: (h) =>
 			first(
-				h.scoring,
+				h.finished,
 				(a) =>
 					EIGHTEEN_METRE_ROUNDS.includes(a.roundDefinitionId ?? '') &&
 					a.ends.some((end) => fullEnd(a, end) && end.arrows === 3 && end.subtotal === 30)
@@ -547,7 +551,7 @@ export const BADGES: BadgeDefinition[] = [
 		// Ten ring rounds only: a 9 is the gold there, and means nothing on a field or 3D face.
 		earnedAt: (h) =>
 			first(
-				h.scoring,
+				h.finished,
 				(a) =>
 					a.round?.scoreSetId === TEN_RING &&
 					a.ends.some(
@@ -560,13 +564,13 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'handfulOfArrows',
 		family: 'accuracy',
 		icon: 'target',
-		hintParams: { arrows: GROUP_ARROWS, cm: HANDFUL_CM },
+		hintParams: { arrows: GROUP_ARROWS },
 		earnedAt: (h) =>
-			first(h.scoring, (a) =>
+			first(h.finished, (a) =>
 				a.ends.some((end) => {
 					if (!fullEnd(a, end)) return false;
-					const width = groupWidthCm(a, end);
-					return width !== null && width <= HANDFUL_CM;
+					const spread = groupSpread(end);
+					return spread !== null && spread <= HANDFUL_SPREAD;
 				})
 			)
 	},

@@ -302,30 +302,29 @@ describe('streaks of days and months', () => {
 });
 
 describe('a handful of arrows', () => {
-	/** Six arrows on a circle of radius `r`, in normalised face coordinates. */
+	/** Six arrows on a circle of radius `r`, in face radii: the group they span is 2r wide. */
 	const ring = (r: number) =>
 		Array.from({ length: 6 }, (_, i) => ({
 			x: r * Math.cos((i * Math.PI) / 3),
 			y: r * Math.sin((i * Math.PI) / 3)
 		}));
 
-	it('measures the group in centimetres on the face it was shot at', () => {
-		// A 0.1 radius group spans 0.2 of the face: 24cm on a 122, 8cm on a 40.
-		const outdoor = activity({ id: 'a', ends: [end({ arrows: 6, plots: ring(0.1) })] });
-		expect(badge([outdoor], 'handfulOfArrows').earnedAt).toBeNull();
+	it('asks the same of a group whatever face it was shot at', () => {
+		const tight = [end({ arrows: 6, plots: ring(0.15) })];
+		expect(badge([activity({ id: 'a', ends: tight })], 'handfulOfArrows').earnedAt).toBe(MONDAY);
 
-		const inside = activity({
-			id: 'b',
-			startedAt: MONDAY + DAY,
-			roundDefinitionId: indoor.id,
-			round: indoor,
-			ends: [end({ arrows: 6, plots: ring(0.1) })]
-		});
-		expect(badge([inside], 'handfulOfArrows').earnedAt).toBe(MONDAY + DAY);
+		const small = buildCustomRound({ distance: 18, unit: 'm', faceSize: 40, ends: 2, arrowsPerEnd: 6 });
+		const indoors = activity({ id: 'b', roundDefinitionId: null, round: small, arrowsShot: 12, ends: tight });
+		expect(badge([indoors], 'handfulOfArrows').earnedAt).toBe(MONDAY);
+	});
+
+	it('turns down a group the gold would not cover', () => {
+		const loose = activity({ id: 'a', ends: [end({ arrows: 6, plots: ring(0.25) })] });
+		expect(badge([loose], 'handfulOfArrows').earnedAt).toBeNull();
 	});
 
 	it('ignores an end where too few arrows were plotted to be a group', () => {
-		const five = activity({ id: 'a', roundDefinitionId: indoor.id, round: indoor, ends: [end({ arrows: 6, plots: ring(0.05).slice(0, 5) })] });
+		const five = activity({ id: 'a', ends: [end({ arrows: 6, plots: ring(0.05).slice(0, 5) })] });
 		expect(badge([five], 'handfulOfArrows').earnedAt).toBeNull();
 	});
 });
@@ -436,8 +435,16 @@ describe('what an end did is judged on a whole end', () => {
 			id: 'a',
 			roundDefinitionId: null,
 			round: seven,
+			arrowsShot: 14,
 			ends: [end({ arrows: 7, plots: tight })]
 		});
 		expect(badge([partial], 'handfulOfArrows').earnedAt).toBeNull();
+	});
+
+	it('waits for the round to be finished before it looks at any end of it', () => {
+		const golden = [end({ arrows: 6, subtotal: 57, golds: 6 })];
+		const abandoned = activity({ id: 'a', arrowsShot: 6, ends: golden });
+		expect(badge([abandoned], 'goldenEnd').earnedAt).toBeNull();
+		expect(badge([activity({ id: 'b', ends: golden })], 'goldenEnd').earnedAt).toBe(MONDAY);
 	});
 });

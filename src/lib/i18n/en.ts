@@ -551,12 +551,12 @@ export const en = {
 			everyWeek: { name: 'Never Missed a Tuesday', hint: 'Shot in eight weeks running.' },
 			onPlan: { name: 'Sticks to the Plan', hint: "Hit your plan's weekly arrows four weeks running." },
 			threeRecords: { name: 'Show Off', hint: 'Set a personal best in three different rounds.' },
-			firstXAt70: { name: 'X Marks the Spot', hint: 'Shot an X in a WA round at 70m.' },
-			thirtyAt18: { name: 'Three of a Kind', hint: 'Shot an end of 30 in a WA indoor round at 18m.' },
-			goldenEnd: { name: 'All That Glitters', hint: 'Put a whole end of six arrows in the gold.' },
+			firstXAt70: { name: 'X Marks the Spot', hint: 'An X in a finished WA round at 70m.' },
+			thirtyAt18: { name: 'Three of a Kind', hint: 'An end of 30 in a finished WA indoor round at 18m.' },
+			goldenEnd: { name: 'All That Glitters', hint: 'A whole end of six arrows in the gold, in a finished round.' },
 			handfulOfArrows: {
 				name: 'A Handful of Arrows',
-				hint: 'An end of {arrows} plotted arrows inside {cm}cm on the face.'
+				hint: 'An end of {arrows} plotted arrows the gold would cover, in a finished round.'
 			},
 			iSeeRed: { name: 'I See Red', hint: 'Finished a round with no arrow below {value}.' },
 			tourist: { name: 'Tourist', hint: 'Shot at five different places.' },

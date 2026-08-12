@@ -39,8 +39,16 @@ more. A heated hall in January is not frostbite, and a wind reading taken outsid
 nothing about the archer standing inside it.
 
 **A value is a ring, not a number.** I See Red asks for nothing below 7, which only means what it
-says on the ten ring face, so it is restricted to rounds scored on it. A 7 on a field or 3D round is
-a different arrow entirely.
+says on the ten ring face, so it is restricted to rounds scored on it, as is the golden end. A 7 on
+a field or 3D round is a different arrow entirely.
+
+**What an end did is only read in a round that was finished.** An X at 70m, an end of 30 indoors, a
+golden end, a handful of arrows: all of them are looked for in complete rounds only, and then only
+in a full end of one. A round abandoned after one good volley is not what any of them mark.
+
+**A group is measured against the face, not in centimetres.** Twelve centimetres is a perfect end at
+70m and a loose one at 18m. A handful of arrows is a group the gold would cover, which is the same
+demand at every distance.
 
 ## Rules data
 
