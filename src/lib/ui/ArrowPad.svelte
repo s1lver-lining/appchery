@@ -19,6 +19,7 @@
 		mode = $bindable('number'),
 		flush = false,
 		title,
+		footer,
 		onpick,
 		onplot,
 		onclose
@@ -35,6 +36,8 @@
 		flush?: boolean;
 		/** What is being filled in, said in the panel's own strip. */
 		title?: Snippet;
+		/** The actions under the keys. Inside the panel, so putting it away takes them with it. */
+		footer?: Snippet;
 		onpick: (zone: Zone) => void;
 		onplot: (x: number, y: number) => void;
 		/** Puts the pad away. A panel that rises has to say how it goes back down. */
@@ -78,8 +81,11 @@
 	}
 </script>
 
+<!-- One block: the handle, the strip, the keys and the actions all go down together. -->
 <div
-	class="overflow-hidden bg-surface {flush ? '' : 'rounded-2xl border border-line'}"
+	class="overflow-hidden bg-surface {flush
+		? 'border-t border-line shadow-[0_-8px_16px_-12px_rgba(0,0,0,0.4)]'
+		: 'rounded-2xl border border-line'}"
 	style={pulled > 0 ? `transform: translateY(${Math.min(pulled, PULL_AWAY * 2)}px)` : ''}
 >
 	{#if flush}
@@ -160,4 +166,8 @@
 			</div>
 		{/if}
 	</div>
+
+	{#if footer}
+		{@render footer()}
+	{/if}
 </div>

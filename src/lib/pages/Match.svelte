@@ -539,7 +539,7 @@
 			<!-- The pad rises from under the sheet only while a slot is waiting for an arrow. -->
 			{#if cursor}
 				<!-- Out to both edges, unlike everything above it: the page is inset, a sheet is not. -->
-				<div class="-mx-4 -mb-4 shrink-0 border-t border-line bg-surface pb-4 shadow-[0_-8px_16px_-12px_rgba(0,0,0,0.4)]">
+				<div class="-mx-4 -mb-4 shrink-0 pb-4">
 					<ArrowPad
 						flush
 						{scoreSet}
@@ -557,32 +557,35 @@
 							</span>
 							· {cursor?.side === 'us' ? ourLabel : theirLabel}
 						{/snippet}
+
+						<!-- The row below the keys, in equal parts: neither action leads the other. -->
+						{#snippet footer()}
+							<div class="flex items-center gap-2 border-t border-line bg-sunk/60 px-3 py-2">
+								<button
+									class="flex-1 basis-0 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+									onclick={() => (cursor = null)}
+								>
+									{$t('common.done')}
+								</button>
+								<button
+									class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand-text"
+									onclick={() => (scanning = true)}
+								>
+									<Icon name="camera" size={18} />
+									{$t('auto.open')}
+								</button>
+								{#if rows.some((row) => row.endNo === cursor?.endNo)}
+									<button
+										class="flex-1 basis-0 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
+										onclick={() => cursor && clearEnd(cursor.endNo)}
+									>
+										{$t('match.deleteEnd')}
+									</button>
+								{/if}
+							</div>
+						{/snippet}
 					</ArrowPad>
 
-					<!-- The row below the keys, laid out the way the round page lays its own out. -->
-					<div class="flex items-center gap-2 border-t border-line bg-sunk/60 px-3 py-2">
-						<button
-							class="rounded-lg border border-line bg-surface px-3 py-2 text-sm"
-							onclick={() => (cursor = null)}
-						>
-							{$t('common.done')}
-						</button>
-						<button
-							class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand-text"
-							onclick={() => (scanning = true)}
-						>
-							<Icon name="camera" size={18} />
-							{$t('auto.open')}
-						</button>
-						{#if rows.some((row) => row.endNo === cursor?.endNo)}
-							<button
-								class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
-								onclick={() => cursor && clearEnd(cursor.endNo)}
-							>
-								{$t('match.deleteEnd')}
-							</button>
-						{/if}
-					</div>
 				</div>
 			{:else}
 				<button
