@@ -103,6 +103,19 @@
 	let held = false;
 	let holdTimer: ReturnType<typeof setTimeout> | null = null;
 
+	/**
+	 * The tab bar moves on the press rather than on the release. A tap is a press and a release with
+	 * a hundred milliseconds and a browser's click delay between them, and on a page switch that
+	 * gap is the whole of what makes an app feel slow.
+	 */
+	function pressTab(event: PointerEvent, href: string) {
+		holdTab(href);
+		// Left button and primary touch only: the middle click and the long press have their own jobs.
+		if (event.button !== 0) return;
+		event.preventDefault();
+		if ($page.url.pathname !== href) goto(href);
+	}
+
 	function holdTab(href: string) {
 		cancelHold();
 		if (!holdsList(href)) return;
@@ -117,11 +130,10 @@
 		holdTimer = null;
 	}
 
+	/** The press already navigated, so the click it turns into has nothing left to do. */
 	function openTab(event: MouseEvent) {
-		// The press that opened the list already navigated: the click behind it must not undo that.
-		if (!held) return;
-		held = false;
 		event.preventDefault();
+		held = false;
 	}
 
 	const isActive = (href: string) =>
@@ -169,7 +181,7 @@
 						{isActive(tab.href) ? 'text-brand-text' : 'text-muted'}"
 					aria-current={isActive(tab.href) ? 'page' : undefined}
 					onclick={openTab}
-					onpointerdown={() => holdTab(tab.href)}
+					onpointerdown={(event) => pressTab(event, tab.href)}
 					onpointerup={cancelHold}
 					onpointerleave={cancelHold}
 					onpointercancel={cancelHold}

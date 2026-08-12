@@ -143,6 +143,9 @@ export const en = {
 		reset: 'Reset',
 		nextTurn: 'Next turn',
 		turn: 'Turn {n}',
+		edit: 'Edit the times',
+		ruleTime: 'World Archery: {time}',
+		seconds: 'sec',
 		times: 'Shooting times',
 		preset: {
 			qualification6: 'Qualification, six arrows',

@@ -253,6 +253,37 @@ export const timerSound = flag('appchery.timerSound', true);
 export const timerPreset = storedString('appchery.timerPreset');
 
 /**
+ * Times changed by hand, by preset name. Kept apart from the rules rather than replacing them: a
+ * club that shoots three minute ends still wants the World Archery times to be what it starts from,
+ * and an emptied field falls back to them rather than to zero.
+ */
+export const timerTimes = storedNumbers('appchery.timerTimes');
+
+function storedNumbers(key: string) {
+	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	let initial: Record<string, number> = {};
+	// A hand edited or half written value must not take the page down with it.
+	try {
+		const parsed = saved ? JSON.parse(saved) : {};
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			initial = Object.fromEntries(
+				Object.entries(parsed).filter(
+					([, value]) => typeof value === 'number' && Number.isFinite(value) && value > 0
+				)
+			) as Record<string, number>;
+		}
+	} catch {
+		initial = {};
+	}
+
+	const store = writable<Record<string, number>>(initial);
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value));
+	});
+	return store;
+}
+
+/**
  * Whether everything that moves on its own is stopped: the ripple when the app opens, the ring on
  * the sessions list, the fireworks over a record. Off by default, and turning it on is a choice
  * about the app rather than about the device, which is why it is not read from the system setting.

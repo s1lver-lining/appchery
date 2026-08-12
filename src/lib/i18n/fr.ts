@@ -145,6 +145,9 @@ export const fr: Dictionary = {
 		reset: 'Réinitialiser',
 		nextTurn: 'Tour suivant',
 		turn: 'Tour {n}',
+		edit: 'Modifier les temps',
+		ruleTime: 'World Archery : {time}',
+		seconds: 'sec',
 		times: 'Temps de tir',
 		preset: {
 			qualification6: 'Qualification, six flèches',

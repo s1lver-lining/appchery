@@ -9,7 +9,8 @@
 		type TimerPreset
 	} from '$lib/domain/timer';
 	import { whistle, whistleMs, unlockSound } from '$lib/whistle';
-	import { timerSound, timerPreset } from '$lib/prefs';
+	import { timerSound, timerPreset, timerTimes } from '$lib/prefs';
+	import Sheet from '$lib/ui/Sheet.svelte';
 	import { originOf, setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -23,9 +24,12 @@
 	const origin = $derived(originOf($page.url, '/'));
 	$effect(() => setPageUp(origin));
 
-	const preset = $derived(
-		TIMER_PRESETS.find((entry) => entry.key === $timerPreset) ?? TIMER_PRESETS[0]
+	/** The rules' times, with anything the archer has changed put over the top of them. */
+	const times = $derived(
+		TIMER_PRESETS.map((entry) => ({ ...entry, seconds: $timerTimes[entry.key] ?? entry.seconds }))
 	);
+	const preset = $derived(times.find((entry) => entry.key === $timerPreset) ?? times[0]);
+	let editing = $state(false);
 
 	let startedAt = $state<number | null>(null);
 	let now = $state(Date.now());
@@ -79,6 +83,18 @@
 			lock = null;
 		};
 	});
+
+	/** An emptied field falls back to what the rules say rather than to a clock of zero seconds. */
+	function setTime(key: string, raw: string) {
+		const seconds = Math.round(Number(raw));
+		startedAt = null;
+		timerTimes.update((all) => {
+			const next = { ...all };
+			if (!Number.isFinite(seconds) || seconds < 5) delete next[key];
+			else next[key] = seconds;
+			return next;
+		});
+	}
 
 	function choose(next: TimerPreset) {
 		timerPreset.set(next.key);
@@ -166,9 +182,14 @@
 	</div>
 
 	<section>
-		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('timer.times')}</h2>
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-muted">{$t('timer.times')}</h2>
+			<button class="text-sm font-medium text-brand-text" onclick={() => (editing = true)}>
+				{$t('timer.edit')}
+			</button>
+		</div>
 		<div class="grid gap-2 sm:grid-cols-2">
-			{#each TIMER_PRESETS as entry (entry.key)}
+			{#each times as entry (entry.key)}
 				<button
 					class="flex items-center gap-3 rounded-xl border p-3 text-left
 						{preset.key === entry.key ? 'border-brand bg-brand/5' : 'border-line bg-surface'}"
@@ -218,3 +239,46 @@
 		<p class="mt-2 text-xs text-muted">{$t('timer.signalHint')}</p>
 	</section>
 </div>
+
+<!-- The rules' times are a starting point: a club shoots to its own clock and this is where it is set. -->
+<Sheet open={editing} title={$t('timer.edit')} onclose={() => (editing = false)}>
+	<ul class="space-y-2">
+		{#each times as entry (entry.key)}
+			{@const rule = TIMER_PRESETS.find((preset) => preset.key === entry.key)!}
+			<li class="flex items-center gap-2">
+				<span class="min-w-0 flex-1">
+					<span class="block truncate text-sm">{$t(`timer.preset.${entry.key}`)}</span>
+					<span class="block text-[11px] text-muted">
+						{$t('timer.ruleTime', { time: formatClock(rule.seconds) })}
+					</span>
+				</span>
+				<input
+					type="number"
+					inputmode="numeric"
+					min="5"
+					step="5"
+					class="tabular w-20 shrink-0 rounded-lg border border-line bg-bg p-2 text-center text-sm text-ink"
+					aria-label={$t(`timer.preset.${entry.key}`)}
+					value={entry.seconds}
+					onchange={(event) => setTime(entry.key, event.currentTarget.value)}
+				/>
+				<span class="w-6 shrink-0 text-xs text-muted">{$t('timer.seconds')}</span>
+			</li>
+		{/each}
+	</ul>
+
+	{#snippet footer()}
+		<button
+			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+			onclick={() => timerTimes.set({})}
+		>
+			{$t('timer.reset')}
+		</button>
+		<button
+			class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+			onclick={() => (editing = false)}
+		>
+			{$t('common.done')}
+		</button>
+	{/snippet}
+</Sheet>
