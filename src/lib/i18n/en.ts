@@ -78,7 +78,11 @@ export const en = {
 		oneActivity: '1 act.',
 		practice: 'Practice',
 		competition: 'Competition',
-		qualification: 'Qualification'
+		qualification: 'Qualification',
+		/* Fallen back on where a full name would not fit, as on the statistics filter chips. */
+		practiceShort: 'Prac.',
+		competitionShort: 'Compet.',
+		qualificationShort: 'Qual.'
 	},
 	session: {
 		bow: 'Bow',

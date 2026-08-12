@@ -25,7 +25,8 @@
 	}: {
 		filter: StatsFilter;
 		facetsOf: (dimension: StatsDimension) => Facet[];
-		labelOf: (dimension: StatsDimension, key: string) => string;
+		/** Asked for a shorter name when the row would otherwise not fit on one line. */
+		labelOf: (dimension: StatsDimension, key: string, short?: boolean) => string;
 		/** What the current filter leaves, so the figures below are never read as the whole history. */
 		summary: string;
 	} = $props();
@@ -52,7 +53,7 @@
 		const chosen = filter[dimension];
 		if (chosen.length === 0) return $t(`stats.filter.${dimension}`);
 		if (chosen.length === 1) {
-			const label = labelOf(dimension, chosen[0]);
+			const label = labelOf(dimension, chosen[0], short);
 			// A round name is the longest thing on the row, and its tail is the part that repeats.
 			return short && label.length > 12 ? `${label.slice(0, 11).trimEnd()}…` : label;
 		}
@@ -79,24 +80,39 @@
 	 * sideways hides the chips on its right, and an archer never finds out they are there.
 	 */
 	const FLOOR = 0.75;
+	const ICON = 13;
 	let available = $state(0);
 	let fullWidth = $state(0);
 	let shortWidth = $state(0);
+	let floorWidth = $state(0);
 
-	const short = $derived(available > 0 && fullWidth > available);
+	/** Two pixels of slack, because a row solved to fit exactly still rounds its way over the edge. */
+	const room = $derived(Math.max(0, available - 2));
+
+	const short = $derived(available > 0 && fullWidth > room);
 	/** Below the floor the labels would be unreadable, so the row is allowed a second line instead. */
-	const wraps = $derived(short && shortWidth * FLOOR > available + 1);
-	/** A row that has given up and wrapped is drawn full size: shrinking it too would help nobody. */
-	const scale = $derived(
-		wraps || !short || shortWidth <= available ? 1 : Math.max(FLOOR, available / shortWidth)
-	);
+	const wraps = $derived(short && floorWidth > room);
+
+	/**
+	 * Measured at both ends rather than multiplied out: the chevrons and the gaps between chips do
+	 * not shrink with the text, so a row at three quarter size is wider than three quarters of a row,
+	 * and guessing at it is what let the chips run over the margin.
+	 */
+	const scale = $derived.by(() => {
+		if (wraps || !short || shortWidth <= room) return 1;
+		const slope = (shortWidth - floorWidth) / (1 - FLOOR);
+		if (slope <= 0) return FLOOR;
+		const fixed = shortWidth - slope;
+		return Math.min(1, Math.max(FLOOR, (room - fixed) / slope));
+	});
+	const iconSize = $derived(Math.round(ICON * scale));
 
 	function clear(dimension: StatsDimension) {
 		filter = { ...filter, [dimension]: [] };
 	}
 </script>
 
-{#snippet chip(label: string, on: boolean, onclick?: () => void)}
+{#snippet chip(label: string, on: boolean, icon: number, onclick?: () => void)}
 	<!-- Sized in em so one font size on the row scales the padding and the gaps with the text. -->
 	<button
 		class="flex shrink-0 items-center gap-[0.35em] rounded-full border font-medium whitespace-nowrap
@@ -107,34 +123,46 @@
 		tabindex={onclick ? 0 : -1}
 	>
 		{label}
-		<span class="rotate-180"><Icon name="chevronUp" size={13} /></span>
+		<span class="rotate-180"><Icon name="chevronUp" size={icon} /></span>
 	</button>
 {/snippet}
 
+{#snippet row(labels: { key: string; label: string; on: boolean }[], icon: number)}
+	{#each labels as item (item.key)}
+		{@render chip(item.label, item.on, icon)}
+	{/each}
+{/snippet}
+
 <div class="relative" bind:clientWidth={available}>
-	<div
-		class="flex gap-2 text-sm {wraps ? 'flex-wrap' : ''}"
-		style="font-size: {scale * 0.875}rem"
-	>
+	<div class="flex gap-[0.6em] {wraps ? 'flex-wrap' : ''}" style="font-size: {scale * 0.875}rem">
 		{#each shown(short) as item (item.key)}
-			{@render chip(item.label, item.on, () => (openSheet = item.key as StatsDimension | 'period'))}
+			{@render chip(
+				item.label,
+				item.on,
+				iconSize,
+				() => (openSheet = item.key as StatsDimension | 'period')
+			)}
 		{/each}
 	</div>
 
 	<!--
-		The same row twice off screen, at full size and abbreviated, because the visible row cannot be
-		measured at a size it is not being drawn at without the measurement chasing its own tail.
+		The same row three times off screen: full size, abbreviated, and abbreviated at the smallest
+		size allowed. The visible row cannot be measured at a size it is not being drawn at without the
+		measurement chasing its own tail, and the smallest is what says whether one line is possible.
 	-->
-	<div class="pointer-events-none invisible absolute top-0 left-0 flex text-sm" aria-hidden="true">
-		<div class="flex gap-2" bind:clientWidth={fullWidth}>
-			{#each shown(false) as item (item.key)}
-				{@render chip(item.label, item.on)}
-			{/each}
+	<div class="pointer-events-none invisible absolute top-0 left-0 flex" aria-hidden="true">
+		<div class="flex gap-[0.6em] text-sm" bind:clientWidth={fullWidth}>
+			{@render row(shown(false), ICON)}
 		</div>
-		<div class="flex gap-2" bind:clientWidth={shortWidth}>
-			{#each shown(true) as item (item.key)}
-				{@render chip(item.label, item.on)}
-			{/each}
+		<div class="flex gap-[0.6em] text-sm" bind:clientWidth={shortWidth}>
+			{@render row(shown(true), ICON)}
+		</div>
+		<div
+			class="flex gap-[0.6em]"
+			style="font-size: {FLOOR * 0.875}rem"
+			bind:clientWidth={floorWidth}
+		>
+			{@render row(shown(true), Math.round(ICON * FLOOR))}
 		</div>
 	</div>
 </div>

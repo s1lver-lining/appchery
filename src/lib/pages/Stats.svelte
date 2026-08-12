@@ -139,9 +139,9 @@
 		new Map(scored.map((activity) => [roundKey(activity), roundName(activity.round)]))
 	);
 
-	function labelOf(dimension: StatsDimension, key: string): string {
+	function labelOf(dimension: StatsDimension, key: string, short = false): string {
 		if (dimension === 'bows') return bowLabel(key);
-		if (dimension === 'kinds') return $t(`sessions.${key}`);
+		if (dimension === 'kinds') return $t(`sessions.${key}${short ? 'Short' : ''}`);
 		if (dimension === 'wind') return $t(`stats.wind.${key}`);
 		return roundNames.get(key) ?? key;
 	}

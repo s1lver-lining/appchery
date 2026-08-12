@@ -79,7 +79,11 @@ export const fr: Dictionary = {
 		oneActivity: '1 act.',
 		practice: 'Entraînement',
 		competition: 'Compétition',
-		qualification: 'Qualification'
+		qualification: 'Qualification',
+		/* Utilisés là où le nom complet ne tient pas, comme sur les filtres des statistiques. */
+		practiceShort: 'Entr.',
+		competitionShort: 'Compét.',
+		qualificationShort: 'Qualif.'
 	},
 	session: {
 		bow: 'Arc',
