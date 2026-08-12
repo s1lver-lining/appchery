@@ -12,6 +12,9 @@ import {
 	distribution,
 	windBand,
 	bandBy,
+	roundKey,
+	volumeSeries,
+	pickGrain,
 	type ScoredActivity
 } from './stats';
 import { getRound } from './rounds/seed';
@@ -99,22 +102,47 @@ describe('isPersonalBest', () => {
 			round: other
 		});
 		expect(isPersonalBest(best, [...history, best, later, elsewhere])).toBe(false);
-		expect(isPersonalBest(activity({ id: 'c', startedAt: 3, totalScore: 660 }), [...history, later, elsewhere])).toBe(true);
+		expect(
+			isPersonalBest(activity({ id: 'c', startedAt: 3, totalScore: 660 }), [
+				...history,
+				later,
+				elsewhere
+			])
+		).toBe(true);
 	});
 
 	it('compares a custom round against others of the same shape', () => {
 		// A round built by hand has no id, so 6x6 at 18m is measured against every other 6x6 at 18m.
-		const shape = buildCustomRound({ ends: 6, arrowsPerEnd: 6, faceSize: 40, distance: 18, unit: 'm', name: '' });
+		const shape = buildCustomRound({
+			ends: 6,
+			arrowsPerEnd: 6,
+			faceSize: 40,
+			distance: 18,
+			unit: 'm',
+			name: ''
+		});
 		const custom = (id: string, startedAt: number, totalScore: number) =>
-			activity({ id, startedAt, totalScore, arrowsShot: 36, roundDefinitionId: null, round: shape });
+			activity({
+				id,
+				startedAt,
+				totalScore,
+				arrowsShot: 36,
+				roundDefinitionId: null,
+				round: shape
+			});
 		const earlier = custom('a', 1, 300);
 		const best = custom('b', 2, 320);
 		expect(isPersonalBest(best, [earlier, best])).toBe(true);
 		expect(isPersonalBest(custom('c', 3, 310), [earlier, best])).toBe(false);
 	});
 
-	it('rejects an unfinished round, whatever it scored' , () => {
-		const half = activity({ id: 'c', startedAt: 3, totalScore: 700, arrowsShot: 36 });
+	it('rejects an unfinished round, whatever it scored', () => {
+		const half = activity({
+			id: 'c',
+			startedAt: 3,
+			totalScore: 700,
+			arrowsShot: 36
+		});
 		expect(isPersonalBest(half, [...history, half])).toBe(false);
 	});
 });
@@ -134,7 +162,12 @@ describe('summariseByRound', () => {
 		const other = getRound('wa-indoor-18m')!;
 		const summaries = summariseByRound([
 			activity({ id: 'a', totalScore: 600 }),
-			activity({ id: 'b', totalScore: 540, roundDefinitionId: other.id, round: other })
+			activity({
+				id: 'b',
+				totalScore: 540,
+				roundDefinitionId: other.id,
+				round: other
+			})
 		]);
 		expect(summaries).toHaveLength(2);
 	});
@@ -142,7 +175,12 @@ describe('summariseByRound', () => {
 	it('groups custom rounds by shape, so the same round shot twice compares with itself', () => {
 		const custom = { ...round, id: 'x', isBuiltin: false, name: 'Mine' };
 		const summaries = summariseByRound([
-			activity({ id: 'a', roundDefinitionId: null, round: custom, totalScore: 500 }),
+			activity({
+				id: 'a',
+				roundDefinitionId: null,
+				round: custom,
+				totalScore: 500
+			}),
 			activity({
 				id: 'b',
 				roundDefinitionId: null,
@@ -161,7 +199,9 @@ describe('summariseByRound', () => {
 		expect(few[0].trend).toBeNull();
 
 		const many = summariseByRound(
-			[1, 2, 3, 4, 5, 6].map((i) => activity({ id: `b${i}`, startedAt: i, totalScore: 500 + i * 10 }))
+			[1, 2, 3, 4, 5, 6].map((i) =>
+				activity({ id: `b${i}`, startedAt: i, totalScore: 500 + i * 10 })
+			)
 		);
 		expect(many[0].trend).not.toBeNull();
 		expect(many[0].trend!).toBeGreaterThan(0);
@@ -340,5 +380,143 @@ describe('bandBy', () => {
 	it('drops what it cannot place', () => {
 		const bands = bandBy([activity({ id: 'a' })], () => null);
 		expect(bands).toEqual([]);
+	});
+});
+
+describe('roundKey', () => {
+	it('groups a hand built round with the standard one it copies', () => {
+		const built = buildCustomRound({
+			name: 'My practice',
+			distance: 70,
+			unit: 'm',
+			faceSize: 122,
+			ends: 12,
+			arrowsPerEnd: 6
+		});
+		expect(roundKey(activity({ id: 'a', round: built, roundDefinitionId: null }))).toBe(
+			roundKey(activity({ id: 'b' }))
+		);
+	});
+
+	it('separates two rounds that differ only in distance', () => {
+		const near = buildCustomRound({
+			distance: 50,
+			unit: 'm',
+			faceSize: 122,
+			ends: 12,
+			arrowsPerEnd: 6
+		});
+		expect(roundKey(activity({ id: 'a', round: near }))).not.toBe(roundKey(activity({ id: 'b' })));
+	});
+});
+
+describe('summariseByRound', () => {
+	it('names a standard shape after the round the rules define, whatever it was called', () => {
+		const built = buildCustomRound({
+			name: 'Sunday 70',
+			distance: 70,
+			unit: 'm',
+			faceSize: 122,
+			ends: 12,
+			arrowsPerEnd: 6
+		});
+		const [summary] = summariseByRound([
+			activity({ id: 'a', round: built, roundDefinitionId: null })
+		]);
+		expect(summary.name).toBe('WA 720 (70m)');
+		expect(summary.known).toBe(true);
+	});
+
+	it('describes a practice shape by what it is made of, and marks it unknown', () => {
+		const odd = buildCustomRound({
+			distance: 32,
+			unit: 'm',
+			faceSize: 80,
+			ends: 5,
+			arrowsPerEnd: 3
+		});
+		const [summary] = summariseByRound([
+			activity({
+				id: 'a',
+				round: odd,
+				roundDefinitionId: null,
+				arrowsShot: 15
+			})
+		]);
+		expect(summary.name).toBe('32m · 80cm · 15');
+		expect(summary.known).toBe(false);
+	});
+});
+
+describe('volumeSeries', () => {
+	const day = 86_400_000;
+	const monday = new Date(2025, 2, 3).getTime();
+
+	it('fills every bucket between the two ends, so time off reads as a gap', () => {
+		const series = volumeSeries(
+			[activity({ id: 'a', startedAt: monday, arrowsShot: 72 })],
+			monday,
+			monday + 3 * day,
+			'day',
+			() => 'practice'
+		);
+		expect(series.map((b) => b.arrows)).toEqual([72, 0, 0, 0]);
+		expect(series[1].perArrow).toBeNull();
+	});
+
+	it('splits each bucket by the key the bars are coloured on', () => {
+		const [bucket] = volumeSeries(
+			[
+				activity({
+					id: 'a',
+					startedAt: monday,
+					arrowsShot: 72,
+					totalScore: 600
+				}),
+				activity({
+					id: 'b',
+					startedAt: monday + day,
+					arrowsShot: 36,
+					totalScore: 300
+				})
+			],
+			monday,
+			monday + 2 * day,
+			'week',
+			(a) => (a.id === 'a' ? 'practice' : 'competition')
+		);
+		expect(bucket.byKey).toEqual({
+			practice: { arrows: 72, rounds: 1 },
+			competition: { arrows: 36, rounds: 1 }
+		});
+		expect(bucket.rounds).toBe(2);
+		expect(bucket.perArrow).toBeCloseTo(900 / 108);
+	});
+
+	it('counts arrows from rounds that were never finished, because they were still loosed', () => {
+		const [bucket] = volumeSeries(
+			[
+				activity({
+					id: 'a',
+					startedAt: monday,
+					arrowsShot: 12,
+					totalScore: 100
+				})
+			],
+			monday,
+			monday,
+			'day',
+			() => 'practice'
+		);
+		expect(bucket.arrows).toBe(12);
+	});
+});
+
+describe('pickGrain', () => {
+	const day = 86_400_000;
+	it('keeps the bars finger wide however long the window is', () => {
+		expect(pickGrain(0, 30 * day)).toBe('day');
+		expect(pickGrain(0, 200 * day)).toBe('week');
+		expect(pickGrain(0, 900 * day)).toBe('month');
 	});
 });

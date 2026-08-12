@@ -1,5 +1,6 @@
 import { isRoundComplete } from './rounds/geometry';
-import { startOfDay } from './dates';
+import { startOfDay, startOfWeek } from './dates';
+import { ROUNDS, WA_10_RING, getScoreSet } from './rounds/seed';
 import type { RoundDefinition } from './rounds/types';
 
 export interface ScoredActivity {
@@ -57,11 +58,18 @@ export interface DayVolume {
  * One bar per day over the last `days`, contiguous. A month of monthly bars is a single bar, which
  * says nothing: over a short window the useful grain is the day.
  */
-export function dailyVolume(activities: ScoredActivity[], days = 30, now = Date.now()): DayVolume[] {
+export function dailyVolume(
+	activities: ScoredActivity[],
+	days = 30,
+	now = Date.now()
+): DayVolume[] {
 	const perDay = new Map<number, number>();
 	for (const activity of activities) {
 		if (activity.arrowsShot <= 0) continue;
-		perDay.set(startOfDay(activity.startedAt), (perDay.get(startOfDay(activity.startedAt)) ?? 0) + activity.arrowsShot);
+		perDay.set(
+			startOfDay(activity.startedAt),
+			(perDay.get(startOfDay(activity.startedAt)) ?? 0) + activity.arrowsShot
+		);
 	}
 
 	const today = new Date(startOfDay(now));
@@ -72,6 +80,90 @@ export function dailyVolume(activities: ScoredActivity[], days = 30, now = Date.
 		series.push({ at, arrows: perDay.get(at) ?? 0 });
 	}
 	return series;
+}
+
+export type Grain = 'day' | 'week' | 'month';
+
+const DAY_MS = 86_400_000;
+
+/** Enough bars to show a shape, few enough to stay a finger wide on a phone. */
+export function pickGrain(from: number, to: number): Grain {
+	const days = (to - from) / DAY_MS;
+	if (days <= 70) return 'day';
+	if (days <= 400) return 'week';
+	return 'month';
+}
+
+function startOfGrain(at: number, grain: Grain): number {
+	if (grain === 'day') return startOfDay(at);
+	if (grain === 'week') return startOfWeek(at);
+	const date = new Date(at);
+	return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+}
+
+function nextGrain(at: number, grain: Grain): number {
+	// Stepped through the Date constructor so a daylight saving change cannot drop a bucket.
+	const date = new Date(at);
+	if (grain === 'day')
+		return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 1).getTime();
+	if (grain === 'week')
+		return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7).getTime();
+	return new Date(date.getFullYear(), date.getMonth() + 1, 1).getTime();
+}
+
+export interface VolumeBucket {
+	/** Start of the bucket, local midnight, which doubles as its key. */
+	at: number;
+	arrows: number;
+	rounds: number;
+	/** Score per arrow over the bucket, null where nothing was shot rather than a misleading zero. */
+	perArrow: number | null;
+	/** Split by the key the bars are coloured on, usually the kind of session. */
+	byKey: Record<string, { arrows: number; rounds: number }>;
+}
+
+/**
+ * The main chart's series: contiguous buckets between two instants, each split by a key so the bars
+ * can be stacked. Every arrow counts, finished round or not, because volume is what was loosed.
+ */
+export function volumeSeries(
+	activities: ScoredActivity[],
+	from: number,
+	to: number,
+	grain: Grain,
+	keyOf: (activity: ScoredActivity) => string
+): VolumeBucket[] {
+	const buckets = new Map<number, VolumeBucket & { score: number }>();
+	for (let at = startOfGrain(from, grain); at <= to; at = nextGrain(at, grain)) {
+		buckets.set(at, {
+			at,
+			arrows: 0,
+			rounds: 0,
+			perArrow: null,
+			byKey: {},
+			score: 0
+		});
+	}
+
+	for (const activity of activities) {
+		if (activity.arrowsShot <= 0) continue;
+		const bucket = buckets.get(startOfGrain(activity.startedAt, grain));
+		if (!bucket) continue;
+		const key = keyOf(activity);
+		bucket.arrows += activity.arrowsShot;
+		bucket.rounds += 1;
+		bucket.score += activity.totalScore;
+		const slice = bucket.byKey[key] ?? { arrows: 0, rounds: 0 };
+		bucket.byKey[key] = {
+			arrows: slice.arrows + activity.arrowsShot,
+			rounds: slice.rounds + 1
+		};
+	}
+
+	return [...buckets.values()].map(({ score, ...bucket }) => ({
+		...bucket,
+		perArrow: bucket.arrows > 0 ? score / bucket.arrows : null
+	}));
 }
 
 export interface Overview {
@@ -107,7 +199,8 @@ export function overview(activities: ScoredActivity[], months = 12): Overview {
 	const days = new Set<string>();
 	for (const a of shot) {
 		perMonth.set(monthKey(a.startedAt), (perMonth.get(monthKey(a.startedAt)) ?? 0) + a.arrowsShot);
-		const name = a.round?.name ?? 'Round';
+		// Named by what was shot rather than by what it was called, the way the round cards group.
+		const name = roundName(a.round);
 		perRound.set(name, (perRound.get(name) ?? 0) + a.arrowsShot);
 		days.add(new Date(a.startedAt).toDateString());
 	}
@@ -116,7 +209,10 @@ export function overview(activities: ScoredActivity[], months = 12): Overview {
 	const byMonth: MonthVolume[] = [];
 	for (let i = months - 1; i >= 0; i--) {
 		const at = new Date(now.getFullYear(), now.getMonth() - i, 1).getTime();
-		byMonth.push({ month: monthKey(at), arrows: perMonth.get(monthKey(at)) ?? 0 });
+		byMonth.push({
+			month: monthKey(at),
+			arrows: perMonth.get(monthKey(at)) ?? 0
+		});
 	}
 
 	return {
@@ -136,6 +232,11 @@ export function overview(activities: ScoredActivity[], months = 12): Overview {
 export interface RoundSummary {
 	key: string;
 	name: string;
+	/**
+	 * Whether the shape matches a round the rules define. Practice shapes are still summarised, but
+	 * the page keeps its per round cards to the standard distances.
+	 */
+	known: boolean;
 	/** Best score, and the activity that holds it. */
 	best: ScoredActivity;
 	/** Chronological, oldest first, for the trend line. */
@@ -157,8 +258,7 @@ export function summariseByRound(activities: ScoredActivity[]): RoundSummary[] {
 
 	const buckets = new Map<string, ScoredActivity[]>();
 	for (const activity of complete) {
-		// Custom rounds get their own identity by shape, so two 3x3 at 25m compare against each other.
-		const key = activity.roundDefinitionId ?? shapeKey(activity.round);
+		const key = roundKey(activity);
 		const bucket = buckets.get(key);
 		if (bucket) bucket.push(activity);
 		else buckets.set(key, [activity]);
@@ -169,21 +269,58 @@ export function summariseByRound(activities: ScoredActivity[]): RoundSummary[] {
 			const history = [...list].sort((a, b) => a.startedAt - b.startedAt);
 			const best = history.reduce((top, a) => (compareScores(a, top) > 0 ? a : top));
 			const average = history.reduce((sum, a) => sum + a.totalScore, 0) / history.length;
+			const standard = standardRound(history[0].round);
 			return {
 				key,
-				name: history[0].round?.name ?? key,
+				name: roundName(history[0].round),
+				known: standard !== null,
 				best,
 				history,
 				average,
 				trend: trendOf(history)
 			};
 		})
-		.sort((a, b) => b.history[b.history.length - 1].startedAt - a.history[a.history.length - 1].startedAt);
+		.sort(
+			(a, b) =>
+				b.history[b.history.length - 1].startedAt - a.history[a.history.length - 1].startedAt
+		);
 }
 
-/** What a round is compared against: its identity, or its shape when it was built by hand. */
+/**
+ * What a round is compared against: what was shot, never what it was called. A WA 720 picked from
+ * the list and the same twelve ends built by hand are one round type, and two rounds sharing a name
+ * but not a distance are not.
+ */
 export function roundKey(activity: ScoredActivity): string {
-	return activity.roundDefinitionId ?? shapeKey(activity.round);
+	return shapeKey(activity.round);
+}
+
+/** The round the rules define with this shape, null for a practice shape of its own invention. */
+export function standardRound(round: RoundDefinition | null): RoundDefinition | null {
+	if (!round) return null;
+	return ROUNDS.find((known) => shapeKey(known) === shapeKey(round)) ?? null;
+}
+
+/** What an unnamed shape is called: what it is made of, in the order an archer would say it. */
+export function shapeName(round: RoundDefinition | null): string {
+	if (!round) return '?';
+	const stage = round.stages[0];
+	if (!stage) return '?';
+	const distance = stage.distance ? `${stage.distance.value}${stage.distance.unit}` : '?';
+	const arrows = round.stages.reduce((sum, s) => sum + s.ends * s.arrowsPerEnd, 0);
+	const shape = `${distance} · ${stage.faceSize}cm · ${arrows}`;
+	// The face is named only when it is not the ten ring everything else on the page assumes.
+	if (round.scoreSetId === WA_10_RING.id) return shape;
+	return `${shape} · ${getScoreSet(round.scoreSetId).name}`;
+}
+
+/**
+ * What one round type is called, wherever it is listed. Read from the round rather than from a
+ * summary, so a round still being shot is named too: it has not earned a card yet, but it is on the
+ * chart and in the filters from the first arrow.
+ */
+export function roundName(round: RoundDefinition | null): string {
+	return standardRound(round)?.name ?? shapeName(round);
 }
 
 /**
@@ -193,16 +330,25 @@ export function roundKey(activity: ScoredActivity): string {
 export function isPersonalBest(activity: ScoredActivity, history: ScoredActivity[]): boolean {
 	if (!isComplete(activity)) return false;
 	const earlier = history.filter(
-		(a) => a.id !== activity.id && a.startedAt <= activity.startedAt && isComplete(a) && roundKey(a) === roundKey(activity)
+		(a) =>
+			a.id !== activity.id &&
+			a.startedAt <= activity.startedAt &&
+			isComplete(a) &&
+			roundKey(a) === roundKey(activity)
 	);
 	return earlier.length > 0 && earlier.every((a) => compareScores(activity, a) > 0);
 }
 
+/** The score set is part of the shape: identical geometry on a field face is a different round. */
 function shapeKey(round: RoundDefinition | null): string {
 	if (!round) return 'unknown';
-	return round.stages
-		.map((s) => `${s.distance?.value ?? 'u'}${s.distance?.unit ?? ''}-${s.faceSize}-${s.ends}x${s.arrowsPerEnd}`)
+	const stages = round.stages
+		.map(
+			(s) =>
+				`${s.distance?.value ?? 'u'}${s.distance?.unit ?? ''}-${s.faceSize}-${s.ends}x${s.arrowsPerEnd}`
+		)
 		.join('|');
+	return `${round.scoreSetId}:${stages}`;
 }
 
 /** Ties break on tens then Xs, the standard rule. */
@@ -241,7 +387,12 @@ export function progression(history: ScoredActivity[], window = 5): ProgressionP
 		const rolling = slice.reduce((sum, a) => sum + a.totalScore, 0) / slice.length;
 		const isBest = activity.totalScore > best;
 		if (isBest) best = activity.totalScore;
-		return { at: activity.startedAt, score: activity.totalScore, rolling, isBest };
+		return {
+			at: activity.startedAt,
+			score: activity.totalScore,
+			rolling,
+			isBest
+		};
 	});
 }
 
@@ -312,7 +463,12 @@ export function distribution(shots: { value: number; zoneLabel: string }[]): Val
 	for (const shot of shots) {
 		const entry = counts.get(shot.zoneLabel);
 		if (entry) entry.count += 1;
-		else counts.set(shot.zoneLabel, { label: shot.zoneLabel, value: shot.value, count: 1 });
+		else
+			counts.set(shot.zoneLabel, {
+				label: shot.zoneLabel,
+				value: shot.value,
+				count: 1
+			});
 	}
 	// Highest scoring first, X ahead of the ten it ties with.
 	return [...counts.values()].sort(
@@ -342,6 +498,20 @@ export function windBand(speedKmh: number): string {
 	return (WIND_BANDS.find((band) => speedKmh < band.upTo) ?? WIND_BANDS[3]).key;
 }
 
+/** Cut where a shooting day changes: numb fingers, a jumper on, comfortable, and too hot to hold. */
+const TEMPERATURE_BANDS = [
+	{ key: 'cold', upTo: 5 },
+	{ key: 'cool', upTo: 15 },
+	{ key: 'mild', upTo: 25 },
+	{ key: 'hot', upTo: Infinity }
+] as const;
+
+export function temperatureBand(celsius: number): string {
+	return (TEMPERATURE_BANDS.find((band) => celsius < band.upTo) ?? TEMPERATURE_BANDS[3]).key;
+}
+
+export const TEMPERATURE_BAND_KEYS = TEMPERATURE_BANDS.map((band) => band.key);
+
 /** Groups anything with a key into bands of score per arrow, dropping bands nothing was shot in. */
 export function bandBy<T>(
 	activities: ScoredActivity[],
@@ -360,7 +530,10 @@ export function bandBy<T>(
 		bands.set(key, band);
 	}
 
-	const result = [...bands.values()].map((band) => ({ ...band, perArrow: band.perArrow / band.arrows }));
+	const result = [...bands.values()].map((band) => ({
+		...band,
+		perArrow: band.perArrow / band.arrows
+	}));
 	if (!order) return result.sort((a, b) => b.arrows - a.arrows);
 	return result.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
 }
