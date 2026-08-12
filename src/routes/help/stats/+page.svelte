@@ -7,6 +7,8 @@
 	/** What the figures on the stats page mean, and which of them are worth acting on. */
 	const TERMS = $derived([
 		{ term: $t('help.rangeTerm'), body: $t('help.rangeBody') },
+		{ term: $t('help.chartTerm'), body: $t('help.chartBody') },
+		{ term: $t('help.roundTerm'), body: $t('help.roundBody') },
 		{ term: $t('help.bestTerm'), body: $t('help.bestBody') },
 		{ term: $t('help.consistencyTerm'), body: $t('help.consistencyBody') }
 	]);

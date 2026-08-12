@@ -60,8 +60,27 @@ A column holding data always shows, whatever the chips say.
 
 **Pin the rounds you care about.** The star on a round card keeps it at the top of the page.
 
-**Through the round.** The last block averages your score per arrow at each end position, filtered to
-one round. It is the figure that says whether you fall apart at end nine.
+**Through the round.** This block averages your score per arrow at each end position. It appears once
+a single round is chosen in the filters, because a six arrow end and a three arrow end are different
+questions: it is the figure that says whether you fall apart at end nine.
+
+**The chips combine.** Period, round, bow, kind and wind narrow every figure on the page at once, and
+each chip counts its options with the other chips already applied, so no option leads to an empty
+page. What the page is looking at is restored on the next visit.
+
+**A round is what you shot, not what you called it.** Round types are worked out from the distance,
+the face, the ends and the arrows in them, so the same twelve ends at 70m are one round type whether
+you picked WA 720 from the list or built it by hand. Only the standard shapes get a card; a one off
+practice shape still counts in the chart and can still be filtered on.
+
+**The main chart counts every arrow.** Unfinished rounds included, coloured by the kind of outing.
+The round cards are the opposite: only rounds shot to the end, because a round you walked away from
+scores lower for reasons that say nothing about how you shot.
+
+**Chart colours are declared outside `@theme`.** Tailwind only emits the theme variables its
+generated classes mention, and a chart paints its colours through an inline style, so the chart hues
+live on `:root` as `--c-kind-*` and `--c-medal-*` rather than as theme tokens that would be dropped
+from the build.
 
 ## Badges
 

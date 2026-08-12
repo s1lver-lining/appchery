@@ -86,7 +86,8 @@ export const fr: Dictionary = {
 		fetchConditions: 'Récupérer le lieu et la météo',
 		fetching: 'Récupération…',
 		locationDenied: "L'autorisation de localisation est requise pour récupérer les conditions.",
-		locationOff: 'La localisation est désactivée. Activez « Enregistrer le lieu » dans les réglages.',
+		locationOff:
+			'La localisation est désactivée. Activez « Enregistrer le lieu » dans les réglages.',
 		weatherFailed: 'Météo indisponible. Le lieu a tout de même été enregistré.',
 		activities: 'Activités',
 		overviewTab: 'Aperçu',
@@ -102,8 +103,8 @@ export const fr: Dictionary = {
 		notes: 'Notes',
 		notesHint: 'Le vent, ce que vous avez réglé, les sensations.',
 		setGoal: 'Définir un objectif',
-		goalTitle: "Objectif de flèches",
-		goalHint: "Le nombre de flèches que cette séance doit compter.",
+		goalTitle: 'Objectif de flèches',
+		goalHint: 'Le nombre de flèches que cette séance doit compter.',
 		goalLeft: '{n} restantes',
 		goalReached: 'Objectif atteint.',
 		removeGoal: 'Retirer',
@@ -163,7 +164,7 @@ export const fr: Dictionary = {
 		tapToScore: 'Touchez une valeur pour chaque flèche.',
 		plotMode: 'Sur le blason',
 		byNumber: 'Au clavier',
-		editing: 'Modification d\'une flèche',
+		editing: "Modification d'une flèche",
 		undoEnd: 'Annuler la dernière volée',
 		group: 'Groupement',
 		groupCentre: 'Décalage du centre',
@@ -177,7 +178,8 @@ export const fr: Dictionary = {
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		groupSize: 'Taille du groupement',
 		sortArrows: 'Trier les flèches par ordre décroissant',
-		sortArrowsHint: "Affiche chaque volée dans l'ordre de la feuille de marque plutôt que dans l'ordre de saisie.",
+		sortArrowsHint:
+			"Affiche chaque volée dans l'ordre de la feuille de marque plutôt que dans l'ordre de saisie.",
 		roundComplete: 'Tir terminé. Les flèches restent modifiables.'
 	},
 	activity: {
@@ -216,15 +218,17 @@ export const fr: Dictionary = {
 			tailLeft: 'queue à gauche',
 			tailRight: 'queue à droite'
 		},
-		guideHint: 'L’ordre dans lequel on règle un arc. Chaque étape suppose les précédentes déjà justes.',
-		guideCredit: 'Ordre du classique d’après Claude Cangelosi, Guide des réglages d’un arc. Textes de nous.',
+		guideHint:
+			'L’ordre dans lequel on règle un arc. Chaque étape suppose les précédentes déjà justes.',
+		guideCredit:
+			'Ordre du classique d’après Claude Cangelosi, Guide des réglages d’un arc. Textes de nous.',
 		startNamed: 'Commencer : {name}',
 		needBow: 'Choisissez un arc par défaut pour lancer un réglage depuis cette page.',
-		applyTitle: "Appliquer le réglage",
+		applyTitle: 'Appliquer le réglage',
 		applyHint:
-			'Modifiez ce que vous avez réellement ajusté. Enregistrer crée une révision de l\'arc liée à ce test.',
+			"Modifiez ce que vous avez réellement ajusté. Enregistrer crée une révision de l'arc liée à ce test.",
 		apply: "Enregistrer comme révision de l'arc",
-		applied: 'Ce test a produit une révision de l\'arc.',
+		applied: "Ce test a produit une révision de l'arc.",
 		viewHistory: "Voir l'historique de l'arc",
 		steps: 'Étapes',
 		interpretation: 'Ce que le résultat suggère',
@@ -257,13 +261,14 @@ export const fr: Dictionary = {
 		noChanges: 'Aucune modification en attente.',
 		groupEmpty: 'Rien de renseigné',
 		remarks: 'Remarques',
-		remarksHint: "Ce qui n'entre pas dans les champs ci-dessus : épaisseurs de cales, numéros de série, ce qu'il reste à essayer.",
+		remarksHint:
+			"Ce qui n'entre pas dans les champs ci-dessus : épaisseurs de cales, numéros de série, ce qu'il reste à essayer.",
 		pendingChanges: '{n} modifications en attente',
 		reason: 'Pourquoi cette modification ?',
 		saveRevision: 'Enregistrer comme nouvelle révision',
 		revision: 'Révision {n}',
 		initialRevision: 'Première configuration enregistrée.',
-		noRevisions: 'Aucun réglage enregistré. Remplissez l\'onglet Réglages puis enregistrez.',
+		noRevisions: "Aucun réglage enregistré. Remplissez l'onglet Réglages puis enregistrez.",
 		deleteBow: 'Supprimer cet arc'
 	},
 	sight: {
@@ -273,7 +278,8 @@ export const fr: Dictionary = {
 		addMark: 'Ajouter',
 		height: 'Hauteur',
 		interpolatedHeight: 'Hauteur estimée',
-		interpolatedHint: 'Estimée à partir de vos repères réglés. Tirez la distance, puis saisissez ce que vous trouvez.',
+		interpolatedHint:
+			'Estimée à partir de vos repères réglés. Tirez la distance, puis saisissez ce que vous trouvez.',
 		windage: 'Dérive',
 		clicker: 'Clicker',
 		plunger: 'Berger'
@@ -345,9 +351,15 @@ export const fr: Dictionary = {
 		defaultBowTerm: "L'arc par défaut",
 		defaultBowBody:
 			"est celui présélectionné sur une nouvelle séance, signalé sur cette page. Il est **conservé sur cet appareil** plutôt que synchronisé, car l'arc que vous prenez dépend de l'endroit où vous êtes.",
-		rangeTerm: 'La période',
+		rangeTerm: 'Les filtres',
 		rangeBody:
-			"en haut de la page détermine ce que lisent tous les chiffres en dessous : le dernier mois, la dernière année, ou tout. C'est une **période glissante**, pas un calendrier : le 2 du mois, vous voyez toujours trente jours de travail.",
+			'en haut de la page déterminent ce que lisent tous les chiffres en dessous : une période, un tir, un arc, un type de session, un vent. Ils se combinent, pour demander comment vous tirez **dans le vent avec un arc donné**. Les périodes sont glissantes, pas calendaires : le 2 du mois, vous voyez toujours trente jours de travail.',
+		chartTerm: 'Le graphique principal',
+		chartBody:
+			'compte toutes les flèches saisies, tir terminé ou non, et colore chaque barre selon le **type de session**. Une mesure à la fois : le volume, le score par flèche, ou le nombre de tirs. Touchez une barre pour lire ce jour, cette semaine ou ce mois seul.',
+		roundTerm: 'Un type de tir',
+		roundBody:
+			"est déduit de ce que vous avez tiré, jamais de son nom : la **distance, le blason, les volées et les flèches qu'elles contiennent**. Les mêmes douze volées à 70m sont un seul type de tir, que vous ayez choisi le WA 720 dans la liste ou construit le tir vous-même.",
 		bestTerm: 'Un record personnel',
 		bestBody:
 			"est le meilleur score d'**un même type de tir**, et seuls les tirs terminés comptent : un tir abandonné affiche un total plus bas pour une raison qui ne dit rien de votre tir. Les égalités se départagent aux dix, puis aux X, comme d'usage. Épinglez les tirs qui comptent pour les garder en haut.",
@@ -361,7 +373,7 @@ export const fr: Dictionary = {
 		slot: 'Prévue',
 		newPlan: 'Nouveau programme',
 		name: 'Nom du programme',
-		empty: "Aucun programme. Un programme est une semaine que vous comptez répéter.",
+		empty: 'Aucun programme. Un programme est une semaine que vous comptez répéter.',
 		weekTotal: 'Flèches par semaine',
 		freeArrows: 'Flèches libres',
 		freeArrowsHint: 'Dues sur la semaine, tirées dans la séance de votre choix.',
@@ -376,22 +388,55 @@ export const fr: Dictionary = {
 	},
 	stats: {
 		title: 'Statistiques',
-		rangeAll: 'Depuis le début',
-		rangeYear: 'Année',
-		rangeMonth: 'Mois',
 		byRoundOpen: 'Flèches par tir',
+		filter: {
+			period: 'Période',
+			rounds: 'Tir',
+			bows: 'Arc',
+			kinds: 'Type',
+			wind: 'Vent',
+			reset: 'Tout effacer',
+			clearOne: 'Effacer',
+			from: 'Du',
+			to: 'au'
+		},
+		period: {
+			all: 'Depuis le début',
+			thisYear: 'Cette année',
+			year: 'Douze derniers mois',
+			month: 'Trente derniers jours',
+			custom: 'Période choisie',
+			/* Utilisés quand la ligne de filtres ne tient pas sur une seule ligne. */
+			allShort: 'Tout',
+			thisYearShort: 'Cette année',
+			yearShort: '12 derniers mois',
+			monthShort: '30 derniers j.',
+			customShort: 'Choisie'
+		},
+		metric: {
+			arrows: 'Flèches',
+			perArrow: 'Par flèche',
+			rounds: 'Tirs'
+		},
+		grain: {
+			day: 'Par jour',
+			week: 'Par semaine',
+			month: 'Par mois'
+		},
+		slice: '{rounds} tirs · {arrows} flèches',
+		barLabel: '{arrows} flèches sur {rounds} tirs',
+		scaleHint: 'du plus ancien au plus récent',
+		byKind: 'Score selon le type de session',
 		emptyRange: 'Rien de tiré sur cette période.',
 		empty: 'Terminez un tir et vos scores apparaîtront ici.',
 		overview: "Vue d'ensemble",
 		totalArrows: 'Flèches tirées',
-		volume: 'Flèches par mois',
-		volumeDaily: 'Flèches par jour',
 		byRound: 'Par tir',
 		daysShot: 'Jours de tir',
 		roundsShot: 'Tirs',
 		completeRounds: '{n} terminés',
 		perArrow: 'Par flèche',
-		noVolume: "Rien de tiré sur les douze derniers mois.",
+		noVolume: 'Rien de tiré sur les douze derniers mois.',
 		byRoundHint: 'Toutes les flèches comptent ici, tir terminé ou non.',
 		perRoundTitle: 'Records personnels',
 		perRoundHint: 'Seuls les tirs menés à leur terme sont comparés.',
@@ -404,12 +449,43 @@ export const fr: Dictionary = {
 		spread: 'Écart',
 		distribution: 'Où les flèches sont parties',
 		byEnd: 'Au fil du tir',
-		byEndHint: 'Moyenne par flèche à chaque volée, dans l\'ordre où elles ont été tirées.',
-		byEndFilter: 'Quel tir',
+		byEndHint: "Moyenne par flèche à chaque volée, dans l'ordre où elles ont été tirées.",
 		byEndCount: 'Sur {n} tirs.',
-		allRounds: 'Tous les tirs',
 		byWind: 'Score selon le vent',
-		byBow: 'Score selon l\'arc',
+		byBow: "Score selon l'arc",
+		byTemperature: 'Score selon la température',
+		byPartOfDay: 'Score selon le moment de la journée',
+		byWeekday: 'Score selon le jour de la semaine',
+		byPlace: 'Score selon le lieu',
+		distributionHint: 'Toutes les flèches du filtre actuel, par zone touchée.',
+		temperature: {
+			cold: 'Froid',
+			cool: 'Frais',
+			mild: 'Doux',
+			hot: 'Chaud'
+		},
+		partOfDay: {
+			morning: 'Matin',
+			afternoon: 'Après-midi',
+			evening: 'Soir',
+			night: 'Nuit'
+		},
+		blocks: {
+			title: 'Blocs de cette page',
+			hint: 'Tout ce qui suit le graphique est optionnel. Activez ce que vous voulez regarder.',
+			noData: 'Rien à afficher pour le moment',
+			kind: 'Score selon le type de session',
+			bests: 'Records personnels',
+			wind: 'Score selon le vent',
+			byEnd: 'Au fil du tir',
+			bow: "Score selon l'arc",
+			temperature: 'Score selon la température',
+			partOfDay: 'Score selon le moment de la journée',
+			weekday: 'Score selon le jour de la semaine',
+			place: 'Score selon le lieu',
+			distribution: 'Où les flèches sont parties',
+			volumeByRound: 'Flèches par tir'
+		},
 		perArrowHint: 'Score par flèche, pour comparer des tirs de longueurs différentes.',
 		wind: {
 			calm: 'Calme',
@@ -424,32 +500,32 @@ export const fr: Dictionary = {
 	},
 	auto: {
 		title: 'Score auto',
-		starting: "Démarrage de la caméra.",
-		recording: "Enr",
+		starting: 'Démarrage de la caméra.',
+		recording: 'Enr',
 		open: 'Score auto',
 		hint: 'Les flèches détectées sont des propositions. Touchez-en une pour la retirer, puis gardez le reste.',
 		noFace: 'Recherche du blason',
 		settling: 'Recherche des flèches',
-		angle: "Placez-vous davantage face à la cible",
+		angle: 'Placez-vous davantage face à la cible',
 		watching: 'Recherche des flèches',
 		keep: 'Garder {n}',
 		drop: 'Retirer cette flèche',
 		tapToDrop: 'Touchez une flèche pour la retirer.',
-		tooMany: "Il ne reste que {n} flèches dans cette volée. Les autres sont ignorées.",
+		tooMany: 'Il ne reste que {n} flèches dans cette volée. Les autres sont ignorées.',
 		denied: "L'autorisation caméra est nécessaire pour marquer depuis la caméra.",
 		experimental:
 			'Le marquage par caméra est expérimental. Vérifiez toujours les valeurs avant de les garder.'
 	},
 	backup: {
 		title: 'Sauvegarde',
-		hint: "Tout est stocké sur cet appareil uniquement. Exportez un fichier à conserver ailleurs.",
+		hint: 'Tout est stocké sur cet appareil uniquement. Exportez un fichier à conserver ailleurs.',
 		export: 'Exporter',
 		import: 'Importer',
 		exported: '{n} lignes exportées.',
 		imported: '{n} lignes restaurées.',
 		confirmTitle: 'Tout remplacer ?',
 		confirmBody:
-			'Restaurer {name} supprime d\'abord toutes les séances, activités et arcs de cet appareil.',
+			"Restaurer {name} supprime d'abord toutes les séances, activités et arcs de cet appareil.",
 		confirmAction: 'Restaurer',
 		error: {
 			notJson: "Ce fichier n'est pas un JSON lisible.",
@@ -487,34 +563,34 @@ export const fr: Dictionary = {
 		tapWindowLong: 'Touche plus vite',
 		milliseconds: '{n} ms',
 		display: 'Affichage',
-		recordTitle: "Enregistrer la vidéo du marquage",
+		recordTitle: 'Enregistrer la vidéo du marquage',
 		recordHint:
 			"Enregistre sur cet appareil une vidéo de chaque marquage à la caméra, pour améliorer la détection. Rien n'est envoyé.",
 		recordPath:
 			"Les vidéos sont enregistrées sur cet appareil, une par volée, nommées d'après l'activité et la volée correspondantes. Récupérez-les par câble ou avec le gestionnaire de fichiers.",
-		detectorTitle: "Détecteur de flèches",
+		detectorTitle: 'Détecteur de flèches',
 		detectorHint:
-			"Méthode de lecture des flèches. Classique par règles de forme et de couleur, apprise par un petit modèle entraîné. Les deux fonctionnent sur cet appareil.",
-		detectorClassical: "Classique",
-		detectorLearned: "Apprise",
+			'Méthode de lecture des flèches. Classique par règles de forme et de couleur, apprise par un petit modèle entraîné. Les deux fonctionnent sur cet appareil.',
+		detectorClassical: 'Classique',
+		detectorLearned: 'Apprise',
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',
 		placeTitle: 'Nommer le lieu',
 		placeHint:
-			"Recherche la ville la plus proche. Vos coordonnées sont envoyées à un tiers, ce que leur enregistrement local ne fait pas.",
+			'Recherche la ville la plus proche. Vos coordonnées sont envoyées à un tiers, ce que leur enregistrement local ne fait pas.',
 		storage: 'Stockage',
 		persistent: 'Persistant',
 		volatile: 'En mémoire, perdu au rechargement',
 		linkBadges: 'Badges',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
-			"Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.",
+			'Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.',
 		recalcAction: 'Vérifier',
 		recalcResult: '{awarded} obtenus, {revoked} retirés.'
 	},
 	badges: {
 		title: 'Badges',
-		hint: "Gagnés en tirant, gardés une fois acquis.",
+		hint: 'Gagnés en tirant, gardés une fois acquis.',
 		earnedCount: '{n} sur {total} obtenus',
 		earnedOn: 'Obtenu le {date}',
 		locked: 'Pas encore obtenu',
@@ -533,49 +609,118 @@ export const fr: Dictionary = {
 			ffta: 'Flèches de progression FFTA'
 		},
 		list: {
-			halfMarathon: { name: 'Le semi-marathon', hint: '{arrows} flèches en une seule séance.' },
-			marathon: { name: 'Le marathon', hint: '{arrows} flèches en une seule séance.' },
-			thousandArrows: { name: 'Videur de carquois', hint: 'Mille flèches décochées.' },
+			halfMarathon: {
+				name: 'Le semi-marathon',
+				hint: '{arrows} flèches en une seule séance.'
+			},
+			marathon: {
+				name: 'Le marathon',
+				hint: '{arrows} flèches en une seule séance.'
+			},
+			thousandArrows: {
+				name: 'Videur de carquois',
+				hint: 'Mille flèches décochées.'
+			},
 			fiveThousandArrows: {
 				name: 'Meilleur client du plumassier',
 				hint: 'Cinq mille flèches décochées.'
 			},
-			tenThousandArrows: { name: 'Le cauchemar de la botte', hint: 'Dix mille flèches décochées.' },
+			tenThousandArrows: {
+				name: 'Le cauchemar de la botte',
+				hint: 'Dix mille flèches décochées.'
+			},
 			twentyFiveThousandArrows: {
 				name: "Bras d'acier",
 				hint: 'Vingt cinq mille flèches décochées.'
 			},
-			threeDaysRunning: { name: "Trois jours d'affilée", hint: 'Tiré trois jours de suite.' },
-			fourSeasons: { name: 'Les quatre saisons', hint: 'Tiré douze mois de suite.' },
-			groundhogDay: { name: 'Un jour sans fin', hint: 'Le même tir effectué {rounds} fois.' },
-			sevenDays: { name: 'Récidiviste', hint: 'Tiré sur sept jours différents.' },
-			thirtyDays: { name: "Bête d'habitude", hint: 'Tiré sur trente jours différents.' },
-			hundredDays: { name: 'Meuble du pas de tir', hint: 'Tiré sur cent jours différents.' },
-			everyWeek: { name: 'Jamais un mardi de manqué', hint: 'Tiré huit semaines de suite.' },
+			threeDaysRunning: {
+				name: "Trois jours d'affilée",
+				hint: 'Tiré trois jours de suite.'
+			},
+			fourSeasons: {
+				name: 'Les quatre saisons',
+				hint: 'Tiré douze mois de suite.'
+			},
+			groundhogDay: {
+				name: 'Un jour sans fin',
+				hint: 'Le même tir effectué {rounds} fois.'
+			},
+			sevenDays: {
+				name: 'Récidiviste',
+				hint: 'Tiré sur sept jours différents.'
+			},
+			thirtyDays: {
+				name: "Bête d'habitude",
+				hint: 'Tiré sur trente jours différents.'
+			},
+			hundredDays: {
+				name: 'Meuble du pas de tir',
+				hint: 'Tiré sur cent jours différents.'
+			},
+			everyWeek: {
+				name: 'Jamais un mardi de manqué',
+				hint: 'Tiré huit semaines de suite.'
+			},
 			onPlan: {
 				name: 'Fidèle au programme',
-				hint: "Objectif hebdomadaire du programme atteint quatre semaines de suite."
+				hint: 'Objectif hebdomadaire du programme atteint quatre semaines de suite.'
 			},
-			threeRecords: { name: 'Le frimeur', hint: 'Un record personnel sur trois tirs différents.' },
-			firstXAt70: { name: 'La croix des braves', hint: 'Un X sur un tir WA à 70 m terminé.' },
-			thirtyAt18: { name: "Brelan d'or", hint: 'Une volée à 30 sur un tir WA en salle à 18 m terminé.' },
-			goldenEnd: { name: 'Tout ce qui brille', hint: "Une volée entière de six flèches dans l'or, sur un tir terminé." },
+			threeRecords: {
+				name: 'Le frimeur',
+				hint: 'Un record personnel sur trois tirs différents.'
+			},
+			firstXAt70: {
+				name: 'La croix des braves',
+				hint: 'Un X sur un tir WA à 70 m terminé.'
+			},
+			thirtyAt18: {
+				name: "Brelan d'or",
+				hint: 'Une volée à 30 sur un tir WA en salle à 18 m terminé.'
+			},
+			goldenEnd: {
+				name: 'Tout ce qui brille',
+				hint: "Une volée entière de six flèches dans l'or, sur un tir terminé."
+			},
 			handfulOfArrows: {
 				name: 'Une poignée de flèches',
 				hint: "Une volée de {arrows} flèches pointées tenant dans l'or, sur un tir terminé."
 			},
-			iSeeRed: { name: 'Je vois rouge', hint: 'Un tir terminé sans aucune flèche sous {value}.' },
-			tourist: { name: 'Le touriste', hint: 'Tiré dans cinq lieux différents.' },
+			iSeeRed: {
+				name: 'Je vois rouge',
+				hint: 'Un tir terminé sans aucune flèche sous {value}.'
+			},
+			tourist: {
+				name: 'Le touriste',
+				hint: 'Tiré dans cinq lieux différents.'
+			},
 			frostbite: {
 				name: 'Les doigts gelés',
 				hint: 'Un tir terminé à {metres} m ou plus par moins de {temp} °C.'
 			},
-			firstCompetition: { name: "Nerfs d'acier", hint: 'Un tir terminé en compétition.' },
-			twoBowTypes: { name: "Cœur d'artichaut", hint: 'Un tir marqué avec deux types d\'arc.' },
-			seventyMetres: { name: 'La longue marche', hint: 'Un tir terminé à 70 m ou plus.' },
-			ninetyMetres: { name: 'Prévois le casse-croûte', hint: 'Un tir terminé à 90 m ou plus.' },
-			firstTuning: { name: 'Touche-à-tout', hint: 'Une procédure de réglage menée à bien.' },
-			fiveSightMarks: { name: 'Le murmureur de viseur', hint: 'Cinq repères de viseur sur un arc.' },
+			firstCompetition: {
+				name: "Nerfs d'acier",
+				hint: 'Un tir terminé en compétition.'
+			},
+			twoBowTypes: {
+				name: "Cœur d'artichaut",
+				hint: "Un tir marqué avec deux types d'arc."
+			},
+			seventyMetres: {
+				name: 'La longue marche',
+				hint: 'Un tir terminé à 70 m ou plus.'
+			},
+			ninetyMetres: {
+				name: 'Prévois le casse-croûte',
+				hint: 'Un tir terminé à 90 m ou plus.'
+			},
+			firstTuning: {
+				name: 'Touche-à-tout',
+				hint: 'Une procédure de réglage menée à bien.'
+			},
+			fiveSightMarks: {
+				name: 'Le murmureur de viseur',
+				hint: 'Cinq repères de viseur sur un arc.'
+			},
 			stormArcher: {
 				name: 'Avis de tempête',
 				hint: 'Un tir terminé à {metres} m ou plus par un vent de {kmh} km/h ou plus.'

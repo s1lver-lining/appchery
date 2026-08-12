@@ -1,5 +1,6 @@
 import { derived, writable } from 'svelte/store';
 import { locale } from './i18n';
+import { EMPTY_FILTER, parseFilter, type StatsFilter } from './domain/statsFilter';
 
 const DEFAULT_BOW_KEY = 'appchery.defaultBowId';
 
@@ -34,7 +35,13 @@ export const dateFormats = derived([locale, use24Hour], ([$locale, $use24]) => {
 		 */
 		dateTime: on({ day: 'numeric', month: 'short', year: 'numeric', ...clock }),
 		/** The weekday matters in a list: a Sunday reads differently from a Tuesday. */
-		dayDateTime: on({ weekday: 'short', day: 'numeric', month: 'short', year: 'numeric', ...clock }),
+		dayDateTime: on({
+			weekday: 'short',
+			day: 'numeric',
+			month: 'short',
+			year: 'numeric',
+			...clock
+		}),
 		time: on(clock),
 		date: on({ dateStyle: 'medium' }),
 		shortDate: on({ day: 'numeric', month: 'short' }),
@@ -171,8 +178,55 @@ export const shareCardChosen = flag('appchery.shareCardChosen', false);
  */
 export const sightColumns = storedList('appchery.sightColumns');
 
-/** The stats window last looked at, so the page opens where it was left rather than at all time. */
-export const statsRange = storedString('appchery.statsRange');
+/**
+ * How the statistics page was last narrowed, so it opens where it was left. An archer who cares
+ * about this month with the wooden bow cares every time.
+ */
+export const statsFilter = storedFilter('appchery.statsFilter', 'appchery.statsRange');
+
+/**
+ * Which optional blocks the statistics page draws. A key is absent until it is switched, so each
+ * block keeps its own default: adding a block later must not turn it on for everyone who ever
+ * opened the dialog.
+ */
+export const statsBlocks = storedFlags('appchery.statsBlocks');
+
+function storedFlags(key: string) {
+	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	let initial: Record<string, boolean> = {};
+	// A hand edited or half written value must not take the page down with it.
+	try {
+		const parsed = saved ? JSON.parse(saved) : {};
+		if (parsed && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			initial = Object.fromEntries(
+				Object.entries(parsed).filter(([, value]) => typeof value === 'boolean')
+			) as Record<string, boolean>;
+		}
+	} catch {
+		initial = {};
+	}
+
+	const store = writable<Record<string, boolean>>(initial);
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value));
+	});
+	return store;
+}
+
+function storedFilter(key: string, legacyKey: string) {
+	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	const store = writable<StatsFilter>(saved ? parseFilter(saved) : legacy(legacyKey));
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value));
+	});
+	return store;
+}
+
+/** The old page stored a bare window name: it becomes the period, so nobody loses their setting. */
+function legacy(key: string): StatsFilter {
+	const range = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
+	return range === 'year' || range === 'month' ? { ...EMPTY_FILTER, period: range } : EMPTY_FILTER;
+}
 
 /**
  * The bow preselected on a new session. A device preference rather than user data, since which bow

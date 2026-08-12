@@ -215,7 +215,8 @@ export const en = {
 			tailLeft: 'tail left',
 			tailRight: 'tail right'
 		},
-		guideHint: 'The order a bow is set up in. Each step assumes the ones above it are already right.',
+		guideHint:
+			'The order a bow is set up in. Each step assumes the ones above it are already right.',
 		guideCredit: 'Recurve order after Claude Cangelosi, Guide des réglages d’un arc. Wording ours.',
 		startNamed: 'Start: {name}',
 		needBow: 'Set a default bow to start a tuning from here.',
@@ -256,7 +257,8 @@ export const en = {
 		noChanges: 'No unsaved changes.',
 		groupEmpty: 'Nothing recorded',
 		remarks: 'Remarks',
-		remarksHint: 'Anything the fields above have no room for: shim thicknesses, serials, what to try next.',
+		remarksHint:
+			'Anything the fields above have no room for: shim thicknesses, serials, what to try next.',
 		pendingChanges: '{n} unsaved changes',
 		reason: 'Why did you change this?',
 		saveRevision: 'Save as a new revision',
@@ -344,9 +346,15 @@ export const en = {
 		defaultBowTerm: 'The default bow',
 		defaultBowBody:
 			'is the one preselected on a new session, marked on this page. It is **kept on this device** rather than synced, because which bow you reach for depends on where you are.',
-		rangeTerm: 'The window',
+		rangeTerm: 'The filters',
 		rangeBody:
-			'at the top of the page decides what every figure below it reads from: the last month, the last year, or everything. It is a **rolling window**, not a calendar one, so on the second of the month you still see thirty days of work.',
+			'at the top of the page decide what every figure below them reads from: a period, a round, a bow, a kind of outing, a wind. They combine, so you can ask how you shoot **in the wind with one bow**. The periods are rolling, not calendar: on the second of the month you still see thirty days of work.',
+		chartTerm: 'The main chart',
+		chartBody:
+			'counts every arrow you entered, finished round or not, and colours each bar by the **kind of outing** it came from. One measure at a time: volume, score per arrow, or rounds. Tap a bar to read that day, week or month on its own.',
+		roundTerm: 'A kind of round',
+		roundBody:
+			'is worked out from what you shot, never from what it was called: the **distance, the face, the ends and the arrows in them**. The same twelve ends at 70m are one round type whether you picked WA 720 from the list or built it yourself.',
 		bestTerm: 'A personal best',
 		bestBody:
 			'is the highest score of **one kind of round**, and only finished rounds count: a round you walked away from scores lower for reasons that say nothing about how you shot. Ties break on tens, then on Xs, the usual way. Pin the rounds you care about to keep them at the top.',
@@ -375,16 +383,49 @@ export const en = {
 	},
 	stats: {
 		title: 'Statistics',
-		rangeAll: 'All time',
-		rangeYear: 'Year',
-		rangeMonth: 'Month',
 		byRoundOpen: 'Arrows by round',
+		filter: {
+			period: 'Period',
+			rounds: 'Round',
+			bows: 'Bow',
+			kinds: 'Kind',
+			wind: 'Wind',
+			reset: 'Clear filters',
+			clearOne: 'Clear',
+			from: 'From',
+			to: 'to'
+		},
+		period: {
+			all: 'All time',
+			thisYear: 'This year',
+			year: 'Last 12 months',
+			month: 'Last 30 days',
+			custom: 'Custom range',
+			/* Fallen back on when the filter row will not fit on one line. */
+			allShort: 'All time',
+			thisYearShort: 'This year',
+			yearShort: 'Last 12 mo.',
+			monthShort: 'Last 30 d.',
+			customShort: 'Custom'
+		},
+		metric: {
+			arrows: 'Arrows',
+			perArrow: 'Per arrow',
+			rounds: 'Rounds'
+		},
+		grain: {
+			day: 'Per day',
+			week: 'Per week',
+			month: 'Per month'
+		},
+		slice: '{rounds} rounds · {arrows} arrows',
+		barLabel: '{arrows} arrows over {rounds} rounds',
+		scaleHint: 'oldest to newest, faded to solid',
+		byKind: 'Score by kind of session',
 		emptyRange: 'Nothing shot in this period.',
 		empty: 'Finish a round and its scores will appear here.',
 		overview: 'Overview',
 		totalArrows: 'Arrows shot',
-		volume: 'Arrows per month',
-		volumeDaily: 'Arrows per day',
 		byRound: 'By round',
 		daysShot: 'Days shot',
 		roundsShot: 'Rounds',
@@ -404,11 +445,42 @@ export const en = {
 		distribution: 'Where the arrows landed',
 		byEnd: 'Through the round',
 		byEndHint: 'Average per arrow at each end, in the order they were shot.',
-		byEndFilter: 'Which round',
 		byEndCount: 'Over {n} rounds.',
-		allRounds: 'Every round',
 		byWind: 'Score by wind',
 		byBow: 'Score by bow',
+		byTemperature: 'Score by temperature',
+		byPartOfDay: 'Score by time of day',
+		byWeekday: 'Score by day of the week',
+		byPlace: 'Score by place',
+		distributionHint: 'Every arrow of the current filter, by the ring it landed in.',
+		temperature: {
+			cold: 'Cold',
+			cool: 'Cool',
+			mild: 'Mild',
+			hot: 'Hot'
+		},
+		partOfDay: {
+			morning: 'Morning',
+			afternoon: 'Afternoon',
+			evening: 'Evening',
+			night: 'Night'
+		},
+		blocks: {
+			title: 'Blocks on this page',
+			hint: 'Everything below the chart is optional. Turn on what you want to look at.',
+			noData: 'Nothing to show yet',
+			kind: 'Score by kind of session',
+			bests: 'Personal bests',
+			wind: 'Score by wind',
+			byEnd: 'Through the round',
+			bow: 'Score by bow',
+			temperature: 'Score by temperature',
+			partOfDay: 'Score by time of day',
+			weekday: 'Score by day of the week',
+			place: 'Score by place',
+			distribution: 'Where the arrows landed',
+			volumeByRound: 'Arrows by round'
+		},
 		perArrowHint: 'Score per arrow, so rounds of different lengths compare.',
 		wind: {
 			calm: 'Calm',
@@ -487,7 +559,8 @@ export const en = {
 		recordTitle: 'Record scoring video',
 		recordHint:
 			'Keeps a video of each camera scoring session on this device, to help improve detection. Nothing is uploaded.',
-		recordPath: 'Videos are saved on this device, one per end, named after the activity and end they belong to. Copy them off with a cable or the file manager.',
+		recordPath:
+			'Videos are saved on this device, one per end, named after the activity and end they belong to. Copy them off with a cable or the file manager.',
 		detectorTitle: 'Arrow detector',
 		detectorHint:
 			'Which method reads the arrows. Classical uses shape and colour rules; learned uses a small trained model. Both run on this device.',
@@ -530,46 +603,115 @@ export const en = {
 			ffta: 'FFTA progression arrows'
 		},
 		list: {
-			halfMarathon: { name: 'Half Marathon', hint: '{arrows} arrows in a single outing.' },
-			marathon: { name: 'Marathon', hint: '{arrows} arrows in a single outing.' },
-			thousandArrows: { name: 'Quiver Emptier', hint: 'A thousand arrows shot.' },
+			halfMarathon: {
+				name: 'Half Marathon',
+				hint: '{arrows} arrows in a single outing.'
+			},
+			marathon: {
+				name: 'Marathon',
+				hint: '{arrows} arrows in a single outing.'
+			},
+			thousandArrows: {
+				name: 'Quiver Emptier',
+				hint: 'A thousand arrows shot.'
+			},
 			fiveThousandArrows: {
 				name: "Fletcher's Best Customer",
 				hint: 'Five thousand arrows shot.'
 			},
-			tenThousandArrows: { name: "The Boss's Nightmare", hint: 'Ten thousand arrows shot.' },
+			tenThousandArrows: {
+				name: "The Boss's Nightmare",
+				hint: 'Ten thousand arrows shot.'
+			},
 			twentyFiveThousandArrows: {
 				name: 'Bow Arm of Steel',
 				hint: 'Twenty five thousand arrows shot.'
 			},
-			threeDaysRunning: { name: 'Three Days Running', hint: 'Shot three days back to back.' },
-			fourSeasons: { name: 'Four Seasons', hint: 'Shot in twelve months running.' },
-			groundhogDay: { name: 'Groundhog Day', hint: 'Shot the same round {rounds} times.' },
-			sevenDays: { name: 'Regular Offender', hint: 'Shot on seven different days.' },
-			thirtyDays: { name: 'Creature of Habit', hint: 'Shot on thirty different days.' },
-			hundredDays: { name: 'Part of the Furniture', hint: 'Shot on a hundred different days.' },
-			everyWeek: { name: 'Never Missed a Tuesday', hint: 'Shot in eight weeks running.' },
-			onPlan: { name: 'Sticks to the Plan', hint: "Hit your plan's weekly arrows four weeks running." },
-			threeRecords: { name: 'Show Off', hint: 'Set a personal best in three different rounds.' },
-			firstXAt70: { name: 'X Marks the Spot', hint: 'An X in a finished WA round at 70m.' },
-			thirtyAt18: { name: 'Three of a Kind', hint: 'An end of 30 in a finished WA indoor round at 18m.' },
-			goldenEnd: { name: 'All That Glitters', hint: 'A whole end of six arrows in the gold, in a finished round.' },
+			threeDaysRunning: {
+				name: 'Three Days Running',
+				hint: 'Shot three days back to back.'
+			},
+			fourSeasons: {
+				name: 'Four Seasons',
+				hint: 'Shot in twelve months running.'
+			},
+			groundhogDay: {
+				name: 'Groundhog Day',
+				hint: 'Shot the same round {rounds} times.'
+			},
+			sevenDays: {
+				name: 'Regular Offender',
+				hint: 'Shot on seven different days.'
+			},
+			thirtyDays: {
+				name: 'Creature of Habit',
+				hint: 'Shot on thirty different days.'
+			},
+			hundredDays: {
+				name: 'Part of the Furniture',
+				hint: 'Shot on a hundred different days.'
+			},
+			everyWeek: {
+				name: 'Never Missed a Tuesday',
+				hint: 'Shot in eight weeks running.'
+			},
+			onPlan: {
+				name: 'Sticks to the Plan',
+				hint: "Hit your plan's weekly arrows four weeks running."
+			},
+			threeRecords: {
+				name: 'Show Off',
+				hint: 'Set a personal best in three different rounds.'
+			},
+			firstXAt70: {
+				name: 'X Marks the Spot',
+				hint: 'An X in a finished WA round at 70m.'
+			},
+			thirtyAt18: {
+				name: 'Three of a Kind',
+				hint: 'An end of 30 in a finished WA indoor round at 18m.'
+			},
+			goldenEnd: {
+				name: 'All That Glitters',
+				hint: 'A whole end of six arrows in the gold, in a finished round.'
+			},
 			handfulOfArrows: {
 				name: 'A Handful of Arrows',
 				hint: 'An end of {arrows} plotted arrows the gold would cover, in a finished round.'
 			},
-			iSeeRed: { name: 'I See Red', hint: 'Finished a round with no arrow below {value}.' },
+			iSeeRed: {
+				name: 'I See Red',
+				hint: 'Finished a round with no arrow below {value}.'
+			},
 			tourist: { name: 'Tourist', hint: 'Shot at five different places.' },
 			frostbite: {
 				name: 'Frostbite',
 				hint: 'Finished a round at {metres}m or more below {temp} °C.'
 			},
-			firstCompetition: { name: 'Nerves of Steel', hint: 'Finished a round at a competition.' },
-			twoBowTypes: { name: 'Two Timer', hint: 'Scored a round with two different kinds of bow.' },
-			seventyMetres: { name: 'The Long Walk', hint: 'Finished a round at 70m or further.' },
-			ninetyMetres: { name: 'Bring a Packed Lunch', hint: 'Finished a round at 90m or further.' },
-			firstTuning: { name: 'Never Leave It Alone', hint: 'Carried out a tuning procedure.' },
-			fiveSightMarks: { name: 'Sight Whisperer', hint: 'Recorded five sight marks on one bow.' },
+			firstCompetition: {
+				name: 'Nerves of Steel',
+				hint: 'Finished a round at a competition.'
+			},
+			twoBowTypes: {
+				name: 'Two Timer',
+				hint: 'Scored a round with two different kinds of bow.'
+			},
+			seventyMetres: {
+				name: 'The Long Walk',
+				hint: 'Finished a round at 70m or further.'
+			},
+			ninetyMetres: {
+				name: 'Bring a Packed Lunch',
+				hint: 'Finished a round at 90m or further.'
+			},
+			firstTuning: {
+				name: 'Never Leave It Alone',
+				hint: 'Carried out a tuning procedure.'
+			},
+			fiveSightMarks: {
+				name: 'Sight Whisperer',
+				hint: 'Recorded five sight marks on one bow.'
+			},
 			stormArcher: {
 				name: 'Weather Warning',
 				hint: 'Finished a round at {metres}m or more in a wind of {kmh} km/h or more.'
