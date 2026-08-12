@@ -28,6 +28,7 @@
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/ui/Icon.svelte';
 	import ArrowPad from '$lib/ui/ArrowPad.svelte';
+	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -167,6 +168,47 @@
 		write(shotFromPlot(scoreAt(scoreSet, x, y), x, y));
 	};
 
+	/**
+	 * A whole end read off the boss at once. The detected arrows fill the side being entered from the
+	 * slot the cursor is on, which is how an end half typed in can still be finished by the camera.
+	 */
+	let scanning = $state(false);
+
+	async function acceptDetected(points: { x: number; y: number }[]) {
+		scanning = false;
+		if (!cursor || !scoreSet) return;
+		const { endNo, side, index, shootOff } = cursor;
+		const kept: Omit<Shot, 'ordinal'>[] = arrowsOf(
+			rows.find((row) => row.endNo === endNo),
+			side
+		)
+			.slice(0, index)
+			.map((row) => ({
+				value: row.value,
+				zoneLabel: row.zoneLabel,
+				x: row.x,
+				y: row.y,
+				source: row.source as Shot['source']
+			}));
+
+		for (const point of points) {
+			if (kept.length >= slotsFor(shootOff)) break;
+			kept.push(shotFromPlot(scoreAt(scoreSet, point.x, point.y), point.x, point.y));
+		}
+
+		cursor = kept.length >= slotsFor(shootOff) ? null : { ...cursor, index: kept.length };
+		await setMatchArrows(activity.id, endNo, side, kept, shootOff);
+		await refresh();
+		if (shootOff) await decideFromPlot();
+		await celebrate();
+	}
+
+	/** Named after the end it belongs to, so footage and card can be paired again afterwards. */
+	function videoName(): string {
+		const stamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+		return `appchery-${activity.id}-m${cursor?.endNo ?? 0}-${cursor?.side ?? 'us'}-${stamp}.webm`;
+	}
+
 	/** Typed straight in. The arrows of that side go with it: one number cannot have two sources. */
 	async function typeTotal(endNo: number, side: Side, raw: string, shootOff: boolean) {
 		const value = raw.trim() === '' ? null : Number(raw);
@@ -227,6 +269,32 @@
 		return row.ours === row.theirs;
 	});
 
+	/**
+	 * The pad rises over the bottom of the sheet, so the end being filled has to be brought above it.
+	 * The row is scrolled to where it is on screen rather than to where it sits in the list: on a
+	 * short screen the end being entered is the last row, and the last row is the one under the pad.
+	 */
+	let scroller = $state<HTMLElement | undefined>();
+	const rowNodes = new Map<number, HTMLElement>();
+	function markRow(node: HTMLElement, endNo: number) {
+		rowNodes.set(endNo, node);
+		return { destroy: () => rowNodes.delete(endNo) };
+	}
+
+	$effect(() => {
+		const endNo = cursor?.endNo;
+		if (endNo === undefined || !scroller) return;
+		// After the frame the pad is laid out in, or the pane is measured at its old height.
+		requestAnimationFrame(() => {
+			const node = rowNodes.get(endNo);
+			if (!node || !scroller) return;
+			const above = node.getBoundingClientRect().top - scroller.getBoundingClientRect().top;
+			const below = above + node.offsetHeight - scroller.clientHeight;
+			if (below > 0) scroller.scrollTop += below;
+			else if (above < 0) scroller.scrollTop += above;
+		});
+	});
+
 	closeOnBack(
 		() => cursor !== null,
 		() => (cursor = null)
@@ -252,12 +320,12 @@
 {#snippet sideCells(endNo: number, side: Side, row: Row | undefined, shootOff: boolean, mirrored: boolean)}
 	{@const shots = arrowsOf(row, side)}
 	{@const total = side === 'us' ? (row ? row.ours : null) : (row?.theirs ?? null)}
-	<div class="flex min-w-0 flex-1 items-center gap-1 {mirrored ? 'flex-row-reverse' : ''}">
+	<div class="flex min-w-0 flex-1 items-center gap-0.5 {mirrored ? 'flex-row-reverse' : ''}">
 		<div class="flex min-w-0 flex-1 flex-wrap gap-0.5 {mirrored ? 'justify-end' : ''}">
 			{#each Array(slotsFor(shootOff)) as _, index (index)}
 				{@const shot = shots[index]}
 				<button
-					class="tabular h-7 w-7 shrink-0 rounded text-[13px] font-bold
+					class="tabular h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.5)] font-bold
 						{shot ? '' : 'border border-dashed border-line text-muted'}
 						{cursor?.endNo === endNo && cursor.side === side && cursor.index === index
 						? cursorClass
@@ -276,7 +344,7 @@
 			type="number"
 			inputmode="numeric"
 			min="0"
-			class="tabular w-10 shrink-0 rounded border border-line bg-bg py-1 text-center text-sm font-bold text-ink"
+			class="tabular w-9 shrink-0 rounded border border-line bg-bg px-0.5 py-1 text-center text-[13px] font-bold text-ink"
 			aria-label={side === 'us' ? ourLabel : theirLabel}
 			value={total ?? ''}
 			onfocus={() => (cursor = null)}
@@ -326,7 +394,7 @@
 				</header>
 
 				<!-- Pinned above the sheet: the running result is what an archer reads between ends. -->
-				<section class="rounded-xl border border-line bg-surface px-4 py-3">
+				<section class="rounded-xl border border-line bg-surface px-4 py-2.5">
 					<div class="flex items-center gap-3 text-center">
 						<div class="min-w-0 flex-1">
 							<p class="truncate text-xs text-muted">{ourLabel}</p>
@@ -350,14 +418,6 @@
 							</p>
 						</div>
 					</div>
-					<p class="mt-2 border-t border-line pt-2 text-center text-xs font-semibold">
-						{outcome()}
-						{#if config.system === 'set'}
-							<span class="tabular ml-2 font-normal text-muted">
-								{result.ourTotal} – {result.theirTotal}
-							</span>
-						{/if}
-					</p>
 				</section>
 
 				{#if !config.forSelf}
@@ -368,22 +428,28 @@
 			</div>
 
 			<!-- The sheet: our arrows to the left of the line, theirs to the right, an end to a row. -->
-			<section class="min-h-0 flex-1 overflow-hidden rounded-xl border border-line bg-surface">
-				<div class="flex items-center gap-1 border-b border-line px-2 py-1 text-[10px] text-muted">
-					<span class="w-6 shrink-0"></span>
+			<section
+				class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface"
+				style="--chip: clamp(1.35rem, 6.2vw, 1.75rem)"
+			>
+				<div class="flex items-center gap-0.5 border-b border-line px-1.5 py-1 text-[10px] text-muted">
+					<span class="w-4 shrink-0"></span>
 					<span class="min-w-0 flex-1 truncate">{ourLabel}</span>
-					<span class="w-10 shrink-0 text-center">
+					<span class="w-8 shrink-0 text-center">
 						{config.system === 'set' ? $t('match.sets') : $t('match.total')}
 					</span>
 					<span class="min-w-0 flex-1 truncate text-right">{theirLabel}</span>
 				</div>
 
-				<div class="max-h-[42dvh] overflow-y-auto">
+				<div bind:this={scroller} class="min-h-0 flex-1 overflow-y-auto">
 					{#each sheet() as entry (entry.endNo)}
-						<div class="flex items-center gap-1 border-b border-line px-2 py-1.5 last:border-0">
+						<div
+							class="flex items-center gap-0.5 border-b border-line px-1.5 py-1.5 last:border-0"
+							use:markRow={entry.endNo}
+						>
 							<!-- The end number opens the end itself, the way the round sheet does. -->
 							<button
-								class="w-6 shrink-0 text-left text-xs font-medium text-brand-text"
+								class="w-4 shrink-0 text-left text-xs font-medium text-brand-text"
 								aria-label={$t('score.end', { n: entry.endNo })}
 								onclick={() => focus(entry.endNo, 'us', 0, entry.shootOff)}
 							>
@@ -392,7 +458,7 @@
 
 							{@render sideCells(entry.endNo, 'us', entry.row, entry.shootOff, false)}
 
-							<span class="tabular w-10 shrink-0 text-center text-[11px] font-semibold">
+							<span class="tabular w-8 shrink-0 text-center text-[11px] font-semibold">
 								{#if points(entry.endNo, 'us') !== null}
 									<span class="text-brand-text">{points(entry.endNo, 'us')}</span>
 									<span class="text-line">·</span>
@@ -435,6 +501,8 @@
 					<ArrowPad
 						{scoreSet}
 						bind:mode
+						oncamera={() => (scanning = true)}
+						onclose={() => (cursor = null)}
 						shots={cursorShots.map((shot) => ({
 							ordinal: shot.ordinal,
 							value: shot.value,
@@ -542,6 +610,17 @@
 			</div>
 		</div>
 	</Sheet>
+
+	{#if scanning && cursor}
+		<AutoScore
+			{scoreSet}
+			remaining={slotsFor(cursor.shootOff) - cursor.index}
+			videoName={videoName()}
+			onaccept={acceptDetected}
+			onrecorded={() => {}}
+			onclose={() => (scanning = false)}
+		/>
+	{/if}
 
 	{#if confirmingDelete}
 		<ConfirmDialog

@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { scorableZones, missZone } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet, Shot, Zone } from '$lib/domain/rounds/types';
+	import Icon from './Icon.svelte';
 	import TargetFace from './TargetFace.svelte';
 
 	/**
@@ -16,7 +17,9 @@
 		mode = $bindable('number'),
 		title,
 		onpick,
-		onplot
+		onplot,
+		oncamera,
+		onclose
 	}: {
 		scoreSet: ScoreSet;
 		/** Arrows already entered for what is being filled, drawn on the face. */
@@ -26,6 +29,10 @@
 		title?: Snippet;
 		onpick: (zone: Zone) => void;
 		onplot: (x: number, y: number) => void;
+		/** Opens the camera, which reads a whole end off the boss at once. */
+		oncamera?: () => void;
+		/** Puts the pad away. A panel that rises has to say how it goes back down. */
+		onclose?: () => void;
 	} = $props();
 
 	const keypad = $derived(scorableZones(scoreSet));
@@ -38,10 +45,27 @@
 </script>
 
 <div class="overflow-hidden rounded-2xl border border-line bg-surface">
-	<header class="flex items-center gap-2 border-b border-line bg-sunk/60 px-3 py-2">
+	<header class="flex items-center gap-2 border-b border-line bg-sunk/60 px-2 py-1.5">
+		<!-- The way back down, at the top left where a sheet's handle would be. -->
+		{#if onclose}
+			<button class="shrink-0 rotate-180 text-muted" aria-label={$t('common.close')} onclick={onclose}>
+				<Icon name="chevronUp" size={18} />
+			</button>
+		{/if}
+
 		<span class="min-w-0 flex-1 truncate text-[11px] text-muted">
 			{#if title}{@render title()}{/if}
 		</span>
+
+		{#if oncamera}
+			<button
+				class="shrink-0 rounded-lg p-1 text-muted"
+				aria-label={$t('auto.title')}
+				onclick={oncamera}
+			>
+				<Icon name="camera" size={18} />
+			</button>
+		{/if}
 
 		<!-- The two ways of entering an arrow, as one switch rather than as a button that toggles. -->
 		<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">

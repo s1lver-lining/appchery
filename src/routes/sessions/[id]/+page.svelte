@@ -403,6 +403,9 @@
 		goto(`/activities/${await createTuningActivity(id, key)}`);
 	}
 
+	/** The faces the rules define, which is what a match is nearly always shot at. */
+	const FACE_SIZES = [40, 60, 80, 122];
+
 	/**
 	 * A match is set up before it is opened: who it is against and under which rules is the whole of
 	 * what a match is, and asking for it on the card while a first end is waiting is asking too late.
@@ -1194,7 +1197,7 @@
 						{/each}
 					</select>
 				</label>
-				<label class="w-24 shrink-0 text-xs text-muted">
+				<label class="w-20 shrink-0 text-xs text-muted">
 					{$t('match.faceSize')}
 					<input
 						type="number"
@@ -1207,6 +1210,19 @@
 							(draftMatch = { ...draftMatch, faceSize: Number(e.currentTarget.value) || null })}
 					/>
 				</label>
+			</div>
+
+			<!-- The four faces the rules define, as shortcuts into the field rather than instead of it. -->
+			<div class="flex flex-wrap gap-1.5">
+				{#each FACE_SIZES as size (size)}
+					<button
+						class="tabular rounded-lg border px-3 py-1.5 text-sm font-medium
+							{draftMatch.faceSize === size ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+						onclick={() => draftMatch && (draftMatch = { ...draftMatch, faceSize: size })}
+					>
+						{$t('round.face', { size })}
+					</button>
+				{/each}
 			</div>
 
 			{#if draftMatch.format === 'custom'}
