@@ -24,8 +24,16 @@
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { BOT_LEVELS } from '$lib/domain/bots';
 	import {
+		matchFaceSize,
+		matchDistance,
+		matchDistanceUnit,
+		matchScoreSet,
+		matchSystem
+	} from '$lib/prefs';
+	import {
 		newMatch,
 		parseConfig,
+		DEFAULT_SCORE_SET,
 		tally,
 		stageRank,
 		MATCH_FORMATS,
@@ -418,8 +426,6 @@
 
 	/** Points a set match can be played to: six for an individual, five for a team, or anything. */
 	const SET_POINTS = Array.from({ length: 15 }, (_, i) => i + 1);
-	/** Where the distance wheel opens, which is the distance a match is usually shot at. */
-	const DEFAULT_DISTANCE = 70;
 	/** Folded away until asked for: a match can be shot without naming anybody. */
 	let showAdvanced = $state(false);
 
@@ -435,9 +441,14 @@
 		if (adding) listMatchNames().then((names) => (knownNames = names));
 	});
 
+	/** Opened on the last match's setup: the same match twice should be asked about once. */
 	function openMatch(format: MatchFormat) {
-		// Seeded rather than left null: the wheel shows a distance, so the card had better record it.
-		draftMatch = { ...newMatch(format, 'set'), distance: { value: DEFAULT_DISTANCE, unit: 'm' } };
+		draftMatch = {
+			...newMatch(format, $matchSystem === 'cumulative' ? 'cumulative' : 'set'),
+			scoreSetId: $matchScoreSet ?? DEFAULT_SCORE_SET,
+			faceSize: $matchFaceSize,
+			distance: { value: $matchDistance, unit: $matchDistanceUnit === 'yd' ? 'yd' : 'm' }
+		};
 		showAdvanced = false;
 	}
 
@@ -478,6 +489,14 @@
 	async function startMatch() {
 		if (!draftMatch) return;
 		const config = draftMatch;
+		// Remembered as it is started rather than as it is typed, so an abandoned sheet changes nothing.
+		matchSystem.set(config.system);
+		matchScoreSet.set(config.scoreSetId);
+		if (config.faceSize) matchFaceSize.set(config.faceSize);
+		if (config.distance) {
+			matchDistance.set(config.distance.value);
+			matchDistanceUnit.set(config.distance.unit);
+		}
 		draftMatch = null;
 		adding = false;
 		const id = await materialise();
@@ -1321,7 +1340,7 @@
 								onclick={() => {
 									if (!draftMatch) return;
 									const list = unit === 'm' ? DISTANCES_M : DISTANCES_YD;
-									const value = draftMatch.distance?.value ?? DEFAULT_DISTANCE;
+									const value = draftMatch.distance?.value ?? $matchDistance;
 									// Kept on the new unit's scale rather than left holding an impossible number.
 									draftMatch = {
 										...draftMatch,
@@ -1336,7 +1355,7 @@
 				</div>
 				<WheelPicker
 					values={draftMatch.distance?.unit === 'yd' ? DISTANCES_YD : DISTANCES_M}
-					value={draftMatch.distance?.value ?? DEFAULT_DISTANCE}
+					value={draftMatch.distance?.value ?? $matchDistance}
 					label={$t('round.distance')}
 					item={34}
 					labelHidden

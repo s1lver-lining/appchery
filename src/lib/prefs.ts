@@ -296,6 +296,17 @@ if (typeof document !== 'undefined') {
 }
 
 /**
+ * How the last match was set up: the face and its size, the distance, and how it was won. A club
+ * shoots the same match over and over, so the second one should ask for nothing the first answered.
+ * Held per device rather than on the match, which keeps its own copy of all of this.
+ */
+export const matchFaceSize = storedNumber('appchery.matchFaceSize', 122);
+export const matchDistance = storedNumber('appchery.matchDistance', 70);
+export const matchDistanceUnit = storedString('appchery.matchDistanceUnit');
+export const matchScoreSet = storedString('appchery.matchScoreSet');
+export const matchSystem = storedString('appchery.matchSystem');
+
+/**
  * The colour a competition wears, or null for the one the theme picks. Its own short palette rather
  * than the target face colours: those are set by the rules, and gold and white are unreadable on the
  * surface whichever theme is on. Written

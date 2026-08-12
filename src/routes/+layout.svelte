@@ -112,8 +112,21 @@
 		holdTab(href);
 		// Left button and primary touch only: the middle click and the long press have their own jobs.
 		if (event.button !== 0) return;
+		if (onGestureBar(event, href)) return;
+		pressed = true;
 		event.preventDefault();
 		if ($page.url.pathname !== href) goto(href);
+	}
+
+	/**
+	 * The phone's own gesture handle sits along the bottom edge, under the middle tab. A press that
+	 * starts there is as likely to be a swipe to another app as a tap, and answering it at once would
+	 * change page under a finger on its way somewhere else. That band waits for the release instead.
+	 */
+	function onGestureBar(event: PointerEvent, href: string): boolean {
+		if (href !== '/equipment') return false;
+		const box = (event.currentTarget as HTMLElement).getBoundingClientRect();
+		return event.clientY - box.top > box.height * 0.65;
 	}
 
 	function holdTab(href: string) {
@@ -130,9 +143,14 @@
 		holdTimer = null;
 	}
 
-	/** The press already navigated, so the click it turns into has nothing left to do. */
+	/** True while a click is on its way to a page the press has already opened. */
+	let pressed = false;
+
+	/** The click still does the work when the press stood aside, and nothing when it did not. */
 	function openTab(event: MouseEvent) {
+		if (!pressed && !held) return;
 		event.preventDefault();
+		pressed = false;
 		held = false;
 	}
 
