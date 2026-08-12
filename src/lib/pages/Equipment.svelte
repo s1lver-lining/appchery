@@ -22,6 +22,7 @@
 	);
 
 	let bows = $state<BowRow[]>([]);
+	let loaded = $state(false);
 	// Opened straight into the form when the archer came here to add a bow rather than to read one.
 	let adding = $state(false);
 	// Watched rather than read once: the page is already mounted in the pager when the link is used.
@@ -31,12 +32,19 @@
 	let name = $state('');
 	let type = $state<BowType>('recurve');
 
+	/**
+	 * Nothing is drawn until the bows are read: with a default bow set the page is on its way to it,
+	 * and the list appearing for a frame first reads as the app changing its mind.
+	 */
+	const settling = $derived(!loaded && !listed && $defaultBowId !== null);
+
 	const openBow = $derived(
 		!listed && $defaultBowId && bows.some((row) => row.id === $defaultBowId) ? $defaultBowId : null
 	);
 
 	async function refresh() {
 		bows = await listBows();
+		loaded = true;
 	}
 	$effect(() => {
 		refresh();
@@ -54,7 +62,9 @@
 	}
 </script>
 
-{#if openBow}
+{#if settling}
+	<div class="min-h-full"></div>
+{:else if openBow}
 	<Bow bowId={openBow} />
 {:else}
 <div class="flex min-h-full flex-col">
