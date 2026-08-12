@@ -118,6 +118,29 @@
 
 	const cursorRow = $derived(rows.find((row) => row.endNo === cursor?.endNo));
 	const cursorShots = $derived(cursor ? arrowsOf(cursorRow, cursor.side) : []);
+	/** The same side's arrows from every other end, which is what the group is read against. */
+	const otherShots = $derived(
+		cursor
+			? rows
+					.filter((row) => row.endNo !== cursor?.endNo)
+					.flatMap((row) => arrowsOf(row, cursor!.side))
+			: []
+	);
+	/** The arrow the cursor sits on, when there is one: the next touch moves it rather than adding. */
+	const held = $derived(() => {
+		const shot = cursor ? cursorShots[cursor.index] : undefined;
+		return shot && shot.x !== null && shot.y !== null ? { x: shot.x, y: shot.y } : null;
+	});
+
+	const asFaceShots = (list: typeof cursorShots) =>
+		list.map((shot) => ({
+			ordinal: shot.ordinal,
+			value: shot.value,
+			zoneLabel: shot.zoneLabel,
+			x: shot.x,
+			y: shot.y,
+			source: shot.source as Shot['source']
+		}));
 
 	function focus(endNo: number, side: Side, index: number, shootOff: boolean) {
 		cursor =
@@ -512,14 +535,9 @@
 						bind:mode
 						oncamera={() => (scanning = true)}
 						onclose={() => (cursor = null)}
-						shots={cursorShots.map((shot) => ({
-							ordinal: shot.ordinal,
-							value: shot.value,
-							zoneLabel: shot.zoneLabel,
-							x: shot.x,
-							y: shot.y,
-							source: shot.source as Shot['source']
-						}))}
+						shots={asFaceShots(cursorShots)}
+						otherShots={asFaceShots(otherShots)}
+						highlight={held()}
 						onpick={pick}
 						onplot={plot}
 					>

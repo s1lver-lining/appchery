@@ -14,6 +14,8 @@
 	let {
 		scoreSet,
 		shots = [],
+		otherShots = [],
+		highlight = null,
 		mode = $bindable('number'),
 		flush = false,
 		title,
@@ -25,6 +27,10 @@
 		scoreSet: ScoreSet;
 		/** Arrows already entered for what is being filled, drawn on the face. */
 		shots?: Shot[];
+		/** Arrows from the other ends, drawn faded so the ones being entered stay readable. */
+		otherShots?: Shot[];
+		/** The arrow being replaced, ringed so it is clear which one the next touch moves. */
+		highlight?: { x: number; y: number } | null;
 		mode?: 'number' | 'face';
 		/** Sat against the edges of the screen, as a panel that rose from the bottom of it. */
 		flush?: boolean;
@@ -98,7 +104,16 @@
 	<div class="p-3">
 		{#if mode === 'face'}
 			<div class="mx-auto aspect-square w-full max-w-72">
-				<TargetFace {scoreSet} {shots} interactive {onplot} />
+				<TargetFace
+					{scoreSet}
+					{shots}
+					{otherShots}
+					{highlight}
+					interactive
+					showOtherToggle
+					showCentreToggle
+					{onplot}
+				/>
 			</div>
 		{:else}
 			<div class="grid grid-cols-4 gap-1.5">
