@@ -283,6 +283,8 @@ export const fr: Dictionary = {
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		groupSize: 'Taille du groupement',
+		arrowNumbers: 'Numéroter les flèches',
+		arrowNumbersHint: 'Marque chaque flèche de son ordre de saisie, ce qui permet de les distinguer une fois triées.',
 		sortArrows: 'Trier les flèches par ordre décroissant',
 		sortArrowsHint:
 			"Affiche chaque volée dans l'ordre de la feuille de marque plutôt que dans l'ordre de saisie.",

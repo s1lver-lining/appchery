@@ -281,6 +281,8 @@ export const en = {
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		groupSize: 'Group size',
+		arrowNumbers: 'Use arrow number',
+		arrowNumbersHint: 'Marks each arrow with the order it was entered in, which is what tells them apart once they are sorted.',
 		sortArrows: 'Sort arrows highest first',
 		sortArrowsHint: 'Shows each end in scoresheet order instead of the order you entered it.',
 		roundComplete: 'Round complete. Arrows can still be edited.'

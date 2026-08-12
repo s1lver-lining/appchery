@@ -63,6 +63,13 @@ export const formatTime = derived(dateFormats, ($f) => $f.time);
 export const sortArrowsDescending = flag('appchery.sortArrows', false);
 
 /**
+ * Whether each arrow on the sheet carries the position it was entered in. Off by default: the number
+ * is noise while the sheet reads in shooting order, and the point of it is to keep that order legible
+ * once the arrows are sorted highest first.
+ */
+export const showArrowNumbers = flag('appchery.showArrowNumbers', false);
+
+/**
  * Keeps the video of each camera scoring session. Off by default: it is a debugging aid for improving
  * detection, not something an archer needs, and video is large. Recordings never leave the device.
  */

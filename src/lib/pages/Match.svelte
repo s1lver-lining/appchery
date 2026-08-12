@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { getScoreSet } from '$lib/domain/rounds/seed';
-	import { scoreAt } from '$lib/domain/rounds/geometry';
+	import { scoreAt, sortShotsDescending } from '$lib/domain/rounds/geometry';
+	import { sortArrowsDescending, showArrowNumbers } from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import {
 		tally,
@@ -127,8 +128,14 @@
 		return drawn.sort((a, b) => a.endNo - b.endNo);
 	});
 
+	/** Stored in the order they were called, and sorted only if the archer asked for that. */
 	const arrowsOf = (row: Row | undefined, side: Side) =>
 		(row?.shots ?? []).filter((shot) => shot.side === side).sort((a, b) => a.ordinal - b.ordinal);
+
+	const shownArrows = $derived((row: Row | undefined, side: Side) => {
+		const shots = arrowsOf(row, side);
+		return $sortArrowsDescending ? sortShotsDescending(shots) : shots;
+	});
 	const slotsFor = (shootOff: boolean) => (shootOff ? 1 : (config?.arrowsPerEnd ?? 3));
 
 	/**
@@ -386,7 +393,7 @@
 
 <!-- One side of one end: the arrows in their slots, and the total they add up to or was typed in. -->
 {#snippet sideCells(endNo: number, side: Side, row: Row | undefined, shootOff: boolean, mirrored: boolean)}
-	{@const shots = arrowsOf(row, side)}
+	{@const shots = shownArrows(row, side)}
 	{@const total = side === 'us' ? (row ? row.ours : null) : (row?.theirs ?? null)}
 	<div class="flex min-w-0 flex-1 items-center gap-0.5 {mirrored ? 'flex-row-reverse' : ''}">
 		<!--
@@ -399,17 +406,30 @@
 		>
 			{#each Array(slotsFor(shootOff)) as _, index (index)}
 				{@const shot = shots[index]}
+				<!--
+					A sorted sheet moves the arrows about, so a slot points at the arrow it is drawing
+					rather than at its own position: tapping the highest arrow edits the highest arrow.
+				-->
+				{@const slot = shot ? shot.ordinal - 1 : index}
 				<button
-					class="tabular h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.5)] font-bold
+					class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.5)] font-bold
 						{shot ? '' : 'border border-dashed border-line text-muted'}
-						{cursor?.endNo === endNo && cursor.side === side && cursor.index === index
+						{cursor?.endNo === endNo && cursor.side === side && cursor.index === slot
 						? cursorClass
 						: ''}"
 					style={shot ? chipStyle(shot.zoneLabel) : ''}
-					aria-label={$t('score.editArrow', { n: index + 1, end: endNo })}
-					onclick={() => focus(endNo, side, index, shootOff)}
+					aria-label={$t('score.editArrow', { n: slot + 1, end: endNo })}
+					onclick={() => focus(endNo, side, slot, shootOff)}
 				>
 					{shot?.zoneLabel ?? ''}
+					<!-- The order it was called in, which is what tells two arrows apart once sorted. -->
+					{#if shot && $showArrowNumbers}
+						<span
+							class="absolute right-px bottom-px text-[calc(var(--chip)*0.3)] leading-none font-semibold opacity-70"
+						>
+							{shot.ordinal}
+						</span>
+					{/if}
 				</button>
 			{/each}
 		</div>
@@ -649,6 +669,30 @@
 					placeholder={$t('match.opponent')}
 					onchange={(name) =>
 						config && updateMatchConfig(activity.id, { ...config, opponent: name }).then(refresh)}
+				/>
+			</div>
+
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<div class="min-w-0">
+					<p class="text-sm font-medium">{$t('score.sortArrows')}</p>
+					<p class="text-xs text-muted">{$t('score.sortArrowsHint')}</p>
+				</div>
+				<Toggle
+					checked={$sortArrowsDescending}
+					label={$t('score.sortArrows')}
+					onchange={(v) => sortArrowsDescending.set(v)}
+				/>
+			</div>
+
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<div class="min-w-0">
+					<p class="text-sm font-medium">{$t('score.arrowNumbers')}</p>
+					<p class="text-xs text-muted">{$t('score.arrowNumbersHint')}</p>
+				</div>
+				<Toggle
+					checked={$showArrowNumbers}
+					label={$t('score.arrowNumbers')}
+					onchange={(v) => showArrowNumbers.set(v)}
 				/>
 			</div>
 

@@ -12,7 +12,7 @@
 		sortShotsDescending,
 		type EndSlot
 	} from '$lib/domain/rounds/geometry';
-	import { celebratedBests, sortArrowsDescending } from '$lib/prefs';
+	import { celebratedBests, sortArrowsDescending, showArrowNumbers } from '$lib/prefs';
 	import { formatDistance, mmToInches, inchesToMm } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { schemaFor, diffSettings, type BowSettings, type SettingField } from '$lib/domain/equipment/schemas';
@@ -851,7 +851,7 @@
 							{#each row.shots as shot (shot.ordinal)}
 								{#if shot.id}
 									<button
-										class="tabular h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
+										class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editing?.shotId === shot.id ? cursorClass : ''}"
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
@@ -869,6 +869,14 @@
 									}}
 									>
 										{shot.zoneLabel}
+										<!-- The order it was called in, kept legible once the sheet is sorted by score. -->
+										{#if $showArrowNumbers}
+											<span
+												class="absolute right-px bottom-px text-[calc(var(--chip)*0.28)] leading-none font-semibold opacity-70"
+											>
+												{shot.ordinal}
+											</span>
+										{/if}
 									</button>
 								{:else}
 									<span
@@ -1073,6 +1081,18 @@
 				checked={$sortArrowsDescending}
 				onchange={(v) => sortArrowsDescending.set(v)}
 				label={$t('score.sortArrows')}
+			/>
+		</div>
+
+		<div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
+			<div>
+				<p class="text-sm font-medium">{$t('score.arrowNumbers')}</p>
+				<p class="text-xs text-muted">{$t('score.arrowNumbersHint')}</p>
+			</div>
+			<Toggle
+				checked={$showArrowNumbers}
+				onchange={(v) => showArrowNumbers.set(v)}
+				label={$t('score.arrowNumbers')}
 			/>
 		</div>
 
