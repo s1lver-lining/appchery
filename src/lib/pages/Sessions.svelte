@@ -300,7 +300,7 @@
 	function dayMarks(day: number): string[] {
 		const marks: string[] = (byDay.get(day) ?? []).map((s) =>
 			isCompetition(s)
-				? 'bg-accent border-accent'
+				? 'bg-competition border-competition'
 				: s.kind === 'planned' || (counts[s.id]?.arrows ?? 0) === 0
 					? PLANNED_DOT
 					: SHOT_DOT
@@ -362,7 +362,7 @@
 		href="/sessions/{s.id}"
 		class="relative flex flex-1 items-center gap-3 overflow-hidden rounded-xl border p-3 pl-4 transition-colors active:bg-sunk/40
 			{isCompetition(s)
-			? 'border-accent/40 bg-gradient-to-r from-accent/12 to-surface'
+			? 'border-competition/40 bg-gradient-to-r from-competition/12 to-surface'
 			: isToday(s)
 				? 'border-brand/30 bg-surface'
 				: isEmpty(s)
@@ -370,12 +370,12 @@
 					: 'border-line bg-surface'}"
 	>
 		{#if isCompetition(s)}
-			<span class="absolute inset-y-0 left-0 w-1 bg-accent"></span>
+			<span class="absolute inset-y-0 left-0 w-1 bg-competition"></span>
 		{/if}
 
 		{#if isCompetition(s)}
 			<span
-				class="flex aspect-square shrink-0 items-center justify-center self-stretch rounded-lg bg-accent/10 text-accent"
+				class="flex aspect-square shrink-0 items-center justify-center self-stretch rounded-lg bg-competition/10 text-competition"
 			>
 				<Icon name="medal" size={26} />
 			</span>
@@ -384,7 +384,7 @@
 		<div class="min-w-0 flex-1">
 			<p
 				class="truncate {isCompetition(s)
-					? 'font-semibold text-accent'
+					? 'font-semibold text-competition'
 					: isEmpty(s)
 						? 'font-medium text-muted'
 						: 'font-semibold'}"
@@ -425,7 +425,7 @@
 		<div class="shrink-0 text-right">
 			<p
 				class="tabular text-lg leading-none font-bold {isCompetition(s)
-					? 'text-accent'
+					? 'text-competition'
 					: isEmpty(s)
 						? 'text-muted'
 						: ''}"

@@ -13,6 +13,8 @@
 	--color-brand-text: var(--c-brand-text);
 	--color-accent: var(--c-accent);
 	--color-danger: var(--c-danger);
+	/* The same red the statistics page paints a competition, so one kind wears one colour. */
+	--color-competition: var(--c-kind-competition);
 
 	/* Regulated target face colours, identical in every theme because the rules define them. */
 	--color-face-gold: #ffcf3f;
