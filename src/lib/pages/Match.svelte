@@ -7,7 +7,9 @@
 		tally,
 		nextEndNo,
 		shootOffWinner,
+		MATCH_STAGES,
 		type MatchConfig,
+		type MatchStage,
 		type MatchEnd,
 		type Side
 	} from '$lib/domain/matches';
@@ -454,6 +456,7 @@
 
 				<!-- What the match is, and whether it is the archer's own, on one quiet line. -->
 				<p class="-mt-1 truncate text-center text-xs text-muted">
+					{#if config.stage !== 'none'}{$t(`match.stage.${config.stage}`)} · {/if}
 					{$t(`match.format.${config.format}`)} · {$t(`match.system.${config.system}`)}
 					{#if config.distance}
 						· {formatDistance(config.distance.value, config.distance.unit)}
@@ -663,6 +666,24 @@
 					onchange={(v) =>
 						config && updateMatchConfig(activity.id, { ...config, forSelf: !v }).then(refresh)}
 				/>
+			</div>
+
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<p class="text-sm font-medium">{$t('match.stageLabel')}</p>
+				<select
+					class="shrink-0 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+					value={config.stage}
+					onchange={(e) =>
+						config &&
+						updateMatchConfig(activity.id, {
+							...config,
+							stage: e.currentTarget.value as MatchStage
+						}).then(refresh)}
+				>
+					{#each MATCH_STAGES as stage (stage)}
+						<option value={stage}>{$t(`match.stage.${stage}`)}</option>
+					{/each}
+				</select>
 			</div>
 
 			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">

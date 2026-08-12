@@ -179,6 +179,18 @@ export const en = {
 		},
 		winCondition: 'Win condition',
 		system: { set: 'Set points', cumulative: 'Total score' },
+		bracket: 'Bracket',
+		stageLabel: 'Round',
+		stage: {
+			none: 'Not in a bracket',
+			r64: '1/32',
+			r32: '1/16',
+			r16: '1/8',
+			quarter: 'Quarter final',
+			semi: 'Semi final',
+			bronze: 'Bronze',
+			final: 'Final'
+		},
 		ourSide: 'Our side',
 		opponent: 'Opponent',
 		teammates: 'Teammates',

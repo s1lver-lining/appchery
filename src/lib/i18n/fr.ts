@@ -181,6 +181,18 @@ export const fr: Dictionary = {
 		},
 		winCondition: 'Condition de victoire',
 		system: { set: 'Points de set', cumulative: 'Score total' },
+		bracket: 'Tableau',
+		stageLabel: 'Tour',
+		stage: {
+			none: 'Hors tableau',
+			r64: '1/32',
+			r32: '1/16',
+			r16: '1/8',
+			quarter: 'Quart de finale',
+			semi: 'Demi-finale',
+			bronze: 'Bronze',
+			final: 'Finale'
+		},
 		ourSide: 'Notre côté',
 		opponent: 'Adversaire',
 		teammates: 'Coéquipiers',

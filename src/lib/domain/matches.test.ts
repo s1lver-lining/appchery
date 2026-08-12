@@ -8,6 +8,7 @@ import {
 	arrowsShot,
 	matchScore,
 	wonFromBehind,
+	stageRank,
 	type MatchEnd
 } from './matches';
 
@@ -188,5 +189,23 @@ describe('a match that cannot be separated', () => {
 
 	it('is not drawn halfway through', () => {
 		expect(tally(newMatch('individual'), ends([27, 27], [27, 27])).drawn).toBe(false);
+	});
+});
+
+describe('bracket stages', () => {
+	it('starts a match outside any bracket', () => {
+		expect(newMatch('individual').stage).toBe('none');
+	});
+
+	it('ranks the stages the way a bracket is climbed', () => {
+		expect(stageRank('r16')).toBeLessThan(stageRank('quarter'));
+		expect(stageRank('quarter')).toBeLessThan(stageRank('semi'));
+		expect(stageRank('semi')).toBeLessThan(stageRank('final'));
+		expect(stageRank('none')).toBe(0);
+	});
+
+	it('reads an unknown stage back as none rather than losing the match', () => {
+		expect(parseConfig('{"stage":"nonsense"}')?.stage).toBe('none');
+		expect(parseConfig(JSON.stringify({ ...newMatch('team'), stage: 'semi' }))?.stage).toBe('semi');
 	});
 });

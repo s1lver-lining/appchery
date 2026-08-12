@@ -25,7 +25,10 @@
 		newMatch,
 		parseConfig,
 		tally,
+		stageRank,
 		MATCH_FORMATS,
+		MATCH_STAGES,
+		type MatchStage,
 		type MatchConfig,
 		type MatchEnd,
 		type MatchFormat
@@ -441,6 +444,17 @@
 		return { winner: null, label: result.drawn ? $t('match.drawn') : $t('match.inProgress') };
 	}
 
+	/**
+	 * The day's ladder: the matches that named a round of it, in the order it is climbed. A bracket is
+	 * shot from the outside in, so reading it by stage says how far the day went in a way the clock
+	 * cannot.
+	 */
+	const bracket = $derived(
+		activities
+			.filter((a) => a.kind === 'match' && (matchOf(a)?.stage ?? 'none') !== 'none')
+			.sort((a, b) => stageRank(matchOf(a)!.stage) - stageRank(matchOf(b)!.stage))
+	);
+
 	function matchSummary(a: ActivityRow) {
 		const config = matchOf(a);
 		if (!config) return $t('match.title');
@@ -500,9 +514,11 @@
 	function activityTitle(a: ActivityRow) {
 		if (a.kind === 'match') {
 			const config = matchOf(a);
-			return config?.opponent
+			const stage = config && config.stage !== 'none' ? $t(`match.stage.${config.stage}`) : null;
+			const name = config?.opponent
 				? `${$t('match.title')} ${$t('match.against', { name: config.opponent })}`
 				: $t('match.title');
+			return stage ? `${stage} · ${name}` : name;
 		}
 		if (a.kind === 'tuning') return a.templateKey ?? $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
@@ -811,6 +827,45 @@
 						</section>
 
 						<section>
+						{#if bracket.length > 0}
+							<!-- One rung a match, climbing: the shape of the day rather than a list of it. -->
+							<section class="mb-4 rounded-xl border border-line bg-surface p-3.5">
+								<h2 class="mb-2 text-sm font-semibold">{$t('match.bracket')}</h2>
+								<ol class="space-y-1.5">
+									{#each bracket as a, i (a.id)}
+										{@const state = matchState(a)}
+										{@const config = matchOf(a)}
+										<li class="flex items-center gap-2">
+											<span class="relative flex w-16 shrink-0 items-center">
+												<span class="text-[11px] font-semibold tracking-wide text-muted uppercase">
+													{$t(`match.stage.${config?.stage ?? 'none'}`)}
+												</span>
+												<!-- The rungs are joined, because a bracket is one climb and not four outings. -->
+												{#if i < bracket.length - 1}
+													<span class="absolute top-full left-1 h-1.5 w-0.5 bg-line"></span>
+												{/if}
+											</span>
+											<a
+												href="/activities/{a.id}"
+												class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line px-2 py-1.5"
+											>
+												<span class="min-w-0 flex-1 truncate text-sm">
+													{config?.opponent ?? $t('match.opponent')}
+												</span>
+												<span
+													class="shrink-0 text-xs font-semibold {state.winner === 'us'
+														? 'text-win'
+														: 'text-muted'}"
+												>
+													{state.label}
+												</span>
+											</a>
+										</li>
+									{/each}
+								</ol>
+							</section>
+						{/if}
+
 							<div class="mb-2 flex items-center justify-between">
 								<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
 								<button
@@ -1137,6 +1192,22 @@
 						</button>
 					{/each}
 				</div>
+			</div>
+
+			<!-- Where it sits in the ladder, which is what makes a day of matches read in order. -->
+			<div class="flex items-center justify-between gap-3">
+				<p class="text-sm font-medium">{$t('match.stageLabel')}</p>
+				<select
+					class="shrink-0 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+					value={draftMatch.stage}
+					onchange={(e) =>
+						draftMatch &&
+						(draftMatch = { ...draftMatch, stage: e.currentTarget.value as MatchStage })}
+				>
+					{#each MATCH_STAGES as stage (stage)}
+						<option value={stage}>{$t(`match.stage.${stage}`)}</option>
+					{/each}
+				</select>
 			</div>
 
 			{#if draftMatch.format === 'custom'}

@@ -8,6 +8,29 @@
  */
 
 export type MatchSystem = 'set' | 'cumulative';
+
+/**
+ * Where a match sits in a bracket. A competition day is a ranking round and then a ladder, so a match
+ * that knows its round can be read in the order it was shot rather than by the clock.
+ */
+export type MatchStage = 'none' | 'r64' | 'r32' | 'r16' | 'quarter' | 'semi' | 'bronze' | 'final';
+
+/** Ordered the way a bracket is climbed, which is how a day's matches should be listed. */
+export const MATCH_STAGES: MatchStage[] = [
+	'none',
+	'r64',
+	'r32',
+	'r16',
+	'quarter',
+	'semi',
+	'bronze',
+	'final'
+];
+
+export function stageRank(stage: MatchStage): number {
+	const at = MATCH_STAGES.indexOf(stage);
+	return at < 0 ? 0 : at;
+}
 export type MatchFormat = 'individual' | 'team' | 'mixedTeam' | 'custom';
 export type Side = 'us' | 'them';
 
@@ -25,6 +48,8 @@ export interface MatchConfig {
 	 * just are not the archer's own, so nothing here reaches their volume or their badges.
 	 */
 	forSelf: boolean;
+	/** Which round of the bracket this was, or none for a match that belongs to no ladder. */
+	stage: MatchStage;
 	/** Free text: an opponent is a name on a card, not somebody the app needs to know about. */
 	opponent: string | null;
 	/** Whether a level match may be taken to a single arrow. Off makes a draw a legal result. */
@@ -86,6 +111,7 @@ export function newMatch(format: MatchFormat, system: MatchSystem = 'set'): Matc
 		system,
 		...preset,
 		forSelf: true,
+		stage: 'none',
 		shootOff: true,
 		scoreSetId: DEFAULT_SCORE_SET,
 		faceSize: null,
@@ -114,6 +140,9 @@ export function parseConfig(raw: string | null): MatchConfig | null {
 			maxEnds: positive(parsed.maxEnds, base.maxEnds),
 			setPointsToWin: positive(parsed.setPointsToWin, base.setPointsToWin),
 			forSelf: parsed.forSelf !== false,
+			stage: MATCH_STAGES.includes(parsed.stage as MatchStage)
+				? (parsed.stage as MatchStage)
+				: 'none',
 			shootOff: parsed.shootOff !== false,
 			scoreSetId: typeof parsed.scoreSetId === 'string' ? parsed.scoreSetId : base.scoreSetId,
 			faceSize: positiveOrNull(parsed.faceSize),
