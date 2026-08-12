@@ -16,6 +16,7 @@
 		| 'close'
 		| 'search'
 		| 'calendar'
+		| 'clock'
 		| 'back'
 		| 'sun'
 		| 'cloud'
@@ -102,6 +103,9 @@
 		<path d="M15 5l-7 7 7 7" />
 	{:else if name === 'close'}
 		<path d="M6 6l12 12M18 6L6 18" />
+	{:else if name === 'clock'}
+		<circle cx="12" cy="12" r="8.6" />
+		<path d="M12 7.2V12l3.2 2" />
 	{:else if name === 'calendar'}
 		<rect x="3.2" y="5" width="17.6" height="15.8" rx="2.6" />
 		<path d="M3.2 9.6h17.6M8 2.8v4M16 2.8v4" />

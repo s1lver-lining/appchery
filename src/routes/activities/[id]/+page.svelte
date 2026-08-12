@@ -24,6 +24,7 @@
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
+	import Match from '$lib/pages/Match.svelte';
 	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
 	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
 	import { isPersonalBest } from '$lib/domain/stats';
@@ -625,7 +626,9 @@
 	const cursorClass = 'outline outline-2 outline-brand outline-offset-2';
 </script>
 
-{#if activity && activity.kind === 'tuning'}
+{#if activity && activity.kind === 'match'}
+	<Match {activity} onchange={refresh} />
+{:else if activity && activity.kind === 'tuning'}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
 			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>

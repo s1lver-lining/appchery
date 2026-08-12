@@ -16,8 +16,11 @@
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import {
 		newMatch,
+		parseConfig,
+		tally,
 		MATCH_FORMATS,
 		type MatchConfig,
+		type MatchEnd,
 		type MatchFormat
 	} from '$lib/domain/matches';
 	import { summariseByRound, shapeKey, type ScoredActivity } from '$lib/domain/stats';
@@ -51,6 +54,7 @@
 		createScoringActivity,
 		createTuningActivity,
 		createMatchActivity,
+		loadMatch,
 		addTrainingArrows,
 		awardBadges,
 		type ActivityRow,
@@ -79,6 +83,7 @@
 	let session = $state<Awaited<ReturnType<typeof getSession>>>(null);
 	let activities = $state<ActivityRow[]>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
+	let matchEnds = $state<Map<string, MatchEnd[]>>(new Map());
 	let tab = $state<'overview' | 'settings'>('overview');
 	const TABS = $derived([
 		{ key: 'overview' as const, label: $t('session.overviewTab') },
@@ -277,6 +282,12 @@
 		}
 		session = await getSession(sessionId);
 		activities = await listActivities(sessionId);
+
+		// A match's result lives in its ends, so the list reads them rather than the activity's score.
+		const cards = await Promise.all(
+			activities.filter((a) => a.kind === 'match').map(async (a) => [a.id, await loadMatch(a.id)] as const)
+		);
+		matchEnds = new Map(cards.map(([id, card]) => [id, card.ends]));
 	}
 
 	/** Shaped like a row so every part of the page reads it the same way, stored nowhere. */
@@ -402,6 +413,29 @@
 		draftMatch = newMatch(format, 'set');
 	}
 
+	/** Where a match stands, read off its own ends rather than off the activity's score. */
+	function matchState(a: ActivityRow) {
+		const config = matchOf(a);
+		const ends = matchEnds.get(a.id) ?? [];
+		if (!config) return { winner: null, label: $t('match.inProgress') };
+		const result = tally(config, ends);
+		if (result.winner === 'us') return { winner: 'us' as const, label: $t('match.won') };
+		if (result.winner === 'them') return { winner: 'them' as const, label: $t('match.lost') };
+		if (result.needsShootOff) return { winner: null, label: $t('match.undecided') };
+		return { winner: null, label: $t('match.inProgress') };
+	}
+
+	function matchSummary(a: ActivityRow) {
+		const config = matchOf(a);
+		if (!config) return $t('match.title');
+		const result = tally(config, matchEnds.get(a.id) ?? []);
+		const score =
+			config.system === 'set'
+				? `${result.ourPoints} – ${result.theirPoints}`
+				: `${result.ourTotal} – ${result.theirTotal}`;
+		return `${$t(`match.format.${config.format}`)} · ${score}`;
+	}
+
 	async function startMatch() {
 		if (!draftMatch) return;
 		const config = draftMatch;
@@ -444,7 +478,16 @@
 		goto('/sessions');
 	}
 
+	/** A match is named by who it was against, since that is the whole of what it was. */
+	const matchOf = (a: ActivityRow) => parseConfig(a.matchConfig);
+
 	function activityTitle(a: ActivityRow) {
+		if (a.kind === 'match') {
+			const config = matchOf(a);
+			return config?.opponent
+				? `${$t('match.title')} ${$t('match.against', { name: config.opponent })}`
+				: $t('match.title');
+		}
 		if (a.kind === 'tuning') return a.templateKey ?? $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 		return round?.name ?? '';
@@ -780,11 +823,25 @@
 													<p class="text-xs text-muted">
 														{a.kind === 'tuning'
 															? $t('tuning.title')
-															: `${a.arrowsShot} ${$t('score.arrow')}`}
+															: a.kind === 'match'
+																? matchSummary(a)
+																: `${a.arrowsShot} ${$t('score.arrow')}`}
 													</p>
 												</div>
 												{#if a.kind === 'scoring'}
 													<span class="tabular text-xl font-bold">{a.totalScore}</span>
+												{:else if a.kind === 'match'}
+													<!-- The result rather than the score: a match is won or lost, never a number. -->
+													{@const state = matchState(a)}
+													<span
+														class="text-sm font-semibold {state.winner === 'us'
+															? 'text-brand-text'
+															: state.winner === 'them'
+																? 'text-competition'
+																: 'text-muted'}"
+													>
+														{state.label}
+													</span>
 												{/if}
 											</a>
 										</li>
