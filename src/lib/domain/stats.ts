@@ -306,9 +306,13 @@ export function shapeName(round: RoundDefinition | null): string {
 	if (!round) return '?';
 	const stage = round.stages[0];
 	if (!stage) return '?';
-	const distance = stage.distance ? `${stage.distance.value}${stage.distance.unit}` : '?';
 	const arrows = round.stages.reduce((sum, s) => sum + s.ends * s.arrowsPerEnd, 0);
-	const shape = `${distance} · ${stage.faceSize}cm · ${arrows}`;
+	// A field course judged by eye has no distance to name, and a placeholder zero would be a lie.
+	const marked =
+		stage.distance && stage.distance.value > 0
+			? [`${stage.distance.value}${stage.distance.unit}`]
+			: [];
+	const shape = [...marked, `${stage.faceSize}cm`, String(arrows)].join(' · ');
 	// The face is named only when it is not the ten ring everything else on the page assumes.
 	if (round.scoreSetId === WA_10_RING.id) return shape;
 	return `${shape} · ${getScoreSet(round.scoreSetId).name}`;

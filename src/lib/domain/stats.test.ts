@@ -427,6 +427,17 @@ describe('summariseByRound', () => {
 		expect(summary.known).toBe(true);
 	});
 
+	it('leaves the distance out of the name when the course is judged by eye', () => {
+		const unmarked = {
+			...buildCustomRound({ distance: 0, unit: 'm', faceSize: 60, ends: 4, arrowsPerEnd: 3 }),
+			stages: [{ distance: null, faceSize: 60, ends: 4, arrowsPerEnd: 3 }]
+		};
+		const [summary] = summariseByRound([
+			activity({ id: 'a', round: unmarked, roundDefinitionId: null, arrowsShot: 12 })
+		]);
+		expect(summary.name).toBe('60cm · 12');
+	});
+
 	it('describes a practice shape by what it is made of, and marks it unknown', () => {
 		const odd = buildCustomRound({
 			distance: 32,
