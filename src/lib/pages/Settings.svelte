@@ -16,7 +16,8 @@
 		plotTapMs,
 		fullNewSessionButton,
 		competitionColour,
-		COMPETITION_COLOURS
+		COMPETITION_COLOURS,
+		noAnimations
 	} from '$lib/prefs';
 	import { recalculateBadges } from '$lib/db/repository';
 	import {
@@ -216,6 +217,18 @@
 								checked={$fullNewSessionButton}
 								label={$t('settings.newButtonTitle')}
 								onchange={(v) => fullNewSessionButton.set(v)}
+							/>
+						</div>
+
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.noAnimationsTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.noAnimationsHint')}</p>
+							</div>
+							<Toggle
+								checked={$noAnimations}
+								label={$t('settings.noAnimationsTitle')}
+								onchange={(v) => noAnimations.set(v)}
 							/>
 						</div>
 

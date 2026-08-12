@@ -156,3 +156,11 @@ body {
 		animation: none;
 	}
 }
+
+/*
+ * Set from the display settings. Anything marked as motion to keep is left running, because a
+ * progress indicator that has stopped says the app has stopped with it.
+ */
+.no-motion *:not([data-motion='keep']):not([data-motion='keep'] *) {
+	animation: none !important;
+}

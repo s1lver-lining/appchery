@@ -583,8 +583,12 @@ export const en = {
 		newButtonTitle: 'Full new session button',
 		newButtonHint:
 			'Ends the sessions list with the wide button and its menu. Off, a round plus button sits in the corner and opens the same choices.',
+		noAnimationsTitle: 'Turn off animations',
+		noAnimationsHint:
+			'Stops the ripple when the app opens, the ring on the sessions list, and the fireworks over a record. Progress indicators keep moving.',
 		competitionColourTitle: 'Competition colour',
-		competitionColourHint: 'The colour a competition wears in the sessions list and on the statistics page.',
+		competitionColourHint:
+			'The colour a competition wears in the sessions list and on the statistics page.',
 		colour: {
 			default: 'Default',
 			gold: 'Gold',

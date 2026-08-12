@@ -590,8 +590,12 @@ export const fr: Dictionary = {
 		newButtonTitle: 'Bouton de séance complet',
 		newButtonHint:
 			'Termine la liste des séances par le bouton large et son menu. Désactivé, un bouton rond se place dans le coin et ouvre les mêmes choix.',
+		noAnimationsTitle: 'Désactiver les animations',
+		noAnimationsHint:
+			"Arrête l'onde à l'ouverture de l'application, l'anneau de la liste des séances et le feu d'artifice sur un record. Les indicateurs de progression continuent de tourner.",
 		competitionColourTitle: 'Couleur des compétitions',
-		competitionColourHint: 'La couleur des compétitions dans la liste des séances et sur la page statistiques.',
+		competitionColourHint:
+			'La couleur des compétitions dans la liste des séances et sur la page statistiques.',
 		colour: {
 			default: 'Par défaut',
 			gold: 'Or',

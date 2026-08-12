@@ -236,6 +236,18 @@ function legacy(key: string): StatsFilter {
 }
 
 /**
+ * Whether everything that moves on its own is stopped: the ripple when the app opens, the ring on
+ * the sessions list, the fireworks over a record. Off by default, and turning it on is a choice
+ * about the app rather than about the device, which is why it is not read from the system setting.
+ * Progress indicators are left alone: a spinner that has stopped reads as a hang.
+ */
+export const noAnimations = flag('appchery.noAnimations', false);
+
+if (typeof document !== 'undefined') {
+	noAnimations.subscribe((value) => document.documentElement.classList.toggle('no-motion', value));
+}
+
+/**
  * The colour a competition wears, by target face name, or null for the one the theme picks. Written
  * onto the root as the kind's own variable, so the sessions list and the statistics page move
  * together: one kind of outing has one colour wherever it is drawn.

@@ -362,7 +362,7 @@
 			<div class="absolute inset-0 grid place-items-center bg-black">
 				<div class="flex flex-col items-center gap-5">
 					<svg viewBox="0 0 100 100" class="h-24 w-24" aria-hidden="true">
-						<g fill="none" stroke-linecap="round">
+						<g fill="none" stroke-linecap="round" data-motion="keep">
 							<circle cx="50" cy="50" r="44" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" />
 							<circle cx="50" cy="50" r="32" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" />
 							<circle cx="50" cy="50" r="20" stroke="#ffffff" stroke-opacity="0.12" stroke-width="4" />
