@@ -13,8 +13,10 @@
 	--color-brand-text: var(--c-brand-text);
 	--color-accent: var(--c-accent);
 	--color-danger: var(--c-danger);
-	/* The same red the statistics page paints a competition, so one kind wears one colour. */
+	/* The same colour the statistics page paints a competition, so one kind wears one colour. */
 	--color-competition: var(--c-kind-competition);
+	/* Winning, whoever did it: a match has two sides and only one of them is the archer. */
+	--color-win: var(--c-win);
 
 	/* Regulated target face colours, identical in every theme because the rules define them. */
 	--color-face-gold: #ffcf3f;
@@ -66,6 +68,8 @@
 	--c-comp-blue: #1a6ba8;
 	--c-comp-ink: #23282c;
 	--c-comp-red: #a3392c;
+	/* Fixed rather than following the competition colour: green reads as won on either side. */
+	--c-win: #2f7d4f;
 	--c-kind-qualification: #1a6ba8;
 
 	color-scheme: light;
@@ -95,6 +99,7 @@
 		--c-comp-blue: #4f9ac9;
 		--c-comp-ink: #d7cfc2;
 		--c-comp-red: #c04a55;
+		--c-win: #5fb07f;
 		--c-kind-qualification: #4f9ac9;
 
 		color-scheme: dark;
@@ -123,6 +128,7 @@
 	--c-comp-blue: #4f9ac9;
 	--c-comp-ink: #d7cfc2;
 	--c-comp-red: #c04a55;
+	--c-win: #5fb07f;
 	--c-kind-qualification: #4f9ac9;
 
 	color-scheme: dark;

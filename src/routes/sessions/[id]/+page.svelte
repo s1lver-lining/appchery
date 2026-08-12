@@ -851,10 +851,8 @@
 													{@const state = matchState(a)}
 													<span
 														class="text-sm font-semibold {state.winner === 'us'
-															? 'text-brand-text'
-															: state.winner === 'them'
-																? 'text-competition'
-																: 'text-muted'}"
+															? 'text-win'
+															: 'text-muted'}"
 													>
 														{state.label}
 													</span>

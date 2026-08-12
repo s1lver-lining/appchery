@@ -438,9 +438,10 @@
 					<div class="flex items-center gap-3 text-center">
 						<div class="min-w-0 flex-1">
 							<p class="truncate text-xs text-muted">{ourLabel}</p>
+							<!-- Green on whichever side took it: winning looks the same from both ends of the line. -->
 							<p
 								class="tabular text-3xl leading-none font-bold {result.winner === 'us'
-									? 'text-brand-text'
+									? 'text-win'
 									: ''}"
 							>
 								{config.system === 'set' ? result.ourPoints : result.ourTotal}
@@ -451,7 +452,7 @@
 							<p class="truncate text-xs text-muted">{theirLabel}</p>
 							<p
 								class="tabular text-3xl leading-none font-bold {result.winner === 'them'
-									? 'text-competition'
+									? 'text-win'
 									: ''}"
 							>
 								{config.system === 'set' ? result.theirPoints : result.theirTotal}
