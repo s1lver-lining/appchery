@@ -254,7 +254,7 @@ if (typeof document !== 'undefined') {
  * onto the root as the kind's own variable, so the sessions list and the statistics page move
  * together: one kind of outing has one colour wherever it is drawn.
  */
-export const COMPETITION_COLOURS = ['blue', 'ink', 'green'] as const;
+export const COMPETITION_COLOURS = ['blue', 'ink', 'red'] as const;
 export const competitionColour = storedString('appchery.competitionColour');
 
 if (typeof document !== 'undefined') {

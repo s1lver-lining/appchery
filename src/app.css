@@ -56,7 +56,7 @@
 	/* Bronze, red and blue, checked for separation under deuteranopia against the light surface. */
 	--c-kind-practice: #b87a26;
 	/* Named apart from the kind variable, which a chosen competition colour overwrites at runtime. */
-	--c-kind-competition-base: #a3392c;
+	--c-kind-competition-base: #2f7d4f;
 	--c-kind-competition: var(--c-kind-competition-base);
 
 	/*
@@ -65,7 +65,7 @@
 	 */
 	--c-comp-blue: #1a6ba8;
 	--c-comp-ink: #23282c;
-	--c-comp-green: #2f7d4f;
+	--c-comp-red: #a3392c;
 	--c-kind-qualification: #1a6ba8;
 
 	color-scheme: light;
@@ -88,13 +88,13 @@
 
 		/* Their own steps rather than the light ones: a flipped theme loses the separation. */
 		--c-kind-practice: #b58430;
-		--c-kind-competition-base: #c04a55;
+		--c-kind-competition-base: #5fb07f;
 		--c-kind-competition: var(--c-kind-competition-base);
 
 		/* Their own steps again: ink turns pale here, or a competition would sink into the surface. */
 		--c-comp-blue: #4f9ac9;
 		--c-comp-ink: #d7cfc2;
-		--c-comp-green: #5fb07f;
+		--c-comp-red: #c04a55;
 		--c-kind-qualification: #4f9ac9;
 
 		color-scheme: dark;
@@ -116,13 +116,13 @@
 
 	/* Their own steps rather than the light ones: a flipped theme loses the separation. */
 	--c-kind-practice: #b58430;
-	--c-kind-competition-base: #c04a55;
+	--c-kind-competition-base: #5fb07f;
 	--c-kind-competition: var(--c-kind-competition-base);
 
 	/* Their own steps again: ink turns pale here, or a competition would sink into the surface. */
 	--c-comp-blue: #4f9ac9;
 	--c-comp-ink: #d7cfc2;
-	--c-comp-green: #5fb07f;
+	--c-comp-red: #c04a55;
 	--c-kind-qualification: #4f9ac9;
 
 	color-scheme: dark;

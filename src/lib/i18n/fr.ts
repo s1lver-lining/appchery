@@ -662,7 +662,7 @@ export const fr: Dictionary = {
 			default: 'Par défaut',
 			blue: 'Bleu',
 			ink: 'Encre',
-			green: 'Vert'
+			red: 'Rouge sombre'
 		},
 		clockTitle: 'Format 24 heures',
 		clockHint: 'Afficher 14:30 plutôt que 2:30 PM.',

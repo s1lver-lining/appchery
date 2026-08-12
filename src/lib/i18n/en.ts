@@ -655,7 +655,7 @@ export const en = {
 			default: 'Default',
 			blue: 'Blue',
 			ink: 'Ink',
-			green: 'Green'
+			red: 'Dark red'
 		},
 		clockTitle: '24 hour clock',
 		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
