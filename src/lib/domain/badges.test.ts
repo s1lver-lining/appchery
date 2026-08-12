@@ -415,3 +415,29 @@ describe('rounds the ten ring rules do not apply to', () => {
 		expect(badge([cold], 'frostbite').earnedAt).toBe(MONDAY);
 	});
 });
+
+describe('what an end did is judged on a whole end', () => {
+	/** The indoor round asks for three arrows an end; this one was stopped after two. */
+	it('ignores an end the archer walked away from', () => {
+		const short = activity({
+			id: 'a',
+			roundDefinitionId: indoor.id,
+			round: indoor,
+			ends: [end({ arrows: 2, subtotal: 20, golds: 2 })]
+		});
+		expect(badge([short], 'thirtyAt18').earnedAt).toBeNull();
+	});
+
+	it('wants every arrow of the end plotted before it measures the group', () => {
+		// Six of the seven arrows plotted tightly says nothing about where the seventh went.
+		const seven = buildCustomRound({ distance: 18, unit: 'm', faceSize: 40, ends: 2, arrowsPerEnd: 7 });
+		const tight = Array.from({ length: 6 }, (_, i) => ({ x: 0.01 * i, y: 0 }));
+		const partial = activity({
+			id: 'a',
+			roundDefinitionId: null,
+			round: seven,
+			ends: [end({ arrows: 7, plots: tight })]
+		});
+		expect(badge([partial], 'handfulOfArrows').earnedAt).toBeNull();
+	});
+});

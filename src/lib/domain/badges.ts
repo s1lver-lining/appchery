@@ -275,11 +275,20 @@ function biggestSession(history: History): number {
 }
 
 /**
+ * Whether the end holds every arrow the round asks for. A badge for what an end did has to be judged
+ * on a whole one: three good arrows out of six is half a story, and the archer stopped for a reason.
+ */
+function fullEnd(activity: BadgeActivity, end: BadgeEnd): boolean {
+	const asked = activity.round?.stages[end.stageIndex]?.arrowsPerEnd;
+	return asked !== undefined && end.arrows >= asked;
+}
+
+/**
  * How wide the group of an end was, in centimetres on the face it was shot at. Coordinates are
  * normalised to a unit circle, so the radius of that circle is half the face.
  */
 function groupWidthCm(activity: BadgeActivity, end: BadgeEnd): number | null {
-	if (end.plots.length < GROUP_ARROWS) return null;
+	if (end.plots.length < GROUP_ARROWS || end.plots.length < end.arrows) return null;
 	const faceSize = activity.round?.stages[end.stageIndex]?.faceSize;
 	if (!faceSize) return null;
 
@@ -528,7 +537,7 @@ export const BADGES: BadgeDefinition[] = [
 				h.scoring,
 				(a) =>
 					EIGHTEEN_METRE_ROUNDS.includes(a.roundDefinitionId ?? '') &&
-					a.ends.some((end) => end.arrows === 3 && end.subtotal === 30)
+					a.ends.some((end) => fullEnd(a, end) && end.arrows === 3 && end.subtotal === 30)
 			)
 	},
 	{
@@ -541,7 +550,9 @@ export const BADGES: BadgeDefinition[] = [
 				h.scoring,
 				(a) =>
 					a.round?.scoreSetId === TEN_RING &&
-					a.ends.some((end) => end.arrows >= GOLD_ARROW_END && end.golds === end.arrows)
+					a.ends.some(
+						(end) => end.arrows >= GOLD_ARROW_END && fullEnd(a, end) && end.golds === end.arrows
+					)
 			)
 	},
 
@@ -553,6 +564,7 @@ export const BADGES: BadgeDefinition[] = [
 		earnedAt: (h) =>
 			first(h.scoring, (a) =>
 				a.ends.some((end) => {
+					if (!fullEnd(a, end)) return false;
 					const width = groupWidthCm(a, end);
 					return width !== null && width <= HANDFUL_CM;
 				})
