@@ -65,6 +65,8 @@ export interface MatchTally {
 	winner: Side | null;
 	/** A tie that the regulation ends could not break: one arrow each, closest to the centre. */
 	needsShootOff: boolean;
+	/** Level with nothing left to shoot, which is a result rather than an unfinished match. */
+	drawn: boolean;
 }
 
 const PRESETS: Record<Exclude<MatchFormat, 'custom'>, { arrowsPerEnd: number; maxEnds: number; setPointsToWin: number }> = {
@@ -203,6 +205,7 @@ export function tally(config: MatchConfig, ends: MatchEnd[]): MatchTally {
 		else winner = shootOff.winner ?? null;
 	}
 
+	const needsShootOff = config.shootOff && tiedAfterRegulation && winner === null;
 	return {
 		ends: rows,
 		ourPoints,
@@ -212,7 +215,9 @@ export function tally(config: MatchConfig, ends: MatchEnd[]): MatchTally {
 		endsPlayed,
 		decided: winner !== null,
 		winner,
-		needsShootOff: config.shootOff && tiedAfterRegulation && winner === null
+		needsShootOff,
+		// Level, every end shot, and no arrow left to separate them: the match is over and drawn.
+		drawn: winner === null && allShot && !needsShootOff && tiedOrShotOut(config, ourPoints, theirPoints, ourTotal, theirTotal)
 	};
 }
 
@@ -283,4 +288,15 @@ export function wonFromBehind(config: MatchConfig, ends: MatchEnd[]): boolean {
 		if (theirs - ours >= 4) behind = true;
 	}
 	return behind;
+}
+
+/** Level once there is nothing left to shoot, under whichever system the match was played. */
+function tiedOrShotOut(
+	config: MatchConfig,
+	ourPoints: number,
+	theirPoints: number,
+	ourTotal: number,
+	theirTotal: number
+): boolean {
+	return config.system === 'set' ? ourPoints === theirPoints : ourTotal === theirTotal;
 }

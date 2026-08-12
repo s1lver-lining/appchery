@@ -179,6 +179,7 @@ export const fr: Dictionary = {
 		undecided: 'En attente du juge',
 		won: 'Gagné',
 		lost: 'Perdu',
+		drawn: 'Match nul',
 		inProgress: 'En cours',
 		against: 'contre {name}',
 		unrecorded: 'Non comptabilisé',

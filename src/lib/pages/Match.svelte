@@ -96,7 +96,7 @@
 		if (result.winner === 'us') return $t('match.won');
 		if (result.winner === 'them') return $t('match.lost');
 		if (result.needsShootOff) return $t('match.undecided');
-		return $t('match.inProgress');
+		return result.drawn ? $t('match.drawn') : $t('match.inProgress');
 	});
 
 	/**

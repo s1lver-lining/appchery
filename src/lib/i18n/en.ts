@@ -177,6 +177,7 @@ export const en = {
 		undecided: 'Waiting on the judge',
 		won: 'Won',
 		lost: 'Lost',
+		drawn: 'Drawn',
 		inProgress: 'In progress',
 		against: 'against {name}',
 		unrecorded: 'Unrecorded',

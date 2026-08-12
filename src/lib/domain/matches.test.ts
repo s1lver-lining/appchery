@@ -168,3 +168,25 @@ describe('wonFromBehind', () => {
 		expect(wonFromBehind(newMatch('individual', 'cumulative'), level)).toBe(false);
 	});
 });
+
+describe('a match that cannot be separated', () => {
+	const level = ends([27, 27], [27, 27], [27, 27], [27, 27], [27, 27]);
+
+	it('is drawn when no shoot-off is allowed', () => {
+		const config = { ...newMatch('individual'), shootOff: false };
+		const result = tally(config, level);
+		expect(result.drawn).toBe(true);
+		expect(result.needsShootOff).toBe(false);
+		expect(result.winner).toBeNull();
+	});
+
+	it('is not drawn while a shoot-off is still to come', () => {
+		const result = tally(newMatch('individual'), level);
+		expect(result.drawn).toBe(false);
+		expect(result.needsShootOff).toBe(true);
+	});
+
+	it('is not drawn halfway through', () => {
+		expect(tally(newMatch('individual'), ends([27, 27], [27, 27])).drawn).toBe(false);
+	});
+});

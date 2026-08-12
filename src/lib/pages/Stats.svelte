@@ -127,6 +127,14 @@
 	/** Rounds and matches together, which is the only figure on the page that counts both. */
 	const windowedVolume = $derived(applyFilter([...scored, ...matches], ctx, $statsFilter));
 	const arrowsShot = $derived(windowedVolume.reduce((sum, a) => sum + a.arrowsShot, 0));
+	/** Days shot counts matches too: a day spent shooting matches is not a day off. */
+	const daysShot = $derived(
+		new Set(
+			windowedVolume
+				.filter((a) => a.arrowsShot > 0)
+				.map((a) => new Date(a.startedAt).toDateString())
+		).size
+	);
 	const bounds = $derived(periodBounds($statsFilter, scored));
 	const grain = $derived(pickGrain(bounds.from, bounds.to));
 	/** Fixed so a filtered out kind never repaints the ones that are left. */
@@ -341,7 +349,7 @@
 		/>
 
 		<dl class="grid grid-cols-3 gap-3">
-			{#each [{ value: totals.days, label: $t('stats.daysShot') }, { value: totals.rounds, label: $t('stats.roundsShot') }, { value: totals.averagePerArrow.toFixed(2), label: $t('stats.perArrow') }] as tile (tile.label)}
+			{#each [{ value: daysShot, label: $t('stats.daysShot') }, { value: totals.rounds, label: $t('stats.roundsShot') }, { value: totals.averagePerArrow.toFixed(2), label: $t('stats.perArrow') }] as tile (tile.label)}
 				<div class="rounded-xl border border-line bg-surface p-3 text-center">
 					<dd class="tabular text-xl font-semibold">{tile.value}</dd>
 					<dt class="mt-0.5 text-[11px] text-muted">{tile.label}</dt>

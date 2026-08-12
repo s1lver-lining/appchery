@@ -438,7 +438,7 @@
 		if (result.winner === 'us') return { winner: 'us' as const, label: $t('match.won') };
 		if (result.winner === 'them') return { winner: 'them' as const, label: $t('match.lost') };
 		if (result.needsShootOff) return { winner: null, label: $t('match.undecided') };
-		return { winner: null, label: $t('match.inProgress') };
+		return { winner: null, label: result.drawn ? $t('match.drawn') : $t('match.inProgress') };
 	}
 
 	function matchSummary(a: ActivityRow) {
