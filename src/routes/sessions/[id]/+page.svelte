@@ -34,11 +34,13 @@
 		createScoringActivity,
 		createTuningActivity,
 		addTrainingArrows,
+		awardBadges,
 		type ActivityRow,
 		type PlanSlotRow
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { defaultBowId, formatDateTime } from '$lib/prefs';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
@@ -106,6 +108,21 @@
 		await refresh();
 		// Dropped only once the reload holds it, otherwise the counter blinks back for a frame.
 		pending -= delta;
+		// Arrows taken back off the counter cannot have won anything, so only additions are checked.
+		if (delta > 0) await announceBadges();
+	}
+
+	/**
+	 * Untargeted arrows count towards the volume and habit badges like any other, so a badge one of
+	 * them earns is announced on the page it was earned on rather than waiting to be found later.
+	 */
+	let celebrations = $state<Award[]>([]);
+
+	async function announceBadges() {
+		celebrations = (await awardBadges()).map((key) => ({
+			title: $t('badges.new'),
+			subtitle: $t(`badges.list.${key}.name`)
+		}));
 	}
 
 	/** Held down, the minus runs away with itself, faster the longer it is held. */
@@ -340,6 +357,7 @@
 	closeOnBack(() => adding, () => (adding = false));
 	closeOnBack(() => editingGoal, () => (editingGoal = false));
 	closeOnBack(() => countDialog !== null, () => (countDialog = null));
+	closeOnBack(() => celebrations.length > 0, () => (celebrations = []));
 
 	async function startRound(round: RoundDefinition) {
 		const id = await materialise();
@@ -902,4 +920,8 @@
 		onconfirm={remove}
 		oncancel={() => (confirmingDelete = false)}
 	/>
+{/if}
+
+{#if celebrations.length > 0}
+	<Fireworks awards={celebrations} onclose={() => (celebrations = [])} />
 {/if}

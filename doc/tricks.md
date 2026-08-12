@@ -70,6 +70,9 @@ themselves with the same fireworks a personal best does. A last arrow that sets 
 two badges shows all three cards under one volley. The list is behind the dots menu on the stats
 page, or the medal in the settings grid.
 
+**Untargeted arrows count.** The arrow counter on the session page feeds the volume and habit badges
+like any scored round, and a badge one of those arrows earns goes up over the session page.
+
 **Two ways to read the list.** The grid of icons is the default; the dots menu swaps it for the list
 with every rule spelled out, and remembers which you chose. Tapping a badge in the grid opens what
 it wants and how close you are either way.
