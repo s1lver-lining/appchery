@@ -477,8 +477,8 @@
 		One line for both: the view is a pill rather than a tab strip, which spends a row on nothing. -->
 	<div class="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col px-4 pt-3">
 		<div class="mb-3 flex shrink-0 items-center gap-2">
-			<!-- Nothing to search in a month grid, so the box steps aside rather than filtering nothing. -->
-			<div class="relative min-w-0 flex-1 {tab === 'calendar' ? 'invisible' : ''}">
+			<!-- Nothing to search in a month grid, so the box greys out rather than filtering nothing. -->
+			<div class="relative min-w-0 flex-1 {tab === 'calendar' ? 'opacity-50' : ''}">
 				<span class="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">
 					<Icon name="search" size={16} />
 				</span>
@@ -490,7 +490,7 @@
 					bind:value={query}
 					disabled={tab === 'calendar'}
 				/>
-				{#if searching}
+				{#if searching && tab !== 'calendar'}
 					<button
 						class="absolute top-1/2 right-2 -translate-y-1/2 text-muted"
 						aria-label={$t('common.close')}
