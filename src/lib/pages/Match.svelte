@@ -2,7 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { getScoreSet } from '$lib/domain/rounds/seed';
 	import { scoreAt, sortShotsDescending } from '$lib/domain/rounds/geometry';
-	import { sortArrowsDescending, showArrowNumbers } from '$lib/prefs';
+	import { sortArrowsDescending, showArrowNumbers, dateFormats } from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import {
 		tally,
@@ -23,6 +23,7 @@
 		deleteMatchEnd,
 		updateMatchConfig,
 		listMatchNames,
+		getSession,
 		deleteActivity,
 		awardBadges,
 		shotFromZone,
@@ -37,6 +38,8 @@
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import Scorecard from '$lib/ui/Scorecard.svelte';
+	import type { CardData } from '$lib/ui/scorecard';
 	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
@@ -375,6 +378,59 @@
 		() => (cursor = null)
 	);
 
+	/**
+	 * The match as a picture, built from the same card a round goes out on: the scoreline where the
+	 * score would be, and the sheet underneath it with a column for each side.
+	 */
+	let sharing = $state(false);
+	let session = $state<Awaited<ReturnType<typeof getSession>>>(null);
+	$effect(() => {
+		getSession(activity.sessionId).then((row) => (session = row));
+	});
+
+	const cardData = $derived<Omit<CardData, 'options'>>({
+		roundName: `${ourLabel} · ${theirLabel}`,
+		score: config
+			? config.system === 'set'
+				? (result?.ourPoints ?? 0)
+				: (result?.ourTotal ?? 0)
+			: 0,
+		max: null,
+		opponentScore: config
+			? config.system === 'set'
+				? (result?.theirPoints ?? 0)
+				: (result?.theirTotal ?? 0)
+			: 0,
+		arrows: activity.arrowsShot,
+		tens: activity.count10s,
+		xs: activity.countX,
+		sheet: rows.map((row) => ({
+			arrows: shownArrows(row, 'us').map((shot) => shot.zoneLabel),
+			subtotal: row.ours,
+			running: row.theirs ?? 0
+		})),
+		date: $dateFormats.date(activity.startedAt),
+		place: session?.location ?? null,
+		bow: null,
+		category: config && config.stage !== 'none' ? $t(`match.stage.${config.stage}`) : $t('match.title'),
+		sessionName: session?.label ?? null,
+		weather: null,
+		isBest: result?.winner === 'us',
+		labels: {
+			points: config?.system === 'set' ? $t('match.sets') : $t('match.total'),
+			arrows: $t('score.arrowsColumn'),
+			tens: $t('score.tens'),
+			xs: $t('score.xs'),
+			average: $t('share.average'),
+			end: $t('share.end'),
+			// The two columns of a match sheet are the two sides of it, named as they are on the card.
+			endTotal: ourLabel,
+			runningTotal: theirLabel,
+			personalBest: $t('match.won'),
+			tagline: $t('share.tagline')
+		}
+	});
+
 	async function remove() {
 		await deleteActivity(activity.id);
 		goto(`/sessions/${activity.sessionId}`);
@@ -472,6 +528,15 @@
 					>
 						<Icon name="clock" size={20} />
 					</a>
+					<!-- The match as a picture, which is the form of it worth showing anyone else. -->
+					<button
+						class="shrink-0 rounded-lg p-1.5 text-muted disabled:opacity-30"
+						aria-label={$t('share.title')}
+						disabled={rows.length === 0}
+						onclick={() => (sharing = true)}
+					>
+						<Icon name="share" size={20} />
+					</button>
 					<button
 						class="shrink-0 rounded-lg p-1.5 text-muted"
 						aria-label={$t('common.more')}
@@ -744,6 +809,10 @@
 			</div>
 		</div>
 	</Sheet>
+
+	{#if sharing}
+		<Scorecard data={cardData} onclose={() => (sharing = false)} />
+	{/if}
 
 	{#if scanning && cursor}
 		<AutoScore

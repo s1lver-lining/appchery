@@ -12,6 +12,11 @@ export interface CardData {
 	score: number;
 	/** The best the round can be shot, when it is known: a score means more against its ceiling. */
 	max: number | null;
+	/**
+	 * What the other side scored, on the card of a match. A match has no ceiling to be measured
+	 * against: the only number that gives it meaning is the one it was shot against.
+	 */
+	opponentScore?: number | null;
 	arrows: number;
 	tens: number;
 	xs: number;
@@ -378,7 +383,18 @@ export function scorecardSvg(data: CardData): string {
 	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
 
 	${text(String(data.score), 74, statTop + 172, { size: 170, weight: 800, fill: 'url(#score)' })}
-	${data.max ? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
+	${
+		data.max
+			? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' })
+			: data.opponentScore !== null && data.opponentScore !== undefined
+				? text(`– ${data.opponentScore}`, 1000, statTop + 172, {
+						size: 84,
+						weight: 700,
+						fill: MUTED,
+						anchor: 'end'
+					})
+				: ''
+	}
 	${text(data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: MUTED, spacing: 5 })}
 
 	<!-- The sky sits well above the ceiling score, on its own two lines, rather than beside a number. -->
