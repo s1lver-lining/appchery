@@ -47,13 +47,18 @@
 		{#each plans as plan (plan.id)}
 			{@const list = slotsOf(plan.id)}
 			{@const total = weekArrowGoal(list, [plan])}
+			<!-- A plan put aside stays in the list, greyed: it is kept to be turned back on. -->
 			<a
 				href="/plans/{plan.id}"
-				class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
+				class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
+					{plan.isActive === 0 ? 'opacity-60' : ''}"
 			>
 				<div class="min-w-0">
-					<p class="truncate font-semibold">{plan.name}</p>
-					<p class="text-xs text-muted">{$t('plans.sessionsCount', { n: list.length })}</p>
+					<p class="truncate font-semibold {plan.isActive === 0 ? 'text-muted' : ''}">{plan.name}</p>
+					<p class="text-xs text-muted">
+						{$t('plans.sessionsCount', { n: list.length })}
+						{#if plan.isActive === 0}· {$t('plans.paused')}{/if}
+					</p>
 				</div>
 				{#if total > 0}
 					<div class="shrink-0 text-right">

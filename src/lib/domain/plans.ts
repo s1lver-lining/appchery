@@ -85,6 +85,19 @@ export interface PlanLike {
 }
 
 /**
+ * A plan put aside asks nothing of the week: its slots stop showing and its arrows stop counting,
+ * while everything it produced before stays exactly where it is.
+ */
+export function onlyActive<P extends { id: string; isActive: number }, S extends { planId: string }>(
+	plans: P[],
+	slots: S[]
+): { plans: P[]; slots: S[] } {
+	const live = plans.filter((plan) => plan.isActive !== 0);
+	const ids = new Set(live.map((plan) => plan.id));
+	return { plans: live, slots: slots.filter((slot) => ids.has(slot.planId)) };
+}
+
+/**
  * What a week of these plans asks for, which is the figure that says whether they are realistic.
  * Free arrows count towards it: they are owed by the end of the week like any other.
  */

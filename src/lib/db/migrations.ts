@@ -214,5 +214,7 @@ export const MIGRATIONS: string[][] = [
 			earned_at INTEGER NOT NULL
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_badge_key ON badge (key);`
-	]
+	],
+	// 0012 a plan put aside without being thrown away
+	[`ALTER TABLE plan ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;`]
 ];

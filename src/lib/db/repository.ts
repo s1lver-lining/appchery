@@ -3,7 +3,7 @@ import { db, schema } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
-import { weekArrowGoal } from '$lib/domain/plans';
+import { weekArrowGoal, onlyActive } from '$lib/domain/plans';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -635,7 +635,7 @@ export async function createPlan(name: string) {
 
 export async function updatePlan(
 	id: string,
-	patch: Partial<{ name: string; freeArrows: number | null }>
+	patch: Partial<{ name: string; freeArrows: number | null; isActive: number }>
 ) {
 	await db()
 		.update(schema.plan)
@@ -843,6 +843,8 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 		.where(isNull(schema.sightMark.deletedAt));
 	const slots = await listPlanSlots();
 	const plans = await listPlans();
+	// A plan put aside stops setting the bar a weekly badge is measured against.
+	const live = onlyActive(plans, slots);
 
 	const bowTypes = new Map(bows.map((bow) => [bow.id, bow.type]));
 	const sessionsById = new Map(sessions.map((session) => [session.id, session]));
@@ -900,7 +902,7 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 			};
 		}),
 		sightMarks: marks,
-		weekArrowGoal: weekArrowGoal(slots, plans)
+		weekArrowGoal: weekArrowGoal(live.slots, live.plans)
 	};
 }
 

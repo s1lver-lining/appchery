@@ -1,5 +1,13 @@
 import { describe, it, expect } from 'vitest';
-import { upcoming, nextUp, weekArrowGoal, weekdayOf, GRACE_MS, type PlanSlotLike } from './plans';
+import {
+	upcoming,
+	nextUp,
+	weekArrowGoal,
+	weekdayOf,
+	onlyActive,
+	GRACE_MS,
+	type PlanSlotLike
+} from './plans';
 
 const at = (iso: string) => new Date(iso).getTime();
 
@@ -83,5 +91,27 @@ describe('weekArrowGoal', () => {
 		const slots = [slot({ id: 'a', arrowGoal: 60 })];
 		expect(weekArrowGoal(slots, [{ freeArrows: 90 }, { freeArrows: null }])).toBe(150);
 		expect(weekArrowGoal([], [{ freeArrows: 90 }])).toBe(90);
+	});
+});
+
+describe('onlyActive', () => {
+	const plans = [
+		{ id: 'a', isActive: 1, freeArrows: 30 },
+		{ id: 'b', isActive: 0, freeArrows: 60 }
+	];
+	const slots = [
+		{ planId: 'a', arrowGoal: 72 },
+		{ planId: 'b', arrowGoal: 100 }
+	];
+
+	it('drops a plan put aside, and its slots with it', () => {
+		const live = onlyActive(plans, slots);
+		expect(live.plans.map((plan) => plan.id)).toEqual(['a']);
+		expect(live.slots).toEqual([{ planId: 'a', arrowGoal: 72 }]);
+	});
+
+	it('leaves the week asking only what the plans still running ask', () => {
+		const live = onlyActive(plans, slots);
+		expect(weekArrowGoal(live.slots as PlanSlotLike[], live.plans)).toBe(102);
 	});
 });

@@ -148,7 +148,9 @@ export const plan = sqliteTable('plan', {
 	 * Arrows the week asks for that belong to no particular outing: shoot them whenever, they still
 	 * have to be shot. They add to the week's total alongside the slot goals.
 	 */
-	freeArrows: integer('free_arrows')
+	freeArrows: integer('free_arrows'),
+	/** A plan put aside: it keeps its slots and its history, but stops asking anything of the week. */
+	isActive: integer('is_active').notNull().default(1)
 });
 
 /**

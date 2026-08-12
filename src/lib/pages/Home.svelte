@@ -14,7 +14,7 @@
 		createSession,
 		updateSession
 	} from '$lib/db/repository';
-	import { upcoming, nextUp, weekArrowGoal, type Occurrence } from '$lib/domain/plans';
+	import { upcoming, nextUp, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
 	import {
 		overview,
 		inRange,
@@ -107,10 +107,13 @@
 	 * What is coming: the soonest session still ahead, or the soonest slot a plan calls for. One that
 	 * began within the hour still counts, because that is the one being walked into.
 	 */
+	/** Plans put aside are dropped here rather than at each use, so nothing they ask for gets through. */
+	const live = $derived(onlyActive(plans, slots));
+
 	const next = $derived(
 		nextUp<{ at: number; session?: (typeof sessions)[number]; occurrence?: Occurrence }>([
 			...sessions.map((session) => ({ at: session.startedAt, session })),
-			...upcoming(slots, sessions.map((s) => s.startedAt)).map((occurrence) => ({
+			...upcoming(live.slots, sessions.map((s) => s.startedAt)).map((occurrence) => ({
 				at: occurrence.at,
 				occurrence
 			}))
@@ -163,7 +166,7 @@
 			.filter((s) => s.startedAt >= weekStart)
 			.reduce((sum, s) => sum + (counts[s.id] ?? 0), 0)
 	);
-	const weekGoal = $derived(weekArrowGoal(slots, plans));
+	const weekGoal = $derived(weekArrowGoal(live.slots, live.plans));
 	const weekSessions = $derived(sessions.filter((s) => s.startedAt >= weekStart).length);
 	const weekDone = $derived(weekGoal > 0 ? Math.min(1, weekArrows / weekGoal) : 0);
 

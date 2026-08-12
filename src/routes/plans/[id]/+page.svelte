@@ -22,6 +22,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import Toggle from '$lib/ui/Toggle.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	const planId = $derived($page.params.id as string);
@@ -48,6 +49,12 @@
 
 	const byDay = $derived((weekday: number) => slots.filter((slot) => slot.weekday === weekday));
 	const weekTotal = $derived(weekArrowGoal(slots, plan ? [plan] : []));
+
+	/** Put aside rather than deleted: the week stops being asked for, and nothing already shot moves. */
+	async function setActive(on: boolean) {
+		await updatePlan(planId, { isActive: on ? 1 : 0 });
+		await refresh();
+	}
 
 	async function setFreeArrows(raw: string) {
 		const value = Number(raw);
@@ -141,6 +148,22 @@
 	</PageHeader>
 
 	<div class="mx-auto w-full max-w-2xl space-y-3 p-4">
+		<!-- First, because a plan that is off asks nothing of the week and every figure below it is
+			then a description of a plan rather than of what is expected. -->
+		<section class="rounded-xl border border-line bg-surface p-3.5">
+			<div class="flex items-center justify-between gap-3">
+				<div class="min-w-0">
+					<p class="font-medium">{$t('plans.activeTitle')}</p>
+					<p class="text-xs text-muted">{$t('plans.activeHint')}</p>
+				</div>
+				<Toggle
+					checked={plan.isActive !== 0}
+					label={$t('plans.activeTitle')}
+					onchange={setActive}
+				/>
+			</div>
+		</section>
+
 		<!-- What the week asks for, which is the number that says whether the plan is realistic. -->
 		<section class="rounded-xl border border-line bg-surface p-3.5">
 			<div class="flex items-baseline justify-between">
