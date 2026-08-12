@@ -1247,22 +1247,6 @@
 				</div>
 			{/if}
 
-			<!-- Where it sits in the ladder, which is what makes a day of matches read in order. -->
-			<div class="flex items-center justify-between gap-3">
-				<p class="text-sm font-medium">{$t('match.stageLabel')}</p>
-				<select
-					class="shrink-0 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-					value={draftMatch.stage}
-					onchange={(e) =>
-						draftMatch &&
-						(draftMatch = { ...draftMatch, stage: e.currentTarget.value as MatchStage })}
-				>
-					{#each MATCH_STAGES as stage (stage)}
-						<option value={stage}>{$t(`match.stage.${stage}`)}</option>
-					{/each}
-				</select>
-			</div>
-
 			{#if draftMatch.format === 'custom'}
 				<!-- The same wheels the custom round is built with, so one form does not read as two. -->
 				<div class="grid grid-cols-3 gap-2 border-t border-line pt-3">
@@ -1390,6 +1374,22 @@
 
 			{#if showAdvanced}
 				<div class="space-y-3 border-l-2 border-line pl-3">
+					<!-- Where it sits in the ladder, which most matches have no answer to. -->
+					<div class="flex items-center justify-between gap-3">
+						<p class="text-sm font-medium">{$t('match.stageLabel')}</p>
+						<select
+							class="shrink-0 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+							value={draftMatch.stage}
+							onchange={(e) =>
+								draftMatch &&
+								(draftMatch = { ...draftMatch, stage: e.currentTarget.value as MatchStage })}
+						>
+							{#each MATCH_STAGES as stage (stage)}
+								<option value={stage}>{$t(`match.stage.${stage}`)}</option>
+							{/each}
+						</select>
+					</div>
+
 					<div class="flex gap-2">
 						<NamePicker
 							value={draftMatch.ourName}

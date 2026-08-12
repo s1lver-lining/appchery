@@ -2,7 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { getScoreSet } from '$lib/domain/rounds/seed';
 	import { scoreAt, sortShotsDescending } from '$lib/domain/rounds/geometry';
-	import { botEnd } from '$lib/domain/bots';
+	import { botEnd, BOT_LEVELS } from '$lib/domain/bots';
 	import { sortArrowsDescending, showArrowNumbers, dateFormats } from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import {
@@ -803,6 +803,37 @@
 						config && updateMatchConfig(activity.id, { ...config, forSelf: !v }).then(refresh)}
 				/>
 			</div>
+
+			<!-- Turned on mid match as well as before it: the next end is answered, the ones already
+				shot are left exactly as they were entered. -->
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<p class="text-sm font-medium">{$t('match.botTitle')}</p>
+				<Toggle
+					checked={config.bot !== null}
+					label={$t('match.botTitle')}
+					onchange={(v) =>
+						config &&
+						updateMatchConfig(activity.id, {
+							...config,
+							bot: v ? (config.bot ?? 'amateur') : null
+						}).then(refresh)}
+				/>
+			</div>
+
+			{#if config.bot}
+				<div class="flex gap-2">
+					{#each BOT_LEVELS as level (level)}
+						<button
+							class="flex-1 rounded-lg border py-2 text-xs font-medium
+								{config?.bot === level ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+							onclick={() =>
+								config && updateMatchConfig(activity.id, { ...config, bot: level }).then(refresh)}
+						>
+							{$t(`match.bot.${level}`)}
+						</button>
+					{/each}
+				</div>
+			{/if}
 
 			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
 				<p class="text-sm font-medium">{$t('match.stageLabel')}</p>
