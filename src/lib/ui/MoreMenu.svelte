@@ -35,12 +35,29 @@
 		() => (open = false)
 	);
 	let root = $state<HTMLElement | undefined>();
+	/** Set while the click that closed the menu is still on its way, so the page never receives it. */
+	let swallow = false;
 </script>
 
-<!-- A press anywhere else closes the menu, which is what a tap outside a popup means everywhere. -->
+<!--
+	A press anywhere else closes the menu, which is what a tap outside a popup means everywhere. That
+	press does nothing else: the click it turns into is swallowed, so shutting a menu over the session
+	list never opens the session that happened to be underneath it.
+-->
 <svelte:window
 	onpointerdown={(event) => {
-		if (open && root && !root.contains(event.target as Node)) open = false;
+		// Cleared first: a click always follows its own pointer press, so the flag never outlives one.
+		swallow = false;
+		if (open && root && !root.contains(event.target as Node)) {
+			open = false;
+			swallow = true;
+		}
+	}}
+	onclickcapture={(event) => {
+		if (!swallow) return;
+		swallow = false;
+		event.preventDefault();
+		event.stopPropagation();
 	}}
 />
 
