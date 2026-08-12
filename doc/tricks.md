@@ -47,6 +47,20 @@ the date field for the common case of entering an outing a few days late.
 **Back closes the editor.** While renaming a session, the hardware back key closes the name editor
 rather than leaving the session.
 
+## Shooting time
+
+**The clock runs the line, not the round.** The timer sits behind the clock icon in any activity
+header and in the sessions menu. It holds the World Archery times: four minutes for six arrows, two
+for three, two for a team's six, eighty seconds for a mixed team, twenty for alternating shooting.
+
+**Two blasts, one blast, three blasts.** Calling the line sounds two whistles, then one, then starts
+the clock; zero sounds three. The sounds are synthesised on the device rather than recorded, so
+nothing is shipped that belongs to somebody else, and they can be turned off.
+
+**The clock is read, never ticked.** Time left is worked out from the moment it started, so a phone
+that slept through half an end wakes up with the right number, and the screen is held awake while it
+runs.
+
 ## Matches
 
 **A match is won, not scored.** The number on a match card is its set points, and it deliberately
@@ -63,10 +77,23 @@ yours: nothing on the card then reaches your volume or your badges.
 **Correct an end after the match is over.** Every figure is recomputed from the ends every time, so
 fixing end two moves the winner, the arrows counted and the badges with it.
 
+**A bracket is a day, not a list.** Give each match its round and the session page draws the ladder
+in the order it was climbed, from the eighths to the final.
+
+**Opponents remember their spelling.** Typing a name offers everybody named on a card before, so the
+same archer is one name in the history rather than three spellings of it.
+
+**A match shares as a picture too.** The share button builds the same card a round does: the
+scoreline where the score would be, and a sheet with a column for each side.
+
 **Two equal shoot-off arrows are the judge's call.** The card asks who won rather than guessing.
 Plot both arrows and it works it out from which one is closer to the centre.
 
 ## Scoring
+
+**Number the arrows.** The scoring page can mark each arrow with the order it was entered in, which
+is what keeps them apart once the sheet is sorted highest first. Both switches live at the foot of
+the scoring page, and both work on a match card too.
 
 **The sheet is editable after the fact.** Tap any arrow already entered to retap its value; tap an
 end's row number to open the whole end, plotted arrows and group size included.

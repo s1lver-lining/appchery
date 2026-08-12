@@ -62,11 +62,17 @@ An equal shoot-off is **not** decided by the app. Two tens are separated by a ju
 measure, so the card asks who won and records the answer. When both shoot-off arrows are plotted the
 app reads the distance from the centre and answers the question itself.
 
+## The bracket
+
+A match carries the round of the ladder it was shot in, from `r64` to `final`, or `none` for a match
+that belongs to no bracket. The session page draws the day's staged matches in that order, which is
+what makes a competition read as one climb rather than as four unrelated outings. Nothing groups
+matches across sessions: a bracket is a day.
+
 ## Not built yet
 
-- **A clock.** Matches are timed, 120 seconds an end and 20 alternating. The match header reserves
-  the button; timing belongs with general activity timers rather than only here.
-- **Brackets.** Matches are a flat list inside a session. Grouping them into a bracket, with 1/8 to
-  final as stages, is the obvious next step and nothing in the storage prevents it.
-- **Head to head history.** Opponents are free text, so the app cannot say you are 3-1 against
-  somebody. That needs opponents to become rows, which is a real feature and a real cost.
+- **Head to head history.** Opponents are free text, offered back as suggestions from the cards
+  already written, but never stored as people. The app cannot say you are 3-1 against somebody. That
+  needs opponents to become rows, which is a real feature and a real cost.
+- **A seeded bracket.** Stages are chosen by hand. Nothing links a match to the qualification that
+  seeded it, or one round of the ladder to the next.
