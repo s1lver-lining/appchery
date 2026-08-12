@@ -81,7 +81,7 @@ it wants and how close you are either way.
 far along you are, because 840 arrows of a thousand is worth knowing.
 
 **The FFTA arrows look like arrows.** Each progression arrow is drawn in the colour it is named for,
-and greys out until it is shot.
+and only dims until it is shot: the colour is the name of the award, so it is never taken away.
 
 **A badge is dated by the shooting, not by the app.** Score an old session and any badge it earns
 appears with the date of that session, wherever it lands in the list.

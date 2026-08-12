@@ -8,13 +8,13 @@
 	 */
 	let { badge, size = 28 }: { badge: EarnedBadge; size?: number } = $props();
 
-	/** The target face palette, so a red arrow is the red an archer already looks at. */
+	/** The regulated face colours where there is one, so a red arrow is the red on the target. */
 	const COLOURS: Record<ArrowColour, string> = {
-		white: '#f4f1ea',
-		black: '#23282c',
-		blue: '#3aa0d8',
-		red: '#e8453c',
-		yellow: '#ffcf3f',
+		white: 'var(--color-face-white)',
+		black: 'var(--color-face-black)',
+		blue: 'var(--color-face-blue)',
+		red: 'var(--color-face-red)',
+		yellow: 'var(--color-face-gold)',
 		bronze: '#c07a3e',
 		silver: '#b7bec6',
 		gold: '#d9a441'
@@ -25,31 +25,41 @@
 </script>
 
 {#if arrow}
-	<!-- Unearned arrows keep their shape and lose their colour, which is the thing being played for. -->
+	<!--
+		An unearned arrow keeps its colour and is only dimmed: the colour is the name of the award, and
+		a wall of grey tells an archer nothing about what is left to shoot.
+	-->
 	<span
-		class="inline-flex items-center justify-center rounded-full border {earned
-			? ''
-			: 'opacity-40 grayscale'}"
+		class="inline-flex items-center justify-center rounded-full border {earned ? '' : 'opacity-55'}"
 		style="width: {size * 1.35}px; height: {size * 1.35}px;
-			background: color-mix(in srgb, {COLOURS[arrow.colour]} 22%, transparent);
-			border-color: color-mix(in srgb, {COLOURS[arrow.colour]} 55%, transparent)"
+			background: color-mix(in srgb, {COLOURS[arrow.colour]} 22%, var(--color-surface));
+			border-color: color-mix(in srgb, {COLOURS[arrow.colour]} 55%, var(--color-line))"
 	>
+		<!--
+			Outlined in the page's own ink as well as filled, because a white arrow on a light theme and
+			a black one on a dark theme are otherwise the same as no arrow at all.
+		-->
 		<svg
 			width={size}
 			height={size}
 			viewBox="0 0 24 24"
-			fill={COLOURS[arrow.colour]}
-			stroke={COLOURS[arrow.colour]}
-			stroke-width="1.8"
-			stroke-linecap="round"
+			stroke-width="0.9"
 			stroke-linejoin="round"
+			style="fill: {COLOURS[arrow.colour]};
+				stroke: color-mix(in srgb, var(--color-ink) 55%, transparent)"
 			aria-hidden="true"
 		>
 			<!-- Nock at the bottom left, point at the top right, the way an arrow leaves a bow. -->
-			<path d="M6 18 16.4 7.6" fill="none" />
-			<path d="M21 3l-6.2 1.2 5 5z" />
-			<path d="M3.4 20.6 3 15.4l3.6 1.6z" />
-			<path d="M3.4 20.6 8.6 21l-1.6-3.6z" />
+			<path
+				d="M5.2 18.8 17 7"
+				stroke-width="2.2"
+				stroke-linecap="round"
+				style="stroke: color-mix(in srgb, var(--color-ink) 35%, {COLOURS[arrow.colour]})"
+			/>
+			<path d="M21 3l-6.4 1.4 5 5z" />
+			<!-- Vanes widening towards the nock, which is the way round fletching actually sits. -->
+			<path d="M9 15 4.6 19.4 3.1 16.5z" />
+			<path d="M9 15 4.6 19.4 7.5 20.9z" />
 		</svg>
 	</span>
 {:else}

@@ -18,7 +18,7 @@
 	></button>
 
 	<div class="relative w-full max-w-xs" role="dialog" aria-label={$t(`badges.list.${badge.definition.key}.name`)}>
-		<BadgeCard {badge} />
+		<BadgeCard {badge} solid />
 		<button
 			class="mt-2 w-full rounded-lg border border-line bg-surface py-2 text-sm font-medium"
 			onclick={onclose}

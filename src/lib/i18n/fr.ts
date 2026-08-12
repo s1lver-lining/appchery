@@ -570,7 +570,7 @@ export const fr: Dictionary = {
 				name: 'Les doigts gelés',
 				hint: 'Un tir terminé à {metres} m ou plus par moins de {temp} °C.'
 			},
-			firstCompetition: { name: 'Les jambes en coton', hint: 'Un tir terminé en compétition.' },
+			firstCompetition: { name: "Nerfs d'acier", hint: 'Un tir terminé en compétition.' },
 			twoBowTypes: { name: "Cœur d'artichaut", hint: 'Un tir marqué avec deux types d\'arc.' },
 			seventyMetres: { name: 'La longue marche', hint: 'Un tir terminé à 70 m ou plus.' },
 			ninetyMetres: { name: 'Prévois le casse-croûte', hint: 'Un tir terminé à 90 m ou plus.' },
@@ -585,12 +585,12 @@ export const fr: Dictionary = {
 			fftaBlue: { name: 'Flèche bleue' },
 			fftaRed: { name: 'Flèche rouge' },
 			fftaYellow: { name: 'Flèche jaune' },
-			fftaBronzeRecurve: { name: 'Flèche bronze classique' },
-			fftaSilverRecurve: { name: 'Flèche argent classique' },
-			fftaGoldRecurve: { name: 'Flèche or classique' },
-			fftaBronzeCompound: { name: 'Flèche bronze poulies' },
-			fftaSilverCompound: { name: 'Flèche argent poulies' },
-			fftaGoldCompound: { name: 'Flèche or poulies' }
+			fftaBronzeRecurve: { name: 'Flèche bronze Classique' },
+			fftaSilverRecurve: { name: 'Flèche argent Classique' },
+			fftaGoldRecurve: { name: 'Flèche or Classique' },
+			fftaBronzeCompound: { name: 'Flèche bronze Poulies' },
+			fftaSilverCompound: { name: 'Flèche argent Poulies' },
+			fftaGoldCompound: { name: 'Flèche or Poulies' }
 		}
 	}
 };

@@ -7,7 +7,14 @@
 	 * Each page carries its own piece of archery geometry: rings, fletching, a limb, a trajectory, a
 	 * sight ring. The motif names the page before the title is read, which is why no two repeat.
 	 */
-	export type HeaderMotif = 'sessions' | 'session' | 'equipment' | 'bow' | 'stats' | 'settings';
+	export type HeaderMotif =
+		| 'sessions'
+		| 'session'
+		| 'equipment'
+		| 'bow'
+		| 'stats'
+		| 'badges'
+		| 'settings';
 
 	let {
 		motif,
@@ -143,6 +150,39 @@
 					/>
 				{/each}
 			</g>
+		</svg>
+	{:else if motif === 'badges'}
+		<!-- The stats fletching, over a shaft drawn the full width so it enters and leaves the header. -->
+		<svg
+			class="pointer-events-none absolute inset-0 h-full w-full text-brand"
+			viewBox="0 0 100 70"
+			preserveAspectRatio="none"
+			fill="none"
+			aria-hidden="true"
+		>
+			<path
+				d="M-4 78 L104 -8"
+				stroke="currentColor"
+				stroke-width="2.5"
+				opacity="0.3"
+				vector-effect="non-scaling-stroke"
+			/>
+		</svg>
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 140 70"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			{#each [0, 26, 52] as offset, i (offset)}
+				<path
+					d="M{18 + offset} 72 C{34 + offset} 48, {42 + offset} 26, {44 + offset} 4 C{54 +
+						offset} 22, {50 + offset} 48, {36 + offset} 82 Z"
+					fill="currentColor"
+					opacity={0.12 + i * 0.07}
+				/>
+			{/each}
 		</svg>
 	{:else if motif === 'stats'}
 		<!-- Fletching: vanes stacked along a shaft, the mark of arrows already loosed. -->

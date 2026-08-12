@@ -43,7 +43,7 @@
 		sortBadges(badges.filter((badge) => badge.definition.family === family));
 </script>
 
-<PageHeader motif="stats" title={$t('badges.title')} subtitle={$t('badges.hint')}>
+<PageHeader motif="badges" title={$t('badges.title')} subtitle={$t('badges.hint')}>
 	{#snippet lead()}
 		<a href={origin} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
 			<Icon name="back" size={22} />

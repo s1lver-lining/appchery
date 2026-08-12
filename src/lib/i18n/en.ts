@@ -564,7 +564,7 @@ export const en = {
 				name: 'Frostbite',
 				hint: 'Finished a round at {metres}m or more below {temp} °C.'
 			},
-			firstCompetition: { name: 'Nerves of Jelly', hint: 'Finished a round at a competition.' },
+			firstCompetition: { name: 'Nerves of Steel', hint: 'Finished a round at a competition.' },
 			twoBowTypes: { name: 'Two Timer', hint: 'Scored a round with two different kinds of bow.' },
 			seventyMetres: { name: 'The Long Walk', hint: 'Finished a round at 70m or further.' },
 			ninetyMetres: { name: 'Bring a Packed Lunch', hint: 'Finished a round at 90m or further.' },
@@ -579,12 +579,12 @@ export const en = {
 			fftaBlue: { name: 'Blue Arrow' },
 			fftaRed: { name: 'Red Arrow' },
 			fftaYellow: { name: 'Yellow Arrow' },
-			fftaBronzeRecurve: { name: 'Bronze Arrow recurve' },
-			fftaSilverRecurve: { name: 'Silver Arrow recurve' },
-			fftaGoldRecurve: { name: 'Gold Arrow recurve' },
-			fftaBronzeCompound: { name: 'Bronze Arrow compound' },
-			fftaSilverCompound: { name: 'Silver Arrow compound' },
-			fftaGoldCompound: { name: 'Gold Arrow compound' }
+			fftaBronzeRecurve: { name: 'Bronze Arrow Recurve' },
+			fftaSilverRecurve: { name: 'Silver Arrow Recurve' },
+			fftaGoldRecurve: { name: 'Gold Arrow Recurve' },
+			fftaBronzeCompound: { name: 'Bronze Arrow Compound' },
+			fftaSilverCompound: { name: 'Silver Arrow Compound' },
+			fftaGoldCompound: { name: 'Gold Arrow Compound' }
 		}
 	}
 };

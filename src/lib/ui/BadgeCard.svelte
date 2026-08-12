@@ -7,8 +7,11 @@
 	/**
 	 * One badge, earned or not. A locked badge is shown in full rather than hidden: what the app
 	 * rewards is worth knowing before it is won, and a bar that is nearly full is the point of it.
+	 *
+	 * `solid` is for the card standing on its own over a dimmed page, where a translucent surface
+	 * would let the page show through it.
 	 */
-	let { badge }: { badge: EarnedBadge } = $props();
+	let { badge, solid = false }: { badge: EarnedBadge; solid?: boolean } = $props();
 
 	const key = $derived(badge.definition.key);
 	const arrow = $derived(PROGRESSION_ARROWS.find((a) => a.key === key));
@@ -32,9 +35,10 @@
 </script>
 
 <div
-	class="flex gap-3 rounded-xl border p-3 {filled
-		? 'border-accent/40 bg-surface'
-		: 'border-line bg-surface/60'}"
+	class="flex gap-3 rounded-xl border p-3 {filled ? 'border-accent/40' : 'border-line'} {solid ||
+	filled
+		? 'bg-surface'
+		: 'bg-surface/60'}"
 >
 	<BadgeGlyph {badge} />
 	<div class="min-w-0 flex-1">
