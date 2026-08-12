@@ -486,15 +486,68 @@ export async function saveMatchEnd(
 	await refreshMatchTotals(activityId);
 }
 
+/** The row an end is written to, created on first use: entering anything is what starts an end. */
+async function ensureMatchEnd(activityId: string, endNo: number, shootOff = false) {
+	const existing = (await listEnds(activityId)).find((row) => row.endNo === endNo);
+	if (existing) return existing;
+	const base = stamp();
+	await db()
+		.insert(schema.end)
+		.values({ ...base, activityId, stageIndex: 0, endNo, isShootOff: shootOff ? 1 : 0 });
+	await log('round_end', base.id, 'insert');
+	return (await listEnds(activityId)).find((row) => row.endNo === endNo)!;
+}
+
+async function clearSideArrows(endId: string, side: 'us' | 'them') {
+	const previous = (await listShots(endId)).filter((shot) => shot.side === side);
+	if (previous.length === 0) return;
+	const now = Date.now();
+	await db()
+		.update(schema.shot)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(
+			inArray(
+				schema.shot.id,
+				previous.map((shot) => shot.id)
+			)
+		);
+	await logMany('shot', previous.map((shot) => shot.id), 'delete');
+}
+
+/**
+ * A side's total, typed rather than shot in. The arrows of that side go with it: a total entered by
+ * hand is the archer saying the arrows do not matter, and two sources for one number is one too many.
+ */
+export async function setMatchEndTotal(
+	activityId: string,
+	endNo: number,
+	side: 'us' | 'them',
+	total: number | null,
+	shootOff = false
+) {
+	const end = await ensureMatchEnd(activityId, endNo, shootOff);
+	await clearSideArrows(end.id, side);
+	await db()
+		.update(schema.end)
+		.set(
+			side === 'us'
+				? { subtotal: total ?? 0, updatedAt: Date.now() }
+				: { opponentSubtotal: total, updatedAt: Date.now() }
+		)
+		.where(eq(schema.end.id, end.id));
+	await log('round_end', end.id, 'update');
+	await refreshMatchTotals(activityId);
+}
+
 /** Arrows for one side of one end, replacing whatever was there: an end is entered, not appended to. */
 export async function setMatchArrows(
 	activityId: string,
 	endNo: number,
 	side: 'us' | 'them',
-	shots: Omit<Shot, 'ordinal'>[]
+	shots: Omit<Shot, 'ordinal'>[],
+	shootOff = false
 ) {
-	const end = (await listEnds(activityId)).find((row) => row.endNo === endNo);
-	if (!end) return;
+	const end = await ensureMatchEnd(activityId, endNo, shootOff);
 
 	const previous = (await listShots(end.id)).filter((shot) => shot.side === side);
 	if (previous.length > 0) {

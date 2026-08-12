@@ -11,29 +11,32 @@
 		type MatchEnd,
 		type Side
 	} from '$lib/domain/matches';
+	import type { Shot, Zone } from '$lib/domain/rounds/types';
 	import {
 		loadMatch,
 		saveMatchEnd,
 		setMatchArrows,
+		setMatchEndTotal,
 		deleteMatchEnd,
 		updateMatchConfig,
 		deleteActivity,
 		awardBadges,
+		shotFromZone,
 		shotFromPlot,
 		type ActivityRow
 	} from '$lib/db/repository';
 	import { goto } from '$app/navigation';
 	import Icon from '$lib/ui/Icon.svelte';
-	import TargetFace from '$lib/ui/TargetFace.svelte';
+	import ArrowPad from '$lib/ui/ArrowPad.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 
 	/**
-	 * The card of a head to head match: two totals an end, and who that made the winner. Totals are
-	 * the fast path because a match is shot on the clock; arrows can be plotted afterwards, or in the
-	 * gaps, and once they are plotted they are what the total is read from.
+	 * The card of a head to head match, read the way a scoresheet is: our arrows on the left of the
+	 * line, theirs on the right, an end to a row. Totals can be typed straight in, because a match is
+	 * shot on the clock and the arrows are often somebody else's to call out.
 	 */
 	let { activity, onchange }: { activity: ActivityRow; onchange: () => void } = $props();
 
@@ -80,26 +83,96 @@
 		return $t('match.inProgress');
 	});
 
-	/* Entry. One row at a time, both sides, either typed or plotted. */
-	let draft = $state<{ endNo: number; ours: string; theirs: string; shootOff: boolean } | null>(null);
+	/**
+	 * The rows the sheet draws: every end shot, the one being asked for, and the shoot-off once the
+	 * regulation ends have failed to separate the two sides.
+	 */
+	const sheet = $derived(() => {
+		if (!config) return [];
+		const drawn: { endNo: number; shootOff: boolean; row: Row | undefined }[] = rows.map((row) => ({
+			endNo: row.endNo,
+			shootOff: row.shootOff,
+			row
+		}));
+		if (asking !== null && !drawn.some((entry) => entry.endNo === asking))
+			drawn.push({ endNo: asking, shootOff: false, row: undefined });
+		if (result?.needsShootOff && !drawn.some((entry) => entry.shootOff))
+			drawn.push({ endNo: config.maxEnds + 1, shootOff: true, row: undefined });
+		return drawn.sort((a, b) => a.endNo - b.endNo);
+	});
 
-	function open(endNo: number, shootOff = false) {
-		const existing = rows.find((row) => row.endNo === endNo);
-		draft = {
-			endNo,
-			shootOff,
-			ours: existing ? String(existing.ours) : '',
-			theirs: existing?.theirs !== null && existing !== undefined ? String(existing.theirs) : ''
-		};
+	const arrowsOf = (row: Row | undefined, side: Side) =>
+		(row?.shots ?? []).filter((shot) => shot.side === side).sort((a, b) => a.ordinal - b.ordinal);
+	const slotsFor = (shootOff: boolean) => (shootOff ? 1 : (config?.arrowsPerEnd ?? 3));
+
+	const points = $derived((endNo: number, side: Side) => {
+		const entry = result?.ends.find((row) => row.end.endNo === endNo);
+		if (!entry || config?.system !== 'set' || entry.end.shootOff) return null;
+		return side === 'us' ? entry.ourPoints : entry.theirPoints;
+	});
+
+	/* Entering arrows. One slot at a time, our side first, then theirs, then the pad steps back. */
+	let cursor = $state<{ endNo: number; side: Side; index: number; shootOff: boolean } | null>(null);
+	let mode = $state<'number' | 'face'>('number');
+
+	const cursorRow = $derived(rows.find((row) => row.endNo === cursor?.endNo));
+	const cursorShots = $derived(cursor ? arrowsOf(cursorRow, cursor.side) : []);
+
+	function focus(endNo: number, side: Side, index: number, shootOff: boolean) {
+		cursor =
+			cursor?.endNo === endNo && cursor.side === side && cursor.index === index
+				? null
+				: { endNo, side, index, shootOff };
 	}
 
-	async function saveDraft() {
-		if (!draft) return;
-		const { endNo, shootOff } = draft;
-		const ours = draft.ours.trim() === '' ? null : Number(draft.ours);
-		const theirs = draft.theirs.trim() === '' ? null : Number(draft.theirs);
-		draft = null;
-		await saveMatchEnd(activity.id, endNo, { ours, theirs, shootOff });
+	/** The next empty slot: down our side, across to theirs, then done. */
+	function advance() {
+		if (!cursor) return;
+		const slots = slotsFor(cursor.shootOff);
+		if (cursor.index + 1 < slots) {
+			cursor = { ...cursor, index: cursor.index + 1 };
+			return;
+		}
+		cursor = cursor.side === 'us' ? { ...cursor, side: 'them', index: 0 } : null;
+	}
+
+	async function write(shot: Omit<Shot, 'ordinal'>) {
+		if (!cursor) return;
+		const { endNo, side, index, shootOff } = cursor;
+		const kept: Omit<Shot, 'ordinal'>[] = arrowsOf(
+			rows.find((row) => row.endNo === endNo),
+			side
+		).map((row) => ({
+			value: row.value,
+			zoneLabel: row.zoneLabel,
+			x: row.x,
+			y: row.y,
+			source: row.source as Shot['source']
+		}));
+		// Slots are filled by position, so an arrow tapped into the third one lands third.
+		while (kept.length < index)
+			kept.push({ value: 0, zoneLabel: 'M', x: null, y: null, source: 'manual' });
+		kept[index] = shot;
+
+		advance();
+		await setMatchArrows(activity.id, endNo, side, kept, shootOff);
+		await refresh();
+		if (shootOff) await decideFromPlot();
+		await celebrate();
+	}
+
+	const pick = (zone: Zone) => write(shotFromZone(zone));
+	const plot = (x: number, y: number) => {
+		if (!scoreSet) return;
+		write(shotFromPlot(scoreAt(scoreSet, x, y), x, y));
+	};
+
+	/** Typed straight in. The arrows of that side go with it: one number cannot have two sources. */
+	async function typeTotal(endNo: number, side: Side, raw: string, shootOff: boolean) {
+		const value = raw.trim() === '' ? null : Number(raw);
+		if (value !== null && !Number.isFinite(value)) return;
+		cursor = null;
+		await setMatchEndTotal(activity.id, endNo, side, value, shootOff);
 		await refresh();
 		await celebrate();
 	}
@@ -110,7 +183,7 @@
 	}
 
 	async function clearEnd(endNo: number) {
-		draft = null;
+		cursor = null;
 		await deleteMatchEnd(activity.id, endNo);
 		await refresh();
 	}
@@ -128,55 +201,13 @@
 		await celebrate();
 	}
 
-	/* Plotting. The same face the arrows would be scored on, one side of one end at a time. */
-	let plotting = $state<{ endNo: number; side: Side; shootOff: boolean } | null>(null);
-	let plotted = $state<{ x: number; y: number; value: number; zoneLabel: string }[]>([]);
-
-	function openPlot(endNo: number, side: Side, shootOff: boolean) {
-		const row = rows.find((r) => r.endNo === endNo);
-		plotted = (row?.shots ?? [])
-			.filter((shot) => shot.side === side && shot.x !== null && shot.y !== null)
-			.map((shot) => ({
-				x: shot.x as number,
-				y: shot.y as number,
-				value: shot.value,
-				zoneLabel: shot.zoneLabel
-			}));
-		plotting = { endNo, side, shootOff };
-	}
-
-	const plotSlots = $derived(plotting?.shootOff ? 1 : (config?.arrowsPerEnd ?? 3));
-
-	function plot(x: number, y: number) {
-		if (!scoreSet || plotted.length >= plotSlots) return;
-		const zone = scoreAt(scoreSet, x, y);
-		plotted = [...plotted, { x, y, value: zone.value, zoneLabel: zone.label }];
-	}
-
-	async function savePlot() {
-		if (!plotting || !scoreSet) return;
-		const { endNo, side, shootOff } = plotting;
-		const shots = plotted.map((shot) => shotFromPlot(scoreAt(scoreSet, shot.x, shot.y), shot.x, shot.y));
-		plotting = null;
-
-		// The end has to exist before arrows can hang off it, and an unentered end has no totals yet.
-		if (!rows.some((row) => row.endNo === endNo)) {
-			await saveMatchEnd(activity.id, endNo, { ours: null, theirs: null, shootOff });
-		}
-		await setMatchArrows(activity.id, endNo, side, shots);
-		await refresh();
-
-		// Two plotted shoot-off arrows say who won without anybody having to be asked.
-		if (shootOff) await decideFromPlot();
-		await celebrate();
-	}
-
+	/** Two plotted shoot-off arrows say who was closer, so nobody has to be asked. */
 	async function decideFromPlot() {
-		const row = rows.find((r) => r.shootOff);
+		const row = rows.find((entry) => entry.shootOff);
 		if (!row) return;
 		const arrow = (side: Side) => row.shots.find((shot) => shot.side === side) ?? null;
 		const winner = shootOffWinner(arrow('us'), arrow('them'));
-		if (!winner) return;
+		if (!winner || row.winner === winner) return;
 		await saveMatchEnd(activity.id, row.endNo, {
 			ours: row.ours,
 			theirs: row.theirs,
@@ -186,13 +217,19 @@
 		await refresh();
 	}
 
+	/** Level on the arrow itself: the judge decides, and the card records the call. */
+	const shootOffTied = $derived(() => {
+		const row = rows.find((entry) => entry.shootOff);
+		if (!row || row.theirs === null) return false;
+		const ours = row.shots.find((shot) => shot.side === 'us');
+		const theirs = row.shots.find((shot) => shot.side === 'them');
+		if (ours && theirs && shootOffWinner(ours, theirs)) return false;
+		return row.ours === row.theirs;
+	});
+
 	closeOnBack(
-		() => plotting !== null,
-		() => (plotting = null)
-	);
-	closeOnBack(
-		() => draft !== null,
-		() => (draft = null)
+		() => cursor !== null,
+		() => (cursor = null)
 	);
 
 	async function remove() {
@@ -200,313 +237,250 @@
 		goto(`/sessions/${activity.sessionId}`);
 	}
 
-	const arrowsOf = (row: Row, side: Side) => row.shots.filter((shot) => shot.side === side);
-	const points = $derived((endNo: number, side: Side) => {
-		const row = result?.ends.find((entry) => entry.end.endNo === endNo);
-		if (!row || config?.system !== 'set' || row.end.shootOff) return null;
-		return side === 'us' ? row.ourPoints : row.theirPoints;
-	});
+	/** A miss has no fill of its own, so it borrows the surface instead of rendering invisible. */
+	function chipStyle(label: string): string {
+		const zone = scoreSet?.zones.find((z) => z.label === label);
+		if (!zone || !zone.countsAsHit) return 'background-color: var(--c-sunk); color: var(--c-muted);';
+		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;`;
+	}
+
+	// Outline rather than ring: the chip sets an inline box-shadow, which a ring would lose to.
+	const cursorClass = 'outline outline-2 outline-brand outline-offset-2';
 </script>
 
-{#if config && result}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
-		<header class="flex items-start gap-2">
-			<a href="/sessions/{activity.sessionId}" class="-ml-1 mt-1 shrink-0 text-muted" aria-label={$t('common.back')}>
-				<Icon name="back" size={22} />
-			</a>
-			<div class="min-w-0 flex-1">
-				<h1 class="truncate text-2xl font-bold tracking-tight">
-					{ourLabel} · {theirLabel}
-				</h1>
-				<p class="truncate text-sm text-muted">
-					{$t(`match.format.${config.format}`)} · {$t(`match.system.${config.system}`)}
-					{#if config.distance}
-						· {formatDistance(config.distance.value, config.distance.unit)}
-					{/if}
-				</p>
-			</div>
-
-			<!-- A match is shot on the clock, and the clock is a feature of its own still to come. -->
-			<button
-				class="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted opacity-40"
-				disabled
-				title={$t('match.timerSoon')}
-				aria-label={$t('match.timerSoon')}
-			>
-				<Icon name="clock" size={20} />
-			</button>
-			<button
-				class="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted"
-				aria-label={$t('common.more')}
-				onclick={() => (editingSetup = true)}
-			>
-				<Icon name="sliders" size={20} />
-			</button>
-		</header>
-
-		{#if !config.forSelf}
-			<p class="rounded-lg border border-dashed border-line px-3 py-1.5 text-xs text-muted">
-				{$t('match.forOtherBadge')}
-			</p>
-		{/if}
-
-		<!-- The scoreboard, which is what the archer looks at between ends. -->
-		<section class="rounded-xl border border-line bg-surface p-4">
-			<div class="flex items-center gap-3 text-center">
-				<div class="min-w-0 flex-1">
-					<p class="truncate text-xs text-muted">{ourLabel}</p>
-					<p
-						class="tabular text-4xl leading-none font-bold {result.winner === 'us'
-							? 'text-brand-text'
-							: ''}"
-					>
-						{config.system === 'set' ? result.ourPoints : result.ourTotal}
-					</p>
-				</div>
-				<span class="text-lg text-line">–</span>
-				<div class="min-w-0 flex-1">
-					<p class="truncate text-xs text-muted">{theirLabel}</p>
-					<p
-						class="tabular text-4xl leading-none font-bold {result.winner === 'them'
-							? 'text-competition'
-							: ''}"
-					>
-						{config.system === 'set' ? result.theirPoints : result.theirTotal}
-					</p>
-				</div>
-			</div>
-
-			<p class="mt-3 border-t border-line pt-2 text-center text-sm font-semibold">
-				{outcome()}
-				{#if config.system === 'set'}
-					<span class="tabular ml-2 font-normal text-muted">
-						{result.ourTotal} – {result.theirTotal}
-					</span>
-				{/if}
-			</p>
-		</section>
-
-		<!-- One row an end: what each side shot, and what that was worth. -->
-		<section class="overflow-hidden rounded-xl border border-line bg-surface">
-			{#each rows as row (row.endNo)}
+<!-- One side of one end: the arrows in their slots, and the total they add up to or was typed in. -->
+{#snippet sideCells(endNo: number, side: Side, row: Row | undefined, shootOff: boolean, mirrored: boolean)}
+	{@const shots = arrowsOf(row, side)}
+	{@const total = side === 'us' ? (row ? row.ours : null) : (row?.theirs ?? null)}
+	<div class="flex min-w-0 flex-1 items-center gap-1 {mirrored ? 'flex-row-reverse' : ''}">
+		<div class="flex min-w-0 flex-1 flex-wrap gap-0.5 {mirrored ? 'justify-end' : ''}">
+			{#each Array(slotsFor(shootOff)) as _, index (index)}
+				{@const shot = shots[index]}
 				<button
-					class="flex w-full items-center gap-3 border-b border-line px-4 py-3 text-left last:border-0"
-					onclick={() => open(row.endNo, row.shootOff)}
+					class="tabular h-7 w-7 shrink-0 rounded text-[13px] font-bold
+						{shot ? '' : 'border border-dashed border-line text-muted'}
+						{cursor?.endNo === endNo && cursor.side === side && cursor.index === index
+						? cursorClass
+						: ''}"
+					style={shot ? chipStyle(shot.zoneLabel) : ''}
+					aria-label={$t('score.editArrow', { n: index + 1, end: endNo })}
+					onclick={() => focus(endNo, side, index, shootOff)}
 				>
-					<span class="w-16 shrink-0 text-xs text-muted">
-						{row.shootOff ? $t('match.shootOff') : $t('match.end', { n: row.endNo })}
-					</span>
-					<span class="tabular flex-1 text-right font-semibold">{row.ours}</span>
-					{#if points(row.endNo, 'us') !== null}
-						<span class="tabular w-6 text-center text-xs text-brand-text">
-							{points(row.endNo, 'us')}
-						</span>
-					{/if}
-					<span class="text-line">–</span>
-					{#if points(row.endNo, 'them') !== null}
-						<span class="tabular w-6 text-center text-xs text-muted">
-							{points(row.endNo, 'them')}
-						</span>
-					{/if}
-					<span class="tabular flex-1 font-semibold">{row.theirs ?? '—'}</span>
-					<span class="w-10 shrink-0 text-right text-[10px] text-muted">
-						{arrowsOf(row, 'us').length > 0 ? arrowsOf(row, 'us').length : ''}
-					</span>
+					{shot?.zoneLabel ?? ''}
 				</button>
 			{/each}
+		</div>
 
-			{#if asking !== null}
-				<button
-					class="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-brand-text"
-					onclick={() => open(asking)}
-				>
-					<Icon name="plus" size={18} />
-					{$t('match.enterEnd', { n: asking })}
-				</button>
-			{:else if result.needsShootOff && !rows.some((row) => row.shootOff)}
-				<button
-					class="flex w-full items-center gap-2 px-4 py-3 text-sm font-semibold text-brand-text"
-					onclick={() => open((config?.maxEnds ?? rows.length) + 1, true)}
-				>
-					<Icon name="plus" size={18} />
-					{$t('match.shootOff')}
-				</button>
-			{/if}
-		</section>
-
-		<!-- A shoot-off the arrows cannot separate is a judge's call, so the card asks for it. -->
-		{#if result.needsShootOff && rows.some((row) => row.shootOff && row.ours === row.theirs)}
-			<section class="rounded-xl border border-brand/40 bg-brand/5 p-4">
-				<p class="mb-2 text-sm font-semibold">{$t('match.whoWon')}</p>
-				<div class="flex gap-2">
-					<button
-						class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-						onclick={() => callShootOff('us')}
-					>
-						{$t('match.weWon')}
-					</button>
-					<button
-						class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-						onclick={() => callShootOff('them')}
-					>
-						{$t('match.theyWon')}
-					</button>
-				</div>
-			</section>
-		{/if}
-
-		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
-			<Icon name="trash" size={16} />
-			{$t('activity.delete')}
-		</button>
+		<!-- Typed rather than counted when there is no time to enter arrows, which is most of a match. -->
+		<input
+			type="number"
+			inputmode="numeric"
+			min="0"
+			class="tabular w-10 shrink-0 rounded border border-line bg-bg py-1 text-center text-sm font-bold text-ink"
+			aria-label={side === 'us' ? ourLabel : theirLabel}
+			value={total ?? ''}
+			onfocus={() => (cursor = null)}
+			onchange={(event) => typeTotal(endNo, side, event.currentTarget.value, shootOff)}
+		/>
 	</div>
+{/snippet}
 
-	<!-- Entering an end: two totals, and a way onto the face for either side. -->
-	<Sheet
-		open={draft !== null}
-		title={draft?.shootOff ? $t('match.shootOff') : $t('match.end', { n: draft?.endNo ?? 1 })}
-		onclose={() => (draft = null)}
-	>
-		{#if draft}
-			<div class="space-y-3">
-				<div class="flex items-end gap-2">
-					<label class="min-w-0 flex-1 text-xs text-muted">
-						{ourLabel}
-						<input
-							type="number"
-							inputmode="numeric"
-							min="0"
-							class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-3 text-2xl font-bold text-ink"
-							bind:value={draft.ours}
-						/>
-					</label>
-					<label class="min-w-0 flex-1 text-xs text-muted">
-						{theirLabel}
-						<input
-							type="number"
-							inputmode="numeric"
-							min="0"
-							class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-3 text-2xl font-bold text-ink"
-							bind:value={draft.theirs}
-						/>
-					</label>
-				</div>
-
-				<div class="flex gap-2">
-					<button
-						class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-						onclick={() => draft && openPlot(draft.endNo, 'us', draft.shootOff)}
+{#if config && result && scoreSet}
+	<div class="mx-auto flex w-full max-w-2xl flex-col">
+		<div class="safe-top flex max-h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">
+			<div class="shrink-0 space-y-3">
+				<header class="flex items-start gap-2">
+					<a
+						href="/sessions/{activity.sessionId}"
+						class="mt-1 -ml-1 shrink-0 text-muted"
+						aria-label={$t('common.back')}
 					>
-						{$t('match.plotOurs')}
+						<Icon name="back" size={22} />
+					</a>
+					<div class="min-w-0 flex-1">
+						<h1 class="truncate text-xl font-bold tracking-tight">{ourLabel} · {theirLabel}</h1>
+						<p class="truncate text-xs text-muted">
+							{$t(`match.format.${config.format}`)} · {$t(`match.system.${config.system}`)}
+							{#if config.distance}
+								· {formatDistance(config.distance.value, config.distance.unit)}
+							{/if}
+						</p>
+					</div>
+
+					<!-- A match is shot on the clock, and the clock is a feature of its own still to come. -->
+					<button
+						class="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted opacity-40"
+						disabled
+						title={$t('match.timerSoon')}
+						aria-label={$t('match.timerSoon')}
+					>
+						<Icon name="clock" size={20} />
 					</button>
 					<button
-						class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-						onclick={() => draft && openPlot(draft.endNo, 'them', draft.shootOff)}
+						class="mt-0.5 shrink-0 rounded-lg p-1.5 text-muted"
+						aria-label={$t('common.more')}
+						onclick={() => (editingSetup = true)}
 					>
-						{$t('match.plotTheirs')}
+						<Icon name="sliders" size={20} />
 					</button>
-				</div>
+				</header>
 
-				{#if draft.shootOff}
-					<!-- Typed totals cannot say who was closer, so the call is made here by hand. -->
-					<div class="border-t border-line pt-3">
-						<p class="mb-2 text-sm font-medium">{$t('match.whoWon')}</p>
-						<div class="flex gap-2">
-							<button
-								class="flex-1 rounded-lg border border-line py-2 text-sm"
-								onclick={() => callShootOff('us')}
+				<!-- Pinned above the sheet: the running result is what an archer reads between ends. -->
+				<section class="rounded-xl border border-line bg-surface px-4 py-3">
+					<div class="flex items-center gap-3 text-center">
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-xs text-muted">{ourLabel}</p>
+							<p
+								class="tabular text-3xl leading-none font-bold {result.winner === 'us'
+									? 'text-brand-text'
+									: ''}"
 							>
-								{$t('match.weWon')}
-							</button>
-							<button
-								class="flex-1 rounded-lg border border-line py-2 text-sm"
-								onclick={() => callShootOff('them')}
+								{config.system === 'set' ? result.ourPoints : result.ourTotal}
+							</p>
+						</div>
+						<span class="text-lg text-line">–</span>
+						<div class="min-w-0 flex-1">
+							<p class="truncate text-xs text-muted">{theirLabel}</p>
+							<p
+								class="tabular text-3xl leading-none font-bold {result.winner === 'them'
+									? 'text-competition'
+									: ''}"
 							>
-								{$t('match.theyWon')}
-							</button>
+								{config.system === 'set' ? result.theirPoints : result.theirTotal}
+							</p>
 						</div>
 					</div>
-				{/if}
+					<p class="mt-2 border-t border-line pt-2 text-center text-xs font-semibold">
+						{outcome()}
+						{#if config.system === 'set'}
+							<span class="tabular ml-2 font-normal text-muted">
+								{result.ourTotal} – {result.theirTotal}
+							</span>
+						{/if}
+					</p>
+				</section>
 
-				{#if rows.some((row) => row.endNo === draft?.endNo)}
-					<button
-						class="text-sm text-danger"
-						onclick={() => draft && clearEnd(draft.endNo)}
-					>
-						{$t('match.deleteEnd')}
-					</button>
+				{#if !config.forSelf}
+					<p class="rounded-lg border border-dashed border-line px-3 py-1.5 text-xs text-muted">
+						{$t('match.forOtherBadge')}
+					</p>
 				{/if}
 			</div>
-		{/if}
 
-		{#snippet footer()}
-			<button
-				class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-				onclick={() => (draft = null)}
-			>
-				{$t('common.cancel')}
-			</button>
-			<button
-				class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
-				onclick={saveDraft}
-			>
-				{$t('common.save')}
-			</button>
-		{/snippet}
-	</Sheet>
+			<!-- The sheet: our arrows to the left of the line, theirs to the right, an end to a row. -->
+			<section class="min-h-0 flex-1 overflow-hidden rounded-xl border border-line bg-surface">
+				<div class="flex items-center gap-1 border-b border-line px-2 py-1 text-[10px] text-muted">
+					<span class="w-6 shrink-0"></span>
+					<span class="min-w-0 flex-1 truncate">{ourLabel}</span>
+					<span class="w-10 shrink-0 text-center">
+						{config.system === 'set' ? $t('match.sets') : $t('match.total')}
+					</span>
+					<span class="min-w-0 flex-1 truncate text-right">{theirLabel}</span>
+				</div>
 
-	{#if plotting && scoreSet}
-		<div class="fixed inset-0 z-50 flex flex-col bg-bg">
-			<header class="safe-top flex items-center justify-between border-b border-line px-4 py-3 pt-6">
-				<h2 class="text-lg font-bold">
-					{plotting.side === 'us' ? ourLabel : theirLabel}
-				</h2>
-				<button class="text-muted" aria-label={$t('common.close')} onclick={() => (plotting = null)}>
-					<Icon name="close" size={22} />
-				</button>
-			</header>
+				<div class="max-h-[42dvh] overflow-y-auto">
+					{#each sheet() as entry (entry.endNo)}
+						<div class="flex items-center gap-1 border-b border-line px-2 py-1.5 last:border-0">
+							<!-- The end number opens the end itself, the way the round sheet does. -->
+							<button
+								class="w-6 shrink-0 text-left text-xs font-medium text-brand-text"
+								aria-label={$t('score.end', { n: entry.endNo })}
+								onclick={() => focus(entry.endNo, 'us', 0, entry.shootOff)}
+							>
+								{entry.shootOff ? '★' : entry.endNo}
+							</button>
 
-			<div class="mx-auto flex w-full max-w-2xl flex-1 flex-col gap-3 p-4">
-				<div class="mx-auto aspect-square w-full max-w-sm">
-					<TargetFace
+							{@render sideCells(entry.endNo, 'us', entry.row, entry.shootOff, false)}
+
+							<span class="tabular w-10 shrink-0 text-center text-[11px] font-semibold">
+								{#if points(entry.endNo, 'us') !== null}
+									<span class="text-brand-text">{points(entry.endNo, 'us')}</span>
+									<span class="text-line">·</span>
+									<span class="text-muted">{points(entry.endNo, 'them')}</span>
+								{:else}
+									<span class="text-line">–</span>
+								{/if}
+							</span>
+
+							{@render sideCells(entry.endNo, 'them', entry.row, entry.shootOff, true)}
+						</div>
+					{/each}
+				</div>
+			</section>
+
+			<!-- The judge's call, which the app records rather than invents. -->
+			{#if shootOffTied()}
+				<section class="shrink-0 rounded-xl border border-brand/40 bg-brand/5 p-3">
+					<p class="mb-2 text-sm font-semibold">{$t('match.whoWon')}</p>
+					<div class="flex gap-2">
+						<button
+							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
+							onclick={() => callShootOff('us')}
+						>
+							{$t('match.weWon')}
+						</button>
+						<button
+							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
+							onclick={() => callShootOff('them')}
+						>
+							{$t('match.theyWon')}
+						</button>
+					</div>
+				</section>
+			{/if}
+
+			<!-- The pad rises from under the sheet only while a slot is waiting for an arrow. -->
+			{#if cursor}
+				<div class="shrink-0">
+					<ArrowPad
 						{scoreSet}
-						interactive
-						shots={plotted.map((shot, i) => ({
-							ordinal: i + 1,
+						bind:mode
+						shots={cursorShots.map((shot) => ({
+							ordinal: shot.ordinal,
 							value: shot.value,
 							zoneLabel: shot.zoneLabel,
 							x: shot.x,
 							y: shot.y,
-							source: 'plotted' as const
+							source: shot.source as Shot['source']
 						}))}
+						onpick={pick}
 						onplot={plot}
-					/>
-				</div>
-
-				<p class="tabular text-center text-sm text-muted">
-					{plotted.map((shot) => shot.zoneLabel).join(' · ') || '—'}
-					<span class="ml-2 font-semibold text-ink">
-						{plotted.reduce((sum, shot) => sum + shot.value, 0)}
-					</span>
-				</p>
-
-				<div class="mt-auto flex gap-2">
-					<button
-						class="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium"
-						onclick={() => (plotted = plotted.slice(0, -1))}
 					>
-						{$t('common.undo')}
-					</button>
-					<button
-						class="flex-1 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
-						onclick={savePlot}
-					>
-						{$t('common.save')}
-					</button>
+						{#snippet title()}
+							<span class="font-semibold text-ink">
+								{cursor?.shootOff ? $t('match.shootOff') : $t('match.end', { n: cursor?.endNo ?? 1 })}
+							</span>
+							· {cursor?.side === 'us' ? ourLabel : theirLabel}
+						{/snippet}
+					</ArrowPad>
+
+					<div class="mt-2 flex items-center gap-2">
+						<button
+							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
+							onclick={() => (cursor = null)}
+						>
+							{$t('common.done')}
+						</button>
+						{#if rows.some((row) => row.endNo === cursor?.endNo)}
+							<button
+								class="rounded-lg border border-line px-3 py-2 text-sm text-danger"
+								onclick={() => cursor && clearEnd(cursor.endNo)}
+							>
+								{$t('match.deleteEnd')}
+							</button>
+						{/if}
+					</div>
 				</div>
-			</div>
+			{:else}
+				<button
+					class="shrink-0 self-start text-sm text-danger"
+					onclick={() => (confirmingDelete = true)}
+				>
+					{$t('activity.delete')}
+				</button>
+			{/if}
 		</div>
-	{/if}
+	</div>
 
 	<Sheet open={editingSetup} title={$t('match.title')} onclose={() => (editingSetup = false)}>
 		<div class="space-y-3">
@@ -517,7 +491,11 @@
 					aria-label={$t('match.ourSide')}
 					value={config.ourName ?? ''}
 					onchange={(e) =>
-						config && updateMatchConfig(activity.id, { ...config, ourName: e.currentTarget.value.trim() || null }).then(refresh)}
+						config &&
+						updateMatchConfig(activity.id, {
+							...config,
+							ourName: e.currentTarget.value.trim() || null
+						}).then(refresh)}
 				/>
 				<input
 					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
@@ -525,7 +503,11 @@
 					aria-label={$t('match.opponent')}
 					value={config.opponent ?? ''}
 					onchange={(e) =>
-						config && updateMatchConfig(activity.id, { ...config, opponent: e.currentTarget.value.trim() || null }).then(refresh)}
+						config &&
+						updateMatchConfig(activity.id, {
+							...config,
+							opponent: e.currentTarget.value.trim() || null
+						}).then(refresh)}
 				/>
 			</div>
 
@@ -539,6 +521,23 @@
 					label={$t('match.forOtherTitle')}
 					onchange={(v) =>
 						config && updateMatchConfig(activity.id, { ...config, forSelf: !v }).then(refresh)}
+				/>
+			</div>
+
+			<div class="flex items-start justify-between gap-3 border-t border-line pt-3">
+				<div class="min-w-0">
+					<p class="text-sm font-medium">{$t('match.onTotalTitle')}</p>
+					<p class="text-xs text-muted">{$t('match.onTotalHint')}</p>
+				</div>
+				<Toggle
+					checked={config.system === 'cumulative'}
+					label={$t('match.onTotalTitle')}
+					onchange={(v) =>
+						config &&
+						updateMatchConfig(activity.id, {
+							...config,
+							system: v ? 'cumulative' : 'set'
+						}).then(refresh)}
 				/>
 			</div>
 		</div>

@@ -53,7 +53,9 @@ rather than leaving the session.
 never reaches your personal bests or your round averages. Its arrows still count as arrows shot.
 
 **Totals first, arrows when there is time.** An end needs only the two totals, because a match is
-shot on the clock. Plot the arrows afterwards and the totals are read from them instead.
+shot on the clock. Tap a slot instead and the keypad rises from under the sheet, filling our side
+then theirs; typing a total afterwards clears that side's arrows, since one number cannot have two
+sources. The keypad and the face are the same switch the scoring page uses.
 
 **Keep the card for somebody else.** The toggle in the match settings says these arrows are not
 yours: nothing on the card then reaches your volume or your badges.
