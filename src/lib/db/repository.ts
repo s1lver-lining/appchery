@@ -545,13 +545,20 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 	const ids = new Set(sessions.map((s) => s.id));
 	const done = (await listAllActivities()).filter((a) => ids.has(a.sessionId));
 	const activities = done.filter((a) => a.kind === 'scoring');
+	/**
+	 * An outing counts once something happened in it, training arrows included. A session opened and
+	 * left empty says nothing about the bow, so it is not one of its outings.
+	 */
+	const used = new Set(
+		done.filter((a) => a.arrowsShot > 0 || a.kind !== 'training').map((a) => a.sessionId)
+	);
 
 	// A best score is only comparable between rounds that were shot to the end.
 	const finished = activities.filter((a) =>
 		isRoundComplete(a.roundDefinition ? JSON.parse(a.roundDefinition) : null, a.arrowsShot)
 	);
 	return {
-		sessions: sessions.length,
+		sessions: sessions.filter((s) => used.has(s.id)).length,
 		activities: activities.length,
 		// Every arrow the bow sent, training included: wear is wear, whether or not it was scored.
 		arrowsShot: done.reduce((sum, a) => sum + a.arrowsShot, 0),
