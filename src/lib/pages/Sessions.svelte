@@ -154,6 +154,16 @@
 		...(searching ? [] : occurrences.map((occurrence) => ({ at: occurrence.at, occurrence })))
 	]);
 	const weeks = $derived(groupByWeek(rows, (row) => row.at));
+
+	/** A week read a day at a time, so the date is written once however many outings hang off it. */
+	const daysOf = (group: (typeof weeks)[number]) => {
+		const byDate = new Map<number, Row[]>();
+		for (const row of group.items) {
+			const key = startOfDay(row.at);
+			byDate.set(key, [...(byDate.get(key) ?? []), row]);
+		}
+		return [...byDate.entries()].sort(([a], [b]) => a - b).map(([at, rows]) => ({ at, rows }));
+	};
 	/** What every plan asks of a week together, which is what a week's total is measured against. */
 	const weekGoal = $derived(weekArrowGoal(live.slots, live.plans));
 	/**
@@ -192,7 +202,7 @@
 		if (scrollPane) scrollPane.scrollTop = 0;
 	});
 
-	/** Today's row, so a week too tall to be read whole can still be opened on the day it is. */
+	/** Today's block, so a week too tall to be read whole can still be opened on the day it is. */
 	let todayRow = $state<HTMLElement | undefined>();
 	function markToday(node: HTMLElement, isToday: boolean) {
 		if (isToday) todayRow = node;
@@ -568,24 +578,15 @@
 								</span>
 							</header>
 
-							<ul class="space-y-2">
-								{#each group.items as row, i (row.session?.id ?? `${row.occurrence?.slotId}-${row.at}`)}
-									{@const onToday = startOfDay(row.at) === today}
-									<!-- Carried into the gap while the next row is still today, so a day of several
-										outings reads as one run rather than as three unrelated cards. -->
-									{@const runs = onToday && startOfDay(group.items[i + 1]?.at ?? 0) === today}
+							<ul class="space-y-3">
+								{#each daysOf(group) as day (day.at)}
+									{@const onToday = day.at === today}
+									<!-- One day, one block: the date is said once and the outings hang off its spine. -->
 									<li
-										class="relative flex items-center gap-3 rounded-xl
+										class="relative flex items-start gap-3 rounded-xl
 											{pulsing && onToday ? 'anchor-pulse' : ''}"
 										use:markToday={onToday}
 									>
-										{#if onToday}
-											<!-- The stem hangs off the pill: today is where the list is, not just a date. -->
-											<span
-												class="pointer-events-none absolute top-11 left-[17px] w-0.5 rounded-full bg-brand/40
-													{runs ? '-bottom-2' : 'bottom-0'}"
-											></span>
-										{/if}
 										<div class="w-9 shrink-0 text-center">
 											<!-- The weekday joins the pill on today, so the margin says it twice over. -->
 											<p
@@ -593,7 +594,7 @@
 													? 'font-semibold text-brand-text'
 													: 'text-muted'}"
 											>
-												{shortDay(row.at)}
+												{shortDay(day.at)}
 											</p>
 											<!-- Today wears a filled pill, so the current day is findable without reading dates. -->
 											<p
@@ -602,14 +603,28 @@
 													? 'mx-auto flex h-7 w-7 items-center justify-center rounded-full bg-brand text-brand-ink'
 													: ''}"
 											>
-												{dayNumber(row.at)}
+												{dayNumber(day.at)}
 											</p>
 										</div>
-										{#if row.session}
-											{@render card(row.session, false)}
-										{:else if row.occurrence}
-											{@render slotCard(row.occurrence)}
-										{/if}
+
+										<!-- The spine runs from under the pill to the last outing of the day, which is
+											what makes several cards read as one day rather than as three loose rows. -->
+										<span
+											class="pointer-events-none absolute top-11 bottom-0 left-[17px] w-0.5 rounded-full
+												{onToday ? 'bg-brand/40' : 'bg-ink/15'}"
+										></span>
+
+										<ul class="min-w-0 flex-1 space-y-2">
+											{#each day.rows as row (row.session?.id ?? `${row.occurrence?.slotId}-${row.at}`)}
+												<li class="flex">
+													{#if row.session}
+														{@render card(row.session, false)}
+													{:else if row.occurrence}
+														{@render slotCard(row.occurrence)}
+													{/if}
+												</li>
+											{/each}
+										</ul>
 									</li>
 								{/each}
 							</ul>
