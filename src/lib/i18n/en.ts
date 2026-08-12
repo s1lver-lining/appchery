@@ -165,6 +165,7 @@ export const en = {
 		arrowsPerEnd: 'Arrows',
 		ends: 'Ends',
 		setPoints: 'Points to win',
+		advanced: 'More options',
 		allowShootOff: 'Allow a shoot-off',
 		start: 'Start the match',
 		end: 'End {n}',

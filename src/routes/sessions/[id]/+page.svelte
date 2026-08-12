@@ -13,6 +13,13 @@
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import {
+		FACE_SIZES,
+		DISTANCES_M,
+		DISTANCES_YD,
+		END_COUNTS,
+		ARROWS_PER_END
+	} from '$lib/domain/rounds/custom';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import {
 		newMatch,
@@ -403,8 +410,12 @@
 		goto(`/activities/${await createTuningActivity(id, key)}`);
 	}
 
-	/** The faces the rules define, which is what a match is nearly always shot at. */
-	const FACE_SIZES = [40, 60, 80, 122];
+	/** Points a set match can be played to: six for an individual, five for a team, or anything. */
+	const SET_POINTS = Array.from({ length: 15 }, (_, i) => i + 1);
+	/** Where the distance wheel opens, which is the distance a match is usually shot at. */
+	const DEFAULT_DISTANCE = 70;
+	/** Folded away until asked for: a match can be shot without naming anybody. */
+	let showAdvanced = $state(false);
 
 	/**
 	 * A match is set up before it is opened: who it is against and under which rules is the whole of
@@ -413,7 +424,9 @@
 	let draftMatch = $state<MatchConfig | null>(null);
 
 	function openMatch(format: MatchFormat) {
-		draftMatch = newMatch(format, 'set');
+		// Seeded rather than left null: the wheel shows a distance, so the card had better record it.
+		draftMatch = { ...newMatch(format, 'set'), distance: { value: DEFAULT_DISTANCE, unit: 'm' } };
+		showAdvanced = false;
 	}
 
 	/** Where a match stands, read off its own ends rather than off the activity's score. */
@@ -1126,65 +1139,38 @@
 				/>
 			</div>
 
-			<div class="flex gap-2">
-				<input
-					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-					placeholder={$t('match.ourSide')}
-					aria-label={$t('match.ourSide')}
-					value={draftMatch.ourName ?? ''}
-					onchange={(e) =>
-						draftMatch && (draftMatch = { ...draftMatch, ourName: e.currentTarget.value.trim() || null })}
-				/>
-				<input
-					class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-					placeholder={$t('match.opponent')}
-					aria-label={$t('match.opponent')}
-					value={draftMatch.opponent ?? ''}
-					onchange={(e) =>
-						draftMatch && (draftMatch = { ...draftMatch, opponent: e.currentTarget.value.trim() || null })}
-				/>
-			</div>
-
-			{#if draftMatch.format !== 'individual'}
-				<!-- Optional throughout: a team match is scored the same whether or not anybody is named. -->
-				<div>
-					<p class="mb-1 text-xs font-semibold text-muted">{$t('match.teammates')}</p>
-					<div class="space-y-1">
-						{#each [...draftMatch.teammates, ''] as name, i (i)}
-							<input
-								class="w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-								placeholder={$t('match.teammate', { n: i + 1 })}
-								aria-label={$t('match.teammate', { n: i + 1 })}
-								value={name}
-								onchange={(e) => {
-									if (!draftMatch) return;
-									const next = [...draftMatch.teammates];
-									const typed = e.currentTarget.value.trim();
-									if (typed) next[i] = typed;
-									else next.splice(i, 1);
-									draftMatch = { ...draftMatch, teammates: next.filter(Boolean) };
-								}}
-							/>
-						{/each}
-					</div>
+			{#if draftMatch.format === 'custom'}
+				<!-- The same wheels the custom round is built with, so one form does not read as two. -->
+				<div class="grid grid-cols-3 gap-2 border-t border-line pt-3">
+					<WheelPicker
+						values={ARROWS_PER_END}
+						value={draftMatch.arrowsPerEnd}
+						label={$t('match.arrowsPerEnd')}
+						item={34}
+						onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, arrowsPerEnd: v })}
+					/>
+					<WheelPicker
+						values={END_COUNTS}
+						value={draftMatch.maxEnds}
+						label={$t('match.ends')}
+						item={34}
+						onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, maxEnds: v })}
+					/>
+					{#if draftMatch.system === 'set'}
+						<WheelPicker
+							values={SET_POINTS}
+							value={draftMatch.setPointsToWin}
+							label={$t('match.setPoints')}
+							item={34}
+							onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, setPointsToWin: v })}
+						/>
+					{/if}
 				</div>
 			{/if}
 
-			<div class="flex items-start justify-between gap-3 border-t border-line pt-3">
-				<div class="min-w-0">
-					<p class="text-sm font-medium">{$t('match.forOtherTitle')}</p>
-					<p class="text-xs text-muted">{$t('match.forOtherHint')}</p>
-				</div>
-				<Toggle
-					checked={!draftMatch.forSelf}
-					label={$t('match.forOtherTitle')}
-					onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, forSelf: !v })}
-				/>
-			</div>
-
 			<!-- The face the plotted arrows land on: a match carries no round to read it from. -->
-			<div class="flex gap-2 border-t border-line pt-3">
-				<label class="min-w-0 flex-1 text-xs text-muted">
+			<div class="border-t border-line pt-3">
+				<label class="block text-xs text-muted">
 					{$t('match.face')}
 					<select
 						class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
@@ -1197,85 +1183,63 @@
 						{/each}
 					</select>
 				</label>
-				<label class="w-20 shrink-0 text-xs text-muted">
-					{$t('match.faceSize')}
-					<input
-						type="number"
-						inputmode="numeric"
-						min="1"
-						class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-						value={draftMatch.faceSize ?? ''}
-						onchange={(e) =>
-							draftMatch &&
-							(draftMatch = { ...draftMatch, faceSize: Number(e.currentTarget.value) || null })}
-					/>
-				</label>
-			</div>
 
-			<!-- The four faces the rules define, as shortcuts into the field rather than instead of it. -->
-			<div class="flex flex-wrap gap-1.5">
-				{#each FACE_SIZES as size (size)}
-					<button
-						class="tabular rounded-lg border px-3 py-1.5 text-sm font-medium
-							{draftMatch.faceSize === size ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
-						onclick={() => draftMatch && (draftMatch = { ...draftMatch, faceSize: size })}
-					>
-						{$t('round.face', { size })}
-					</button>
-				{/each}
-			</div>
-
-			{#if draftMatch.format === 'custom'}
-				<div class="grid grid-cols-3 gap-2 border-t border-line pt-3">
-					<label class="text-xs text-muted">
-						{$t('match.arrowsPerEnd')}
-						<input
-							type="number"
-							inputmode="numeric"
-							min="1"
-							class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-							value={draftMatch.arrowsPerEnd}
-							onchange={(e) =>
-								draftMatch &&
-								(draftMatch = {
-									...draftMatch,
-									arrowsPerEnd: Math.max(1, Number(e.currentTarget.value) || 1)
-								})}
-						/>
-					</label>
-					<label class="text-xs text-muted">
-						{$t('match.ends')}
-						<input
-							type="number"
-							inputmode="numeric"
-							min="1"
-							class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-							value={draftMatch.maxEnds}
-							onchange={(e) =>
-								draftMatch &&
-								(draftMatch = { ...draftMatch, maxEnds: Math.max(1, Number(e.currentTarget.value) || 1) })}
-						/>
-					</label>
-					{#if draftMatch.system === 'set'}
-						<label class="text-xs text-muted">
-							{$t('match.setPoints')}
-							<input
-								type="number"
-								inputmode="numeric"
-								min="1"
-								class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-								value={draftMatch.setPointsToWin}
-								onchange={(e) =>
-									draftMatch &&
-									(draftMatch = {
-										...draftMatch,
-										setPointsToWin: Math.max(1, Number(e.currentTarget.value) || 1)
-									})}
-							/>
-						</label>
-					{/if}
+				<span class="mt-2 block text-xs text-muted">{$t('match.faceSize')}</span>
+				<div class="mt-1 flex gap-2">
+					{#each FACE_SIZES as size (size)}
+						<button
+							class="tabular flex-1 rounded-lg border py-2 text-sm font-medium
+								{draftMatch.faceSize === size ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+							onclick={() => draftMatch && (draftMatch = { ...draftMatch, faceSize: size })}
+						>
+							{size}
+						</button>
+					{/each}
 				</div>
-			{/if}
+			</div>
+
+			<!-- The unit rides on the distance heading: it is a property of that number, not its own field. -->
+			<div class="border-t border-line pt-3">
+				<div class="mb-1 flex items-center justify-between">
+					<span class="text-xs text-muted">{$t('round.distance')}</span>
+					<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
+						{#each ['m', 'yd'] as const as unit (unit)}
+							<button
+								class="rounded-md px-3 py-1 text-xs font-medium
+									{(draftMatch.distance?.unit ?? 'm') === unit
+									? 'bg-surface text-ink shadow-sm'
+									: 'text-muted'}"
+								onclick={() => {
+									if (!draftMatch) return;
+									const list = unit === 'm' ? DISTANCES_M : DISTANCES_YD;
+									const value = draftMatch.distance?.value ?? DEFAULT_DISTANCE;
+									// Kept on the new unit's scale rather than left holding an impossible number.
+									draftMatch = {
+										...draftMatch,
+										distance: { value: list.includes(value) ? value : list[0], unit }
+									};
+								}}
+							>
+								{unit}
+							</button>
+						{/each}
+					</div>
+				</div>
+				<WheelPicker
+					values={draftMatch.distance?.unit === 'yd' ? DISTANCES_YD : DISTANCES_M}
+					value={draftMatch.distance?.value ?? DEFAULT_DISTANCE}
+					label={$t('round.distance')}
+					item={34}
+					labelHidden
+					format={(v) => `${v} ${draftMatch?.distance?.unit ?? 'm'}`}
+					onchange={(v) =>
+						draftMatch &&
+						(draftMatch = {
+							...draftMatch,
+							distance: { value: v, unit: draftMatch.distance?.unit ?? 'm' }
+						})}
+				/>
+			</div>
 
 			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
 				<p class="text-sm font-medium">{$t('match.allowShootOff')}</p>
@@ -1285,6 +1249,78 @@
 					onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, shootOff: v })}
 				/>
 			</div>
+
+			<!-- Everything a match can be shot without: it starts folded so the common case is short. -->
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<p class="text-sm font-medium">{$t('match.advanced')}</p>
+				<Toggle
+					checked={showAdvanced}
+					label={$t('match.advanced')}
+					onchange={(v) => (showAdvanced = v)}
+				/>
+			</div>
+
+			{#if showAdvanced}
+				<div class="space-y-3 border-l-2 border-line pl-3">
+					<div class="flex gap-2">
+						<input
+							class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+							placeholder={$t('match.ourSide')}
+							aria-label={$t('match.ourSide')}
+							value={draftMatch.ourName ?? ''}
+							onchange={(e) =>
+								draftMatch &&
+								(draftMatch = { ...draftMatch, ourName: e.currentTarget.value.trim() || null })}
+						/>
+						<input
+							class="min-w-0 flex-1 rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+							placeholder={$t('match.opponent')}
+							aria-label={$t('match.opponent')}
+							value={draftMatch.opponent ?? ''}
+							onchange={(e) =>
+								draftMatch &&
+								(draftMatch = { ...draftMatch, opponent: e.currentTarget.value.trim() || null })}
+						/>
+					</div>
+
+					{#if draftMatch.format !== 'individual'}
+						<!-- Optional throughout: a team match is scored the same whether or not anybody is named. -->
+						<div>
+							<p class="mb-1 text-xs font-semibold text-muted">{$t('match.teammates')}</p>
+							<div class="space-y-1">
+								{#each [...draftMatch.teammates, ''] as name, i (i)}
+									<input
+										class="w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
+										placeholder={$t('match.teammate', { n: i + 1 })}
+										aria-label={$t('match.teammate', { n: i + 1 })}
+										value={name}
+										onchange={(e) => {
+											if (!draftMatch) return;
+											const next = [...draftMatch.teammates];
+											const typed = e.currentTarget.value.trim();
+											if (typed) next[i] = typed;
+											else next.splice(i, 1);
+											draftMatch = { ...draftMatch, teammates: next.filter(Boolean) };
+										}}
+									/>
+								{/each}
+							</div>
+						</div>
+					{/if}
+
+					<div class="flex items-start justify-between gap-3">
+						<div class="min-w-0">
+							<p class="text-sm font-medium">{$t('match.forOtherTitle')}</p>
+							<p class="text-xs text-muted">{$t('match.forOtherHint')}</p>
+						</div>
+						<Toggle
+							checked={!draftMatch.forSelf}
+							label={$t('match.forOtherTitle')}
+							onchange={(v) => draftMatch && (draftMatch = { ...draftMatch, forSelf: !v })}
+						/>
+					</div>
+				</div>
+			{/if}
 		</div>
 
 		{#snippet footer()}
@@ -1294,7 +1330,10 @@
 			>
 				{$t('common.cancel')}
 			</button>
-			<button class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink" onclick={startMatch}>
+			<button
+				class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+				onclick={startMatch}
+			>
 				{$t('match.start')}
 			</button>
 		{/snippet}

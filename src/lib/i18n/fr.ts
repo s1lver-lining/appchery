@@ -167,6 +167,7 @@ export const fr: Dictionary = {
 		arrowsPerEnd: 'Flèches',
 		ends: 'Volées',
 		setPoints: 'Points pour gagner',
+		advanced: 'Plus d’options',
 		allowShootOff: 'Autoriser un barrage',
 		start: 'Commencer le match',
 		end: 'Volée {n}',
