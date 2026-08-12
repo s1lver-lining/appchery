@@ -9,7 +9,13 @@
 		requestPosition,
 		LocationDeniedError
 	} from '$lib/conditions';
-	import { use24Hour, recordCameraVideo, arrowDetector, plotTapMs } from '$lib/prefs';
+	import {
+		use24Hour,
+		recordCameraVideo,
+		arrowDetector,
+		plotTapMs,
+		fullNewSessionButton
+	} from '$lib/prefs';
 	import { recalculateBadges } from '$lib/db/repository';
 	import {
 		exportBackup,
@@ -186,16 +192,30 @@
 
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.display')}</h2>
-					<div class="flex items-start justify-between gap-4">
-						<div class="flex-1">
-							<p class="font-medium">{$t('settings.clockTitle')}</p>
-							<p class="mt-0.5 text-sm text-muted">{$t('settings.clockHint')}</p>
+					<div class="space-y-4">
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.clockTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.clockHint')}</p>
+							</div>
+							<Toggle
+								checked={$use24Hour}
+								label={$t('settings.clockTitle')}
+								onchange={(v) => use24Hour.set(v)}
+							/>
 						</div>
-						<Toggle
-							checked={$use24Hour}
-							label={$t('settings.clockTitle')}
-							onchange={(v) => use24Hour.set(v)}
-						/>
+
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.newButtonTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.newButtonHint')}</p>
+							</div>
+							<Toggle
+								checked={$fullNewSessionButton}
+								label={$t('settings.newButtonTitle')}
+								onchange={(v) => fullNewSessionButton.set(v)}
+							/>
+						</div>
 					</div>
 				</section>
 			{:else if key === 'shooting'}

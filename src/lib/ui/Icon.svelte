@@ -14,6 +14,7 @@
 		| 'eye'
 		| 'eyeOff'
 		| 'close'
+		| 'search'
 		| 'back'
 		| 'sun'
 		| 'cloud'
@@ -100,6 +101,9 @@
 		<path d="M15 5l-7 7 7 7" />
 	{:else if name === 'close'}
 		<path d="M6 6l12 12M18 6L6 18" />
+	{:else if name === 'search'}
+		<circle cx="10.5" cy="10.5" r="6.5" />
+		<path d="M15.2 15.2L21 21" />
 	{:else if name === 'sun'}
 		<circle cx="12" cy="12" r="4.2" />
 		<path d="M12 2.6v2.4M12 19v2.4M4.3 4.3l1.7 1.7M18 18l1.7 1.7M2.6 12H5M19 12h2.4M4.3 19.7L6 18M18 6l1.7-1.7" />

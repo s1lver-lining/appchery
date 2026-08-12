@@ -20,13 +20,22 @@
 		createSession,
 		updateSession
 	} from '$lib/db/repository';
-	import { upcoming, weekdayOf, weekArrowGoal, type Occurrence } from '$lib/domain/plans';
+	import { upcoming, weekdayOf, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
 	import { groupByWeek, monthGrid, startOfDay } from '$lib/domain/dates';
-	import { defaultNameKey } from '$lib/domain/sessions';
-	import { defaultBowId, formatTime, dateFormats, sessionsTab, showWeekGoal } from '$lib/prefs';
+	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
+	import type { RoundDefinition } from '$lib/domain/rounds/types';
+	import {
+		defaultBowId,
+		formatTime,
+		dateFormats,
+		sessionsTab,
+		showWeekGoal,
+		fullNewSessionButton
+	} from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
+	import Sheet from '$lib/ui/Sheet.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
@@ -34,7 +43,10 @@
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
 
 	let sessions = $state<Session[]>([]);
-	let counts = $state<Record<string, { activities: number; arrows: number }>>({});
+	let counts = $state<Record<string, { activities: number; arrows: number; names: string[] }>>({});
+	/** What is typed in the search box. Not stored: a search is about the minute it is made in. */
+	let query = $state('');
+	let pickingView = $state(false);
 	let tab = $state<'list' | 'calendar'>($sessionsTab === 'calendar' ? 'calendar' : 'list');
 	/** The month on show, held outright rather than as an offset, so any month can be jumped to. */
 	let viewed = $state({ ...lastViewed });
@@ -58,8 +70,14 @@
 		plans = await listPlans();
 		const activities = await listAllActivities();
 		loaded = true;
-		counts = activities.reduce<Record<string, { activities: number; arrows: number }>>((acc, a) => {
-			const entry = (acc[a.sessionId] ??= { activities: 0, arrows: 0 });
+		counts = activities.reduce<
+			Record<string, { activities: number; arrows: number; names: string[] }>
+		>((acc, a) => {
+			const entry = (acc[a.sessionId] ??= { activities: 0, arrows: 0, names: [] });
+			// Kept per session so the search reads what was shot without parsing every round again.
+			const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
+			const name = round?.name ?? a.templateKey;
+			if (name) entry.names.push(name);
 			// Training arrows are counted, never listed, so counting them here claimed an activity
 			// the session page had nothing to show for.
 			if (a.kind !== 'training') entry.activities += 1;
@@ -94,9 +112,12 @@
 	 * A plan's slots are not sessions until something is entered in one. Until then they only show,
 	 * which is why a week nobody shot leaves nothing to clean up.
 	 */
+	/** Plans put aside are dropped once, so neither their slots nor their arrows reach the week. */
+	const live = $derived(onlyActive(plans, slots));
+
 	const occurrences = $derived(
 		upcoming(
-			slots,
+			live.slots,
 			sessions.map((s) => s.startedAt)
 		)
 	);
@@ -110,14 +131,31 @@
 		return n === 1 ? $t('sessions.oneActivity') : $t('sessions.activityCount', { n });
 	}
 
+	/**
+	 * Everything the search reads: what the session is called, where it was, what was noted, and the
+	 * name of every round and procedure done in it.
+	 */
+	const haystack = $derived((s: Session) => [
+		s.label,
+		$t(defaultNameKey(s.kind, s.startedAt)),
+		s.location,
+		s.notes,
+		...(counts[s.id]?.names ?? [])
+	]);
+	const searching = $derived(query.trim().length > 0);
+	const found = $derived(
+		searching ? sessions.filter((s) => matchesQuery(query, haystack(s))) : sessions
+	);
+
 	type Row = { at: number; session?: Session; occurrence?: Occurrence };
+	// A slot is not a session yet, so it holds nothing to search and stands aside while one is on.
 	const rows = $derived<Row[]>([
-		...sessions.map((session) => ({ at: session.startedAt, session })),
-		...occurrences.map((occurrence) => ({ at: occurrence.at, occurrence }))
+		...found.map((session) => ({ at: session.startedAt, session })),
+		...(searching ? [] : occurrences.map((occurrence) => ({ at: occurrence.at, occurrence })))
 	]);
 	const weeks = $derived(groupByWeek(rows, (row) => row.at));
 	/** What every plan asks of a week together, which is what a week's total is measured against. */
-	const weekGoal = $derived(weekArrowGoal(slots, plans));
+	const weekGoal = $derived(weekArrowGoal(live.slots, live.plans));
 	const weekArrows = $derived((group: (typeof weeks)[number]) =>
 		group.items.reduce(
 			(sum, row) => sum + (row.session ? (counts[row.session.id]?.arrows ?? 0) : 0),
@@ -149,23 +187,39 @@
 		if (scrollPane) scrollPane.scrollTop = 0;
 	});
 
+	/** Today's row, so a week too tall to be read whole can still be opened on the day it is. */
+	let todayRow = $state<HTMLElement | undefined>();
+	function markToday(node: HTMLElement, isToday: boolean) {
+		if (isToday) todayRow = node;
+		return {
+			update(next: boolean) {
+				if (next) todayRow = node;
+			}
+		};
+	}
+
 	let scrolled = false;
 	$effect(() => {
 		if (scrolled || !loaded || !anchor || tab !== 'list') return;
 		scrolled = true;
 		// After the frame that lays the weeks out, otherwise it aims at a list still growing above it.
-		requestAnimationFrame(() => anchor && scrollToTop(anchor));
+		requestAnimationFrame(() => {
+			if (!anchor || !scrollPane) return;
+			// The whole week when it fits, since the days around today are what says how the week went.
+			if (anchor.offsetHeight <= scrollPane.clientHeight || !todayRow) bring(anchor, 0);
+			else bring(todayRow, (scrollPane.clientHeight - todayRow.offsetHeight) / 2);
+		});
 	});
 
 	/**
 	 * The pane is scrolled by hand rather than through scrollIntoView, which also scrolls every
 	 * ancestor: on this page that dragged the page pager sideways and left the app between two pages.
 	 */
-	function scrollToTop(node: HTMLElement) {
+	function bring(node: HTMLElement, gapAbove: number) {
 		let pane = node.parentElement;
 		while (pane && !/auto|scroll/.test(getComputedStyle(pane).overflowY)) pane = pane.parentElement;
 		if (!pane) return;
-		pane.scrollTop += node.getBoundingClientRect().top - pane.getBoundingClientRect().top;
+		pane.scrollTop += node.getBoundingClientRect().top - pane.getBoundingClientRect().top - gapAbove;
 	}
 
 	/** Sessions keyed by day, which is what both the calendar dots and the day list read from. */
@@ -267,9 +321,17 @@
 			.map((d) => $dateFormats.weekdayNarrow(d.at))
 	);
 
-	const TABS = $derived([
+	const VIEWS = $derived([
 		{ key: 'list' as const, label: $t('sessions.listTab') },
 		{ key: 'calendar' as const, label: $t('sessions.calendarTab') }
+	]);
+	const viewLabel = $derived(VIEWS.find((view) => view.key === tab)?.label ?? '');
+
+	/** The same three ways to start an outing, whichever shape the bottom of the page is in. */
+	const NEW_KINDS = $derived([
+		{ label: $t('sessions.new'), onselect: () => start('practice'), accent: true },
+		{ label: $t('sessions.newCompetition'), onselect: () => start('competition') },
+		{ label: $t('sessions.newPlanned'), onselect: () => (planningAt = Date.now()) }
 	]);
 </script>
 
@@ -406,28 +468,54 @@
 		{/snippet}
 	</PageHeader>
 
-	<!-- The tabs stay put and the list under them scrolls, the way a calendar app holds its header. -->
-	<div class="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col px-4 pt-4">
-		<nav class="mb-4 flex shrink-0 gap-1 rounded-lg bg-sunk p-1">
-			{#each TABS as item (item.key)}
-				<button
-					class="flex-1 rounded-md py-1.5 text-sm font-medium
-						{tab === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
-					onclick={() => (tab = item.key)}
-				>
-					{item.label}
-				</button>
-			{/each}
-		</nav>
+	<!-- The search stays put and the list under it scrolls, the way a calendar app holds its header.
+		One line for both: the view is a pill rather than a tab strip, which spends a row on nothing. -->
+	<div class="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col px-4 pt-3">
+		<div class="mb-3 flex shrink-0 items-center gap-2">
+			<!-- Nothing to search in a month grid, so the box steps aside rather than filtering nothing. -->
+			<div class="relative min-w-0 flex-1 {tab === 'calendar' ? 'invisible' : ''}">
+				<span class="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">
+					<Icon name="search" size={16} />
+				</span>
+				<input
+					class="w-full rounded-full border border-line bg-surface py-1.5 pr-8 pl-8 text-sm text-ink outline-none placeholder:text-muted"
+					type="search"
+					placeholder={$t('sessions.search')}
+					aria-label={$t('sessions.search')}
+					bind:value={query}
+					disabled={tab === 'calendar'}
+				/>
+				{#if searching}
+					<button
+						class="absolute top-1/2 right-2 -translate-y-1/2 text-muted"
+						aria-label={$t('common.close')}
+						onclick={() => (query = '')}
+					>
+						<Icon name="close" size={14} />
+					</button>
+				{/if}
+			</div>
+
+			<!-- Plain whatever is chosen: it says which half of the page is open, not that anything is on. -->
+			<button
+				class="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface py-1.5 pr-2 pl-3 text-sm font-medium whitespace-nowrap"
+				aria-haspopup="dialog"
+				onclick={() => (pickingView = true)}
+			>
+				{viewLabel}
+				<span class="rotate-180 text-muted"><Icon name="chevronUp" size={13} /></span>
+			</button>
+		</div>
 
 		<div
 			bind:this={scrollPane}
-			class="-mx-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4 pb-4"
+			class="-mx-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4
+				{$fullNewSessionButton ? 'pb-4' : 'pb-20'}"
 		>
 			<!-- A plan's slots count as something to show: a first week can be planned before it is shot. -->
-			{#if rows.length === 0}
+			{#if rows.length === 0 && tab === 'list'}
 				<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-					{$t('sessions.empty')}
+					{searching ? $t('sessions.noMatch') : $t('sessions.empty')}
 				</p>
 			{:else if tab === 'list'}
 				<!-- Read like a planning: weeks as headers, days in the margin, the session in the card. -->
@@ -456,7 +544,10 @@
 
 							<ul class="space-y-2">
 								{#each group.items as row (row.session?.id ?? `${row.occurrence?.slotId}-${row.at}`)}
-									<li class="flex items-center gap-3">
+									<li
+										class="flex items-center gap-3"
+										use:markToday={startOfDay(row.at) === today}
+									>
 										<div class="w-9 shrink-0 text-center">
 											<p class="text-[11px] leading-none text-muted">{shortDay(row.at)}</p>
 											<!-- Today wears a filled pill, so the current day is findable without reading dates. -->
@@ -554,26 +645,58 @@
 	</div>
 
 	<!-- Sticky rather than fixed, so it sits under the list yet never scrolls out of reach. -->
-	<div class="sticky bottom-0 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
-		<div class="mx-auto flex w-full max-w-2xl gap-2">
-			<MoreMenu
-				label={$t('sessions.moreKinds')}
-				items={[
-					{ label: $t('sessions.new'), onselect: () => start('practice') },
-					{ label: $t('sessions.newCompetition'), onselect: () => start('competition') },
-					{ label: $t('sessions.newPlanned'), onselect: () => (planningAt = Date.now()) }
-				]}
-			/>
-			<button
-				class="flex w-4/5 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
-				onclick={() => start()}
-			>
-				<Icon name="plus" size={20} />
-				{$t('sessions.new')}
-			</button>
+	{#if $fullNewSessionButton}
+		<div class="sticky bottom-0 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+			<div class="mx-auto flex w-full max-w-2xl gap-2">
+				<MoreMenu label={$t('sessions.moreKinds')} items={NEW_KINDS} />
+				<button
+					class="flex w-4/5 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
+					onclick={() => start()}
+				>
+					<Icon name="plus" size={20} />
+					{$t('sessions.new')}
+				</button>
+			</div>
 		</div>
-	</div>
+	{:else}
+		<!-- A button rather than a bar: the strip a bar takes is list, and the choices are the same
+			ones. Zero height and end aligned, so it hangs over the last rows rather than pushing them
+			up, and only the button itself catches taps. -->
+		<div class="pointer-events-none sticky bottom-0 z-10 flex h-0 shrink-0 items-end justify-end">
+			<MoreMenu
+				label={$t('sessions.new')}
+				icon="plus"
+				align="right"
+				wrapperClass="pointer-events-auto mr-4 mb-4"
+				triggerClass="flex h-14 w-14 items-center justify-center rounded-full bg-brand text-brand-ink shadow-lg"
+				items={NEW_KINDS}
+			/>
+		</div>
+	{/if}
 </div>
+
+<Sheet open={pickingView} title={$t('sessions.view')} onclose={() => (pickingView = false)}>
+	<ul class="space-y-1">
+		{#each VIEWS as view (view.key)}
+			<li>
+				<button
+					class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
+						{tab === view.key ? 'bg-sunk font-semibold' : ''}"
+					aria-pressed={tab === view.key}
+					onclick={() => {
+						tab = view.key;
+						pickingView = false;
+					}}
+				>
+					<span class="flex-1">{view.label}</span>
+					{#if tab === view.key}
+						<span class="text-brand-text"><Icon name="check" size={16} /></span>
+					{/if}
+				</button>
+			</li>
+		{/each}
+	</ul>
+</Sheet>
 
 {#if planningAt !== null}
 	<DateTimeDialog

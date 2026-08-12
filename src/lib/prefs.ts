@@ -164,6 +164,13 @@ export const sessionsTab = storedString('appchery.sessionsTab');
 export const showWeekGoal = flag('appchery.showWeekGoal', false);
 
 /**
+ * Whether the sessions list ends in the full width new session bar rather than a round plus button.
+ * Off by default: the bar takes a strip of every screen for something tapped once an outing, and the
+ * round button opens the same choices.
+ */
+export const fullNewSessionButton = flag('appchery.fullNewSessionButton', false);
+
+/**
  * What the share card shows, by option name. Held per device: it is how this archer likes their
  * rounds to go out, and it should not have to be set again for every round.
  */

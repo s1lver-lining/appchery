@@ -12,14 +12,17 @@
 		label,
 		icon = 'chevronUp',
 		placement = 'up',
+		align = 'left',
 		wrapperClass = 'w-1/5',
 		triggerClass = 'flex w-full items-center justify-center rounded-xl border border-line bg-surface py-2.5 font-semibold'
 	}: {
-		items: { label: string; onselect: () => void; icon?: IconName | null }[];
+		items: { label: string; onselect: () => void; icon?: IconName | null; accent?: boolean }[];
 		label: string;
 		icon?: IconName;
 		/** Where the menu opens. The bottom bar rises, a header drops. */
 		placement?: 'up' | 'down';
+		/** Which edge the menu hangs from, so a button in a corner never opens off screen. */
+		align?: 'left' | 'right';
 		wrapperClass?: string;
 		triggerClass?: string;
 	} = $props();
@@ -45,13 +48,14 @@
 	{#if open}
 		<div
 			class="absolute z-20 w-56 overflow-hidden rounded-xl border border-line bg-surface shadow-xl
-				{placement === 'up' ? 'bottom-full left-0 mb-2' : 'top-full right-0 mt-2'}"
+				{placement === 'up' ? 'bottom-full mb-2' : 'top-full mt-2'}
+				{placement === 'down' || align === 'right' ? 'right-0' : 'left-0'}"
 			role="menu"
 		>
 			{#each items as item, i (item.label)}
 				<button
 					class="flex w-full items-center gap-2 px-3 py-3 text-left text-sm font-medium
-						{i > 0 ? 'border-t border-line' : ''}"
+						{i > 0 ? 'border-t border-line' : ''} {item.accent ? 'text-brand-text' : ''}"
 					role="menuitem"
 					onclick={() => {
 						open = false;

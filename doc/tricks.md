@@ -22,6 +22,21 @@ know": the card comes back for the next record, on a different round.
 Each week's pill then reads `72/230 arrows`, counting the slot goals and the free arrows of every
 plan. A week that reaches its goal turns brand coloured.
 
+**The list opens where you are.** The list runs oldest to newest and opens on the current week: the
+whole week if it fits the screen, otherwise on today, held in the middle of the view.
+
+**The search reads the whole outing.** The box above the list matches a session's name, its place,
+its notes and the name of every round and procedure shot in it. Every word typed has to be found
+somewhere, in any order, and accents are ignored. It applies to the list only, since a month grid has
+nothing to narrow.
+
+**A plan can be put aside.** The toggle at the top of a plan stops it filling the sessions list and
+stops its arrows counting towards the weekly goal, without deleting anything it already produced.
+
+**The new session button has two shapes.** The display section of the settings turns the round plus
+button in the corner into the full width bar. Both open the same three choices: practice,
+competition, planned.
+
 **A planned slot costs nothing.** Opening a session a plan calls for writes nothing to the database.
 It becomes a real session the moment an arrow, a note or a setting is entered in it, so a week nobody
 shot leaves no trace to clean up.
