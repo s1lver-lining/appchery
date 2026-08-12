@@ -15,6 +15,7 @@
 		scoreSet,
 		shots = [],
 		mode = $bindable('number'),
+		flush = false,
 		title,
 		onpick,
 		onplot,
@@ -25,6 +26,8 @@
 		/** Arrows already entered for what is being filled, drawn on the face. */
 		shots?: Shot[];
 		mode?: 'number' | 'face';
+		/** Sat against the edges of the screen, as a panel that rose from the bottom of it. */
+		flush?: boolean;
 		/** What is being filled in, said in the panel's own strip. */
 		title?: Snippet;
 		onpick: (zone: Zone) => void;
@@ -44,7 +47,18 @@
 	}
 </script>
 
-<div class="overflow-hidden rounded-2xl border border-line bg-surface">
+<div
+	class="overflow-hidden bg-surface {flush
+		? ''
+		: 'rounded-2xl border border-line'}"
+>
+	{#if flush}
+		<!-- The bar every sheet on a phone wears, which is what says this panel can be pushed away. -->
+		<div class="flex justify-center pt-1.5 pb-0.5">
+			<span class="h-1 w-9 rounded-full bg-line"></span>
+		</div>
+	{/if}
+
 	<header class="flex items-center gap-2 border-b border-line bg-sunk/60 px-2 py-1.5">
 		<!-- The way back down, at the top left where a sheet's handle would be. -->
 		{#if onclose}

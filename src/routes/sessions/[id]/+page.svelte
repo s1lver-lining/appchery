@@ -1126,17 +1126,19 @@
 	>
 		<div class="space-y-3">
 			<!-- Sets unless asked otherwise: recurve shoots sets, and compound adds its arrows up. -->
-			<div class="flex items-start justify-between gap-3">
-				<div class="min-w-0">
-					<p class="text-sm font-medium">{$t('match.onTotalTitle')}</p>
-					<p class="text-xs text-muted">{$t('match.onTotalHint')}</p>
+			<div class="flex items-center justify-between gap-3">
+				<p class="text-sm font-medium">{$t('match.winCondition')}</p>
+				<div class="flex shrink-0 gap-1 rounded-lg bg-sunk p-0.5">
+					{#each ['set', 'cumulative'] as const as system (system)}
+						<button
+							class="rounded-md px-3 py-1.5 text-sm font-medium
+								{draftMatch.system === system ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+							onclick={() => draftMatch && (draftMatch = { ...draftMatch, system })}
+						>
+							{$t(`match.system.${system}`)}
+						</button>
+					{/each}
 				</div>
-				<Toggle
-					checked={draftMatch.system === 'cumulative'}
-					label={$t('match.onTotalTitle')}
-					onchange={(v) =>
-						draftMatch && (draftMatch = { ...draftMatch, system: v ? 'cumulative' : 'set' })}
-				/>
 			</div>
 
 			{#if draftMatch.format === 'custom'}
@@ -1168,21 +1170,25 @@
 				</div>
 			{/if}
 
-			<!-- The face the plotted arrows land on: a match carries no round to read it from. -->
+			<!-- The face the plotted arrows land on: a match carries no round to read it from. Shown
+				rather than named, because a face is recognised long before its name is read. -->
 			<div class="border-t border-line pt-3">
-				<label class="block text-xs text-muted">
-					{$t('match.face')}
-					<select
-						class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-						value={draftMatch.scoreSetId}
-						onchange={(e) =>
-							draftMatch && (draftMatch = { ...draftMatch, scoreSetId: e.currentTarget.value })}
-					>
-						{#each SCORE_SETS as set (set.id)}
-							<option value={set.id}>{set.name}</option>
-						{/each}
-					</select>
-				</label>
+				<span class="text-xs text-muted">{$t('match.face')}</span>
+				<div class="mt-1 flex gap-2 overflow-x-auto pb-1">
+					{#each SCORE_SETS as set (set.id)}
+						<button
+							class="w-16 shrink-0 rounded-lg border p-1.5
+								{draftMatch.scoreSetId === set.id ? 'border-brand bg-brand/10' : 'border-line'}"
+							aria-pressed={draftMatch.scoreSetId === set.id}
+							onclick={() => draftMatch && (draftMatch = { ...draftMatch, scoreSetId: set.id })}
+						>
+							<span class="block aspect-square w-full">
+								<TargetFace scoreSet={set} />
+							</span>
+							<span class="mt-1 block truncate text-[10px] text-muted">{set.name}</span>
+						</button>
+					{/each}
+				</div>
 
 				<span class="mt-2 block text-xs text-muted">{$t('match.faceSize')}</span>
 				<div class="mt-1 flex gap-2">

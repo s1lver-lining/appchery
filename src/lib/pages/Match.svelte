@@ -321,7 +321,14 @@
 	{@const shots = arrowsOf(row, side)}
 	{@const total = side === 'us' ? (row ? row.ours : null) : (row?.theirs ?? null)}
 	<div class="flex min-w-0 flex-1 items-center gap-0.5 {mirrored ? 'flex-row-reverse' : ''}">
-		<div class="flex min-w-0 flex-1 flex-wrap gap-0.5 {mirrored ? 'justify-end' : ''}">
+		<!--
+			Three to a line whatever the format: a team's six arrows read as two ends of three, which is
+			how they were shot, rather than as a four and a two that mean nothing.
+		-->
+		<div
+			class="grid gap-0.5 {mirrored ? 'ml-auto' : 'mr-auto'}"
+			style="grid-template-columns: repeat({Math.min(3, slotsFor(shootOff))}, var(--chip))"
+		>
 			{#each Array(slotsFor(shootOff)) as _, index (index)}
 				{@const shot = shots[index]}
 				<button
@@ -344,7 +351,7 @@
 			type="number"
 			inputmode="numeric"
 			min="0"
-			class="tabular w-9 shrink-0 rounded border border-line bg-bg px-0.5 py-1 text-center text-[13px] font-bold text-ink"
+			class="tabular w-8 shrink-0 rounded border border-line bg-bg px-0.5 py-1 text-center text-[13px] font-bold text-ink"
 			aria-label={side === 'us' ? ourLabel : theirLabel}
 			value={total ?? ''}
 			onfocus={() => (cursor = null)}
@@ -430,12 +437,12 @@
 			<!-- The sheet: our arrows to the left of the line, theirs to the right, an end to a row. -->
 			<section
 				class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface"
-				style="--chip: clamp(1.35rem, 6.2vw, 1.75rem)"
+				style="--chip: clamp(1.45rem, 5.6vw, 1.75rem)"
 			>
 				<div class="flex items-center gap-0.5 border-b border-line px-1.5 py-1 text-[10px] text-muted">
 					<span class="w-4 shrink-0"></span>
 					<span class="min-w-0 flex-1 truncate">{ourLabel}</span>
-					<span class="w-8 shrink-0 text-center">
+					<span class="w-7 shrink-0 text-center">
 						{config.system === 'set' ? $t('match.sets') : $t('match.total')}
 					</span>
 					<span class="min-w-0 flex-1 truncate text-right">{theirLabel}</span>
@@ -458,7 +465,7 @@
 
 							{@render sideCells(entry.endNo, 'us', entry.row, entry.shootOff, false)}
 
-							<span class="tabular w-8 shrink-0 text-center text-[11px] font-semibold">
+							<span class="tabular w-7 shrink-0 text-center text-[11px] font-semibold">
 								{#if points(entry.endNo, 'us') !== null}
 									<span class="text-brand-text">{points(entry.endNo, 'us')}</span>
 									<span class="text-line">·</span>
@@ -497,8 +504,10 @@
 
 			<!-- The pad rises from under the sheet only while a slot is waiting for an arrow. -->
 			{#if cursor}
-				<div class="shrink-0">
+				<!-- Out to both edges, unlike everything above it: the page is inset, a sheet is not. -->
+				<div class="-mx-4 -mb-4 shrink-0 border-t border-line bg-surface pb-4 shadow-[0_-8px_16px_-12px_rgba(0,0,0,0.4)]">
 					<ArrowPad
+						flush
 						{scoreSet}
 						bind:mode
 						oncamera={() => (scanning = true)}
@@ -522,7 +531,7 @@
 						{/snippet}
 					</ArrowPad>
 
-					<div class="mt-2 flex items-center gap-2">
+					<div class="flex items-center gap-2 px-4 pt-2">
 						<button
 							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
 							onclick={() => (cursor = null)}
@@ -592,21 +601,20 @@
 				/>
 			</div>
 
-			<div class="flex items-start justify-between gap-3 border-t border-line pt-3">
-				<div class="min-w-0">
-					<p class="text-sm font-medium">{$t('match.onTotalTitle')}</p>
-					<p class="text-xs text-muted">{$t('match.onTotalHint')}</p>
+			<div class="flex items-center justify-between gap-3 border-t border-line pt-3">
+				<p class="text-sm font-medium">{$t('match.winCondition')}</p>
+				<div class="flex shrink-0 gap-1 rounded-lg bg-sunk p-0.5">
+					{#each ['set', 'cumulative'] as const as system (system)}
+						<button
+							class="rounded-md px-3 py-1.5 text-sm font-medium
+								{config?.system === system ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+							onclick={() =>
+								config && updateMatchConfig(activity.id, { ...config, system }).then(refresh)}
+						>
+							{$t(`match.system.${system}`)}
+						</button>
+					{/each}
 				</div>
-				<Toggle
-					checked={config.system === 'cumulative'}
-					label={$t('match.onTotalTitle')}
-					onchange={(v) =>
-						config &&
-						updateMatchConfig(activity.id, {
-							...config,
-							system: v ? 'cumulative' : 'set'
-						}).then(refresh)}
-				/>
 			</div>
 		</div>
 	</Sheet>
