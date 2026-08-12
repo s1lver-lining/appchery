@@ -138,7 +138,6 @@ export const en = {
 	},
 	round: {
 		arrows: '{n} arrows',
-		yourAverage: 'Avg {n}',
 		yourBest: 'Best {n}',
 		lastShot: 'Last shot {when}',
 		discipline: {

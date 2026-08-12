@@ -139,7 +139,6 @@ export const fr: Dictionary = {
 		longbow: 'Longbow'
 	},
 	round: {
-		yourAverage: 'Moy. {n}',
 		yourBest: 'Record {n}',
 		lastShot: 'Dernier tir {when}',
 		discipline: {

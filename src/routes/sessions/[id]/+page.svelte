@@ -534,16 +534,18 @@
 				</span>
 			</span>
 
-			<!-- What you usually score on it, which is what turns a list of names into a choice. -->
-			{#if stats}
-				<span class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-brand-text">
-					<span class="tabular">{$t('round.yourAverage', { n: Math.round(stats.average) })}</span>
-					<span class="text-line">·</span>
-					<span class="tabular">{$t('round.yourBest', { n: stats.best.totalScore })}</span>
+			<!-- The number to beat, and when it was last gone for: one line, the record leading. -->
+			{#if stats || withDate}
+				<span class="mt-1 flex items-baseline gap-2 text-[11px]">
+					{#if stats}
+						<span class="tabular text-brand-text">
+							{$t('round.yourBest', { n: stats.best.totalScore })}
+						</span>
+					{/if}
+					{#if withDate}
+						<span class="ml-auto truncate text-muted">{whenShot(round)}</span>
+					{/if}
 				</span>
-			{/if}
-			{#if withDate}
-				<span class="mt-0.5 block text-[11px] text-muted">{whenShot(round)}</span>
 			{/if}
 		</span>
 	</button>
