@@ -22,6 +22,7 @@
 		updateSession
 	} from '$lib/db/repository';
 	import { upcoming, weekdayOf, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
+	import { parseConfig } from '$lib/domain/matches';
 	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -77,7 +78,8 @@
 			const entry = (acc[a.sessionId] ??= { activities: 0, arrows: 0, names: [] });
 			// Kept per session so the search reads what was shot without parsing every round again.
 			const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
-			const name = round?.name ?? a.templateKey;
+			// A match is remembered by who it was against, so that is its name as far as searching goes.
+			const name = round?.name ?? a.templateKey ?? parseConfig(a.matchConfig)?.opponent;
 			if (name) entry.names.push(name);
 			// Training arrows are counted, never listed, so counting them here claimed an activity
 			// the session page had nothing to show for.

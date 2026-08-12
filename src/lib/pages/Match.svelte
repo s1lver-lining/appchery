@@ -48,10 +48,25 @@
 	let confirmingDelete = $state(false);
 	let editingSetup = $state(false);
 
+	let loaded = false;
 	async function refresh() {
 		const match = await loadMatch(activity.id);
 		config = match.config;
 		rows = match.ends;
+		// A match opened after it was won is not a match that has just been won: badges stay quiet.
+		if (!loaded && match.config) {
+			loaded = true;
+			wasDecided = tally(
+				match.config,
+				match.ends.map((end) => ({
+					endNo: end.endNo,
+					ours: end.ours,
+					theirs: end.theirs,
+					shootOff: end.shootOff,
+					winner: end.winner
+				}))
+			).decided;
+		}
 		onchange();
 	}
 	$effect(() => {
@@ -244,17 +259,27 @@
 
 	/** Typed straight in. The arrows of that side go with it: one number cannot have two sources. */
 	async function typeTotal(endNo: number, side: Side, raw: string, shootOff: boolean) {
-		const value = raw.trim() === '' ? null : Number(raw);
-		if (value !== null && !Number.isFinite(value)) return;
+		const typed = raw.trim() === '' ? null : Number(raw);
+		if (typed !== null && !Number.isFinite(typed)) return;
+		// A typed total is a score: negatives are a slipped minus key, not something to record.
+		const value = typed === null ? null : Math.max(0, Math.round(typed));
 		cursor = null;
 		await setMatchEndTotal(activity.id, endNo, side, value, shootOff);
 		await refresh();
 		await celebrate();
 	}
 
-	/** A badge is the archer's own: a card kept for somebody else earns nothing. */
+	/**
+	 * A badge is the archer's own, so a card kept for somebody else earns nothing. Checked only when
+	 * the match has just been decided: awarding reads every activity ever shot, which is not something
+	 * to do on the way through an end.
+	 */
+	let wasDecided = false;
 	async function celebrate() {
-		if (config?.forSelf) await awardBadges();
+		const decided = result?.decided === true;
+		const settled = decided && !wasDecided;
+		wasDecided = decided;
+		if (settled && config?.forSelf) await awardBadges();
 	}
 
 	async function clearEnd(endNo: number) {
