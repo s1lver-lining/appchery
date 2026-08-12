@@ -530,6 +530,8 @@ export const en = {
 			ffta: 'FFTA progression arrows'
 		},
 		list: {
+			halfMarathon: { name: 'Half Marathon', hint: '{arrows} arrows in a single outing.' },
+			marathon: { name: 'Marathon', hint: '{arrows} arrows in a single outing.' },
 			thousandArrows: { name: 'Quiver Emptier', hint: 'A thousand arrows shot.' },
 			fiveThousandArrows: {
 				name: "Fletcher's Best Customer",
@@ -540,6 +542,9 @@ export const en = {
 				name: 'Bow Arm of Steel',
 				hint: 'Twenty five thousand arrows shot.'
 			},
+			threeDaysRunning: { name: 'Three Days Running', hint: 'Shot three days back to back.' },
+			fourSeasons: { name: 'Four Seasons', hint: 'Shot in twelve months running.' },
+			groundhogDay: { name: 'Groundhog Day', hint: 'Shot the same round {rounds} times.' },
 			sevenDays: { name: 'Regular Offender', hint: 'Shot on seven different days.' },
 			thirtyDays: { name: 'Creature of Habit', hint: 'Shot on thirty different days.' },
 			hundredDays: { name: 'Part of the Furniture', hint: 'Shot on a hundred different days.' },
@@ -549,6 +554,16 @@ export const en = {
 			firstXAt70: { name: 'X Marks the Spot', hint: 'Shot an X in a WA round at 70m.' },
 			thirtyAt18: { name: 'Three of a Kind', hint: 'Shot an end of 30 in a WA indoor round at 18m.' },
 			goldenEnd: { name: 'All That Glitters', hint: 'Put a whole end of six arrows in the gold.' },
+			handfulOfArrows: {
+				name: 'A Handful of Arrows',
+				hint: 'An end of {arrows} plotted arrows inside {cm}cm on the face.'
+			},
+			iSeeRed: { name: 'I See Red', hint: 'Finished a round with no arrow below {value}.' },
+			tourist: { name: 'Tourist', hint: 'Shot at five different places.' },
+			frostbite: {
+				name: 'Frostbite',
+				hint: 'Finished a round at {metres}m or more below {temp} °C.'
+			},
 			firstCompetition: { name: 'Nerves of Jelly', hint: 'Finished a round at a competition.' },
 			twoBowTypes: { name: 'Two Timer', hint: 'Scored a round with two different kinds of bow.' },
 			seventyMetres: { name: 'The Long Walk', hint: 'Finished a round at 70m or further.' },
@@ -557,7 +572,7 @@ export const en = {
 			fiveSightMarks: { name: 'Sight Whisperer', hint: 'Recorded five sight marks on one bow.' },
 			stormArcher: {
 				name: 'Weather Warning',
-				hint: 'Finished a round in a wind of {kmh} km/h or more.'
+				hint: 'Finished a round at {metres}m or more in a wind of {kmh} km/h or more.'
 			},
 			fftaWhite: { name: 'White Arrow' },
 			fftaBlack: { name: 'Black Arrow' },

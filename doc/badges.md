@@ -28,6 +28,20 @@ Bow type comes from the session: the bow it names, or the generic type when that
 An outing that recorded neither proves no bow, so a badge that asks for one is not earned. Guessing
 from the default bow would hand out a recurve award for a round shot with a compound.
 
+## Three decisions the rules share
+
+**Arrows are arrows.** Volume, days and weeks count untargeted practice alongside scored rounds: a
+warm up is still arrows down the range, and the session page already presents them that way. This is
+a wider basis than the stats page uses, which counts scored rounds only.
+
+**The weather badges are outdoor badges.** Cold and wind are only asked about on a round of 30m or
+more. A heated hall in January is not frostbite, and a wind reading taken outside the building says
+nothing about the archer standing inside it.
+
+**A value is a ring, not a number.** I See Red asks for nothing below 7, which only means what it
+says on the ten ring face, so it is restricted to rounds scored on it. A 7 on a field or 3D round is
+a different arrow entirely.
+
 ## Rules data
 
 ### FFTA progression arrows

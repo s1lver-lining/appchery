@@ -20,13 +20,29 @@ import { yardsToMetres } from './units';
 export type BadgeFamily = 'volume' | 'habit' | 'record' | 'accuracy' | 'milestone' | 'ffta';
 
 /** A subset of the icon set, named here so the domain never imports from the UI. */
-export type BadgeIcon = 'medal' | 'star' | 'target' | 'bow' | 'wrench' | 'sight' | 'storm' | 'chart';
+export type BadgeIcon =
+	| 'medal'
+	| 'star'
+	| 'target'
+	| 'bow'
+	| 'wrench'
+	| 'sight'
+	| 'storm'
+	| 'snow'
+	| 'sun'
+	| 'chart';
 
 export interface BadgeEnd {
+	/** Which stage of the round the end belongs to, which is what gives it its face size. */
+	stageIndex: number;
 	arrows: number;
 	subtotal: number;
 	/** Arrows in the gold, meaning a 9 or better on a ten ring face. */
 	golds: number;
+	/** The worst arrow of the end, or null when nothing was entered. */
+	lowest: number | null;
+	/** Arrows that were plotted on the face, in normalised coordinates. Empty when none were. */
+	plots: { x: number; y: number }[];
 }
 
 export interface BadgeActivity extends ScoredActivity {
@@ -37,6 +53,8 @@ export interface BadgeActivity extends ScoredActivity {
 	/** recurve | compound | barebow | longbow, or null when the outing recorded no bow at all. */
 	bowType: string | null;
 	windKmh: number | null;
+	temperatureC: number | null;
+	location: string | null;
 	ends: BadgeEnd[];
 }
 
@@ -48,8 +66,13 @@ export interface BadgeInput {
 	weekArrowGoal: number;
 }
 
-/** The same input with the two orderings every rule wants, worked out once instead of per badge. */
+/** The same input with the orderings every rule wants, worked out once instead of per badge. */
 interface History extends BadgeInput {
+	/**
+	 * Everything with an arrow in it, oldest first, counted arrows and untargeted practice alike:
+	 * volume and habit are about arrows loosed, and a warm up is still shooting.
+	 */
+	shooting: BadgeActivity[];
 	/** Scored rounds, oldest first. */
 	scoring: BadgeActivity[];
 	/** Of those, the ones shot to the end. */
@@ -77,12 +100,27 @@ export interface EarnedBadge {
 }
 
 const GOLD_ARROW_END = 6;
+/** Arrows in the end a group has to hold before its tightness says anything. */
+const GROUP_ARROWS = 6;
+/** How wide a group may be and still be covered by a hand, in centimetres on the face. */
+const HANDFUL_CM = 12;
+/** The lowest arrow a round may hold and still be all in the red. */
+const RED_VALUE = 7;
+/** Outdoor rounds only, so a warm hall never earns the badges the weather is for. */
+const OUTDOOR_METRES = 30;
+const COLD_C = 10;
+/** Rounds where a value is a ring on the ten ring face rather than a field or 3D zone. */
+const TEN_RING = 'wa-10-ring';
 
 function prepare(input: BadgeInput): History {
-	const scoring = input.activities
-		.filter((a) => a.kind === 'scoring')
-		.sort((a, b) => a.startedAt - b.startedAt);
-	return { ...input, scoring, finished: scoring.filter(isComplete) };
+	const byDate = [...input.activities].sort((a, b) => a.startedAt - b.startedAt);
+	const scoring = byDate.filter((a) => a.kind === 'scoring');
+	return {
+		...input,
+		shooting: byDate.filter((a) => a.arrowsShot > 0),
+		scoring,
+		finished: scoring.filter(isComplete)
+	};
 }
 
 /** When a running total first reached `target`, or null when the shooting never got there. */
@@ -105,20 +143,19 @@ function first(activities: BadgeActivity[], rule: (a: BadgeActivity) => boolean)
 }
 
 function totalArrows(history: History): number {
-	return history.scoring.reduce((sum, a) => sum + a.arrowsShot, 0);
+	return history.shooting.reduce((sum, a) => sum + a.arrowsShot, 0);
 }
 
 /** Distinct days shot, oldest first, so the Nth of them dates a habit badge. */
 function daysShot(history: History): number[] {
-	const days = new Set(history.scoring.filter((a) => a.arrowsShot > 0).map((a) => startOfDay(a.startedAt)));
+	const days = new Set(history.shooting.map((a) => startOfDay(a.startedAt)));
 	return [...days].sort((a, b) => a - b);
 }
 
 /** Arrows per week shot, oldest week first. */
 function weeks(history: History): { start: number; arrows: number; last: number }[] {
 	const buckets = new Map<number, { start: number; arrows: number; last: number }>();
-	for (const a of history.scoring) {
-		if (a.arrowsShot <= 0) continue;
+	for (const a of history.shooting) {
 		const start = startOfWeek(a.startedAt);
 		const bucket = buckets.get(start) ?? { start, arrows: 0, last: a.startedAt };
 		bucket.arrows += a.arrowsShot;
@@ -183,6 +220,110 @@ function distinctCount(
 	return new Set(activities.map(keyOf).filter((key): key is string => key !== null)).size;
 }
 
+/** Runs of consecutive calendar days shot, as the run length reached on each of them. */
+function dayRuns(history: History): { run: number; at: number }[] {
+	const runs: { run: number; at: number }[] = [];
+	let run = 0;
+	let previous: number | null = null;
+	for (const day of daysShot(history)) {
+		// Stepped through the Date constructor, so a daylight saving change cannot break a streak.
+		const after =
+			previous === null
+				? null
+				: new Date(new Date(previous).getFullYear(), new Date(previous).getMonth(), new Date(previous).getDate() + 1).getTime();
+		run = after !== null && day === after ? run + 1 : 1;
+		previous = day;
+		runs.push({ run, at: day });
+	}
+	return runs;
+}
+
+/** Runs of consecutive calendar months shot, counted the same way as the days. */
+function monthRuns(history: History): { run: number; at: number }[] {
+	const months = [
+		...new Set(history.shooting.map((a) => new Date(a.startedAt).getFullYear() * 12 + new Date(a.startedAt).getMonth()))
+	].sort((a, b) => a - b);
+
+	const runs: { run: number; at: number }[] = [];
+	let run = 0;
+	let previous: number | null = null;
+	for (const month of months) {
+		run = previous !== null && month === previous + 1 ? run + 1 : 1;
+		previous = month;
+		runs.push({ run, at: new Date(Math.floor(month / 12), month % 12, 1).getTime() });
+	}
+	return runs;
+}
+
+/** The moment one outing's arrows first reached `target`, counting every activity in it. */
+function whenSessionReached(history: History, target: number): number | null {
+	const totals = new Map<string, number>();
+	for (const activity of history.shooting) {
+		const total = (totals.get(activity.sessionId) ?? 0) + activity.arrowsShot;
+		totals.set(activity.sessionId, total);
+		if (total >= target) return activity.startedAt;
+	}
+	return null;
+}
+
+function biggestSession(history: History): number {
+	const totals = new Map<string, number>();
+	for (const activity of history.shooting) {
+		totals.set(activity.sessionId, (totals.get(activity.sessionId) ?? 0) + activity.arrowsShot);
+	}
+	return Math.max(0, ...totals.values());
+}
+
+/**
+ * How wide the group of an end was, in centimetres on the face it was shot at. Coordinates are
+ * normalised to a unit circle, so the radius of that circle is half the face.
+ */
+function groupWidthCm(activity: BadgeActivity, end: BadgeEnd): number | null {
+	if (end.plots.length < GROUP_ARROWS) return null;
+	const faceSize = activity.round?.stages[end.stageIndex]?.faceSize;
+	if (!faceSize) return null;
+
+	let widest = 0;
+	for (let i = 0; i < end.plots.length; i++) {
+		for (let j = i + 1; j < end.plots.length; j++) {
+			const a = end.plots[i];
+			const b = end.plots[j];
+			widest = Math.max(widest, Math.hypot(a.x - b.x, a.y - b.y));
+		}
+	}
+	return (widest * faceSize) / 2;
+}
+
+/** How many times a round of each kind was shot to the end, in the order they were shot. */
+function whenRepeated(history: History, target: number): number | null {
+	const counts = new Map<string, number>();
+	for (const activity of history.finished) {
+		const count = (counts.get(roundKey(activity)) ?? 0) + 1;
+		counts.set(roundKey(activity), count);
+		if (count >= target) return activity.startedAt;
+	}
+	return null;
+}
+
+function mostRepeated(history: History): number {
+	const counts = new Map<string, number>();
+	for (const activity of history.finished) {
+		counts.set(roundKey(activity), (counts.get(roundKey(activity)) ?? 0) + 1);
+	}
+	return Math.max(0, ...counts.values());
+}
+
+/** A place, as something two outings can be compared on: spelling and case are not the point. */
+function placeOf(activity: BadgeActivity): string | null {
+	const place = activity.location?.trim().toLowerCase();
+	return place ? place : null;
+}
+
+/** A round shot far enough away to have been shot outdoors, whatever the weather says. */
+function outdoors(activity: BadgeActivity): boolean {
+	return longestDistance(activity) >= OUTDOOR_METRES;
+}
+
 /** The longest distance of a round, in metres, so a yard round is compared on the same scale. */
 function longestDistance(activity: BadgeActivity): number {
 	const distances = (activity.round?.stages ?? []).map((stage) =>
@@ -205,7 +346,7 @@ function volume(key: string, target: number): BadgeDefinition {
 		key,
 		family: 'volume',
 		icon: 'chart',
-		earnedAt: (h) => whenReached(h.scoring, (a) => a.arrowsShot, target),
+		earnedAt: (h) => whenReached(h.shooting, (a) => a.arrowsShot, target),
 		progress: (h) => ({ current: totalArrows(h), target })
 	};
 }
@@ -288,6 +429,22 @@ function progressionArrow(arrow: ProgressionArrow): BadgeDefinition {
 }
 
 export const BADGES: BadgeDefinition[] = [
+	{
+		key: 'halfMarathon',
+		family: 'volume',
+		icon: 'chart',
+		hintParams: { arrows: 210 },
+		earnedAt: (h) => whenSessionReached(h, 210),
+		progress: (h) => ({ current: biggestSession(h), target: 210 })
+	},
+	{
+		key: 'marathon',
+		family: 'volume',
+		icon: 'chart',
+		hintParams: { arrows: 420 },
+		earnedAt: (h) => whenSessionReached(h, 420),
+		progress: (h) => ({ current: biggestSession(h), target: 420 })
+	},
 	volume('thousandArrows', 1_000),
 	volume('fiveThousandArrows', 5_000),
 	volume('tenThousandArrows', 10_000),
@@ -296,6 +453,28 @@ export const BADGES: BadgeDefinition[] = [
 	habitDays('sevenDays', 7),
 	habitDays('thirtyDays', 30),
 	habitDays('hundredDays', 100),
+	{
+		key: 'threeDaysRunning',
+		family: 'habit',
+		icon: 'star',
+		earnedAt: (h) => dayRuns(h).find((entry) => entry.run >= 3)?.at ?? null,
+		progress: (h) => ({ current: Math.max(0, ...dayRuns(h).map((e) => e.run)), target: 3 })
+	},
+	{
+		key: 'fourSeasons',
+		family: 'habit',
+		icon: 'star',
+		earnedAt: (h) => monthRuns(h).find((entry) => entry.run >= 12)?.at ?? null,
+		progress: (h) => ({ current: Math.max(0, ...monthRuns(h).map((e) => e.run)), target: 12 })
+	},
+	{
+		key: 'groundhogDay',
+		family: 'habit',
+		icon: 'star',
+		hintParams: { rounds: 25 },
+		earnedAt: (h) => whenRepeated(h, 25),
+		progress: (h) => ({ current: mostRepeated(h), target: 25 })
+	},
 	{
 		key: 'everyWeek',
 		family: 'habit',
@@ -358,6 +537,52 @@ export const BADGES: BadgeDefinition[] = [
 	},
 
 	{
+		key: 'handfulOfArrows',
+		family: 'accuracy',
+		icon: 'target',
+		hintParams: { arrows: GROUP_ARROWS, cm: HANDFUL_CM },
+		earnedAt: (h) =>
+			first(h.scoring, (a) =>
+				a.ends.some((end) => {
+					const width = groupWidthCm(a, end);
+					return width !== null && width <= HANDFUL_CM;
+				})
+			)
+	},
+	{
+		key: 'iSeeRed',
+		family: 'accuracy',
+		icon: 'target',
+		hintParams: { value: RED_VALUE },
+		// Only on the ten ring face: a 7 on a field or 3D round is a different arrow entirely.
+		earnedAt: (h) =>
+			first(
+				h.finished,
+				(a) =>
+					a.round?.scoreSetId === TEN_RING &&
+					a.ends.length > 0 &&
+					a.ends.every((end) => end.lowest !== null && end.lowest >= RED_VALUE)
+			)
+	},
+	{
+		key: 'tourist',
+		family: 'milestone',
+		icon: 'sun',
+		earnedAt: (h) => whenDistinct(h.shooting, placeOf, 5),
+		progress: (h) => ({ current: distinctCount(h.shooting, placeOf), target: 5 })
+	},
+	{
+		key: 'frostbite',
+		family: 'milestone',
+		icon: 'snow',
+		hintParams: { temp: COLD_C, metres: OUTDOOR_METRES },
+		earnedAt: (h) =>
+			first(
+				h.finished,
+				(a) => a.temperatureC !== null && a.temperatureC < COLD_C && outdoors(a)
+			)
+	},
+	{
 		key: 'firstCompetition',
 		family: 'milestone',
 		icon: 'medal',
@@ -416,9 +641,12 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'stormArcher',
 		family: 'milestone',
 		icon: 'storm',
-		hintParams: { kmh: STRONG_WIND_KMH },
+		hintParams: { kmh: STRONG_WIND_KMH, metres: OUTDOOR_METRES },
 		earnedAt: (h) =>
-			first(h.finished, (a) => a.windKmh !== null && windBand(a.windKmh) === 'strong')
+			first(
+				h.finished,
+				(a) => a.windKmh !== null && windBand(a.windKmh) === 'strong' && outdoors(a)
+			)
 	},
 
 	...PROGRESSION_ARROWS.map(progressionArrow)

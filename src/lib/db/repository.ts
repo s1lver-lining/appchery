@@ -829,7 +829,12 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 	const bows = await listBows();
 	const ends = await db().select().from(schema.end).where(isNull(schema.end.deletedAt));
 	const shots = await db()
-		.select({ endId: schema.shot.endId, value: schema.shot.value })
+		.select({
+			endId: schema.shot.endId,
+			value: schema.shot.value,
+			x: schema.shot.x,
+			y: schema.shot.y
+		})
 		.from(schema.shot)
 		.where(isNull(schema.shot.deletedAt));
 	const marks = await db()
@@ -842,19 +847,29 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 	const bowTypes = new Map(bows.map((bow) => [bow.id, bow.type]));
 	const sessionsById = new Map(sessions.map((session) => [session.id, session]));
 
-	const tallies = new Map<string, { arrows: number; golds: number }>();
+	type Tally = { arrows: number; golds: number; lowest: number | null; plots: { x: number; y: number }[] };
+	const tallies = new Map<string, Tally>();
 	for (const shot of shots) {
-		const tally = tallies.get(shot.endId) ?? { arrows: 0, golds: 0 };
+		const tally: Tally = tallies.get(shot.endId) ?? { arrows: 0, golds: 0, lowest: null, plots: [] };
 		tally.arrows += 1;
 		if (shot.value >= GOLD_VALUE) tally.golds += 1;
+		tally.lowest = tally.lowest === null ? shot.value : Math.min(tally.lowest, shot.value);
+		if (shot.x !== null && shot.y !== null) tally.plots.push({ x: shot.x, y: shot.y });
 		tallies.set(shot.endId, tally);
 	}
 
 	const endsByActivity = new Map<string, BadgeEnd[]>();
 	for (const end of ends) {
-		const tally = tallies.get(end.id) ?? { arrows: 0, golds: 0 };
+		const tally = tallies.get(end.id) ?? { arrows: 0, golds: 0, lowest: null, plots: [] };
 		const list = endsByActivity.get(end.activityId) ?? [];
-		list.push({ arrows: tally.arrows, subtotal: end.subtotal, golds: tally.golds });
+		list.push({
+			stageIndex: end.stageIndex,
+			arrows: tally.arrows,
+			subtotal: end.subtotal,
+			golds: tally.golds,
+			lowest: tally.lowest,
+			plots: tally.plots
+		});
 		endsByActivity.set(end.activityId, list);
 	}
 
@@ -879,6 +894,8 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 				// The bow the outing named, or the generic type when it only recorded that much.
 				bowType: (session?.bowId ? bowTypes.get(session.bowId) : session?.bowType) ?? null,
 				windKmh: typeof weather?.windSpeedKmh === 'number' ? weather.windSpeedKmh : null,
+				temperatureC: typeof weather?.temperatureC === 'number' ? weather.temperatureC : null,
+				location: session?.location ?? null,
 				ends: endsByActivity.get(activity.id) ?? []
 			};
 		}),

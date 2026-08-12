@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { evaluateBadges, sortBadges, BADGES, type BadgeActivity, type BadgeInput } from './badges';
+import {
+	evaluateBadges,
+	sortBadges,
+	BADGES,
+	type BadgeActivity,
+	type BadgeEnd,
+	type BadgeInput
+} from './badges';
 import { getRound } from './rounds/seed';
 import { buildCustomRound } from './rounds/custom';
 
@@ -25,9 +32,16 @@ function activity(partial: Partial<BadgeActivity> & { id: string }): BadgeActivi
 		sessionKind: 'practice',
 		bowType: 'recurve',
 		windKmh: null,
+		temperatureC: null,
+		location: null,
 		ends: [],
 		...partial
 	};
+}
+
+/** An end, with only the part of it a given rule looks at filled in. */
+function end(partial: Partial<BadgeEnd> = {}): BadgeEnd {
+	return { stageIndex: 0, arrows: 0, subtotal: 0, golds: 0, lowest: null, plots: [], ...partial };
 }
 
 function input(activities: BadgeActivity[], extra: Partial<BadgeInput> = {}): BadgeInput {
@@ -133,18 +147,18 @@ describe('accuracy', () => {
 	});
 
 	it('wants a full end of thirty indoors', () => {
-		const near = activity({ id: 'a', roundDefinitionId: indoor.id, round: indoor, ends: [{ arrows: 3, subtotal: 29, golds: 3 }] });
+		const near = activity({ id: 'a', roundDefinitionId: indoor.id, round: indoor, ends: [end({ arrows: 3, subtotal: 29, golds: 3 })] });
 		expect(badge([near], 'thirtyAt18').earnedAt).toBeNull();
-		const perfect = activity({ id: 'b', startedAt: MONDAY + DAY, roundDefinitionId: indoor.id, round: indoor, ends: [{ arrows: 3, subtotal: 30, golds: 3 }] });
+		const perfect = activity({ id: 'b', startedAt: MONDAY + DAY, roundDefinitionId: indoor.id, round: indoor, ends: [end({ arrows: 3, subtotal: 30, golds: 3 })] });
 		expect(badge([near, perfect], 'thirtyAt18').earnedAt).toBe(MONDAY + DAY);
 	});
 
 	it('asks a golden end for six arrows, all of them gold', () => {
-		const short = activity({ id: 'a', ends: [{ arrows: 3, subtotal: 30, golds: 3 }] });
+		const short = activity({ id: 'a', ends: [end({ arrows: 3, subtotal: 30, golds: 3 })] });
 		expect(badge([short], 'goldenEnd').earnedAt).toBeNull();
-		const nearly = activity({ id: 'b', ends: [{ arrows: 6, subtotal: 55, golds: 5 }] });
+		const nearly = activity({ id: 'b', ends: [end({ arrows: 6, subtotal: 55, golds: 5 })] });
 		expect(badge([nearly], 'goldenEnd').earnedAt).toBeNull();
-		const golden = activity({ id: 'c', startedAt: MONDAY + DAY, ends: [{ arrows: 6, subtotal: 57, golds: 6 }] });
+		const golden = activity({ id: 'c', startedAt: MONDAY + DAY, ends: [end({ arrows: 6, subtotal: 57, golds: 6 })] });
 		expect(badge([golden], 'goldenEnd').earnedAt).toBe(MONDAY + DAY);
 	});
 });
@@ -236,5 +250,142 @@ describe('sorting', () => {
 			{ definition: BADGES[3], earnedAt: 20, progress: null }
 		]);
 		expect(sorted.map((b) => b.earnedAt ?? b.progress!.current)).toEqual([20, 10, 90, 1]);
+	});
+});
+
+describe('one long outing', () => {
+	/** Three activities of one session, which is how a long day is actually recorded. */
+	const outing = (arrows: number[]) =>
+		arrows.map((count, i) =>
+			activity({ id: `a${i}`, sessionId: 'long', startedAt: MONDAY + i * 3600_000, arrowsShot: count })
+		);
+
+	it('adds up everything shot in the session, not one activity of it', () => {
+		expect(badge(outing([72, 72, 72]), 'halfMarathon').earnedAt).toBe(MONDAY + 2 * 3600_000);
+		expect(badge(outing([72, 72]), 'halfMarathon').earnedAt).toBeNull();
+	});
+
+	it('counts untargeted practice, which was still arrows down the range', () => {
+		const warmUp = activity({ id: 'w', sessionId: 'long', kind: 'training', arrowsShot: 90, totalScore: 0 });
+		const rounds = outing([72, 72]).map((a) => ({ ...a, startedAt: a.startedAt + DAY / 24 }));
+		expect(badge([warmUp, ...rounds], 'halfMarathon').earnedAt).not.toBeNull();
+	});
+
+	it('never adds two outings together', () => {
+		const twice = [
+			activity({ id: 'a', sessionId: 'one', arrowsShot: 300 }),
+			activity({ id: 'b', sessionId: 'two', startedAt: MONDAY + DAY, arrowsShot: 300 })
+		];
+		expect(badge(twice, 'marathon')).toMatchObject({ earnedAt: null, progress: { current: 300 } });
+	});
+});
+
+describe('streaks of days and months', () => {
+	it('wants three days back to back, not any three days', () => {
+		const spread = [0, 2, 4].map((i) => activity({ id: `a${i}`, startedAt: MONDAY + i * DAY }));
+		expect(badge(spread, 'threeDaysRunning').earnedAt).toBeNull();
+		const running = [0, 1, 2].map((i) => activity({ id: `b${i}`, startedAt: MONDAY + i * DAY }));
+		expect(badge(running, 'threeDaysRunning').earnedAt).toBe(new Date(2024, 0, 3).getTime());
+	});
+
+	it('wants a full year of months with no gap', () => {
+		const months = (count: number) =>
+			Array.from({ length: count }, (_, i) =>
+				activity({ id: `m${i}`, startedAt: new Date(2024, i, 10).getTime() })
+			);
+		expect(badge(months(11), 'fourSeasons').earnedAt).toBeNull();
+		expect(badge(months(12), 'fourSeasons').earnedAt).toBe(new Date(2024, 11, 1).getTime());
+
+		const gap = months(13).filter((_, i) => i !== 4);
+		expect(badge(gap, 'fourSeasons').earnedAt).toBeNull();
+	});
+});
+
+describe('a handful of arrows', () => {
+	/** Six arrows on a circle of radius `r`, in normalised face coordinates. */
+	const ring = (r: number) =>
+		Array.from({ length: 6 }, (_, i) => ({
+			x: r * Math.cos((i * Math.PI) / 3),
+			y: r * Math.sin((i * Math.PI) / 3)
+		}));
+
+	it('measures the group in centimetres on the face it was shot at', () => {
+		// A 0.1 radius group spans 0.2 of the face: 24cm on a 122, 8cm on a 40.
+		const outdoor = activity({ id: 'a', ends: [end({ arrows: 6, plots: ring(0.1) })] });
+		expect(badge([outdoor], 'handfulOfArrows').earnedAt).toBeNull();
+
+		const inside = activity({
+			id: 'b',
+			startedAt: MONDAY + DAY,
+			roundDefinitionId: indoor.id,
+			round: indoor,
+			ends: [end({ arrows: 6, plots: ring(0.1) })]
+		});
+		expect(badge([inside], 'handfulOfArrows').earnedAt).toBe(MONDAY + DAY);
+	});
+
+	it('ignores an end where too few arrows were plotted to be a group', () => {
+		const five = activity({ id: 'a', roundDefinitionId: indoor.id, round: indoor, ends: [end({ arrows: 6, plots: ring(0.05).slice(0, 5) })] });
+		expect(badge([five], 'handfulOfArrows').earnedAt).toBeNull();
+	});
+});
+
+describe('I see red', () => {
+	const ends = (lowest: number[]) => lowest.map((value) => end({ arrows: 3, lowest: value }));
+
+	it('is beaten by a single arrow outside the red', () => {
+		const round = { roundDefinitionId: indoor.id, round: indoor, arrowsShot: 30, totalScore: 280 };
+		const slip = activity({ id: 'a', ...round, ends: ends([9, 8, 6, 9, 9, 9, 9, 9, 9, 9]) });
+		expect(badge([slip], 'iSeeRed').earnedAt).toBeNull();
+		const clean = activity({ id: 'b', startedAt: MONDAY + DAY, ...round, ends: ends([9, 8, 7, 9, 9, 9, 9, 9, 9, 9]) });
+		expect(badge([clean], 'iSeeRed').earnedAt).toBe(MONDAY + DAY);
+	});
+
+	it('stays out of a round the ten ring rules do not apply to', () => {
+		const field = buildCustomRound({ distance: 30, unit: 'm', faceSize: 60, ends: 2, arrowsPerEnd: 3 });
+		const shot = activity({ id: 'a', roundDefinitionId: null, round: { ...field, scoreSetId: 'field-6-ring' }, arrowsShot: 6, ends: ends([9, 9]) });
+		expect(badge([shot], 'iSeeRed').earnedAt).toBeNull();
+	});
+});
+
+describe('the same round over and over', () => {
+	it('counts finished rounds of one kind', () => {
+		const many = (count: number) =>
+			Array.from({ length: count }, (_, i) => activity({ id: `r${i}`, startedAt: MONDAY + i * DAY }));
+		expect(badge(many(24), 'groundhogDay').earnedAt).toBeNull();
+		expect(badge(many(24), 'groundhogDay').progress?.current).toBe(24);
+		expect(badge(many(25), 'groundhogDay').earnedAt).toBe(MONDAY + 24 * DAY);
+	});
+});
+
+describe('places', () => {
+	it('treats a place written two ways as one place', () => {
+		const places = ['Club', 'club ', 'Field', 'Wood', 'Hill'];
+		const outings = places.map((location, i) =>
+			activity({ id: `p${i}`, startedAt: MONDAY + i * DAY, location })
+		);
+		expect(badge(outings, 'tourist').earnedAt).toBeNull();
+		expect(badge(outings, 'tourist').progress?.current).toBe(4);
+	});
+
+	it('ignores an outing that recorded no place', () => {
+		const blank = activity({ id: 'a', location: '  ' });
+		expect(badge([blank], 'tourist').progress?.current).toBe(0);
+	});
+});
+
+describe('the weather badges', () => {
+	it('wants the cold outdoors, where it is the archer freezing and not the hall', () => {
+		const inside = activity({ id: 'a', roundDefinitionId: indoor.id, round: indoor, arrowsShot: 30, temperatureC: 4 });
+		expect(badge([inside], 'frostbite').earnedAt).toBeNull();
+		const outside = activity({ id: 'b', startedAt: MONDAY + DAY, temperatureC: 4 });
+		expect(badge([outside], 'frostbite').earnedAt).toBe(MONDAY + DAY);
+		const mild = activity({ id: 'c', temperatureC: 12 });
+		expect(badge([mild], 'frostbite').earnedAt).toBeNull();
+	});
+
+	it('holds the wind to the same distance, so an indoor round is never stormy', () => {
+		const inside = activity({ id: 'a', roundDefinitionId: indoor.id, round: indoor, arrowsShot: 30, windKmh: 40 });
+		expect(badge([inside], 'stormArcher').earnedAt).toBeNull();
 	});
 });

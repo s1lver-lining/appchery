@@ -533,6 +533,8 @@ export const fr: Dictionary = {
 			ffta: 'Flèches de progression FFTA'
 		},
 		list: {
+			halfMarathon: { name: 'Le semi-marathon', hint: '{arrows} flèches en une seule séance.' },
+			marathon: { name: 'Le marathon', hint: '{arrows} flèches en une seule séance.' },
 			thousandArrows: { name: 'Videur de carquois', hint: 'Mille flèches décochées.' },
 			fiveThousandArrows: {
 				name: 'Meilleur client du plumassier',
@@ -543,6 +545,9 @@ export const fr: Dictionary = {
 				name: "Bras d'acier",
 				hint: 'Vingt cinq mille flèches décochées.'
 			},
+			threeDaysRunning: { name: "Trois jours d'affilée", hint: 'Tiré trois jours de suite.' },
+			fourSeasons: { name: 'Les quatre saisons', hint: 'Tiré douze mois de suite.' },
+			groundhogDay: { name: 'Un jour sans fin', hint: 'Le même tir effectué {rounds} fois.' },
 			sevenDays: { name: 'Récidiviste', hint: 'Tiré sur sept jours différents.' },
 			thirtyDays: { name: "Bête d'habitude", hint: 'Tiré sur trente jours différents.' },
 			hundredDays: { name: 'Meuble du pas de tir', hint: 'Tiré sur cent jours différents.' },
@@ -555,6 +560,16 @@ export const fr: Dictionary = {
 			firstXAt70: { name: 'La croix des braves', hint: 'Un X sur un tir WA à 70 m.' },
 			thirtyAt18: { name: "Brelan d'or", hint: 'Une volée à 30 sur un tir WA en salle à 18 m.' },
 			goldenEnd: { name: 'Tout ce qui brille', hint: "Une volée entière de six flèches dans l'or." },
+			handfulOfArrows: {
+				name: 'Une poignée de flèches',
+				hint: 'Une volée de {arrows} flèches pointées tenant dans {cm} cm sur le blason.'
+			},
+			iSeeRed: { name: 'Je vois rouge', hint: 'Un tir terminé sans aucune flèche sous {value}.' },
+			tourist: { name: 'Le touriste', hint: 'Tiré dans cinq lieux différents.' },
+			frostbite: {
+				name: 'Les doigts gelés',
+				hint: 'Un tir terminé à {metres} m ou plus par moins de {temp} °C.'
+			},
 			firstCompetition: { name: 'Les jambes en coton', hint: 'Un tir terminé en compétition.' },
 			twoBowTypes: { name: "Cœur d'artichaut", hint: 'Un tir marqué avec deux types d\'arc.' },
 			seventyMetres: { name: 'La longue marche', hint: 'Un tir terminé à 70 m ou plus.' },
@@ -563,7 +578,7 @@ export const fr: Dictionary = {
 			fiveSightMarks: { name: 'Le murmureur de viseur', hint: 'Cinq repères de viseur sur un arc.' },
 			stormArcher: {
 				name: 'Avis de tempête',
-				hint: 'Un tir terminé par un vent de {kmh} km/h ou plus.'
+				hint: 'Un tir terminé à {metres} m ou plus par un vent de {kmh} km/h ou plus.'
 			},
 			fftaWhite: { name: 'Flèche blanche' },
 			fftaBlack: { name: 'Flèche noire' },
