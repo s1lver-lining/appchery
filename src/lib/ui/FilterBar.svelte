@@ -139,7 +139,8 @@
 	</div>
 </div>
 
-<div class="flex items-baseline justify-between gap-3">
+<!-- Set the same distance from the chips as from the card below, so it belongs to neither. -->
+<div class="mt-4 flex items-baseline justify-between gap-3">
 	<p class="text-xs text-muted">{summary}</p>
 	{#if active > 0}
 		<button
