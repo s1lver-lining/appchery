@@ -354,21 +354,23 @@
 </script>
 
 <!--
-	One card for both views. A competition carries its medal and wears the accent on its name; the
-	face and rail are spent on today, which is the row the eye should land on first.
+	One card for both views. The face and the rail are spent on a competition, which is the row worth
+	finding in a year of practice; today is said in the margin instead, where the date already is.
 -->
 {#snippet card(s: Session, withDate: boolean)}
 	<a
 		href="/sessions/{s.id}"
 		class="relative flex flex-1 items-center gap-3 overflow-hidden rounded-xl border p-3 pl-4 transition-colors active:bg-sunk/40
-			{isToday(s)
-			? 'border-brand/40 bg-gradient-to-r from-brand/12 to-surface'
-			: isEmpty(s)
-				? 'border-dashed border-line bg-transparent'
-				: 'border-line bg-surface'}"
+			{isCompetition(s)
+			? 'border-accent/40 bg-gradient-to-r from-accent/12 to-surface'
+			: isToday(s)
+				? 'border-brand/30 bg-surface'
+				: isEmpty(s)
+					? 'border-dashed border-line bg-transparent'
+					: 'border-line bg-surface'}"
 	>
-		{#if isToday(s)}
-			<span class="absolute inset-y-0 left-0 w-1 bg-brand"></span>
+		{#if isCompetition(s)}
+			<span class="absolute inset-y-0 left-0 w-1 bg-accent"></span>
 		{/if}
 
 		{#if isCompetition(s)}
@@ -567,7 +569,14 @@
 										use:markToday={startOfDay(row.at) === today}
 									>
 										<div class="w-9 shrink-0 text-center">
-											<p class="text-[11px] leading-none text-muted">{shortDay(row.at)}</p>
+											<!-- The weekday joins the pill on today, so the margin says it twice over. -->
+											<p
+												class="text-[11px] leading-none {startOfDay(row.at) === today
+													? 'font-semibold text-brand-text'
+													: 'text-muted'}"
+											>
+												{shortDay(row.at)}
+											</p>
 											<!-- Today wears a filled pill, so the current day is findable without reading dates. -->
 											<p
 												class="tabular mt-0.5 text-lg leading-none font-bold
