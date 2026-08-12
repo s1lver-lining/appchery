@@ -543,9 +543,8 @@ export interface BowUsage {
 export async function bowUsage(bowId: string): Promise<BowUsage> {
 	const sessions = (await listSessions()).filter((s) => s.bowId === bowId);
 	const ids = new Set(sessions.map((s) => s.id));
-	const activities = (await listAllActivities()).filter(
-		(a) => ids.has(a.sessionId) && a.kind === 'scoring'
-	);
+	const done = (await listAllActivities()).filter((a) => ids.has(a.sessionId));
+	const activities = done.filter((a) => a.kind === 'scoring');
 
 	// A best score is only comparable between rounds that were shot to the end.
 	const finished = activities.filter((a) =>
@@ -554,7 +553,8 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 	return {
 		sessions: sessions.length,
 		activities: activities.length,
-		arrowsShot: activities.reduce((sum, a) => sum + a.arrowsShot, 0),
+		// Every arrow the bow sent, training included: wear is wear, whether or not it was scored.
+		arrowsShot: done.reduce((sum, a) => sum + a.arrowsShot, 0),
 		bestScore: finished.length > 0 ? Math.max(...finished.map((a) => a.totalScore)) : null,
 		lastUsedAt: sessions.length > 0 ? Math.max(...sessions.map((s) => s.startedAt)) : null
 	};
