@@ -11,6 +11,7 @@
 
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import {
 		listSessions,
@@ -216,10 +217,19 @@
 	/** Rung once, on the row the list settled on, and never again for the life of the page. */
 	let pulsing = $state(false);
 
-	let scrolled = false;
+	/**
+	 * Once per visit rather than once per mount. The pager keeps this page alive behind the one on
+	 * show, so a list anchored at mount was aimed while it was off screen: it arrived at its top, and
+	 * the ring it rang was rung to nobody. Arriving is what the list reacts to, however it is reached.
+	 */
+	let anchored = false;
 	$effect(() => {
-		if (scrolled || !loaded || !anchor || tab !== 'list') return;
-		scrolled = true;
+		if ($page.url.pathname !== '/sessions') {
+			anchored = false;
+			return;
+		}
+		if (anchored || !loaded || !anchor || tab !== 'list') return;
+		anchored = true;
 		// After the frame that lays the weeks out, otherwise it aims at a list still growing above it.
 		requestAnimationFrame(() => {
 			if (!anchor || !scrollPane) return;
