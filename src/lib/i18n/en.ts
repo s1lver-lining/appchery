@@ -157,7 +157,7 @@ export const en = {
 		max: 'Max {n}',
 		custom: 'Custom round',
 		customTitle: 'Custom round',
-		customHint: 'Enter the round you are actually shooting.',
+		customHint: 'Manual parameters',
 		ends: 'Ends',
 		arrowsPerEnd: 'Arrows per end',
 		faceSize: 'Face diameter (cm)',

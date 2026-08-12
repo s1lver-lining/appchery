@@ -159,7 +159,7 @@ export const fr: Dictionary = {
 		max: 'Max {n}',
 		custom: 'Tir personnalisé',
 		customTitle: 'Tir personnalisé',
-		customHint: 'Renseignez le tir que vous effectuez réellement.',
+		customHint: 'Paramètres manuels',
 		ends: 'Volées',
 		arrowsPerEnd: 'Flèches par volée',
 		faceSize: 'Diamètre du blason (cm)',
