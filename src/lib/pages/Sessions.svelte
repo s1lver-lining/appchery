@@ -424,14 +424,6 @@
 
 			<!-- One line while it fits: flex-wrap drops the place name to its own line only when it must. -->
 			<p class="mt-1 flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-0.5 text-xs text-muted">
-				{#if s.kind === 'planned'}
-					<!-- Said out loud, because an empty session that was meant to be empty reads as a mistake. -->
-					<span
-						class="inline-flex shrink-0 items-center rounded-full border border-line px-1.5 py-0.5 text-[10px] font-semibold tracking-wide uppercase"
-					>
-						{$t('sessions.planned')}
-					</span>
-				{/if}
 				{#if withDate}
 					<span class="shrink-0">{shortDate(s.startedAt)}</span>
 					<span class="text-line">·</span>
@@ -452,18 +444,29 @@
 			</p>
 		</div>
 
-		<div class="shrink-0 text-right">
-			<p
-				class="tabular text-lg leading-none font-bold {isCompetition(s)
-					? 'text-competition'
-					: isEmpty(s)
-						? 'text-muted'
-						: ''}"
-			>
-				{counts[s.id]?.arrows ?? 0}
-			</p>
-			<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
-		</div>
+		<!--
+			An outing that has not happened has no arrows to count, and a zero there reads as a bad day
+			rather than as a day still to come. It says what it is instead.
+		-->
+		{#if s.kind === 'planned'}
+			<div class="shrink-0 text-center text-muted">
+				<span class="flex justify-center"><Icon name="calendar" size={20} /></span>
+				<p class="mt-1 text-[10px] tracking-wide uppercase">{$t('sessions.planned')}</p>
+			</div>
+		{:else}
+			<div class="shrink-0 text-right">
+				<p
+					class="tabular text-lg leading-none font-bold {isCompetition(s)
+						? 'text-competition'
+						: isEmpty(s)
+							? 'text-muted'
+							: ''}"
+				>
+					{counts[s.id]?.arrows ?? 0}
+				</p>
+				<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+			</div>
+		{/if}
 	</a>
 {/snippet}
 
@@ -487,12 +490,17 @@
 			</p>
 		</div>
 
-		{#if occurrence.arrowGoal}
-			<div class="shrink-0 text-right">
-				<p class="tabular text-lg leading-none font-bold text-muted">{occurrence.arrowGoal}</p>
-				<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
-			</div>
-		{/if}
+		<!-- What the plan asks for, said as a goal: the same figure under "arrows" read as a score. -->
+		<div class="shrink-0 text-center text-muted">
+			<span class="flex justify-center"><Icon name="calendar" size={20} /></span>
+			{#if occurrence.arrowGoal}
+				<p class="tabular mt-1 text-[10px] tracking-wide uppercase">
+					{$t('sessions.arrowGoal', { n: occurrence.arrowGoal })}
+				</p>
+			{:else}
+				<p class="mt-1 text-[10px] tracking-wide uppercase">{$t('sessions.planned')}</p>
+			{/if}
+		</div>
 	</a>
 {/snippet}
 

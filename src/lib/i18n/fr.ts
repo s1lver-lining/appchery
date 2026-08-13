@@ -71,6 +71,7 @@ export const fr: Dictionary = {
 		month: 'Mois',
 		year: 'Année',
 		thisMonth: 'Ce mois-ci',
+		arrowGoal: '{n} à tirer',
 		planned: 'Planifiée',
 		showWeekGoal: "Afficher l'objectif hebdomadaire",
 		hideWeekGoal: "Masquer l'objectif hebdomadaire",

@@ -70,6 +70,7 @@ export const en = {
 		month: 'Month',
 		year: 'Year',
 		thisMonth: 'This month',
+		arrowGoal: '{n} to shoot',
 		planned: 'Planned',
 		showWeekGoal: 'Show the weekly goal',
 		hideWeekGoal: 'Hide the weekly goal',
