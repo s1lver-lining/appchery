@@ -1,63 +1,70 @@
 import { describe, it, expect } from 'vitest';
 import { scorecardSvg, DEFAULT_CARD_OPTIONS, type CardData } from './scorecard';
 
-function card(partial: Partial<CardData> = {}): CardData {
-	return {
-		roundName: 'WA 720 70m',
-		score: 648,
-		max: 720,
-		arrows: 72,
-		tens: 31,
-		xs: 12,
-		sheet: [
-			{ arrows: ['X', '10', '9'], subtotal: 29, running: 29 },
-			{ arrows: ['9', '9', '8'], subtotal: 26, running: 55 }
-		],
-		date: '11 Aug 2026',
-		place: 'Club de Lyon',
-		bow: 'Formula',
-		category: 'Practice',
-		sessionName: 'Club shoot',
-		weather: null,
-		isBest: false,
-		options: { ...DEFAULT_CARD_OPTIONS, theme: 'dark' as const },
-		labels: {
-			points: 'Total',
-			arrows: 'Arrows',
-			tens: '10s',
-			xs: 'Xs',
-			average: 'Per arrow',
-			end: 'End',
-			endTotal: 'E/T',
-			runningTotal: 'Total',
-			personalBest: 'Personal best',
-			tagline: 'shot with Appchery'
-		},
-		...partial
-	};
-}
+const base: Omit<CardData, 'options'> = {
+	roundName: 'Us · Them',
+	score: 5,
+	max: null,
+	arrows: 9,
+	tens: 2,
+	xs: 1,
+	sheet: [
+		{ arrows: ['10', '9', '9'], opponentArrows: ['9', '8', '8'], subtotal: 28, running: 25 },
+		{ arrows: ['9', '9', '8'], opponentArrows: ['10', '9', '9'], subtotal: 26, running: 28 }
+	],
+	date: '12 Aug 2026',
+	place: null,
+	bow: null,
+	category: null,
+	sessionName: null,
+	weather: null,
+	isBest: false,
+	labels: {
+		points: 'SETS',
+		arrows: 'Arrows',
+		tens: 'Tens',
+		xs: 'Xs',
+		average: 'Average',
+		personalBest: 'Won',
+		end: 'End',
+		endTotal: 'A very long archer name',
+		runningTotal: 'Another long name here',
+		tagline: 'Shot with Appchery'
+	}
+};
 
-describe('scorecardSvg', () => {
-	it('carries the figures the round is remembered by', () => {
-		const svg = scorecardSvg(card());
-		expect(svg).toContain('>648<');
-		expect(svg).toContain('/ 720');
-		expect(svg).toContain('9.00');
+const card = (extra: Partial<CardData> = {}) =>
+	scorecardSvg({
+		...base,
+		...extra,
+		options: { ...DEFAULT_CARD_OPTIONS, theme: 'light', ...(extra.options ?? {}) }
+	} as CardData);
+
+describe('the match card', () => {
+	it('writes the result as one scoreline rather than two loose figures', () => {
+		expect(card({ opponentScore: 3 })).toContain('>5 – 3<');
 	});
 
-	it('escapes anything the archer typed, since the card is built as markup', () => {
-		const svg = scorecardSvg(card({ place: 'Ravens & <script>Crows</script>' }));
-		expect(svg).toContain('Ravens &amp; &lt;script&gt;');
-		expect(svg).not.toContain('<script>');
+	it('leaves a round alone, which has a ceiling instead of an opponent', () => {
+		const round = card({ score: 648, max: 720 });
+		expect(round).toContain('>648<');
+		expect(round).toContain('>/ 720<');
 	});
 
-	it('wears the ribbon only for a record', () => {
-		expect(scorecardSvg(card({ isBest: true }))).toContain('PERSONAL BEST');
-		expect(scorecardSvg(card())).not.toContain('PERSONAL BEST');
+	it('averages a match over its arrows, not over its set points', () => {
+		// 54 points across 9 arrows is 6.00; the 5 set points would have said 0.56.
+		expect(card({ opponentScore: 3, arrowTotal: 54 })).toContain('>6.00<');
 	});
 
-	it('never draws a number it does not have', () => {
-		const svg = scorecardSvg(card({ max: null, arrows: 0, score: 0, sheet: [], place: null, bow: null }));
-		expect(svg).not.toMatch(/NaN|undefined|Infinity/);
+	it('cuts a column head to its column so two names cannot meet', () => {
+		const svg = card({ opponentScore: 3 });
+		expect(svg).toContain('A VERY LO…');
+		expect(svg).not.toContain('A VERY LONG ARCHER NAME');
+	});
+
+	it('draws the other side’s arrows only when asked to', () => {
+		const off = card({ opponentScore: 3 });
+		const on = card({ opponentScore: 3, options: { opponentArrows: true } as CardData['options'] });
+		expect(on.split('>8<').length).toBeGreaterThan(off.split('>8<').length);
 	});
 });

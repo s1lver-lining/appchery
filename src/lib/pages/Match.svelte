@@ -431,11 +431,14 @@
 				? (result?.theirPoints ?? 0)
 				: (result?.theirTotal ?? 0)
 			: 0,
+		// The average is read off the arrows: set points divided by arrows would be a third of a point.
+		arrowTotal: result?.ourTotal ?? 0,
 		arrows: activity.arrowsShot,
 		tens: activity.count10s,
 		xs: activity.countX,
 		sheet: rows.map((row) => ({
 			arrows: shownArrows(row, 'us').map((shot) => shot.zoneLabel),
+			opponentArrows: shownArrows(row, 'them').map((shot) => shot.zoneLabel),
 			subtotal: row.ours,
 			running: row.theirs ?? 0
 		})),

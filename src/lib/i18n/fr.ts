@@ -478,6 +478,7 @@ export const fr: Dictionary = {
 		optionWeather: 'Icône météo',
 		optionTemperature: 'Température',
 		optionWind: 'Vent',
+		optionOpponentArrows: 'Les flèches adverses',
 		optionDark: 'Carte sombre'
 	},
 	help: {

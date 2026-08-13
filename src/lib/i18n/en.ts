@@ -473,6 +473,7 @@ export const en = {
 		optionWeather: 'Weather icon',
 		optionTemperature: 'Temperature',
 		optionWind: 'Wind',
+		optionOpponentArrows: 'The other side’s arrows',
 		optionDark: 'Dark card'
 	},
 	help: {

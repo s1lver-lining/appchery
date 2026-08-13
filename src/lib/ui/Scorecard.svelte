@@ -46,7 +46,8 @@
 		sheet: data.sheet.length > 0,
 		weatherIcon: Boolean(data.weather),
 		temperature: Boolean(data.weather?.temperature),
-		wind: Boolean(data.weather?.wind)
+		wind: Boolean(data.weather?.wind),
+		opponentArrows: data.sheet.some((row) => (row.opponentArrows?.length ?? 0) > 0)
 	});
 
 	const options = $derived<CardOptions>({
@@ -76,7 +77,8 @@
 		sheet: $t('share.optionSheet'),
 		weatherIcon: $t('share.optionWeather'),
 		temperature: $t('share.optionTemperature'),
-		wind: $t('share.optionWind')
+		wind: $t('share.optionWind'),
+		opponentArrows: $t('share.optionOpponentArrows')
 	});
 
 	let picking = $state(false);

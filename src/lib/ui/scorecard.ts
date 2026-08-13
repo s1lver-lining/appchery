@@ -17,11 +17,20 @@ export interface CardData {
 	 * against: the only number that gives it meaning is the one it was shot against.
 	 */
 	opponentScore?: number | null;
+	/**
+	 * What the arrows added up to, when that is not the same as the score. A match is won on set
+	 * points, so dividing its result by the arrows shot would say a match was worth a third of a
+	 * point an arrow: the average has to be read off the arrows themselves.
+	 */
+	arrowTotal?: number | null;
 	arrows: number;
 	tens: number;
 	xs: number;
-	/** The sheet itself, in the order it was shot: the card is a scoresheet before it is a poster. */
-	sheet: { arrows: string[]; subtotal: number; running: number }[];
+	/**
+	 * The sheet itself, in the order it was shot: the card is a scoresheet before it is a poster.
+	 * `opponentArrows` is only ever filled on a match, and only drawn when the option asks for it.
+	 */
+	sheet: { arrows: string[]; subtotal: number; running: number; opponentArrows?: string[] }[];
 	date: string;
 	place: string | null;
 	bow: string | null;
@@ -58,6 +67,8 @@ export interface CardOptions {
 	weatherIcon: boolean;
 	temperature: boolean;
 	wind: boolean;
+	/** The other side's arrows under our own, on a match. Off unless asked for: it doubles the sheet. */
+	opponentArrows: boolean;
 	theme: 'dark' | 'light';
 }
 
@@ -71,7 +82,8 @@ export const CARD_OPTION_KEYS = [
 	'sheet',
 	'weatherIcon',
 	'temperature',
-	'wind'
+	'wind',
+	'opponentArrows'
 ] as const;
 
 export type CardOptionKey = (typeof CARD_OPTION_KEYS)[number];
@@ -89,7 +101,8 @@ export const DEFAULT_CARD_OPTIONS: Omit<CardOptions, 'theme'> = {
 	sheet: true,
 	weatherIcon: false,
 	temperature: false,
-	wind: false
+	wind: false,
+	opponentArrows: false
 };
 
 export const CARD_WIDTH = 1080;
@@ -165,6 +178,11 @@ function esc(value: string): string {
 		.replace(/"/g, '&quot;');
 }
 
+/** A column head is as wide as its column: past that the name is cut rather than run into its neighbour. */
+function trim(value: string, max: number): string {
+	return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
+}
+
 /** Long round names break onto a second line rather than shrinking away to nothing. */
 function wrap(text: string, perLine: number): string[] {
 	const words = text.split(/\s+/).filter(Boolean);
@@ -231,14 +249,17 @@ function sheet(
 	labels: CardData['labels'],
 	from: number,
 	bottom: number,
-	isBest: boolean
+	isBest: boolean,
+	/** Draws the other side's arrows under ours, which costs every row a second line. */
+	withOpponent = false
 ): string {
 	let top = from;
 	if (rows.length === 0) return '';
 	const left = 80;
 	const right = 1000;
 	const headRoom = 46;
-	const rowHeight = Math.min(52, (bottom - from - headRoom) / rows.length);
+	const twoLines = withOpponent && rows.some((row) => (row.opponentArrows?.length ?? 0) > 0);
+	const rowHeight = Math.min(twoLines ? 72 : 52, (bottom - from - headRoom) / rows.length);
 	// A short round is centred in the room a long one would have filled, rather than left hanging.
 	const headTop = from + Math.max(0, (bottom - from - (headRoom + rowHeight * rows.length)) / 2);
 	const size = Math.min(28, rowHeight * 0.62);
@@ -247,16 +268,17 @@ function sheet(
 	const pitch = Math.min(70, (right - 230 - arrowsLeft) / Math.max(widest, 1));
 
 	top = headTop;
+	// The two column heads are names on a match card, and a name is as long as somebody made it.
 	const head =
 		text(labels.end.toUpperCase(), left, top, { size: 22, weight: 700, fill: MUTED, spacing: 2 }) +
-		text(labels.endTotal.toUpperCase(), right - 130, top, {
+		text(trim(labels.endTotal.toUpperCase(), 10), right - 130, top, {
 			size: 22,
 			weight: 700,
 			fill: MUTED,
 			anchor: 'end',
 			spacing: 2
 		}) +
-		text(labels.runningTotal.toUpperCase(), right, top, {
+		text(trim(labels.runningTotal.toUpperCase(), 10), right, top, {
 			size: 22,
 			weight: 700,
 			fill: MUTED,
@@ -268,10 +290,12 @@ function sheet(
 	const body = rows
 		.map((row, i) => {
 			const y = top + headRoom + rowHeight * (i + 0.72);
+			// With both sides drawn, ours rides above the middle of the row and theirs below it.
+			const ourY = twoLines ? y - rowHeight * 0.18 : y;
 			const arrows = row.arrows
 				.map((label, j) =>
 					// The golds carry the colour, so a good end is visible before a number is read.
-					text(label, arrowsLeft + j * pitch, y, {
+					text(label, arrowsLeft + j * pitch, ourY, {
 						size,
 						weight: label === 'X' || label === '10' ? 700 : 500,
 						fill: label === 'X' || label === '10' ? GOLD : INK,
@@ -279,13 +303,29 @@ function sheet(
 					})
 				)
 				.join('');
+			// The other side's arrows sit under ours, quieter, so a row still reads as one end.
+			const theirs =
+				twoLines && row.opponentArrows
+					? row.opponentArrows
+							.map((label, j) =>
+								text(label, arrowsLeft + j * pitch, y + rowHeight * 0.16, {
+									size: size * 0.8,
+									weight: 500,
+									fill: MUTED,
+									anchor: 'middle'
+								})
+							)
+							.join('')
+					: '';
+
 			return (
 				text(String(i + 1), left, y, { size: size * 0.8, weight: 600, fill: MUTED }) +
 				arrows +
+				theirs +
 				text(String(row.subtotal), right - 130, y, { size, weight: 700, anchor: 'end' }) +
 				text(String(row.running), right, y, { size, weight: 600, fill: MUTED, anchor: 'end' }) +
 				(i < rows.length - 1
-					? `<line x1="${left}" y1="${(y + rowHeight * 0.3).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * 0.3).toFixed(1)}" stroke="${LINE}" stroke-width="1" opacity="0.7" />`
+					? `<line x1="${left}" y1="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" stroke="${LINE}" stroke-width="1" opacity="0.7" />`
 					: '')
 			);
 		})
@@ -309,7 +349,7 @@ function ribbon(label: string): string {
 			<circle cx="0" cy="5" r="12" fill="none" stroke="${RIBBON_INK}" stroke-width="3.4" />
 			<circle cx="0" cy="5" r="4" fill="${RIBBON_INK}" />
 		</g>
-		${text(caption, 152, 224, { size: 30, weight: 800, fill: RIBBON_INK, spacing: 3 })}
+		${text(caption, 152, 212, { size: 30, weight: 800, fill: RIBBON_INK, spacing: 3 })}
 	</g>`;
 }
 
@@ -325,12 +365,17 @@ export function scorecardSvg(data: CardData): string {
 	RIBBON_INK = palette.ribbonInk;
 
 	const best = data.isBest;
+	const versus = data.opponentScore !== null && data.opponentScore !== undefined;
+	const headline = versus ? `${data.score} – ${data.opponentScore}` : String(data.score);
+	// Two figures and a dash need more room than one, so the scoreline is set smaller when it is one.
+	const headlineSize = versus ? (headline.length > 6 ? 120 : 140) : 170;
 	// Trimmed rather than wrapped: the top line has the date at the other end of it.
 	const named = options.sessionName && data.sessionName ? data.sessionName.slice(0, 28) : null;
 	const title = named ?? 'APPCHERY';
 	const nameLines = wrap(data.roundName, 24);
 	const nameTop = best ? 312 : 262;
-	const average = data.arrows > 0 ? data.score / data.arrows : 0;
+	const scored = data.arrowTotal ?? data.score;
+	const average = data.arrows > 0 ? scored / data.arrows : 0;
 	/** The footer line: what the round was, where, and with what. */
 	const subtitle = [
 		options.category ? data.category : null,
@@ -382,18 +427,12 @@ export function scorecardSvg(data: CardData): string {
 	${best ? ribbon(data.labels.personalBest) : ''}
 	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
 
-	${text(String(data.score), 74, statTop + 172, { size: 170, weight: 800, fill: 'url(#score)' })}
+	<!-- A match is a scoreline, so it is written as one: the two figures belong side by side. -->
+	${text(headline, 74, statTop + 172, { size: headlineSize, weight: 800, fill: 'url(#score)' })}
 	${
 		data.max
 			? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' })
-			: data.opponentScore !== null && data.opponentScore !== undefined
-				? text(`– ${data.opponentScore}`, 1000, statTop + 172, {
-						size: 84,
-						weight: 700,
-						fill: MUTED,
-						anchor: 'end'
-					})
-				: ''
+			: ''
 	}
 	${text(data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: MUTED, spacing: 5 })}
 
@@ -410,7 +449,7 @@ export function scorecardSvg(data: CardData): string {
 			: ''
 	}
 
-	${options.sheet ? sheet(data.sheet, data.labels, sheetTop, 1220, best) : ''}
+	${options.sheet ? sheet(data.sheet, data.labels, sheetTop, 1220, best, options.opponentArrows) : ''}
 
 	${subtitle ? text(subtitle, 80, 1290, { size: 28, fill: MUTED }) : ''}
 	${text(data.labels.tagline, 1000, 1290, { size: 28, weight: 600, fill: GOLD, anchor: 'end' })}
