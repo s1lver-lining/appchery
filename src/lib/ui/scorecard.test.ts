@@ -56,10 +56,26 @@ describe('the match card', () => {
 		expect(card({ opponentScore: 3, arrowTotal: 54 })).toContain('>6.00<');
 	});
 
-	it('cuts a column head to its column so two names cannot meet', () => {
+	/**
+	 * The heads are drawn right aligned at the two column edges, so the second one is the one that can
+	 * run into the first. Both are held inside their column with a gutter to spare.
+	 */
+	it('keeps both column heads inside their own column', () => {
 		const svg = card({ opponentScore: 3 });
-		expect(svg).toContain('A VERY LO…');
+		const heads = [...svg.matchAll(/text-anchor="end"[^>]*>([^<]+)</g)].map((match) => match[1]);
+		const names = heads.filter((head) => head.includes('…') || head.includes('NAME'));
+		expect(names.length).toBeGreaterThan(0);
+		for (const name of names) {
+			// The estimate the card places by: size 20, letter spacing 2, and a 152px column to sit in.
+			expect(name.length * (20 * 0.66 + 2)).toBeLessThanOrEqual(152);
+		}
 		expect(svg).not.toContain('A VERY LONG ARCHER NAME');
+	});
+
+	it('leaves a head that fits alone', () => {
+		expect(card({ labels: { ...base.labels, endTotal: 'Ana', runningTotal: 'Bo' } })).toContain(
+			'>ANA<'
+		);
 	});
 
 	it('draws the other side’s arrows only when asked to', () => {

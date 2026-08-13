@@ -178,9 +178,21 @@ function esc(value: string): string {
 		.replace(/"/g, '&quot;');
 }
 
-/** A column head is as wide as its column: past that the name is cut rather than run into its neighbour. */
-function trim(value: string, max: number): string {
-	return value.length > max ? `${value.slice(0, max - 1).trimEnd()}…` : value;
+/**
+ * How wide a run of text comes out, near enough to place it by. The card is built as a string with
+ * nothing to measure against, so the advance is estimated from the size: a little generous, because
+ * a head that stops short of its column reads fine and one that runs past it collides.
+ */
+function widthOf(value: string, size: number, spacing = 0): number {
+	return value.length * (size * 0.66 + spacing);
+}
+
+/** A column head is cut to its own column, so two long names can never run into one another. */
+function fit(value: string, room: number, size: number, spacing = 0): string {
+	if (widthOf(value, size, spacing) <= room) return value;
+	const perChar = size * 0.66 + spacing;
+	const keep = Math.max(1, Math.floor(room / perChar) - 1);
+	return `${value.slice(0, keep).trimEnd()}…`;
 }
 
 /** Long round names break onto a second line rather than shrinking away to nothing. */
@@ -258,6 +270,13 @@ function sheet(
 	const left = 80;
 	const right = 1000;
 	const headRoom = 46;
+	/**
+	 * The two totals columns. Wide enough for a name rather than for a three figure number, because on
+	 * a match card these heads are the two archers, and a gutter between them so they stay two things.
+	 */
+	const column = 170;
+	const gutter = 18;
+	const headSize = 20;
 	const twoLines = withOpponent && rows.some((row) => (row.opponentArrows?.length ?? 0) > 0);
 	const rowHeight = Math.min(twoLines ? 72 : 52, (bottom - from - headRoom) / rows.length);
 	// A short round is centred in the room a long one would have filled, rather than left hanging.
@@ -265,21 +284,21 @@ function sheet(
 	const size = Math.min(28, rowHeight * 0.62);
 	const widest = Math.max(...rows.map((row) => row.arrows.length));
 	const arrowsLeft = left + 78;
-	const pitch = Math.min(70, (right - 230 - arrowsLeft) / Math.max(widest, 1));
+	const pitch = Math.min(70, (right - column * 2 - 40 - arrowsLeft) / Math.max(widest, 1));
 
 	top = headTop;
 	// The two column heads are names on a match card, and a name is as long as somebody made it.
 	const head =
-		text(labels.end.toUpperCase(), left, top, { size: 22, weight: 700, fill: MUTED, spacing: 2 }) +
-		text(trim(labels.endTotal.toUpperCase(), 10), right - 130, top, {
-			size: 22,
+		text(labels.end.toUpperCase(), left, top, { size: headSize, weight: 700, fill: MUTED, spacing: 2 }) +
+		text(fit(labels.endTotal.toUpperCase(), column - gutter, headSize, 2), right - column, top, {
+			size: headSize,
 			weight: 700,
 			fill: MUTED,
 			anchor: 'end',
 			spacing: 2
 		}) +
-		text(trim(labels.runningTotal.toUpperCase(), 10), right, top, {
-			size: 22,
+		text(fit(labels.runningTotal.toUpperCase(), column - gutter, headSize, 2), right, top, {
+			size: headSize,
 			weight: 700,
 			fill: MUTED,
 			anchor: 'end',
@@ -322,7 +341,7 @@ function sheet(
 				text(String(i + 1), left, y, { size: size * 0.8, weight: 600, fill: MUTED }) +
 				arrows +
 				theirs +
-				text(String(row.subtotal), right - 130, y, { size, weight: 700, anchor: 'end' }) +
+				text(String(row.subtotal), right - column, y, { size, weight: 700, anchor: 'end' }) +
 				text(String(row.running), right, y, { size, weight: 600, fill: MUTED, anchor: 'end' }) +
 				(i < rows.length - 1
 					? `<line x1="${left}" y1="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" stroke="${LINE}" stroke-width="1" opacity="0.7" />`
@@ -332,7 +351,7 @@ function sheet(
 		.join('');
 
 	// The totals column sits on its own band, behind the figures rather than over them.
-	const band = `<rect x="${right - 210}" y="${top + 20}" width="210" height="${(headRoom + rowHeight * rows.length - 16).toFixed(1)}" fill="${isBest ? GOLD : BRONZE}" opacity="0.05" />`;
+	const band = `<rect x="${right - column - 40}" y="${top + 20}" width="${column + 40}" height="${(headRoom + rowHeight * rows.length - 16).toFixed(1)}" fill="${isBest ? GOLD : BRONZE}" opacity="0.05" />`;
 	return `<g>${band}${head}${body}</g>`;
 }
 

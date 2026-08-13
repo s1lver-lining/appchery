@@ -40,7 +40,8 @@
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
-	import type { CardData } from '$lib/ui/scorecard';
+	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
+	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
 	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
@@ -414,6 +415,17 @@
 	 */
 	let sharing = $state(false);
 	let session = $state<Awaited<ReturnType<typeof getSession>>>(null);
+
+	/** The sky at the time, in the shapes the card can draw. Null when nothing was recorded. */
+	const cardWeather = $derived.by(() => {
+		const raw = session?.weather ? JSON.parse(session.weather) : null;
+		if (!raw) return null;
+		return {
+			icon: weatherIcon(raw.code) as WeatherGlyph,
+			temperature: formatTemperature(raw),
+			wind: formatWind(raw)
+		};
+	});
 	$effect(() => {
 		getSession(activity.sessionId).then((row) => (session = row));
 	});
@@ -447,7 +459,7 @@
 		bow: null,
 		category: config && config.stage !== 'none' ? $t(`match.stage.${config.stage}`) : $t('match.title'),
 		sessionName: session?.label ?? null,
-		weather: null,
+		weather: cardWeather,
 		isBest: result?.winner === 'us',
 		labels: {
 			points: config?.system === 'set' ? $t('match.sets') : $t('match.total'),
