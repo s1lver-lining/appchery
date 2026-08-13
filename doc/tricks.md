@@ -185,6 +185,15 @@ adds a ribbon.
 
 ## Elsewhere
 
+**Deleting asks nothing, and gives it back.** A session, a round or a match goes the moment you tap
+delete, and a strip above the tab bar offers it back for six seconds. Nothing is really gone until
+much later: a delete only hides the row.
+
+**An empty page shows what fills it.** Every empty list draws a faded example of a real row, marked
+"Example", and says in a sentence what the page is for. The example is a drawing, not a row: it
+cannot be tapped and it is nobody's data.
+
+
 **Everything is local.** Nothing is uploaded, by design. The backup in the settings data tab is how a
 phone hands its history to another one.
 

@@ -37,6 +37,7 @@
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import FilterBar from '$lib/ui/FilterBar.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import VolumeChart from '$lib/ui/VolumeChart.svelte';
 	import BandChart from '$lib/ui/BandChart.svelte';
 	import RoundCard from '$lib/ui/RoundCard.svelte';
@@ -465,9 +466,20 @@
 		{#if !shows('bests')}
 			<!-- Nothing: the archer switched the personal bests off. -->
 		{:else if standard.length === 0}
-			<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-				{$t('stats.empty')}
-			</p>
+			<EmptyState title={$t('empty.stats.title')} body={$t('empty.stats.body')}>
+				{#snippet sample()}
+					<!-- A round card as this page draws one, once a round has been shot to the end. -->
+					<div class="rounded-xl border border-line bg-surface p-3 text-left">
+						<div class="flex items-baseline justify-between">
+							<p class="font-semibold">WA Indoor 18m</p>
+							<p class="tabular text-lg font-bold">552</p>
+						</div>
+						<p class="mt-1 text-xs text-muted">
+							{$t('stats.rounds', { n: 8 })} · {$t('stats.personalBest')} 561
+						</p>
+					</div>
+				{/snippet}
+			</EmptyState>
 		{:else}
 			<div>
 				<h2 class="text-sm font-semibold">{$t('stats.perRoundTitle')}</h2>

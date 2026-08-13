@@ -138,6 +138,29 @@ export const fr: Dictionary = {
 		barebow: 'Arc nu',
 		longbow: 'Longbow'
 	},
+	empty: {
+		sample: 'Exemple',
+		sessions: {
+			title: 'Aucune sortie',
+			body: 'À chaque fois que vous tirez, ouvrez une séance ici. Elle garde la date, le lieu, la météo et l’arc pour vous.'
+		},
+		activities: {
+			title: 'Rien de tiré dans cette sortie',
+			body: 'Ajoutez un tir pour marquer flèche par flèche, un match pour affronter quelqu’un, ou un réglage.'
+		},
+		stats: {
+			title: 'Aucun tir à analyser',
+			body: 'Terminez un tir et cette page se met à le comparer : votre moyenne, votre record, et comment tout cela évolue.'
+		},
+		plans: {
+			title: 'Aucun programme',
+			body: 'Un programme est une semaine que vous comptez répéter. La liste des séances montre alors ce que chaque semaine attend de vous.'
+		},
+		equipment: {
+			title: 'Aucun arc enregistré',
+			body: 'Ajoutez l’arc que vous tirez : l’app garde ses réglages, ses repères de viseur et tout ce qui a été tiré avec.'
+		}
+	},
 	undo: {
 		action: 'Annuler',
 		sessionDeleted: 'Séance supprimée',

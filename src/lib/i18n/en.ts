@@ -136,6 +136,29 @@ export const en = {
 		barebow: 'Barebow',
 		longbow: 'Longbow'
 	},
+	empty: {
+		sample: 'Example',
+		sessions: {
+			title: 'No outings yet',
+			body: 'Every time you shoot, start a session here. It keeps the date, the place, the weather and the bow for you.'
+		},
+		activities: {
+			title: 'Nothing shot in this outing yet',
+			body: 'Add a round to score arrow by arrow, a match to play somebody, or a tuning procedure.'
+		},
+		stats: {
+			title: 'No rounds to read yet',
+			body: 'Shoot a round to the end and this page starts comparing it: your average, your record, and how the shape of it changes.'
+		},
+		plans: {
+			title: 'No training plan yet',
+			body: 'A plan is a week you mean to repeat. The sessions list then shows what each week asks of you.'
+		},
+		equipment: {
+			title: 'No bow recorded yet',
+			body: 'Add the bow you shoot and the app keeps its settings, its sight marks and everything shot with it.'
+		}
+	},
 	undo: {
 		action: 'Undo',
 		sessionDeleted: 'Session deleted',

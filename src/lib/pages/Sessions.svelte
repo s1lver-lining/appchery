@@ -38,6 +38,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
@@ -564,9 +565,38 @@
 		>
 			<!-- A plan's slots count as something to show: a first week can be planned before it is shot. -->
 			{#if rows.length === 0 && tab === 'list'}
-				<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-					{searching ? $t('sessions.noMatch') : $t('sessions.empty')}
-				</p>
+				{#if searching}
+					<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
+						{$t('sessions.noMatch')}
+					</p>
+				{:else}
+					<EmptyState
+						title={$t('empty.sessions.title')}
+						body={$t('empty.sessions.body')}
+						action={{ label: $t('sessions.new'), onclick: () => start() }}
+					>
+						{#snippet sample()}
+							<!-- The shape of a week in this list: a day in the margin, an outing beside it. -->
+							<div class="flex items-start gap-3">
+								<div class="w-9 shrink-0 text-center">
+									<p class="text-[11px] leading-none text-muted">{shortDay(today)}</p>
+									<p class="tabular mt-0.5 text-lg leading-none font-bold">
+										{dayNumber(today)}
+									</p>
+								</div>
+								<div class="flex flex-1 items-center gap-3 rounded-xl border border-line bg-surface p-3">
+									<div class="min-w-0 flex-1">
+										<p class="truncate font-semibold">{$t('sessions.name.practice.morning')}</p>
+										<p class="mt-1 text-xs text-muted">
+											{$t('sessions.oneActivity')} · 72 {$t('sessions.arrows')}
+										</p>
+									</div>
+									<p class="tabular text-lg leading-none font-bold">72</p>
+								</div>
+							</div>
+						{/snippet}
+					</EmptyState>
+				{/if}
 			{:else if tab === 'list'}
 				<!-- Read like a planning: weeks as headers, days in the margin, the session in the card. -->
 				<div class="space-y-5">

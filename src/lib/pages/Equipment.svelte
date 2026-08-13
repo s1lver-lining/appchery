@@ -8,6 +8,7 @@
 	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Bow from './Bow.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 
@@ -109,9 +110,24 @@
 	{/if}
 
 	{#if bows.length === 0}
-		<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-			{$t('equipment.empty')}
-		</p>
+		<EmptyState
+			title={$t('empty.equipment.title')}
+			body={$t('empty.equipment.body')}
+			action={{ label: $t('equipment.addBow'), onclick: () => (adding = true) }}
+		>
+			{#snippet sample()}
+				<!-- A bow as the list draws it: its name, its type, and what it has shot. -->
+				<div class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3">
+					<span class="flex h-10 w-10 items-center justify-center rounded-lg bg-sunk text-muted">
+						<Icon name="bow" size={22} />
+					</span>
+					<div class="min-w-0 flex-1">
+						<p class="truncate font-semibold">{$t('bow.recurve')}</p>
+						<p class="text-xs text-muted">1 240 {$t('sessions.arrows')}</p>
+					</div>
+				</div>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		<ul class="space-y-2">
 			{#each bows as bow (bow.id)}

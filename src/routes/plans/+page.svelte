@@ -7,6 +7,7 @@
 	import { page } from '$app/stores';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 
 	// Reached from the sessions list and from the settings page, so back goes where the link came from.
 	const origin = $derived(originOf($page.url, '/sessions'));
@@ -40,9 +41,25 @@
 
 <div class="mx-auto w-full max-w-2xl space-y-2 p-4">
 	{#if plans.length === 0}
-		<p class="rounded-xl border border-dashed border-line p-8 text-center text-muted">
-			{$t('plans.empty')}
-		</p>
+		<EmptyState
+			title={$t('empty.plans.title')}
+			body={$t('empty.plans.body')}
+			action={{ label: $t('plans.newPlan'), onclick: add }}
+		>
+			{#snippet sample()}
+				<!-- A plan as the list draws it: what it is called, and what its week asks for. -->
+				<div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
+					<div class="min-w-0">
+						<p class="truncate font-semibold">{$t('plans.newPlan')}</p>
+						<p class="text-xs text-muted">{$t('plans.sessionsCount', { n: 3 })}</p>
+					</div>
+					<div class="shrink-0 text-right">
+						<p class="tabular text-lg leading-none font-bold">230</p>
+						<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+					</div>
+				</div>
+			{/snippet}
+		</EmptyState>
 	{:else}
 		{#each plans as plan (plan.id)}
 			{@const list = slotsOf(plan.id)}

@@ -13,6 +13,7 @@
 	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import {
 		FACE_SIZES,
@@ -925,9 +926,22 @@
 							</div>
 
 							{#if listedActivities.length === 0}
-								<p class="rounded-xl border border-dashed border-line p-6 text-center text-muted">
-									{$t('session.noActivities')}
-								</p>
+								<EmptyState
+									title={$t('empty.activities.title')}
+									body={$t('empty.activities.body')}
+									action={{ label: $t('common.add'), onclick: () => (adding = true) }}
+								>
+									{#snippet sample()}
+										<!-- What a scored round looks like once it is in the list. -->
+										<div class="flex items-center justify-between rounded-xl border border-line bg-surface p-3">
+											<div>
+												<p class="font-medium">WA 720 (70m)</p>
+												<p class="text-xs text-muted">72 {$t('score.arrow')}</p>
+											</div>
+											<span class="tabular text-xl font-bold">648</span>
+										</div>
+									{/snippet}
+								</EmptyState>
 							{:else}
 								<ul class="space-y-2">
 									{#each listedActivities as a (a.id)}
