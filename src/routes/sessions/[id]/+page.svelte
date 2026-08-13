@@ -68,6 +68,7 @@
 		updateSession,
 		listPlanSlots,
 		deleteSession,
+		restoreSession,
 		listActivities,
 		listAllActivities,
 		listBows,
@@ -84,10 +85,10 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
-	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { defaultBowId, formatDateTime, dateFormats } from '$lib/prefs';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { offerUndo } from '$lib/ui/undo.svelte';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -116,7 +117,6 @@
 	/** The name reads as a heading until tapped, so the page does not look like a form. */
 	let editingName = $state(false);
 	let nameInput = $state<HTMLInputElement | null>(null);
-	let confirmingDelete = $state(false);
 
 	const weather = $derived(session?.weather ? JSON.parse(session.weather) : null);
 	/** Arrows tapped in but not yet written, counted everywhere at once so the page never lags a tap. */
@@ -530,9 +530,23 @@
 		await refresh();
 	}
 
+	/**
+	 * Deleted at once and offered back, rather than asked about first. Nothing is lost either way:
+	 * a delete only hides the row, so putting it back is putting it back rather than rebuilding it.
+	 */
 	async function remove() {
 		// A session that was never written has nothing to delete: leaving the page is the whole of it.
-		if (!virtualSlotId) await deleteSession(sessionId);
+		if (!virtualSlotId) {
+			await deleteSession(sessionId);
+			offerUndo({
+				message: $t('undo.sessionDeleted'),
+				label: $t('undo.action'),
+				undo: async () => {
+					await restoreSession(sessionId);
+					goto(`/sessions/${sessionId}`);
+				}
+			});
+		}
 		goto('/sessions');
 	}
 
@@ -1073,7 +1087,7 @@
 
 						<button
 							class="flex items-center gap-1.5 text-sm text-danger"
-							onclick={() => (confirmingDelete = true)}
+							onclick={remove}
 						>
 							<Icon name="trash" size={16} />
 							{$t('session.delete')}
@@ -1558,15 +1572,6 @@
 			</div>
 		</div>
 	</div>
-{/if}
-
-{#if confirmingDelete}
-	<ConfirmDialog
-		title={$t('session.confirmTitle')}
-		message={$t('session.confirmBody')}
-		onconfirm={remove}
-		oncancel={() => (confirmingDelete = false)}
-	/>
 {/if}
 
 {#if celebrations.length > 0}

@@ -26,6 +26,7 @@
 		listMatchNames,
 		getSession,
 		deleteActivity,
+		restoreActivity,
 		awardBadges,
 		shotFromZone,
 		shotFromPlot,
@@ -38,11 +39,11 @@
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
-	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
 	import type { CardData } from '$lib/ui/scorecard';
 	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { offerUndo } from '$lib/ui/undo.svelte';
 
 	/**
 	 * The card of a head to head match, read the way a scoresheet is: our arrows on the left of the
@@ -55,7 +56,6 @@
 
 	let config = $state<MatchConfig | null>(null);
 	let rows = $state<Row[]>([]);
-	let confirmingDelete = $state(false);
 	let editingSetup = $state(false);
 	/** Names used on other cards, so the same opponent is spelled the same way every time. */
 	let knownNames = $state<{ opponents: string[]; ours: string[] }>({ opponents: [], ours: [] });
@@ -463,6 +463,14 @@
 
 	async function remove() {
 		await deleteActivity(activity.id);
+		offerUndo({
+			message: $t('undo.matchDeleted'),
+			label: $t('undo.action'),
+			undo: async () => {
+				await restoreActivity(activity.id);
+				goto(`/activities/${activity.id}`);
+			}
+		});
 		goto(`/sessions/${activity.sessionId}`);
 	}
 
@@ -738,10 +746,7 @@
 
 				</div>
 			{:else}
-				<button
-					class="shrink-0 self-start text-sm text-danger"
-					onclick={() => (confirmingDelete = true)}
-				>
+				<button class="shrink-0 self-start text-sm text-danger" onclick={remove}>
 					{$t('activity.delete')}
 				</button>
 			{/if}
@@ -886,13 +891,4 @@
 		/>
 	{/if}
 
-	{#if confirmingDelete}
-		<ConfirmDialog
-			title={$t('activity.confirmTitle')}
-			message={$t('activity.confirmBody')}
-			confirmLabel={$t('common.delete')}
-			onconfirm={remove}
-			oncancel={() => (confirmingDelete = false)}
-		/>
-	{/if}
 {/if}

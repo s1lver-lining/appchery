@@ -136,6 +136,12 @@ export const en = {
 		barebow: 'Barebow',
 		longbow: 'Longbow'
 	},
+	undo: {
+		action: 'Undo',
+		sessionDeleted: 'Session deleted',
+		activityDeleted: 'Activity deleted',
+		matchDeleted: 'Match deleted'
+	},
 	timer: {
 		title: 'Shooting time',
 		start: 'Call the line',

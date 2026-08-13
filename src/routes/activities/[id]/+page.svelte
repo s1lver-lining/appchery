@@ -20,7 +20,6 @@
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
-	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
@@ -46,6 +45,7 @@
 		updateShot,
 		updateActivity,
 		deleteActivity,
+		restoreActivity,
 		deleteLastEnd,
 		shotFromZone,
 		shotFromPlot,
@@ -55,6 +55,7 @@
 		type BowRow
 	} from '$lib/db/repository';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { offerUndo } from '$lib/ui/undo.svelte';
 
 	const activityId = $derived($page.params.id as string);
 
@@ -82,7 +83,6 @@
 	let observations = $state('');
 	let adjustment = $state('');
 	let saved = $state(false);
-	let confirmingDelete = $state(false);
 	let autoScoring = $state(false);
 
 	let bow = $state<BowRow | null>(null);
@@ -607,6 +607,14 @@
 	async function remove() {
 		const sessionId = activity?.sessionId;
 		await deleteActivity(activityId);
+		offerUndo({
+			message: $t('undo.activityDeleted'),
+			label: $t('undo.action'),
+			undo: async () => {
+				await restoreActivity(activityId);
+				goto(`/activities/${activityId}`);
+			}
+		});
 		goto(sessionId ? `/sessions/${sessionId}` : '/sessions');
 	}
 
@@ -754,19 +762,11 @@
 			</p>
 		{/if}
 
-		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
+		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
 			<Icon name="trash" size={16} />
 			{$t('activity.delete')}
 		</button>
 	</div>
-{#if confirmingDelete}
-	<ConfirmDialog
-		title={$t('activity.confirmTitle')}
-		message={$t('activity.confirmBody')}
-		onconfirm={remove}
-		oncancel={() => (confirmingDelete = false)}
-	/>
-{/if}
 
 {:else if activity && round && scoreSet}
 	<div class="mx-auto flex w-full max-w-2xl flex-col">
@@ -1096,7 +1096,7 @@
 			/>
 		</div>
 
-		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={() => (confirmingDelete = true)}>
+		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
 			<Icon name="trash" size={16} />
 			{$t('activity.delete')}
 		</button>
@@ -1216,14 +1216,6 @@
 	/>
 {/if}
 
-{#if confirmingDelete}
-	<ConfirmDialog
-		title={$t('activity.confirmTitle')}
-		message={$t('activity.confirmBody')}
-		onconfirm={remove}
-		oncancel={() => (confirmingDelete = false)}
-	/>
-{/if}
 
 {#if celebrations.length > 0}
 	<Fireworks awards={celebrations} onclose={() => (celebrations = [])} />

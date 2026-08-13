@@ -271,6 +271,26 @@ export async function deleteActivity(id: string) {
 	await log('activity', id, 'delete');
 }
 
+/**
+ * Putting back what a delete took away. Deletes are soft and cascade to nothing, so a restore is
+ * exact rather than a rebuild: the row goes back the way it was, with everything still hanging off it.
+ */
+export async function restoreSession(id: string) {
+	await db()
+		.update(schema.session)
+		.set({ deletedAt: null, updatedAt: Date.now() })
+		.where(eq(schema.session.id, id));
+	await log('session', id, 'update');
+}
+
+export async function restoreActivity(id: string) {
+	await db()
+		.update(schema.activity)
+		.set({ deletedAt: null, updatedAt: Date.now() })
+		.where(eq(schema.activity.id, id));
+	await log('activity', id, 'update');
+}
+
 /* Ends and shots */
 
 export async function listEnds(activityId: string) {

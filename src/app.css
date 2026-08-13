@@ -188,3 +188,15 @@ body {
 .no-motion *:not([data-motion='keep']):not([data-motion='keep'] *) {
 	animation: none !important;
 }
+
+/* The undo strip arrives from under the tab bar, which is where it lives. */
+@keyframes undo-rise {
+	from {
+		opacity: 0;
+		transform: translateY(12px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}

@@ -138,6 +138,12 @@ export const fr: Dictionary = {
 		barebow: 'Arc nu',
 		longbow: 'Longbow'
 	},
+	undo: {
+		action: 'Annuler',
+		sessionDeleted: 'Séance supprimée',
+		activityDeleted: 'Activité supprimée',
+		matchDeleted: 'Match supprimé'
+	},
 	timer: {
 		title: 'Temps de tir',
 		start: 'Appeler la ligne',

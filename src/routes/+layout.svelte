@@ -17,6 +17,7 @@
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
+	import UndoBar from '$lib/ui/UndoBar.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Pager from '$lib/ui/Pager.svelte';
 
@@ -192,6 +193,9 @@
 				{@render children()}
 			</main>
 		{/if}
+
+		<!-- Over the page but under the tab bar: what it offers back is worth a glance, not the screen. -->
+		<UndoBar />
 
 		<nav class="safe-bottom flex border-t border-line bg-surface">
 			{#each tabs as tab (tab.href)}
