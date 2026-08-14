@@ -408,6 +408,7 @@ export const en = {
 		empty: 'No bows yet. Add one to record its settings and tuning history.',
 		addBow: 'Add a bow',
 		bowName: 'Name',
+		nameRequired: 'A name is needed.',
 		bowType: 'Type',
 		tuningSteps: 'Tuning',
 		overviewTab: 'Overview',

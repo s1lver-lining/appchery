@@ -11,6 +11,7 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Bow from './Bow.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
+	import Sheet from '$lib/ui/Sheet.svelte';
 
 	/**
 	 * With a default bow set, the equipment slot of the pager is that bow rather than a list of one
@@ -28,10 +29,26 @@
 	let adding = $state(false);
 	// Watched rather than read once: the page is already mounted in the pager when the link is used.
 	$effect(() => {
-		if ($page.url.searchParams.has('add')) adding = true;
+		if ($page.url.searchParams.has('add')) openAdd();
 	});
 	let name = $state('');
 	let type = $state<BowType>('recurve');
+	// The type is the name most bows would be given, so it is written in until somebody writes better.
+	let nameEdited = $state(false);
+	let nameMissing = $state(false);
+
+	function openAdd() {
+		name = $t(`bow.recurve`);
+		type = 'recurve';
+		nameEdited = false;
+		nameMissing = false;
+		adding = true;
+	}
+
+	function pickType(next: BowType) {
+		type = next;
+		if (!nameEdited) name = $t(`bow.${next}`);
+	}
 
 	/**
 	 * Nothing is drawn until the bows are read: with a default bow set the page is on its way to it,
@@ -52,7 +69,10 @@
 	});
 
 	async function add() {
-		if (!name.trim()) return;
+		if (!name.trim()) {
+			nameMissing = true;
+			return;
+		}
 		const first = bows.length === 0;
 		const id = await createBow(name.trim(), type);
 		// With a single bow there is nothing to choose between, so preselecting it saves a step.
@@ -83,37 +103,11 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl flex-1 space-y-4 p-4">
-	{#if adding}
-		<section class="space-y-3 rounded-xl border border-line bg-surface p-4">
-			<label class="block text-sm font-semibold">
-				{$t('equipment.bowName')}
-				<input
-					class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-					bind:value={name}
-				/>
-			</label>
-			<label class="block text-sm font-semibold">
-				{$t('equipment.bowType')}
-				<select
-					class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-					bind:value={type}
-				>
-					{#each BOW_TYPES as option (option)}
-						<option value={option}>{$t(`bow.${option}`)}</option>
-					{/each}
-				</select>
-			</label>
-			<button class="w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink" onclick={add}>
-				{$t('common.save')}
-			</button>
-		</section>
-	{/if}
-
 	{#if bows.length === 0}
 		<EmptyState
 			title={$t('empty.equipment.title')}
 			body={$t('empty.equipment.body')}
-			action={{ label: $t('equipment.addBow'), onclick: () => (adding = true) }}
+			action={{ label: $t('equipment.addBow'), onclick: openAdd }}
 		>
 			{#snippet sample()}
 				<!-- A bow as the list draws it: its name, its type, and what it has shot. -->
@@ -159,11 +153,60 @@
 <div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
 		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
-		onclick={() => (adding = !adding)}
+		onclick={openAdd}
 	>
 		<Icon name="plus" size={20} />
-		{adding ? $t('common.cancel') : $t('equipment.addBow')}
+		{$t('equipment.addBow')}
 	</button>
 </div>
 </div>
+
+<Sheet open={adding} title={$t('equipment.addBow')} onclose={() => (adding = false)}>
+	<div class="space-y-3">
+		<label class="block text-sm font-semibold">
+			{$t('equipment.bowName')}
+			<input
+				class="mt-1 w-full rounded-lg border bg-bg p-2 text-ink
+					{nameMissing ? 'border-danger' : 'border-line'}"
+				aria-invalid={nameMissing}
+				value={name}
+				oninput={(e) => {
+					name = e.currentTarget.value;
+					nameEdited = true;
+					nameMissing = false;
+				}}
+			/>
+		</label>
+		{#if nameMissing}
+			<p class="text-sm text-danger">{$t('equipment.nameRequired')}</p>
+		{/if}
+		<label class="block text-sm font-semibold">
+			{$t('equipment.bowType')}
+			<select
+				class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
+				value={type}
+				onchange={(e) => pickType(e.currentTarget.value as BowType)}
+			>
+				{#each BOW_TYPES as option (option)}
+					<option value={option}>{$t(`bow.${option}`)}</option>
+				{/each}
+			</select>
+		</label>
+	</div>
+
+	{#snippet footer()}
+		<button
+			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+			onclick={() => (adding = false)}
+		>
+			{$t('common.cancel')}
+		</button>
+		<button
+			class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+			onclick={add}
+		>
+			{$t('common.save')}
+		</button>
+	{/snippet}
+</Sheet>
 {/if}

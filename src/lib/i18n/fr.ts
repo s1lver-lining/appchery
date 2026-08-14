@@ -412,6 +412,7 @@ export const fr: Dictionary = {
 		empty: 'Aucun arc. Ajoutez-en un pour suivre ses réglages et son historique.',
 		addBow: 'Ajouter un arc',
 		bowName: 'Nom',
+		nameRequired: 'Un nom est nécessaire.',
 		bowType: 'Type',
 		tuningSteps: 'Réglages',
 		overviewTab: 'Aperçu',
