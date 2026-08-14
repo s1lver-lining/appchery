@@ -628,6 +628,9 @@
 
 	const CATALOGUE = [...ROUNDS, ...FIELD_AND_3D_ROUNDS];
 
+	// One 3D face is enough to pick from: the two differ by scoring, and the picker must fit a phone.
+	const MATCH_FACES = SCORE_SETS.filter((set) => set.id !== 'asa-3d');
+
 	/** What this archer actually shoots, which is what the picker should open on. */
 	const recent = $derived(
 		CATALOGUE.filter((round) => lastShotAt.has(shapeKey(round)))
@@ -1313,10 +1316,10 @@
 				rather than named, because a face is recognised long before its name is read. -->
 			<div class="border-t border-line pt-3">
 				<span class="text-xs text-muted">{$t('match.face')}</span>
-				<div class="mt-1 flex gap-2 overflow-x-auto pb-1">
-					{#each SCORE_SETS as set (set.id)}
+				<div class="mt-1 grid grid-cols-4 gap-2">
+					{#each MATCH_FACES as set (set.id)}
 						<button
-							class="w-16 shrink-0 rounded-lg border p-1.5
+							class="rounded-lg border p-1.5
 								{draftMatch.scoreSetId === set.id ? 'border-brand bg-brand/10' : 'border-line'}"
 							aria-pressed={draftMatch.scoreSetId === set.id}
 							onclick={() => draftMatch && (draftMatch = { ...draftMatch, scoreSetId: set.id })}
