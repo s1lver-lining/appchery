@@ -20,6 +20,7 @@
 	import { t } from '$lib/i18n';
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
+	import { watchForUpdates } from '$lib/update';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import UndoBar from '$lib/ui/UndoBar.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -34,6 +35,8 @@
 	// the next load. Dismissing it buys back the screen for this visit, not for good.
 	let warningIgnored = $state(false);
 	let confirmingExit = $state(false);
+
+	$effect(() => watchForUpdates());
 
 	$effect(() => {
 		// Touch the store so the theme attribute is applied before the shell first paints.

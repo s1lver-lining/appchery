@@ -48,6 +48,26 @@ worker.addEventListener('fetch', (event) => {
 		(async () => {
 			const cache = await caches.open(CACHE);
 
+			/**
+			 * The shell comes off the network first when there is one. Everything else is content
+			 * hashed and safe to serve from the cache, but the page that names those hashes is not: a
+			 * cached shell hands the old build back and the new one only appears after this worker has
+			 * installed, activated, and the app has been opened a second time. Two launches to see a
+			 * deploy is what that cost, so the shell pays a request instead.
+			 */
+			if (request.mode === 'navigate') {
+				try {
+					const fresh = await fetch(request);
+					if (fresh.ok && fresh.type === 'basic') cache.put(request, fresh.clone());
+					return fresh;
+				} catch {
+					// Offline, which is normal at a range: the cached shell is the whole point of it.
+					const shell = (await cache.match(request)) ?? (await cache.match('/'));
+					if (shell) return shell;
+					throw new Error('Offline and not cached');
+				}
+			}
+
 			// Build output is content hashed, so a hit is always the right version.
 			const cached = await cache.match(request);
 			if (cached) return cached;
@@ -57,11 +77,6 @@ worker.addEventListener('fetch', (event) => {
 				if (response.ok && response.type === 'basic') cache.put(request, response.clone());
 				return response;
 			} catch {
-				// An SPA navigation offline still has to resolve to the app shell.
-				if (request.mode === 'navigate') {
-					const shell = await cache.match('/');
-					if (shell) return shell;
-				}
 				throw new Error('Offline and not cached');
 			}
 		})()
