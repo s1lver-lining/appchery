@@ -66,6 +66,12 @@
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
 	let planningAt = $state<number | null>(null);
+	let planningKind = $state<'planned' | 'competition'>('planned');
+
+	function schedule(kind: 'planned' | 'competition') {
+		planningKind = kind;
+		planningAt = Date.now();
+	}
 	let loaded = $state(false);
 
 	async function refresh() {
@@ -102,10 +108,15 @@
 		goto(`/sessions/${await createSession({ kind, bowId: $defaultBowId })}`);
 	}
 
-	/** A planned session is one you are choosing a date for, so the date comes before the session. */
+	/**
+	 * A session you are choosing a date for, so the date comes before the session. A competition is
+	 * one too: it is on the calendar weeks ahead, and starting it on today's date is almost always
+	 * the wrong day.
+	 */
 	async function plan(at: number) {
+		const kind = planningKind;
 		planningAt = null;
-		const id = await createSession({ kind: 'planned', bowId: $defaultBowId });
+		const id = await createSession({ kind, bowId: $defaultBowId });
 		await updateSession(id, { startedAt: at });
 		goto(`/sessions/${id}`);
 	}
@@ -373,12 +384,12 @@
 		{
 			label: $t('sessions.newCompetition'),
 			icon: 'medal' as const,
-			onselect: () => start('competition')
+			onselect: () => schedule('competition')
 		},
 		{
 			label: $t('sessions.newPlanned'),
 			icon: 'calendar' as const,
-			onselect: () => (planningAt = Date.now())
+			onselect: () => schedule('planned')
 		}
 	]);
 </script>
@@ -812,7 +823,7 @@
 
 {#if planningAt !== null}
 	<DateTimeDialog
-		title={$t('sessions.newPlanned')}
+		title={$t(planningKind === 'competition' ? 'sessions.newCompetition' : 'sessions.newPlanned')}
 		value={planningAt}
 		confirmLabel={$t('common.add')}
 		onconfirm={plan}

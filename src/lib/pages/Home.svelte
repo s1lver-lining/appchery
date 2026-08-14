@@ -46,6 +46,12 @@
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
 	let planningAt = $state<number | null>(null);
+	let planningKind = $state<'planned' | 'competition'>('planned');
+
+	function schedule(kind: 'planned' | 'competition') {
+		planningKind = kind;
+		planningAt = Date.now();
+	}
 
 	/**
 	 * The target takes a stone once, when the app opens. Held in the module rather than in the
@@ -134,10 +140,15 @@
 		return `${day}, ${$formatTime(at)}`;
 	});
 
-	/** A planned session is one you are choosing a date for, so the date comes before the session. */
+	/**
+	 * A session you are choosing a date for, so the date comes before the session. A competition is
+	 * one too: it is on the calendar weeks ahead, and starting it on today's date is almost always
+	 * the wrong day.
+	 */
 	async function plan(at: number) {
+		const kind = planningKind;
 		planningAt = null;
-		const id = await createSession({ kind: 'planned', bowId: $defaultBowId });
+		const id = await createSession({ kind, bowId: $defaultBowId });
 		await updateSession(id, { startedAt: at });
 		goto(`/sessions/${id}`);
 	}
@@ -536,8 +547,8 @@
 			onpress={() => start()}
 			items={[
 				{ label: $t('sessions.new'), icon: 'target', onselect: () => start('practice'), accent: true },
-				{ label: $t('sessions.newCompetition'), icon: 'medal', onselect: () => start('competition') },
-				{ label: $t('sessions.newPlanned'), icon: 'calendar', onselect: () => (planningAt = Date.now()) },
+				{ label: $t('sessions.newCompetition'), icon: 'medal', onselect: () => schedule('competition') },
+				{ label: $t('sessions.newPlanned'), icon: 'calendar', onselect: () => schedule('planned') },
 				{ label: $t('equipment.addBow'), icon: 'bow', onselect: () => goto('/equipment?add=1') }
 			]}
 		>
@@ -581,7 +592,7 @@
 
 {#if planningAt !== null}
 	<DateTimeDialog
-		title={$t('sessions.newPlanned')}
+		title={$t(planningKind === 'competition' ? 'sessions.newCompetition' : 'sessions.newPlanned')}
 		value={planningAt}
 		confirmLabel={$t('common.add')}
 		onconfirm={plan}
