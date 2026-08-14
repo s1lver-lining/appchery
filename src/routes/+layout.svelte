@@ -98,6 +98,8 @@
 	 * back press there means "I am done typing", not "leave".
 	 */
 	let trapped = false;
+	/** Where the spare entry was parked, so it is only ever reclaimed while it is still on top. */
+	let trappedAt: string | null = null;
 
 	function editableFocused(): boolean {
 		const el = document.activeElement as HTMLElement | null;
@@ -127,12 +129,17 @@
 
 		if (holding && !trapped) {
 			trapped = true;
+			trappedAt = location.href;
 			pushState('', {});
 		} else if (!holding && trapped) {
 			// Closed by its own button rather than by back: take the spare entry back out, or the next
 			// back press would spend itself popping an entry nothing is waiting on.
 			trapped = false;
-			history.back();
+			// Unless the sheet closed by opening a page, in which case the spare entry is buried under
+			// the new one and going back would leave the page that was just opened.
+			const stale = location.href !== trappedAt;
+			trappedAt = null;
+			if (!stale) history.back();
 		}
 	});
 
