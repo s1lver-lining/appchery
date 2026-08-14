@@ -381,7 +381,8 @@ export const en = {
 		observation: 'What you observed',
 		adjustment: 'What you changed',
 		start: 'Start',
-		noBowSelected: 'Choose a bow in the session first.',
+		noBowSelected:
+			'Choose a bow in the session first, or mark one as your default bow in the equipment list so it is added to every new session.',
 		forBow: 'Tuning steps for {bow}'
 	},
 	equipment: {

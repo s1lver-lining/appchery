@@ -385,7 +385,8 @@ export const fr: Dictionary = {
 		observation: 'Ce que vous avez observé',
 		adjustment: 'Ce que vous avez modifié',
 		start: 'Commencer',
-		noBowSelected: "Choisissez d'abord un arc dans la séance.",
+		noBowSelected:
+			"Choisissez d'abord un arc dans la séance, ou définissez un arc par défaut dans la liste du matériel pour qu'il soit ajouté à chaque nouvelle séance.",
 		forBow: 'Étapes de réglage pour {bow}'
 	},
 	equipment: {
