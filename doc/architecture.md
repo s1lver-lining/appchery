@@ -363,7 +363,7 @@ Phases 1 and 2 have no server dependency at all. That is the point.
 - **Tuning content**: built-in templates only for now, launched per bow from Equipment. User
   contributed activities are deferred: they turn the app into a small CMS and deserve their own
   design pass.
-- **Built-in rounds**: only WA 720 (70m) and WA Indoor 18m ship as presets. Everything else is a
+- **Built-in rounds**: only WA 720 (70m) and WA Indoor 600 (18m) ship as presets. Everything else is a
   custom round, which keeps the preset list honest and avoids shipping unverified rules data.
 - **Theme**: light, dark, and system, with light as the base palette. The palette is drawn from
   target faces and outdoor ranges rather than generic greys, and the regulated face colours stay

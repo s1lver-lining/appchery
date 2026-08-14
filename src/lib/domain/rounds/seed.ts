@@ -60,7 +60,7 @@ export const ROUNDS: RoundDefinition[] = [
 	},
 	{
 		id: 'wa-indoor-18m',
-		name: 'WA Indoor 18m',
+		name: 'WA Indoor 600 (18m)',
 		discipline: 'target',
 		governingBody: 'WA',
 		scoreSetId: WA_10_RING.id,

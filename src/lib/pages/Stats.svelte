@@ -471,7 +471,7 @@
 					<!-- A round card as this page draws one, once a round has been shot to the end. -->
 					<div class="rounded-xl border border-line bg-surface p-3 text-left">
 						<div class="flex items-baseline justify-between">
-							<p class="font-semibold">WA Indoor 18m</p>
+							<p class="font-semibold">WA Indoor 600 (18m)</p>
 							<p class="tabular text-lg font-bold">552</p>
 						</div>
 						<p class="mt-1 text-xs text-muted">
