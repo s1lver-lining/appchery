@@ -9,7 +9,7 @@
 		type TimerPreset
 	} from '$lib/domain/timer';
 	import { whistle, whistleMs, unlockSound } from '$lib/whistle';
-	import { timerSound, timerPreset, timerTimes, timerPrepSeconds } from '$lib/prefs';
+	import { timerSound, timerPreset, timerTimes, timerPrepSeconds, timerVolume } from '$lib/prefs';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import { originOf, setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -268,6 +268,25 @@
 				onchange={(v) => {
 					unlockSound();
 					timerSound.set(v);
+				}}
+			/>
+		</div>
+
+		<!-- Heard, not read: the slider sounds a blast as it is let go, so a level is chosen by ear. -->
+		<div class="mt-3 flex items-center gap-3 border-t border-line pt-3">
+			<span class="text-sm text-muted">{$t('timer.volume')}</span>
+			<input
+				type="range"
+				min="0"
+				max="0.6"
+				step="0.02"
+				class="min-w-0 flex-1 accent-brand"
+				aria-label={$t('timer.volume')}
+				value={$timerVolume}
+				oninput={(event) => timerVolume.set(Number(event.currentTarget.value))}
+				onchange={() => {
+					unlockSound();
+					whistle('start');
 				}}
 			/>
 		</div>

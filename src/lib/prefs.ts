@@ -286,7 +286,7 @@ export const timerPrepSeconds = storedNumber('appchery.timerPrepSeconds', 10);
  * How loud the whistle is, as a share of full scale. Well under it by default: the phone is a metre
  * from the archer's ear on a quiet indoor line, not a referee's stand across a field.
  */
-export const timerVolume = storedNumber('appchery.timerVolume', 0.35);
+export const timerVolume = storedNumber('appchery.timerVolume', 0.18);
 
 function storedNumbers(key: string) {
 	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);

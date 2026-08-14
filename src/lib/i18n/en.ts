@@ -178,6 +178,7 @@ export const en = {
 		ruleTime: 'World Archery: {time}',
 		seconds: 'sec',
 		preparation: 'Preparation',
+		volume: 'Volume',
 		preparationHint: 'Between the call to the line and the start.',
 		times: 'Shooting times',
 		preset: {

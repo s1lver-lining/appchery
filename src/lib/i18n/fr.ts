@@ -180,6 +180,7 @@ export const fr: Dictionary = {
 		ruleTime: 'World Archery : {time}',
 		seconds: 'sec',
 		preparation: 'Préparation',
+		volume: 'Volume',
 		preparationHint: 'Entre l’appel sur la ligne et le départ.',
 		times: 'Temps de tir',
 		preset: {
