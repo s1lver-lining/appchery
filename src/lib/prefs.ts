@@ -250,6 +250,16 @@ function legacy(key: string): StatsFilter {
 export const timerSound = flag('appchery.timerSound', true);
 
 /**
+ * Whether the sheet says so when one numbered arrow keeps landing away from the others. On by
+ * default: a shaft that is out is worth knowing about, and the reading is deliberately hard to
+ * trigger. See doc/tricks.md.
+ */
+export const arrowDriftWarning = flag('appchery.arrowDriftWarning', true);
+
+/** Rounds where the archer has answered that warning, so it stays answered on the way back in. */
+export const arrowDriftIgnored = storedList('appchery.arrowDriftIgnored');
+
+/**
  * Whether a tap that records something buzzes. On by default: counting arrows is done without
  * looking at the phone, and the buzz is what says the tap landed.
  */

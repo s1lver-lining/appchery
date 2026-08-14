@@ -13,7 +13,13 @@
 		sortShotsDescending,
 		type EndSlot
 	} from '$lib/domain/rounds/geometry';
-	import { celebratedBests, sortArrowsDescending, showArrowNumbers } from '$lib/prefs';
+	import {
+		celebratedBests,
+		sortArrowsDescending,
+		showArrowNumbers,
+		arrowDriftWarning,
+		arrowDriftIgnored
+	} from '$lib/prefs';
 	import { formatDistance, mmToInches, inchesToMm } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { schemaFor, diffSettings, type BowSettings, type SettingField } from '$lib/domain/equipment/schemas';
@@ -29,6 +35,7 @@
 	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
 	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
 	import { isPersonalBest, scoreByArrowNumber } from '$lib/domain/stats';
+	import { driftingArrow } from '$lib/domain/arrowDrift';
 	import { maxScore } from '$lib/domain/rounds/geometry';
 	import { dateFormats } from '$lib/prefs';
 	import Toggle from '$lib/ui/Toggle.svelte';
@@ -217,6 +224,28 @@
 				score: mine.totalScore
 			}
 		];
+	}
+
+	/**
+	 * The one numbered arrow that keeps landing away from the others, when there is one. Read from
+	 * plotted arrows only: an arrow typed in as a number has no place to be out of.
+	 */
+	let driftDismissed = $state(false);
+	const drift = $derived(
+		$arrowDriftWarning && !driftDismissed && !$arrowDriftIgnored.includes(activityId)
+			? driftingArrow(
+					stored.flatMap((row) =>
+						row.shots
+							.filter((s): s is typeof s & { x: number; y: number } => s.x !== null && s.y !== null)
+							.map((s) => ({ ordinal: s.ordinal, x: s.x, y: s.y }))
+					)
+				)
+			: null
+	);
+
+	/** Answered for good on this round, which is a card of its own rather than a preference. */
+	function ignoreDrift() {
+		arrowDriftIgnored.update((list) => [...list.filter((id) => id !== activityId), activityId].slice(-50));
 	}
 
 	/** Read from what was stored rather than from the sheet: the sheet may be sorted, the order is not. */
@@ -1102,6 +1131,37 @@
 			· {$t('score.tens')} {shownTens} · {$t('score.xs')}
 			{shownXs}
 		</p>
+
+		<!--
+			Between the keys and the histogram: it is read the moment an end is entered, and it is the
+			histogram below that shows what it is talking about.
+		-->
+		{#if drift}
+			<section class="rounded-xl border border-accent bg-accent/10 p-3">
+				<p class="text-sm font-semibold">{$t('score.driftTitle', { n: drift.ordinal })}</p>
+				<p class="mt-1 text-sm text-muted">
+					{$t('score.driftBody', {
+						n: drift.ordinal,
+						direction: $t(`score.driftDirection.${drift.direction}`),
+						shots: drift.shots
+					})}
+				</p>
+				<div class="mt-3 flex gap-2">
+					<button
+						class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+						onclick={() => (driftDismissed = true)}
+					>
+						{$t('score.driftDismiss')}
+					</button>
+					<button
+						class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+						onclick={ignoreDrift}
+					>
+						{$t('score.driftIgnore')}
+					</button>
+				</div>
+			</section>
+		{/if}
 
 		<!-- Only worth drawing once the arrows are numbered: without the numbers it answers nothing. -->
 		{#if $showArrowNumbers && arrowNumbers.length > 1}

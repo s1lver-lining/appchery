@@ -102,6 +102,16 @@ Plot both arrows and it works it out from which one is closer to the centre.
 is what keeps them apart once the sheet is sorted highest first. Both switches live at the foot of
 the scoring page, and both work on a match card too.
 
+**A shaft that keeps missing is named.** Plot your arrows on the face and the scoring page watches
+each arrow of the end, by the position it was called in, against the others. Turning the arrow
+numbers on is what lets you read the card against the sheet. If one of them keeps landing away from
+the rest, and its own grouping is no worse than theirs, a card appears above the histogram saying
+which arrow it is and where it goes. It is deliberately hard to trigger: three plots of that arrow,
+eight of the others, a gap worth a ring that stands outside the natural scatter of the group, and
+every plot of it on the same side. A whole group that is out says nothing, because that is the
+archer or the sight, not the shaft. It can be hidden for now, hidden for that round, or switched off
+in the shooting settings.
+
 **The sheet is editable after the fact.** Tap any arrow already entered to retap its value; tap an
 end's row number to open the whole end, plotted arrows and group size included.
 

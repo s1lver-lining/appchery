@@ -330,6 +330,21 @@ export const fr: Dictionary = {
 		arrowNumberChart: 'Score moyen par numéro de flèche',
 		arrowNumberOf: 'Flèche {n}, sur {arrows} tirées',
 		arrowNumberFloor: 'Les barres partent de {n}, pas de zéro.',
+		driftTitle: 'La flèche {n} sort peut-être du lot',
+		driftBody:
+			'La flèche {n} est tombée {direction} de vos autres flèches {shots} fois de suite. Vérifiez la rectitude du tube, son encoche et son empennage, ou retirez-la en la suivant des yeux.',
+		driftDirection: {
+			high: 'au-dessus',
+			highRight: 'en haut à droite',
+			right: 'à droite',
+			lowRight: 'en bas à droite',
+			low: 'en dessous',
+			lowLeft: 'en bas à gauche',
+			left: 'à gauche',
+			highLeft: 'en haut à gauche'
+		},
+		driftDismiss: 'Masquer pour le moment',
+		driftIgnore: 'Masquer pour ce tir',
 		sortArrows: 'Trier les flèches par ordre décroissant',
 		sortArrowsHint:
 			"Affiche chaque volée dans l'ordre de la feuille de marque plutôt que dans l'ordre de saisie.",
@@ -720,6 +735,9 @@ export const fr: Dictionary = {
 			"Un appui plus court dépose la flèche à l'endroit touché. Plus long, la loupe s'ouvre pour viser avant de relâcher.",
 		tapWindowShort: 'Vise plus vite',
 		tapWindowLong: 'Touche plus vite',
+		driftTitle: 'Signaler une flèche qui sort du lot',
+		driftHint:
+			"Prévient quand une flèche numérotée tombe régulièrement à l'écart des autres. Demande des flèches pointées sur le blason et numérotées, et se tait tant que le constat n'est pas net.",
 		hapticsTitle: 'Vibrer au toucher',
 		hapticsHint:
 			"Une brève vibration quand un appui compte une flèche ou vise, comme une touche de clavier.",

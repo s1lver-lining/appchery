@@ -328,6 +328,21 @@ export const en = {
 		arrowNumberChart: 'Mean score by arrow number',
 		arrowNumberOf: 'Arrow {n}, over {arrows} shot',
 		arrowNumberFloor: 'Bars are drawn from {n}, not from zero.',
+		driftTitle: 'Arrow {n} may be out',
+		driftBody:
+			'Arrow {n} has landed {direction} of your other arrows {shots} times running. Check the shaft for straightness, its nock and its fletching, or shoot it again and watch it.',
+		driftDirection: {
+			high: 'above',
+			highRight: 'above and right',
+			right: 'right',
+			lowRight: 'below and right',
+			low: 'below',
+			lowLeft: 'below and left',
+			left: 'left',
+			highLeft: 'above and left'
+		},
+		driftDismiss: 'Hide for now',
+		driftIgnore: 'Hide for this round',
 		sortArrows: 'Sort arrows highest first',
 		sortArrowsHint: 'Shows each end in scoresheet order instead of the order you entered it.',
 		roundComplete: 'Round complete. Arrows can still be edited.'
@@ -715,6 +730,9 @@ export const en = {
 			'A press shorter than this drops the arrow where you touched. Longer, and the magnifier opens so you can aim before letting go.',
 		tapWindowShort: 'Quicker to aim',
 		tapWindowLong: 'Quicker to tap',
+		driftTitle: 'Warn about an arrow that is out',
+		driftHint:
+			'Says so when one numbered arrow keeps landing away from the others. Needs the arrows plotted on the face and numbered, and stays quiet unless the pattern is clear.',
 		hapticsTitle: 'Vibrate on a tap',
 		hapticsHint: 'A short buzz when a tap counts an arrow or takes aim, like a key on a keyboard.',
 		milliseconds: '{n} ms',
