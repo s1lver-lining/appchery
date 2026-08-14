@@ -9,6 +9,12 @@ export interface TuningTemplate {
 	steps: string[];
 	/** Observation mapped to the adjustment it suggests, shown after the archer records a result. */
 	interpretation: { observation: string; suggests: string }[];
+	/**
+	 * The bow settings this procedure can end up moving, by schema key. A test that offers the whole
+	 * bow invites an unrelated field to be changed by accident, and the revision it writes then
+	 * blames this test for it. Empty means the procedure moves nothing the bow's record holds.
+	 */
+	settings: string[];
 }
 
 /**
@@ -28,7 +34,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Loud shot, harsh feel', suggests: 'Raise brace height a few string turns' },
 			{ observation: 'Sluggish arrows, dropping low', suggests: 'Lower brace height a few string turns' }
-		]
+		],
+		settings: ['braceHeight']
 	},
 	{
 		key: 'nocking-point',
@@ -41,7 +48,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Bare shaft hits high', suggests: 'Move the nocking point up' },
 			{ observation: 'Bare shaft hits low', suggests: 'Move the nocking point down' }
-		]
+		],
+		settings: ['nockingPoint']
 	},
 	{
 		key: 'bare-shaft',
@@ -55,7 +63,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Bare shaft left of the group (right handed)', suggests: 'Arrow reacting stiff: soften the plunger or increase point weight' },
 			{ observation: 'Bare shaft right of the group (right handed)', suggests: 'Arrow reacting weak: stiffen the plunger or reduce point weight' }
-		]
+		],
+		settings: ['nockingPoint', 'centreShot', 'plunger', 'arrowSpine', 'pointWeight']
 	},
 	{
 		key: 'paper-tune',
@@ -71,7 +80,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 			{ observation: 'Tail low tear', suggests: 'Raise the nocking point' },
 			{ observation: 'Tail left tear (right handed)', suggests: 'Arrow reacting stiff' },
 			{ observation: 'Tail right tear (right handed)', suggests: 'Arrow reacting weak' }
-		]
+		],
+		settings: ['nockingPoint', 'centreShot', 'plunger']
 	},
 	{
 		key: 'walk-back',
@@ -85,7 +95,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Line drifts left as distance grows (right handed)', suggests: 'Move the plunger or rest out' },
 			{ observation: 'Line drifts right as distance grows (right handed)', suggests: 'Move the plunger or rest in' }
-		]
+		],
+		settings: ['centreShot', 'plunger']
 	},
 	{
 		key: 'crawl-calibration',
@@ -99,7 +110,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Group high at this distance', suggests: 'Increase the crawl' },
 			{ observation: 'Group low at this distance', suggests: 'Reduce the crawl' }
-		]
+		],
+		settings: ['crawlTable', 'anchor']
 	},
 	{
 		key: 'limb-alignment',
@@ -113,7 +125,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'String left of the limb centre', suggests: 'Move that limb right, a small turn at a time' },
 			{ observation: 'Cannot be brought in', suggests: 'Suspect a twisted limb rather than a pocket setting' }
-		]
+		],
+		settings: []
 	},
 	{
 		key: 'rest-position',
@@ -127,7 +140,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Shaft above the button centre', suggests: 'Lower the rest arm' },
 			{ observation: 'Marks on the rest arm', suggests: 'Reduce the overhang or rotate the nock' }
-		]
+		],
+		settings: ['nockingPoint', 'centreShot']
 	},
 	{
 		key: 'centre-shot',
@@ -141,7 +155,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Bare shaft left of the group, right handed', suggests: 'Reading stiff: soften the button or wind it out' },
 			{ observation: 'Bare shaft right of the group, right handed', suggests: 'Reading weak: stiffen the button or wind it in' }
-		]
+		],
+		settings: ['centreShot', 'plunger']
 	},
 	{
 		key: 'tiller',
@@ -155,7 +170,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Bare shaft consistently high', suggests: 'Increase tiller slightly, or lower the nocking point first' },
 			{ observation: 'Bare shaft consistently low', suggests: 'Reduce tiller slightly, or raise the nocking point first' }
-		]
+		],
+		settings: ['tillerUpper', 'tillerLower', 'nockingPoint']
 	},
 	{
 		key: 'draw-stop',
@@ -169,7 +185,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'One stop touches first', suggests: 'Sync the cams: this is a timing fault' },
 			{ observation: 'Mushy wall', suggests: 'The stops are not sharing the load: recheck timing and draw length' }
-		]
+		],
+		settings: ['drawStop', 'drawLength']
 	},
 	{
 		key: 'peep-alignment',
@@ -183,7 +200,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Peep low at anchor', suggests: 'Raise it a few millimetres and shoot again before serving' },
 			{ observation: 'Peep turns away', suggests: 'Adjust string twists, then recheck draw length and timing' }
-		]
+		],
+		settings: ['peepHeight']
 	},
 	{
 		key: 'clearance',
@@ -197,7 +215,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Marks along one vane', suggests: 'Rotate the nock a few degrees and shoot again' },
 			{ observation: 'Marks on the riser or cable guard', suggests: 'Check rest travel and nocking point before nock rotation' }
-		]
+		],
+		settings: ['plunger']
 	},
 	{
 		key: 'cam-timing',
@@ -211,7 +230,8 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Top cam hits the stop first', suggests: 'Add twists to the cable controlling the top cam' },
 			{ observation: 'Bottom cam hits the stop first', suggests: 'Add twists to the cable controlling the bottom cam' }
-		]
+		],
+		settings: ['camTiming', 'drawStop']
 	}
 ];
 

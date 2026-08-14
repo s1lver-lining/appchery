@@ -617,8 +617,21 @@
 	}
 
 	const bowType = $derived((bow?.type ?? 'recurve') as BowType);
-	const bowFields = $derived(bow ? schemaFor(bowType) : []);
-	const settingChanges = $derived(bow ? diffSettings(bowType, savedSettings, draft) : []);
+	/**
+	 * Only the fields this procedure can actually move. Offering the whole bow invites an unrelated
+	 * setting to be changed by accident, and the revision it writes then blames this test for it. A
+	 * field the bow type does not have is simply absent: a longbow has no plunger to soften.
+	 */
+	const bowFields = $derived(
+		bow ? schemaFor(bowType).filter((f) => template?.settings.includes(f.key)) : []
+	);
+	const settingChanges = $derived(
+		bow
+			? diffSettings(bowType, savedSettings, draft).filter((c) =>
+					bowFields.some((f) => f.key === c.field.key)
+				)
+			: []
+	);
 
 	// Read and written through the schema, so a centimetre here is the same number of millimetres
 	// the equipment page stores. A second copy of the conversions is how a brace height became a tenth.
@@ -732,7 +745,7 @@
 				<p class="font-semibold">{$t('tuning.applied')}</p>
 				<a class="text-brand-text" href="/equipment/{bow?.id}">{$t('tuning.viewHistory')}</a>
 			</section>
-		{:else if bow}
+		{:else if bow && bowFields.length > 0}
 			<section class="rounded-xl border border-line bg-surface p-4">
 				<h2 class="text-sm font-semibold">{$t('tuning.applyTitle')}</h2>
 				<p class="mt-0.5 mb-3 text-sm text-muted">{$t('tuning.applyHint')}</p>
@@ -792,7 +805,7 @@
 			</section>
 		{:else}
 			<p class="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
-				{$t('tuning.noBowSelected')}
+				{bow ? $t('tuning.noSettings') : $t('tuning.noBowSelected')}
 			</p>
 		{/if}
 

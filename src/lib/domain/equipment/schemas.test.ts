@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { schemaFor, diffSettings, displaySetting, parseSetting, BOW_SCHEMAS } from './schemas';
-import { BOW_TYPES } from '../tuning/templates';
+import { BOW_TYPES, TUNING_TEMPLATES } from '../tuning/templates';
 
 describe('bow schemas', () => {
 	it('defines a schema for every bow type', () => {
@@ -76,5 +76,19 @@ describe('diffSettings', () => {
 		const changes = diffSettings('recurve', {}, { braceHeight: 230 });
 		expect(changes).toHaveLength(1);
 		expect(changes[0].before).toBeNull();
+	});
+});
+
+describe('the settings a tuning procedure offers', () => {
+	it('names fields the bows it applies to actually have', () => {
+		for (const template of TUNING_TEMPLATES) {
+			const available = new Set(
+				template.appliesTo.flatMap((type) => schemaFor(type).map((f) => f.key))
+			);
+			for (const key of template.settings) {
+				expect(available.has(key), `${template.key} offers ${key}, which no bow it applies to has`)
+					.toBe(true);
+			}
+		}
 	});
 });

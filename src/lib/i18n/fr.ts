@@ -399,6 +399,8 @@ export const fr: Dictionary = {
 		applied: "Ce test a produit une révision de l'arc.",
 		viewHistory: "Voir l'historique de l'arc",
 		steps: 'Étapes',
+		noSettings:
+			"Ce test ne modifie aucun réglage enregistré pour l'arc : il vit dans les notes.",
 		interpretation: 'Ce que le résultat suggère',
 		notes: 'Notes',
 		notesHint: 'Ce que vous avez observé, et ce que vous avez modifié.',

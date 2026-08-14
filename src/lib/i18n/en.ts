@@ -395,6 +395,7 @@ export const en = {
 		applied: 'This test produced a bow revision.',
 		viewHistory: 'View the bow history',
 		steps: 'Steps',
+		noSettings: 'This test changes nothing the bow record holds, so it lives in the notes.',
 		interpretation: 'What the result suggests',
 		notes: 'Notes',
 		notesHint: 'What you observed, and what you changed.',

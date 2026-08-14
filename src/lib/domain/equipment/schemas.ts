@@ -29,7 +29,14 @@ const ARROW_FIELDS: SettingField[] = [
 
 const STRING_FIELDS: SettingField[] = [
 	{ key: 'stringMaterial', label: 'String material', kind: 'text', group: 'String' },
-	{ key: 'stringStrands', label: 'Strands', kind: 'number', group: 'String' }
+	{ key: 'stringStrands', label: 'Strands', kind: 'number', group: 'String' },
+	{ key: 'nockingPoint', label: 'Nocking point above square', kind: 'number', unit: 'mm', group: 'String' }
+];
+
+/** What the arrow leaves on, which is what half the tuning procedures end up moving. */
+const REST_FIELDS: SettingField[] = [
+	{ key: 'centreShot', label: 'Centre shot', kind: 'number', unit: 'mm', group: 'Rest' },
+	{ key: 'plunger', label: 'Plunger tension', kind: 'text', group: 'Rest' }
 ];
 
 const RECURVE: SettingField[] = [
@@ -70,9 +77,9 @@ const LONGBOW: SettingField[] = [
 ];
 
 export const BOW_SCHEMAS: Record<BowType, SettingField[]> = {
-	recurve: [...RECURVE, ...STRING_FIELDS, ...ARROW_FIELDS],
-	compound: [...COMPOUND, ...STRING_FIELDS, ...ARROW_FIELDS],
-	barebow: [...BAREBOW, ...STRING_FIELDS, ...ARROW_FIELDS],
+	recurve: [...RECURVE, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
+	compound: [...COMPOUND, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
+	barebow: [...BAREBOW, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
 	longbow: [...LONGBOW, ...STRING_FIELDS, ...ARROW_FIELDS]
 };
 
