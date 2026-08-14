@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { ScoreSet, Shot } from '$lib/domain/rounds/types';
 	import { plotTapMs } from '$lib/prefs';
+	import { tap as buzz } from '$lib/haptics';
 	import { groupMetrics, groupHull, scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import Icon from './Icon.svelte';
 
@@ -161,7 +162,7 @@
 			if (!held) return;
 			cursor = plottable(toFace(held));
 			// Felt at the moment the press becomes an aim, which is the only moment worth announcing.
-			if (cursor) navigator.vibrate?.(8);
+			if (cursor) buzz();
 		}, tapMs);
 	}
 

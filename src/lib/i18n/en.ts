@@ -712,6 +712,8 @@ export const en = {
 			'A press shorter than this drops the arrow where you touched. Longer, and the magnifier opens so you can aim before letting go.',
 		tapWindowShort: 'Quicker to aim',
 		tapWindowLong: 'Quicker to tap',
+		hapticsTitle: 'Vibrate on a tap',
+		hapticsHint: 'A short buzz when a tap counts an arrow or takes aim, like a key on a keyboard.',
 		milliseconds: '{n} ms',
 		display: 'Display',
 		recordTitle: 'Record scoring video',

@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
+	import { tap } from '$lib/haptics';
 	import {
 		ROUNDS,
 		FIELD_AND_3D_ROUNDS,
@@ -140,6 +141,7 @@
 
 	function countArrows(delta: number) {
 		if (trainingArrows + delta < 0) return;
+		tap();
 		pending += delta;
 		if (flushTimer) clearTimeout(flushTimer);
 		flushTimer = setTimeout(flushArrows, 500);

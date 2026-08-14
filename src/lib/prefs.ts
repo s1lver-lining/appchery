@@ -249,6 +249,12 @@ function legacy(key: string): StatsFilter {
  */
 export const timerSound = flag('appchery.timerSound', true);
 
+/**
+ * Whether a tap that records something buzzes. On by default: counting arrows is done without
+ * looking at the phone, and the buzz is what says the tap landed.
+ */
+export const haptics = flag('appchery.haptics', true);
+
 /** The shooting time last chosen, so the clock opens on the one this archer keeps using. */
 export const timerPreset = storedString('appchery.timerPreset');
 

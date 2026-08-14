@@ -14,6 +14,7 @@
 		recordCameraVideo,
 		arrowDetector,
 		plotTapMs,
+		haptics,
 		fullNewSessionButton,
 		competitionColour,
 		COMPETITION_COLOURS,
@@ -336,6 +337,18 @@
 							<span>{$t('settings.tapWindowShort')}</span>
 							<span>{$t('settings.tapWindowLong')}</span>
 						</div>
+					</div>
+
+					<div class="mt-4 flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<p class="font-medium">{$t('settings.hapticsTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.hapticsHint')}</p>
+						</div>
+						<Toggle
+							checked={$haptics}
+							label={$t('settings.hapticsTitle')}
+							onchange={(v) => haptics.set(v)}
+						/>
 					</div>
 				</section>
 

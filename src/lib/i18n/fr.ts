@@ -717,6 +717,9 @@ export const fr: Dictionary = {
 			"Un appui plus court dépose la flèche à l'endroit touché. Plus long, la loupe s'ouvre pour viser avant de relâcher.",
 		tapWindowShort: 'Vise plus vite',
 		tapWindowLong: 'Touche plus vite',
+		hapticsTitle: 'Vibrer au toucher',
+		hapticsHint:
+			"Une brève vibration quand un appui compte une flèche ou vise, comme une touche de clavier.",
 		milliseconds: '{n} ms',
 		display: 'Affichage',
 		recordTitle: 'Enregistrer la vidéo du marquage',
