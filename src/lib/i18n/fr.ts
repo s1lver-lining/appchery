@@ -179,6 +179,8 @@ export const fr: Dictionary = {
 		edit: 'Modifier les temps',
 		ruleTime: 'World Archery : {time}',
 		seconds: 'sec',
+		preparation: 'Préparation',
+		preparationHint: 'Entre l’appel sur la ligne et le départ.',
 		times: 'Temps de tir',
 		preset: {
 			qualification6: 'Qualification, six flèches',

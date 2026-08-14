@@ -177,6 +177,8 @@ export const en = {
 		edit: 'Edit the times',
 		ruleTime: 'World Archery: {time}',
 		seconds: 'sec',
+		preparation: 'Preparation',
+		preparationHint: 'Between the call to the line and the start.',
 		times: 'Shooting times',
 		preset: {
 			qualification6: 'Qualification, six arrows',

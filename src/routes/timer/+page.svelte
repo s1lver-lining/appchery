@@ -9,7 +9,7 @@
 		type TimerPreset
 	} from '$lib/domain/timer';
 	import { whistle, whistleMs, unlockSound } from '$lib/whistle';
-	import { timerSound, timerPreset, timerTimes } from '$lib/prefs';
+	import { timerSound, timerPreset, timerTimes, timerPrepSeconds } from '$lib/prefs';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import { originOf, setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -32,6 +32,8 @@
 	let editing = $state(false);
 
 	let startedAt = $state<number | null>(null);
+	/** While the line walks up: the clock is not running yet, but it is not idle either. */
+	let preparingUntil = $state<number | null>(null);
 	let now = $state(Date.now());
 	/** Which half of an alternating end is on the clock, for the pages that shoot in turns. */
 	let turn = $state(1);
@@ -39,11 +41,16 @@
 	const total = $derived(preset.seconds);
 	const remaining = $derived(startedAt === null ? total : remainingAt(startedAt, total, now));
 	const running = $derived(startedAt !== null && remaining > 0);
-	const light = $derived(lightFor(remaining, total, startedAt !== null));
+	const preparing = $derived(preparingUntil !== null);
+	const prepLeft = $derived(
+		preparingUntil === null ? 0 : Math.max(0, Math.ceil((preparingUntil - now) / 1000))
+	);
+	// Nobody may shoot while the line is walking up, which is the same thing red says at the end.
+	const light = $derived(preparing ? 'red' : lightFor(remaining, total, startedAt !== null));
 
 	// A frame loop rather than an interval: the clock is read, never counted, so a missed tick is free.
 	$effect(() => {
-		if (!running) return;
+		if (!running && !preparing) return;
 		let frame = requestAnimationFrame(function step() {
 			now = Date.now();
 			frame = requestAnimationFrame(step);
@@ -97,25 +104,53 @@
 	}
 
 	function choose(next: TimerPreset) {
+		callOff();
 		timerPreset.set(next.key);
 		startedAt = null;
 		turn = 1;
 	}
 
 	/**
-	 * Two blasts, then one, then the clock: the start is a sequence, not a button. The sequence can be
-	 * called off part way through, so each one carries a token and a stale one starts nothing.
+	 * Two blasts, the preparation time, one blast, then the clock: the start is a sequence, not a
+	 * button. It can be called off part way through, so each run carries a token and a stale one
+	 * starts nothing.
 	 */
 	let calling = 0;
+	const wait = (ms: number) => new Promise((done) => setTimeout(done, ms));
+
 	async function callUp() {
 		unlockSound();
 		const token = ++calling;
-		if (!$timerSound) return start();
-		whistle('lineUp');
-		await new Promise((done) => setTimeout(done, whistleMs('lineUp') + 400));
-		if (token !== calling) return;
-		whistle('start');
-		setTimeout(() => token === calling && start(), whistleMs('start'));
+		const sound = $timerSound;
+
+		if (sound) {
+			whistle('lineUp');
+			await wait(whistleMs('lineUp'));
+			if (token !== calling) return;
+		}
+
+		// Kept even with the sound off: the pause is time the archers are given, not a gap between noises.
+		const prep = Math.max(0, Math.round($timerPrepSeconds));
+		if (prep > 0) {
+			now = Date.now();
+			preparingUntil = now + prep * 1000;
+			await wait(prep * 1000);
+			if (token !== calling) return;
+			preparingUntil = null;
+		}
+
+		if (sound) {
+			whistle('start');
+			await wait(whistleMs('start'));
+			if (token !== calling) return;
+		}
+		start();
+	}
+
+	/** Nothing half started survives: a called off sequence leaves the clock where it was. */
+	function callOff() {
+		calling += 1;
+		preparingUntil = null;
 	}
 
 	function start() {
@@ -124,13 +159,13 @@
 	}
 
 	function stop() {
-		calling += 1;
+		callOff();
 		startedAt = null;
 		if ($timerSound) whistle('stop');
 	}
 
 	function reset() {
-		calling += 1;
+		callOff();
 		startedAt = null;
 		turn = preset.alternating ? (turn === 1 ? 2 : 1) : 1;
 	}
@@ -156,9 +191,11 @@
 	<section
 		class="flex flex-col items-center justify-center rounded-2xl py-10 transition-colors {BAND[light]}"
 	>
-		<p class="tabular text-7xl leading-none font-bold">{formatClock(remaining)}</p>
+		<p class="tabular text-7xl leading-none font-bold">
+			{formatClock(preparing ? prepLeft : remaining)}
+		</p>
 		<p class="mt-2 text-sm font-medium opacity-80">
-			{$t(`timer.preset.${preset.key}`)}
+			{preparing ? $t('timer.preparation') : $t(`timer.preset.${preset.key}`)}
 			{#if preset.alternating}
 				· {$t('timer.turn', { n: turn })}
 			{/if}
@@ -166,7 +203,7 @@
 	</section>
 
 	<div class="flex gap-2">
-		{#if running}
+		{#if running || preparing}
 			<button
 				class="flex-1 rounded-xl border border-line bg-surface py-3 font-semibold"
 				onclick={stop}
@@ -251,6 +288,27 @@
 <!-- The rules' times are a starting point: a club shoots to its own clock and this is where it is set. -->
 <Sheet open={editing} title={$t('timer.edit')} onclose={() => (editing = false)}>
 	<ul class="space-y-2">
+		<!-- Not a shooting time: the pause before the clock, which is why it sits above the presets. -->
+		<li class="flex items-center gap-2 border-b border-line pb-2">
+			<span class="min-w-0 flex-1">
+				<span class="block truncate text-sm">{$t('timer.preparation')}</span>
+				<span class="block text-[11px] text-muted">{$t('timer.preparationHint')}</span>
+			</span>
+			<input
+				type="number"
+				inputmode="numeric"
+				min="0"
+				step="5"
+				class="tabular w-20 shrink-0 rounded-lg border border-line bg-bg p-2 text-center text-sm text-ink"
+				aria-label={$t('timer.preparation')}
+				value={$timerPrepSeconds}
+				onchange={(event) => {
+					const seconds = Math.round(Number(event.currentTarget.value));
+					timerPrepSeconds.set(Number.isFinite(seconds) && seconds >= 0 ? seconds : 10);
+				}}
+			/>
+			<span class="w-6 shrink-0 text-xs text-muted">{$t('timer.seconds')}</span>
+		</li>
 		{#each times as entry (entry.key)}
 			{@const rule = TIMER_PRESETS.find((preset) => preset.key === entry.key)!}
 			<li class="flex items-center gap-2">
@@ -278,7 +336,10 @@
 	{#snippet footer()}
 		<button
 			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-			onclick={() => timerTimes.set({})}
+			onclick={() => {
+				timerTimes.set({});
+				timerPrepSeconds.set(10);
+			}}
 		>
 			{$t('timer.resetTimes')}
 		</button>

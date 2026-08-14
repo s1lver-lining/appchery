@@ -275,6 +275,19 @@ export const timerPreset = storedString('appchery.timerPreset');
  */
 export const timerTimes = storedNumbers('appchery.timerTimes');
 
+/**
+ * The pause between the two blasts that call the line up and the one that starts the shooting. Ten
+ * seconds is what World Archery gives an archer to reach the line and stand still on it, and it is
+ * settable because a club line takes as long as a club line takes.
+ */
+export const timerPrepSeconds = storedNumber('appchery.timerPrepSeconds', 10);
+
+/**
+ * How loud the whistle is, as a share of full scale. Well under it by default: the phone is a metre
+ * from the archer's ear on a quiet indoor line, not a referee's stand across a field.
+ */
+export const timerVolume = storedNumber('appchery.timerVolume', 0.35);
+
 function storedNumbers(key: string) {
 	const saved = typeof window === 'undefined' ? null : window.localStorage.getItem(key);
 	let initial: Record<string, number> = {};
