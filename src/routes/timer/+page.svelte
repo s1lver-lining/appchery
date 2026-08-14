@@ -58,16 +58,18 @@
 		return () => cancelAnimationFrame(frame);
 	});
 
-	/** The three blasts belong to the end finishing, so they sound the moment the clock reaches zero. */
-	let ended = false;
+	/**
+	 * Three blasts to collect the arrows, scheduled off the start stamp rather than off the frame
+	 * loop: a backgrounded or sleeping phone draws no frames, and the end of an end still has to
+	 * sound. Never the five blast stop signal, which means somebody is walking out there.
+	 */
 	$effect(() => {
-		if (startedAt === null || remaining > 0) {
-			ended = false;
-			return;
-		}
-		if (ended) return;
-		ended = true;
-		if ($timerSound) whistle('end');
+		if (startedAt === null) return;
+		const left = remainingAt(startedAt, total, Date.now()) * 1000;
+		const timer = setTimeout(() => {
+			if ($timerSound) whistle('end');
+		}, left);
+		return () => clearTimeout(timer);
 	});
 
 	/**
@@ -159,9 +161,11 @@
 	}
 
 	function stop() {
+		// Only while there is still time to stop: the clock that ran out has already called the line in.
+		const early = remaining > 0;
 		callOff();
 		startedAt = null;
-		if ($timerSound) whistle('stop');
+		if ($timerSound && early) whistle('stop');
 	}
 
 	function reset() {
