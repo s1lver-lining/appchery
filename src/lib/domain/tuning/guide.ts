@@ -398,6 +398,37 @@ const EN: Record<string, StepText> = {
 };
 
 const FR: Record<string, StepText> = {
+	'draw-length': {
+		title: 'Allonge',
+		why: 'La longueur des tubes et le spine découlent de cette valeur : on la mesure donc une fois, correctement, avant de couper quoi que ce soit.',
+		steps: [
+			'Armez et ancrez comme vous tirez, avec une flèche de mesure longue.',
+			'Relevez la distance de la gorge de corde au point de pivot, puis ajoutez 1,75 pouce pour l’allonge normalisée.',
+			'Refaites la mesure trois fois, à des jours différents : elle bouge avec la technique.',
+			'Gardez des tubes assez longs pour dépasser le repose-flèche à pleine allonge, avec une marge.'
+		],
+		results: [
+			{ observation: 'La mesure varie de plus d\'un demi pouce', suggests: 'La technique n\'est pas encore stable : remesurez avant de couper' },
+			{ observation: 'La pointe arrive au repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : changez-les pour des questions de sécurité' }
+		]
+		// Catégorie: mesures
+	},
+	'bow-strength': {
+		title: 'Force de l\'arc',
+		why: 'La force de l\'arc détermine la vitesse et la portée de la flèche. Elle doit être adaptée à votre capacité et à votre technique.',
+		steps: [
+			'Encochez une flèche sur l\'arc et utilisez un peson acroché à votre point d\'encochage',
+			'Tirez l\'arc à votre allonge complète puis revenez et notez la force indiquée par le peson.',
+			'Après avoir mesuré le poids de l\'arc avec le peson, vous pouvez calculer le rapport poids/force de l\'arc. Idéalement il est à 70g/lb'
+		],
+		results: [
+			{ observation: 'La mesure varie de plus d\'un demi pouce', suggests: 'La technique n\'est pas encore stable : remesurez avant de couper' },
+			{ observation: 'La pointe arrive au repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : changez-les pour des questions de sécurité' }
+		]
+		// Catégorie: mesures
+		// Calculateur poids/force ici
+		// Activité: Puissance de l'arc: c'est simplement un calculateur de rapport poids puissance. Quand cliqué avec des données dans le calculateur, les données sont rapportées dans l'activité associée.
+	},
 	'limb-alignment': {
 		title: 'Alignement des branches',
 		why: "Des branches alignées hors du plan d'arc poussent la flèche de côté à chaque tir. Aucun réglage plus bas dans cette liste ne peut le rattraper.",
@@ -412,6 +443,8 @@ const FR: Record<string, StepText> = {
 			{ observation: "La corde n'est centrée que sur une seule branche", suggests: 'Alignez la moins bonne en premier, puis revérifiez les deux' },
 			{ observation: 'Aucun réglage ne parvient à la recentrer', suggests: 'La branche est sans doute vrillée : passez à l\'étape suivante' }
 		]
+		// Pas d'activité
+		// Catégorie: montage
 	},
 	'limb-twist': {
 		title: 'Vrillage des branches',
@@ -425,6 +458,8 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La branche est vrillée', suggests: "Faites changer la branche plutôt que de compenser avec l'alignement" },
 			{ observation: 'Branches non vrillées mais alignement toujours faux', suggests: 'Le défaut vient des logements : reprenez l\'alignement' }
 		]
+		// Pas d'activité
+		// Catégorie: montage
 	},
 	'rest-position': {
 		title: 'Position du repose-flèche',
@@ -438,6 +473,8 @@ const FR: Record<string, StepText> = {
 			{ observation: "Le centre de la flèche n'est pas sur le berger", suggests: 'Ajuster la hauteur du repose-flèche' },
 			{ observation: 'La flèche tombe trop façilement du repose-flèche', suggests: "Déplacer la position laterale du repose-flèche vers l'exterieur" }
 		]
+		// Pas d'activité
+		// Catégorie: montage
 	},
 	'centre-shot': {
 		title: 'Alignement de la flèche (bouton Berger)',
@@ -452,6 +489,8 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La pointe de la flèche est trop vers l\'extérieur', suggests: 'Rentrer légèrement le berger pour rentrer la pointe' },
 			{ observation: 'La pointe de la flèche est trop vers l\'intérieur', suggests: 'Sortir légèrement le berger pour sortir la pointe' }
 		]
+		// Pas d'activité
+		// Catégorie: montage
 	},
 	'sight-alignment': {
 		title: 'Alignement du viseur',
@@ -459,114 +498,96 @@ const FR: Record<string, StepText> = {
 		steps: [
 			"Placez le viseur pour que l'œilleton se pose sur la ligne de corde, arc bandé.",
 			"Faites coulisser le bloc de haut en bas en regardant l'œilleton contre la corde.",
-			"L'œilleton doit rester sur la ligne de corde sur toute la hauteur."
+			"L'œilleton doit rester sur la ligne de corde sur toute la hauteur.",
+			"Regler la position de la reglette du viseur par rapport à la tige du viseur pour que l'œilleton reste sur la ligne de corde."
 		],
 		results: [
-			{ observation: 'L’œilleton part sur le côté quand le bloc descend', suggests: "La barre n'est pas parallèle au plan d'arc : calez-la ou réalignez-la" },
-			{ observation: 'Décalage constant, mais la course reste parallèle', suggests: 'Laissez comme ça : le réglage de dérive absorbe un décalage constant' }
+			{ observation: "L’œilleton part sur le côté quand le bloc descend", suggests: "La reglette n'est pas parallèle au plan d'arc : réalignez-la" },
+			{ observation: 'Décalage constant, mais la course reste parallèle', suggests: "Le reglage semble bon, utiliser l'œilleton du viseur comme repère pour plus de précision" }
 		]
+		// Pas d'activité
+		// Catégorie: montage
 	},
-	'rest-overhang': {
-		title: 'Débordement du repose-flèche',
-		why: "Une aiguille qui déborde trop accroche une plume, et une plume accrochée gâche une flèche qui était bonne par ailleurs.",
+	'pre-brace-height': {
+		title: 'Pré-réglage du Band',
+		why: "Le band fixe la durée pendant laquelle la corde pousse la flèche. Il influe sur l'efficacité de l'arc. bruit et la hauteur du groupement en dépendent.",
 		steps: [
-			"Regardez de combien l'aiguille passe sous le tube.",
-			'Le débordement doit rester inférieur au rayon du tube tiré.',
-			'Poudrez les plumes et tirez : rien ne doit marquer le repose-flèche ni la fenêtre.'
-		],
-		results: [
-			{ observation: 'Traces sur l’aiguille', suggests: 'Réduisez le débordement, ou tournez l’encoche pour dégager la plume' },
-			{ observation: 'Traces plus haut sur la fenêtre', suggests: 'Vérifiez le point d’encochage et le dégagement avant de toucher au repose-flèche' }
-		]
-	},
-	'brace-height': {
-		title: 'Band',
-		why: 'Le band fixe la durée pendant laquelle la corde pousse la flèche : le bruit, la sensation et la hauteur du groupement en dépendent.',
-		steps: [
-			"Mesurez de la corde au point de pivot de la poignée, arc bandé et stabilisé.",
-			'Partez de la valeur du fabricant de branches, ou d’un tableau : environ 21 à 22 cm pour un 66 pouces, 23 à 24 cm pour un 70 pouces.',
-			'Vrillez la corde pour monter le band, dévrillez pour le baisser, quelques tours à la fois.',
-			'Tirez un groupement à chaque valeur et gardez la plus silencieuse et la plus stable.'
+			"Mesurez la distance de la corde au point de pivot de la poignée avec une équerre.",
+			"Partez de la valeur du fabricant de branches, ou d'un tableau comme çi dessous.",
+			'Vrillez la corde pour monter le band, dévrillez pour le baisser, quelques tours à la fois, jusqu\'à ce que le band soit dans la plage de réglage du fabricant.',
+			'Le band devra être reglé finement après tous les autres réglages. Voir l\'étape "Réglage du band" pour le réglage fin.'
 		],
 		results: [
 			{ observation: 'Tir bruyant et sec', suggests: 'Montez le band de quelques tours de corde' },
 			{ observation: 'Flèches sans vie, groupement qui tombe', suggests: 'Baissez le band de quelques tours de corde' },
 			{ observation: 'La corde claque le bras d’arc', suggests: 'Montez le band, puis vérifiez la rotation de votre bras d’arc' }
 		]
+		// Catégorie: pré-réglage
+		// Activité: reglade de band
+		// Ajouter tableau de band pour differentes longueurs d'arc Taille d’arcavec unepoignée de 25’’Band min Band max66 (SM)’’ 21cm 22cm68 (MD)’’ 22cm 23cm70 (LG)’’ 23cm 24cm
 	},
-	tiller: {
-		title: 'Tiller',
-		why: "Le tiller équilibre le travail des deux branches face à une main qui tient la corde sous son milieu : c'est ce qui garde l'encoche sur une trajectoire droite.",
+	"pre-tiller": {
+		title: 'Pré-réglage du Tiller',
+		why: "Le tiller équilibre le travail des deux branches pour l'équilibrer car la corde n'est pas tenue au centre. Il permet de garder la flèche qui part à l'horizontale.",
 		steps: [
-			"Mesurez de la corde à la jonction de chaque branche avec la poignée, perpendiculairement à la branche.",
-			'Soustrayez la valeur du bas à celle du haut : cette différence est le tiller.',
-			'Partez d’environ +0,6 cm pour un classique avec viseur, et d’environ 0 pour un arc nu.',
-			'Modifiez-le aux vis de branches, en gardant la puissance en tête : serrer augmente la force.'
+			"Mesurez de la corde à la jonction de chaque branche avec la poignée, perpendiculairement à la branche. La difference entre celle du haut et celle du bas est le tiller.",
+			'Partez d\'environ +0,6 cm pour un classique avec viseur, et d\'environ 0 pour un arc nu.',
+			'Modifiez-le aux vis de branches, en gardant la puissance en tête : serrer augmente la force. Attention à ne pas trop désserer les vis de branches (voir le manuel du fabricant).',
+			'Le tiller sera réglé finement après les autres réglages. Voir l\'étape "Réglage du Tiller" pour le réglage fin.',
 		],
 		results: [
-			{ observation: 'Flèche non empennée toujours haute', suggests: 'Augmentez légèrement le tiller, ou baissez d’abord le point d’encochage' },
-			{ observation: 'Flèche non empennée toujours basse', suggests: 'Réduisez légèrement le tiller, ou montez d’abord le point d’encochage' },
-			{ observation: "L'arc part de travers à la décoche", suggests: 'Revenez au tiller de départ et refaites le point d’encochage' }
+			{ observation: 'Le tiller est trop élevé', suggests: 'Serrer la vis de branche du haut' },
+			{ observation: 'Le tiller est trop bas', suggests: 'Serrer la vis de branche du bas' }
 		]
+		// Catégorie: pré-réglage
 	},
-	'nocking-point': {
-		title: 'Point d’encochage',
-		why: "Le point d'encochage fixe l'angle vertical de sortie : mal placé, il se traduit par une dispersion verticale que personne ne tire proprement.",
+	"nocking-point": {
+		title: 'Détalonage (point d\'encochage)',
+		why: "Le point d'encochage fixe l'angle vertical de sortie. Un point d'encochage mal réglé se traduit par un écart vertical que personne ne peut corriger.",
 		steps: [
 			"Posez une équerre d'arc sur le repose-flèche et clipsez-la sur la corde.",
-			'Placez le haut du nock-set inférieur à environ 0,5 cm au-dessus de l’équerre pour commencer.',
-			'Ajoutez le second nock-set au-dessus de l’encoche pour que la flèche ne glisse pas.',
-			'Validez à la flèche non empennée à courte distance une fois le reste de la géométrie posé.'
+			'Placez le nock-set inférieur à environ 0,5 cm au-dessus de l\'équerre pour commencer. Il y a souvant des repères sur l\'equerre pour les points d\'encochage.',
+			'Enchocher une flèche et ajoutez le second nock-set à 1mm au-dessus de l\'encoche.',
+			'Validez à la flèche non empennée à courte distance. (voir Validation aux flèches non-empennées)'
 		],
 		results: [
-			{ observation: 'Flèche non empennée haute', suggests: 'Montez le point d’encochage' },
-			{ observation: 'Flèche non empennée basse', suggests: 'Descendez le point d’encochage' },
+			{ observation: 'Flèche non empennée haute par rapport au groupement', suggests: 'Montez le point d\'encochage' },
+			{ observation: 'Flèche non empennée basse par rapport au groupement', suggests: 'Descendez le point d\'encochage' },
 			{ observation: 'La flèche non empennée marsouine', suggests: 'Le point est loin du compte : corrigez par pas plus francs' }
 		]
-	},
-	'draw-length': {
-		title: 'Allonge',
-		why: 'La longueur des tubes et le spine découlent de cette valeur : on la mesure donc une fois, correctement, avant de couper quoi que ce soit.',
-		steps: [
-			'Armez et ancrez comme vous tirez, avec une flèche de mesure longue.',
-			'Relevez la distance de la gorge de corde au point de pivot, puis ajoutez 1,75 pouce pour l’allonge normalisée.',
-			'Refaites la mesure trois fois, à des jours différents : elle bouge avec la technique.',
-			'Gardez des tubes assez longs pour dépasser le repose-flèche à pleine allonge, avec une marge.'
-		],
-		results: [
-			{ observation: 'La mesure varie de plus d’un centimètre', suggests: 'La technique n’est pas encore stable : remesurez avant de couper' },
-			{ observation: 'La pointe arrive au repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : c’est une question de sécurité, changez-les' }
-		]
+		// Catégorie: pré-réglage
 	},
 	'arrow-spine': {
 		title: 'Choisir la flèche : spine et poids de pointe',
-		why: "Tout ce qui précède règle l'arc ; cette étape choisit la flèche qui lui correspond. Un tube inadapté ne se règle pas, il se compense, jusqu'à ce qu'autre chose cloche.",
+		why: "Tout ce qui précède règle l'arc ; Il faut maintenant trouver les flèches adaptées.",
 		steps: [
 			'Prenez la puissance réellement ressentie aux doigts à votre allonge, pas celle marquée sur les branches.',
-			'Lisez un tableau de spine avec cette puissance, la longueur de vos tubes et le poids de pointe.',
-			'Préférez le tableau publié par le fabricant de vos tubes.',
-			'Jouez sur le poids de pointe pour déplacer le spine dynamique : plus lourd assouplit.'
+			'Lisez un tableau de spine avec cette puissance, et la longueur du tube prévue en fonction de votre alonge.',
+			'Faites un test de flèche non-empennée pour valider le spine choisi. (voir Validation aux flèches non-empennées)',
+			'Vous pouvez jouer sur le poids de pointe pour déplacer le spine dynamique : plus lourd assouplit (spin augmente).'
 		],
 		results: [
-			{ observation: 'La flèche non empennée part toujours faible', suggests: 'Pointe plus légère, tube plus court, ou spine plus raide' },
-			{ observation: 'La flèche non empennée part toujours raide', suggests: 'Pointe plus lourde, tube plus long, ou spine plus souple' },
+			{ observation: 'La flèche non empennée part à droite pour un droitier', suggests: 'Flèche plus raide (diminuer le spin), ou pointe plus légère, tube plus court' },
+			{ observation: 'La flèche non empennée part à gauche pour un droitier', suggests: 'Flèche plus souple (augmenter le spin), ou pointe plus lourde, tube plus long' },
 			{ observation: 'FOC inférieur à 10 %', suggests: 'Alourdissez la pointe : la flèche se tiendra mal dans le vent' }
 		]
+		// Catégorie: Flèches
 	},
 	'bare-shaft': {
-		title: "Valider l'ensemble aux flèches non empennées",
-		why: "La dernière étape, et la seule qui éprouve l'arc et la flèche ensemble : sans empennage, le tir montre ce qu'il fait réellement et vous renvoie au bouton ou au point d'encochage avec une réponse.",
+		title: "Validation aux flèches non-empennées",
+		why: "La dernière étape, et la seule qui éprouve l'arc et la flèche ensemble : une flèche sans plumes (non-empennée) montre la direction réelle du tir.",
 		steps: [
 			'Tirez trois flèches empennées et une non empennée sur le même point, à 10 ou 15 mètres.',
 			'Notez la position du tube nu par rapport au groupement empenné.',
-			'Corrigez d’abord le vertical au point d’encochage, puis le latéral au bouton.',
-			'Ne changez qu’une chose à la fois, puis tirez une nouvelle série.'
+			'Corrigez d\'abord le vertical au point d\'encochage, puis le latéral au spin de flèche, puis le berger.',
+			'Ne changez qu\'une chose à la fois, puis tirez une nouvelle série.'
 		],
 		results: [
-			{ observation: 'Flèche non empennée à gauche du groupement, droitier', suggests: 'Réaction raide : assouplissez le ressort ou alourdissez la pointe' },
-			{ observation: 'Flèche non empennée à droite du groupement, droitier', suggests: 'Réaction faible : durcissez le ressort ou allégez la pointe' },
-			{ observation: 'Flèche non empennée haute ou basse', suggests: 'Corrigez le point d’encochage avant toute correction latérale' }
+			{ observation: 'Flèche non empennée haute ou basse', suggests: 'Corrigez le détalonage avant toute correction latérale' },
+			{ observation: 'La flèche non empennée part à droite pour un droitier', suggests: 'Flèche plus raide (diminuer le spin), ou durcir le ressort du berger button' },
+			{ observation: 'La flèche non empennée part à gauche pour un droitier', suggests: 'Flèche plus souple (augmenter le spin), ou assouplir le ressort du berger button' },
 		]
+		// Catégorie: Flèches
 	},
 
 	'spec-check': {
