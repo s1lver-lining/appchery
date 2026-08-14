@@ -1249,7 +1249,7 @@
 					{#each ['set', 'cumulative'] as const as system (system)}
 						<button
 							class="rounded-md px-3 py-1.5 text-sm font-medium
-								{draftMatch.system === system ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+								{draftMatch.system === system ? 'bg-brand text-brand-ink shadow-sm' : 'text-muted'}"
 							onclick={() => draftMatch && (draftMatch = { ...draftMatch, system })}
 						>
 							{$t(`match.system.${system}`)}
