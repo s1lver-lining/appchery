@@ -71,6 +71,8 @@
 		const match = await loadMatch(activity.id);
 		config = match.config;
 		rows = match.ends;
+		// Only once nothing is still being written: an arrow tapped in meanwhile is not in these rows.
+		if (writing === 0) optimistic = null;
 		// A match opened after it was won is not a match that has just been won: badges stay quiet.
 		if (!loaded && match.config) {
 			loaded = true;
@@ -87,8 +89,16 @@
 		}
 		onchange();
 	}
+	/**
+	 * Loaded once per card. Guarded on the id rather than on the prop: every write tells the page to
+	 * reload, which hands back a new activity object, and reloading on that looped the two of them
+	 * against each other for as long as the card was open.
+	 */
+	let loadedId = '';
 	$effect(() => {
-		void activity.id;
+		const id = activity.id;
+		if (id === loadedId) return;
+		loadedId = id;
 		refresh();
 	});
 
@@ -140,12 +150,44 @@
 		return drawn.sort((a, b) => a.endNo - b.endNo);
 	});
 
-	/** Stored in the order they were called, and sorted only if the archer asked for that. */
-	const arrowsOf = (row: Row | undefined, side: Side) =>
-		(row?.shots ?? []).filter((shot) => shot.side === side).sort((a, b) => a.ordinal - b.ordinal);
+	type Arrow = {
+		ordinal: number;
+		value: number;
+		zoneLabel: string;
+		x: number | null;
+		y: number | null;
+		source: Shot['source'];
+	};
 
-	const shownArrows = $derived((row: Row | undefined, side: Side) => {
-		const shots = arrowsOf(row, side);
+	/**
+	 * The side just entered, held until its write comes back. Writing a side replaces all of its
+	 * arrows, so the sheet read between the delete and the insert showed an end with nothing in it.
+	 */
+	let optimistic = $state<{ endNo: number; side: Side; shots: Omit<Shot, 'ordinal'>[] } | null>(
+		null
+	);
+	/** Writes still in flight, counted because a fast archer starts the next one before this lands. */
+	let writing = 0;
+
+	/** Stored in the order they were called, and sorted only if the archer asked for that. */
+	const arrowsOf = $derived((endNo: number, side: Side): Arrow[] => {
+		if (optimistic && optimistic.endNo === endNo && optimistic.side === side)
+			return optimistic.shots.map((shot, index) => ({ ...shot, ordinal: index + 1 }));
+		return (rows.find((row) => row.endNo === endNo)?.shots ?? [])
+			.filter((shot) => shot.side === side)
+			.sort((a, b) => a.ordinal - b.ordinal)
+			.map((shot) => ({
+				ordinal: shot.ordinal,
+				value: shot.value,
+				zoneLabel: shot.zoneLabel,
+				x: shot.x,
+				y: shot.y,
+				source: shot.source as Shot['source']
+			}));
+	});
+
+	const shownArrows = $derived((endNo: number, side: Side) => {
+		const shots = arrowsOf(endNo, side);
 		return $sortArrowsDescending ? sortShotsDescending(shots) : shots;
 	});
 	/** Read from the stored order, which is what the numbers on the sheet mean. */
@@ -181,14 +223,13 @@
 	let cursor = $state<{ endNo: number; side: Side; index: number; shootOff: boolean } | null>(null);
 	let mode = $state<'number' | 'face'>('number');
 
-	const cursorRow = $derived(rows.find((row) => row.endNo === cursor?.endNo));
-	const cursorShots = $derived(cursor ? arrowsOf(cursorRow, cursor.side) : []);
+	const cursorShots = $derived(cursor ? arrowsOf(cursor.endNo, cursor.side) : []);
 	/** The same side's arrows from every other end, which is what the group is read against. */
 	const otherShots = $derived(
 		cursor
 			? rows
 					.filter((row) => row.endNo !== cursor?.endNo)
-					.flatMap((row) => arrowsOf(row, cursor!.side))
+					.flatMap((row) => arrowsOf(row.endNo, cursor!.side))
 			: []
 	);
 	/** The arrow the cursor sits on, when there is one: the next touch moves it rather than adding. */
@@ -229,23 +270,27 @@
 	async function write(shot: Omit<Shot, 'ordinal'>) {
 		if (!cursor) return;
 		const { endNo, side, index, shootOff } = cursor;
-		const kept: Omit<Shot, 'ordinal'>[] = arrowsOf(
-			rows.find((row) => row.endNo === endNo),
-			side
-		).map((row) => ({
+		const kept: Omit<Shot, 'ordinal'>[] = arrowsOf(endNo, side).map((row) => ({
 			value: row.value,
 			zoneLabel: row.zoneLabel,
 			x: row.x,
 			y: row.y,
-			source: row.source as Shot['source']
+			source: row.source
 		}));
 		// Slots are filled by position, so an arrow tapped into the third one lands third.
 		while (kept.length < index)
 			kept.push({ value: 0, zoneLabel: 'M', x: null, y: null, source: 'manual' });
 		kept[index] = shot;
 
+		// Shown before it is written: the arrow has to land in the slot the cursor is leaving.
+		optimistic = { endNo, side, shots: kept };
 		advance();
-		await setMatchArrows(activity.id, endNo, side, kept, shootOff);
+		writing += 1;
+		try {
+			await setMatchArrows(activity.id, endNo, side, kept, shootOff);
+		} finally {
+			writing -= 1;
+		}
 		await refresh();
 		if (side === 'us') await botReplies(endNo, shootOff);
 		if (shootOff) await decideFromPlot();
@@ -262,8 +307,8 @@
 		const slots = slotsFor(shootOff);
 		const row = rows.find((entry) => entry.endNo === endNo);
 		// Our end has to be finished first: a bot answers an end, it does not shoot into an empty one.
-		if (!ourEndIsIn && arrowsOf(row, 'us').length < slots) return;
-		if (arrowsOf(row, 'them').length > 0 || row?.theirs !== null) return;
+		if (!ourEndIsIn && arrowsOf(endNo, 'us').length < slots) return;
+		if (arrowsOf(endNo, 'them').length > 0 || row?.theirs !== null) return;
 
 		const shots = botEnd(config.bot, slots).map((shot) =>
 			shotFromPlot(scoreAt(scoreSet, shot.x, shot.y), shot.x, shot.y)
@@ -289,17 +334,14 @@
 		scanning = false;
 		if (!cursor || !scoreSet) return;
 		const { endNo, side, index, shootOff } = cursor;
-		const kept: Omit<Shot, 'ordinal'>[] = arrowsOf(
-			rows.find((row) => row.endNo === endNo),
-			side
-		)
+		const kept: Omit<Shot, 'ordinal'>[] = arrowsOf(endNo, side)
 			.slice(0, index)
 			.map((row) => ({
 				value: row.value,
 				zoneLabel: row.zoneLabel,
 				x: row.x,
 				y: row.y,
-				source: row.source as Shot['source']
+				source: row.source
 			}));
 
 		for (const point of points) {
@@ -307,8 +349,14 @@
 			kept.push(shotFromPlot(scoreAt(scoreSet, point.x, point.y), point.x, point.y));
 		}
 
+		optimistic = { endNo, side, shots: kept };
 		cursor = kept.length >= slotsFor(shootOff) ? null : { ...cursor, index: kept.length };
-		await setMatchArrows(activity.id, endNo, side, kept, shootOff);
+		writing += 1;
+		try {
+			await setMatchArrows(activity.id, endNo, side, kept, shootOff);
+		} finally {
+			writing -= 1;
+		}
 		await refresh();
 		if (shootOff) await decideFromPlot();
 		await celebrate();
@@ -462,8 +510,8 @@
 		tens: activity.count10s,
 		xs: activity.countX,
 		sheet: rows.map((row) => ({
-			arrows: shownArrows(row, 'us').map((shot) => shot.zoneLabel),
-			opponentArrows: shownArrows(row, 'them').map((shot) => shot.zoneLabel),
+			arrows: shownArrows(row.endNo, 'us').map((shot) => shot.zoneLabel),
+			opponentArrows: shownArrows(row.endNo, 'them').map((shot) => shot.zoneLabel),
 			subtotal: row.ours,
 			running: row.theirs ?? 0
 		})),
@@ -515,7 +563,7 @@
 
 <!-- One side of one end: the arrows in their slots, and the total they add up to or was typed in. -->
 {#snippet sideCells(endNo: number, side: Side, row: Row | undefined, shootOff: boolean, mirrored: boolean)}
-	{@const shots = shownArrows(row, side)}
+	{@const shots = shownArrows(endNo, side)}
 	{@const total = side === 'us' ? (row ? row.ours : null) : (row?.theirs ?? null)}
 	<div class="flex min-w-0 flex-1 items-center gap-0.5 {mirrored ? 'flex-row-reverse' : ''}">
 		<!--
