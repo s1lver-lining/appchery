@@ -400,64 +400,62 @@ const EN: Record<string, StepText> = {
 const FR: Record<string, StepText> = {
 	'limb-alignment': {
 		title: 'Alignement des branches',
-		why: "Des branches hors du plan d'arc poussent la flèche de côté à chaque tir, et aucun réglage plus bas dans cette liste ne peut le rattraper.",
+		why: "Des branches alignées hors du plan d'arc poussent la flèche de côté à chaque tir. Aucun réglage plus bas dans cette liste ne peut le rattraper.",
 		steps: [
-			"Bandez l'arc et regardez le long de la corde par l'arrière, arc vertical.",
-			"Posez une cale d'alignement sur chaque branche. Une branche s'affine vers la poupée : à l'œil, ses bords paraissent centrés bien avant que son milieu le soit, et la cale marque ce milieu pour vous.",
-			'La corde doit passer par le centre des deux cales, et par le centre de la poignée : tout l’arc tient dans un même plan, et la corde est ce plan.',
-			"Ajustez les logements de branches : chariots d'alignement sur une poignée récente, vis excentriques sur une plus ancienne.",
-			"Revérifiez après chaque modification : déplacer une branche change ce que l'autre semble faire."
+			"Posez au moins une cale d'alignement sur chaque branche. Si possible en mettre deux: en haut et en bas de la branche.",
+			'La corde doit passer par le centre des deux cales, et par le centre de la poignée. Le centre de la poignée est la position des vis de Tiller.',
+			"Ajustez les branches : Suivez les instruction du fabricant pour déplacer horizontalement les branches dans leurs logements.",
+			"Revérifiez les deux branches après chaque modification : déplacer une branche change la position de la corde sur l'autre."
 		],
 		results: [
 			{ observation: 'La corde passe à gauche du milieu de la branche', suggests: 'Décalez cette branche vers la droite, petit à petit' },
 			{ observation: "La corde n'est centrée que sur une seule branche", suggests: 'Alignez la moins bonne en premier, puis revérifiez les deux' },
-			{ observation: 'Aucun réglage ne parvient à la recentrer', suggests: 'La branche est sans doute vrillée : passez à l’étape suivante' }
+			{ observation: 'Aucun réglage ne parvient à la recentrer', suggests: 'La branche est sans doute vrillée : passez à l\'étape suivante' }
 		]
 	},
 	'limb-twist': {
 		title: 'Vrillage des branches',
-		why: 'Une branche vrillée ne peut pas être alignée, et toutes les mesures suivantes courent après un défaut qui n’est pas là où il semble.',
+		why: 'Une branche vrillée ne peut pas être alignée. Elle doit être remplacée. Tirer avec une branche vrillée peut provoquer des accidents et endommager l\'arc.',
 		steps: [
-			"Bandez l'arc et visez le long de la corde, branches à plat.",
-			"Regardez chaque poupée : la gorge de corde doit être d'équerre, sans pencher d'un côté.",
-			'Débandez, puis vérifiez que les embases reposent bien à plat dans les logements.',
-			"Une branche qui ne passe pas ce contrôle relève de la garantie, pas du réglage."
+			"Maintenez l'arc avec la corder à l'horizontale au dessus de la poignée",
+			"Ajouter 2 flèches coincées entre la corde et l'extrémité de chaque branche et 2 flèches en équilibre à la jointure de la poignée et de chaque branche. Les flèches doivent être perpendiculaires à la corde et à la branche.",
+			"Vérifier que les pointes et enchoches des flèches sont bien alignées. Si l'une ne l'est pas, la branche est vrillée."
 		],
 		results: [
-			{ observation: 'Une poupée penche systématiquement', suggests: 'Faites changer la branche plutôt que de compenser' },
-			{ observation: 'Poupées droites mais alignement toujours faux', suggests: 'Le défaut vient des logements : reprenez l’alignement' }
+			{ observation: 'La branche est vrillée', suggests: "Faites changer la branche plutôt que de compenser avec l'alignement" },
+			{ observation: 'Branches non vrillées mais alignement toujours faux', suggests: 'Le défaut vient des logements : reprenez l\'alignement' }
 		]
 	},
 	'rest-position': {
 		title: 'Position du repose-flèche',
-		why: "Tout ce que fait la flèche à la décoche part de là où elle repose : on place donc le repose-flèche avant de mesurer quoi que ce soit à partir de lui.",
+		why: "Le repose flèche permet de règler la hauteur de la flèche au niveau de l'arc. Il permet de le positionner correctement sur le berger.",
 		steps: [
-			"Posez le repose-flèche à son emplacement naturel : la flèche doit passer au-dessus du point de pivot de la poignée.",
-			'Réglez la hauteur pour que la flèche soit à peu près horizontale, le tube en face du centre du bouton.',
-			"Collez ou vissez seulement une fois la flèche à sa place."
+			"Posez le repose-flèche à son emplacement : Le trou fileté côté cible si il s'atache avec sa propre vis, ou le trou fileté du berger à l'arière si il s'attache autour du berger.",
+			'Réglez la hauteur pour que le centre du tube soit en face du berger.',
+			"Sur certains repose-flèches, la position laterale du repose-flèche peut être réglée. Dans ce cas l'aiguille doit legèrement dépaser du tube (~1mm)."
 		],
 		results: [
-			{ observation: 'La flèche passe nettement au-dessus du bouton', suggests: 'Abaissez le bras : le bouton doit toucher le tube en son centre' },
-			{ observation: 'La flèche touche la fenêtre', suggests: 'Remontez le bras jusqu’à ce que le tube soit dégagé' }
+			{ observation: "Le centre de la flèche n'est pas sur le berger", suggests: 'Ajuster la hauteur du repose-flèche' },
+			{ observation: 'La flèche tombe trop façilement du repose-flèche', suggests: "Déplacer la position laterale du repose-flèche vers l'exterieur" }
 		]
 	},
 	'centre-shot': {
 		title: 'Alignement de la flèche (bouton Berger)',
-		why: "La direction que prend la flèche à pleine allonge décide de quel côté elle quitte l'arc : c'est précisément ce que le bouton règle.",
+		why: "Le berger a une fonction statique et dynamique. En statique il permet d'ajuster la position laterale de la flèche pour qu'elle soit dans le plan de l'arc. Le reglage dynamique sera fait plus tard.",
 		steps: [
-			"Bandez l'arc et encochez une flèche sur le repose-flèche.",
-			"Regardez le long de la corde, arc vertical : la corde doit passer légèrement en dedans de l'axe du tube.",
-			"Pour un arc droitier, la pointe se place un ou deux millimètres à gauche de la ligne de corde.",
-			'Réglez avec le barillet du bouton, pas avec le repose-flèche.'
+			"Fixez l'arc à la verticale et encochez une flèche sur le repose-flèche. Un stabilisation doite peut être ajoutée pour trouver le plan de l'arc.",
+			"Placez vous derrière l'arc et regardez le long de la corde dans le plan de l'arc. La stabilisation doit être coupée en deux par la corde.",
+			"La pointe se place dans le plan de l'arc. Elle peut aussi être légèrement vers l'extérieur (gauche pour un arc droitier) selon les préférences.",
+			'Réglez la position avec le barillet du berger jusqu\'à ce que la flèche soit correctement alignée.'
 		],
 		results: [
-			{ observation: 'La corde tombe pile sur la pointe', suggests: 'Sortez légèrement le bouton pour rentrer la pointe' },
-			{ observation: 'Pointe nettement en dehors de la ligne de corde', suggests: 'Rentrez le bouton, sinon la flèche partira raide' }
+			{ observation: 'La pointe de la flèche est trop vers l\'extérieur', suggests: 'Rentrer légèrement le berger pour rentrer la pointe' },
+			{ observation: 'La pointe de la flèche est trop vers l\'intérieur', suggests: 'Sortir légèrement le berger pour sortir la pointe' }
 		]
 	},
 	'sight-alignment': {
 		title: 'Alignement du viseur',
-		why: "Un viseur hors du plan d'arc fait varier la dérive avec la distance, ce qui se lit comme un défaut de flèche alors que ce n'en est pas un.",
+		why: "Un viseur non parallèle au plan d'arc fait varier le lateral avec la distance. Cela peut être vu comme un défaut de réglage.",
 		steps: [
 			"Placez le viseur pour que l'œilleton se pose sur la ligne de corde, arc bandé.",
 			"Faites coulisser le bloc de haut en bas en regardant l'œilleton contre la corde.",
