@@ -57,8 +57,21 @@
 					<path d="M0 -9 L0 9" stroke-width="2" class="text-brand-text" stroke="currentColor" />
 				</g>
 
-				<!-- The grip. The string crosses it too: limbs centred on a bow the string misses are still off plane. -->
-				<rect x={panel.x - 10} y="88" width="20" height="26" rx="3" opacity="0.4" />
+				<!--
+					The grip. The string crosses it too: limbs centred on a bow the string misses are still
+					off plane. Solid and wider than the limb, because it is the part being held still while
+					everything else is moved around it.
+				-->
+				<rect
+					x={panel.x - 19}
+					y="88"
+					width="38"
+					height="26"
+					rx="3"
+					opacity="0.45"
+					fill="currentColor"
+					stroke="none"
+				/>
 
 				<!-- The string: straight, and the only fixed reference in the picture. -->
 				<path
