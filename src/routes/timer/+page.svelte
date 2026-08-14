@@ -161,11 +161,12 @@
 	}
 
 	function stop() {
-		// Only while there is still time to stop: the clock that ran out has already called the line in.
+		// The same three blasts the clock ends on: stopping early still means the end is called and the
+		// arrows collected. Five blasts mean somebody is walking out there, and only the signal says it.
 		const early = remaining > 0;
 		callOff();
 		startedAt = null;
-		if ($timerSound && early) whistle('stop');
+		if ($timerSound && early) whistle('end');
 	}
 
 	function reset() {
