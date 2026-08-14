@@ -88,7 +88,6 @@ const EN: Record<string, StepText> = {
 		],
 		results: [
 			{ observation: 'String sits left of the limb centre', suggests: 'Move that limb right, a small turn at a time' },
-			{ observation: 'Both gauges split, string off the grip centre', suggests: 'The riser is canted in the pockets: bring both limbs across together' },
 			{ observation: 'String looks centred on one limb only', suggests: 'Align the worse limb first, then recheck both' },
 			{ observation: 'No adjustment brings it in', suggests: 'Suspect a twisted limb: go to the next step' }
 		]
@@ -411,7 +410,6 @@ const FR: Record<string, StepText> = {
 		],
 		results: [
 			{ observation: 'La corde passe à gauche du milieu de la branche', suggests: 'Décalez cette branche vers la droite, par petites touches' },
-			{ observation: 'Les deux cales sont coupées mais la corde rate le centre de la poignée', suggests: 'La poignée est de travers dans les logements : décalez les deux branches ensemble' },
 			{ observation: 'La corde ne semble centrée que sur une branche', suggests: "Alignez d'abord la moins bonne, puis revérifiez les deux" },
 			{ observation: "Aucun réglage n'y parvient", suggests: 'Soupçonnez une branche vrillée : passez à l’étape suivante' }
 		]
