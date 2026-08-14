@@ -15,6 +15,8 @@
     "db:generate": "drizzle-kit generate",
     "cap:sync": "npm run build && cap sync",
     "sync:sqlite": "./scripts/sync-sqlite.sh",
+    "deploy:preprod": "./scripts/deploy.sh preprod",
+    "deploy:prod": "./scripts/deploy.sh prod",
     "predev": "./scripts/sync-sqlite.sh",
     "prebuild": "./scripts/sync-sqlite.sh",
     "postinstall": "./scripts/sync-sqlite.sh"
@@ -36,7 +38,8 @@
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.2.1",
-    "vitest": "^4.1.10"
+    "vitest": "^4.1.10",
+    "wrangler": "^4.123.0"
   },
   "dependencies": {
     "@capacitor-community/sqlite": "^8.1.1",

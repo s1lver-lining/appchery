@@ -26,6 +26,9 @@
 	let ready = $state(false);
 	let error = $state<string | null>(null);
 	let volatileStorage = $state(false);
+	// Deliberately not persisted: the data really is about to be lost, so the warning comes back on
+	// the next load. Dismissing it buys back the screen for this visit, not for good.
+	let warningIgnored = $state(false);
 	let confirmingExit = $state(false);
 
 	$effect(() => {
@@ -170,8 +173,13 @@
 	{:else if !ready}
 		<div class="flex flex-1 items-center justify-center text-muted">{$t('common.loading')}</div>
 	{:else}
-		{#if volatileStorage}
-			<p class="safe-top bg-accent/20 px-4 py-2 text-sm">{$t('storage.volatileWarning')}</p>
+		{#if volatileStorage && !warningIgnored}
+			<div class="safe-top flex items-center gap-3 bg-accent/20 px-4 py-1.5 text-sm">
+				<p class="min-w-0 flex-1">{$t('storage.volatileWarning')}</p>
+				<button class="shrink-0 font-semibold text-muted" onclick={() => (warningIgnored = true)}>
+					{$t('storage.volatileDismiss')}
+				</button>
+			</div>
 		{/if}
 
 		{#if isMainPage($page.url.pathname)}

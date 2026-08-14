@@ -682,8 +682,10 @@ export const en = {
 		}
 	},
 	storage: {
-		volatileWarning:
-			'Storage is not persistent in this browser. Scores will be lost on reload: install the app for reliable storage.'
+		// Short enough for one line on a phone: Settings spells out the storage mode in full, and this
+		// only has to be alarming enough to send someone there.
+		volatileWarning: 'Scores will be lost on reload. Install the app to keep them.',
+		volatileDismiss: 'Ignore'
 	},
 	settings: {
 		title: 'Settings',

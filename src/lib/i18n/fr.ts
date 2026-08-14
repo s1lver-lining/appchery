@@ -689,8 +689,8 @@ export const fr: Dictionary = {
 		}
 	},
 	storage: {
-		volatileWarning:
-			"Le stockage n'est pas persistant dans ce navigateur. Les scores seront perdus au rechargement : installez l'application pour un stockage fiable."
+		volatileWarning: "Les scores seront perdus au rechargement. Installez l'application.",
+		volatileDismiss: 'Ignorer'
 	},
 	settings: {
 		title: 'Paramètres',

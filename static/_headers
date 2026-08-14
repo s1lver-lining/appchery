@@ -1,0 +1,8 @@
+# Cloudflare Pages reads this file from the root of the deployed build.
+#
+# The sqlite-wasm OPFS backend only works in a cross-origin isolated page. Without these two
+# headers the app still loads, but silently falls back to an in-memory database and every session
+# a user records is lost on refresh. See the matching dev/preview middleware in vite.config.ts.
+/*
+  Cross-Origin-Opener-Policy: same-origin
+  Cross-Origin-Embedder-Policy: require-corp

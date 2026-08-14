@@ -45,6 +45,27 @@ configuration (`_headers`, nginx, Cloudflare rule).
 
 Native builds are unaffected: they use platform SQLite, not OPFS.
 
+#### Cloudflare Pages
+
+`static/_headers` carries those headers and `static/_redirects` routes unknown paths back to the
+SPA shell; both are copied into `build/` and read by Pages from the deployment root. GitHub Pages is
+not an option here — it serves fixed headers, so the app would run without OPFS.
+
+```bash
+npm run deploy:preprod   # → appchery-preprod
+npm run deploy:prod      # → appchery, asks for confirmation
+./scripts/deploy.sh preprod --dry-run
+```
+
+Two separate Pages projects rather than one project with preview branches: preview deployments get
+a fresh hostname each time, and OPFS databases are per-origin, so preprod would start empty on
+every deploy. Override the project names with `APPCHERY_PAGES_PREPROD` and `APPCHERY_PAGES_PROD`.
+
+First run needs `npx wrangler login`; in CI, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
+instead, and the production confirmation prompt is skipped when `CI=true`. Create the two projects
+once with `npx wrangler pages project create <name> --production-branch main`, then attach custom
+domains from the Pages dashboard.
+
 ### Installing on a phone
 
 ```bash
