@@ -167,7 +167,7 @@ export const en = {
 		matchDeleted: 'Match deleted'
 	},
 	timer: {
-		title: 'Shooting time',
+		title: 'Timer',
 		start: 'Call the line',
 		stop: 'Stop',
 		reset: 'Reset',

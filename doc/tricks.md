@@ -47,7 +47,7 @@ the date field for the common case of entering an outing a few days late.
 **Back closes the editor.** While renaming a session, the hardware back key closes the name editor
 rather than leaving the session.
 
-## Shooting time
+## Timer
 
 **The clock runs the line, not the round.** The timer sits behind the clock icon in any activity
 header and in the sessions menu. It holds the World Archery times: four minutes for six arrows, two

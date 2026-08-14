@@ -169,7 +169,7 @@ export const fr: Dictionary = {
 		matchDeleted: 'Match supprimé'
 	},
 	timer: {
-		title: 'Temps de tir',
+		title: 'Chronomètre',
 		start: 'Appeler la ligne',
 		stop: 'Arrêter',
 		reset: 'Réinitialiser',
