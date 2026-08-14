@@ -327,6 +327,9 @@ export const fr: Dictionary = {
 		groupSize: 'Taille du groupement',
 		arrowNumbers: 'Numéroter les flèches',
 		arrowNumbersHint: 'Marque chaque flèche de son ordre de saisie, ce qui permet de les distinguer une fois triées.',
+		arrowNumberChart: 'Score moyen par numéro de flèche',
+		arrowNumberOf: 'Flèche {n}, sur {arrows} tirées',
+		arrowNumberFloor: 'Les barres partent de {n}, pas de zéro.',
 		sortArrows: 'Trier les flèches par ordre décroissant',
 		sortArrowsHint:
 			"Affiche chaque volée dans l'ordre de la feuille de marque plutôt que dans l'ordre de saisie.",

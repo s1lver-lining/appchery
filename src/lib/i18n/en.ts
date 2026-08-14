@@ -325,6 +325,9 @@ export const en = {
 		groupSize: 'Group size',
 		arrowNumbers: 'Use arrow number',
 		arrowNumbersHint: 'Marks each arrow with the order it was entered in, which is what tells them apart once they are sorted.',
+		arrowNumberChart: 'Mean score by arrow number',
+		arrowNumberOf: 'Arrow {n}, over {arrows} shot',
+		arrowNumberFloor: 'Bars are drawn from {n}, not from zero.',
 		sortArrows: 'Sort arrows highest first',
 		sortArrowsHint: 'Shows each end in scoresheet order instead of the order you entered it.',
 		roundComplete: 'Round complete. Arrows can still be edited.'

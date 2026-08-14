@@ -24,10 +24,11 @@
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
+	import ArrowNumberChart from '$lib/ui/ArrowNumberChart.svelte';
 	import Match from '$lib/pages/Match.svelte';
 	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
 	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
-	import { isPersonalBest } from '$lib/domain/stats';
+	import { isPersonalBest, scoreByArrowNumber } from '$lib/domain/stats';
 	import { maxScore } from '$lib/domain/rounds/geometry';
 	import { dateFormats } from '$lib/prefs';
 	import Toggle from '$lib/ui/Toggle.svelte';
@@ -212,6 +213,14 @@
 			}
 		];
 	}
+
+	/** Read from what was stored rather than from the sheet: the sheet may be sorted, the order is not. */
+	const arrowNumbers = $derived(
+		scoreByArrowNumber([
+			...stored.flatMap((row) => row.shots.map((s) => ({ ordinal: s.ordinal, value: s.value }))),
+			...queued.flatMap((q) => q.shots.map((s, i) => ({ ordinal: i + 1, value: s.value })))
+		])
+	);
 
 	const runningTotals = $derived(
 		sheetRows.reduce<number[]>((acc, row) => {
@@ -1076,6 +1085,14 @@
 			· {$t('score.tens')} {shownTens} · {$t('score.xs')}
 			{shownXs}
 		</p>
+
+		<!-- Only worth drawing once the arrows are numbered: without the numbers it answers nothing. -->
+		{#if $showArrowNumbers && arrowNumbers.length > 1}
+			<section class="rounded-xl border border-line bg-surface p-3">
+				<h2 class="text-sm font-medium">{$t('score.arrowNumberChart')}</h2>
+				<ArrowNumberChart positions={arrowNumbers} />
+			</section>
+		{/if}
 
 		<div class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3">
 			<div>

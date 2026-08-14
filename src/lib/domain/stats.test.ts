@@ -3,6 +3,7 @@ import {
 	summariseByRound,
 	isPersonalBest,
 	scoreByEndPosition,
+	scoreByArrowNumber,
 	compareScores,
 	overview,
 	inRange,
@@ -35,6 +36,37 @@ function activity(partial: Partial<ScoredActivity> & { id: string }): ScoredActi
 		...partial
 	};
 }
+
+describe('scoreByArrowNumber', () => {
+	const shot = (ordinal: number, value: number) => ({ ordinal, value });
+
+	it('averages every arrow called in the same position', () => {
+		const series = scoreByArrowNumber([
+			shot(1, 10),
+			shot(2, 8),
+			shot(3, 6),
+			shot(1, 8),
+			shot(2, 8),
+			shot(3, 4)
+		]);
+		expect(series).toEqual([
+			{ ordinal: 1, mean: 9, arrows: 2 },
+			{ ordinal: 2, mean: 8, arrows: 2 },
+			{ ordinal: 3, mean: 5, arrows: 2 }
+		]);
+	});
+
+	it('reads a half shot end without inventing the arrows it is missing', () => {
+		expect(scoreByArrowNumber([shot(1, 9), shot(2, 7), shot(1, 7)])).toEqual([
+			{ ordinal: 1, mean: 8, arrows: 2 },
+			{ ordinal: 2, mean: 7, arrows: 1 }
+		]);
+	});
+
+	it('has nothing to say about an end nobody has shot', () => {
+		expect(scoreByArrowNumber([])).toEqual([]);
+	});
+});
 
 describe('scoreByEndPosition', () => {
 	const end = (activityId: string, stageIndex: number, endNo: number, subtotal: number) => ({

@@ -480,6 +480,31 @@ export function distribution(shots: { value: number; zoneLabel: string }[]): Val
 	);
 }
 
+export interface ArrowPosition {
+	/** 1 for the first arrow called in an end. */
+	ordinal: number;
+	mean: number;
+	/** How many ends contributed an arrow here, which says whether the mean means anything. */
+	arrows: number;
+}
+
+/**
+ * How the score moves through an end, arrow by arrow. An archer who drops the last arrow of every
+ * end is losing it to the hold, not to the sight, which is the whole reason arrows are numbered.
+ */
+export function scoreByArrowNumber(shots: { ordinal: number; value: number }[]): ArrowPosition[] {
+	const slots = new Map<number, { score: number; arrows: number }>();
+	for (const shot of shots) {
+		const slot = slots.get(shot.ordinal) ?? { score: 0, arrows: 0 };
+		slot.score += shot.value;
+		slot.arrows += 1;
+		slots.set(shot.ordinal, slot);
+	}
+	return [...slots.entries()]
+		.map(([ordinal, slot]) => ({ ordinal, mean: slot.score / slot.arrows, arrows: slot.arrows }))
+		.sort((a, b) => a.ordinal - b.ordinal);
+}
+
 export interface Band {
 	key: string;
 	rounds: number;

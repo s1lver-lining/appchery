@@ -5,6 +5,7 @@
 	import { botEnd, BOT_LEVELS } from '$lib/domain/bots';
 	import { sortArrowsDescending, showArrowNumbers, dateFormats } from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
+	import { scoreByArrowNumber } from '$lib/domain/stats';
 	import {
 		tally,
 		nextEndNo,
@@ -40,6 +41,7 @@
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
+	import ArrowNumberChart from '$lib/ui/ArrowNumberChart.svelte';
 	import type { CardData, WeatherGlyph } from '$lib/ui/scorecard';
 	import { formatTemperature, formatWind, weatherIcon } from '$lib/conditions';
 	import NamePicker from '$lib/ui/NamePicker.svelte';
@@ -146,6 +148,17 @@
 		const shots = arrowsOf(row, side);
 		return $sortArrowsDescending ? sortShotsDescending(shots) : shots;
 	});
+	/** Read from the stored order, which is what the numbers on the sheet mean. */
+	const arrowNumbers = $derived(
+		scoreByArrowNumber(
+			rows.flatMap((row) =>
+				row.shots
+					.filter((shot) => shot.side === 'us' && !row.shootOff)
+					.map((shot) => ({ ordinal: shot.ordinal, value: shot.value }))
+			)
+		)
+	);
+
 	const slotsFor = (shootOff: boolean) => (shootOff ? 1 : (config?.arrowsPerEnd ?? 3));
 
 	/**
@@ -810,6 +823,14 @@
 					onchange={(v) => showArrowNumbers.set(v)}
 				/>
 			</div>
+
+			<!-- Our arrows only: the other side's are called out, and half of them are a bot's. -->
+			{#if $showArrowNumbers && arrowNumbers.length > 1}
+				<div class="border-t border-line pt-3">
+					<p class="text-sm font-medium">{$t('score.arrowNumberChart')}</p>
+					<ArrowNumberChart positions={arrowNumbers} />
+				</div>
+			{/if}
 
 			<div class="flex items-start justify-between gap-3 border-t border-line pt-3">
 				<div class="min-w-0">
