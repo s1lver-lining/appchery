@@ -396,8 +396,8 @@ export const en = {
 		viewHistory: 'View the bow history',
 		steps: 'Steps',
 		interpretation: 'What the result suggests',
-		observation: 'What you observed',
-		adjustment: 'What you changed',
+		notes: 'Notes',
+		notesHint: 'What you observed, and what you changed.',
 		start: 'Start',
 		noBowSelected:
 			'Choose a bow in the session first, or mark one as your default bow in the equipment list so it is added to every new session.',

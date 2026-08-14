@@ -90,8 +90,8 @@
 	let openEnd = $state<number | null>(null);
 	/** Shot id being retapped inside the end modal. */
 	let modalEditing = $state<string | null>(null);
-	let observations = $state('');
-	let adjustment = $state('');
+	/** One field: what was seen and what was done about it are one note in practice, not two forms. */
+	let notes = $state('');
 	let saved = $state(false);
 	let autoScoring = $state(false);
 
@@ -426,8 +426,8 @@
 
 	async function refresh() {
 		activity = await getActivity(activityId);
-		observations = activity?.observations ?? '';
-		adjustment = activity?.adjustmentMade ?? '';
+		// Tests recorded when this was two fields keep both halves, joined into the one note.
+		notes = [activity?.observations, activity?.adjustmentMade].filter(Boolean).join('\n');
 		stored = await loadRows();
 		sheetLoaded = true;
 
@@ -603,7 +603,7 @@
 	}
 
 	async function saveTuning() {
-		await updateActivity(activityId, { observations, adjustmentMade: adjustment });
+		await updateActivity(activityId, { observations: notes, adjustmentMade: '' });
 		saved = true;
 		setTimeout(() => (saved = false), 1500);
 	}
@@ -639,12 +639,10 @@
 	 */
 	async function applyAdjustment() {
 		if (!bow || settingChanges.length === 0) return;
-		const reason = [template?.name, adjustment.trim() || observations.trim()]
-			.filter(Boolean)
-			.join(': ');
+		const reason = [template?.name, notes.trim()].filter(Boolean).join(': ');
 		const revisionId = await createRevision(bow.id, draft, reason);
 		await linkResultingRevision(activityId, revisionId);
-		await updateActivity(activityId, { observations, adjustmentMade: adjustment });
+		await updateActivity(activityId, { observations: notes, adjustmentMade: '' });
 		applied = true;
 		await refresh();
 	}
@@ -720,19 +718,12 @@
 
 		<section class="space-y-3 rounded-xl border border-line bg-surface p-4">
 			<label class="block text-sm font-semibold">
-				{$t('tuning.observation')}
+				{$t('tuning.notes')}
+				<span class="block text-xs font-normal text-muted">{$t('tuning.notesHint')}</span>
 				<textarea
 					class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-					rows="3"
-					bind:value={observations}
-				></textarea>
-			</label>
-			<label class="block text-sm font-semibold">
-				{$t('tuning.adjustment')}
-				<textarea
-					class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-					rows="2"
-					bind:value={adjustment}
+					rows="4"
+					bind:value={notes}
 				></textarea>
 			</label>
 			<button

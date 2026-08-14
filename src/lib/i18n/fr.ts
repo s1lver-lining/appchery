@@ -400,8 +400,8 @@ export const fr: Dictionary = {
 		viewHistory: "Voir l'historique de l'arc",
 		steps: 'Étapes',
 		interpretation: 'Ce que le résultat suggère',
-		observation: 'Ce que vous avez observé',
-		adjustment: 'Ce que vous avez modifié',
+		notes: 'Notes',
+		notesHint: 'Ce que vous avez observé, et ce que vous avez modifié.',
 		start: 'Commencer',
 		noBowSelected:
 			"Choisissez d'abord un arc dans la séance, ou définissez un arc par défaut dans la liste du matériel pour qu'il soit ajouté à chaque nouvelle séance.",
