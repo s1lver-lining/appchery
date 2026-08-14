@@ -151,6 +151,11 @@
 		].slice(0, stored.length + queued.length - hiddenTail)
 	);
 
+	/** The end being entered, read the way the finished ones are: sorted if asked, numbered if asked. */
+	const pendingShown = $derived(
+		displayOrder(pending.map((shot, index) => ({ ...shot, ordinal: index + 1, index })))
+	);
+
 	/** Counted from what is on screen, so the next end opens the moment the last one is entered. */
 	const currentSlot = $derived(slots[sheetRows.length] ?? null);
 	const complete = $derived(slots.length > 0 && sheetRows.length >= slots.length);
@@ -912,19 +917,31 @@
 						<span class="tabular w-6 shrink-0 text-xs font-bold text-brand-text">{sheetRows.length + 1}</span>
 						<div class="flex flex-1 gap-0.5">
 							{#each Array(currentSlot.arrows) as _, i (i)}
-								{#if pending[i]}
+								{#if pendingShown[i]}
+									{@const shot = pendingShown[i]}
 									<!-- Editable before the end is committed, so a mistap is fixed where it was made. -->
 									<button
-										class="tabular h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
-											{editingPending === i ? cursorClass : ''}"
-										style={chipStyle(pending[i].zoneLabel)}
-										aria-label={$t('score.editArrow', { n: i + 1, end: sheetRows.length + 1 })}
+										class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
+											{editingPending === shot.index ? cursorClass : ''}"
+										style={chipStyle(shot.zoneLabel)}
+										aria-label={$t('score.editArrow', {
+											n: shot.ordinal,
+											end: sheetRows.length + 1
+										})}
 										onclick={() => {
 											editing = null;
-											editingPending = editingPending === i ? null : i;
+											editingPending = editingPending === shot.index ? null : shot.index;
 										}}
 									>
-										{pending[i].zoneLabel}
+										{shot.zoneLabel}
+										<!-- Numbered while the end is still being entered: it is sorted while it is being entered too. -->
+										{#if $showArrowNumbers}
+											<span
+												class="absolute right-px bottom-px text-[calc(var(--chip)*0.28)] leading-none font-semibold opacity-70"
+											>
+												{shot.ordinal}
+											</span>
+										{/if}
 									</button>
 								{:else}
 									<span
