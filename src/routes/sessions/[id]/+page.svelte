@@ -1172,31 +1172,35 @@
 									{/each}
 								</div>
 							</div>
-						{/each}
-					</div>
-				</section>
 
-				<!-- Shot against somebody rather than against a round, which is why it is its own section. -->
-				<section>
-					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('match.group')}</h3>
-					<div class="grid gap-2 sm:grid-cols-2">
-						{#each MATCH_FORMATS as format (format)}
-							<button
-								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
-								onclick={() => openMatch(format)}
-							>
-								<span
-									class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
-								>
-									<Icon name={format === 'custom' ? 'sliders' : 'medal'} size={20} />
-								</span>
-								<span class="min-w-0 flex-1">
-									<span class="block font-medium">{$t(`match.format.${format}`)}</span>
-									<span class="mt-0.5 block text-xs text-muted">
-										{$t(`match.formatHint.${format}`)}
-									</span>
-								</span>
-							</button>
+							<!-- Right after target: a match is shot on a target face, so it belongs beside them. -->
+							{#if discipline === 'target'}
+								<div>
+									<h4 class="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
+										{$t('match.group')}
+									</h4>
+									<div class="grid gap-2 sm:grid-cols-2">
+										{#each MATCH_FORMATS as format (format)}
+											<button
+												class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+												onclick={() => openMatch(format)}
+											>
+												<span
+													class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
+												>
+													<Icon name={format === 'custom' ? 'sliders' : 'medal'} size={20} />
+												</span>
+												<span class="min-w-0 flex-1">
+													<span class="block font-medium">{$t(`match.format.${format}`)}</span>
+													<span class="mt-0.5 block text-xs text-muted">
+														{$t(`match.formatHint.${format}`)}
+													</span>
+												</span>
+											</button>
+										{/each}
+									</div>
+								</div>
+							{/if}
 						{/each}
 					</div>
 				</section>
