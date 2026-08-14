@@ -7,7 +7,14 @@ import { build, files, version } from '$service-worker';
  */
 
 const CACHE = `appchery-${version}`;
-const ASSETS = [...build, ...files];
+
+// `files` is everything in static/, but _headers and _redirects are Cloudflare Pages configuration:
+// Pages reads them at deploy time and never serves them, so requesting them 404s. cache.addAll
+// rejects as a unit, so leaving them in fails the install event, and a service worker that never
+// installs costs both offline support and the install prompt that depends on it.
+// Matched on the tail, because `files` entries carry the app's base path in front of them.
+const HOST_CONFIG = ['/_headers', '/_redirects'];
+const ASSETS = [...build, ...files].filter((path) => !HOST_CONFIG.some((c) => path.endsWith(c)));
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
 

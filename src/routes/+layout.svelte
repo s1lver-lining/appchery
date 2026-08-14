@@ -4,6 +4,9 @@
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { initDb, dbInfo } from '$lib/db';
+	// Imported for its side effect: beforeinstallprompt fires early, and a listener registered only
+	// once Settings is opened would already have missed it.
+	import '$lib/install';
 	import {
 		backGuards,
 		isMainPage,

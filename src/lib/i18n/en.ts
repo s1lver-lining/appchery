@@ -726,6 +726,13 @@ export const en = {
 		newButtonTitle: 'Full new session button',
 		newButtonHint:
 			'Ends the sessions list with the wide button and its menu. Off, a round plus button sits in the corner and opens the same choices.',
+		installTitle: 'Install Appchery',
+		installHint:
+			'Adds it to your home screen and runs it without the browser bars. Your scores stay where they are.',
+		installAction: 'Install',
+		fullscreenTitle: 'Fullscreen',
+		fullscreenHint:
+			'Hides the browser bars until you leave the page or reload. Installing the app does this for good.',
 		noAnimationsTitle: 'Turn off animations',
 		noAnimationsHint:
 			'Stops the ripple when the app opens, the ring on the sessions list, and the fireworks over a record. Progress indicators keep moving.',

@@ -34,8 +34,24 @@
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import { withOrigin } from '$lib/nav';
+	import {
+		fullscreenSupported,
+		isFullscreen,
+		setFullscreen,
+		onFullscreenChange
+	} from '$lib/fullscreen';
+	import { installable, promptInstall } from '$lib/install';
 
 	const info = dbInfo();
+
+	// The browser owns this, so the switch follows it: leaving fullscreen by the system gesture or
+	// the back key has to move the toggle too, or it starts lying.
+	const canFullscreen = fullscreenSupported();
+	let fullscreen = $state(false);
+	$effect(() => {
+		fullscreen = isFullscreen();
+		return onFullscreenChange(() => (fullscreen = isFullscreen()));
+	});
 	/**
 	 * Three tabs, split by what a setting is about rather than by how often it is touched: how the
 	 * app looks, what it records while shooting, and what happens to the data afterwards.
@@ -197,6 +213,39 @@
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.display')}</h2>
 					<div class="space-y-4">
+						<!-- Only while Chrome has actually handed over a prompt to pass on. Already installed, or
+						     a browser that installs from its own menu, and there is nothing to show. -->
+						{#if $installable}
+							<div class="flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<p class="font-medium">{$t('settings.installTitle')}</p>
+									<p class="mt-0.5 text-sm text-muted">{$t('settings.installHint')}</p>
+								</div>
+								<button
+									class="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+									onclick={() => promptInstall()}
+								>
+									{$t('settings.installAction')}
+								</button>
+							</div>
+						{/if}
+
+						<!-- Absent rather than disabled where the browser has no element fullscreen, which on a
+						     phone means Safari: a dead switch would read as a bug in the app. -->
+						{#if canFullscreen}
+							<div class="flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<p class="font-medium">{$t('settings.fullscreenTitle')}</p>
+									<p class="mt-0.5 text-sm text-muted">{$t('settings.fullscreenHint')}</p>
+								</div>
+								<Toggle
+									checked={fullscreen}
+									label={$t('settings.fullscreenTitle')}
+									onchange={(v) => setFullscreen(v)}
+								/>
+							</div>
+						{/if}
+
 						<div class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.clockTitle')}</p>

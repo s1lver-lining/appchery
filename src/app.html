@@ -10,8 +10,14 @@
 			with its colours rewritten, brand gold arriving as red.
 		-->
 		<meta name="color-scheme" content="light dark" />
-		<meta name="theme-color" content="#f7f3ec" media="(prefers-color-scheme: light)" />
-		<meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)" />
+		<!--
+			One tag, kept in step by $lib/theme, rather than a pair keyed to prefers-color-scheme. The
+			media form follows the system, but the app has a theme of its own, so choosing Dark on a
+			light phone used to leave a pale status bar over a dark app. The value here is only what
+			shows before the script runs, and it is the header's colour rather than the page's: on
+			Android the status bar sits directly above the header, and any difference reads as a band.
+		-->
+		<meta name="theme-color" content="#f3e9d9" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />
 		<link rel="manifest" href="%sveltekit.assets%/manifest.webmanifest" />
 		<link rel="apple-touch-icon" href="%sveltekit.assets%/icon-192.png" />

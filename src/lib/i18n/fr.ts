@@ -731,6 +731,13 @@ export const fr: Dictionary = {
 		newButtonTitle: 'Bouton de séance complet',
 		newButtonHint:
 			'Termine la liste des séances par le bouton large et son menu. Désactivé, un bouton rond se place dans le coin et ouvre les mêmes choix.',
+		installTitle: 'Installer Appchery',
+		installHint:
+			"L'ajoute à votre écran d'accueil et la lance sans les barres du navigateur. Vos scores restent où ils sont.",
+		installAction: 'Installer',
+		fullscreenTitle: 'Plein écran',
+		fullscreenHint:
+			"Masque les barres du navigateur jusqu'à ce que vous quittiez la page ou la rechargiez. Installer l'application le fait définitivement.",
 		noAnimationsTitle: 'Désactiver les animations',
 		noAnimationsHint:
 			"Arrête l'onde à l'ouverture de l'application, l'anneau de la liste des séances et le feu d'artifice sur un record. Les indicateurs de progression continuent de tourner.",
