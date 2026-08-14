@@ -43,6 +43,7 @@
 		onFullscreenChange
 	} from '$lib/fullscreen';
 	import { installable, promptInstall } from '$lib/install';
+	import { refreshApp } from '$lib/update';
 
 	const info = dbInfo();
 
@@ -50,6 +51,8 @@
 	// the back key has to move the toggle too, or it starts lying.
 	const canFullscreen = fullscreenSupported();
 	let fullscreen = $state(false);
+	/** Said only after a refresh was asked for and there was no network to serve it. */
+	let refreshFailed = $state(false);
 	$effect(() => {
 		fullscreen = isFullscreen();
 		return onFullscreenChange(() => (fullscreen = isFullscreen()));
@@ -215,6 +218,23 @@
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.display')}</h2>
 					<div class="space-y-4">
+						<!-- The installed app can sit on an old build for as long as it is never fully closed,
+						     so there is a way to ask for the current one without uninstalling anything. -->
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.refreshTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">
+									{refreshFailed ? $t('settings.refreshOffline') : $t('settings.refreshHint')}
+								</p>
+							</div>
+							<button
+								class="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold"
+								onclick={async () => (refreshFailed = !(await refreshApp()))}
+							>
+								{$t('settings.refreshAction')}
+							</button>
+						</div>
+
 						<!-- Only while Chrome has actually handed over a prompt to pass on. Already installed, or
 						     a browser that installs from its own menu, and there is nothing to show. -->
 						{#if $installable}

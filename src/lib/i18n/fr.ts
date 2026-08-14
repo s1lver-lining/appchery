@@ -764,6 +764,10 @@ export const fr: Dictionary = {
 		newButtonTitle: 'Bouton de séance complet',
 		newButtonHint:
 			'Termine la liste des séances par le bouton large et son menu. Désactivé, un bouton rond se place dans le coin et ouvre les mêmes choix.',
+		refreshTitle: "Actualiser l'application",
+		refreshHint: 'Recharge la dernière version. Vos données ne sont pas touchées.',
+		refreshOffline: 'Pas de réseau : connectez-vous et réessayez.',
+		refreshAction: 'Actualiser',
 		installTitle: 'Installer Appchery',
 		installHint:
 			"L'ajoute à votre écran d'accueil et la lance sans les barres du navigateur. Vos scores restent où ils sont.",

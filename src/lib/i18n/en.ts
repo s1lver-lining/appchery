@@ -757,6 +757,10 @@ export const en = {
 		newButtonTitle: 'Full new session button',
 		newButtonHint:
 			'Ends the sessions list with the wide button and its menu. Off, a round plus button sits in the corner and opens the same choices.',
+		refreshTitle: 'Refresh the app',
+		refreshHint: 'Loads the latest version again. Your data is untouched.',
+		refreshOffline: 'No network: connect and try again.',
+		refreshAction: 'Refresh',
 		installTitle: 'Install Appchery',
 		installHint:
 			'Adds it to your home screen and runs it without the browser bars. Your scores stay where they are.',

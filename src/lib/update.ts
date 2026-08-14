@@ -29,3 +29,20 @@ export function watchForUpdates(): () => void {
 	document.addEventListener('visibilitychange', onVisible);
 	return () => document.removeEventListener('visibilitychange', onVisible);
 }
+
+/**
+ * The button in Settings, for when a deploy still has not appeared. Drops every cache the app has
+ * put aside and loads it again from the network, which is the only thing left that can be stale.
+ * Refuses while offline rather than emptying the cache the app is about to need.
+ */
+export async function refreshApp(): Promise<boolean> {
+	if (!navigator.onLine) return false;
+	if ('caches' in window) {
+		const keys = await caches.keys();
+		await Promise.all(keys.map((key) => caches.delete(key)));
+	}
+	const registration = await navigator.serviceWorker?.getRegistration();
+	await registration?.update().catch(() => undefined);
+	location.reload();
+	return true;
+}
