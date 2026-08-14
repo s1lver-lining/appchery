@@ -6,6 +6,7 @@
 	import Icon from './Icon.svelte';
 	import WheelPicker from './WheelPicker.svelte';
 	import { closeOnBack } from './dismiss.svelte';
+	import { scrim } from './statusBar';
 
 	/**
 	 * When something is meant to happen. The month is on show rather than behind a native field: a
@@ -91,7 +92,7 @@
 </script>
 
 <div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-	<button class="absolute inset-0 bg-black/40" aria-label={$t('common.close')} onclick={oncancel}
+	<button class="absolute inset-0 bg-black/40" use:scrim={0.4} aria-label={$t('common.close')} onclick={oncancel}
 	></button>
 
 	<div

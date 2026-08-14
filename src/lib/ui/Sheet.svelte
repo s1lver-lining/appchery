@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import Icon from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
+	import { scrim } from './statusBar';
 
 	/**
 	 * A panel over the page, rising from the bottom edge on a phone and centred on a wide screen,
@@ -32,6 +33,7 @@
 	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
 		<button
 			class="absolute inset-0 bg-black/40"
+			use:scrim={0.4}
 			aria-label={$t('common.close')}
 			onclick={onclose}
 		></button>

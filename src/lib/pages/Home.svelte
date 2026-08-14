@@ -39,6 +39,7 @@
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { scrim } from '$lib/ui/statusBar';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let scored = $state<ScoredActivity[]>([]);
@@ -567,6 +568,7 @@
 	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
 		<button
 			class="absolute inset-0 bg-black/40"
+			use:scrim={0.4}
 			aria-label={$t('common.close')}
 			onclick={() => (picking = null)}
 		></button>

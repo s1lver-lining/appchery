@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { closeOnBack } from './dismiss.svelte';
+	import { scrim } from './statusBar';
 
 	/**
 	 * Deletions here remove scores that exist nowhere else, so they ask first. The confirming button
@@ -28,7 +29,7 @@
 </script>
 
 <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-	<button class="absolute inset-0 bg-black/50" aria-label={$t('common.cancel')} onclick={oncancel}
+	<button class="absolute inset-0 bg-black/50" use:scrim={0.5} aria-label={$t('common.cancel')} onclick={oncancel}
 	></button>
 
 	<div

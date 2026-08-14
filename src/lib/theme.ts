@@ -35,11 +35,16 @@ export const theme = writable<Theme>(stored());
  * colour follows the theme; a literal colour is used as written, for a screen that is one colour
  * whatever the theme says.
  */
-type Claim = { colour: string };
+/**
+ * A scrim claims the bar too, but as a shade rather than a colour: it darkens whatever is under it,
+ * including the band above the page, and a bar left bright over a dimmed page reads as a strip of
+ * another app. It is applied on top of the colour claim below it, so a dialog that names its own
+ * colour still wins.
+ */
+type Claim = { colour: string } | { dim: number };
 const claims: Claim[] = [];
 
-export function overrideStatusBar(colour: string): () => void {
-	const claim = { colour };
+function push(claim: Claim): () => void {
 	claims.push(claim);
 	if (typeof document !== 'undefined') syncStatusBar();
 	return () => {
@@ -49,26 +54,35 @@ export function overrideStatusBar(colour: string): () => void {
 	};
 }
 
+export function overrideStatusBar(colour: string): () => void {
+	return push({ colour });
+}
+
+export function dimStatusBar(alpha: number): () => void {
+	return push({ dim: alpha });
+}
+
 function syncStatusBar() {
 	const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 	if (!meta) return;
 	const styles = getComputedStyle(document.documentElement);
-
-	const claimed = claims[claims.length - 1]?.colour;
-	if (claimed) {
-		const resolved = claimed.startsWith('--')
-			? styles.getPropertyValue(claimed).trim()
-			: claimed;
-		if (resolved) {
-			meta.content = resolved;
-			return;
-		}
-	}
+	const resolve = (colour: string) =>
+		colour.startsWith('--') ? styles.getPropertyValue(colour).trim() : colour;
 
 	const bg = styles.getPropertyValue('--c-bg').trim();
 	const brand = styles.getPropertyValue('--c-brand').trim();
-	const blended = mix(brand, bg, 0.1);
-	if (blended) meta.content = blended;
+	// The app's own band, worn by every page that has not claimed the bar for itself.
+	let colour = mix(brand, bg, 0.1) ?? bg;
+
+	const last = claims.map((claim) => 'colour' in claim).lastIndexOf(true);
+	if (last >= 0) colour = resolve((claims[last] as { colour: string }).colour) || colour;
+
+	// Only the scrims raised over that claim count: the ones below it are already painted over.
+	for (const claim of claims.slice(last + 1)) {
+		if ('dim' in claim) colour = mix('#000000', colour, claim.dim) ?? colour;
+	}
+
+	if (colour) meta.content = colour;
 }
 
 /** `bg-brand/10`, done in JS: the header paints brand over the page at a tenth. */

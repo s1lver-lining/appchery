@@ -6,6 +6,7 @@
 	import Icon from './Icon.svelte';
 	import Toggle from './Toggle.svelte';
 	import { closeOnBack } from './dismiss.svelte';
+	import { scrim } from './statusBar';
 	import {
 		scorecardSvg,
 		scorecardImage,
@@ -203,6 +204,7 @@
 	<div class="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
 		<button
 			class="absolute inset-0 bg-black/60"
+			use:scrim={0.6}
 			aria-label={$t('common.close')}
 			onclick={() => (picking = false)}
 		></button>

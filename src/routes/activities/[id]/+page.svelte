@@ -65,6 +65,7 @@
 	} from '$lib/db/repository';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
+	import { scrim } from '$lib/ui/statusBar';
 
 	const activityId = $derived($page.params.id as string);
 
@@ -1207,6 +1208,7 @@
 		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
 			<button
 				class="absolute inset-0 bg-black/40"
+				use:scrim={0.4}
 				aria-label={$t('common.close')}
 				onclick={closeModal}
 			></button>

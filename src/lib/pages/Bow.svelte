@@ -42,6 +42,7 @@
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { scrim } from '$lib/ui/statusBar';
 
 	/**
 	 * One bow, as a page. It is rendered twice: as its own route, and as the equipment slot of the
@@ -632,6 +633,7 @@
 	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
 		<button
 			class="absolute inset-0 bg-black/40"
+			use:scrim={0.4}
 			aria-label={$t('common.close')}
 			onclick={() => (editingGroup = null)}
 		></button>

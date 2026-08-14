@@ -3,6 +3,7 @@
 	import type { EarnedBadge } from '$lib/domain/badges';
 	import { closeOnBack } from './dismiss.svelte';
 	import BadgeCard from './BadgeCard.svelte';
+	import { scrim } from './statusBar';
 
 	/** What a tile in the grid cannot say: the rule, and how far off it is. */
 	let { badge, onclose }: { badge: EarnedBadge; onclose: () => void } = $props();
@@ -14,7 +15,7 @@
 </script>
 
 <div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
-	<button class="absolute inset-0 bg-black/50" aria-label={$t('common.close')} onclick={onclose}
+	<button class="absolute inset-0 bg-black/50" use:scrim={0.5} aria-label={$t('common.close')} onclick={onclose}
 	></button>
 
 	<div class="relative w-full max-w-xs" role="dialog" aria-label={$t(`badges.list.${badge.definition.key}.name`)}>

@@ -92,6 +92,7 @@
 	import { defaultBowId, formatDateTime, dateFormats } from '$lib/prefs';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
+	import { scrim, ownsStatusBar } from '$lib/ui/statusBar';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -1119,7 +1120,7 @@
 	</div>
 
 	{#if adding}
-		<div class="fixed inset-0 z-50 flex flex-col bg-bg">
+		<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar>
 			<header
 				class="safe-top flex items-center justify-between border-b border-line px-4 py-3 pt-6"
 			>
@@ -1507,6 +1508,7 @@
 	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
 		<button
 			class="absolute inset-0 bg-black/40"
+			use:scrim={0.4}
 			aria-label={$t('common.close')}
 			onclick={() => (editingGoal = false)}
 		></button>
@@ -1561,6 +1563,7 @@
 	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
 		<button
 			class="absolute inset-0 bg-black/40"
+			use:scrim={0.4}
 			aria-label={$t('common.close')}
 			onclick={() => (countDialog = null)}
 		></button>

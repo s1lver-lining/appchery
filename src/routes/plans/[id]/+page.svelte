@@ -24,6 +24,7 @@
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { scrim } from '$lib/ui/statusBar';
 
 	const planId = $derived($page.params.id as string);
 	$effect(() => setPageUp('/plans'));
@@ -235,7 +236,7 @@
 
 	{#if editing || creatingOn !== null}
 		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
-			<button class="absolute inset-0 bg-black/40" aria-label={$t('common.close')} onclick={closeSheet}
+			<button class="absolute inset-0 bg-black/40" use:scrim={0.4} aria-label={$t('common.close')} onclick={closeSheet}
 			></button>
 
 			<div class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
