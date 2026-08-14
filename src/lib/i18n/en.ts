@@ -366,6 +366,8 @@ export const en = {
 		diagram: {
 			equalGaps: 'equal gaps',
 			downString: 'seen down the string',
+			limbGauge: 'alignment gauge',
+			bowPlane: 'and through the grip',
 			stringLine: 'string',
 			button: 'button',
 			insideCentre: '1 to 2 mm inside',

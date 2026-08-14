@@ -31,31 +31,45 @@
 			The bow seen down the string, twice: the string splitting the limb, and the same limb sat
 			off to one side. The pair is the point, since the fault only reads against the good case.
 		-->
-		{#each [{ x: 62, off: 0, ok: true }, { x: 178, off: 8, ok: false }] as panel (panel.x)}
+		{#each [{ x: 62, off: 0, ok: true }, { x: 178, off: 9, ok: false }] as panel (panel.x)}
 			<g>
 				<!-- Limb tip and fadeout, drawn as a taper so its own centre line is readable. -->
 				<path
-					d="M{panel.x + panel.off - 7} 26 L{panel.x + panel.off + 7} 26 L{panel.x +
+					d="M{panel.x + panel.off - 7} 20 L{panel.x + panel.off + 7} 20 L{panel.x +
 						panel.off +
-						13} 104 L{panel.x + panel.off - 13} 104 Z"
+						13} 88 L{panel.x + panel.off - 13} 88 Z"
 					opacity="0.3"
 					fill="currentColor"
 					stroke="none"
 				/>
 				<path
-					d="M{panel.x + panel.off} 26 L{panel.x + panel.off} 104"
+					d="M{panel.x + panel.off} 20 L{panel.x + panel.off} 88"
 					stroke-dasharray="3 3"
 					opacity="0.6"
 				/>
+
+				<!--
+					The alignment gauge clipped across the limb, which is what actually finds its centre: the
+					limb tapers, so an eye reading its edges calls it centred long before it is.
+				-->
+				<g transform="translate({panel.x + panel.off} 46)">
+					<rect x="-16" y="-5.5" width="32" height="11" rx="2" opacity="0.6" />
+					<path d="M0 -9 L0 9" stroke-width="2" class="text-brand-text" stroke="currentColor" />
+				</g>
+
+				<!-- The grip. The string crosses it too: limbs centred on a bow the string misses are still off plane. -->
+				<rect x={panel.x - 10} y="88" width="20" height="26" rx="3" opacity="0.4" />
+
 				<!-- The string: straight, and the only fixed reference in the picture. -->
 				<path
-					d="M{panel.x} 16 L{panel.x} 116"
+					d="M{panel.x} 12 L{panel.x} 118"
 					stroke-width="2"
 					class="text-brand-text"
 					stroke="currentColor"
 				/>
+
 				<g
-					transform="translate({panel.x} 134)"
+					transform="translate({panel.x} 128)"
 					class={panel.ok ? 'text-brand-text' : 'text-danger'}
 					stroke="currentColor"
 					stroke-width="2.2"
@@ -64,8 +78,17 @@
 				</g>
 			</g>
 		{/each}
+
+		<text x="98" y="50" font-size="9" fill="currentColor" stroke="none" class="text-muted">
+			{$t('tuning.diagram.limbGauge')}
+		</text>
+		<path d="M96 47 L{62 + 16} 47" opacity="0.4" />
+
 		<text x="8" y="146" font-size="9" fill="currentColor" stroke="none" class="text-muted">
 			{$t('tuning.diagram.downString')}
+		</text>
+		<text x="232" y="146" font-size="9" fill="currentColor" stroke="none" text-anchor="end" class="text-muted">
+			{$t('tuning.diagram.bowPlane')}
 		</text>
 	{:else if name === 'centreShot'}
 		<!--

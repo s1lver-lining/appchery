@@ -81,12 +81,14 @@ const EN: Record<string, StepText> = {
 		why: 'Limbs that sit off the bow plane push the arrow sideways on every shot, and no amount of tuning further down this list can correct it.',
 		steps: [
 			'Brace the bow and look down the string from behind, with the bow upright.',
-			'The string should split both limbs down their middle, and run through the middle of the grip.',
+			'Clip an alignment gauge to each limb. A limb tapers, so its edges read as centred long before its middle is, and the gauge marks the middle for you.',
+			'The string should split both gauges, and pass through the middle of the grip on its way: the whole bow lies in one plane, and the string is that plane.',
 			'Adjust the limb pockets: alignment carriages on a modern riser, eccentric bolts on an older one.',
 			'Check again after every change, since moving one limb moves what the other looks like.'
 		],
 		results: [
 			{ observation: 'String sits left of the limb centre', suggests: 'Move that limb right, a small turn at a time' },
+			{ observation: 'Both gauges split, string off the grip centre', suggests: 'The riser is canted in the pockets: bring both limbs across together' },
 			{ observation: 'String looks centred on one limb only', suggests: 'Align the worse limb first, then recheck both' },
 			{ observation: 'No adjustment brings it in', suggests: 'Suspect a twisted limb: go to the next step' }
 		]
@@ -402,12 +404,14 @@ const FR: Record<string, StepText> = {
 		why: "Des branches hors du plan d'arc poussent la flèche de côté à chaque tir, et aucun réglage plus bas dans cette liste ne peut le rattraper.",
 		steps: [
 			"Bandez l'arc et regardez le long de la corde par l'arrière, arc vertical.",
-			'La corde doit couper les deux branches en leur milieu et passer au centre de la poignée.',
+			"Posez une cale d'alignement sur chaque branche. Une branche s'affine vers la poupée : ses bords semblent centrés bien avant que son milieu le soit, et la cale marque ce milieu à votre place.",
+			'La corde doit couper les deux cales et passer au centre de la poignée en chemin : tout l’arc tient dans un seul plan, et la corde est ce plan.',
 			"Ajustez les logements de branches : chariots d'alignement sur une poignée récente, vis excentriques sur une plus ancienne.",
 			"Revérifiez après chaque modification : déplacer une branche change ce que l'autre semble faire."
 		],
 		results: [
 			{ observation: 'La corde passe à gauche du milieu de la branche', suggests: 'Décalez cette branche vers la droite, par petites touches' },
+			{ observation: 'Les deux cales sont coupées mais la corde rate le centre de la poignée', suggests: 'La poignée est de travers dans les logements : décalez les deux branches ensemble' },
 			{ observation: 'La corde ne semble centrée que sur une branche', suggests: "Alignez d'abord la moins bonne, puis revérifiez les deux" },
 			{ observation: "Aucun réglage n'y parvient", suggests: 'Soupçonnez une branche vrillée : passez à l’étape suivante' }
 		]

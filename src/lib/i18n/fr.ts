@@ -369,6 +369,8 @@ export const fr: Dictionary = {
 		diagram: {
 			equalGaps: 'écarts égaux',
 			downString: 'vu le long de la corde',
+			limbGauge: "cale d'alignement",
+			bowPlane: 'et par la poignée',
 			stringLine: 'corde',
 			button: 'bouton',
 			insideCentre: '1 à 2 mm en dedans',

@@ -119,11 +119,13 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		appliesTo: ['recurve', 'barebow', 'longbow'],
 		steps: [
 			'Brace the bow and sight down the string from behind, bow upright.',
-			'Note where the string falls on each limb against its centre line.',
+			'Clip an alignment gauge to each limb: a limb tapers, so its edges read as centred long before its middle is.',
+			'The string should split both gauges and pass through the middle of the grip: the bow lies in one plane, and the string is that plane.',
 			'Move the limb pockets a small step at a time, rechecking both limbs after each.'
 		],
 		interpretation: [
 			{ observation: 'String left of the limb centre', suggests: 'Move that limb right, a small turn at a time' },
+			{ observation: 'Both limbs split, string off the grip centre', suggests: 'The riser is canted in the pockets: bring both limbs across together' },
 			{ observation: 'Cannot be brought in', suggests: 'Suspect a twisted limb rather than a pocket setting' }
 		],
 		settings: []
