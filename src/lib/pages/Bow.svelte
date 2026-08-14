@@ -488,7 +488,7 @@
 										onclick={() => startTuning(template.key)}
 									>
 										<Icon name="wrench" size={16} />
-										{template.name}
+										{$t(`tuning.template.${template.key}`)}
 									</button>
 								</li>
 							{/each}

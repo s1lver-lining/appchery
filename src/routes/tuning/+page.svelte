@@ -162,7 +162,7 @@
 					onclick={() => startTuning(template.key)}
 				>
 					<Icon name="wrench" size={18} />
-					{$t('tuning.startNamed', { name: template.name })}
+					{$t('tuning.startNamed', { name: $t(`tuning.template.${template.key}`) })}
 				</button>
 				{#if !target}
 					<p class="text-center text-xs text-muted">{$t('tuning.needBow')}</p>

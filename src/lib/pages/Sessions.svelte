@@ -91,7 +91,9 @@
 			// A match is remembered by who it was against, so that is its name as far as searching goes.
 			const name =
 				round?.name ??
-				(a.templateKey ? getTemplate(a.templateKey)?.name : null) ??
+				(a.templateKey && getTemplate(a.templateKey)
+					? $t(`tuning.template.${a.templateKey}`)
+					: null) ??
 				parseConfig(a.matchConfig)?.opponent;
 			if (name) entry.names.push(name);
 			// Training arrows are counted, never listed, so counting them here claimed an activity

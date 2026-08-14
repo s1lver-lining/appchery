@@ -404,6 +404,23 @@ export const fr: Dictionary = {
 		applied: "Ce test a produit une révision de l'arc.",
 		viewHistory: "Voir l'historique de l'arc",
 		steps: 'Étapes',
+		/** The tuning procedures by key, so a French archer reads a French name for the one they ran. */
+		template: {
+			'brace-height': 'Band',
+			'nocking-point': 'Point d’encochage',
+			'bare-shaft': 'Réglage aux flèches non empennées',
+			'paper-tune': 'Réglage au papier',
+			'walk-back': 'Réglage en reculant',
+			'crawl-calibration': 'Étalonnage des repères de crawl',
+			'limb-alignment': 'Alignement des branches',
+			'rest-position': 'Position du repose-flèche',
+			'centre-shot': 'Alignement de la flèche',
+			'tiller': 'Tiller',
+			'draw-stop': 'Butées d’allonge',
+			'peep-alignment': 'Alignement du viseur de corde',
+			'clearance': 'Contrôle du dégagement',
+			'cam-timing': 'Synchronisation des cames'
+		},
 		noSettings:
 			"Ce test ne modifie aucun réglage enregistré pour l'arc : il vit dans les notes.",
 		interpretation: 'Ce que le résultat suggère',

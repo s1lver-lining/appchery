@@ -400,6 +400,23 @@ export const en = {
 		applied: 'This test produced a bow revision.',
 		viewHistory: 'View the bow history',
 		steps: 'Steps',
+		/** The tuning procedures by key, so a French archer reads a French name for the one they ran. */
+		template: {
+			'brace-height': 'Brace height',
+			'nocking-point': 'Nocking point height',
+			'bare-shaft': 'Bare shaft tuning',
+			'paper-tune': 'Paper tuning',
+			'walk-back': 'Walk-back tuning',
+			'crawl-calibration': 'Crawl calibration',
+			'limb-alignment': 'Limb alignment',
+			'rest-position': 'Rest position',
+			'centre-shot': 'Centre shot',
+			'tiller': 'Tiller',
+			'draw-stop': 'Draw stops',
+			'peep-alignment': 'Peep alignment',
+			'clearance': 'Clearance check',
+			'cam-timing': 'Cam timing'
+		},
 		noSettings: 'This test changes nothing the bow record holds, so it lives in the notes.',
 		interpretation: 'What the result suggests',
 		notes: 'Notes',

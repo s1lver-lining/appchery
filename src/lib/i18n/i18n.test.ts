@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { en } from './en';
 import { fr } from './fr';
 import { LOCALES } from './index';
+import { TUNING_TEMPLATES } from '../domain/tuning/templates';
 
 /**
  * A missing translation is a blank label found by whoever speaks that language, which is nobody on
@@ -59,4 +60,33 @@ describe('translations', () => {
 			expect(broken).toEqual([]);
 		});
 	}
+});
+
+/**
+ * The procedures carry an English name of their own, because the domain has to be readable and
+ * testable without a dictionary. That leaves two copies of the same words, so they are checked
+ * against each other rather than trusted to stay in step.
+ */
+describe('tuning procedure names', () => {
+	it('names every procedure in every language', () => {
+		for (const [name, dictionary] of Object.entries(DICTIONARIES)) {
+			const flat = flatten(dictionary);
+			const missing = TUNING_TEMPLATES.filter((t) => !flat.has(`tuning.template.${t.key}`));
+			expect(missing.map((t) => `${name}: ${t.key}`)).toEqual([]);
+		}
+	});
+
+	it('agrees with the English the templates carry', () => {
+		for (const template of TUNING_TEMPLATES) {
+			expect(reference.get(`tuning.template.${template.key}`)).toBe(template.name);
+		}
+	});
+
+	it('names no procedure that no longer exists', () => {
+		const keys = new Set(TUNING_TEMPLATES.map((t) => t.key));
+		const stale = [...reference.keys()]
+			.filter((key) => key.startsWith('tuning.template.'))
+			.filter((key) => !keys.has(key.slice('tuning.template.'.length)));
+		expect(stale).toEqual([]);
+	});
 });

@@ -577,7 +577,9 @@
 		}
 		// The procedure's name, not the key it is stored under: the row said "limb-alignment".
 		if (a.kind === 'tuning')
-			return (a.templateKey ? getTemplate(a.templateKey)?.name : null) ?? $t('tuning.title');
+			return a.templateKey && getTemplate(a.templateKey)
+				? $t(`tuning.template.${a.templateKey}`)
+				: $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 		return round?.name ?? '';
 	}
@@ -1234,7 +1236,7 @@
 											<Icon name="wrench" size={20} />
 										{/if}
 									</span>
-									<span class="min-w-0 flex-1 font-medium">{template.name}</span>
+									<span class="min-w-0 flex-1 font-medium">{$t(`tuning.template.${template.key}`)}</span>
 								</button>
 							{/each}
 						</div>

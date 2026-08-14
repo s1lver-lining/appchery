@@ -121,6 +121,11 @@
 	const slots = $derived(round ? endSlots(round) : []);
 	const keypad = $derived<Zone[]>(scoreSet ? scorableZones(scoreSet) : []);
 	const template = $derived(activity?.templateKey ? getTemplate(activity.templateKey) : undefined);
+	/** Read from the dictionary rather than off the template, which only carries the English name. */
+	const templateName = $derived(
+		template ? $t(`tuning.template.${template.key}`) : $t('tuning.title')
+	);
+
 	/** The same picture the guide draws for this procedure: the geometry is the same on both pages. */
 	const diagram = $derived(
 		GUIDE_STEPS.find((step) => step.templateKey === activity?.templateKey)?.diagram ?? null
@@ -651,7 +656,7 @@
 	 */
 	async function applyAdjustment() {
 		if (!bow || settingChanges.length === 0) return;
-		const reason = [template?.name, notes.trim()].filter(Boolean).join(': ');
+		const reason = [template ? templateName : null, notes.trim()].filter(Boolean).join(': ');
 		const revisionId = await createRevision(bow.id, draft, reason);
 		await linkResultingRevision(activityId, revisionId);
 		await updateActivity(activityId, { observations: notes, adjustmentMade: '' });
@@ -699,7 +704,7 @@
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
 			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
-			<h1 class="text-2xl font-bold tracking-tight">{template?.name ?? $t('tuning.title')}</h1>
+			<h1 class="text-2xl font-bold tracking-tight">{templateName}</h1>
 			{#if bow}
 				<p class="text-sm text-muted">{bow.name}</p>
 			{/if}
