@@ -3,6 +3,13 @@
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+		<!--
+			Both schemes are painted by hand, which is what turns a browser's own forced dark mode off.
+			It belongs here rather than only in the stylesheet: Samsung Internet decides whether to
+			repaint the page while the head is being read, and a page it judges light-only comes back
+			with its colours rewritten, brand gold arriving as red.
+		-->
+		<meta name="color-scheme" content="light dark" />
 		<meta name="theme-color" content="#f7f3ec" media="(prefers-color-scheme: light)" />
 		<meta name="theme-color" content="#17140f" media="(prefers-color-scheme: dark)" />
 		<link rel="icon" href="%sveltekit.assets%/favicon.svg" />

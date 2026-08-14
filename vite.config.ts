@@ -41,8 +41,9 @@ function crossOriginIsolation(): Plugin {
 /**
  * Cross-origin isolation only takes effect in a secure context, and `localhost` is the only
  * insecure origin browsers exempt. A phone opening the LAN address over plain HTTP therefore gets
- * no OPFS and an in-memory database, so `dev.sh --ssl` sets this to serve a self-signed cert
- * instead. It stays opt-in because the cert has to be accepted by hand on every device.
+ * no OPFS and an in-memory database, so `dev.sh --ssl` and `run.sh --ssl` set this to serve a
+ * self-signed cert instead. It stays opt-in because the cert has to be accepted by hand on every
+ * device, and because a cert error still blocks Chrome's install prompt.
  */
 const ssl = process.env.APPCHERY_SSL === '1';
 
