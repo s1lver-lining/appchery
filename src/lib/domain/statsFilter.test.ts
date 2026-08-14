@@ -73,6 +73,11 @@ describe('periodBounds', () => {
 		expect(bounds.from).toBeGreaterThan(first - DAY);
 	});
 
+	it('keeps a year of axis when everything was shot in one day, so the chart still reads', () => {
+		const bounds = periodBounds(filter(), [activity({ id: 'a', startedAt: MARCH })], MARCH);
+		expect(bounds.to - bounds.from).toBeGreaterThan(360 * DAY);
+	});
+
 	it('reads a month as the last thirty days rather than as the calendar month', () => {
 		const bounds = periodBounds(filter({ period: 'month' }), [], MARCH);
 		expect(new Date(bounds.from).getMonth()).toBe(1);

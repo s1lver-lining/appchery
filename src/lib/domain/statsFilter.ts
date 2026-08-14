@@ -85,14 +85,17 @@ export function periodBounds(
 	}
 }
 
+/**
+ * The first arrow ever shot, but never less than a year of axis. A day or two of history drawn on a
+ * two day axis reads as a chart of nothing: the shape only means something against the time it had
+ * to happen in.
+ */
 function oldest(activities: ScoredActivity[], now: number): number {
-	if (activities.length === 0) {
-		// A year of empty months still reads as a chart, where a single point reads as a bug.
-		const start = new Date(now);
-		start.setFullYear(start.getFullYear() - 1);
-		return startOfDay(start.getTime());
-	}
-	return startOfDay(Math.min(...activities.map((a) => a.startedAt)));
+	const start = new Date(now);
+	start.setFullYear(start.getFullYear() - 1);
+	const year = startOfDay(start.getTime());
+	if (activities.length === 0) return year;
+	return Math.min(year, startOfDay(Math.min(...activities.map((a) => a.startedAt))));
 }
 
 function endOfDay(at: number): number {
