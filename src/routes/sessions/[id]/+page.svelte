@@ -85,6 +85,7 @@
 		type PlanSlotRow
 	} from '$lib/db/repository';
 	import Icon from '$lib/ui/Icon.svelte';
+	import MatchGlyph from '$lib/ui/MatchGlyph.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
@@ -1185,10 +1186,8 @@
 												class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 												onclick={() => openMatch(format)}
 											>
-												<span
-													class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
-												>
-													<Icon name={format === 'custom' ? 'sliders' : 'medal'} size={20} />
+												<span class="flex shrink-0 items-center justify-center">
+													<MatchGlyph {format} />
 												</span>
 												<span class="min-w-0 flex-1">
 													<span class="block font-medium">{$t(`match.format.${format}`)}</span>
