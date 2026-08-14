@@ -20,9 +20,17 @@
 		arrowDriftWarning,
 		arrowDriftIgnored
 	} from '$lib/prefs';
-	import { formatDistance, mmToInches, inchesToMm } from '$lib/domain/units';
+	import { formatDistance } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
-	import { schemaFor, diffSettings, type BowSettings, type SettingField } from '$lib/domain/equipment/schemas';
+	import {
+		schemaFor,
+		diffSettings,
+		displaySetting,
+		parseSetting,
+		formatSetting,
+		type BowSettings,
+		type SettingField
+	} from '$lib/domain/equipment/schemas';
 	import type { BowType } from '$lib/domain/tuning/templates';
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
@@ -612,25 +620,10 @@
 	const bowFields = $derived(bow ? schemaFor(bowType) : []);
 	const settingChanges = $derived(bow ? diffSettings(bowType, savedSettings, draft) : []);
 
-	function displayValue(field: SettingField): string {
-		const value = draft[field.key];
-		if (value === null || value === undefined || value === '') return '';
-		if (field.kind === 'lengthMm') return String(Math.round(mmToInches(Number(value)) * 100) / 100);
-		return String(value);
-	}
-
+	// Read and written through the schema, so a centimetre here is the same number of millimetres
+	// the equipment page stores. A second copy of the conversions is how a brace height became a tenth.
 	function setValue(field: SettingField, raw: string) {
-		if (raw === '') draft = { ...draft, [field.key]: null };
-		else if (field.kind === 'lengthMm')
-			draft = { ...draft, [field.key]: Math.round(inchesToMm(Number(raw)) * 10) / 10 };
-		else if (field.kind === 'number') draft = { ...draft, [field.key]: Number(raw) };
-		else draft = { ...draft, [field.key]: raw };
-	}
-
-	function formatStored(field: SettingField, value: string | number | null): string {
-		if (value === null || value === '') return '—';
-		if (field.kind === 'lengthMm') return `${Math.round(mmToInches(Number(value)) * 100) / 100}"`;
-		return field.unit ? `${value} ${field.unit}` : String(value);
+		draft = { ...draft, [field.key]: parseSetting(field, raw) };
 	}
 
 	/**
@@ -752,7 +745,7 @@
 							{#if field.kind === 'select'}
 								<select
 									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-									value={displayValue(field)}
+									value={displaySetting(field, draft[field.key] ?? null)}
 									oninput={(e) => setValue(field, e.currentTarget.value)}
 								>
 									<option value=""></option>
@@ -763,9 +756,10 @@
 							{:else}
 								<input
 									type={field.kind === 'text' ? 'text' : 'number'}
-									step={field.kind === 'lengthMm' ? '0.05' : 'any'}
+									step={field.kind === 'text' ? undefined : '0.05'}
+									inputmode={field.kind === 'text' ? undefined : 'decimal'}
 									class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-									value={displayValue(field)}
+									value={displaySetting(field, draft[field.key] ?? null)}
 									oninput={(e) => setValue(field, e.currentTarget.value)}
 								/>
 							{/if}
@@ -779,8 +773,8 @@
 							<li class="flex justify-between gap-2">
 								<span class="text-muted">{change.field.label}</span>
 								<span>
-									{formatStored(change.field, change.before)} → <strong
-										>{formatStored(change.field, change.after)}</strong
+									{formatSetting(change.field, change.before)} → <strong
+										>{formatSetting(change.field, change.after)}</strong
 									>
 								</span>
 							</li>

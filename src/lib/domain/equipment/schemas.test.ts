@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { schemaFor, diffSettings, BOW_SCHEMAS } from './schemas';
+import { schemaFor, diffSettings, displaySetting, parseSetting, BOW_SCHEMAS } from './schemas';
 import { BOW_TYPES } from '../tuning/templates';
 
 describe('bow schemas', () => {
@@ -23,6 +23,30 @@ describe('bow schemas', () => {
 		expect(compound).not.toContain('crawlTable');
 		expect(barebow).toContain('crawlTable');
 		expect(barebow).not.toContain('camTiming');
+	});
+});
+
+describe('reading and writing a setting', () => {
+	it('stores a brace height in millimetres and reads it back in centimetres', () => {
+		const braceHeight = schemaFor('recurve').find((f) => f.key === 'braceHeight')!;
+		expect(parseSetting(braceHeight, '24')).toBe(240);
+		expect(displaySetting(braceHeight, 240)).toBe('24');
+	});
+
+	it('round trips every field of every bow type, whatever unit it is measured in', () => {
+		for (const type of BOW_TYPES) {
+			for (const field of schemaFor(type)) {
+				const typed = field.kind === 'text' || field.kind === 'select' ? 'a' : '24';
+				const stored = parseSetting(field, typed);
+				expect(displaySetting(field, stored), `${type}.${field.key}`).toBe(typed);
+			}
+		}
+	});
+
+	it('keeps an empty field unset rather than zero', () => {
+		const drawWeight = schemaFor('recurve').find((f) => f.key === 'drawWeight')!;
+		expect(parseSetting(drawWeight, '')).toBeNull();
+		expect(displaySetting(drawWeight, null)).toBe('');
 	});
 });
 
