@@ -22,10 +22,49 @@ export const theme = writable<Theme>(stored());
  * hex constants that would quietly drift from the palette. Custom properties come back as their
  * literal tokens, which is enough because both are plain hex.
  */
+/**
+ * A page whose top is its own colour rather than the app's claims the bar while it is open. The
+ * scoring pages are the case: they wear the plain page background, not the brand band the rest of
+ * the app wears, and a bar in the brand tint sits over them as a stripe of somewhere else.
+ *
+ * Stacked, because these nest: the camera opens over a scoring page and has to take the bar from
+ * it, then hand it back rather than to the app. The innermost claim wins, and each claim is undone
+ * by the caller it was given to.
+ *
+ * A `--custom-property` is resolved at every sync rather than once here, so a claim on a palette
+ * colour follows the theme; a literal colour is used as written, for a screen that is one colour
+ * whatever the theme says.
+ */
+type Claim = { colour: string };
+const claims: Claim[] = [];
+
+export function overrideStatusBar(colour: string): () => void {
+	const claim = { colour };
+	claims.push(claim);
+	if (typeof document !== 'undefined') syncStatusBar();
+	return () => {
+		const at = claims.indexOf(claim);
+		if (at >= 0) claims.splice(at, 1);
+		if (typeof document !== 'undefined') syncStatusBar();
+	};
+}
+
 function syncStatusBar() {
 	const meta = document.querySelector<HTMLMetaElement>('meta[name="theme-color"]');
 	if (!meta) return;
 	const styles = getComputedStyle(document.documentElement);
+
+	const claimed = claims[claims.length - 1]?.colour;
+	if (claimed) {
+		const resolved = claimed.startsWith('--')
+			? styles.getPropertyValue(claimed).trim()
+			: claimed;
+		if (resolved) {
+			meta.content = resolved;
+			return;
+		}
+	}
+
 	const bg = styles.getPropertyValue('--c-bg').trim();
 	const brand = styles.getPropertyValue('--c-brand').trim();
 	const blended = mix(brand, bg, 0.1);

@@ -1,0 +1,23 @@
+<!--
+	The maskable twin of favicon.svg, and the one place the rings are struck from the centre.
+
+	Android crops a maskable icon to its own shape — a circle on one launcher, a squircle on the
+	next — and that crop is always centred. The off-centre mark reads as a deliberate crop when the
+	edge doing the cropping is the icon's own; under a launcher mask it just reads as a logo that
+	missed. So this version centres the rings and keeps them inside the safe zone: the central 80%
+	of the canvas, which is all a mask is guaranteed to leave alone.
+
+	Same palette, same three rings, scaled so the outer stroke ends at r=400 of the 512 available.
+
+	The PNGs beside it are this file, rendered:
+	    for s in 192 512; do rsvg-convert -w $s -h $s static/icon-maskable.svg -o static/icon-maskable-$s.png; done
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+	<rect width="1024" height="1024" fill="#f7f3ec" />
+	<g fill="none" stroke-width="64">
+		<circle cx="512" cy="512" r="368" stroke="#eed5a4" />
+		<circle cx="512" cy="512" r="276" stroke="#e0b567" />
+		<circle cx="512" cy="512" r="183" stroke="#d0912f" />
+	</g>
+	<circle cx="512" cy="512" r="97" fill="#8a5320" />
+</svg>

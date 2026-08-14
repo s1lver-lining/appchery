@@ -2,6 +2,7 @@
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
+	import { overrideStatusBar } from '$lib/theme';
 	import { getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
 	import {
 		endSlots,
@@ -632,6 +633,10 @@
 
 	// Outline rather than ring: the chip sets an inline box-shadow, which a ring would lose to.
 	const cursorClass = 'outline outline-2 outline-brand outline-offset-2';
+
+	// A scoring page has no brand band across its top, just the page itself, so the bar takes the
+	// page background and follows the theme with it. Handed back on the way out.
+	$effect(() => overrideStatusBar('--c-bg'));
 </script>
 
 {#if activity && activity.kind === 'match'}

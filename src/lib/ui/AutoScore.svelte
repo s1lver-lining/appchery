@@ -8,6 +8,7 @@
 	import { recordCameraVideo, arrowDetector } from '$lib/prefs';
 	import { storeRecording } from '$lib/files';
 	import { closeOnBack } from './dismiss.svelte';
+	import { overrideStatusBar } from '$lib/theme';
 
 	/**
 	 * Live scoring from the camera. Nothing detected is ever written on its own: the archer keeps or
@@ -329,6 +330,10 @@
 		scanner.reject(arrow);
 		found = found.filter((a) => a !== arrow);
 	}
+
+	// The camera view really is black, in either theme, and it covers the scoring page whose own
+	// claim on the bar has to come back when this closes.
+	$effect(() => overrideStatusBar('#000000'));
 </script>
 
 <div class="fixed inset-0 z-[60] flex flex-col bg-black">

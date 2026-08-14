@@ -1,7 +1,8 @@
 <script lang="ts">
 	import '../app.css';
 	import { App } from '@capacitor/app';
-	import { goto } from '$app/navigation';
+	import { Capacitor } from '@capacitor/core';
+	import { goto, pushState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { initDb, dbInfo } from '$lib/db';
 	// Imported for its side effect: beforeinstallprompt fires early, and a listener registered only
@@ -76,6 +77,71 @@
 		return () => {
 			listener.then((l) => l.remove());
 		};
+	});
+
+	/**
+	 * The same job as the listener above, for the browser, which has no back key to listen to: back
+	 * is a history move, and by the time it arrives the page it was meant to protect has gone.
+	 *
+	 * So while anything dismissable is open, a spare history entry for the same URL is parked on top
+	 * of the page. Popping it navigates nowhere, which gives the guards the chance the hardware key
+	 * gives them on Android — back closes the dialog, and the page underneath stays put.
+	 *
+	 * A focused text field counts as dismissable for the same reason it does natively: the first
+	 * back press there means "I am done typing", not "leave".
+	 */
+	let trapped = false;
+
+	function editableFocused(): boolean {
+		const el = document.activeElement as HTMLElement | null;
+		if (!el) return false;
+		return el.isContentEditable || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+	}
+
+	// Focus moves without touching any store, so the trap has to be re-evaluated when it does.
+	let focusTick = $state(0);
+	$effect(() => {
+		const bump = () => focusTick++;
+		document.addEventListener('focusin', bump);
+		document.addEventListener('focusout', bump);
+		return () => {
+			document.removeEventListener('focusin', bump);
+			document.removeEventListener('focusout', bump);
+		};
+	});
+
+	$effect(() => {
+		void focusTick;
+		// Capacitor's listener already owns the key on a device, and a second interception there
+		// would eat the press before the guards ever saw it.
+		if (Capacitor.isNativePlatform()) return;
+
+		const holding = $backGuards.length > 0 || editableFocused();
+
+		if (holding && !trapped) {
+			trapped = true;
+			pushState('', {});
+		} else if (!holding && trapped) {
+			// Closed by its own button rather than by back: take the spare entry back out, or the next
+			// back press would spend itself popping an entry nothing is waiting on.
+			trapped = false;
+			history.back();
+		}
+	});
+
+	// The pop is read from the event rather than from `page.state`, which does not re-emit for a
+	// same URL entry: the flag above stayed stale and the spare entry was never reclaimed.
+	$effect(() => {
+		const onPop = () => {
+			// Not ours: either a real navigation, or the cleanup above reclaiming its own entry.
+			if (!trapped) return;
+			trapped = false;
+			if (!runBackGuards($backGuards) && editableFocused()) {
+				(document.activeElement as HTMLElement).blur();
+			}
+		};
+		window.addEventListener('popstate', onPop);
+		return () => window.removeEventListener('popstate', onPop);
 	});
 
 	// A page with its own tabs still swipes between them. The main pages leave the gesture to the
