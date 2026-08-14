@@ -44,6 +44,7 @@
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { getTemplate } from '$lib/domain/tuning/templates';
 
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
 
@@ -88,7 +89,10 @@
 			// Kept per session so the search reads what was shot without parsing every round again.
 			const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 			// A match is remembered by who it was against, so that is its name as far as searching goes.
-			const name = round?.name ?? a.templateKey ?? parseConfig(a.matchConfig)?.opponent;
+			const name =
+				round?.name ??
+				(a.templateKey ? getTemplate(a.templateKey)?.name : null) ??
+				parseConfig(a.matchConfig)?.opponent;
 			if (name) entry.names.push(name);
 			// Training arrows are counted, never listed, so counting them here claimed an activity
 			// the session page had nothing to show for.

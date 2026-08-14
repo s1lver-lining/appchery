@@ -11,7 +11,12 @@
 		SCORE_SETS
 	} from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
-	import { BOW_TYPES, templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
+	import {
+		BOW_TYPES,
+		templatesForBowType,
+		getTemplate,
+		type BowType
+	} from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -570,7 +575,9 @@
 				: $t('match.title');
 			return stage ? `${stage} · ${name}` : name;
 		}
-		if (a.kind === 'tuning') return a.templateKey ?? $t('tuning.title');
+		// The procedure's name, not the key it is stored under: the row said "limb-alignment".
+		if (a.kind === 'tuning')
+			return (a.templateKey ? getTemplate(a.templateKey)?.name : null) ?? $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 		return round?.name ?? '';
 	}
