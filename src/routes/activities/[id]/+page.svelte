@@ -22,6 +22,8 @@
 	} from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
+	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
+	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import {
 		schemaFor,
 		diffSettings,
@@ -119,6 +121,10 @@
 	const slots = $derived(round ? endSlots(round) : []);
 	const keypad = $derived<Zone[]>(scoreSet ? scorableZones(scoreSet) : []);
 	const template = $derived(activity?.templateKey ? getTemplate(activity.templateKey) : undefined);
+	/** The same picture the guide draws for this procedure: the geometry is the same on both pages. */
+	const diagram = $derived(
+		GUIDE_STEPS.find((step) => step.templateKey === activity?.templateKey)?.diagram ?? null
+	);
 
 	interface SheetRow {
 		key: string;
@@ -701,6 +707,11 @@
 
 		{#if template}
 			<section class="rounded-xl border border-line bg-surface p-4">
+				{#if diagram}
+					<div class="mb-3 rounded-lg bg-sunk p-2">
+						<TuningDiagram name={diagram} />
+					</div>
+				{/if}
 				<h2 class="mb-2 text-sm font-semibold">{$t('tuning.steps')}</h2>
 				<ol class="list-decimal space-y-1 pl-5 text-sm">
 					{#each template.steps as step (step)}
