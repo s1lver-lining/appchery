@@ -56,7 +56,12 @@
 	}
 </script>
 
-<div class="text-sm">
+<!--
+	The wheel sits at the bottom of whatever space it is given, so a row of them lines up even when
+	one label wraps to two lines and its neighbours do not. "Points pour gagner" is the case in
+	French, and a wheel half a line lower than the two beside it reads as a mistake.
+-->
+<div class="flex h-full flex-col justify-end text-sm">
 	{#if !labelHidden}<span class="text-muted">{label}</span>{/if}
 	<div
 		class="relative mt-1 overflow-hidden rounded-lg border border-line bg-bg"
