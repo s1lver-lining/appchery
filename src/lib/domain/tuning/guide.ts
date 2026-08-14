@@ -403,15 +403,15 @@ const FR: Record<string, StepText> = {
 		why: "Des branches hors du plan d'arc poussent la flèche de côté à chaque tir, et aucun réglage plus bas dans cette liste ne peut le rattraper.",
 		steps: [
 			"Bandez l'arc et regardez le long de la corde par l'arrière, arc vertical.",
-			"Posez une cale d'alignement sur chaque branche. Une branche s'affine vers la poupée : ses bords semblent centrés bien avant que son milieu le soit, et la cale marque ce milieu à votre place.",
-			'La corde doit couper les deux cales et passer au centre de la poignée en chemin : tout l’arc tient dans un seul plan, et la corde est ce plan.',
+			"Posez une cale d'alignement sur chaque branche. Une branche s'affine vers la poupée : à l'œil, ses bords paraissent centrés bien avant que son milieu le soit, et la cale marque ce milieu pour vous.",
+			'La corde doit passer par le centre des deux cales, et par le centre de la poignée : tout l’arc tient dans un même plan, et la corde est ce plan.',
 			"Ajustez les logements de branches : chariots d'alignement sur une poignée récente, vis excentriques sur une plus ancienne.",
 			"Revérifiez après chaque modification : déplacer une branche change ce que l'autre semble faire."
 		],
 		results: [
-			{ observation: 'La corde passe à gauche du milieu de la branche', suggests: 'Décalez cette branche vers la droite, par petites touches' },
-			{ observation: 'La corde ne semble centrée que sur une branche', suggests: "Alignez d'abord la moins bonne, puis revérifiez les deux" },
-			{ observation: "Aucun réglage n'y parvient", suggests: 'Soupçonnez une branche vrillée : passez à l’étape suivante' }
+			{ observation: 'La corde passe à gauche du milieu de la branche', suggests: 'Décalez cette branche vers la droite, petit à petit' },
+			{ observation: "La corde n'est centrée que sur une seule branche", suggests: 'Alignez la moins bonne en premier, puis revérifiez les deux' },
+			{ observation: 'Aucun réglage ne parvient à la recentrer', suggests: 'La branche est sans doute vrillée : passez à l’étape suivante' }
 		]
 	},
 	'limb-twist': {
@@ -421,11 +421,11 @@ const FR: Record<string, StepText> = {
 			"Bandez l'arc et visez le long de la corde, branches à plat.",
 			"Regardez chaque poupée : la gorge de corde doit être d'équerre, sans pencher d'un côté.",
 			'Débandez, puis vérifiez que les embases reposent bien à plat dans les logements.',
-			"Une branche qui échoue relève de la garantie, pas du réglage."
+			"Une branche qui ne passe pas ce contrôle relève de la garantie, pas du réglage."
 		],
 		results: [
 			{ observation: 'Une poupée penche systématiquement', suggests: 'Faites changer la branche plutôt que de compenser' },
-			{ observation: "Poupées d'équerre mais alignement toujours faux", suggests: 'Le défaut vient des logements : reprenez l’alignement' }
+			{ observation: 'Poupées droites mais alignement toujours faux', suggests: 'Le défaut vient des logements : reprenez l’alignement' }
 		]
 	},
 	'rest-position': {
@@ -433,12 +433,12 @@ const FR: Record<string, StepText> = {
 		why: "Tout ce que fait la flèche à la décoche part de là où elle repose : on place donc le repose-flèche avant de mesurer quoi que ce soit à partir de lui.",
 		steps: [
 			"Posez le repose-flèche à son emplacement naturel : la flèche doit passer au-dessus du point de pivot de la poignée.",
-			'Réglez la hauteur pour que la flèche soit à peu près horizontale, ou un cheveu au-dessus du centre du bouton.',
+			'Réglez la hauteur pour que la flèche soit à peu près horizontale, le tube en face du centre du bouton.',
 			"Collez ou vissez seulement une fois la flèche à sa place."
 		],
 		results: [
-			{ observation: 'La flèche est bien au-dessus du bouton', suggests: 'Abaissez le bras : le bouton doit toucher le centre du tube' },
-			{ observation: 'La flèche touche la fenêtre', suggests: 'Remontez le bras jusqu’à dégager le tube' }
+			{ observation: 'La flèche passe nettement au-dessus du bouton', suggests: 'Abaissez le bras : le bouton doit toucher le tube en son centre' },
+			{ observation: 'La flèche touche la fenêtre', suggests: 'Remontez le bras jusqu’à ce que le tube soit dégagé' }
 		]
 	},
 	'centre-shot': {
@@ -446,13 +446,13 @@ const FR: Record<string, StepText> = {
 		why: "La direction que prend la flèche à pleine allonge décide de quel côté elle quitte l'arc : c'est précisément ce que le bouton règle.",
 		steps: [
 			"Bandez l'arc et encochez une flèche sur le repose-flèche.",
-			"Regardez le long de la corde, arc vertical : la corde doit couper le tube légèrement vers l'intérieur du centre.",
+			"Regardez le long de la corde, arc vertical : la corde doit passer légèrement en dedans de l'axe du tube.",
 			"Pour un arc droitier, la pointe se place un ou deux millimètres à gauche de la ligne de corde.",
 			'Réglez avec le barillet du bouton, pas avec le repose-flèche.'
 		],
 		results: [
-			{ observation: 'La corde coupe exactement la pointe', suggests: 'Sortez légèrement le bouton pour rentrer la pointe' },
-			{ observation: 'Pointe très à l’extérieur de la ligne de corde', suggests: 'Rentrez le bouton : la flèche partira raide sinon' }
+			{ observation: 'La corde tombe pile sur la pointe', suggests: 'Sortez légèrement le bouton pour rentrer la pointe' },
+			{ observation: 'Pointe nettement en dehors de la ligne de corde', suggests: 'Rentrez le bouton, sinon la flèche partira raide' }
 		]
 	},
 	'sight-alignment': {
@@ -460,25 +460,25 @@ const FR: Record<string, StepText> = {
 		why: "Un viseur hors du plan d'arc fait varier la dérive avec la distance, ce qui se lit comme un défaut de flèche alors que ce n'en est pas un.",
 		steps: [
 			"Placez le viseur pour que l'œilleton se pose sur la ligne de corde, arc bandé.",
-			"Faites courir le bloc du haut vers le bas en regardant l'œilleton contre la corde.",
-			"L'œilleton doit rester sur la ligne de corde sur toute la course."
+			"Faites coulisser le bloc de haut en bas en regardant l'œilleton contre la corde.",
+			"L'œilleton doit rester sur la ligne de corde sur toute la hauteur."
 		],
 		results: [
-			{ observation: 'L’œilleton dérive latéralement pendant la course', suggests: "La barre n'est pas parallèle au plan d'arc : calez ou réalignez" },
-			{ observation: 'Décalage constant mais course parallèle', suggests: 'Laissez ainsi : votre repère de dérive absorbe un décalage constant' }
+			{ observation: 'L’œilleton part sur le côté quand le bloc descend', suggests: "La barre n'est pas parallèle au plan d'arc : calez-la ou réalignez-la" },
+			{ observation: 'Décalage constant, mais la course reste parallèle', suggests: 'Laissez comme ça : le réglage de dérive absorbe un décalage constant' }
 		]
 	},
 	'rest-overhang': {
 		title: 'Débordement du repose-flèche',
-		why: "Une aiguille qui déborde trop accroche une plume, et une plume accrochée gâche une flèche par ailleurs parfaite.",
+		why: "Une aiguille qui déborde trop accroche une plume, et une plume accrochée gâche une flèche qui était bonne par ailleurs.",
 		steps: [
 			"Regardez de combien l'aiguille passe sous le tube.",
 			'Le débordement doit rester inférieur au rayon du tube tiré.',
 			'Poudrez les plumes et tirez : rien ne doit marquer le repose-flèche ni la fenêtre.'
 		],
 		results: [
-			{ observation: 'Traces sur l’aiguille', suggests: 'Réduisez le débordement ou tournez l’encoche pour dégager la plume' },
-			{ observation: 'Traces sur la fenêtre au-dessus', suggests: 'Vérifiez le point d’encochage et le dégagement avant de toucher au repose-flèche' }
+			{ observation: 'Traces sur l’aiguille', suggests: 'Réduisez le débordement, ou tournez l’encoche pour dégager la plume' },
+			{ observation: 'Traces plus haut sur la fenêtre', suggests: 'Vérifiez le point d’encochage et le dégagement avant de toucher au repose-flèche' }
 		]
 	},
 	'brace-height': {
@@ -492,8 +492,8 @@ const FR: Record<string, StepText> = {
 		],
 		results: [
 			{ observation: 'Tir bruyant et sec', suggests: 'Montez le band de quelques tours de corde' },
-			{ observation: 'Flèches molles, sans vie', suggests: 'Baissez le band de quelques tours de corde' },
-			{ observation: 'La corde claque le bras', suggests: 'Montez le band, puis vérifiez la rotation de votre bras d’arc' }
+			{ observation: 'Flèches sans vie, groupement qui tombe', suggests: 'Baissez le band de quelques tours de corde' },
+			{ observation: 'La corde claque le bras d’arc', suggests: 'Montez le band, puis vérifiez la rotation de votre bras d’arc' }
 		]
 	},
 	tiller: {
@@ -508,7 +508,7 @@ const FR: Record<string, StepText> = {
 		results: [
 			{ observation: 'Flèche non empennée toujours haute', suggests: 'Augmentez légèrement le tiller, ou baissez d’abord le point d’encochage' },
 			{ observation: 'Flèche non empennée toujours basse', suggests: 'Réduisez légèrement le tiller, ou montez d’abord le point d’encochage' },
-			{ observation: "L'arc saute bizarrement à la décoche", suggests: 'Revenez au tiller de départ et refaites le point d’encochage' }
+			{ observation: "L'arc part de travers à la décoche", suggests: 'Revenez au tiller de départ et refaites le point d’encochage' }
 		]
 	},
 	'nocking-point': {
@@ -523,7 +523,7 @@ const FR: Record<string, StepText> = {
 		results: [
 			{ observation: 'Flèche non empennée haute', suggests: 'Montez le point d’encochage' },
 			{ observation: 'Flèche non empennée basse', suggests: 'Descendez le point d’encochage' },
-			{ observation: 'La flèche non empennée marsouine', suggests: 'Le point est loin du compte : corrigez par pas plus grands' }
+			{ observation: 'La flèche non empennée marsouine', suggests: 'Le point est loin du compte : corrigez par pas plus francs' }
 		]
 	},
 	'draw-length': {
@@ -536,8 +536,8 @@ const FR: Record<string, StepText> = {
 			'Gardez des tubes assez longs pour dépasser le repose-flèche à pleine allonge, avec une marge.'
 		],
 		results: [
-			{ observation: 'La valeur varie de plus d’un centimètre', suggests: 'La technique n’est pas stabilisée : remesurez avant de couper' },
-			{ observation: 'La pointe atteint le repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : question de sécurité, changez-les' }
+			{ observation: 'La mesure varie de plus d’un centimètre', suggests: 'La technique n’est pas encore stable : remesurez avant de couper' },
+			{ observation: 'La pointe arrive au repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : c’est une question de sécurité, changez-les' }
 		]
 	},
 	'arrow-spine': {
@@ -562,7 +562,7 @@ const FR: Record<string, StepText> = {
 			'Tirez trois flèches empennées et une non empennée sur le même point, à 10 ou 15 mètres.',
 			'Notez la position du tube nu par rapport au groupement empenné.',
 			'Corrigez d’abord le vertical au point d’encochage, puis le latéral au bouton.',
-			'Ne changez qu’une chose à la fois, puis retirez la série.'
+			'Ne changez qu’une chose à la fois, puis tirez une nouvelle série.'
 		],
 		results: [
 			{ observation: 'Flèche non empennée à gauche du groupement, droitier', suggests: 'Réaction raide : assouplissez le ressort ou alourdissez la pointe' },
@@ -588,7 +588,7 @@ const FR: Record<string, StepText> = {
 		title: 'Synchronisation des cames',
 		why: "Des cames qui n'arrivent pas au mur ensemble font basculer l'encoche à la sortie, et aucun repose-flèche ne rattrape cela.",
 		steps: [
-			'Armez sur presse ou machine, ou faites-vous observer pendant l’armement.',
+			'Armez sur presse ou sur banc, ou faites-vous regarder pendant l’armement.',
 			'Regardez les deux cames atteindre leurs butées : elles doivent arriver ensemble.',
 			'Vrillez le câble en retard pour l’avancer, un demi-tour à la fois.',
 			'Revérifiez ensuite allonge et rotation du viseur de corde : les deux bougent avec les vrillages.'
@@ -620,8 +620,8 @@ const FR: Record<string, StepText> = {
 			'Vérifiez que la lame tient le tube sans toucher les plumes.'
 		],
 		results: [
-			{ observation: 'Déchirure papier à gauche, droitier', suggests: 'Décalez le repose-flèche vers la droite, par petits pas' },
-			{ observation: 'Déchirure papier à droite, droitier', suggests: 'Décalez le repose-flèche vers la gauche, par petits pas' }
+			{ observation: 'Déchirure papier à gauche, droitier', suggests: 'Décalez le repose-flèche vers la droite, petit à petit' },
+			{ observation: 'Déchirure papier à droite, droitier', suggests: 'Décalez le repose-flèche vers la gauche, petit à petit' }
 		]
 	},
 	'd-loop': {
@@ -646,8 +646,8 @@ const FR: Record<string, StepText> = {
 			'Corrigez la rotation par vrillage de corde, ou en le tranche-filant en place.'
 		],
 		results: [
-			{ observation: 'Viseur trop bas à l’ancrage', suggests: 'Montez-le de quelques millimètres et retirez avant de tranche-filer' },
-			{ observation: 'Le viseur tourne à pleine allonge', suggests: 'Ajustez les vrillages, puis revérifiez allonge et synchronisation' }
+			{ observation: 'Viseur trop bas à l’ancrage', suggests: 'Montez-le de quelques millimètres et tirez encore avant de le tranche-filer' },
+			{ observation: 'Le viseur n’est pas droit à pleine allonge', suggests: 'Ajustez les vrillages, puis revérifiez allonge et synchronisation' }
 		]
 	},
 	clearance: {
@@ -659,7 +659,7 @@ const FR: Record<string, StepText> = {
 			'Tournez l’encoche par petits angles jusqu’à ce que plus rien ne touche.'
 		],
 		results: [
-			{ observation: 'Traces le long d’une plume', suggests: 'Tournez l’encoche de quelques degrés et retirez' },
+			{ observation: 'Traces le long d’une plume', suggests: 'Tournez l’encoche de quelques degrés et tirez encore' },
 			{ observation: 'Traces sur le garde-câble', suggests: 'Vérifiez le dégagement des câbles et la course du repose-flèche' }
 		]
 	},
@@ -713,8 +713,8 @@ const FR: Record<string, StepText> = {
 			'Ajustez la vis de troisième axe jusqu’à ce que ce soit le cas.'
 		],
 		results: [
-			{ observation: 'La bulle fuit en visant vers le haut', suggests: 'Le troisième axe est à reprendre : il coûte cher en parcours' },
-			{ observation: 'Dérive latérale aux longues distances seulement', suggests: 'Vérifiez le niveau et votre inclinaison avant de toucher la dérive' }
+			{ observation: 'La bulle part sur le côté quand vous visez vers le haut', suggests: 'Le troisième axe est à reprendre : il coûte cher en parcours' },
+			{ observation: 'Dérive latérale seulement aux longues distances', suggests: 'Vérifiez le niveau et votre inclinaison avant de toucher à la dérive' }
 		]
 	}
 };
