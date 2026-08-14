@@ -1,6 +1,6 @@
 # Appchery
 
-Archery session tracking, scoring, and bow tuning — offline-first, on mobile and in the browser.
+**Archery Scoring & Tuning** — offline-first, on mobile and in the browser.
 
 - **Sessions hold activities.** One outing, many things done in it: score a round, then tune.
 - **Score on a sheet** that reads like paper, with every arrow editable after the fact.
@@ -63,8 +63,17 @@ every deploy. Override the project names with `APPCHERY_PAGES_PREPROD` and `APPC
 
 First run needs `npx wrangler login`; in CI, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
 instead, and the production confirmation prompt is skipped when `CI=true`. Create the two projects
-once with `npx wrangler pages project create <name> --production-branch main`, then attach custom
-domains from the Pages dashboard.
+once, then attach custom domains from the Pages dashboard:
+
+```bash
+npx wrangler pages project create appchery --production-branch main
+npx wrangler pages project create appchery-preprod --production-branch preprod
+```
+
+**Each project's production branch must match the branch `deploy.sh` sends it** — `main` for prod,
+`preprod` for preprod. Cloudflare serves a deployment on the project root only when the two agree;
+otherwise it becomes a preview, reachable at `preprod.appchery-preprod.pages.dev` instead. That is a
+different origin, so preprod would open a different OPFS database and look like it lost its data.
 
 ### Installing on a phone
 

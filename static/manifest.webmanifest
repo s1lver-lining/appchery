@@ -1,7 +1,7 @@
 {
 	"name": "Appchery",
 	"short_name": "Appchery",
-	"description": "Track your shooting. Tune your bow.",
+	"description": "Archery Scoring & Tuning",
 	"start_url": "/",
 	"scope": "/",
 	"display": "standalone",

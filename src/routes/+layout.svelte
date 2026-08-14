@@ -43,7 +43,14 @@
 				volatileStorage = !dbInfo().persistent;
 				ready = true;
 			})
-			.catch((e) => (error = e instanceof Error ? e.message : String(e)));
+			// Not every rejection is an Error: worker APIs reject with plain response objects, and
+			// String() renders those as "[object Object]", which tells a user nothing at all.
+			.catch((e) => {
+				if (e instanceof Error) error = e.message;
+				else if (e && typeof e === 'object')
+					error = ((e as { message?: string }).message ?? JSON.stringify(e)).slice(0, 500);
+				else error = String(e);
+			});
 	});
 
 	const tabs: { href: string; key: string; icon: IconName }[] = [

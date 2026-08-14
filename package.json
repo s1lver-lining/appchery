@@ -1,7 +1,7 @@
 {
   "name": "appchery",
   "version": "0.1.0",
-  "description": "Archery session, scoring and bow tuning tracker",
+  "description": "Archery Scoring & Tuning",
   "directories": {
     "doc": "doc"
   },

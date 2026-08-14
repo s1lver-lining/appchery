@@ -15,8 +15,9 @@ DRY_RUN=0
 usage() {
 	echo "Usage: $0 <preprod|prod> [--dry-run]"
 	echo
-	echo "  preprod    Deploy to the ${PREPROD_PROJECT} Pages project."
-	echo "  prod       Deploy to the ${PROD_PROJECT} Pages project. Asks for confirmation."
+	echo "  preprod    Deploy to ${PREPROD_PROJECT} → https://${PREPROD_PROJECT}.pages.dev"
+	echo "  prod       Deploy to ${PROD_PROJECT} → https://${PROD_PROJECT}.pages.dev"
+	echo "             Asks for confirmation."
 	echo "  --dry-run  Build and report what would be deployed, without uploading."
 	echo
 	echo "Project names come from APPCHERY_PAGES_PROD and APPCHERY_PAGES_PREPROD if set."
@@ -93,12 +94,23 @@ fi
 
 if [ "$DRY_RUN" = 1 ]; then
 	echo
-	echo "Dry run: would deploy build/ to the ${PROJECT} Pages project."
+	echo "Dry run: would deploy build/ to ${PROJECT}, serving https://${PROJECT}.pages.dev"
 	du -sh build
 	exit 0
 fi
 
-exec npx wrangler pages deploy build \
+# Each project's production branch is set to the branch deployed here, so these land as production
+# deployments and answer on the project root. Deploy a branch that is not the production branch and
+# Cloudflare makes it a preview instead, reachable only at <branch>.<project>.pages.dev — a
+# different origin, and so a different OPFS database.
+BRANCH="$([ "$TARGET" = prod ] && echo main || echo preprod)"
+
+# Not exec'd: wrangler reports the per-deployment hostname, which is a fresh origin every time and
+# therefore an empty database. The stable URL is the one worth acting on, so it is printed last.
+npx wrangler pages deploy build \
 	--project-name "$PROJECT" \
-	--branch "$([ "$TARGET" = prod ] && echo main || echo preprod)" \
+	--branch "$BRANCH" \
 	--commit-dirty="$([ -n "$DIRTY" ] && echo true || echo false)"
+
+echo
+echo "Deployed to https://${PROJECT}.pages.dev"

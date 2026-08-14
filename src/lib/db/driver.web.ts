@@ -12,6 +12,26 @@ import type { SqlDriver } from './driver';
  * Where that is missing the database still works but lives only in memory, surfaced through
  * `persistent: false` so the UI can warn rather than losing a session's scores on reload.
  */
+/**
+ * The worker rejects with its plain response object, not an Error, so `.message` is undefined and
+ * `String(reason)` renders "[object Object]" — which is what the failure banner used to show.
+ */
+function workerMessage(reason: unknown): string {
+	if (reason instanceof Error) return reason.message;
+	if (reason && typeof reason === 'object') {
+		const response = reason as { result?: { message?: string }; message?: string };
+		const message = response.result?.message ?? response.message;
+		if (message) return message;
+		try {
+			return JSON.stringify(reason);
+		} catch {
+			// Circular response objects are not worth a second attempt; the class name still helps.
+			return Object.prototype.toString.call(reason);
+		}
+	}
+	return String(reason);
+}
+
 export async function createWebDriver(filename = 'appchery.db'): Promise<SqlDriver> {
 	type Promiser = (type: string, args: unknown) => Promise<unknown>;
 
@@ -34,8 +54,17 @@ export async function createWebDriver(filename = 'appchery.db'): Promise<SqlDriv
 	// The worker reports back whether the database it opened actually persists.
 	type OpenResult = { result?: { persistent?: boolean } };
 
-	const opened = (await promiser('open', { filename: `file:${filename}?vfs=opfs` }).catch(() =>
-		promiser('open', { filename })
+	const opened = (await promiser('open', { filename: `file:${filename}?vfs=opfs` }).catch(
+		(opfsReason) =>
+			// Both attempts failing is the one case the UI cannot recover from, so carry each reason
+			// into the message: OPFS and the in-memory fallback fail for different causes, and knowing
+			// which one gave up first is the whole diagnosis.
+			promiser('open', { filename }).catch((memoryReason) => {
+				throw new Error(
+					`SQLite could not open a database. OPFS: ${workerMessage(opfsReason)}. ` +
+						`In-memory fallback: ${workerMessage(memoryReason)}.`
+				);
+			})
 	)) as unknown as OpenResult;
 
 	const persistent = opened.result?.persistent === true;
