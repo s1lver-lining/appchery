@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { goto } from '$app/navigation';
+	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { BOW_TYPES, type BowType } from '$lib/domain/tuning/templates';
@@ -45,6 +45,15 @@
 	// The type is the name most bows would be given, so it is written in until somebody writes better.
 	let nameEdited = $state(false);
 	let nameMissing = $state(false);
+
+	/**
+	 * Closing the form spends the link that asked for it, so a reload or a copied URL lands on the
+	 * list rather than opening the form again.
+	 */
+	function closeAdd() {
+		adding = false;
+		if ($page.url.searchParams.has('add')) replaceState('/equipment?list=1', {});
+	}
 
 	function openAdd() {
 		name = $t('bowName.recurve');
@@ -170,7 +179,7 @@
 </div>
 </div>
 
-<Sheet open={adding} title={$t('equipment.addBow')} onclose={() => (adding = false)}>
+<Sheet open={adding} title={$t('equipment.addBow')} onclose={closeAdd}>
 	<div class="space-y-3">
 		<label class="block text-sm font-semibold">
 			{$t('equipment.bowName')}
@@ -206,7 +215,7 @@
 	{#snippet footer()}
 		<button
 			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-			onclick={() => (adding = false)}
+			onclick={closeAdd}
 		>
 			{$t('common.cancel')}
 		</button>
