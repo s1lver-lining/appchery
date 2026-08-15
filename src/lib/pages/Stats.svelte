@@ -34,6 +34,7 @@
 		applyFilter,
 		facets,
 		periodBounds,
+		pruneFilter,
 		type StatsDimension
 	} from '$lib/domain/statsFilter';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -59,6 +60,8 @@
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
 	let shots = $state<Awaited<ReturnType<typeof listShotValues>>>([]);
 	let ends = $state<Awaited<ReturnType<typeof listEndTotals>>>([]);
+	/** Nothing is pruned before the history is in hand, or an empty page would clear every chip. */
+	let loaded = $state(false);
 	let showByRound = $state(false);
 	let showBlocks = $state(false);
 
@@ -87,6 +90,7 @@
 		}));
 		volume = toVolume(all);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
+		loaded = true;
 	}
 	$effect(() => {
 		refresh();
@@ -114,6 +118,13 @@
 
 	// The round chip files what was not a round under what it was, so no arrow is left unnameable.
 	const ctx = $derived({ round: volumeRoundKey, bow: bowOf, kind: kindOf, wind: windOf });
+
+	// A chip pointing at something no longer shot is cleared on arrival rather than left to be found.
+	$effect(() => {
+		if (!loaded) return;
+		const pruned = pruneFilter($statsFilter, volume, ctx);
+		if (pruned !== $statsFilter) statsFilter.set(pruned);
+	});
 
 	/** Every figure on the page reads the same slice, so a chip moves the bests with the chart. */
 	const windowed = $derived(applyFilter(scored, ctx, $statsFilter));

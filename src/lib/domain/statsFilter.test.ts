@@ -7,6 +7,7 @@ import {
 	toggleValue,
 	parseFilter,
 	periodBounds,
+	pruneFilter,
 	type FilterContext,
 	type StatsFilter
 } from './statsFilter';
@@ -147,5 +148,35 @@ describe('parseFilter', () => {
 			...EMPTY_FILTER,
 			bows: ['Recurve']
 		});
+	});
+});
+
+describe('pruneFilter', () => {
+	const all = [activity({ id: 'o' }), activity({ id: 'ic' }), activity({ id: 'ox' })];
+
+	it('drops a value nothing carries any more', () => {
+		const stale = filter({ bows: ['Recurve', 'Longbow'], rounds: ['field'] });
+		expect(pruneFilter(stale, all, ctx)).toEqual(filter({ bows: ['Recurve'], rounds: [] }));
+	});
+
+	it('gives back the very filter it was handed when every chip still matches', () => {
+		const live = filter({ bows: ['Recurve'], kinds: ['competition'] });
+		// The same object, so the page can tell "nothing to do" from "cleared something".
+		expect(pruneFilter(live, all, ctx)).toBe(live);
+	});
+
+	it('reads the whole history, not the period on show: a quiet month clears nothing', () => {
+		const wintered = [activity({ id: 'o', startedAt: MARCH - 300 * DAY })];
+		const live = filter({ period: 'month', bows: ['Recurve'] });
+		expect(pruneFilter(live, wintered, ctx)).toBe(live);
+	});
+
+	it('leaves a dimension nothing was ever chosen on alone', () => {
+		expect(pruneFilter(filter(), all, ctx)).toEqual(filter());
+	});
+
+	it('clears every chip when there is nothing left at all', () => {
+		const stale = filter({ bows: ['Recurve'], kinds: ['practice'], wind: ['strong'] });
+		expect(pruneFilter(stale, [], ctx)).toEqual(filter());
 	});
 });

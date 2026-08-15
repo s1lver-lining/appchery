@@ -181,6 +181,45 @@ export function facets(
 		.sort((a, b) => b.arrows - a.arrows || a.key.localeCompare(b.key));
 }
 
+/**
+ * The same filter with the values nothing carries any more taken out of it. A chip is kept between
+ * visits, so a bow that was deleted or a round whose every card was thrown away would go on
+ * narrowing the page to nothing until the archer worked out which chip to clear.
+ *
+ * Read against the whole history rather than against the period on show: a chip that matches nothing
+ * this month is a filter doing its job, and clearing it would be the page changing its own mind.
+ * Returns the filter it was given when nothing had to go, so a caller can tell one from the other.
+ */
+export function pruneFilter(
+	filter: StatsFilter,
+	activities: ScoredActivity[],
+	ctx: FilterContext
+): StatsFilter {
+	const carried: Record<StatsDimension, Set<string>> = {
+		rounds: new Set(),
+		bows: new Set(),
+		kinds: new Set(),
+		wind: new Set()
+	};
+	for (const activity of activities) {
+		for (const dimension of DIMENSIONS) {
+			const value = ctx[DIMENSION_OF[dimension]](activity);
+			if (value !== null) carried[dimension].add(value);
+		}
+	}
+
+	const pruned = { ...filter };
+	let dropped = false;
+	for (const dimension of DIMENSIONS) {
+		const kept = filter[dimension].filter((value) => carried[dimension].has(value));
+		if (kept.length === filter[dimension].length) continue;
+		pruned[dimension] = kept;
+		dropped = true;
+	}
+
+	return dropped ? pruned : filter;
+}
+
 /** How many chips are narrowing the page, which is what the reset control is offered on. */
 export function activeCount(filter: StatsFilter): number {
 	const period = filter.period === 'all' ? 0 : 1;
