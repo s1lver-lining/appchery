@@ -173,7 +173,13 @@ export const plan = sqliteTable('plan', {
 	 */
 	freeArrows: integer('free_arrows'),
 	/** A plan put aside: it keeps its slots and its history, but stops asking anything of the week. */
-	isActive: integer('is_active').notNull().default(1)
+	isActive: integer('is_active').notNull().default(1),
+	/**
+	 * The season the plan runs for, either end open. Midnight of the first day it asks for and
+	 * midnight of the last, so both days count whole and a day outside is a day the plan is silent on.
+	 */
+	startDate: integer('start_date'),
+	endDate: integer('end_date')
 });
 
 /**

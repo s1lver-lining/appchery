@@ -44,16 +44,41 @@ export function slotAt(day: number, minuteOfDay: number): number {
 /** A slot still counts as coming up for an hour after its time, so a late start is not lost. */
 export const GRACE_MS = 60 * 60 * 1000;
 
+/** A plan bounded by dates, either end open. */
+export interface PlanWindowLike {
+	id: string;
+	isActive: number;
+	startDate: number | null;
+	endDate: number | null;
+}
+
+/**
+ * Whether a plan asks anything of one day. Both dates count whole days, so a plan ending on the
+ * Sunday still calls for the Sunday evening: an end date is the last day, not the moment it stops.
+ */
+export function isActiveOn(plan: PlanWindowLike, at: number): boolean {
+	if (plan.isActive === 0) return false;
+	const day = startOfDay(at);
+	if (plan.startDate !== null && day < startOfDay(plan.startDate)) return false;
+	if (plan.endDate !== null && day > startOfDay(plan.endDate)) return false;
+	return true;
+}
+
 /**
  * Every slot of every plan over the next `days` days, oldest first. An occurrence is dropped once a
  * session exists near it, since the archer has already turned that one into a real outing.
+ *
+ * The window is checked a day at a time rather than once for the whole list, because a plan that
+ * runs out on Thursday still has to show its Tuesday and hide the Friday that follows it.
  */
 export function upcoming(
 	slots: PlanSlotLike[],
 	sessionTimes: number[] = [],
 	days = 7,
-	now = Date.now()
+	now = Date.now(),
+	plans: PlanWindowLike[] = []
 ): Occurrence[] {
+	const windows = new Map(plans.map((plan) => [plan.id, plan]));
 	const today = startOfDay(now);
 	const result: Occurrence[] = [];
 
@@ -63,6 +88,8 @@ export function upcoming(
 		const day = date.getTime();
 		for (const slot of slots) {
 			if (slot.weekday !== weekdayOf(day)) continue;
+			const window = windows.get(slot.planId);
+			if (window && !isActiveOn(window, day)) continue;
 			const at = slotAt(day, slot.minuteOfDay);
 			if (at < now - GRACE_MS) continue;
 			if (sessionTimes.some((time) => Math.abs(time - at) < 90 * 60 * 1000)) continue;
@@ -106,4 +133,36 @@ export function weekArrowGoal(slots: PlanSlotLike[], plans: PlanLike[] = []): nu
 		slots.reduce((sum, slot) => sum + (slot.arrowGoal ?? 0), 0) +
 		plans.reduce((sum, plan) => sum + (plan.freeArrows ?? 0), 0)
 	);
+}
+
+/**
+ * What one particular week asks for, which is the same figure bounded by the plans' dates. A week a
+ * plan only half covers is counted a day at a time, so the week a season ends in asks for the
+ * outings it really holds rather than for a whole week of them.
+ */
+export function weekArrowGoalOn(
+	weekStart: number,
+	slots: PlanSlotLike[],
+	plans: (PlanWindowLike & PlanLike)[]
+): number {
+	const byId = new Map(plans.map((plan) => [plan.id, plan]));
+	const monday = new Date(startOfDay(weekStart));
+	const dayOfWeek = (weekday: number) =>
+		new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + weekday).getTime();
+
+	const slotArrows = slots.reduce((sum, slot) => {
+		const plan = byId.get(slot.planId);
+		if (!plan || !isActiveOn(plan, dayOfWeek(slot.weekday))) return sum;
+		return sum + (slot.arrowGoal ?? 0);
+	}, 0);
+
+	// Free arrows belong to the week rather than to a day, so one day inside the window claims them.
+	const freeArrows = plans.reduce((sum, plan) => {
+		const anyDay = Array.from({ length: 7 }, (_, day) => dayOfWeek(day)).some((at) =>
+			isActiveOn(plan, at)
+		);
+		return anyDay ? sum + (plan.freeArrows ?? 0) : sum;
+	}, 0);
+
+	return slotArrows + freeArrows;
 }

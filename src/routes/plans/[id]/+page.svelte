@@ -15,12 +15,13 @@
 		type PlanSlotRow
 	} from '$lib/db/repository';
 	import { weekArrowGoal } from '$lib/domain/plans';
-	import { monthGrid } from '$lib/domain/dates';
+	import { monthGrid, startOfDay } from '$lib/domain/dates';
 	import { dateFormats } from '$lib/prefs';
 	import { setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
+	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
@@ -54,6 +55,22 @@
 	/** Put aside rather than deleted: the week stops being asked for, and nothing already shot moves. */
 	async function setActive(on: boolean) {
 		await updatePlan(planId, { isActive: on ? 1 : 0 });
+		await refresh();
+	}
+
+	/* The season the plan runs for. Either end can be left out, and either can be given back. */
+	let picking = $state<'startDate' | 'endDate' | null>(null);
+
+	/** The end date opens on the start rather than on today, since a season is picked in order. */
+	const pickingFrom = $derived(
+		picking === 'endDate'
+			? (plan?.endDate ?? plan?.startDate ?? Date.now())
+			: (plan?.startDate ?? Date.now())
+	);
+
+	async function setDate(field: 'startDate' | 'endDate', at: number | null) {
+		picking = null;
+		await updatePlan(planId, { [field]: at === null ? null : startOfDay(at) });
 		await refresh();
 	}
 
@@ -162,6 +179,36 @@
 					label={$t('plans.activeTitle')}
 					onchange={setActive}
 				/>
+			</div>
+
+			<!-- The season it runs for. Outside it the plan is silent, which is a pause it keeps itself. -->
+			<div class="mt-3 border-t border-line pt-3">
+				<p class="text-xs text-muted">{$t('plans.datesHint')}</p>
+				<div class="mt-2 grid grid-cols-2 gap-2">
+					{#each [{ field: 'startDate', label: $t('plans.startDate'), at: plan.startDate }, { field: 'endDate', label: $t('plans.endDate'), at: plan.endDate }] as entry (entry.field)}
+						<div>
+							<span class="block text-xs text-muted">{entry.label}</span>
+							<div class="mt-1 flex items-center gap-1">
+								<button
+									class="flex-1 rounded-lg border border-line bg-bg p-2 text-left text-sm
+										{entry.at === null ? 'text-muted' : 'text-ink'}"
+									onclick={() => (picking = entry.field as 'startDate' | 'endDate')}
+								>
+									{entry.at === null ? $t('plans.anyDate') : $dateFormats.date(entry.at)}
+								</button>
+								{#if entry.at !== null}
+									<button
+										class="rounded-lg p-1.5 text-muted"
+										aria-label={$t('plans.clearDate')}
+										onclick={() => setDate(entry.field as 'startDate' | 'endDate', null)}
+									>
+										<Icon name="close" size={16} />
+									</button>
+								{/if}
+							</div>
+						</div>
+					{/each}
+				</div>
 			</div>
 		</section>
 
@@ -303,6 +350,16 @@
 				</div>
 			</div>
 		</div>
+	{/if}
+
+	{#if picking}
+		<DateTimeDialog
+			title={$t(picking === 'startDate' ? 'plans.startDate' : 'plans.endDate')}
+			value={pickingFrom}
+			dateOnly
+			onconfirm={(at) => setDate(picking!, at)}
+			oncancel={() => (picking = null)}
+		/>
 	{/if}
 
 	{#if confirmingDelete}

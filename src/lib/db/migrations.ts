@@ -229,5 +229,7 @@ export const MIGRATIONS: string[][] = [
 	[
 		`ALTER TABLE round_end ADD COLUMN setting_value REAL;`,
 		`ALTER TABLE activity ADD COLUMN measurements TEXT;`
-	]
+	],
+	// 0015 the season a plan runs for, so it stops asking for the week once it is over
+	[`ALTER TABLE plan ADD COLUMN start_date INTEGER;`, `ALTER TABLE plan ADD COLUMN end_date INTEGER;`]
 ];

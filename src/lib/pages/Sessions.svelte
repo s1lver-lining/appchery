@@ -21,7 +21,13 @@
 		createSession,
 		updateSession
 	} from '$lib/db/repository';
-	import { upcoming, weekdayOf, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
+	import {
+		upcoming,
+		weekdayOf,
+		weekArrowGoalOn,
+		onlyActive,
+		type Occurrence
+	} from '$lib/domain/plans';
 	import { parseConfig } from '$lib/domain/matches';
 	import { withOrigin } from '$lib/nav';
 	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
@@ -141,7 +147,10 @@
 	const occurrences = $derived(
 		upcoming(
 			live.slots,
-			sessions.map((s) => s.startedAt)
+			sessions.map((s) => s.startedAt),
+			undefined,
+			undefined,
+			live.plans
 		)
 	);
 
@@ -187,8 +196,11 @@
 		}
 		return [...byDate.entries()].sort(([a], [b]) => a - b).map(([at, rows]) => ({ at, rows }));
 	};
-	/** What every plan asks of a week together, which is what a week's total is measured against. */
-	const weekGoal = $derived(weekArrowGoal(live.slots, live.plans));
+	/**
+	 * What every plan asks of a week together, which is what a week's total is measured against. Read
+	 * per week rather than once, so a season that is over stops setting the bar for the weeks after it.
+	 */
+	const weekGoal = $derived((weekStart: number) => weekArrowGoalOn(weekStart, live.slots, live.plans));
 	/**
 	 * Counted off every session rather than off the rows on screen: a search narrows what is listed,
 	 * and a week that reads 48 arrows because two of its outings match is a figure nobody asked for.
@@ -628,7 +640,8 @@
 				<div class="space-y-5">
 					{#each weeks as group (group.start)}
 						<!-- The week the list opens on, held so the effect above can bring it into view. -->
-						{@const reached = weekGoal > 0 && weekArrows(group) >= weekGoal}
+						{@const goal = weekGoal(group.start)}
+						{@const reached = goal > 0 && weekArrows(group) >= goal}
 						<section use:markAnchor={group.start}>
 							<header class="mb-2 flex items-baseline gap-2 border-b border-line pb-1">
 								<h2 class="text-sm font-semibold">{$t('sessions.week', { n: group.week })}</h2>
@@ -640,7 +653,7 @@
 										? 'bg-brand/20 font-semibold text-brand-text'
 										: 'bg-sunk text-muted'}"
 								>
-									{weekArrows(group)}{#if $showWeekGoal && weekGoal > 0}/{weekGoal}{/if}
+									{weekArrows(group)}{#if $showWeekGoal && goal > 0}/{goal}{/if}
 									{$t('sessions.arrows')}
 								</span>
 								<span class="ml-auto text-xs text-muted">

@@ -16,6 +16,7 @@
 		title,
 		value,
 		confirmLabel,
+		dateOnly = false,
 		onconfirm,
 		oncancel
 	}: {
@@ -23,6 +24,8 @@
 		/** Milliseconds the dialog opens on. */
 		value: number;
 		confirmLabel?: string;
+		/** For something that lasts a day rather than happens at an hour: the clock is left out. */
+		dateOnly?: boolean;
 		onconfirm: (at: number) => void;
 		oncancel: () => void;
 	} = $props();
@@ -86,7 +89,13 @@
 	function confirm() {
 		const date = new Date(day);
 		onconfirm(
-			new Date(date.getFullYear(), date.getMonth(), date.getDate(), hour, minute).getTime()
+			new Date(
+				date.getFullYear(),
+				date.getMonth(),
+				date.getDate(),
+				dateOnly ? 0 : hour,
+				dateOnly ? 0 : minute
+			).getTime()
 		);
 	}
 </script>
@@ -137,41 +146,43 @@
 		</div>
 
 		<!-- The clock follows the one chosen in the settings, so nobody reads 19:00 as seven in the morning. -->
-		<div class="mt-3 flex items-end gap-2 border-t border-line pt-3">
-			<div class="flex-1">
-				<WheelPicker
-					values={$use24Hour ? HOURS_24 : HOURS_12}
-					value={$use24Hour ? hour : hour12}
-					label={$t('common.hour')}
-					item={36}
-					format={(v) => ($use24Hour ? pad(v) : String(v))}
-					onchange={(v) => (hour = $use24Hour ? v : (v % 12) + (isPm ? 12 : 0))}
-				/>
-			</div>
-			<span class="pb-9 text-lg font-bold text-muted">:</span>
-			<div class="flex-1">
-				<WheelPicker
-					values={MINUTES}
-					value={minute}
-					label={$t('common.minute')}
-					item={36}
-					format={pad}
-					onchange={(v) => (minute = v)}
-				/>
-			</div>
-			{#if !$use24Hour}
+		{#if !dateOnly}
+			<div class="mt-3 flex items-end gap-2 border-t border-line pt-3">
 				<div class="flex-1">
 					<WheelPicker
-						values={['am', 'pm']}
-						value={isPm ? 'pm' : 'am'}
-						label={$t('common.dayPeriod')}
+						values={$use24Hour ? HOURS_24 : HOURS_12}
+						value={$use24Hour ? hour : hour12}
+						label={$t('common.hour')}
 						item={36}
-						format={dayPeriod}
-						onchange={(part) => (hour = (hour % 12) + (part === 'pm' ? 12 : 0))}
+						format={(v) => ($use24Hour ? pad(v) : String(v))}
+						onchange={(v) => (hour = $use24Hour ? v : (v % 12) + (isPm ? 12 : 0))}
 					/>
 				</div>
-			{/if}
-		</div>
+				<span class="pb-9 text-lg font-bold text-muted">:</span>
+				<div class="flex-1">
+					<WheelPicker
+						values={MINUTES}
+						value={minute}
+						label={$t('common.minute')}
+						item={36}
+						format={pad}
+						onchange={(v) => (minute = v)}
+					/>
+				</div>
+				{#if !$use24Hour}
+					<div class="flex-1">
+						<WheelPicker
+							values={['am', 'pm']}
+							value={isPm ? 'pm' : 'am'}
+							label={$t('common.dayPeriod')}
+							item={36}
+							format={dayPeriod}
+							onchange={(part) => (hour = (hour % 12) + (part === 'pm' ? 12 : 0))}
+						/>
+					</div>
+				{/if}
+			</div>
+		{/if}
 
 		<div class="mt-4 flex gap-2">
 			<button

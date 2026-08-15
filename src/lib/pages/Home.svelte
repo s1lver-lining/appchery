@@ -14,7 +14,13 @@
 		createSession,
 		updateSession
 	} from '$lib/db/repository';
-	import { upcoming, nextUp, weekArrowGoal, onlyActive, type Occurrence } from '$lib/domain/plans';
+	import {
+		upcoming,
+		nextUp,
+		weekArrowGoalOn,
+		onlyActive,
+		type Occurrence
+	} from '$lib/domain/plans';
 	import {
 		overview,
 		inRange,
@@ -120,7 +126,13 @@
 	const next = $derived(
 		nextUp<{ at: number; session?: (typeof sessions)[number]; occurrence?: Occurrence }>([
 			...sessions.map((session) => ({ at: session.startedAt, session })),
-			...upcoming(live.slots, sessions.map((s) => s.startedAt)).map((occurrence) => ({
+			...upcoming(
+				live.slots,
+				sessions.map((s) => s.startedAt),
+				undefined,
+				undefined,
+				live.plans
+			).map((occurrence) => ({
 				at: occurrence.at,
 				occurrence
 			}))
@@ -178,7 +190,8 @@
 			.filter((s) => s.startedAt >= weekStart)
 			.reduce((sum, s) => sum + (counts[s.id] ?? 0), 0)
 	);
-	const weekGoal = $derived(weekArrowGoal(live.slots, live.plans));
+	// This week's bar, so a plan whose season is over no longer asks anything of the week on screen.
+	const weekGoal = $derived(weekArrowGoalOn(weekStart, live.slots, live.plans));
 	const weekSessions = $derived(sessions.filter((s) => s.startedAt >= weekStart).length);
 	const weekDone = $derived(weekGoal > 0 ? Math.min(1, weekArrows / weekGoal) : 0);
 
