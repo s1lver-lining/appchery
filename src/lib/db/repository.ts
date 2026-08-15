@@ -233,11 +233,21 @@ export async function listActivities(sessionId: string) {
 		.orderBy(asc(schema.activity.startedAt));
 }
 
+/**
+ * Every activity still standing, anywhere in the history. An activity whose session was deleted is
+ * gone with it: a delete cascades to nothing so a restore can be exact, which leaves the arrows of a
+ * deleted outing sitting in the table. Read them and the totals go on counting an outing that is no
+ * longer in the list.
+ */
 export async function listAllActivities() {
+	const live = db()
+		.select({ id: schema.session.id })
+		.from(schema.session)
+		.where(isNull(schema.session.deletedAt));
 	return db()
 		.select()
 		.from(schema.activity)
-		.where(isNull(schema.activity.deletedAt))
+		.where(and(isNull(schema.activity.deletedAt), inArray(schema.activity.sessionId, live)))
 		.orderBy(desc(schema.activity.startedAt));
 }
 
