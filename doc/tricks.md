@@ -142,11 +142,6 @@ practice shape still counts in the chart and can still be filtered on.
 The round cards are the opposite: only rounds shot to the end, because a round you walked away from
 scores lower for reasons that say nothing about how you shot.
 
-**Chart colours are declared outside `@theme`.** Tailwind only emits the theme variables its
-generated classes mention, and a chart paints its colours through an inline style, so the chart hues
-live on `:root` as `--c-kind-*` and `--c-medal-*` rather than as theme tokens that would be dropped
-from the build.
-
 ## Badges
 
 **They find you.** Badges are awarded as you shoot, and the ones that finish a round announce
@@ -160,12 +155,6 @@ like any scored round, and a badge one of those arrows earns goes up over the se
 **Two ways to read the list.** The grid of icons is the default; the dots menu swaps it for the list
 with every rule spelled out, and remembers which you chose. Tapping a badge in the grid opens what
 it wants and how close you are either way.
-
-**Locked ones show their progress.** A badge you have not earned still says what it wants and how
-far along you are, because 840 arrows of a thousand is worth knowing.
-
-**The FFTA arrows look like arrows.** Each progression arrow is drawn in the colour it is named for,
-and only dims until it is shot: the colour is the name of the award, so it is never taken away.
 
 **A badge is dated by the shooting, not by the app.** Score an old session and any badge it earns
 appears with the date of that session, wherever it lands in the list.
@@ -185,14 +174,6 @@ adds a ribbon.
 **Deleting asks nothing, and gives it back.** A session, a round or a match goes the moment you tap
 delete, and a strip above the tab bar offers it back for six seconds. Nothing is really gone until
 much later: a delete only hides the row.
-
-**An empty page shows what fills it.** Every empty list draws a faded example of a real row, marked
-"Example", and says in a sentence what the page is for. The example is a drawing, not a row: it
-cannot be tapped and it is nobody's data.
-
-
-**Everything is local.** Nothing is uploaded, by design. The backup in the settings data tab is how a
-phone hands its history to another one.
 
 **The app works with no signal.** Weather and place names need a network at the moment they are
 fetched; nothing else does.

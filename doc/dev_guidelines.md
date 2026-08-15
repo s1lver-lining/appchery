@@ -82,3 +82,22 @@ nobody notices until a result is disputed.
 ## Tricks
 
 When a feature is implemented in a way that is not obvious, add a comment explaining the trick in /home/u/scripts/appchery/doc/tricks.md.
+
+This is a good example of a trick, describing a feature that is not obvious to the user:
+**Change what the two figures count.** Press and hold either figure in the header, or right click it,
+and pick from several options.
+
+This one is also good because it describes a non-obvious but necessary behaviour:
+**Once earned, kept.** Deleting a session never takes a badge back. If you want the list to match
+the history exactly, the recheck in the settings data tab is the button that does it, and it is the
+only thing in the app that can take a badge away.
+
+This is a bad exemple of a trick, it's an obvious feature about which the user don't need to be informed (and it's about the code, not the user):
+**Chart colours are declared outside `@theme`.** Tailwind only emits the theme variables its
+generated classes mention, and a chart paints its colours through an inline style, so the chart hues
+live on `:root` as `--c-kind-*` and `--c-medal-*` rather than as theme tokens that would be dropped
+from the build.
+
+This one is a bad exemple as it's too obvious too:
+**Locked ones show their progress.** A badge you have not earned still says what it wants and how
+far along you are, because 840 arrows of a thousand is worth knowing.
