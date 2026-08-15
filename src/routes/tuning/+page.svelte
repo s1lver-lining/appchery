@@ -42,6 +42,7 @@
 
 	// Opened on the tab the link names, and once seeded the tabs belong to whoever taps them.
 	let bow = $state<GuideBowType>(guideBow($page.url.searchParams.get('bow')) ?? 'recurve');
+	let bowSeeded = guideBow($page.url.searchParams.get('bow')) !== null;
 	let open = $state<GuideStep | null>(null);
 	let bows = $state<BowRow[]>([]);
 	let starting = $state(false);
@@ -113,6 +114,13 @@
 
 	/** The bow a tuning started from here belongs to: the default one, or the only one recorded. */
 	const target = $derived(bows.find((row) => row.id === $defaultBowId) ?? (bows.length === 1 ? bows[0] : undefined));
+
+	// The bows arrive after the page does, so the tab the default bow asks for is set when they land.
+	$effect(() => {
+		if (bowSeeded || !target) return;
+		bowSeeded = true;
+		bow = guideBow(target.type) ?? bow;
+	});
 
 	/**
 	 * Started the way the bow page starts one: joined to today's session for that bow when there is
