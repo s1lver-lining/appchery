@@ -4,7 +4,6 @@ import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
 import { weekArrowGoalOn, onlyActive } from '$lib/domain/plans';
-import { startOfWeek } from '$lib/domain/dates';
 import {
 	parseConfig,
 	tally,
@@ -1304,8 +1303,8 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 			};
 		}),
 		sightMarks: marks,
-		// The bar a weekly badge is measured against is what this week asks for, dates included.
-		weekArrowGoal: weekArrowGoalOn(startOfWeek(Date.now()), live.slots, live.plans)
+		// Asked per week, so a season that had not begun or is over sets no bar for the weeks around it.
+		weekArrowGoal: (weekStart: number) => weekArrowGoalOn(weekStart, live.slots, live.plans)
 	};
 }
 

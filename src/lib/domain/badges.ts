@@ -68,8 +68,12 @@ export interface BadgeInput {
 	activities: BadgeActivity[];
 	/** Every sight mark ever written, so the fifth one on a bow can be dated. */
 	sightMarks: { bowId: string; createdAt: number }[];
-	/** Arrows a week of the current plans asks for, zero when no plan is running. */
-	weekArrowGoal: number;
+	/**
+	 * Arrows the plans ask of one particular week, zero for a week no plan was running in. Asked per
+	 * week rather than given once, because a plan has a season: a week before it started or after it
+	 * ended was never measured against it, and judging one by today's plans invents a bar nobody set.
+	 */
+	weekArrowGoal: (weekStart: number) => number;
 }
 
 /** The same input with the orderings every rule wants, worked out once instead of per badge. */
@@ -181,11 +185,22 @@ function weeks(history: History): { start: number; arrows: number; last: number 
 
 const WEEK = 7 * 86_400_000;
 
+/** A week that met the plan. A week no plan asked anything of is not one that was met. */
+function onPlanWeek(history: History) {
+	return (week: { start: number; arrows: number }) => {
+		const goal = history.weekArrowGoal(week.start);
+		return goal > 0 && week.arrows >= goal;
+	};
+}
+
 /**
  * How long the run of weeks passing `rule` was at each week that passed it. Consecutive by the
  * calendar, not by the list: a week nobody shot in leaves no bucket, and it has to break the streak.
  */
-function weekRuns(history: History, rule: (week: { arrows: number }) => boolean): { run: number; last: number }[] {
+function weekRuns(
+	history: History,
+	rule: (week: { start: number; arrows: number }) => boolean
+): { run: number; last: number }[] {
 	const runs: { run: number; last: number }[] = [];
 	let run = 0;
 	let previous: number | null = null;
@@ -202,12 +217,15 @@ function weekRuns(history: History, rule: (week: { arrows: number }) => boolean)
 function weekStreak(
 	history: History,
 	length: number,
-	rule: (week: { arrows: number }) => boolean
+	rule: (week: { start: number; arrows: number }) => boolean
 ): number | null {
 	return weekRuns(history, rule).find((entry) => entry.run >= length)?.last ?? null;
 }
 
-function longestWeekStreak(history: History, rule: (week: { arrows: number }) => boolean): number {
+function longestWeekStreak(
+	history: History,
+	rule: (week: { start: number; arrows: number }) => boolean
+): number {
 	return Math.max(0, ...weekRuns(history, rule).map((entry) => entry.run));
 }
 
@@ -543,14 +561,9 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'onPlan',
 		family: 'habit',
 		icon: 'chart',
-		// Judged against the goal the plans ask for today, because that is the only goal ever recorded.
-		earnedAt: (h) =>
-			h.weekArrowGoal > 0 ? weekStreak(h, 4, (week) => week.arrows >= h.weekArrowGoal) : null,
-		progress: (h) => ({
-			current:
-				h.weekArrowGoal > 0 ? longestWeekStreak(h, (week) => week.arrows >= h.weekArrowGoal) : 0,
-			target: 4
-		})
+		// Each week against what the plans asked of that week: a week no plan covered asks for nothing.
+		earnedAt: (h) => weekStreak(h, 4, onPlanWeek(h)),
+		progress: (h) => ({ current: longestWeekStreak(h, onPlanWeek(h)), target: 4 })
 	},
 
 	{

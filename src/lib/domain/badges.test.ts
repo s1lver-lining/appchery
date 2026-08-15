@@ -7,6 +7,7 @@ import {
 	type BadgeEnd,
 	type BadgeInput
 } from './badges';
+import { startOfWeek } from './dates';
 import { getRound } from './rounds/seed';
 import { buildCustomRound } from './rounds/custom';
 
@@ -45,7 +46,7 @@ function end(partial: Partial<BadgeEnd> = {}): BadgeEnd {
 }
 
 function input(activities: BadgeActivity[], extra: Partial<BadgeInput> = {}): BadgeInput {
-	return { activities, sightMarks: [], weekArrowGoal: 0, ...extra };
+	return { activities, sightMarks: [], weekArrowGoal: () => 0, ...extra };
 }
 
 function badge(activities: BadgeActivity[], key: string, extra: Partial<BadgeInput> = {}) {
@@ -113,8 +114,31 @@ describe('habit', () => {
 			activity({ id: `w${i}`, startedAt: MONDAY + i * WEEK })
 		);
 		expect(badge(weekly, 'onPlan').earnedAt).toBeNull();
-		expect(badge(weekly, 'onPlan', { weekArrowGoal: 72 }).earnedAt).toBe(MONDAY + 3 * WEEK);
-		expect(badge(weekly, 'onPlan', { weekArrowGoal: 100 }).earnedAt).toBeNull();
+		expect(badge(weekly, 'onPlan', { weekArrowGoal: () => 72 }).earnedAt).toBe(MONDAY + 3 * WEEK);
+		expect(badge(weekly, 'onPlan', { weekArrowGoal: () => 100 }).earnedAt).toBeNull();
+	});
+
+	it('measures each week against what the plans asked of that week', () => {
+		const weekly = Array.from({ length: 4 }, (_, i) =>
+			activity({ id: `w${i}`, startedAt: MONDAY + i * WEEK })
+		);
+		// A season that began on the third of the four weeks: the two before it were asked nothing.
+		const started = startOfWeek(MONDAY + 2 * WEEK);
+		const seasonal = (weekStart: number) => (weekStart >= started ? 72 : 0);
+		expect(badge(weekly, 'onPlan', { weekArrowGoal: seasonal }).earnedAt).toBeNull();
+		expect(badge(weekly, 'onPlan', { weekArrowGoal: seasonal }).progress).toEqual({
+			current: 2,
+			target: 4
+		});
+	});
+
+	it('keeps the streak a finished season earned rather than dropping it with the plan', () => {
+		const weekly = Array.from({ length: 4 }, (_, i) =>
+			activity({ id: `w${i}`, startedAt: MONDAY + i * WEEK })
+		);
+		// The plan ran over all four weeks and is over now, which is what today's figure would say.
+		const ended = (weekStart: number) => (weekStart <= startOfWeek(MONDAY + 3 * WEEK) ? 72 : 0);
+		expect(badge(weekly, 'onPlan', { weekArrowGoal: ended }).earnedAt).toBe(MONDAY + 3 * WEEK);
 	});
 });
 
