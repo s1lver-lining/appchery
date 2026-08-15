@@ -34,7 +34,12 @@
 			: PAD.left + ((cm - xMin) / (xMax - xMin)) * (W - PAD.left - PAD.right)
 	);
 	const yCentre = $derived((cm: number) => scale(centres, cm, PAD.top, height - PAD.bottom));
-	const ySpread = $derived((cm: number) => scale(spreads, cm, PAD.top, height - PAD.bottom));
+	/**
+	 * Group size runs the other way up: a tight group is a small number and a good result, and a
+	 * chart where the answer is a trough reads as a fault. Drawn inverted, both curves peak together
+	 * on the brace height to keep, which is the shape the guide teaches.
+	 */
+	const ySpread = $derived((cm: number) => scale(spreads, cm, height - PAD.bottom, PAD.top));
 
 	const path = $derived((y: (cm: number) => number, pick: (p: BracePoint) => number) =>
 		points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.braceCm)},${y(pick(p))}`).join(' ')

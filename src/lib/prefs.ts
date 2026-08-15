@@ -359,3 +359,10 @@ if (typeof document !== 'undefined') {
  * you reach for depends on where you are, so it is deliberately not synced.
  */
 export const defaultBowId = storedString(DEFAULT_BOW_KEY);
+
+/**
+ * Which hand the tuning guide is read for, once the archer has said. The bow's own setting comes
+ * first when it has one; this is the answer for a reader with no bow on record yet, and it is
+ * asked once rather than guessed, since half the guide reads backwards for the wrong hand.
+ */
+export const bowHand = storedString('appchery.bowHand');

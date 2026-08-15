@@ -22,13 +22,26 @@ export type DiagramName =
 	| 'tiller'
 	| 'nockingPoint'
 	| 'bareShaft'
-	| 'paperTear';
+	| 'paperTear'
+	| 'drawLength'
+	| 'bowStrength'
+	| 'braceMeasure'
+	| 'sightAlignment'
+	| 'plungerLine'
+	| 'tillerDrift'
+	| 'braceGroups';
+
+/**
+ * The diagrams whose reading swaps with the bow hand: a line of arrows leaning one way says the
+ * spring is soft for a right hander and stiff for a left hander, so one drawing cannot serve both.
+ */
+export const HANDED_DIAGRAMS: DiagramName[] = ['centreShot', 'plungerLine'];
 
 /**
  * The kind of work a step is, which is what the list groups by: things measured once, the bare bow
  * put together, the settings roughed in before anything is shot, and the arrows matched to it.
  */
-export type GuideCategory = 'measure' | 'setup' | 'presetting' | 'arrows';
+export type GuideCategory = 'measure' | 'setup' | 'presetting' | 'arrows' | 'fine';
 
 export interface GuideStep {
 	key: string;
@@ -47,8 +60,11 @@ export interface GuideStep {
 	settings?: string[];
 }
 
-/** Blocks a step can carry: the reference table for brace height, and the mass to weight sum. */
-export type GuideBlock = 'braceHeightTable' | 'weightRatio';
+/**
+ * Blocks a step can carry: the reference table for brace height, the mass to weight sum, and the
+ * shape the two brace height curves make when the test is going right.
+ */
+export type GuideBlock = 'braceHeightTable' | 'weightRatio' | 'braceCurveExample';
 
 /**
  * Where to start a brace height from, by bow length, for a 25 inch riser: the figures the makers
@@ -68,14 +84,41 @@ export interface StepText {
 	why: string;
 	steps: string[];
 	results: { observation: string; suggests: string }[];
+	/**
+	 * The same step read on a left handed bow, where every sideways reading is the mirror of the
+	 * one above. Only the lines that name a side are repeated: a step whose wording never says left
+	 * or right carries none, and a reader on either bow gets the same words.
+	 *
+	 * Written out rather than swapped by machine, because "move the rest right" and "a stiffer
+	 * shaft" sit in the same sentence and only one of them turns over.
+	 */
+	left?: { steps?: string[]; results?: { observation: string; suggests: string }[] };
 }
 
+/** Steps whose reading turns over with the bow hand, so the page offers the reader the choice. */
+export const HANDED_STEPS = [
+	'centre-shot',
+	'arrow-spine',
+	'bare-shaft',
+	'plunger-fine',
+	'compound-rest',
+	'paper-tune',
+	'walk-back'
+];
+
 export const GUIDE_STEPS: GuideStep[] = [
-	{ key: 'draw-length', bow: 'recurve', category: 'measure', settings: ['arrowLength'] },
+	{
+		key: 'draw-length',
+		bow: 'recurve',
+		category: 'measure',
+		diagram: 'drawLength',
+		settings: ['arrowLength']
+	},
 	{
 		key: 'bow-strength',
 		bow: 'recurve',
 		category: 'measure',
+		diagram: 'bowStrength',
 		templateKey: 'weight-ratio',
 		block: 'weightRatio'
 	},
@@ -93,12 +136,12 @@ export const GUIDE_STEPS: GuideStep[] = [
 		category: 'setup',
 		diagram: 'centreShot'
 	},
-	{ key: 'sight-alignment', bow: 'recurve', category: 'setup' },
+	{ key: 'sight-alignment', bow: 'recurve', category: 'setup', diagram: 'sightAlignment' },
 	{
 		key: 'pre-brace-height',
 		bow: 'recurve',
 		category: 'presetting',
-		templateKey: 'brace-height',
+		diagram: 'braceMeasure',
 		block: 'braceHeightTable',
 		settings: ['braceHeight']
 	},
@@ -117,6 +160,30 @@ export const GUIDE_STEPS: GuideStep[] = [
 	},
 	{ key: 'arrow-spine', bow: 'recurve', category: 'arrows', settings: ['arrowSpine', 'pointWeight'] },
 	{ key: 'bare-shaft', bow: 'recurve', category: 'arrows', diagram: 'bareShaft', templateKey: 'bare-shaft' },
+	{
+		key: 'plunger-fine',
+		bow: 'recurve',
+		category: 'fine',
+		diagram: 'plungerLine',
+		templateKey: 'walk-back',
+		settings: ['plunger']
+	},
+	{
+		key: 'tiller-fine',
+		bow: 'recurve',
+		category: 'fine',
+		diagram: 'tillerDrift',
+		settings: ['tillerUpper', 'tillerLower']
+	},
+	{
+		key: 'brace-fine',
+		bow: 'recurve',
+		category: 'fine',
+		diagram: 'braceGroups',
+		templateKey: 'brace-height',
+		block: 'braceCurveExample',
+		settings: ['braceHeight']
+	},
 
 	{ key: 'spec-check', bow: 'compound', settings: ['axleToAxle', 'braceHeight'] },
 	{ key: 'cam-sync', bow: 'compound' },
@@ -212,7 +279,15 @@ const EN: Record<string, StepText> = {
 		results: [
 			{ observation: 'The point sits too far outside', suggests: 'Wind the button in slightly to bring the point in' },
 			{ observation: 'The point sits too far inside', suggests: 'Wind the button out slightly to bring the point out' }
-		]
+		],
+		left: {
+			steps: [
+				'Stand the bow upright and nock an arrow on the rest. A straight stabiliser helps you find the bow plane.',
+				'Stand behind the bow and look along the string, in the bow plane. The string should cut the stabiliser in two.',
+				'The point sits in the bow plane. It can also sit slightly outside it (right on a left handed bow), depending on taste.',
+				'Set the position with the button barrel until the arrow lines up.'
+			]
+		}
 	},
 	'sight-alignment': {
 		title: 'Sight alignment',
@@ -285,7 +360,14 @@ const EN: Record<string, StepText> = {
 			{ observation: 'The bare shaft goes right, right handed', suggests: 'A stiffer shaft (a lower spine number), or a lighter point, or a shorter shaft' },
 			{ observation: 'The bare shaft goes left, right handed', suggests: 'A weaker shaft (a higher spine number), or a heavier point, or a longer shaft' },
 			{ observation: 'Front of centre balance under 10 %', suggests: 'Add point weight: the arrow will hold poorly in wind' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'The bare shaft goes left, left handed', suggests: 'A stiffer shaft (a lower spine number), or a lighter point, or a shorter shaft' },
+				{ observation: 'The bare shaft goes right, left handed', suggests: 'A weaker shaft (a higher spine number), or a heavier point, or a longer shaft' },
+				{ observation: 'Front of centre balance under 10 %', suggests: 'Add point weight: the arrow will hold poorly in wind' }
+			]
+		}
 	},
 	'bare-shaft': {
 		title: 'Prove the setup with bare shafts',
@@ -300,9 +382,74 @@ const EN: Record<string, StepText> = {
 			{ observation: 'Bare shaft high or low', suggests: 'Correct the nocking point before any sideways correction' },
 			{ observation: 'The bare shaft goes right, right handed', suggests: 'A stiffer shaft (a lower spine number), or a stiffer button spring' },
 			{ observation: 'The bare shaft goes left, right handed', suggests: 'A weaker shaft (a higher spine number), or a softer button spring' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Bare shaft high or low', suggests: 'Correct the nocking point before any sideways correction' },
+				{ observation: 'The bare shaft goes left, left handed', suggests: 'A stiffer shaft (a lower spine number), or a stiffer button spring' },
+				{ observation: 'The bare shaft goes right, left handed', suggests: 'A weaker shaft (a higher spine number), or a softer button spring' }
+			]
+		}
 	},
 
+	'plunger-fine': {
+		title: 'Plunger pressure',
+		why: 'This is the dynamic half of the button: the spring has to absorb the sideways bend the string puts into the arrow, and until it does, your windage moves with the distance.',
+		steps: [
+			'Make a paper strip about 8 cm wide with an aiming mark near the top: an old 80 cm face folded down, with a 40 cm centre stuck on 15 cm below the top.',
+			'Warm up until you group at 15 and at 30 metres, then set the sight for 15 metres and leave it there.',
+			'Aim at the same mark at every distance, and shoot one arrow each from 10, 15, 20, 25, 30 and 35 metres.',
+			'Read the line the six arrows make down the strip. Change the spring one step, then shoot the test again.'
+		],
+		results: [
+			{ observation: 'A straight vertical line, all six arrows within the strip', suggests: 'The spring pressure is right: leave it alone' },
+			{ observation: 'A straight line offset right at the long distances, right handed', suggests: 'The spring is too soft: stiffen it and shoot the test again' },
+			{ observation: 'A straight line offset left at the long distances, right handed', suggests: 'The spring is too stiff: soften it and shoot the test again' },
+			{ observation: 'The line bellies out to the right, right handed', suggests: 'The button is wound too far out: go back to the centre shot step' },
+			{ observation: 'The line bellies out to the left, right handed', suggests: 'The button is wound too far in: go back to the centre shot step' }
+		],
+		left: {
+			results: [
+				{ observation: 'A straight vertical line, all six arrows within the strip', suggests: 'The spring pressure is right: leave it alone' },
+				{ observation: 'A straight line offset left at the long distances, left handed', suggests: 'The spring is too soft: stiffen it and shoot the test again' },
+				{ observation: 'A straight line offset right at the long distances, left handed', suggests: 'The spring is too stiff: soften it and shoot the test again' },
+				{ observation: 'The line bellies out to the left, left handed', suggests: 'The button is wound too far out: go back to the centre shot step' },
+				{ observation: 'The line bellies out to the right, left handed', suggests: 'The button is wound too far in: go back to the centre shot step' }
+			]
+		}
+	},
+	'tiller-fine': {
+		title: 'Tiller: fine pass',
+		why: 'The rough tiller barely moves the group; this pass moves how the bow behaves under your hand. Set right, the two limbs come back together, the bow hand stays loose and the aim sits still.',
+		steps: [
+			'Stand at about 18 metres in front of a 40 cm face and aim at the gold.',
+			'Draw very slowly, by the most direct path, and watch the sight ring — or the point of the arrow, shooting barebow.',
+			'Note whether it climbs or falls as the string comes back.',
+			'Correct at the top limb bolt only, a quarter turn at a time, and draw again after each.'
+		],
+		results: [
+			{ observation: 'The ring climbs during the draw', suggests: 'Reduce the tiller: tighten the top limb bolt a quarter turn' },
+			{ observation: 'The ring falls during the draw', suggests: 'Increase the tiller: back the top limb bolt off a quarter turn' },
+			{ observation: 'The aim sits still from the first movement to the anchor', suggests: 'The tiller suits you: stop here' },
+			{ observation: 'The nocking point reads differently afterwards', suggests: 'Expected: a real tiller change moves it. Recheck it before anything else' }
+		]
+	},
+	'brace-fine': {
+		title: 'Brace height: fine pass',
+		why: 'The last setting on the bow, and the one that pays: at the right brace height the group closes up and climbs at the same time, which is the bow giving the arrow its best push.',
+		steps: [
+			'Shoot at 50 or 70 metres, on a calm day with good light: this test cannot be read through wind.',
+			'Shoot ends of six and note both how tight the group is and how high it sits on the face.',
+			'Twist or untwist the string in steps of 0.3 cm, then in steps of 0.1 cm as the group starts to come good. One twist is about 0.5 mm (not linear).',
+			'Keep going until the group stops climbing, and take the height just before it drops away.'
+		],
+		results: [
+			{ observation: 'Tight group, sitting as high as it has been', suggests: 'This is the brace height to keep' },
+			{ observation: 'A middling group, neither tight nor high', suggests: 'Carry on in the same direction, and turn back if the next end is worse' },
+			{ observation: 'A loose group, low on the face', suggests: 'A long way off: go back the other way in bigger steps' },
+			{ observation: 'A harsh, loud shot', suggests: 'The brace is low for this bow: the sound alone tells you before the group does' }
+		]
+	},
 	'spec-check': {
 		title: 'Check the bow against its spec',
 		why: 'A compound is a machine built to numbers: if axle to axle and brace height are off the sheet, something has moved and tuning will not hold.',
@@ -354,7 +501,13 @@ const EN: Record<string, StepText> = {
 		results: [
 			{ observation: 'Paper tear left, right handed', suggests: 'Move the rest right in small steps' },
 			{ observation: 'Paper tear right, right handed', suggests: 'Move the rest left in small steps' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Paper tear right, left handed', suggests: 'Move the rest left in small steps' },
+				{ observation: 'Paper tear left, left handed', suggests: 'Move the rest right in small steps' }
+			]
+		}
 	},
 	'd-loop': {
 		title: 'D-loop and nock point',
@@ -408,7 +561,14 @@ const EN: Record<string, StepText> = {
 			{ observation: 'Tail high tear', suggests: 'Lower the nock point or raise the rest' },
 			{ observation: 'Tail low tear', suggests: 'Raise the nock point or lower the rest' },
 			{ observation: 'Tail left, right handed', suggests: 'Move the rest right, or check clearance and spine' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Tail high tear', suggests: 'Lower the nock point or raise the rest' },
+				{ observation: 'Tail low tear', suggests: 'Raise the nock point or lower the rest' },
+				{ observation: 'Tail right, left handed', suggests: 'Move the rest left, or check clearance and spine' }
+			]
+		}
 	},
 	'walk-back': {
 		title: 'Walk-back tuning',
@@ -421,7 +581,13 @@ const EN: Record<string, StepText> = {
 		results: [
 			{ observation: 'Arrows drift left as you walk back, right handed', suggests: 'Move the rest right in very small steps' },
 			{ observation: 'Arrows drift right as you walk back, right handed', suggests: 'Move the rest left in very small steps' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Arrows drift right as you walk back, left handed', suggests: 'Move the rest left in very small steps' },
+				{ observation: 'Arrows drift left as you walk back, left handed', suggests: 'Move the rest right in very small steps' }
+			]
+		}
 	},
 	'compound-bare-shaft': {
 		title: 'Bare shaft check',
@@ -532,7 +698,15 @@ const FR: Record<string, StepText> = {
 		results: [
 			{ observation: 'La pointe de la flèche est trop vers l\'extérieur', suggests: 'Rentrer légèrement le berger pour rentrer la pointe' },
 			{ observation: 'La pointe de la flèche est trop vers l\'intérieur', suggests: 'Sortir légèrement le berger pour sortir la pointe' }
-		]
+		],
+		left: {
+			steps: [
+				"Fixez l'arc à la verticale et encochez une flèche sur le repose-flèche. Un stabilisation doite peut être ajoutée pour trouver le plan de l'arc.",
+				"Placez vous derrière l'arc et regardez le long de la corde dans le plan de l'arc. La stabilisation doit être coupée en deux par la corde.",
+				"La pointe se place dans le plan de l'arc. Elle peut aussi être légèrement vers l'extérieur (droite pour un arc gaucher) selon les préférences.",
+				'Réglez la position avec le barillet du berger jusqu\'à ce que la flèche soit correctement alignée.'
+			]
+		}
 	},
 	'sight-alignment': {
 		title: 'Alignement du viseur',
@@ -605,7 +779,14 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La flèche non empennée part à droite pour un droitier', suggests: 'Flèche plus raide (diminuer le spin), ou pointe plus légère, tube plus court' },
 			{ observation: 'La flèche non empennée part à gauche pour un droitier', suggests: 'Flèche plus souple (augmenter le spin), ou pointe plus lourde, tube plus long' },
 			{ observation: 'FOC inférieur à 10 %', suggests: 'Alourdissez la pointe : la flèche se tiendra mal dans le vent' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'La flèche non empennée part à gauche pour un gaucher', suggests: 'Flèche plus raide (diminuer le spin), ou pointe plus légère, tube plus court' },
+				{ observation: 'La flèche non empennée part à droite pour un gaucher', suggests: 'Flèche plus souple (augmenter le spin), ou pointe plus lourde, tube plus long' },
+				{ observation: 'FOC inférieur à 10 %', suggests: 'Alourdissez la pointe : la flèche se tiendra mal dans le vent' }
+			]
+		}
 	},
 	'bare-shaft': {
 		title: "Validation aux flèches non-empennées",
@@ -620,9 +801,74 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Flèche non empennée haute ou basse', suggests: 'Corrigez le détalonage avant toute correction latérale' },
 			{ observation: 'La flèche non empennée part à droite pour un droitier', suggests: 'Flèche plus raide (diminuer le spin), ou durcir le ressort du berger button' },
 			{ observation: 'La flèche non empennée part à gauche pour un droitier', suggests: 'Flèche plus souple (augmenter le spin), ou assouplir le ressort du berger button' },
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Flèche non empennée haute ou basse', suggests: 'Corrigez le détalonage avant toute correction latérale' },
+				{ observation: 'La flèche non empennée part à gauche pour un gaucher', suggests: 'Flèche plus raide (diminuer le spin), ou durcir le ressort du berger button' },
+				{ observation: 'La flèche non empennée part à droite pour un gaucher', suggests: 'Flèche plus souple (augmenter le spin), ou assouplir le ressort du berger button' },
+			]
+		}
 	},
 
+	'plunger-fine': {
+		title: 'Réglage dynamique du berger',
+		why: "C'est la fonction dynamique du bouton : le ressort doit compenser la déformation horizontale de la flèche (fishtailing). Tant qu'il ne le fait pas, le latéral change avec la distance.",
+		steps: [
+			"Fabriquez une bande de papier d'environ 8 cm de large avec une zone de visée en haut : un vieux blason de 80 cm plié, avec un centre de 40 cm collé à 15 cm du haut.",
+			'Échauffez-vous jusqu\'à grouper à 15 m et à 30 m, puis réglez le viseur pour 15 m et ne le touchez plus.',
+			'Visez toujours le même point, et tirez une flèche à 10, 15, 20, 25, 30 et 35 m.',
+			'Lisez la ligne formée par les six impacts. Modifiez le ressort d\'un cran, puis refaites le test.'
+		],
+		results: [
+			{ observation: 'Une droite verticale, les six flèches dans la largeur de la bande', suggests: 'La pression du berger est correcte : ne touchez plus à rien' },
+			{ observation: 'Une droite décalée à droite aux longues distances, pour un droitier', suggests: 'Pression trop faible : durcissez le ressort et refaites le test' },
+			{ observation: 'Une droite décalée à gauche aux longues distances, pour un droitier', suggests: 'Pression trop forte : assouplissez le ressort et refaites le test' },
+			{ observation: 'La ligne forme un ventre à droite, pour un droitier', suggests: 'Le berger est trop sorti : reprenez l\'alignement de la flèche' },
+			{ observation: 'La ligne forme un ventre à gauche, pour un droitier', suggests: 'Le berger est trop rentré : reprenez l\'alignement de la flèche' }
+		],
+		left: {
+			results: [
+				{ observation: 'Une droite verticale, les six flèches dans la largeur de la bande', suggests: 'La pression du berger est correcte : ne touchez plus à rien' },
+				{ observation: 'Une droite décalée à gauche aux longues distances, pour un gaucher', suggests: 'Pression trop faible : durcissez le ressort et refaites le test' },
+				{ observation: 'Une droite décalée à droite aux longues distances, pour un gaucher', suggests: 'Pression trop forte : assouplissez le ressort et refaites le test' },
+				{ observation: 'La ligne forme un ventre à gauche, pour un gaucher', suggests: 'Le berger est trop sorti : reprenez l\'alignement de la flèche' },
+				{ observation: 'La ligne forme un ventre à droite, pour un gaucher', suggests: 'Le berger est trop rentré : reprenez l\'alignement de la flèche' }
+			]
+		}
+	},
+	'tiller-fine': {
+		title: 'Réglage fin du Tiller',
+		why: "Le pré-réglage joue peu sur le groupement, mais beaucoup sur la tenue de l'arc. Un tiller adapté à votre tonicité donne une main d'arc relâchée et une visée très stable.",
+		steps: [
+			'À environ 18 m, face à un blason de 40 cm, visez le jaune.',
+			"Tractez très lentement, par le chemin le plus direct, et observez l'œilleton du viseur — ou la pointe de la flèche en arc nu.",
+			'Notez si la visée monte ou descend pendant la traction.',
+			'Corrigez à la vis de la branche du haut uniquement, un quart de tour à la fois, puis retractez.'
+		],
+		results: [
+			{ observation: "L'œilleton monte pendant la traction", suggests: 'Diminuez le tiller : vissez la branche du haut d\'un quart de tour' },
+			{ observation: "L'œilleton descend pendant la traction", suggests: 'Augmentez le tiller : dévissez la branche du haut d\'un quart de tour' },
+			{ observation: 'La visée reste stable du début de la traction aux contacts visage', suggests: 'Le tiller vous convient : arrêtez le test' },
+			{ observation: "Le détalonnage a changé après le réglage", suggests: 'C\'est normal : une modification franche du tiller le déplace. Revérifiez-le avant toute autre chose' }
+		]
+	},
+	'brace-fine': {
+		title: 'Réglage fin du band',
+		why: "Le dernier réglage de l'arc, et celui qui paie : au bon band, le groupement se resserre et monte en même temps, signe que l'arc pousse la flèche au mieux.",
+		steps: [
+			'Tirez à 50 ou 70 m, par temps calme et bien éclairé : ce test ne se lit pas dans le vent.',
+			'Tirez des volées de six et notez à la fois le groupement (G) et la hauteur en cible (H).',
+			'Vrillez ou dévrillez la corde par sauts de 0,3 cm, puis de 0,1 cm quand le groupement s\'améliore. Un tour de vrille vaut environ 0,5 mm (ce n\'est pas linéaire).',
+			'Continuez jusqu\'à ce que la hauteur cesse de monter, et gardez le band juste avant qu\'elle redescende.'
+		],
+		results: [
+			{ observation: 'Volée très groupée et le plus haut possible en cible', suggests: 'C\'est le band à conserver' },
+			{ observation: 'Situation intermédiaire : ni groupée ni haute', suggests: 'Poursuivez dans le même sens, et repartez en arrière si la volée suivante est moins bonne' },
+			{ observation: 'Volée dispersée et basse en cible', suggests: 'Situation extrême : revenez en arrière par sauts plus francs' },
+			{ observation: 'Le départ est sec et bruyant', suggests: 'Le band est faible pour cet arc : le son le dit avant le groupement' }
+		]
+	},
 	'spec-check': {
 		title: 'Vérifier l’arc face à sa fiche',
 		why: "Un poulies est une mécanique construite sur des cotes : si l'entraxe et le band s'en écartent, quelque chose a bougé et le réglage ne tiendra pas.",
@@ -674,7 +920,13 @@ const FR: Record<string, StepText> = {
 		results: [
 			{ observation: 'Déchirure papier à gauche, droitier', suggests: 'Décalez le repose-flèche vers la droite, petit à petit' },
 			{ observation: 'Déchirure papier à droite, droitier', suggests: 'Décalez le repose-flèche vers la gauche, petit à petit' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Déchirure papier à droite, gaucher', suggests: 'Décalez le repose-flèche vers la gauche, petit à petit' },
+				{ observation: 'Déchirure papier à gauche, gaucher', suggests: 'Décalez le repose-flèche vers la droite, petit à petit' }
+			]
+		}
 	},
 	'd-loop': {
 		title: 'D-loop et encochage',
@@ -728,7 +980,14 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Déchirure queue haute', suggests: 'Baissez le point d’encochage ou montez le repose-flèche' },
 			{ observation: 'Déchirure queue basse', suggests: 'Montez le point d’encochage ou baissez le repose-flèche' },
 			{ observation: 'Déchirure à gauche, droitier', suggests: 'Décalez le repose-flèche à droite, ou vérifiez dégagement et spine' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Déchirure queue haute', suggests: 'Baissez le point d’encochage ou montez le repose-flèche' },
+				{ observation: 'Déchirure queue basse', suggests: 'Montez le point d’encochage ou baissez le repose-flèche' },
+				{ observation: 'Déchirure à droite, gaucher', suggests: 'Décalez le repose-flèche à gauche, ou vérifiez dégagement et spine' }
+			]
+		}
 	},
 	'walk-back': {
 		title: 'Réglage en reculant',
@@ -741,7 +1000,13 @@ const FR: Record<string, StepText> = {
 		results: [
 			{ observation: 'Dérive à gauche en reculant, droitier', suggests: 'Décalez le repose-flèche vers la droite, très légèrement' },
 			{ observation: 'Dérive à droite en reculant, droitier', suggests: 'Décalez le repose-flèche vers la gauche, très légèrement' }
-		]
+		],
+		left: {
+			results: [
+				{ observation: 'Dérive à droite en reculant, gaucher', suggests: 'Décalez le repose-flèche vers la gauche, très légèrement' },
+				{ observation: 'Dérive à gauche en reculant, gaucher', suggests: 'Décalez le repose-flèche vers la droite, très légèrement' }
+			]
+		}
 	},
 	'compound-bare-shaft': {
 		title: 'Contrôle à la flèche non empennée',
@@ -792,6 +1057,8 @@ export function groupsFor(bow: GuideBow): { category?: GuideCategory; steps: Gui
 }
 
 /** English is the fallback: a step with no translation yet is better read than missing. */
-export function stepText(key: string, locale: Locale): StepText {
-	return TEXT[locale]?.[key] ?? EN[key];
+export function stepText(key: string, locale: Locale, hand: 'right' | 'left' = 'right'): StepText {
+	const text = TEXT[locale]?.[key] ?? EN[key];
+	if (hand === 'right' || !text?.left) return text;
+	return { ...text, steps: text.left.steps ?? text.steps, results: text.left.results ?? text.results };
 }

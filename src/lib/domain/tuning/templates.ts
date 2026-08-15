@@ -15,6 +15,11 @@ export interface TuningTemplate {
 	 * blames this test for it. Empty means the procedure moves nothing the bow's record holds.
 	 */
 	settings: string[];
+	/**
+	 * The interpretation read on a left handed bow, where every sideways reading is the mirror of
+	 * the one above. Only the procedures whose wording names a side carry one.
+	 */
+	interpretationLeft?: { observation: string; suggests: string }[];
 }
 
 /**
@@ -52,6 +57,10 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 			{ observation: 'Bare shaft left of the group (right handed)', suggests: 'Arrow reacting stiff: soften the plunger or increase point weight' },
 			{ observation: 'Bare shaft right of the group (right handed)', suggests: 'Arrow reacting weak: stiffen the plunger or reduce point weight' }
 		],
+		interpretationLeft: [
+			{ observation: 'Bare shaft right of the group (left handed)', suggests: 'Arrow reacting stiff: soften the plunger or increase point weight' },
+			{ observation: 'Bare shaft left of the group (left handed)', suggests: 'Arrow reacting weak: stiffen the plunger or reduce point weight' }
+		],
 		settings: ['nockingPoint', 'centreShot', 'plunger', 'arrowSpine', 'pointWeight']
 	},
 	{
@@ -69,6 +78,12 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 			{ observation: 'Tail left tear (right handed)', suggests: 'Arrow reacting stiff' },
 			{ observation: 'Tail right tear (right handed)', suggests: 'Arrow reacting weak' }
 		],
+		interpretationLeft: [
+			{ observation: 'Tail high tear', suggests: 'Lower the nocking point' },
+			{ observation: 'Tail low tear', suggests: 'Raise the nocking point' },
+			{ observation: 'Tail right tear (left handed)', suggests: 'Arrow reacting stiff' },
+			{ observation: 'Tail left tear (left handed)', suggests: 'Arrow reacting weak' }
+		],
 		settings: ['nockingPoint', 'centreShot', 'plunger']
 	},
 	{
@@ -83,6 +98,10 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 		interpretation: [
 			{ observation: 'Line drifts left as distance grows (right handed)', suggests: 'Move the plunger or rest out' },
 			{ observation: 'Line drifts right as distance grows (right handed)', suggests: 'Move the plunger or rest in' }
+		],
+		interpretationLeft: [
+			{ observation: 'Line drifts right as distance grows (left handed)', suggests: 'Move the plunger or rest out' },
+			{ observation: 'Line drifts left as distance grows (left handed)', suggests: 'Move the plunger or rest in' }
 		],
 		settings: ['centreShot', 'plunger']
 	},
@@ -99,7 +118,7 @@ export const TUNING_TEMPLATES: TuningTemplate[] = [
 			{ observation: 'Above 70 g/lb', suggests: 'Heavy for its weight: take mass off the stabilisers, or draw more weight' },
 			{ observation: 'Below 70 g/lb', suggests: 'Light for its weight: add mass to the stabilisers to steady the aim' }
 		],
-		settings: ['drawWeight']
+		settings: ['bowMass', 'drawWeight']
 	}
 ];
 

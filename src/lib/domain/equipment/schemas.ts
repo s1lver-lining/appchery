@@ -5,7 +5,7 @@ import { mmToInches, inchesToMm } from '../units';
  * Setting fields per bow type. Adding a bow type means adding a schema here, never touching a form,
  * because the schema drives rendering, validation, and the revision diff alike.
  */
-export type FieldKind = 'lengthMm' | 'lengthCm' | 'number' | 'text' | 'select';
+export type FieldKind = 'lengthMm' | 'lengthCm' | 'massG' | 'number' | 'text' | 'select';
 
 export interface SettingField {
 	key: string;
@@ -13,7 +13,8 @@ export interface SettingField {
 	kind: FieldKind;
 	/**
 	 * Shown beside the input. Length fields store mm; `lengthMm` is read in inches and `lengthCm` in
-	 * centimetres, which is how brace height and tiller are actually measured. See doc/architecture.md.
+	 * centimetres, which is how brace height and tiller are actually measured. Mass is stored in
+	 * grams and read in kilogrammes, which is how a bow is weighed. See doc/architecture.md.
 	 */
 	unit?: string;
 	step?: number;
@@ -40,6 +41,8 @@ const REST_FIELDS: SettingField[] = [
 ];
 
 const RECURVE: SettingField[] = [
+	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
+	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight on fingers', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'limbSize', label: 'Limb size', kind: 'select', options: ['Short', 'Medium', 'Long'], group: 'Bow' },
@@ -48,6 +51,8 @@ const RECURVE: SettingField[] = [
 ];
 
 const COMPOUND: SettingField[] = [
+	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
+	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'drawLength', label: 'Draw length', kind: 'lengthMm', unit: 'in', group: 'Bow' },
 	{ key: 'peakWeight', label: 'Peak weight', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'letOff', label: 'Let-off', kind: 'number', unit: '%', group: 'Bow' },
@@ -60,6 +65,8 @@ const COMPOUND: SettingField[] = [
 ];
 
 const BAREBOW: SettingField[] = [
+	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
+	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight on fingers', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'tillerUpper', label: 'Tiller upper', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
@@ -70,6 +77,8 @@ const BAREBOW: SettingField[] = [
 ];
 
 const LONGBOW: SettingField[] = [
+	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
+	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight at your draw', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'bowLength', label: 'Bow length', kind: 'lengthMm', unit: 'in', group: 'Bow' },
@@ -101,6 +110,7 @@ export function displaySetting(field: SettingField, value: string | number | nul
 	if (value === null || value === undefined || value === '') return '';
 	if (field.kind === 'lengthMm') return String(Math.round(mmToInches(Number(value)) * 100) / 100);
 	if (field.kind === 'lengthCm') return String(Math.round(Number(value) / 10 / 0.01) * 0.01);
+	if (field.kind === 'massG') return String(Math.round(Number(value) / 10) / 100);
 	return String(value);
 }
 
@@ -109,6 +119,7 @@ export function parseSetting(field: SettingField, raw: string): string | number 
 	if (raw.trim() === '') return null;
 	if (field.kind === 'lengthMm') return Math.round(inchesToMm(Number(raw)) * 10) / 10;
 	if (field.kind === 'lengthCm') return Math.round(Number(raw) * 10 * 10) / 10;
+	if (field.kind === 'massG') return Math.round(Number(raw) * 1000);
 	if (field.kind === 'number') return Number(raw);
 	return raw;
 }
@@ -118,6 +129,7 @@ export function formatSetting(field: SettingField, value: string | number | null
 	if (value === null || value === '') return '—';
 	if (field.kind === 'lengthMm') return `${displaySetting(field, value)}"`;
 	if (field.kind === 'lengthCm') return `${displaySetting(field, value)} cm`;
+	if (field.kind === 'massG') return `${displaySetting(field, value)} kg`;
 	return field.unit ? `${value} ${field.unit}` : String(value);
 }
 

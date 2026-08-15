@@ -1,12 +1,20 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t, locale } from '$lib/i18n';
-	import { groupsFor, stepText, type GuideBow, type GuideStep } from '$lib/domain/tuning/guide';
+	import {
+		groupsFor,
+		stepText,
+		HANDED_DIAGRAMS,
+		HANDED_STEPS,
+		type GuideBow,
+		type GuideStep
+	} from '$lib/domain/tuning/guide';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { startOfDay } from '$lib/domain/dates';
-	import { defaultBowId } from '$lib/prefs';
+	import { bowHand, defaultBowId } from '$lib/prefs';
 	import {
 		listBows,
+		currentRevision,
 		listSessions,
 		createSession,
 		createTuningActivity,
@@ -19,6 +27,7 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import BraceHeightTable from '$lib/ui/BraceHeightTable.svelte';
+	import BraceCurves from '$lib/ui/BraceCurves.svelte';
 	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import { ownsStatusBar } from '$lib/ui/statusBar';
 
@@ -49,7 +58,43 @@
 		{ key: 'compound' as const, label: $t('bow.compound') }
 	]);
 
-	const text = $derived((key: string) => stepText(key, $locale));
+	const text = $derived((key: string) => stepText(key, $locale, hand ?? 'right'));
+
+	/**
+	 * Which hand the diagrams are drawn for. Taken from the default bow when it says, and the
+	 * archer's from the moment they touch the switch: a coach reading the page next to a left handed
+	 * pupil needs the other picture without changing anybody's bow.
+	 */
+	let hand = $state<'right' | 'left' | null>(null);
+	$effect(() => {
+		if (hand !== null) return;
+		// The bow on record answers for itself; failing that, whatever the archer said last time.
+		if (!target) {
+			if ($bowHand === 'left' || $bowHand === 'right') hand = $bowHand;
+			return;
+		}
+		currentRevision(target.id).then((revision) => {
+			if (hand !== null) return;
+			const settings = revision ? JSON.parse(revision.settings) : {};
+			if (settings.handedness === 'Left') hand = 'left';
+			else if (settings.handedness === 'Right') hand = 'right';
+			else if ($bowHand === 'left' || $bowHand === 'right') hand = $bowHand;
+		});
+	});
+
+	/** Both switches move the one value, so a step never shows a picture and a table that disagree. */
+	function chooseHand(value: 'right' | 'left') {
+		hand = value;
+		bowHand.set(value);
+	}
+
+	/**
+	 * Nothing on record says which hand this is, and the step being opened reads backwards for the
+	 * wrong one. Asked once, then remembered: guessing here is worse than a question.
+	 */
+	const mustAsk = $derived(
+		hand === null && open !== null && (HANDED_STEPS.includes(open.key) || (open.diagram !== undefined && HANDED_DIAGRAMS.includes(open.diagram)))
+	);
 
 	/**
 	 * What was typed into the step's calculator while reading. Kept in the page rather than written
@@ -77,6 +122,20 @@
 		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
 	}
 
+	/**
+	 * The shape the test makes when it is going right, drawn with the same chart the procedure fills
+	 * in for real: both curves peak on the brace height to keep. Figures invented to draw the shape,
+	 * which is the only thing the reader is meant to take from it.
+	 */
+	const EXAMPLE_CURVE = [
+		{ braceCm: 22.4, centreCm: -3.5, spreadCm: 14.5, arrows: 6 },
+		{ braceCm: 22.7, centreCm: -0.5, spreadCm: 10.5, arrows: 6 },
+		{ braceCm: 23, centreCm: 2, spreadCm: 7.5, arrows: 6 },
+		{ braceCm: 23.4, centreCm: 4.5, spreadCm: 5, arrows: 6 },
+		{ braceCm: 23.7, centreCm: 1.5, spreadCm: 9, arrows: 6 },
+		{ braceCm: 24, centreCm: -2.5, spreadCm: 13, arrows: 6 }
+	];
+
 	const list = $derived((which: GuideBow) => groupsFor(which));
 
 	/** Where a step falls in the whole list, so a heading does not restart the count. */
@@ -96,7 +155,11 @@
 <div class="mx-auto w-full max-w-2xl p-4">
 	<p class="mb-3 text-sm text-muted">{$t('tuning.guideHint')}</p>
 
-	<TabDeck tabs={TABS} bind:value={bow} paneClass="space-y-2 pt-4">
+	<!--
+		Not swipeable: the recurve list and the compound one are long, and a sideways drag while
+		scrolling a list of steps swaps the whole bow underneath the reader.
+	-->
+	<TabDeck tabs={TABS} bind:value={bow} paneClass="space-y-2 pt-4" swipeable={false}>
 		{#snippet pane(key)}
 			<!--
 				Numbered because the order is the content: every step assumes the ones above it. The
@@ -159,9 +222,32 @@
 		<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto p-4">
 			<p class="text-[15px] leading-relaxed">{openText.why}</p>
 
+			{#if mustAsk}
+				<!-- Asked, not guessed: half of what follows reads backwards on the other bow. -->
+				<section class="rounded-xl border border-brand/60 bg-brand/5 p-4">
+					<p class="text-sm font-semibold">{$t('tuning.askHand')}</p>
+					<p class="mt-0.5 mb-3 text-xs text-muted">{$t('tuning.askHandHint')}</p>
+					<div class="flex gap-2">
+						{#each ['right', 'left'] as const as option (option)}
+							<button
+								class="flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
+								onclick={() => chooseHand(option)}
+							>
+								{$t(`tuning.hand.${option}`)}
+							</button>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
 			{#if open.diagram}
+				{@const handed = HANDED_DIAGRAMS.includes(open.diagram)}
 				<div class="rounded-xl border border-line bg-surface p-3">
-					<TuningDiagram name={open.diagram} />
+					{#if handed}
+						<!-- The reading swaps with the bow hand, so the picture says which one it is drawn for. -->
+						<div class="mb-2 flex justify-end">{@render handSwitch()}</div>
+					{/if}
+					<TuningDiagram name={open.diagram} hand={hand ?? 'right'} />
 				</div>
 			{/if}
 
@@ -175,7 +261,11 @@
 			</section>
 
 			<section class="rounded-xl border border-line bg-surface p-4">
-				<h3 class="mb-2 text-sm font-semibold">{$t('tuning.interpretation')}</h3>
+				<div class="mb-2 flex items-center justify-between gap-3">
+					<h3 class="text-sm font-semibold">{$t('tuning.interpretation')}</h3>
+					<!-- A second switch rather than a scroll back to the picture: this is where it is read. -->
+					{#if HANDED_STEPS.includes(open.key)}{@render handSwitch()}{/if}
+				</div>
 				<ul class="space-y-2 text-sm">
 					{#each openText.results as row (row.observation)}
 						<li>
@@ -193,6 +283,12 @@
 			-->
 			{#if open.block === 'braceHeightTable'}
 				<BraceHeightTable />
+			{:else if open.block === 'braceCurveExample'}
+				<section class="rounded-xl border border-line bg-surface p-4">
+					<h3 class="mb-1 text-sm font-semibold">{$t('brace.exampleTitle')}</h3>
+					<p class="mb-3 text-xs text-muted">{$t('brace.exampleHint')}</p>
+					<BraceCurves points={EXAMPLE_CURVE} />
+				</section>
 			{:else if open.block === 'weightRatio'}
 				<section class="rounded-xl border border-line bg-surface p-4">
 					<h3 class="mb-3 text-sm font-semibold">{$t('ratio.title')}</h3>
@@ -221,3 +317,19 @@
 		</div>
 	</div>
 {/if}
+
+{#snippet handSwitch()}
+	<div class="flex shrink-0 overflow-hidden rounded-full border border-line text-xs">
+		{#each ['right', 'left'] as const as option (option)}
+			<button
+				type="button"
+				class="px-2.5 py-1 font-semibold {(hand ?? 'right') === option
+					? 'bg-brand text-brand-ink'
+					: 'text-muted'}"
+				onclick={() => chooseHand(option)}
+			>
+				{$t(`tuning.hand.${option}`)}
+			</button>
+		{/each}
+	</div>
+{/snippet}

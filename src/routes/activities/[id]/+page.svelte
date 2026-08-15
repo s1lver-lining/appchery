@@ -35,7 +35,7 @@
 		type BowSettings,
 		type SettingField
 	} from '$lib/domain/equipment/schemas';
-	import type { BowType } from '$lib/domain/tuning/templates';
+	import type { BowType, TuningTemplate } from '$lib/domain/tuning/templates';
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -628,8 +628,10 @@
 	 * is what was true on the day, and the bow's own record only changes when the archer applies it.
 	 */
 	const measured = $derived<{ massGrams: number | null; drawWeightLb: number | null; unit: 'kg' | 'lb' }>({
-		massGrams: null,
-		drawWeightLb: null,
+		// What the bow already says it weighs, so a measurement starts from the figure on record
+		// rather than from an empty field, and only a real weighing changes it.
+		massGrams: (savedSettings.bowMass as number | undefined) ?? null,
+		drawWeightLb: (savedSettings.drawWeight as number | undefined) ?? null,
 		unit: 'kg',
 		...(activity?.measurements ? JSON.parse(activity.measurements) : {})
 	});
@@ -640,7 +642,12 @@
 		unit: 'kg' | 'lb';
 	}) {
 		await updateActivity(activityId, { measurements: JSON.stringify(value) });
+		// Read back first: the reload takes the draft from the bow's current revision, so the figures
+		// just measured are laid over it afterwards or they would be wiped by their own save.
 		await refresh();
+		// Offered to the bow as well: what was weighed is what its record should say, but applying it
+		// is still the archer's call, so it lands in the draft rather than in a revision.
+		draft = { ...draft, bowMass: value.massGrams, drawWeight: value.drawWeightLb };
 	}
 
 	async function saveTuning() {
@@ -650,6 +657,16 @@
 	}
 
 	const bowType = $derived((bow?.type ?? 'recurve') as BowType);
+
+	/**
+	 * The procedure read for this bow's own hand. No switch here, unlike the guide: the activity is
+	 * being run on one bow, and that bow's record already says which way its readings go.
+	 */
+	const interpretation = $derived((procedure: TuningTemplate) =>
+		savedSettings.handedness === 'Left' && procedure.interpretationLeft
+			? procedure.interpretationLeft
+			: procedure.interpretation
+	);
 	/**
 	 * Only the fields this procedure can actually move. Offering the whole bow invites an unrelated
 	 * setting to be changed by accident, and the revision it writes then blames this test for it. A
@@ -754,7 +771,8 @@
 			<section class="rounded-xl border border-line bg-surface p-4">
 				{#if diagram}
 					<div class="mb-3 rounded-lg bg-sunk p-2">
-						<TuningDiagram name={diagram} />
+						<!-- The bow's own hand, since the procedure is being run on a bow that has one. -->
+						<TuningDiagram name={diagram} hand={savedSettings.handedness === 'Left' ? 'left' : 'right'} />
 					</div>
 				{/if}
 				<h2 class="mb-2 text-sm font-semibold">{$t('tuning.steps')}</h2>
@@ -768,7 +786,7 @@
 			<section class="rounded-xl border border-line bg-surface p-4">
 				<h2 class="mb-2 text-sm font-semibold">{$t('tuning.interpretation')}</h2>
 				<ul class="space-y-2 text-sm">
-					{#each template.interpretation as row (row.observation)}
+					{#each interpretation(template) as row (row.observation)}
 						<li>
 							<span class="font-medium">{row.observation}</span>
 							<span class="block text-muted">{row.suggests}</span>
