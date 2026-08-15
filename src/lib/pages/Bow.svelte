@@ -45,6 +45,7 @@
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 
 	/**
 	 * One bow, as a page. It is rendered twice: as its own route, and as the equipment slot of the
@@ -669,7 +670,7 @@
 {#if editingGroup}
 	<!-- One group at a time. Typing writes to the draft, so closing the sheet is the save; what turns
 		a draft into history is the revision below it, which is the thing worth confirming. -->
-	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}
@@ -678,7 +679,7 @@
 		></button>
 
 		<div
-			class="relative m-4 max-h-[80dvh] w-full max-w-sm overflow-y-auto rounded-2xl border border-line bg-surface p-4 shadow-xl"
+			class="relative m-4 max-h-[80dvh] w-full max-w-sm overflow-y-auto overscroll-y-contain rounded-2xl border border-line bg-surface p-4 shadow-xl"
 		>
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="text-lg font-bold">{editingGroup}</h2>

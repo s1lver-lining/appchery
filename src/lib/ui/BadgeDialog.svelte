@@ -4,6 +4,7 @@
 	import { closeOnBack } from './dismiss.svelte';
 	import BadgeCard from './BadgeCard.svelte';
 	import { scrim } from './statusBar';
+	import { lockScroll } from './scrollLock';
 
 	/** What a tile in the grid cannot say: the rule, and how far off it is. */
 	let { badge, onclose }: { badge: EarnedBadge; onclose: () => void } = $props();
@@ -14,7 +15,7 @@
 	);
 </script>
 
-<div class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+<div class="fixed inset-0 z-[60] flex items-center justify-center p-4" use:lockScroll>
 	<button class="absolute inset-0 bg-black/50" use:scrim={0.5} aria-label={$t('common.close')} onclick={onclose}
 	></button>
 

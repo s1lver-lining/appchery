@@ -50,6 +50,7 @@
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
@@ -852,7 +853,7 @@
 {/if}
 
 {#if pickingMonth}
-	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}

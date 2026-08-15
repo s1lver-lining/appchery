@@ -7,6 +7,7 @@
 	import Toggle from './Toggle.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 	import { scrim } from './statusBar';
+	import { lockScroll } from './scrollLock';
 	import {
 		scorecardSvg,
 		scorecardImage,
@@ -145,7 +146,7 @@
 	}
 </script>
 
-<div class="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur">
+<div class="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur" use:lockScroll>
 	<header class="safe-top flex items-center justify-between px-4 py-3 pt-6">
 		<h2 class="text-lg font-bold text-white">{$t('share.title')}</h2>
 		<button class="text-white/70" aria-label={$t('common.close')} onclick={onclose}>
@@ -201,7 +202,7 @@
 
 {#if picking}
 	<!-- What goes on the card, before it goes anywhere. Greyed out is nothing to say, not a refusal. -->
-	<div class="fixed inset-0 z-[80] flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-[80] flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/60"
 			use:scrim={0.6}
@@ -210,7 +211,7 @@
 		></button>
 
 		<div
-			class="relative m-4 max-h-[80dvh] w-full max-w-sm overflow-y-auto rounded-2xl border border-line bg-surface p-4 shadow-xl"
+			class="relative m-4 max-h-[80dvh] w-full max-w-sm overflow-y-auto overscroll-y-contain rounded-2xl border border-line bg-surface p-4 shadow-xl"
 		>
 			<div class="mb-3 flex items-center justify-between">
 				<h2 class="text-lg font-bold">{$t('share.options')}</h2>

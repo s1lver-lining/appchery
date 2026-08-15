@@ -26,6 +26,7 @@
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 
 	const planId = $derived($page.params.id as string);
 	$effect(() => setPageUp('/plans'));
@@ -282,7 +283,7 @@
 	</div>
 
 	{#if editing || creatingOn !== null}
-		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 			<button class="absolute inset-0 bg-black/40" use:scrim={0.4} aria-label={$t('common.close')} onclick={closeSheet}
 			></button>
 

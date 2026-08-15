@@ -78,6 +78,7 @@
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 
 	const activityId = $derived($page.params.id as string);
 
@@ -958,7 +959,7 @@
 			</div>
 
 			<!-- The cap is what keeps the keypad on screen once the sheet has more ends than fit. -->
-			<div bind:this={sheetScroller} class="max-h-[42dvh] overflow-y-auto">
+			<div bind:this={sheetScroller} class="max-h-[42dvh] overflow-y-auto overscroll-y-contain">
 				{#each sheetRows as row, i (row.key)}
 					<div class="flex items-center gap-1 border-b border-line px-2 py-1">
 						<button
@@ -1277,7 +1278,7 @@
 
 	{#if openRow}
 		<!-- The backdrop is a button so a tap outside closes, which is what a modal is expected to do. -->
-		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 			<button
 				class="absolute inset-0 bg-black/40"
 				use:scrim={0.4}

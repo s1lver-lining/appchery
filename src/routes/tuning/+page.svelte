@@ -30,6 +30,7 @@
 	import BraceCurves from '$lib/ui/BraceCurves.svelte';
 	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import { ownsStatusBar } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 
 	// Reached from the settings page and from a bow, so back goes wherever the link came from.
 	const origin = $derived(originOf($page.url, '/settings'));
@@ -230,7 +231,7 @@
 
 {#if open && openText}
 	{@const template = open.templateKey ? getTemplate(open.templateKey) : undefined}
-	<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar>
+	<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar use:lockScroll>
 		<header class="safe-top flex items-center gap-2 border-b border-line px-4 py-3 pt-6">
 			<h2 class="min-w-0 flex-1 truncate text-lg font-bold">{openText.title}</h2>
 			<button class="text-muted" aria-label={$t('common.close')} onclick={() => (open = null)}>

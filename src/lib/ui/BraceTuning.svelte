@@ -18,6 +18,7 @@
 	import Icon from './Icon.svelte';
 	import TargetFace from './TargetFace.svelte';
 	import { ownsStatusBar } from './statusBar';
+	import { lockScroll } from './scrollLock';
 
 	/**
 	 * Brace height tuning as the archer actually does it: pick a height, shoot ends at it, twist the
@@ -239,7 +240,7 @@
 </section>
 
 {#if plotting}
-	<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar>
+	<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar use:lockScroll>
 		<header class="safe-top flex items-center gap-2 border-b border-line px-4 py-3 pt-6">
 			<h2 class="min-w-0 flex-1 truncate text-lg font-bold">
 				{$t('brace.plotTitle', { brace: (plotting.braceMm / 10).toFixed(1) })}

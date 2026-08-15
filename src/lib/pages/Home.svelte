@@ -48,6 +48,7 @@
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let scored = $state<ScoredActivity[]>([]);
@@ -586,7 +587,7 @@
 </div>
 
 {#if picking}
-	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}

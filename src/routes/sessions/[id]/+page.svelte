@@ -98,6 +98,7 @@
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { scrim, ownsStatusBar } from '$lib/ui/statusBar';
+	import { lockScroll } from '$lib/ui/scrollLock';
 
 	const sessionId = $derived($page.params.id as string);
 
@@ -1129,7 +1130,7 @@
 	</div>
 
 	{#if adding}
-		<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar>
+		<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar use:lockScroll>
 			<header
 				class="safe-top flex items-center justify-between border-b border-line px-4 py-3 pt-6"
 			>
@@ -1522,7 +1523,7 @@
 {/if}
 
 {#if editingGoal}
-	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}
@@ -1577,7 +1578,7 @@
 {/if}
 
 {#if countDialog}
-	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}

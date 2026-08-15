@@ -4,6 +4,7 @@
 	import Icon from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 	import { scrim } from './statusBar';
+	import { lockScroll } from './scrollLock';
 
 	/**
 	 * A panel over the page, rising from the bottom edge on a phone and centred on a wide screen,
@@ -30,7 +31,7 @@
 </script>
 
 {#if open}
-	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center">
+	<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
 		<button
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}
@@ -50,7 +51,7 @@
 				</button>
 			</div>
 
-			<div class="max-h-[60dvh] overflow-y-auto">
+			<div class="max-h-[60dvh] overflow-y-auto overscroll-y-contain">
 				{@render children()}
 			</div>
 
