@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { listPlans, listPlanSlots, createPlan, type PlanRow } from '$lib/db/repository';
 	import { weekArrowGoal } from '$lib/domain/plans';
+	import { dateFormats } from '$lib/prefs';
 	import { originOf, setPageUp } from '$lib/nav';
 	import { page } from '$app/stores';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -25,6 +26,16 @@
 	});
 
 	const slotsOf = (planId: string) => slots.filter((slot) => slot.planId === planId);
+
+	/** Said only when a plan is bounded: a plan with neither date runs until it is put aside. */
+	const seasonOf = (plan: PlanRow) => {
+		const from = plan.startDate === null ? null : $dateFormats.shortDate(plan.startDate);
+		const to = plan.endDate === null ? null : $dateFormats.shortDate(plan.endDate);
+		if (from && to) return $t('plans.betweenDates', { from, to });
+		if (from) return $t('plans.fromDate', { date: from });
+		if (to) return $t('plans.untilDate', { date: to });
+		return null;
+	};
 
 	async function add() {
 		goto(`/plans/${await createPlan($t('plans.newPlan'))}`);
@@ -64,6 +75,7 @@
 		{#each plans as plan (plan.id)}
 			{@const list = slotsOf(plan.id)}
 			{@const total = weekArrowGoal(list, [plan])}
+			{@const season = seasonOf(plan)}
 			<!-- A plan put aside stays in the list, greyed: it is kept to be turned back on. -->
 			<a
 				href="/plans/{plan.id}"
@@ -77,10 +89,16 @@
 						{#if plan.isActive === 0}· {$t('plans.paused')}{/if}
 					</p>
 				</div>
-				{#if total > 0}
+				{#if total > 0 || season}
+					<!-- The season above the figure: when the plan runs, then what it asks for while it does. -->
 					<div class="shrink-0 text-right">
-						<p class="tabular text-lg leading-none font-bold">{total}</p>
-						<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+						{#if season}
+							<p class="mb-0.5 text-[11px] leading-none text-muted">{season}</p>
+						{/if}
+						{#if total > 0}
+							<p class="tabular text-lg leading-none font-bold">{total}</p>
+							<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+						{/if}
 					</div>
 				{/if}
 			</a>
