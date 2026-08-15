@@ -105,6 +105,10 @@
 	/** Where the spare entry was parked, so it is only ever reclaimed while it is still on top. */
 	let trappedAt: string | null = null;
 
+	/** SvelteKit keeps `pushState` state here, and a popstate does not re-emit it through the store. */
+	const isSpareEntry = () =>
+		(history.state?.['sveltekit:states'] as App.PageState | undefined)?.spare === true;
+
 	function editableFocused(): boolean {
 		const el = document.activeElement as HTMLElement | null;
 		if (!el) return false;
@@ -139,7 +143,7 @@
 		if (holding && !trapped) {
 			trapped = true;
 			trappedAt = location.href;
-			pushState('', {});
+			pushState('', { spare: true });
 		} else if (!holding && trapped) {
 			// Closed by its own button rather than by back: take the spare entry back out, or the next
 			// back press would spend itself popping an entry nothing is waiting on.
@@ -149,7 +153,8 @@
 			const at = trappedAt;
 			trappedAt = null;
 			// A task later, because a menu item that closes and navigates in one handler has not moved
-			// the URL yet: reclaiming now would pop the page it just opened straight back off.
+			// the URL yet: reclaiming now would pop the page it just opened straight back off. The
+			// entry stays buried under that page instead, and the pop that lands on it later is spent.
 			setTimeout(() => {
 				if (location.href === at && get(navigating) === null) history.back();
 			});
@@ -160,8 +165,12 @@
 	// same URL entry: the flag above stayed stale and the spare entry was never reclaimed.
 	$effect(() => {
 		const onPop = () => {
-			// Not ours: either a real navigation, or the cleanup above reclaiming its own entry.
-			if (!trapped) return;
+			// A buried spare: the same page twice over, so landing on it looks like the press did
+			// nothing. Spend it and take the entry the archer was actually reaching for.
+			if (!trapped) {
+				if (isSpareEntry()) history.back();
+				return;
+			}
 			trapped = false;
 			if (!runBackGuards($backGuards) && editableFocused()) {
 				(document.activeElement as HTMLElement).blur();
