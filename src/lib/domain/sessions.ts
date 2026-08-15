@@ -10,6 +10,18 @@ export function defaultNameKey(kind: string, startedAt: number): string {
 	return `sessions.name.${group}.${timeOfDay(startedAt)}`;
 }
 
+/**
+ * Whether an outing has taken place. A session still ahead is a plan for a day, not a day shot: it
+ * belongs to what is coming rather than to what a week or a month holds. An outing nothing was
+ * entered in still counts, because turning up and shooting nothing is a session that happened.
+ */
+export function hasHappened(
+	session: { kind: string; startedAt: number },
+	now = Date.now()
+): boolean {
+	return session.kind !== 'planned' && session.startedAt <= now;
+}
+
 /** Accents are dropped on both sides, so "Tir a 18m" finds a session written "Tir à 18m". */
 function fold(value: string): string {
 	return value

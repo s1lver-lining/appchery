@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultNameKey, matchesQuery } from './sessions';
+import { defaultNameKey, matchesQuery, hasHappened } from './sessions';
 
 const at = (iso: string) => new Date(iso).getTime();
 
@@ -43,5 +43,34 @@ describe('matchesQuery', () => {
 	it('ignores accents on both sides', () => {
 		expect(matchesQuery('entrainement', ['Entraînement du soir'])).toBe(true);
 		expect(matchesQuery('soirée', ['Entrainement du soiree'])).toBe(true);
+	});
+});
+
+describe('hasHappened', () => {
+	const now = new Date('2026-08-12T18:00').getTime();
+	const session = (extra: { kind?: string; startedAt?: number } = {}) => ({
+		kind: 'practice',
+		startedAt: new Date('2026-08-12T09:00').getTime(),
+		...extra
+	});
+
+	it('counts an outing that has taken place', () => {
+		expect(hasHappened(session(), now)).toBe(true);
+	});
+
+	it('counts one nothing was entered in, since turning up is still turning up', () => {
+		// Nothing here says whether it holds arrows: an empty outing is one all the same.
+		expect(hasHappened(session({ startedAt: now - 1000 }), now)).toBe(true);
+	});
+
+	it('leaves out a session still ahead, whatever it is called', () => {
+		expect(hasHappened(session({ startedAt: new Date('2026-08-15T09:00').getTime() }), now)).toBe(
+			false
+		);
+		expect(hasHappened(session({ kind: 'competition', startedAt: now + 1000 }), now)).toBe(false);
+	});
+
+	it('leaves out a slot a plan called for, even one whose hour has gone by', () => {
+		expect(hasHappened(session({ kind: 'planned' }), now)).toBe(false);
 	});
 });

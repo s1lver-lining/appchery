@@ -40,7 +40,7 @@
 		dateFormats
 	} from '$lib/prefs';
 	import { startOfDay, startOfWeek } from '$lib/domain/dates';
-	import { defaultNameKey } from '$lib/domain/sessions';
+	import { defaultNameKey, hasHappened } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
@@ -199,7 +199,10 @@
 	);
 	// This week's bar, so a plan whose season is over no longer asks anything of the week on screen.
 	const weekGoal = $derived(weekArrowGoalOn(weekStart, live.slots, live.plans));
-	const weekSessions = $derived(sessions.filter((s) => s.startedAt >= weekStart).length);
+	// What the week holds, not what it is booked for: a competition still to come is not an outing yet.
+	const weekSessions = $derived(
+		sessions.filter((s) => s.startedAt >= weekStart && hasHappened(s)).length
+	);
 	const weekDone = $derived(weekGoal > 0 ? Math.min(1, weekArrows / weekGoal) : 0);
 
 	/** A record is worth saying out loud for a few days, and then it is just the number to beat. */
@@ -220,7 +223,7 @@
 	 * The three latest, oldest first, so the page reads in the same direction as the sessions list.
 	 * Only outings that have happened: what is still ahead is announced above, not recalled here.
 	 */
-	const shot = $derived(sessions.filter((s) => s.kind !== 'planned' && s.startedAt <= Date.now()));
+	const shot = $derived(sessions.filter((s) => hasHappened(s)));
 	const recent = $derived(shot.slice(0, 3).reverse());
 
 	const today = startOfDay(Date.now());
