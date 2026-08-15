@@ -231,5 +231,13 @@ export const MIGRATIONS: string[][] = [
 		`ALTER TABLE activity ADD COLUMN measurements TEXT;`
 	],
 	// 0015 the season a plan runs for, so it stops asking for the week once it is over
-	[`ALTER TABLE plan ADD COLUMN start_date INTEGER;`, `ALTER TABLE plan ADD COLUMN end_date INTEGER;`]
+	[`ALTER TABLE plan ADD COLUMN start_date INTEGER;`, `ALTER TABLE plan ADD COLUMN end_date INTEGER;`],
+	// 0016 outings left naming a bow deleted before the delete knew to hand them its type
+	[
+		`UPDATE session
+			SET bow_type = COALESCE((SELECT type FROM bow WHERE bow.id = session.bow_id), bow_type),
+				bow_id = NULL,
+				updated_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000
+			WHERE bow_id IN (SELECT id FROM bow WHERE deleted_at IS NOT NULL);`
+	]
 ];

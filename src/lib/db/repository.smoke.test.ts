@@ -113,4 +113,40 @@ describe('activities of a deleted session', () => {
 		const all = await proxy.select().from(schema.activity);
 		expect(all.map((row) => row.id).sort()).toEqual(['a-binned', 'a-kept']);
 	});
+
+});
+
+/**
+ * Deleting a bow hands its outings the generic type it was, and the repair does the same for the
+ * bows deleted before the delete knew to. Run for real because it is an UPDATE with a subquery over
+ * the row it is updating, which is exactly the shape that behaves differently between engines.
+ */
+describe('the repair that frees outings from a deleted bow', () => {
+	it('hands each outing the type of the bow it named, and nothing else', async () => {
+		const now = 1;
+		const bows = [
+			['bow-gone', 'recurve', now],
+			['bow-here', 'barebow', null]
+		] as const;
+		for (const [id, type, deletedAt] of bows) {
+			await proxy
+				.insert(schema.bow)
+				.values({ id, createdAt: now, updatedAt: now, deviceId: 'd', name: id, type, deletedAt });
+		}
+		for (const [id, bowId] of [
+			['sess-orphan', 'bow-gone'],
+			['sess-fine', 'bow-here']
+		] as const) {
+			await proxy
+				.insert(schema.session)
+				.values({ id, createdAt: now, updatedAt: now, deviceId: 'd', startedAt: now, kind: 'practice', bowId });
+		}
+
+		sqlite.exec(MIGRATIONS[MIGRATIONS.length - 1][0]);
+
+		const rows = await proxy.select().from(schema.session).where(inArray(schema.session.id, ['sess-orphan', 'sess-fine']));
+		const byId = new Map(rows.map((row) => [row.id, row]));
+		expect(byId.get('sess-orphan')).toMatchObject({ bowId: null, bowType: 'recurve' });
+		expect(byId.get('sess-fine')).toMatchObject({ bowId: 'bow-here', bowType: null });
+	});
 });

@@ -763,8 +763,27 @@ export async function getBow(id: string): Promise<BowRow | null> {
 	return rows[0] ?? null;
 }
 
+/**
+ * The outings shot with a bow outlive it, so they fall back to the generic type it was: a recurve
+ * stays a recurve on the record, and no session is left naming a bow that is not in the list. The
+ * bow's own name goes with the bow, since a name nobody can open again is a name nobody can read.
+ */
 export async function deleteBow(id: string) {
 	const now = Date.now();
+	const bow = await getBow(id);
+	const shotWithIt = await db()
+		.select({ id: schema.session.id })
+		.from(schema.session)
+		.where(eq(schema.session.bowId, id));
+
+	if (shotWithIt.length > 0) {
+		await db()
+			.update(schema.session)
+			.set({ bowId: null, bowType: bow?.type ?? null, updatedAt: now })
+			.where(eq(schema.session.bowId, id));
+		await logMany('session', shotWithIt.map((session) => session.id), 'update');
+	}
+
 	await db().update(schema.bow).set({ deletedAt: now, updatedAt: now }).where(eq(schema.bow.id, id));
 	await log('bow', id, 'delete');
 }
