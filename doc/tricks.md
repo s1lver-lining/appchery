@@ -6,9 +6,7 @@ a list of shortcuts, not of hidden settings.
 ## Home
 
 **Change what the two figures count.** Press and hold either figure in the header, or right click it,
-and pick from monthly arrows, weekly arrows, yearly arrows, the all time total, the week's goal, or
-nothing at all. Choosing nothing leaves the slot empty and removes the rule between the two; the slot
-stays pressable, so the figure can be brought back.
+and pick from several options.
 
 **Ring the target.** Tap the rings in the top right corner of the home header to play the ripple
 again.
@@ -22,13 +20,9 @@ know": the card comes back for the next record, on a different round.
 Each week's pill then reads `72/230 arrows`, counting the slot goals and the free arrows of every
 plan. A week that reaches its goal turns brand coloured.
 
-**The list opens where you are.** The list runs oldest to newest and opens on the current week: the
-whole week if it fits the screen, otherwise on today, held in the middle of the view.
-
 **The search reads the whole outing.** The box above the list matches a session's name, its place,
 its notes and the name of every round and procedure shot in it. Every word typed has to be found
-somewhere, in any order, and accents are ignored. It applies to the list only, since a month grid has
-nothing to narrow.
+somewhere, in any order, and accents are ignored.
 
 **A plan can be put aside.** The toggle at the top of a plan stops it filling the sessions list and
 stops its arrows counting towards the weekly goal, without deleting anything it already produced.
