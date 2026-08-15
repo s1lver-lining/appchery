@@ -3,7 +3,8 @@
 	import { App } from '@capacitor/app';
 	import { Capacitor } from '@capacitor/core';
 	import { goto, pushState } from '$app/navigation';
-	import { page } from '$app/stores';
+	import { navigating, page } from '$app/stores';
+	import { get } from 'svelte/store';
 	import { initDb, dbInfo } from '$lib/db';
 	// Imported for its side effect: beforeinstallprompt fires early, and a listener registered only
 	// once Settings is opened would already have missed it.
@@ -145,9 +146,13 @@
 			trapped = false;
 			// Unless the sheet closed by opening a page, in which case the spare entry is buried under
 			// the new one and going back would leave the page that was just opened.
-			const stale = location.href !== trappedAt;
+			const at = trappedAt;
 			trappedAt = null;
-			if (!stale) history.back();
+			// A task later, because a menu item that closes and navigates in one handler has not moved
+			// the URL yet: reclaiming now would pop the page it just opened straight back off.
+			setTimeout(() => {
+				if (location.href === at && get(navigating) === null) history.back();
+			});
 		}
 	});
 
