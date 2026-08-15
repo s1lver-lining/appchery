@@ -28,22 +28,15 @@ somewhere, in any order, and accents are ignored.
 stops its arrows counting towards the weekly goal, without deleting anything it already produced.
 
 **The new session button has two shapes.** The display section of the settings turns the round plus
-button in the corner into the full width bar. Both open the same three choices: practice,
-competition, planned.
+button in the corner into the full width bar.
 
 **A planned slot costs nothing.** Opening a session a plan calls for writes nothing to the database.
 It becomes a real session the moment an arrow, a note or a setting is entered in it, so a week nobody
 shot leaves no trace to clean up.
 
-**Move a session by days.** The session settings tab has `-7 -1 +1 +7` buttons, which is faster than
-the date field for the common case of entering an outing a few days late.
-
-**Back closes the editor.** While renaming a session, the hardware back key closes the name editor
-rather than leaving the session.
-
 ## Timer
 
-**The clock runs the line, not the round.** The timer sits behind the clock icon in any activity
+**The timer in an activity** The timer sits behind the clock icon in any activity
 header and in the sessions menu. It holds the World Archery times: four minutes for six arrows, two
 for three, two for a team's six, eighty seconds for a mixed team, twenty for alternating shooting.
 
@@ -60,7 +53,7 @@ runs.
 
 ## Matches
 
-**A match is won, not scored.** The number on a match card is its set points, and it deliberately
+**A match is shot, not scored.** The number on a match card is its set points, and it deliberately
 never reaches your personal bests or your round averages. Its arrows still count as arrows shot.
 
 **Totals first, arrows when there is time.** An end needs only the two totals, because a match is
