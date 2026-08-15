@@ -132,7 +132,12 @@
 		const sessions = await listSessions();
 		const today = startOfDay(Date.now());
 		const existing = sessions.find((s) => s.bowId === target.id && startOfDay(s.startedAt) === today);
-		const sessionId = existing?.id ?? (await createSession({ bowId: target.id, label: target.name }));
+		const sessionId =
+			existing?.id ??
+			(await createSession({
+				bowId: target.id,
+				label: $t('tuning.sessionLabel', { bow: target.name })
+			}));
 		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
 	}
 

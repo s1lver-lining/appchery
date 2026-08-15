@@ -507,7 +507,8 @@ export const fr: Dictionary = {
 		start: 'Commencer',
 		noBowSelected:
 			"Choisissez d'abord un arc dans la séance, ou définissez un arc par défaut dans la liste du matériel pour qu'il soit ajouté à chaque nouvelle séance.",
-		forBow: 'Étapes de réglage pour {bow}'
+		forBow: 'Étapes de réglage pour {bow}',
+		sessionLabel: 'Réglages {bow}'
 	},
 	equipment: {
 		title: 'Liste du matériel',

@@ -503,7 +503,9 @@ export const en = {
 		start: 'Start',
 		noBowSelected:
 			'Choose a bow in the session first, or mark one as your default bow in the equipment list so it is added to every new session.',
-		forBow: 'Tuning steps for {bow}'
+		forBow: 'Tuning steps for {bow}',
+		// The session a tuning opens for itself, named so it reads as a tuning outing and not a shoot.
+		sessionLabel: '{bow} Tuning'
 	},
 	equipment: {
 		title: 'Equipment list',

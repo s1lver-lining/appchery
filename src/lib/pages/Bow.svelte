@@ -225,7 +225,9 @@
 		// Tuning joins today's session for this bow when there is one, rather than opening a new outing.
 		const today = startOfDay(Date.now());
 		const open = sessions.find((s) => s.bowId === bowId && startOfDay(s.startedAt) === today);
-		const sessionId = open?.id ?? (await createSession({ bowId, label: bow?.name }));
+		const sessionId =
+			open?.id ??
+			(await createSession({ bowId, label: $t('tuning.sessionLabel', { bow: bow?.name ?? '' }) }));
 		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
 	}
 
