@@ -28,8 +28,16 @@
 	// Opened straight into the form when the archer came here to add a bow rather than to read one.
 	let adding = $state(false);
 	// Watched rather than read once: the page is already mounted in the pager when the link is used.
+	// Answered once per asking, or closing the form would only bring it back while the link stands.
+	let addAsked = false;
 	$effect(() => {
-		if ($page.url.searchParams.has('add')) openAdd();
+		if (!$page.url.searchParams.has('add')) {
+			addAsked = false;
+			return;
+		}
+		if (addAsked) return;
+		addAsked = true;
+		openAdd();
 	});
 	let name = $state('');
 	let type = $state<BowType>('recurve');
