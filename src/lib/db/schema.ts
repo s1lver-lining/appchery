@@ -90,6 +90,11 @@ export const activity = sqliteTable(
 		/** The rules of a head to head match as JSON, set on match activities and null everywhere else. */
 		matchConfig: text('match_config'),
 		observations: text('observations'),
+		/**
+		 * What a procedure measured, as JSON, for the procedures that record figures rather than a
+		 * score: the mass and draw weight of a ratio measurement, the face a brace test was shot on.
+		 */
+		measurements: text('measurements'),
 		conclusion: text('conclusion'),
 		adjustmentMade: text('adjustment_made'),
 		resultingRevisionId: text('resulting_revision_id'),
@@ -123,6 +128,11 @@ export const end = sqliteTable(
 		isShootOff: integer('is_shoot_off').notNull().default(0),
 		/** us | them, recorded only when a judge had to separate two equal shoot-off arrows. */
 		winner: text('winner'),
+		/**
+		 * The bow setting this end was shot at, for a procedure that compares groups across a setting
+		 * rather than scoring them: brace height in millimetres today. Null on every scored end.
+		 */
+		settingValue: real('setting_value'),
 		/**
 		 * File name of the scoring video kept for this end, or null. Recorded against the end rather
 		 * than the detection, so an end filmed by the camera and then typed in by hand is still paired

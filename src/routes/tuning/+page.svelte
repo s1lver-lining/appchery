@@ -18,6 +18,8 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
+	import BraceHeightTable from '$lib/ui/BraceHeightTable.svelte';
+	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import { ownsStatusBar } from '$lib/ui/statusBar';
 
 	// Reached from the settings page and from a bow, so back goes wherever the link came from.
@@ -48,6 +50,14 @@
 	]);
 
 	const text = $derived((key: string) => stepText(key, $locale));
+
+	/**
+	 * What was typed into the step's calculator while reading. Kept in the page rather than written
+	 * anywhere: the guide is a reading list, and a figure worth keeping belongs to the procedure.
+	 */
+	let scratch = $state<{ massGrams: number | null; drawWeightLb: number | null; unit: 'kg' | 'lb' }>(
+		{ massGrams: null, drawWeightLb: null, unit: 'kg' }
+	);
 	const openText = $derived(open ? text(open.key) : null);
 
 	/** The bow a tuning started from here belongs to: the default one, or the only one recorded. */
@@ -175,6 +185,25 @@
 					{/each}
 				</ul>
 			</section>
+
+			<!--
+				The block a step carries: the figure it hands the archer, right where the step asks for
+				it. Read only here, since the guide is a reading list; what is measured is kept by the
+				procedure the step starts.
+			-->
+			{#if open.block === 'braceHeightTable'}
+				<BraceHeightTable />
+			{:else if open.block === 'weightRatio'}
+				<section class="rounded-xl border border-line bg-surface p-4">
+					<h3 class="mb-3 text-sm font-semibold">{$t('ratio.title')}</h3>
+					<WeightRatio
+						massGrams={scratch.massGrams}
+						drawWeightLb={scratch.drawWeightLb}
+						unit={scratch.unit}
+						onchange={(value) => (scratch = value)}
+					/>
+				</section>
+			{/if}
 
 			{#if template}
 				<button

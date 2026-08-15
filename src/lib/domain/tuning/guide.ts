@@ -38,9 +38,29 @@ export interface GuideStep {
 	diagram?: DiagramName;
 	/** The tuning activity this step is done as, when it is something shot rather than measured. */
 	templateKey?: string;
+	/**
+	 * A working block the step carries under its results: a table to read a starting figure off, or
+	 * a calculator. Only a step that has a number to hand the archer carries one.
+	 */
+	block?: GuideBlock;
 	/** Settings this step writes, so the step can point at the fields it is about. */
 	settings?: string[];
 }
+
+/** Blocks a step can carry: the reference table for brace height, and the mass to weight sum. */
+export type GuideBlock = 'braceHeightTable' | 'weightRatio';
+
+/**
+ * Where to start a brace height from, by bow length, for a 25 inch riser: the figures the makers
+ * quote for a bow put together the usual way. It is a starting point, not a setting: the fine pass
+ * is shot, not read.
+ */
+export const BRACE_HEIGHT_TABLE: { bowLength: number; size: string; minCm: number; maxCm: number }[] =
+	[
+		{ bowLength: 66, size: 'SM', minCm: 21, maxCm: 22 },
+		{ bowLength: 68, size: 'MD', minCm: 22, maxCm: 23 },
+		{ bowLength: 70, size: 'LG', minCm: 23, maxCm: 24 }
+	];
 
 export interface StepText {
 	title: string;
@@ -52,22 +72,26 @@ export interface StepText {
 
 export const GUIDE_STEPS: GuideStep[] = [
 	{ key: 'draw-length', bow: 'recurve', category: 'measure', settings: ['arrowLength'] },
-	{ key: 'bow-strength', bow: 'recurve', category: 'measure' },
+	{
+		key: 'bow-strength',
+		bow: 'recurve',
+		category: 'measure',
+		templateKey: 'weight-ratio',
+		block: 'weightRatio'
+	},
 	{
 		key: 'limb-alignment',
 		bow: 'recurve',
 		category: 'setup',
-		diagram: 'limbAlignment',
-		templateKey: 'limb-alignment'
+		diagram: 'limbAlignment'
 	},
 	{ key: 'limb-twist', bow: 'recurve', category: 'setup' },
-	{ key: 'rest-position', bow: 'recurve', category: 'setup', templateKey: 'rest-position' },
+	{ key: 'rest-position', bow: 'recurve', category: 'setup' },
 	{
 		key: 'centre-shot',
 		bow: 'recurve',
 		category: 'setup',
-		diagram: 'centreShot',
-		templateKey: 'centre-shot'
+		diagram: 'centreShot'
 	},
 	{ key: 'sight-alignment', bow: 'recurve', category: 'setup' },
 	{
@@ -75,6 +99,7 @@ export const GUIDE_STEPS: GuideStep[] = [
 		bow: 'recurve',
 		category: 'presetting',
 		templateKey: 'brace-height',
+		block: 'braceHeightTable',
 		settings: ['braceHeight']
 	},
 	{
@@ -82,26 +107,24 @@ export const GUIDE_STEPS: GuideStep[] = [
 		bow: 'recurve',
 		category: 'presetting',
 		diagram: 'tiller',
-		templateKey: 'tiller',
 		settings: ['tillerUpper', 'tillerLower']
 	},
 	{
 		key: 'nocking-point',
 		bow: 'recurve',
 		category: 'presetting',
-		diagram: 'nockingPoint',
-		templateKey: 'nocking-point'
+		diagram: 'nockingPoint'
 	},
 	{ key: 'arrow-spine', bow: 'recurve', category: 'arrows', settings: ['arrowSpine', 'pointWeight'] },
 	{ key: 'bare-shaft', bow: 'recurve', category: 'arrows', diagram: 'bareShaft', templateKey: 'bare-shaft' },
 
 	{ key: 'spec-check', bow: 'compound', settings: ['axleToAxle', 'braceHeight'] },
-	{ key: 'cam-sync', bow: 'compound', templateKey: 'cam-timing' },
-	{ key: 'draw-stop', bow: 'compound', templateKey: 'draw-stop', settings: ['drawLength'] },
-	{ key: 'compound-rest', bow: 'compound', diagram: 'centreShot', templateKey: 'centre-shot' },
-	{ key: 'd-loop', bow: 'compound', diagram: 'nockingPoint', templateKey: 'nocking-point' },
-	{ key: 'peep', bow: 'compound', templateKey: 'peep-alignment', settings: ['peepHeight'] },
-	{ key: 'clearance', bow: 'compound', templateKey: 'clearance' },
+	{ key: 'cam-sync', bow: 'compound' },
+	{ key: 'draw-stop', bow: 'compound', settings: ['drawLength'] },
+	{ key: 'compound-rest', bow: 'compound', diagram: 'centreShot' },
+	{ key: 'd-loop', bow: 'compound', diagram: 'nockingPoint' },
+	{ key: 'peep', bow: 'compound', settings: ['peepHeight'] },
+	{ key: 'clearance', bow: 'compound' },
 	{ key: 'paper-tune', bow: 'compound', diagram: 'paperTear', templateKey: 'paper-tune' },
 	{ key: 'walk-back', bow: 'compound', templateKey: 'walk-back' },
 	{ key: 'compound-bare-shaft', bow: 'compound', diagram: 'bareShaft', templateKey: 'bare-shaft' },
@@ -129,11 +152,11 @@ const EN: Record<string, StepText> = {
 		steps: [
 			'Nock an arrow and hook a scale onto your nocking point.',
 			'Draw to your full draw length, come down, and read the weight off the scale.',
-			'With the drawn weight measured, work out the arrow mass to draw weight ratio. Around 70 g/lb is the mark to aim for.'
+			'Weigh the bow as you shoot it, stabilisers and all, then work out its mass against that draw weight. Around 70 g/lb is the mark to aim for.'
 		],
 		results: [
-			{ observation: 'The mass to weight ratio is too high', suggests: 'Take arrow mass off, or add draw weight if you can' },
-			{ observation: 'The mass to weight ratio is too low', suggests: 'Add arrow mass' }
+			{ observation: 'The ratio is above 70 g/lb', suggests: 'The bow is heavy for its weight: take mass off the stabilisers, or draw more weight' },
+			{ observation: 'The ratio is below 70 g/lb', suggests: 'The bow is light for its weight: add mass to the stabilisers to steady the aim' }
 		]
 	},
 	'limb-alignment': {
@@ -455,8 +478,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Le rapport poids/force est trop élevé', suggests: 'Diminuez le poids ou augmentez la force si possible' },
 			{ observation: 'Le rapport poids/force est trop bas', suggests: 'Augmentez le poids de l\'arc' }
 		]
-		// Calculateur poids/force ici
-		// Activité: Puissance de l'arc: c'est simplement un calculateur de rapport poids puissance. Quand cliqué avec des données dans le calculateur, les données sont rapportées dans l'activité associée.
 	},
 	'limb-alignment': {
 		title: 'Alignement des branches',
@@ -472,7 +493,6 @@ const FR: Record<string, StepText> = {
 			{ observation: "La corde n'est centrée que sur une seule branche", suggests: 'Alignez la moins bonne en premier, puis revérifiez les deux' },
 			{ observation: 'Aucun réglage ne parvient à la recentrer', suggests: 'La branche est sans doute vrillée : passez à l\'étape suivante' }
 		]
-		// Pas d'activité
 	},
 	'limb-twist': {
 		title: 'Vrillage des branches',
@@ -486,7 +506,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La branche est vrillée', suggests: "Faites changer la branche plutôt que de compenser avec l'alignement" },
 			{ observation: 'Branches non vrillées mais alignement toujours faux', suggests: 'Le défaut vient des logements : reprenez l\'alignement' }
 		]
-		// Pas d'activité
 	},
 	'rest-position': {
 		title: 'Position du repose-flèche',
@@ -500,7 +519,6 @@ const FR: Record<string, StepText> = {
 			{ observation: "Le centre de la flèche n'est pas sur le berger", suggests: 'Ajuster la hauteur du repose-flèche' },
 			{ observation: 'La flèche tombe trop façilement du repose-flèche', suggests: "Déplacer la position laterale du repose-flèche vers l'exterieur" }
 		]
-		// Pas d'activité
 	},
 	'centre-shot': {
 		title: 'Alignement de la flèche (bouton Berger)',
@@ -515,7 +533,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La pointe de la flèche est trop vers l\'extérieur', suggests: 'Rentrer légèrement le berger pour rentrer la pointe' },
 			{ observation: 'La pointe de la flèche est trop vers l\'intérieur', suggests: 'Sortir légèrement le berger pour sortir la pointe' }
 		]
-		// Pas d'activité
 	},
 	'sight-alignment': {
 		title: 'Alignement du viseur',
@@ -530,7 +547,6 @@ const FR: Record<string, StepText> = {
 			{ observation: "L’œilleton part sur le côté quand le bloc descend", suggests: "La reglette n'est pas parallèle au plan d'arc : réalignez-la" },
 			{ observation: 'Décalage constant, mais la course reste parallèle', suggests: "Le reglage semble bon, utiliser l'œilleton du viseur comme repère pour plus de précision" }
 		]
-		// Pas d'activité
 	},
 	'pre-brace-height': {
 		title: 'Pré-réglage du Band',
@@ -546,8 +562,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Flèches sans vie, groupement qui tombe', suggests: 'Baissez le band de quelques tours de corde' },
 			{ observation: 'La corde claque le bras d’arc', suggests: 'Montez le band, puis vérifiez la rotation de votre bras d’arc' }
 		]
-		// Activité: reglade de band
-		// Ajouter tableau de band pour differentes longueurs d'arc Taille d’arcavec unepoignée de 25’’Band min Band max66 (SM)’’ 21cm 22cm68 (MD)’’ 22cm 23cm70 (LG)’’ 23cm 24cm
 	},
 	"pre-tiller": {
 		title: 'Pré-réglage du Tiller',

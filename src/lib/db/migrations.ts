@@ -224,5 +224,10 @@ export const MIGRATIONS: string[][] = [
 		`ALTER TABLE round_end ADD COLUMN is_shoot_off INTEGER NOT NULL DEFAULT 0;`,
 		`ALTER TABLE round_end ADD COLUMN winner TEXT;`,
 		`ALTER TABLE shot ADD COLUMN side TEXT NOT NULL DEFAULT 'us';`
+	],
+	// 0014 procedures that compare groups across a bow setting, and the figures a procedure measures
+	[
+		`ALTER TABLE round_end ADD COLUMN setting_value REAL;`,
+		`ALTER TABLE activity ADD COLUMN measurements TEXT;`
 	]
 ];

@@ -24,6 +24,8 @@
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
+	import BraceTuning from '$lib/ui/BraceTuning.svelte';
+	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import {
 		schemaFor,
 		diffSettings,
@@ -621,6 +623,26 @@
 		}
 	}
 
+	/**
+	 * What the ratio procedure measured. Held on the activity rather than on the bow: a measurement
+	 * is what was true on the day, and the bow's own record only changes when the archer applies it.
+	 */
+	const measured = $derived<{ massGrams: number | null; drawWeightLb: number | null; unit: 'kg' | 'lb' }>({
+		massGrams: null,
+		drawWeightLb: null,
+		unit: 'kg',
+		...(activity?.measurements ? JSON.parse(activity.measurements) : {})
+	});
+
+	async function saveRatio(value: {
+		massGrams: number | null;
+		drawWeightLb: number | null;
+		unit: 'kg' | 'lb';
+	}) {
+		await updateActivity(activityId, { measurements: JSON.stringify(value) });
+		await refresh();
+	}
+
 	async function saveTuning() {
 		await updateActivity(activityId, { observations: notes, adjustmentMade: '' });
 		saved = true;
@@ -709,6 +731,24 @@
 				<p class="text-sm text-muted">{bow.name}</p>
 			{/if}
 		</header>
+
+		<!--
+			The working block of a procedure that measures rather than scores, above its steps: it is
+			what the archer came to the page to do, and the steps are there to be read once.
+		-->
+		{#if activity.templateKey === 'brace-height'}
+			<BraceTuning {activity} onchange={refresh} />
+		{:else if activity.templateKey === 'weight-ratio'}
+			<section class="rounded-xl border border-line bg-surface p-4">
+				<h2 class="mb-3 text-sm font-semibold">{$t('ratio.title')}</h2>
+				<WeightRatio
+					massGrams={measured.massGrams}
+					drawWeightLb={measured.drawWeightLb}
+					unit={measured.unit}
+					onchange={saveRatio}
+				/>
+			</section>
+		{/if}
 
 		{#if template}
 			<section class="rounded-xl border border-line bg-surface p-4">

@@ -113,7 +113,12 @@
 	// Focus moves without touching any store, so the trap has to be re-evaluated when it does.
 	let focusTick = $state(0);
 	$effect(() => {
-		const bump = () => focusTick++;
+		/*
+		 * Counted after the current task rather than in the handler: removing a focused element
+		 * fires focusout from inside Svelte's own teardown, and a state change there is forbidden.
+		 * Every sheet that closes on a tapped button removes one, so this is the common case.
+		 */
+		const bump = () => queueMicrotask(() => focusTick++);
 		document.addEventListener('focusin', bump);
 		document.addEventListener('focusout', bump);
 		return () => {

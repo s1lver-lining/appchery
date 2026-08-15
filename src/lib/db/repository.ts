@@ -253,6 +253,7 @@ export async function updateActivity(
 		adjustmentMade: string | null;
 		notes: string | null;
 		status: string;
+		measurements: string | null;
 	}>
 ) {
 	await db()
@@ -350,7 +351,9 @@ export async function recordEnd(
 	stageIndex: number,
 	endNo: number,
 	shots: Omit<Shot, 'ordinal'>[],
-	video: string | null = null
+	video: string | null = null,
+	/** The bow setting the end was shot at, for a procedure that compares groups across one. */
+	settingValue: number | null = null
 ) {
 	const endBase = stamp();
 	await db()
@@ -361,7 +364,8 @@ export async function recordEnd(
 			stageIndex,
 			endNo,
 			subtotal: shots.reduce((sum, s) => sum + s.value, 0),
-			video
+			video,
+			settingValue
 		});
 	await log('round_end', endBase.id, 'insert');
 
@@ -821,10 +825,16 @@ export async function linkResultingRevision(activityId: string, revisionId: stri
 export async function deleteLastEnd(activityId: string) {
 	const ends = await listEnds(activityId);
 	const last = ends[ends.length - 1];
-	if (!last) return;
+	if (last) await deleteEnd(activityId, last.id);
+}
 
+/**
+ * Removing one end wherever it sits, which a scored sheet never does and a tuning procedure does all
+ * the time: its ends are readings grouped under a setting, not a run of numbers that has to add up.
+ */
+export async function deleteEnd(activityId: string, endId: string) {
 	const now = Date.now();
-	const shots = await listShots(last.id);
+	const shots = await listShots(endId);
 	if (shots.length > 0) {
 		await db()
 			.update(schema.shot)
@@ -837,8 +847,8 @@ export async function deleteLastEnd(activityId: string) {
 			);
 		await logMany('shot', shots.map((s) => s.id), 'delete');
 	}
-	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, last.id));
-	await log('round_end', last.id, 'delete');
+	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, endId));
+	await log('round_end', endId, 'delete');
 
 	await refreshActivityTotals(activityId);
 }

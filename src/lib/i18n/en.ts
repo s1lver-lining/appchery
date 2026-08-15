@@ -363,6 +363,46 @@ export const en = {
 		fog: 'Fog',
 		storm: 'Storm'
 	},
+	ratio: {
+		title: 'Mass to draw weight',
+		mass: 'Bow mass',
+		drawWeight: 'Draw weight',
+		unit: 'g/lb',
+		fromIdeal: 'from 70',
+		hint: 'Weigh the bow as you shoot it, then draw it on a scale.',
+		verdict: {
+			good: 'Right where it should be: the bow carries its weight well.',
+			fair: 'Off the mark, but shootable. Worth a change of stabiliser mass.',
+			poor: 'A long way off: the bow will feel dead or unholdable at full draw.'
+		}
+	},
+	brace: {
+		title: 'Heights tried',
+		hint: 'Add a height, shoot an end or two at it, then twist the string and try the next.',
+		face: 'Face',
+		centre: 'Height',
+		spread: 'Group',
+		arrows: '{n} arrows',
+		end: 'End {n} · {arrows}',
+		addEnd: '+ End',
+		addBrace: 'Add a brace height',
+		newPlaceholder: 'Brace height in cm',
+		tightest: 'Tightest',
+		plotTitle: 'Brace height {brace} cm',
+		plotHint: 'Tap the face where each arrow landed.',
+		undoArrow: 'Undo arrow',
+		saveEnd: 'Save the end',
+		chartEmpty: 'Plot an end at two heights or more to see the curves.',
+		chartLabel: 'Group height and group size against brace height',
+		chartAxis: 'Brace height (cm)',
+		centreSeries: 'Group height',
+		spreadSeries: 'Group size',
+		tableTitle: 'Where to start, by bow length',
+		tableHint: 'For a 25 inch riser. A starting range, not a setting: the fine pass is shot.',
+		tableBow: 'Bow',
+		tableMin: 'Min',
+		tableMax: 'Max'
+	},
 	tuning: {
 		title: 'Tuning',
 		guideTitle: 'Tuning steps',
@@ -409,19 +449,10 @@ export const en = {
 		/** The tuning procedures by key, so a French archer reads a French name for the one they ran. */
 		template: {
 			'brace-height': 'Brace height',
-			'nocking-point': 'Nocking point height',
 			'bare-shaft': 'Bare shaft tuning',
 			'paper-tune': 'Paper tuning',
 			'walk-back': 'Walk-back tuning',
-			'crawl-calibration': 'Crawl calibration',
-			'limb-alignment': 'Limb alignment',
-			'rest-position': 'Rest position',
-			'centre-shot': 'Centre shot',
-			'tiller': 'Tiller',
-			'draw-stop': 'Draw stops',
-			'peep-alignment': 'Peep alignment',
-			'clearance': 'Clearance check',
-			'cam-timing': 'Cam timing'
+			'weight-ratio': 'Mass to draw weight'
 		},
 		noSettings: 'This test changes nothing the bow record holds, so it lives in the notes.',
 		interpretation: 'What the result suggests',

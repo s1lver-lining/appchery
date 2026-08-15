@@ -366,6 +366,47 @@ export const fr: Dictionary = {
 		fog: 'Brouillard',
 		storm: 'Orage'
 	},
+	ratio: {
+		title: 'Rapport poids / puissance',
+		mass: "Poids de l'arc",
+		drawWeight: 'Puissance',
+		unit: 'g/lb',
+		fromIdeal: 'de 70',
+		hint: "Pesez l'arc tel que vous le tirez, puis mesurez sa puissance au peson.",
+		verdict: {
+			good: "Le compte y est : l'arc porte bien son poids.",
+			fair: 'Un peu à côté, mais tirable. Un changement de masse de stabilisation se justifie.',
+			poor: "Loin du compte : l'arc paraîtra mort, ou impossible à tenir à pleine allonge."
+		}
+	},
+	brace: {
+		title: 'Bands essayés',
+		hint: 'Ajoutez un band, tirez une volée ou deux, puis vrillez la corde et passez au suivant.',
+		face: 'Blason',
+		centre: 'Hauteur',
+		spread: 'Groupement',
+		arrows: '{n} flèches',
+		end: 'Volée {n} · {arrows}',
+		addEnd: '+ Volée',
+		addBrace: 'Ajouter un band',
+		newPlaceholder: 'Band en cm',
+		tightest: 'Plus groupé',
+		plotTitle: 'Band {brace} cm',
+		plotHint: 'Touchez le blason à l’endroit de chaque impact.',
+		undoArrow: 'Annuler la flèche',
+		saveEnd: 'Enregistrer la volée',
+		chartEmpty: 'Tirez une volée à au moins deux bands pour voir les courbes.',
+		chartLabel: 'Hauteur et taille du groupement selon le band',
+		chartAxis: 'Band (cm)',
+		centreSeries: 'Hauteur du groupement',
+		spreadSeries: 'Taille du groupement',
+		tableTitle: 'Où commencer, selon la taille d’arc',
+		tableHint:
+			'Pour une poignée de 25 pouces. Une plage de départ, pas un réglage : le réglage fin se tire.',
+		tableBow: 'Arc',
+		tableMin: 'Mini',
+		tableMax: 'Maxi'
+	},
 	tuning: {
 		title: 'Réglages',
 		guideTitle: 'Étapes de réglage',
@@ -412,20 +453,11 @@ export const fr: Dictionary = {
 		steps: 'Étapes',
 		/** The tuning procedures by key, so a French archer reads a French name for the one they ran. */
 		template: {
-			'brace-height': 'Band',
-			'nocking-point': 'Point d’encochage',
+			'brace-height': 'Réglage du band',
 			'bare-shaft': 'Réglage aux flèches non empennées',
 			'paper-tune': 'Réglage au papier',
 			'walk-back': 'Réglage en reculant',
-			'crawl-calibration': 'Étalonnage des repères de crawl',
-			'limb-alignment': 'Alignement des branches',
-			'rest-position': 'Position du repose-flèche',
-			'centre-shot': 'Alignement de la flèche',
-			'tiller': 'Tiller',
-			'draw-stop': 'Butées d’allonge',
-			'peep-alignment': 'Alignement du viseur de corde',
-			'clearance': 'Contrôle du dégagement',
-			'cam-timing': 'Synchronisation des cames'
+			'weight-ratio': 'Rapport poids / puissance'
 		},
 		noSettings:
 			"Ce test ne modifie aucun réglage enregistré pour l'arc : il vit dans les notes.",

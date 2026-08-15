@@ -70,6 +70,14 @@
 	--c-comp-red: #a3392c;
 	/* Fixed rather than following the competition colour: green reads as won on either side. */
 	--c-win: #2f7d4f;
+
+	/*
+	 * How far a measurement sits from where it should be: right, off, and wrong. Used by the tuning
+	 * scales, where the colour is the reading and the number beside it only says how much.
+	 */
+	--c-band-good: #2f7d4f;
+	--c-band-fair: #c9781f;
+	--c-band-poor: #a3392c;
 	--c-kind-qualification: #1a6ba8;
 
 	color-scheme: light;
@@ -100,6 +108,9 @@
 		--c-comp-ink: #d7cfc2;
 		--c-comp-red: #c04a55;
 		--c-win: #5fb07f;
+		--c-band-good: #5fb07f;
+		--c-band-fair: #e0a052;
+		--c-band-poor: #e0776a;
 		--c-kind-qualification: #4f9ac9;
 
 		color-scheme: dark;
@@ -129,6 +140,9 @@
 	--c-comp-ink: #d7cfc2;
 	--c-comp-red: #c04a55;
 	--c-win: #5fb07f;
+	--c-band-good: #5fb07f;
+	--c-band-fair: #e0a052;
+	--c-band-poor: #e0776a;
 	--c-kind-qualification: #4f9ac9;
 
 	color-scheme: dark;
