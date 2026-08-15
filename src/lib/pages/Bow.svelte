@@ -406,7 +406,8 @@
 							</ul>
 						{/if}
 
-						<div class="flex items-center gap-2 border-t border-line px-4 py-2.5">
+						<!-- No rule above it: the row that adds a mark belongs to the list, not after it. -->
+						<div class="flex items-center gap-2 px-4 py-2.5">
 							<input
 								type="number"
 								inputmode="numeric"
