@@ -19,6 +19,8 @@
 		roundKey,
 		roundName,
 		toVolume,
+		volumeRoundKey,
+		VOLUME_KINDS,
 		volumeSeries,
 		pickGrain,
 		scoreByEndPosition,
@@ -51,7 +53,7 @@
 
 	let scored = $state<ScoredActivity[]>([]);
 	/** Every arrow shot, rounds and everything else alike: it counts towards volume and nothing more. */
-	let volume = $state<ScoredActivity[]>([]);
+	let volume = $state<ActivityLike[]>([]);
 	let favourites = $state<Set<string>>(new Set());
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
@@ -110,7 +112,8 @@
 
 	const kindOf = (activity: ScoredActivity) => sessionById.get(activity.sessionId)?.kind ?? null;
 
-	const ctx = $derived({ round: roundKey, bow: bowOf, kind: kindOf, wind: windOf });
+	// The round chip files what was not a round under what it was, so no arrow is left unnameable.
+	const ctx = $derived({ round: volumeRoundKey, bow: bowOf, kind: kindOf, wind: windOf });
 
 	/** Every figure on the page reads the same slice, so a chip moves the bests with the chart. */
 	const windowed = $derived(applyFilter(scored, ctx, $statsFilter));
@@ -158,7 +161,12 @@
 	 * arrow. Over the whole history, so a name survives a filter that hides every round holding it.
 	 */
 	const roundNames = $derived(
-		new Map(scored.map((activity) => [roundKey(activity), roundName(activity.round)]))
+		new Map<string, string>([
+			...scored.map(
+				(activity) => [roundKey(activity), roundName(activity.round)] as [string, string]
+			),
+			...VOLUME_KINDS.map((kind) => [`kind:${kind}`, $t(`stats.volumeKind.${kind}`)] as [string, string])
+		])
 	);
 
 	function labelOf(dimension: StatsDimension, key: string, short = false): string {
@@ -168,8 +176,16 @@
 		return roundNames.get(key) ?? key;
 	}
 
+	// Counted off every arrow rather than off the scored ones, so a chip agrees with the total above it.
 	const facetsOf = $derived((dimension: StatsDimension) =>
-		facets(scored, ctx, $statsFilter, dimension)
+		facets(volume, ctx, $statsFilter, dimension)
+	);
+
+	/** A match, a procedure and free arrows are counted in arrows: none of the three is a round. */
+	const countOf = $derived((dimension: StatsDimension, facet: { key: string; rounds: number; arrows: number }) =>
+		dimension === 'rounds' && facet.key.startsWith('kind:')
+			? $t('round.arrows', { n: facet.arrows })
+			: $t('stats.rounds', { n: facet.rounds })
 	);
 
 	const temperatureOf = (activity: ScoredActivity) => {
@@ -323,6 +339,7 @@
 			bind:filter={$statsFilter}
 			{facetsOf}
 			{labelOf}
+			{countOf}
 			summary={$t('stats.slice', { rounds: totals.rounds, arrows: arrowsShot })}
 		/>
 	</div>

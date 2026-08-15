@@ -17,6 +17,8 @@ import {
 	volumeSeries,
 	pickGrain,
 	toVolume,
+	volumeRoundKey,
+	VOLUME_KINDS,
 	type ActivityLike,
 	type ScoredActivity
 } from './stats';
@@ -589,8 +591,20 @@ describe('toVolume', () => {
 	});
 
 	it('leaves the scoring activity exactly as it was, round and all', () => {
-		const [round_] = toVolume(kinds());
-		expect(round_).toEqual(activity({ id: 'round', arrowsShot: 72, totalScore: 600 }));
+		const [shotRound] = toVolume(kinds());
+		expect(shotRound).toEqual({
+			...activity({ id: 'round', arrowsShot: 72, totalScore: 600 }),
+			kind: 'scoring'
+		});
+	});
+
+	it('keeps what each activity was, so the round chip can name arrows that had no round', () => {
+		expect(toVolume(kinds()).map((a) => volumeRoundKey(a))).toEqual([
+			roundKey(activity({ id: 'round' })),
+			'kind:match',
+			'kind:tuning',
+			'kind:training'
+		]);
 	});
 
 	it('strips the round and the score off everything that was not a scored round', () => {
@@ -617,5 +631,23 @@ describe('toVolume', () => {
 	it('counts a match kept for somebody else out, since it carries no arrows of ours', () => {
 		const all = kinds().map((a) => (a.kind === 'match' ? { ...a, arrowsShot: 0 } : a));
 		expect(overview(toVolume(all)).arrows).toBe(130);
+	});
+});
+
+describe('volumeRoundKey', () => {
+	it('files a round under its shape, so the same shape is one option however it was picked', () => {
+		const custom = buildCustomRound({ ends: 12, arrowsPerEnd: 6, faceSize: 122, distance: 70, unit: 'm' });
+		expect(volumeRoundKey({ ...activity({ id: 'a' }), kind: 'scoring' })).toBe(
+			volumeRoundKey({ ...activity({ id: 'b', round: custom, roundDefinitionId: null }), kind: 'scoring' })
+		);
+	});
+
+	it('offers a key for each of the three kinds of arrow that had no round', () => {
+		const keys = VOLUME_KINDS.map((kind) => volumeRoundKey({ ...activity({ id: kind }), kind }));
+		expect(keys).toEqual(['kind:match', 'kind:tuning', 'kind:training']);
+	});
+
+	it('reads an activity carrying no kind as a round, which is what a round only list holds', () => {
+		expect(volumeRoundKey(activity({ id: 'a' }))).toBe(roundKey(activity({ id: 'a' })));
 	});
 });

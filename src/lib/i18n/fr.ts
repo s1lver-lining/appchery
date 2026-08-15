@@ -731,6 +731,11 @@ export const fr: Dictionary = {
 		average: 'Moyenne',
 		trend: 'Tendance par flèche',
 		rounds: '{n} tirs',
+		volumeKind: {
+			match: 'Matchs',
+			tuning: 'Réglages',
+			training: 'Flèches libres'
+		},
 		bestOn: 'Record le {date}',
 		spread: 'Écart',
 		distribution: 'Où les flèches sont parties',

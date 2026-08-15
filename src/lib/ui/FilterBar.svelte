@@ -21,12 +21,15 @@
 		filter = $bindable(),
 		facetsOf,
 		labelOf,
+		countOf,
 		summary
 	}: {
 		filter: StatsFilter;
 		facetsOf: (dimension: StatsDimension) => Facet[];
 		/** Asked for a shorter name when the row would otherwise not fit on one line. */
 		labelOf: (dimension: StatsDimension, key: string, short?: boolean) => string;
+		/** What a facet is counted in, since not every option on the round chip is a round. */
+		countOf: (dimension: StatsDimension, facet: Facet) => string;
 		/** What the current filter leaves, so the figures below are never read as the whole history. */
 		summary: string;
 	} = $props();
@@ -243,7 +246,7 @@
 						<span class="flex-1 truncate">{labelOf(dimension, facet.key)}</span>
 						<!-- The count is what says whether a slice holds enough to mean anything. -->
 						<span class="tabular shrink-0 text-xs text-muted">
-							{$t('stats.rounds', { n: facet.rounds })}
+							{countOf(dimension, facet)}
 						</span>
 						{#if facet.selected}
 							<span class="text-brand-text"><Icon name="check" size={16} /></span>

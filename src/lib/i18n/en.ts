@@ -727,6 +727,11 @@ export const en = {
 		average: 'Average',
 		trend: 'Trend per arrow',
 		rounds: '{n} rounds',
+		volumeKind: {
+			match: 'Matches',
+			tuning: 'Tuning',
+			training: 'Free arrows'
+		},
 		bestOn: 'Best on {date}',
 		spread: 'Spread',
 		distribution: 'Where the arrows landed',
