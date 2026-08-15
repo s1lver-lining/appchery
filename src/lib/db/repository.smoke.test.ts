@@ -114,6 +114,39 @@ describe('activities of a deleted session', () => {
 		expect(all.map((row) => row.id).sort()).toEqual(['a-binned', 'a-kept']);
 	});
 
+	it('leaves out the ends of a deleted outing, which is the same question one table down', async () => {
+		for (const suffix of ['kept', 'binned']) {
+			await proxy.insert(schema.end).values({
+				...stamp(`e-${suffix}`),
+				activityId: `a-${suffix}`,
+				stageIndex: 0,
+				endNo: 1,
+				subtotal: 54
+			});
+		}
+
+		const live = proxy
+			.select({ id: schema.activity.id })
+			.from(schema.activity)
+			.where(
+				and(
+					isNull(schema.activity.deletedAt),
+					inArray(
+						schema.activity.sessionId,
+						proxy
+							.select({ id: schema.session.id })
+							.from(schema.session)
+							.where(isNull(schema.session.deletedAt))
+					)
+				)
+			);
+		const ends = await proxy
+			.select()
+			.from(schema.end)
+			.where(and(isNull(schema.end.deletedAt), inArray(schema.end.activityId, live)));
+
+		expect(ends.map((row) => row.id)).toEqual(['e-kept']);
+	});
 });
 
 /**

@@ -234,20 +234,28 @@ export async function listActivities(sessionId: string) {
 }
 
 /**
- * Every activity still standing, anywhere in the history. An activity whose session was deleted is
- * gone with it: a delete cascades to nothing so a restore can be exact, which leaves the arrows of a
- * deleted outing sitting in the table. Read them and the totals go on counting an outing that is no
- * longer in the list.
+ * The activities any figure may still be read from. A delete cascades to nothing so that a restore
+ * can be exact, which leaves the rows of a deleted outing sitting in the tables: whatever reads them
+ * whole has to ask for the ones whose session is still there, or the totals go on counting an outing
+ * that is no longer in the list.
  */
-export async function listAllActivities() {
-	const live = db()
+function liveActivities() {
+	const liveSessions = db()
 		.select({ id: schema.session.id })
 		.from(schema.session)
 		.where(isNull(schema.session.deletedAt));
 	return db()
+		.select({ id: schema.activity.id })
+		.from(schema.activity)
+		.where(and(isNull(schema.activity.deletedAt), inArray(schema.activity.sessionId, liveSessions)));
+}
+
+/** Every activity still standing, anywhere in the history. */
+export async function listAllActivities() {
+	return db()
 		.select()
 		.from(schema.activity)
-		.where(and(isNull(schema.activity.deletedAt), inArray(schema.activity.sessionId, live)))
+		.where(inArray(schema.activity.id, liveActivities()))
 		.orderBy(desc(schema.activity.startedAt));
 }
 
@@ -935,7 +943,13 @@ export async function listShotValues() {
 		})
 		.from(schema.shot)
 		.innerJoin(schema.end, eq(schema.shot.endId, schema.end.id))
-		.where(and(isNull(schema.shot.deletedAt), isNull(schema.end.deletedAt)));
+		.where(
+			and(
+				isNull(schema.shot.deletedAt),
+				isNull(schema.end.deletedAt),
+				inArray(schema.end.activityId, liveActivities())
+			)
+		);
 }
 
 /**
@@ -952,7 +966,7 @@ export async function listEndTotals() {
 			subtotal: schema.end.subtotal
 		})
 		.from(schema.end)
-		.where(isNull(schema.end.deletedAt));
+		.where(and(isNull(schema.end.deletedAt), inArray(schema.end.activityId, liveActivities())));
 
 	const shots = await db()
 		.select({ endId: schema.shot.endId })
