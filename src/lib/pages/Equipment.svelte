@@ -15,8 +15,9 @@
 
 	/**
 	 * With a default bow set, the equipment slot of the pager is that bow rather than a list of one
-	 * thing to tap through. The list is still here, a long press on the tab or a menu away, and it
-	 * says so in the URL so swiping back to this page does not undo the choice.
+	 * thing to tap through. The list is a detour, asked for by a long press on the tab or by a menu,
+	 * and it lasts as long as the archer stays on it: leaving the tab and coming back shows the bow
+	 * again, because the tab means the bow.
 	 */
 	// Asking to add a bow is asking for the list: the form lives on it, not on a bow.
 	const listed = $derived(

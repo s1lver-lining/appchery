@@ -91,6 +91,8 @@
 		offset = -Math.sign(target - index) * width;
 		setTimeout(async () => {
 			// A tab bar tap has already changed the URL, and going there twice would double the history.
+			// The bare path, so a page arrived at afresh is in the state its tab stands for rather than
+			// in whatever detour was last asked of it.
 			if (mainPageIndex($page.url.pathname) !== target)
 				await goto(MAIN_PAGES[target], { noScroll: true });
 			duration = 0;
