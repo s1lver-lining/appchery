@@ -38,7 +38,7 @@
 	let nameMissing = $state(false);
 
 	function openAdd() {
-		name = $t(`bow.recurve`);
+		name = $t('bowName.recurve');
 		type = 'recurve';
 		nameEdited = false;
 		nameMissing = false;
@@ -47,7 +47,7 @@
 
 	function pickType(next: BowType) {
 		type = next;
-		if (!nameEdited) name = $t(`bow.${next}`);
+		if (!nameEdited) name = $t(`bowName.${next}`);
 	}
 
 	/**
@@ -116,7 +116,7 @@
 						<Icon name="bow" size={22} />
 					</span>
 					<div class="min-w-0 flex-1">
-						<p class="truncate font-semibold">{$t('bow.recurve')}</p>
+						<p class="truncate font-semibold">{$t('bowName.recurve')}</p>
 						<p class="text-xs text-muted">1 240 {$t('sessions.arrows')}</p>
 					</div>
 				</div>

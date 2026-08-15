@@ -139,6 +139,12 @@ export const fr: Dictionary = {
 		barebow: 'Arc nu',
 		longbow: 'Longbow'
 	},
+	bowName: {
+		recurve: 'Arc classique',
+		compound: 'Arc à poulies',
+		barebow: 'Arc nu',
+		longbow: 'Longbow'
+	},
 	empty: {
 		sample: 'Exemple',
 		sessions: {

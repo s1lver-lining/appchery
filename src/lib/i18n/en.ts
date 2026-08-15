@@ -137,6 +137,13 @@ export const en = {
 		barebow: 'Barebow',
 		longbow: 'Longbow'
 	},
+	// What a bow is called before it is named: the category is a label, not a name for a thing owned.
+	bowName: {
+		recurve: 'Recurve Bow',
+		compound: 'Compound Bow',
+		barebow: 'Barebow',
+		longbow: 'Longbow'
+	},
 	empty: {
 		sample: 'Example',
 		sessions: {
