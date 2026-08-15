@@ -3,6 +3,15 @@ import { en } from './en';
 import { fr } from './fr';
 import { LOCALES } from './index';
 import { TUNING_TEMPLATES } from '../domain/tuning/templates';
+import { planSeason } from '../domain/plans';
+
+const FROM = new Date('2026-08-10T00:00').getTime();
+const TO = new Date('2026-09-30T00:00').getTime();
+const SEASONS = {
+	betweenDates: { startDate: FROM, endDate: TO },
+	fromDate: { startDate: FROM, endDate: null },
+	untilDate: { startDate: null, endDate: TO }
+};
 
 /**
  * A missing translation is a blank label found by whoever speaks that language, which is nobody on
@@ -89,4 +98,29 @@ describe('tuning procedure names', () => {
 			.filter((key) => !keys.has(key.slice('tuning.template.'.length)));
 		expect(stale).toEqual([]);
 	});
+});
+
+/**
+ * The plan list picks its sentence at runtime from `planSeason`, so the key it builds is never
+ * checked by the compiler. These are the three it can build, filled the way the page fills them.
+ */
+describe('plan season sentences', () => {
+	const filled = { from: '10 Aug', to: '30 Sep', date: '10 Aug' };
+
+	for (const [name, dictionary] of Object.entries(DICTIONARIES)) {
+		const flat = flatten(dictionary);
+
+		it(`${name} says each of them with nothing left to fill in`, () => {
+			for (const season of ['betweenDates', 'fromDate', 'untilDate'] as const) {
+				const key = `plans.${planSeason(SEASONS[season])!.key}`;
+				const text = flat.get(key);
+				expect(text, key).toBeDefined();
+				const said = text!.replace(/\{(\w+)\}/g, (match, slot) =>
+					slot in filled ? filled[slot as keyof typeof filled] : match
+				);
+				expect(said).not.toMatch(/[{}]/);
+				expect(said).toContain('10 Aug');
+			}
+		});
+	}
 });

@@ -112,6 +112,21 @@ export interface PlanLike {
 }
 
 /**
+ * How a plan's season reads on a list: which of the three sentences applies, and the dates it is
+ * built from. A plan bounded at neither end has no season to announce, so it says nothing at all.
+ */
+export function planSeason(plan: {
+	startDate: number | null;
+	endDate: number | null;
+}): { key: 'betweenDates' | 'fromDate' | 'untilDate'; from: number | null; to: number | null } | null {
+	if (plan.startDate !== null && plan.endDate !== null)
+		return { key: 'betweenDates', from: plan.startDate, to: plan.endDate };
+	if (plan.startDate !== null) return { key: 'fromDate', from: plan.startDate, to: null };
+	if (plan.endDate !== null) return { key: 'untilDate', from: null, to: plan.endDate };
+	return null;
+}
+
+/**
  * A plan put aside asks nothing of the week: its slots stop showing and its arrows stop counting,
  * while everything it produced before stays exactly where it is.
  */

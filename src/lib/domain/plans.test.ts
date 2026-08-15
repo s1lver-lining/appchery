@@ -5,8 +5,13 @@ import {
 	weekArrowGoal,
 	weekdayOf,
 	onlyActive,
+	isActiveOn,
+	weekArrowGoalOn,
+	planSeason,
 	GRACE_MS,
-	type PlanSlotLike
+	type PlanSlotLike,
+	type PlanLike,
+	type PlanWindowLike
 } from './plans';
 
 const at = (iso: string) => new Date(iso).getTime();
@@ -113,5 +118,152 @@ describe('onlyActive', () => {
 	it('leaves the week asking only what the plans still running ask', () => {
 		const live = onlyActive(plans, slots);
 		expect(weekArrowGoal(live.slots as PlanSlotLike[], live.plans)).toBe(102);
+	});
+});
+
+/**
+ * The dates a plan runs between. Both days count whole, so the tests are written on the boundaries:
+ * that is where a plan either goes quiet a day early or asks for one outing too many.
+ */
+describe('isActiveOn', () => {
+	const day = (iso: string) => at(`${iso}T00:00`);
+	const season = (extra: Partial<PlanWindowLike> = {}): PlanWindowLike => ({
+		id: 'p',
+		isActive: 1,
+		startDate: day('2026-08-10'),
+		endDate: day('2026-08-30'),
+		...extra
+	});
+
+	it('counts both boundary days whole', () => {
+		expect(isActiveOn(season(), at('2026-08-10T00:00'))).toBe(true);
+		expect(isActiveOn(season(), at('2026-08-30T23:30'))).toBe(true);
+		expect(isActiveOn(season(), at('2026-08-09T23:59'))).toBe(false);
+		expect(isActiveOn(season(), at('2026-08-31T00:00'))).toBe(false);
+	});
+
+	it('leaves an end open when the date is not given', () => {
+		expect(isActiveOn(season({ startDate: null }), at('1999-01-01T12:00'))).toBe(true);
+		expect(isActiveOn(season({ endDate: null }), at('2099-01-01T12:00'))).toBe(true);
+		expect(isActiveOn(season({ startDate: null, endDate: null }), monday)).toBe(true);
+	});
+
+	it('says nothing for a plan put aside, whatever its dates say', () => {
+		expect(isActiveOn(season({ isActive: 0 }), at('2026-08-12T12:00'))).toBe(false);
+	});
+
+	it('reads the date the day it falls in rather than the hour it was stored at', () => {
+		const stored = season({ startDate: at('2026-08-10T21:45'), endDate: at('2026-08-30T03:10') });
+		expect(isActiveOn(stored, at('2026-08-10T09:00'))).toBe(true);
+		expect(isActiveOn(stored, at('2026-08-30T19:00'))).toBe(true);
+	});
+});
+
+describe('upcoming inside a season', () => {
+	const window = (extra: Partial<PlanWindowLike> = {}): PlanWindowLike => ({
+		id: 'p',
+		isActive: 1,
+		startDate: null,
+		endDate: null,
+		...extra
+	});
+	// Tuesday and Friday evenings, which is enough to see a season cut a week in half.
+	const twice = [
+		slot({ id: 'tue', weekday: 1, minuteOfDay: 18 * 60 }),
+		slot({ id: 'fri', weekday: 4, minuteOfDay: 18 * 60 })
+	];
+
+	it('hides the days after the plan is over and keeps the ones before', () => {
+		const occurrences = upcoming(twice, [], 7, monday, [window({ endDate: at('2026-08-12T00:00') })]);
+		expect(occurrences.map((o) => o.slotId)).toEqual(['tue']);
+	});
+
+	it('holds a plan back until the day it starts', () => {
+		const occurrences = upcoming(twice, [], 14, monday, [
+			window({ startDate: at('2026-08-13T00:00') })
+		]);
+		// Nothing this week, then both of next week's, since the Tuesday is before the start.
+		expect(occurrences.map((o) => new Date(o.at).getDate())).toEqual([14, 18, 21]);
+	});
+
+	it('shows a plan that has not started yet the moment its first day comes round', () => {
+		const later = upcoming([slot({ id: 'tue', weekday: 1 })], [], 14, monday, [
+			window({ startDate: at('2026-08-18T00:00') })
+		]);
+		expect(later).toHaveLength(1);
+		expect(new Date(later[0].at).getDate()).toBe(18);
+	});
+
+	it('says nothing at all for a plan whose season has gone by', () => {
+		expect(upcoming(twice, [], 7, monday, [window({ endDate: at('2026-07-01T00:00') })])).toEqual([]);
+	});
+
+	it('leaves a plan it was told nothing about alone', () => {
+		expect(upcoming(twice, [], 7, monday, [window({ id: 'other', endDate: monday })])).toHaveLength(2);
+	});
+});
+
+describe('weekArrowGoalOn', () => {
+	const week = at('2026-08-10T00:00');
+	const plan = (extra: Partial<PlanWindowLike & PlanLike> = {}) => ({
+		id: 'p',
+		isActive: 1,
+		startDate: null,
+		endDate: null,
+		freeArrows: null,
+		...extra
+	});
+	const twice = [
+		slot({ id: 'tue', weekday: 1, arrowGoal: 60 }),
+		slot({ id: 'fri', weekday: 4, arrowGoal: 72 })
+	];
+
+	it('asks for the whole week while the plan covers it', () => {
+		expect(weekArrowGoalOn(week, twice, [plan({ freeArrows: 30 })])).toBe(162);
+	});
+
+	it('counts the week a season ends in a day at a time', () => {
+		const goal = weekArrowGoalOn(week, twice, [plan({ endDate: at('2026-08-12T00:00') })]);
+		expect(goal).toBe(60);
+	});
+
+	it('asks nothing of a week outside the season', () => {
+		expect(
+			weekArrowGoalOn(week, twice, [plan({ freeArrows: 30, endDate: at('2026-07-01T00:00') })])
+		).toBe(0);
+	});
+
+	it('claims the free arrows for a week the plan only partly covers', () => {
+		const goal = weekArrowGoalOn(week, [], [plan({ freeArrows: 90, startDate: at('2026-08-15T00:00') })]);
+		expect(goal).toBe(90);
+	});
+
+	it('ignores a plan put aside and a slot whose plan is gone', () => {
+		expect(weekArrowGoalOn(week, twice, [plan({ isActive: 0, freeArrows: 30 })])).toBe(0);
+		expect(weekArrowGoalOn(week, twice, [])).toBe(0);
+	});
+
+	it('reads the week off its own Monday whichever day it is given', () => {
+		const fromWednesday = weekArrowGoalOn(at('2026-08-10T00:00'), twice, [plan()]);
+		expect(fromWednesday).toBe(132);
+	});
+});
+
+/** What the plan list prints in the corner of a row, which is three sentences and a silence. */
+describe('planSeason', () => {
+	const from = at('2026-08-10T00:00');
+	const to = at('2026-09-30T00:00');
+
+	it('names both dates when a plan is bounded at both ends', () => {
+		expect(planSeason({ startDate: from, endDate: to })).toEqual({ key: 'betweenDates', from, to });
+	});
+
+	it('names the one end a plan has', () => {
+		expect(planSeason({ startDate: from, endDate: null })).toEqual({ key: 'fromDate', from, to: null });
+		expect(planSeason({ startDate: null, endDate: to })).toEqual({ key: 'untilDate', from: null, to });
+	});
+
+	it('says nothing about a plan that runs until it is put aside', () => {
+		expect(planSeason({ startDate: null, endDate: null })).toBeNull();
 	});
 });

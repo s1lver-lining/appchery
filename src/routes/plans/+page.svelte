@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
 	import { listPlans, listPlanSlots, createPlan, type PlanRow } from '$lib/db/repository';
-	import { weekArrowGoal } from '$lib/domain/plans';
+	import { weekArrowGoal, planSeason } from '$lib/domain/plans';
 	import { dateFormats } from '$lib/prefs';
 	import { originOf, setPageUp } from '$lib/nav';
 	import { page } from '$app/stores';
@@ -29,12 +29,14 @@
 
 	/** Said only when a plan is bounded: a plan with neither date runs until it is put aside. */
 	const seasonOf = (plan: PlanRow) => {
-		const from = plan.startDate === null ? null : $dateFormats.shortDate(plan.startDate);
-		const to = plan.endDate === null ? null : $dateFormats.shortDate(plan.endDate);
-		if (from && to) return $t('plans.betweenDates', { from, to });
-		if (from) return $t('plans.fromDate', { date: from });
-		if (to) return $t('plans.untilDate', { date: to });
-		return null;
+		const season = planSeason(plan);
+		if (!season) return null;
+		const date = (at: number | null) => (at === null ? '' : $dateFormats.shortDate(at));
+		return $t(`plans.${season.key}`, {
+			from: date(season.from),
+			to: date(season.to),
+			date: date(season.from ?? season.to)
+		});
 	};
 
 	async function add() {
