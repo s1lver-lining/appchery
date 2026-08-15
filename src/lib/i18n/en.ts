@@ -390,6 +390,12 @@ export const en = {
 		},
 		guideHint:
 			'The order a bow is set up in. Each step assumes the ones above it are already right.',
+		guideCategory: {
+			measure: 'Measurements',
+			setup: 'Assembly',
+			presetting: 'Pre-tuning',
+			arrows: 'Arrows'
+		},
 		guideCredit: 'Recurve order after Claude Cangelosi, Guide des réglages d’un arc. Wording ours.',
 		startNamed: 'Start: {name}',
 		needBow: 'Set a default bow to start a tuning from here.',

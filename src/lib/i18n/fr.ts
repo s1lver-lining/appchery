@@ -393,6 +393,12 @@ export const fr: Dictionary = {
 		},
 		guideHint:
 			'L’ordre dans lequel on règle un arc. Chaque étape suppose les précédentes déjà justes.',
+		guideCategory: {
+			measure: 'Mesures',
+			setup: 'Montage',
+			presetting: 'Pré-réglage',
+			arrows: 'Flèches'
+		},
 		guideCredit:
 			'Ordre du classique d’après Claude Cangelosi, Guide des réglages d’un arc. Textes de nous.',
 		startNamed: 'Commencer : {name}',

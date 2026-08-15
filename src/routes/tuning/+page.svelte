@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { t, locale } from '$lib/i18n';
-	import { stepsFor, stepText, type GuideBow, type GuideStep } from '$lib/domain/tuning/guide';
+	import { groupsFor, stepText, type GuideBow, type GuideStep } from '$lib/domain/tuning/guide';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { startOfDay } from '$lib/domain/dates';
 	import { defaultBowId } from '$lib/prefs';
@@ -67,7 +67,12 @@
 		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
 	}
 
-	const list = $derived((which: GuideBow) => stepsFor(which));
+	const list = $derived((which: GuideBow) => groupsFor(which));
+
+	/** Where a step falls in the whole list, so a heading does not restart the count. */
+	function numberOf(groups: { steps: GuideStep[] }[], step: GuideStep) {
+		return groups.flatMap((group) => group.steps).indexOf(step) + 1;
+	}
 </script>
 
 <PageHeader motif="bow" title={$t('tuning.guideTitle')}>
@@ -83,29 +88,45 @@
 
 	<TabDeck tabs={TABS} bind:value={bow} paneClass="space-y-2 pt-4">
 		{#snippet pane(key)}
-			<!-- Numbered because the order is the content: every step assumes the ones above it. -->
-			<ol class="space-y-2">
-				{#each list(key) as step, i (step.key)}
-					{@const step_text = text(step.key)}
-					<li>
-						<button
-							class="flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
-							onclick={() => (open = step)}
-						>
-							<span
-								class="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand-text"
-							>
-								{i + 1}
-							</span>
-							<span class="min-w-0 flex-1">
-								<span class="block font-semibold">{step_text.title}</span>
-								<span class="mt-0.5 block text-xs text-muted">{step_text.why}</span>
-							</span>
-							<span class="shrink-0 rotate-180 text-muted"><Icon name="back" size={18} /></span>
-						</button>
-					</li>
+			<!--
+				Numbered because the order is the content: every step assumes the ones above it. The
+				headings only say what kind of work a run of steps is, so the numbering runs straight
+				through them rather than restarting under each one.
+			-->
+			{@const groups = list(key)}
+			<div class="space-y-5">
+				{#each groups as group, g (group.category ?? g)}
+					<section>
+						{#if group.category}
+							<h3 class="mb-2 text-sm font-semibold text-muted">
+								{$t(`tuning.guideCategory.${group.category}`)}
+							</h3>
+						{/if}
+						<ol class="space-y-2">
+							{#each group.steps as step (step.key)}
+								{@const step_text = text(step.key)}
+								<li>
+									<button
+										class="flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+										onclick={() => (open = step)}
+									>
+										<span
+											class="tabular flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand/15 text-sm font-bold text-brand-text"
+										>
+											{numberOf(groups, step)}
+										</span>
+										<span class="min-w-0 flex-1">
+											<span class="block font-semibold">{step_text.title}</span>
+											<span class="mt-0.5 block text-xs text-muted">{step_text.why}</span>
+										</span>
+										<span class="shrink-0 rotate-180 text-muted"><Icon name="back" size={18} /></span>
+									</button>
+								</li>
+							{/each}
+						</ol>
+					</section>
 				{/each}
-			</ol>
+			</div>
 
 			{#if key === 'recurve'}
 				<!-- Where the recurve order comes from, since it is somebody else's work to have set it out. -->

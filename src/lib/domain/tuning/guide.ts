@@ -24,9 +24,17 @@ export type DiagramName =
 	| 'bareShaft'
 	| 'paperTear';
 
+/**
+ * The kind of work a step is, which is what the list groups by: things measured once, the bare bow
+ * put together, the settings roughed in before anything is shot, and the arrows matched to it.
+ */
+export type GuideCategory = 'measure' | 'setup' | 'presetting' | 'arrows';
+
 export interface GuideStep {
 	key: string;
 	bow: GuideBow;
+	/** The heading this step reads under. Compound steps run as one list, so they carry none. */
+	category?: GuideCategory;
 	diagram?: DiagramName;
 	/** The tuning activity this step is done as, when it is something shot rather than measured. */
 	templateKey?: string;
@@ -43,24 +51,49 @@ export interface StepText {
 }
 
 export const GUIDE_STEPS: GuideStep[] = [
-	{ key: 'limb-alignment', bow: 'recurve', diagram: 'limbAlignment', templateKey: 'limb-alignment' },
-	{ key: 'limb-twist', bow: 'recurve' },
-	{ key: 'rest-position', bow: 'recurve', templateKey: 'rest-position' },
-	{ key: 'centre-shot', bow: 'recurve', diagram: 'centreShot', templateKey: 'centre-shot' },
-	{ key: 'sight-alignment', bow: 'recurve' },
-	{ key: 'rest-overhang', bow: 'recurve' },
-	{ key: 'brace-height', bow: 'recurve', templateKey: 'brace-height', settings: ['braceHeight'] },
+	{ key: 'draw-length', bow: 'recurve', category: 'measure', settings: ['arrowLength'] },
+	{ key: 'bow-strength', bow: 'recurve', category: 'measure' },
 	{
-		key: 'tiller',
+		key: 'limb-alignment',
 		bow: 'recurve',
+		category: 'setup',
+		diagram: 'limbAlignment',
+		templateKey: 'limb-alignment'
+	},
+	{ key: 'limb-twist', bow: 'recurve', category: 'setup' },
+	{ key: 'rest-position', bow: 'recurve', category: 'setup', templateKey: 'rest-position' },
+	{
+		key: 'centre-shot',
+		bow: 'recurve',
+		category: 'setup',
+		diagram: 'centreShot',
+		templateKey: 'centre-shot'
+	},
+	{ key: 'sight-alignment', bow: 'recurve', category: 'setup' },
+	{
+		key: 'pre-brace-height',
+		bow: 'recurve',
+		category: 'presetting',
+		templateKey: 'brace-height',
+		settings: ['braceHeight']
+	},
+	{
+		key: 'pre-tiller',
+		bow: 'recurve',
+		category: 'presetting',
 		diagram: 'tiller',
 		templateKey: 'tiller',
 		settings: ['tillerUpper', 'tillerLower']
 	},
-	{ key: 'nocking-point', bow: 'recurve', diagram: 'nockingPoint', templateKey: 'nocking-point' },
-	{ key: 'draw-length', bow: 'recurve', settings: ['arrowLength'] },
-	{ key: 'arrow-spine', bow: 'recurve', settings: ['arrowSpine', 'pointWeight'] },
-	{ key: 'bare-shaft', bow: 'recurve', diagram: 'bareShaft', templateKey: 'bare-shaft' },
+	{
+		key: 'nocking-point',
+		bow: 'recurve',
+		category: 'presetting',
+		diagram: 'nockingPoint',
+		templateKey: 'nocking-point'
+	},
+	{ key: 'arrow-spine', bow: 'recurve', category: 'arrows', settings: ['arrowSpine', 'pointWeight'] },
+	{ key: 'bare-shaft', bow: 'recurve', category: 'arrows', diagram: 'bareShaft', templateKey: 'bare-shaft' },
 
 	{ key: 'spec-check', bow: 'compound', settings: ['axleToAxle', 'braceHeight'] },
 	{ key: 'cam-sync', bow: 'compound', templateKey: 'cam-timing' },
@@ -76,176 +109,174 @@ export const GUIDE_STEPS: GuideStep[] = [
 ];
 
 const EN: Record<string, StepText> = {
-	'limb-alignment': {
-		title: 'Limb alignment',
-		why: 'Limbs that sit off the bow plane push the arrow sideways on every shot, and no amount of tuning further down this list can correct it.',
+	'draw-length': {
+		title: 'Draw length',
+		why: 'Arrow length and spine both hang off this figure, so it is measured once, properly, before any shaft is cut.',
 		steps: [
-			'Brace the bow and look down the string from behind, with the bow upright.',
-			'Clip an alignment gauge to each limb. A limb tapers, so its edges read as centred long before its middle is, and the gauge marks the middle for you.',
-			'The string should split both gauges, and pass through the middle of the grip on its way: the whole bow lies in one plane, and the string is that plane.',
-			'Adjust the limb pockets: alignment carriages on a modern riser, eccentric bolts on an older one.',
-			'Check again after every change, since moving one limb moves what the other looks like.'
+			'Draw and anchor as you shoot, with a long measuring arrow.',
+			'Read the distance from the string groove to the pivot point of the grip, then add 1.75 inches for the standard draw length.',
+			'Measure three times on different days: it moves with form.',
+			'Keep the shafts long enough to clear the rest at full draw, plus a margin.'
 		],
 		results: [
-			{ observation: 'String sits left of the limb centre', suggests: 'Move that limb right, a small turn at a time' },
-			{ observation: 'String looks centred on one limb only', suggests: 'Align the worse limb first, then recheck both' },
-			{ observation: 'No adjustment brings it in', suggests: 'Suspect a twisted limb: go to the next step' }
+			{ observation: 'The figure moves more than half an inch', suggests: 'Form is not settled yet: measure again before cutting' },
+			{ observation: 'The point reaches the rest at full draw', suggests: 'The shafts are too short: replace them, this is a safety matter' }
+		]
+	},
+	'bow-strength': {
+		title: 'Bow weight',
+		why: 'The draw weight decides how fast the arrow leaves and how far it carries. It has to match what you can hold and how you shoot.',
+		steps: [
+			'Nock an arrow and hook a scale onto your nocking point.',
+			'Draw to your full draw length, come down, and read the weight off the scale.',
+			'With the drawn weight measured, work out the arrow mass to draw weight ratio. Around 70 g/lb is the mark to aim for.'
+		],
+		results: [
+			{ observation: 'The mass to weight ratio is too high', suggests: 'Take arrow mass off, or add draw weight if you can' },
+			{ observation: 'The mass to weight ratio is too low', suggests: 'Add arrow mass' }
+		]
+	},
+	'limb-alignment': {
+		title: 'Limb alignment',
+		why: 'Limbs that sit off the bow plane push the arrow sideways on every shot, and no setting further down this list can make up for it.',
+		steps: [
+			'Fit at least one alignment gauge to each limb, and two where you can: one near the tip and one near the pocket.',
+			'The string should pass through the middle of both gauges, and through the middle of the riser. The middle of the riser is where the tiller bolts sit.',
+			'Adjust the limbs: follow the maker instructions for moving a limb sideways in its pocket.',
+			'Check both limbs again after every change, since moving one limb moves where the string sits on the other.'
+		],
+		results: [
+			{ observation: 'The string sits left of the limb centre', suggests: 'Move that limb right, a little at a time' },
+			{ observation: 'The string is centred on one limb only', suggests: 'Align the worse limb first, then recheck both' },
+			{ observation: 'No adjustment brings it back to centre', suggests: 'The limb is probably twisted: go to the next step' }
 		]
 	},
 	'limb-twist': {
 		title: 'Limb twist',
-		why: 'A twisted limb cannot be aligned, and every measurement taken after it will be chasing a fault that is not where it seems.',
+		why: 'A twisted limb cannot be aligned; it has to be replaced. Shooting one risks an accident and damage to the bow.',
 		steps: [
-			'Brace the bow and sight down the string with the limbs level.',
-			'Look at each limb tip: the string groove should sit square, not leaning to one side.',
-			'Unstring, then check the limb rails are flat against the pocket faces.',
-			'A limb that fails this is a warranty matter, not a tuning one.'
+			'Hold the bow with the string horizontal, above the riser.',
+			'Wedge two arrows between the string and the tip of each limb, and balance two more where each limb meets the riser. The arrows should sit square to both the string and the limb.',
+			'Check that the points and nocks line up. If one does not, that limb is twisted.'
 		],
 		results: [
-			{ observation: 'One tip leans consistently', suggests: 'Have the limb changed rather than compensated for' },
-			{ observation: 'Both tips square, alignment still off', suggests: 'The riser pockets are the fault: return to alignment' }
+			{ observation: 'The limb is twisted', suggests: 'Have the limb changed rather than compensating for it with alignment' },
+			{ observation: 'Limbs untwisted but alignment still wrong', suggests: 'The fault is in the pockets: go back to alignment' }
 		]
 	},
 	'rest-position': {
 		title: 'Rest position',
-		why: 'Everything the arrow does on release starts from where it sits, so the rest is placed before anything is measured from it.',
+		why: 'The rest sets the height of the arrow at the bow, and puts it in the right place against the button.',
 		steps: [
-			'Sit the rest on its natural place on the shelf: the arrow should pass over the pivot point of the grip.',
-			'Set the arrow height so it is roughly level, or a fraction above the pressure button centre.',
-			'Stick or screw it down only once the arrow sits where it should.'
+			'Sit the rest in its place: the threaded hole on the target side if it takes its own screw, or the button hole behind it if it clamps around the button.',
+			'Set the height so the centre of the shaft faces the button.',
+			'On some rests the sideways position adjusts as well. Where it does, the arm should stick out past the shaft by about a millimetre.'
 		],
 		results: [
-			{ observation: 'Arrow sits well above the button', suggests: 'Lower the rest arm: the button should meet the shaft centre' },
-			{ observation: 'Arrow touches the shelf', suggests: 'Raise the rest arm until the shaft is clear' }
+			{ observation: 'The centre of the arrow is not on the button', suggests: 'Adjust the rest height' },
+			{ observation: 'The arrow falls off the rest too easily', suggests: 'Move the rest arm further out' }
 		]
 	},
 	'centre-shot': {
-		title: 'Centre shot',
-		why: 'Where the arrow points at full draw decides which way it leaves the bow, and it is the one setting a plunger exists to change.',
+		title: 'Arrow alignment (pressure button)',
+		why: 'The button does a static job and a dynamic one. Statically it sets the sideways position of the arrow so it lies in the bow plane; the dynamic setting comes later.',
 		steps: [
-			'Brace the bow and nock an arrow on the rest.',
-			'Look down the string with the bow upright: the string should cut the shaft slightly to the inside of centre.',
-			'For a right handed bow the point should sit a little left of the string line, a millimetre or two.',
-			'Set it with the button barrel, not with the rest.'
+			'Stand the bow upright and nock an arrow on the rest. A straight stabiliser helps you find the bow plane.',
+			'Stand behind the bow and look along the string, in the bow plane. The string should cut the stabiliser in two.',
+			'The point sits in the bow plane. It can also sit slightly outside it (left on a right handed bow), depending on taste.',
+			'Set the position with the button barrel until the arrow lines up.'
 		],
 		results: [
-			{ observation: 'String cuts the point exactly', suggests: 'Wind the button out slightly, so the shaft points a touch inside' },
-			{ observation: 'Point far outside the string line', suggests: 'Wind the button in: the arrow will read stiff otherwise' }
+			{ observation: 'The point sits too far outside', suggests: 'Wind the button in slightly to bring the point in' },
+			{ observation: 'The point sits too far inside', suggests: 'Wind the button out slightly to bring the point out' }
 		]
 	},
 	'sight-alignment': {
 		title: 'Sight alignment',
-		why: 'A sight that is not on the bow plane makes the windage change with every distance, which reads as an arrow problem it is not.',
+		why: 'A sight that is not parallel to the bow plane moves your windage as the distance changes, which reads as a tuning fault.',
 		steps: [
-			'Turn the sight so the ring or pin sits over the string line with the bow braced.',
-			'Run the sight block from its highest to its lowest position, watching the pin against the string.',
-			'The pin should stay on the string line the whole way.'
+			'Set the sight so the ring sits on the string line with the bow braced.',
+			'Slide the block up and down while watching the ring against the string.',
+			'The ring should stay on the string line over the whole travel.',
+			'Adjust the extension bar against the sight bar until the ring stays on the string line.'
 		],
 		results: [
-			{ observation: 'Pin drifts sideways as the block moves', suggests: 'The sight bar is not parallel to the bow plane: shim or realign it' },
-			{ observation: 'Pin sits off the string but stays parallel', suggests: 'Leave it: your windage mark will absorb a constant offset' }
+			{ observation: 'The ring drifts sideways as the block comes down', suggests: 'The bar is not parallel to the bow plane: realign it' },
+			{ observation: 'A constant offset, but the travel stays parallel', suggests: 'The setting looks right; use the sight ring as your reference for more precision' }
 		]
 	},
-	'rest-overhang': {
-		title: 'Rest overhang',
-		why: 'A rest arm that reaches too far into the shaft path catches a vane, and a caught vane throws an arrow that was otherwise perfect.',
+	'pre-brace-height': {
+		title: 'Brace height: first pass',
+		why: 'Brace height sets how long the string pushes the arrow. It drives the efficiency of the bow, and both the noise and the height of the group follow from it.',
 		steps: [
-			'Look at how far the rest arm reaches under the shaft.',
-			'It should hold the arrow with less than the shaft radius of overhang.',
-			'Dust the vanes with foot spray or lipstick and shoot: nothing should mark the rest or the riser.'
+			'Measure from the string to the pivot point of the grip with a bow square.',
+			'Start from the limb maker figure, or from a table like the one below.',
+			'Twist the string to raise the brace height and untwist to lower it, a few turns at a time, until it falls inside the maker range.',
+			'Brace height gets its fine setting after everything else. See the "Brace height" step for the fine pass.'
 		],
 		results: [
-			{ observation: 'Marks on the rest arm', suggests: 'Shorten the overhang, or rotate the nock so a vane clears' },
-			{ observation: 'Marks on the riser above the rest', suggests: 'Check nocking point and clearance before touching the rest' }
+			{ observation: 'A loud, harsh shot', suggests: 'Raise the brace height by a few string turns' },
+			{ observation: 'Dead arrows, group dropping', suggests: 'Lower the brace height by a few string turns' },
+			{ observation: 'The string slaps the bow arm', suggests: 'Raise the brace height, then check how your bow arm rotates' }
 		]
 	},
-	'brace-height': {
-		title: 'Brace height',
-		why: 'The brace height sets how long the string pushes the arrow, which changes the noise, the feel and where the group sits.',
+	'pre-tiller': {
+		title: 'Tiller: first pass',
+		why: 'The tiller balances the work of the two limbs, since the string is not held at its centre. It keeps the arrow leaving level.',
 		steps: [
-			'Measure from the string to the pivot point of the grip, with the bow braced and settled.',
-			'Start from the limb maker figure, or from a bow length table: roughly 21 to 22 cm for a 66 inch bow, 23 to 24 cm for a 70 inch.',
-			'Twist the string to raise it, untwist to lower it, a few turns at a time.',
-			'Shoot a group at each setting and keep the quietest, steadiest one.'
+			'Measure from the string to where each limb meets the riser, square to the limb. The difference between the top figure and the bottom one is the tiller.',
+			'Start from about +0.6 cm for a recurve with a sight, and about 0 for barebow.',
+			'Change it at the limb bolts, keeping the draw weight in mind: tightening adds weight. Take care not to back the limb bolts out too far (see the maker manual).',
+			'The tiller gets its fine setting after the other steps. See the "Tiller" step for the fine pass.'
 		],
 		results: [
-			{ observation: 'Loud, harsh shot', suggests: 'Raise the brace a few string turns' },
-			{ observation: 'Sluggish, dead feeling arrows', suggests: 'Lower the brace a few string turns' },
-			{ observation: 'String slaps the arm', suggests: 'Raise the brace, then check your bow arm rotation' }
-		]
-	},
-	tiller: {
-		title: 'Tiller',
-		why: 'The tiller balances how hard the two limbs pull against a hand that holds the string below centre, which is what keeps the nock travelling level.',
-		steps: [
-			'Measure from the string to where each limb meets the riser, square to the limb.',
-			'Subtract the lower from the upper: that difference is the tiller.',
-			'Start at about +0.6 cm for a recurve with a sight, and about 0 for a barebow.',
-			'Change it with the limb bolts, keeping the total draw weight in mind: turns in raise weight.'
-		],
-		results: [
-			{ observation: 'Bare shaft consistently high', suggests: 'Increase tiller slightly, or lower the nocking point first' },
-			{ observation: 'Bare shaft consistently low', suggests: 'Reduce tiller slightly, or raise the nocking point first' },
-			{ observation: 'Bow jumps forward oddly on release', suggests: 'Return to the starting tiller and retune the nocking point' }
+			{ observation: 'The tiller is too large', suggests: 'Tighten the top limb bolt' },
+			{ observation: 'The tiller is too small', suggests: 'Tighten the bottom limb bolt' }
 		]
 	},
 	'nocking-point': {
 		title: 'Nocking point',
-		why: 'The nocking point decides the vertical angle the arrow leaves at, and a wrong one shows up as vertical spread nobody can shoot out.',
+		why: 'The nocking point fixes the vertical angle the arrow leaves at. A nocking point set wrong shows up as a vertical spread nobody can shoot out.',
 		steps: [
 			'Sit a bow square on the rest and clip it to the string.',
-			'Set the top of the lower nock set about 0.5 cm above square to start.',
-			'Fit the second nock set above the nock so the arrow cannot slide.',
-			'Prove it with a bare shaft at short range once the rest of the geometry is set.'
+			'Put the lower nock set about 0.5 cm above the square to start with. Bow squares usually carry marks for the nocking point.',
+			'Nock an arrow and add the second nock set a millimetre above the nock.',
+			'Confirm it with a bare shaft at short range (see Prove the setup with bare shafts).'
 		],
 		results: [
-			{ observation: 'Bare shaft hits high', suggests: 'Move the nocking point up' },
-			{ observation: 'Bare shaft hits low', suggests: 'Move the nocking point down' },
-			{ observation: 'Bare shaft porpoises in flight', suggests: 'The nocking point is far out: move in larger steps' }
-		]
-	},
-	'draw-length': {
-		title: 'Draw length',
-		why: 'Arrow length and spine both hang off this figure, so it is measured once, properly, before any arrow is cut.',
-		steps: [
-			'Draw and anchor as you shoot, with a long measuring arrow.',
-			'Read the distance from the string groove to the pivot point of the grip, and add 1.75 inches for the standard draw length.',
-			'Repeat three times on different days: it moves with form.',
-			'Leave the shaft long enough to clear the rest at full draw, plus a small margin.'
-		],
-		results: [
-			{ observation: 'Figure moves more than half an inch', suggests: 'Form is still settling: measure again before cutting shafts' },
-			{ observation: 'Point reaches the rest at full draw', suggests: 'The shafts are too short: this is a safety matter, replace them' }
+			{ observation: 'Bare shaft high against the group', suggests: 'Raise the nocking point' },
+			{ observation: 'Bare shaft low against the group', suggests: 'Lower the nocking point' },
+			{ observation: 'The bare shaft porpoises', suggests: 'The point is a long way out: correct it in bigger steps' }
 		]
 	},
 	'arrow-spine': {
 		title: 'Choose the shaft: spine and point weight',
-		why: 'Everything above set the bow up; this step picks the arrow to match it. A shaft that is wrong for the bow cannot be tuned straight, only compensated for until something else is wrong.',
+		why: 'Everything above sets the bow up; now the arrows have to be matched to it.',
 		steps: [
-			'Take the draw weight on your fingers at your draw length, not the number on the limbs.',
-			'Read a spine chart with that weight, your arrow length and your point weight.',
-			'Prefer the chart the shaft maker publishes for their own shafts.',
-			'Change point weight to move the dynamic spine: heavier points act weaker.'
+			'Take the draw weight you actually feel on your fingers at your draw length, not the number marked on the limbs.',
+			'Read a spine chart with that weight and the shaft length your draw length calls for.',
+			'Shoot a bare shaft to confirm the spine you picked (see Prove the setup with bare shafts).',
+			'Use point weight to move the dynamic spine: a heavier point makes the shaft act weaker, the same way a higher spine number does.'
 		],
 		results: [
-			{ observation: 'Bare shaft always reads weak', suggests: 'Lighter point, shorter shaft, or a stiffer spine' },
-			{ observation: 'Bare shaft always reads stiff', suggests: 'Heavier point, longer shaft, or a weaker spine' },
-			{ observation: 'Front of centre balance under 10 %', suggests: 'Add point weight: the arrow will steer poorly downwind' }
+			{ observation: 'The bare shaft goes right, right handed', suggests: 'A stiffer shaft (a lower spine number), or a lighter point, or a shorter shaft' },
+			{ observation: 'The bare shaft goes left, right handed', suggests: 'A weaker shaft (a higher spine number), or a heavier point, or a longer shaft' },
+			{ observation: 'Front of centre balance under 10 %', suggests: 'Add point weight: the arrow will hold poorly in wind' }
 		]
 	},
 	'bare-shaft': {
 		title: 'Prove the setup with bare shafts',
-		why: 'The last step, and the only one that tests bow and arrow together: an unfletched arrow shows what the shot really does before the vanes hide it, and sends you back to the button or the nocking point with an answer.',
+		why: 'The last step, and the only one that tests bow and arrow together: an arrow without fletchings shows where the shot really goes.',
 		steps: [
 			'Shoot three fletched arrows and one bare shaft at the same mark, at 10 to 15 metres.',
 			'Note where the bare shaft sits relative to the fletched group.',
-			'Fix vertical first with the nocking point, then horizontal with the button.',
-			'Change one thing at a time, then shoot the set again.'
+			'Fix vertical first at the nocking point, then horizontal with the arrow spine, then with the button.',
+			'Change one thing at a time, then shoot another set.'
 		],
 		results: [
-			{ observation: 'Bare shaft left of the group, right handed', suggests: 'Reading stiff: soften the button spring or add point weight' },
-			{ observation: 'Bare shaft right of the group, right handed', suggests: 'Reading weak: stiffen the button spring or reduce point weight' },
-			{ observation: 'Bare shaft high or low', suggests: 'Move the nocking point before touching anything sideways' }
+			{ observation: 'Bare shaft high or low', suggests: 'Correct the nocking point before any sideways correction' },
+			{ observation: 'The bare shaft goes right, right handed', suggests: 'A stiffer shaft (a lower spine number), or a stiffer button spring' },
+			{ observation: 'The bare shaft goes left, right handed', suggests: 'A weaker shaft (a higher spine number), or a softer button spring' }
 		]
 	},
 
@@ -411,7 +442,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La mesure varie de plus d\'un demi pouce', suggests: 'La technique n\'est pas encore stable : remesurez avant de couper' },
 			{ observation: 'La pointe arrive au repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : changez-les pour des questions de sécurité' }
 		]
-		// Catégorie: mesures
 	},
 	'bow-strength': {
 		title: 'Force de l\'arc',
@@ -422,10 +452,9 @@ const FR: Record<string, StepText> = {
 			'Après avoir mesuré le poids de l\'arc avec le peson, vous pouvez calculer le rapport poids/force de l\'arc. Idéalement il est à 70g/lb'
 		],
 		results: [
-			{ observation: 'La mesure varie de plus d\'un demi pouce', suggests: 'La technique n\'est pas encore stable : remesurez avant de couper' },
-			{ observation: 'La pointe arrive au repose-flèche à pleine allonge', suggests: 'Les tubes sont trop courts : changez-les pour des questions de sécurité' }
+			{ observation: 'Le rapport poids/force est trop élevé', suggests: 'Diminuez le poids ou augmentez la force si possible' },
+			{ observation: 'Le rapport poids/force est trop bas', suggests: 'Augmentez le poids de l\'arc' }
 		]
-		// Catégorie: mesures
 		// Calculateur poids/force ici
 		// Activité: Puissance de l'arc: c'est simplement un calculateur de rapport poids puissance. Quand cliqué avec des données dans le calculateur, les données sont rapportées dans l'activité associée.
 	},
@@ -444,7 +473,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Aucun réglage ne parvient à la recentrer', suggests: 'La branche est sans doute vrillée : passez à l\'étape suivante' }
 		]
 		// Pas d'activité
-		// Catégorie: montage
 	},
 	'limb-twist': {
 		title: 'Vrillage des branches',
@@ -459,7 +487,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Branches non vrillées mais alignement toujours faux', suggests: 'Le défaut vient des logements : reprenez l\'alignement' }
 		]
 		// Pas d'activité
-		// Catégorie: montage
 	},
 	'rest-position': {
 		title: 'Position du repose-flèche',
@@ -474,7 +501,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La flèche tombe trop façilement du repose-flèche', suggests: "Déplacer la position laterale du repose-flèche vers l'exterieur" }
 		]
 		// Pas d'activité
-		// Catégorie: montage
 	},
 	'centre-shot': {
 		title: 'Alignement de la flèche (bouton Berger)',
@@ -490,7 +516,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La pointe de la flèche est trop vers l\'intérieur', suggests: 'Sortir légèrement le berger pour sortir la pointe' }
 		]
 		// Pas d'activité
-		// Catégorie: montage
 	},
 	'sight-alignment': {
 		title: 'Alignement du viseur',
@@ -506,7 +531,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Décalage constant, mais la course reste parallèle', suggests: "Le reglage semble bon, utiliser l'œilleton du viseur comme repère pour plus de précision" }
 		]
 		// Pas d'activité
-		// Catégorie: montage
 	},
 	'pre-brace-height': {
 		title: 'Pré-réglage du Band',
@@ -522,7 +546,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Flèches sans vie, groupement qui tombe', suggests: 'Baissez le band de quelques tours de corde' },
 			{ observation: 'La corde claque le bras d’arc', suggests: 'Montez le band, puis vérifiez la rotation de votre bras d’arc' }
 		]
-		// Catégorie: pré-réglage
 		// Activité: reglade de band
 		// Ajouter tableau de band pour differentes longueurs d'arc Taille d’arcavec unepoignée de 25’’Band min Band max66 (SM)’’ 21cm 22cm68 (MD)’’ 22cm 23cm70 (LG)’’ 23cm 24cm
 	},
@@ -539,7 +562,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Le tiller est trop élevé', suggests: 'Serrer la vis de branche du haut' },
 			{ observation: 'Le tiller est trop bas', suggests: 'Serrer la vis de branche du bas' }
 		]
-		// Catégorie: pré-réglage
 	},
 	"nocking-point": {
 		title: 'Détalonage (point d\'encochage)',
@@ -555,7 +577,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'Flèche non empennée basse par rapport au groupement', suggests: 'Descendez le point d\'encochage' },
 			{ observation: 'La flèche non empennée marsouine', suggests: 'Le point est loin du compte : corrigez par pas plus francs' }
 		]
-		// Catégorie: pré-réglage
 	},
 	'arrow-spine': {
 		title: 'Choisir la flèche : spine et poids de pointe',
@@ -571,7 +592,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La flèche non empennée part à gauche pour un droitier', suggests: 'Flèche plus souple (augmenter le spin), ou pointe plus lourde, tube plus long' },
 			{ observation: 'FOC inférieur à 10 %', suggests: 'Alourdissez la pointe : la flèche se tiendra mal dans le vent' }
 		]
-		// Catégorie: Flèches
 	},
 	'bare-shaft': {
 		title: "Validation aux flèches non-empennées",
@@ -587,7 +607,6 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La flèche non empennée part à droite pour un droitier', suggests: 'Flèche plus raide (diminuer le spin), ou durcir le ressort du berger button' },
 			{ observation: 'La flèche non empennée part à gauche pour un droitier', suggests: 'Flèche plus souple (augmenter le spin), ou assouplir le ressort du berger button' },
 		]
-		// Catégorie: Flèches
 	},
 
 	'spec-check': {
@@ -742,6 +761,20 @@ const TEXT: Record<Locale, Record<string, StepText>> = { en: EN, fr: FR };
 
 export function stepsFor(bow: GuideBow): GuideStep[] {
 	return GUIDE_STEPS.filter((step) => step.bow === bow);
+}
+
+/**
+ * The steps of a bow cut into the headings they read under, with the numbering carried across the
+ * whole list: the number is the order the job is done in, and a heading does not restart it.
+ */
+export function groupsFor(bow: GuideBow): { category?: GuideCategory; steps: GuideStep[] }[] {
+	const groups: { category?: GuideCategory; steps: GuideStep[] }[] = [];
+	for (const step of stepsFor(bow)) {
+		const last = groups.at(-1);
+		if (last && last.category === step.category) last.steps.push(step);
+		else groups.push({ category: step.category, steps: [step] });
+	}
+	return groups;
 }
 
 /** English is the fallback: a step with no translation yet is better read than missing. */
