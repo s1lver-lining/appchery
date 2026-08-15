@@ -221,7 +221,12 @@
 		marks = await listSightMarks(bowId);
 	}
 
+	// One at a time: two taps raced to open the same day's session and left two procedures behind.
+	let starting = $state(false);
+
 	async function startTuning(templateKey: string) {
+		if (starting) return;
+		starting = true;
 		const sessions = await listSessions();
 		// Tuning joins today's session for this bow when there is one, rather than opening a new outing.
 		const today = startOfDay(Date.now());
@@ -230,6 +235,7 @@
 			open?.id ??
 			(await createSession({ bowId, label: $t('tuning.sessionLabel', { bow: bow?.name ?? '' }) }));
 		goto(`/activities/${await createTuningActivity(sessionId, templateKey)}`);
+		starting = false;
 	}
 
 	async function rename(value: string) {
@@ -513,7 +519,8 @@
 								{@const diagram = diagramOf(template.key)}
 								<li>
 									<button
-										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm"
+										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm disabled:opacity-50"
+										disabled={starting}
 										onclick={() => startTuning(template.key)}
 									>
 										<!-- Dark ground under it, or the ink lines vanish into the card at this size. -->
