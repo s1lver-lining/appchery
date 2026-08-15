@@ -585,6 +585,10 @@
 		return round?.name ?? '';
 	}
 
+	/** The round a scored activity was shot at, for the face drawn beside its row. */
+	const roundOf = (a: ActivityRow): RoundDefinition | null =>
+		a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
+
 	/**
 	 * What a stage is shot at, or nothing when there is no one answer: a marked field course carries
 	 * a zero distance because every peg has its own, and "0m" is a distance nobody is standing at.
@@ -962,12 +966,38 @@
 							{:else}
 								<ul class="space-y-2">
 									{#each listedActivities as a (a.id)}
+										{@const round = a.kind === 'scoring' ? roundOf(a) : null}
+										{@const diagram = a.kind === 'tuning' && a.templateKey ? diagramOf(a.templateKey) : null}
+										{@const format = a.kind === 'match' ? matchOf(a)?.format : null}
 										<li>
 											<a
 												href="/activities/{a.id}"
-												class="flex items-center justify-between rounded-xl border border-line bg-surface p-3"
+												class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
 											>
-												<div>
+												<!-- The picture the row was started from, so what was done is recognised rather than read.
+												Dropped where the screen cannot spare the width. -->
+												<span class="hidden shrink-0 min-[301px]:flex">
+													{#if round}
+														<span class="h-9 w-9">
+															<TargetFace scoreSet={getScoreSet(round.scoreSetId)} />
+														</span>
+													{:else if a.kind === 'tuning'}
+														<span
+															class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border"
+															style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
+																border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line))"
+														>
+															{#if diagram}
+																<TuningDiagram name={diagram} tone="inverted" />
+															{:else}
+																<span class="text-bg"><Icon name="wrench" size={18} /></span>
+															{/if}
+														</span>
+													{:else if format}
+														<MatchGlyph {format} size={22} />
+													{/if}
+												</span>
+												<div class="min-w-0 flex-1">
 													<p class="font-medium">{activityTitle(a)}</p>
 													<p class="text-xs text-muted">
 														{a.kind === 'tuning'
