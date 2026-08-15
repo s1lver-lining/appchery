@@ -1228,12 +1228,20 @@
 									class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 									onclick={() => startTuning(template.key)}
 								>
-									<!-- The same drawing the guide uses, which says what the procedure looks at. -->
-									<span class="flex h-11 w-14 shrink-0 items-center justify-center overflow-hidden">
+									<!--
+										The same drawing the guide uses, worn as a badge: at this size the ink lines
+										disappear into the card, so the drawing gets a ground of its own to sit on and
+										goes pale over it, the way the match glyphs carry their tint.
+									-->
+									<span
+										class="flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-lg border"
+										style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
+											border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line))"
+									>
 										{#if diagram}
-											<TuningDiagram name={diagram} />
+											<TuningDiagram name={diagram} tone="inverted" />
 										{:else}
-											<Icon name="wrench" size={20} />
+											<span class="text-bg"><Icon name="wrench" size={20} /></span>
 										{/if}
 									</span>
 									<span class="min-w-0 flex-1 font-medium">{$t(`tuning.template.${template.key}`)}</span>

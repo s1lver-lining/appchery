@@ -35,7 +35,7 @@ export type DiagramName =
  * The diagrams whose reading swaps with the bow hand: a line of arrows leaning one way says the
  * spring is soft for a right hander and stiff for a left hander, so one drawing cannot serve both.
  */
-export const HANDED_DIAGRAMS: DiagramName[] = ['centreShot', 'plungerLine'];
+export const HANDED_DIAGRAMS: DiagramName[] = ['centreShot', 'sightAlignment', 'plungerLine'];
 
 /**
  * The kind of work a step is, which is what the list groups by: things measured once, the bare bow

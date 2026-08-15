@@ -44,6 +44,18 @@
 	const path = $derived((y: (cm: number) => number, pick: (p: BracePoint) => number) =>
 		points.map((p, i) => `${i === 0 ? 'M' : 'L'}${x(p.braceCm)},${y(pick(p))}`).join(' ')
 	);
+
+	/**
+	 * Each series says what its own ends are worth, on its own side: group height reads on the left
+	 * and group size on the right, and without the figures the curves only say "better and worse".
+	 * Group size is drawn upside down, so its small number belongs at the top of the axis.
+	 */
+	const ends = (values: number[]) => ({
+		low: Math.min(...values),
+		high: Math.max(...values)
+	});
+	const centreEnds = $derived(ends(centres));
+	const spreadEnds = $derived(ends(spreads));
 </script>
 
 <!-- One reading draws no curve: the whole point is what changes between two heights. -->
@@ -74,6 +86,27 @@
 				stroke-width="1"
 			/>
 
+			<!-- The two scales, one per side, in the colour of the curve they belong to. -->
+			<g font-size="9" stroke="none" class="tabular">
+				<text x={PAD.left - 4} y={PAD.top + 4} text-anchor="end" class="fill-current text-brand-text">
+					{centreEnds.high.toFixed(1)}
+				</text>
+				<text
+					x={PAD.left - 4}
+					y={height - PAD.bottom}
+					text-anchor="end"
+					class="fill-current text-brand-text"
+				>
+					{centreEnds.low.toFixed(1)}
+				</text>
+				<text x={W - PAD.right + 4} y={PAD.top + 4} fill="var(--c-comp-blue)">
+					{spreadEnds.low.toFixed(1)}
+				</text>
+				<text x={W - PAD.right + 4} y={height - PAD.bottom} fill="var(--c-comp-blue)">
+					{spreadEnds.high.toFixed(1)}
+				</text>
+			</g>
+
 			<path d={path(ySpread, (p) => p.spreadCm)} fill="none" stroke="var(--c-comp-blue)" stroke-width="2" />
 			<path d={path(yCentre, (p) => p.centreCm)} fill="none" class="stroke-brand" stroke-width="2" />
 
@@ -91,5 +124,6 @@
 			{/each}
 		</svg>
 		<p class="text-center text-[11px] text-muted">{$t('brace.chartAxis')}</p>
+		<p class="text-center text-[11px] text-muted">{$t('brace.chartUnits')}</p>
 	</div>
 {/if}
