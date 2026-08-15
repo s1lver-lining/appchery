@@ -35,12 +35,14 @@
 		type BowUsage,
 		type SightMarkRow
 	} from '$lib/db/repository';
+	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
 
@@ -72,6 +74,10 @@
 	);
 	const pending = $derived(diffSettings(type, saved, draft));
 	const isDefault = $derived($defaultBowId === bowId);
+
+	// The drawing the guide uses for a procedure, worn as the badge that opens it.
+	const diagramOf = (templateKey: string) =>
+		GUIDE_STEPS.find((step) => step.templateKey === templateKey)?.diagram ?? null;
 
 	// Only the types the guide has tabs for are named: for the others it picks its own tab.
 	const guideHref = $derived(
@@ -501,12 +507,24 @@
 						<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow?.name ?? '' })}</p>
 						<ul class="space-y-1">
 							{#each templatesForBowType(type) as template (template.key)}
+								{@const diagram = diagramOf(template.key)}
 								<li>
 									<button
 										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm"
 										onclick={() => startTuning(template.key)}
 									>
-										<Icon name="wrench" size={16} />
+										<!-- Dark ground under it, or the ink lines vanish into the card at this size. -->
+										<span
+											class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border"
+											style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
+												border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line))"
+										>
+											{#if diagram}
+												<TuningDiagram name={diagram} tone="inverted" />
+											{:else}
+												<span class="text-bg"><Icon name="wrench" size={16} /></span>
+											{/if}
+										</span>
 										{$t(`tuning.template.${template.key}`)}
 									</button>
 								</li>
