@@ -73,6 +73,14 @@
 	const pending = $derived(diffSettings(type, saved, draft));
 	const isDefault = $derived($defaultBowId === bowId);
 
+	// Only the types the guide has tabs for are named: for the others it picks its own tab.
+	const guideHref = $derived(
+		withOrigin(
+			type === 'recurve' || type === 'compound' ? `/tuning?bow=${type}` : '/tuning',
+			`/equipment/${bowId}`
+		)
+	);
+
 	async function refresh() {
 		bow = await getBow(bowId);
 		revisions = await listRevisions(bowId);
@@ -273,7 +281,7 @@
 					{
 							label: $t('tuning.guideTitle'),
 							icon: 'wrench',
-							onselect: () => goto(withOrigin('/tuning', `/equipment/${bowId}`))
+							onselect: () => goto(guideHref)
 						},
 					{
 							label: $t('help.title'),
@@ -479,7 +487,17 @@
 					</section>
 
 					<section class="rounded-xl border border-line bg-surface p-4">
-						<h2 class="mb-1 text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
+						<!-- The procedures below are what to run; the guide is how to run them, a tap away. -->
+						<div class="mb-1 flex items-start justify-between gap-3">
+							<h2 class="text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
+							<a
+								class="flex shrink-0 items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-ink"
+								href={guideHref}
+							>
+								<Icon name="wrench" size={14} />
+								{$t('tuning.guideShort')}
+							</a>
+						</div>
 						<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow?.name ?? '' })}</p>
 						<ul class="space-y-1">
 							{#each templatesForBowType(type) as template (template.key)}

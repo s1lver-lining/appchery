@@ -409,6 +409,8 @@ export const en = {
 	tuning: {
 		title: 'Tuning',
 		guideTitle: 'Tuning steps',
+		// The same page, named for a button that sits in the corner of a block rather than in a menu.
+		guideShort: 'Steps',
 		diagram: {
 			equalGaps: 'equal gaps',
 			limbAligned: 'String splits both gauges',

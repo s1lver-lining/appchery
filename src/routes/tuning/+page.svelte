@@ -35,7 +35,13 @@
 	const origin = $derived(originOf($page.url, '/settings'));
 	$effect(() => setPageUp(origin));
 
-	let bow = $state<'recurve' | 'compound'>('recurve');
+	// The guide is written for two bows, so a link naming any other type gets one of these instead.
+	type GuideBowType = 'recurve' | 'compound';
+	const guideBow = (value: string | null | undefined): GuideBowType | null =>
+		value === 'recurve' || value === 'compound' ? value : null;
+
+	// Opened on the tab the link names, and once seeded the tabs belong to whoever taps them.
+	let bow = $state<GuideBowType>(guideBow($page.url.searchParams.get('bow')) ?? 'recurve');
 	let open = $state<GuideStep | null>(null);
 	let bows = $state<BowRow[]>([]);
 	let starting = $state(false);

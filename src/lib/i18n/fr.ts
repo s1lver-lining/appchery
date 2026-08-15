@@ -413,6 +413,7 @@ export const fr: Dictionary = {
 	tuning: {
 		title: 'Réglages',
 		guideTitle: 'Étapes de réglage',
+		guideShort: 'Étapes',
 		diagram: {
 			equalGaps: 'écarts égaux',
 			limbAligned: 'La corde partage les deux cales',
