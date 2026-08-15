@@ -16,6 +16,8 @@ import {
 	roundKey,
 	volumeSeries,
 	pickGrain,
+	toVolume,
+	type ActivityLike,
 	type ScoredActivity
 } from './stats';
 import { getRound } from './rounds/seed';
@@ -561,5 +563,59 @@ describe('pickGrain', () => {
 		expect(pickGrain(0, 30 * day)).toBe('day');
 		expect(pickGrain(0, 200 * day)).toBe('week');
 		expect(pickGrain(0, 900 * day)).toBe('month');
+	});
+});
+
+/**
+ * The one list every arrow figure has to be read from. Three places used to count three different
+ * populations of arrow, so an afternoon of tuning made the month disagree with the week.
+ */
+describe('toVolume', () => {
+	const kinds = (extra: Partial<ActivityLike> = {}): ActivityLike[] => [
+		{ ...activity({ id: 'round', arrowsShot: 72, totalScore: 600 }), kind: 'scoring', ...extra },
+		{ ...activity({ id: 'match', arrowsShot: 12, totalScore: 0 }), kind: 'match', ...extra },
+		{ ...activity({ id: 'tuning', arrowsShot: 18, totalScore: 0 }), kind: 'tuning', ...extra },
+		{ ...activity({ id: 'free', arrowsShot: 40, totalScore: 0 }), kind: 'training', ...extra }
+	];
+
+	it('counts the arrows of every kind of activity', () => {
+		expect(overview(toVolume(kinds())).arrows).toBe(142);
+	});
+
+	it('agrees with the plain sum the sessions list adds up', () => {
+		const all = kinds();
+		const pill = all.reduce((sum, a) => sum + a.arrowsShot, 0);
+		expect(overview(toVolume(all)).arrows).toBe(pill);
+	});
+
+	it('leaves the scoring activity exactly as it was, round and all', () => {
+		const [round_] = toVolume(kinds());
+		expect(round_).toEqual(activity({ id: 'round', arrowsShot: 72, totalScore: 600 }));
+	});
+
+	it('strips the round and the score off everything that was not a scored round', () => {
+		for (const other of toVolume(kinds()).filter((a) => a.id !== 'round')) {
+			expect(other.round).toBeNull();
+			expect(other.roundDefinitionId).toBeNull();
+			expect(other.totalScore).toBe(0);
+			expect(other.count10s).toBe(0);
+			expect(other.countX).toBe(0);
+		}
+	});
+
+	it('carries no score for the arrows that were not scored, so an average can be asked of the rounds', () => {
+		const rounds = toVolume(kinds()).filter((a) => a.round);
+		expect(overview(rounds).averagePerArrow).toBeCloseTo(600 / 72);
+		expect(overview(rounds).arrows).toBe(72);
+	});
+
+	it('drops an activity nothing was shot in, whatever its kind', () => {
+		const empty = kinds().map((a) => ({ ...a, arrowsShot: 0 }));
+		expect(toVolume(empty)).toEqual([]);
+	});
+
+	it('counts a match kept for somebody else out, since it carries no arrows of ours', () => {
+		const all = kinds().map((a) => (a.kind === 'match' ? { ...a, arrowsShot: 0 } : a));
+		expect(overview(toVolume(all)).arrows).toBe(130);
 	});
 });

@@ -18,12 +18,14 @@
 		windBand,
 		roundKey,
 		roundName,
+		toVolume,
 		volumeSeries,
 		pickGrain,
 		scoreByEndPosition,
 		temperatureBand,
 		WIND_BAND_KEYS,
 		TEMPERATURE_BAND_KEYS,
+		type ActivityLike,
 		type ScoredActivity
 	} from '$lib/domain/stats';
 	import {
@@ -48,8 +50,8 @@
 	import { expandedRounds, statsFilter, statsBlocks, dateFormats } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
-	/** Match arrows, kept apart from the rounds: they count towards volume and towards nothing else. */
-	let matches = $state<ScoredActivity[]>([]);
+	/** Every arrow shot, rounds and everything else alike: it counts towards volume and nothing more. */
+	let volume = $state<ScoredActivity[]>([]);
 	let favourites = $state<Set<string>>(new Set());
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
@@ -66,35 +68,23 @@
 		ends = await listEndTotals();
 		const activities = await listAllActivities();
 		/**
-		 * Matches are arrows shot, so they belong in the volume, and they are not rounds, so they
-		 * belong nowhere else on this page: a set system result is not a score to average or beat.
+		 * Read once for every kind of activity, because volume is every arrow and the rounds are the
+		 * subset of them that was scored. Mapping twice is what let the two figures drift apart.
 		 */
-		matches = activities
-			.filter((a) => a.kind === 'match' && a.arrowsShot > 0)
-			.map((a) => ({
-				id: a.id,
-				sessionId: a.sessionId,
-				startedAt: a.startedAt,
-				totalScore: 0,
-				arrowsShot: a.arrowsShot,
-				count10s: 0,
-				countX: 0,
-				roundDefinitionId: null,
-				round: null
-			}));
-		scored = activities
-			.filter((a) => a.kind === 'scoring')
-			.map((a) => ({
-				id: a.id,
-				sessionId: a.sessionId,
-				startedAt: a.startedAt,
-				totalScore: a.totalScore,
-				arrowsShot: a.arrowsShot,
-				count10s: a.count10s,
-				countX: a.countX,
-				roundDefinitionId: a.roundDefinitionId,
-				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
-			}));
+		const all: ActivityLike[] = activities.map((a) => ({
+			id: a.id,
+			sessionId: a.sessionId,
+			kind: a.kind,
+			startedAt: a.startedAt,
+			totalScore: a.totalScore,
+			arrowsShot: a.arrowsShot,
+			count10s: a.count10s,
+			countX: a.countX,
+			roundDefinitionId: a.roundDefinitionId,
+			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
+		}));
+		volume = toVolume(all);
+		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 	}
 	$effect(() => {
 		refresh();
@@ -125,10 +115,10 @@
 	/** Every figure on the page reads the same slice, so a chip moves the bests with the chart. */
 	const windowed = $derived(applyFilter(scored, ctx, $statsFilter));
 	const totals = $derived(overview(windowed));
-	/** Rounds and matches together, which is the only figure on the page that counts both. */
-	const windowedVolume = $derived(applyFilter([...scored, ...matches], ctx, $statsFilter));
+	/** Every arrow shot, which is the only figure on the page that reads past the scored rounds. */
+	const windowedVolume = $derived(applyFilter(volume, ctx, $statsFilter));
 	const arrowsShot = $derived(windowedVolume.reduce((sum, a) => sum + a.arrowsShot, 0));
-	/** Days shot counts matches too: a day spent shooting matches is not a day off. */
+	/** Days shot reads the same list: a day spent shooting matches or tuning is not a day off. */
 	const daysShot = $derived(
 		new Set(
 			windowedVolume
@@ -136,7 +126,8 @@
 				.map((a) => new Date(a.startedAt).toDateString())
 		).size
 	);
-	const bounds = $derived(periodBounds($statsFilter, scored));
+	// Spanned by every arrow rather than by the scored ones, so the chart starts where shooting did.
+	const bounds = $derived(periodBounds($statsFilter, volume));
 	const grain = $derived(pickGrain(bounds.from, bounds.to));
 	/** Fixed so a filtered out kind never repaints the ones that are left. */
 	const KINDS = ['practice', 'competition', 'qualification'];

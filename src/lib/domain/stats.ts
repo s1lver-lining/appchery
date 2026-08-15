@@ -15,6 +15,36 @@ export interface ScoredActivity {
 	round: RoundDefinition | null;
 }
 
+/** A scored round carries what it scored; anything else that was shot only carries its arrows. */
+export interface ActivityLike extends ScoredActivity {
+	kind: string;
+}
+
+/**
+ * Every arrow the app knows about, whatever produced it: a scored round, a match, a tuning procedure
+ * or the free arrows counter. Volume is a count of arrows, so leaving any of them out makes one
+ * figure disagree with another over the same afternoon.
+ *
+ * Only a round carries a score, so everything else arrives with none: an average, a personal best
+ * and a round card are questions a round answers, and a bare shaft session is not one.
+ */
+export function toVolume(activities: ActivityLike[]): ScoredActivity[] {
+	return activities
+		.filter((activity) => activity.arrowsShot > 0)
+		.map(({ kind, ...activity }) =>
+			kind === 'scoring'
+				? activity
+				: {
+						...activity,
+						totalScore: 0,
+						count10s: 0,
+						countX: 0,
+						roundDefinitionId: null,
+						round: null
+					}
+		);
+}
+
 /** Completion is derived from the arrows entered, so an edited round never needs a status fixing up. */
 export function isComplete(activity: ScoredActivity): boolean {
 	return isRoundComplete(activity.round, activity.arrowsShot);

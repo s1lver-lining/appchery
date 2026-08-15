@@ -26,6 +26,8 @@
 		inRange,
 		isComplete,
 		summariseByRound,
+		toVolume,
+		type ActivityLike,
 		type ScoredActivity
 	} from '$lib/domain/stats';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -49,6 +51,8 @@
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
 	let scored = $state<ScoredActivity[]>([]);
+	/** Every arrow shot, whatever produced it, which is what the header figures count. */
+	let volume = $state<ScoredActivity[]>([]);
 	let counts = $state<Record<string, number>>({});
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
@@ -94,19 +98,21 @@
 			acc[a.sessionId] = (acc[a.sessionId] ?? 0) + a.arrowsShot;
 			return acc;
 		}, {});
-		scored = activities
-			.filter((a) => a.kind === 'scoring')
-			.map((a) => ({
-				id: a.id,
-				sessionId: a.sessionId,
-				startedAt: a.startedAt,
-				totalScore: a.totalScore,
-				arrowsShot: a.arrowsShot,
-				count10s: a.count10s,
-				countX: a.countX,
-				roundDefinitionId: a.roundDefinitionId,
-				round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
-			}));
+		/** Mapped once for every kind, so the header and the week's total read the same arrows. */
+		const all: ActivityLike[] = activities.map((a) => ({
+			id: a.id,
+			sessionId: a.sessionId,
+			kind: a.kind,
+			startedAt: a.startedAt,
+			totalScore: a.totalScore,
+			arrowsShot: a.arrowsShot,
+			count10s: a.count10s,
+			countX: a.countX,
+			roundDefinitionId: a.roundDefinitionId,
+			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
+		}));
+		volume = toVolume(all);
+		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 	}
 	$effect(() => {
 		refresh();
@@ -204,9 +210,11 @@
 			.find(({ best }) => Date.now() - best.startedAt < PB_WINDOW && best.id !== $dismissedBest)
 	);
 
-	const month = $derived(overview(inRange(scored, 'month')));
-	const year = $derived(overview(inRange(scored, 'year')));
-	const allTime = $derived(overview(scored));
+	// Every arrow, not only the scored ones: a header that leaves out a tuning session undercounts
+	// the month against the week's own total, which counts them.
+	const month = $derived(overview(inRange(volume, 'month')));
+	const year = $derived(overview(inRange(volume, 'year')));
+	const allTime = $derived(overview(volume));
 	/**
 	 * The three latest, oldest first, so the page reads in the same direction as the sessions list.
 	 * Only outings that have happened: what is still ahead is announced above, not recalled here.
