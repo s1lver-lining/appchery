@@ -463,7 +463,12 @@
 	let draftMatch = $state<MatchConfig | null>(null);
 
 	/** Everybody named on a card before, read once the picker is opened rather than with the session. */
-	let knownNames = $state<{ opponents: string[]; ours: string[] }>({ opponents: [], ours: [] });
+	let knownNames = $state<Awaited<ReturnType<typeof listMatchNames>>>({
+		opponents: [],
+		ours: [],
+		teammates: [],
+		everyone: []
+	});
 	$effect(() => {
 		if (adding) listMatchNames().then((names) => (knownNames = names));
 	});
@@ -1508,13 +1513,13 @@
 					<div class="flex gap-2">
 						<NamePicker
 							value={draftMatch.ourName}
-							known={knownNames.ours}
+							known={knownNames.everyone}
 							placeholder={$t('match.ourSide')}
 							onchange={(name) => draftMatch && (draftMatch = { ...draftMatch, ourName: name })}
 						/>
 						<NamePicker
 							value={draftMatch.opponent}
-							known={knownNames.opponents}
+							known={knownNames.everyone}
 							placeholder={$t('match.opponent')}
 							onchange={(name) => draftMatch && (draftMatch = { ...draftMatch, opponent: name })}
 						/>
@@ -1526,20 +1531,20 @@
 							<p class="mb-1 text-xs font-semibold text-muted">{$t('match.teammates')}</p>
 							<div class="space-y-1">
 								{#each [...draftMatch.teammates, ''] as name, i (i)}
-									<input
-										class="w-full rounded-lg border border-line bg-bg p-2 text-sm text-ink"
-										placeholder={$t('match.teammate', { n: i + 1 })}
-										aria-label={$t('match.teammate', { n: i + 1 })}
-										value={name}
-										onchange={(e) => {
-											if (!draftMatch) return;
-											const next = [...draftMatch.teammates];
-											const typed = e.currentTarget.value.trim();
-											if (typed) next[i] = typed;
-											else next.splice(i, 1);
-											draftMatch = { ...draftMatch, teammates: next.filter(Boolean) };
-										}}
-									/>
+									<div class="flex">
+										<NamePicker
+											value={name || null}
+											known={knownNames.everyone}
+											placeholder={$t('match.teammate', { n: i + 1 })}
+											onchange={(typed) => {
+												if (!draftMatch) return;
+												const next = [...draftMatch.teammates];
+												if (typed) next[i] = typed;
+												else next.splice(i, 1);
+												draftMatch = { ...draftMatch, teammates: next.filter(Boolean) };
+											}}
+										/>
+									</div>
 								{/each}
 							</div>
 						</div>

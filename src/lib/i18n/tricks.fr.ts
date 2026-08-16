@@ -99,8 +99,8 @@ export const tricksFr: TricksDictionary = {
 					body: 'Donnez son tour à chaque match et la page de séance dessine l’échelle dans l’ordre où elle a été gravie, des huitièmes à la finale.'
 				},
 				{
-					lead: 'Les adversaires gardent leur orthographe.',
-					body: 'Taper un nom propose tous ceux déjà inscrits sur une carte : le même archer reste un seul nom dans l’historique plutôt que trois orthographes.'
+					lead: 'Chaque champ de nom se souvient de tous les noms.',
+					body: 'Notre côté, l’adversaire et chaque coéquipier proposent tous ceux déjà inscrits sur une carte, quel que soit leur côté. Un archer affronté une semaine et tiré à vos côtés la suivante reste un seul nom dans l’historique plutôt que trois orthographes.'
 				},
 				{
 					lead: 'Un match se partage aussi en image.',

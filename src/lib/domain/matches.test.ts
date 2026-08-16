@@ -9,6 +9,7 @@ import {
 	matchScore,
 	wonFromBehind,
 	stageRank,
+	gatherNames,
 	type MatchEnd
 } from './matches';
 
@@ -207,5 +208,29 @@ describe('bracket stages', () => {
 	it('reads an unknown stage back as none rather than losing the match', () => {
 		expect(parseConfig('{"stage":"nonsense"}')?.stage).toBe('none');
 		expect(parseConfig(JSON.stringify({ ...newMatch('team'), stage: 'semi' }))?.stage).toBe('semi');
+	});
+});
+
+describe('gatherNames', () => {
+	const card = (ourName: string | null, opponent: string | null, teammates: string[] = []) => ({
+		...newMatch('team'),
+		ourName,
+		opponent,
+		teammates
+	});
+
+	it('offers every name from every side of every card', () => {
+		const names = gatherNames([card('Ana', 'Meudon', ['Bo']), card(null, 'Bo'), null]);
+		expect(names.everyone).toEqual(['Meudon', 'Ana', 'Bo']);
+	});
+
+	it('keeps each side on its own as well', () => {
+		const names = gatherNames([card('Ana', 'Meudon', ['Bo', 'Cy'])]);
+		expect(names).toMatchObject({ ours: ['Ana'], opponents: ['Meudon'], teammates: ['Bo', 'Cy'] });
+	});
+
+	it('says a name once, however many cards it is on', () => {
+		const names = gatherNames([card('Ana', 'Bo'), card('Ana', 'Bo', ['Ana'])]);
+		expect(names.everyone).toEqual(['Bo', 'Ana']);
 	});
 });

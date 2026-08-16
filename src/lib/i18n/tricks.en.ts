@@ -104,8 +104,8 @@ export const tricksEn = {
 					body: 'Give each match its round and the session page draws the ladder in the order it was climbed, from the eighths to the final.'
 				},
 				{
-					lead: 'Opponents remember their spelling.',
-					body: 'Typing a name offers everybody named on a card before, so the same archer is one name in the history rather than three spellings of it.'
+					lead: 'Every name field remembers every name.',
+					body: 'Our side, the opponent and each teammate all offer everybody named on a card before, whichever side they were on. An archer met as an opponent one week and shot beside the next is one name in the history rather than three spellings of it.'
 				},
 				{
 					lead: 'A match shares as a picture too.',

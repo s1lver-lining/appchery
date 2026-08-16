@@ -61,7 +61,12 @@
 	let rows = $state<Row[]>([]);
 	let editingSetup = $state(false);
 	/** Names used on other cards, so the same opponent is spelled the same way every time. */
-	let knownNames = $state<{ opponents: string[]; ours: string[] }>({ opponents: [], ours: [] });
+	let knownNames = $state<Awaited<ReturnType<typeof listMatchNames>>>({
+		opponents: [],
+		ours: [],
+		teammates: [],
+		everyone: []
+	});
 	$effect(() => {
 		if (editingSetup) listMatchNames().then((names) => (knownNames = names));
 	});
@@ -834,14 +839,14 @@
 			<div class="flex gap-2">
 				<NamePicker
 					value={config.ourName}
-					known={knownNames.ours}
+					known={knownNames.everyone}
 					placeholder={$t('match.ourSide')}
 					onchange={(name) =>
 						config && updateMatchConfig(activity.id, { ...config, ourName: name }).then(refresh)}
 				/>
 				<NamePicker
 					value={config.opponent}
-					known={knownNames.opponents}
+					known={knownNames.everyone}
 					placeholder={$t('match.opponent')}
 					onchange={(name) =>
 						config && updateMatchConfig(activity.id, { ...config, opponent: name }).then(refresh)}

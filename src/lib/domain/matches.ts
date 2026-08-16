@@ -338,3 +338,32 @@ function tiedOrShotOut(
 ): boolean {
 	return config.system === 'set' ? ourPoints === theirPoints : ourTotal === theirTotal;
 }
+
+/**
+ * Everybody named on a set of cards, most recently written first. An archer met as an opponent one
+ * week and shot beside the next is the same person and the same spelling, so `everyone` is what a
+ * name field offers; the three sides are kept for anything that wants one of them alone.
+ */
+export function gatherNames(configs: (MatchConfig | null)[]) {
+	const sides = {
+		opponents: new Set<string>(),
+		ours: new Set<string>(),
+		teammates: new Set<string>(),
+		everyone: new Set<string>()
+	};
+	for (const config of configs) {
+		if (!config) continue;
+		if (config.opponent) sides.opponents.add(config.opponent);
+		if (config.ourName) sides.ours.add(config.ourName);
+		for (const name of config.teammates) sides.teammates.add(name);
+		for (const name of [config.opponent, config.ourName, ...config.teammates]) {
+			if (name) sides.everyone.add(name);
+		}
+	}
+	return {
+		opponents: [...sides.opponents],
+		ours: [...sides.ours],
+		teammates: [...sides.teammates],
+		everyone: [...sides.everyone]
+	};
+}

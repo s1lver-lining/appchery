@@ -10,6 +10,7 @@ import {
 	arrowsShot,
 	matchScore,
 	wonFromBehind,
+	gatherNames,
 	type MatchConfig
 } from '$lib/domain/matches';
 
@@ -685,14 +686,7 @@ export async function listMatchNames() {
 		.where(and(eq(schema.activity.kind, 'match'), isNull(schema.activity.deletedAt)))
 		.orderBy(desc(schema.activity.startedAt));
 
-	const opponents = new Set<string>();
-	const ours = new Set<string>();
-	for (const row of rows) {
-		const config = parseConfig(row.config);
-		if (config?.opponent) opponents.add(config.opponent);
-		if (config?.ourName) ours.add(config.ourName);
-	}
-	return { opponents: [...opponents], ours: [...ours] };
+	return gatherNames(rows.map((row) => parseConfig(row.config)));
 }
 
 /** The card as the match page reads it: the rules, the ends, and whatever arrows were plotted. */
