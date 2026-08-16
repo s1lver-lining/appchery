@@ -20,6 +20,7 @@
 		type XpSource
 	} from '$lib/domain/experience';
 	import { formatNumber } from '$lib/prefs';
+	import { noteLevel } from '$lib/levelUp';
 	import { originOf, setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -33,7 +34,11 @@
 
 	$effect(() => {
 		void $dataVersion;
-		loadExperienceInput().then((input) => (earned = experience(input)));
+		loadExperienceInput().then((input) => {
+			earned = experience(input);
+			// Read here too, so a level lost is noticed on the page that exists to show it.
+			noteLevel(earned.level);
+		});
 	});
 
 	const COLOURS: Record<XpSource, string> = {
