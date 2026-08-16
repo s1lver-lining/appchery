@@ -526,6 +526,8 @@ export const fr: Dictionary = {
 		bowName: 'Nom',
 		nameRequired: 'Un nom est nécessaire.',
 		bowType: 'Type',
+		makeDefault: 'En faire mon arc par défaut',
+		makeDefaultHint: 'Chaque nouvelle séance démarre dessus, et l’onglet matériel l’ouvre.',
 		tuningSteps: 'Réglages',
 		overviewTab: 'Aperçu',
 		settingsTab: 'Réglages',

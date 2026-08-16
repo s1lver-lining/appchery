@@ -12,6 +12,7 @@
 	import Bow from './Bow.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import Toggle from '$lib/ui/Toggle.svelte';
 
 	/**
 	 * With a default bow set, the equipment slot of the pager is that bow rather than a list of one
@@ -45,6 +46,14 @@
 	// The type is the name most bows would be given, so it is written in until somebody writes better.
 	let nameEdited = $state(false);
 	let nameMissing = $state(false);
+	/**
+	 * Whether this bow becomes the one every new session starts on, and the one the tab opens. Off
+	 * unless it is the first bow, and the answer follows the list until the archer says otherwise:
+	 * the form can be opened by a link before the bows have been read.
+	 */
+	let defaultChosen = $state(false);
+	let defaultAsked = $state(false);
+	const makeDefault = $derived(defaultAsked ? defaultChosen : bows.length === 0);
 
 	/**
 	 * Closing the form spends the link that asked for it, so a reload or a copied URL lands on the
@@ -60,6 +69,7 @@
 		type = 'recurve';
 		nameEdited = false;
 		nameMissing = false;
+		defaultAsked = false;
 		adding = true;
 	}
 
@@ -94,10 +104,8 @@
 			nameMissing = true;
 			return;
 		}
-		const first = bows.length === 0;
 		const id = await createBow(name.trim(), type);
-		// With a single bow there is nothing to choose between, so preselecting it saves a step.
-		if (first) defaultBowId.set(id);
+		if (makeDefault) defaultBowId.set(id);
 		name = '';
 		adding = false;
 		// A bow made for one outing is that outing's bow, whether or not it is the default one.
@@ -219,6 +227,20 @@
 				{/each}
 			</select>
 		</label>
+		<div class="flex items-start justify-between gap-4 pt-1">
+			<div class="flex-1">
+				<p class="text-sm font-semibold">{$t('equipment.makeDefault')}</p>
+				<p class="mt-0.5 text-xs text-muted">{$t('equipment.makeDefaultHint')}</p>
+			</div>
+			<Toggle
+				checked={makeDefault}
+				label={$t('equipment.makeDefault')}
+				onchange={(v) => {
+					defaultChosen = v;
+					defaultAsked = true;
+				}}
+			/>
+		</div>
 	</div>
 
 	{#snippet footer()}

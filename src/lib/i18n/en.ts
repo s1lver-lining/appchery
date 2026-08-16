@@ -523,6 +523,8 @@ export const en = {
 		bowName: 'Name',
 		nameRequired: 'A name is needed.',
 		bowType: 'Type',
+		makeDefault: 'Make it my default bow',
+		makeDefaultHint: 'Every new session starts on it, and the equipment tab opens it.',
 		tuningSteps: 'Tuning',
 		overviewTab: 'Overview',
 		settingsTab: 'Settings',
