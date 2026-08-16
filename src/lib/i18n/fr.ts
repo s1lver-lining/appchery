@@ -1123,7 +1123,6 @@ insetHint:
 		intoLevel: '{into} XP sur {span}',
 		toNext: '{xp} XP avant le niveau {level}',
 		total: 'Expérience acquise',
-		nextLevelAt: 'Niveau {level} à {xp} XP',
 		sources: "D'où elle vient",
 		empty: "Rien de tiré, donc rien d'acquis.",
 		share: '{percent} %',

@@ -34,6 +34,9 @@
 		matches: 'var(--c-xp-matches)'
 	};
 
+	const percentIntoLevel = $derived(
+		earned && earned.span > 0 ? (earned.into / earned.span) * 100 : 0
+	);
 	const share = (xp: number) => (earned && earned.total > 0 ? (xp / earned.total) * 100 : 0);
 	const slices = $derived(
 		earned
@@ -63,15 +66,16 @@
 				<h2 class="text-2xl font-bold text-brand-text">
 					{$t('experience.level', { level: earned.level })}
 				</h2>
+				<!-- How far through the level, not how much has been earned: the total is the donut's job. -->
 				<p class="tabular text-lg font-semibold">
-					{$t('experience.points', { xp: earned.total.toLocaleString() })}
+					{$t('experience.share', { percent: percentIntoLevel.toFixed(0) })}
 				</p>
 			</div>
 
 			<div class="mt-3 h-2.5 overflow-hidden rounded-full bg-sunk">
 				<div
 					class="h-full rounded-full bg-brand"
-					style="width: {earned.span > 0 ? (earned.into / earned.span) * 100 : 0}%"
+					style="width: {percentIntoLevel}%"
 				></div>
 			</div>
 
@@ -89,12 +93,6 @@
 					})}
 				</p>
 			</div>
-			<p class="tabular mt-1 text-xs text-muted">
-				{$t('experience.nextLevelAt', {
-					level: earned.level + 1,
-					xp: earned.nextLevelAt.toLocaleString()
-				})}
-			</p>
 		</section>
 
 		<section class="rounded-2xl border border-line bg-surface p-4">

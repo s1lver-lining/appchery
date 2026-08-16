@@ -1115,7 +1115,6 @@ insetHint:
 		intoLevel: '{into} of {span} XP',
 		toNext: '{xp} XP to level {level}',
 		total: 'Experience earned',
-		nextLevelAt: 'Level {level} at {xp} XP',
 		sources: 'Where it came from',
 		empty: 'Nothing shot yet, so nothing earned yet.',
 		share: '{percent}%',
