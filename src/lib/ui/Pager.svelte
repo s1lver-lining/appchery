@@ -35,11 +35,18 @@
 		slideTo(at);
 	});
 
-	// A slide leaves the neighbours behind: the page being slid to takes the slot one of them holds.
+	/**
+	 * A slide leaves the neighbours behind: the page being slid to takes the slot one of them holds.
+	 *
+	 * Always in page order, never in the order they were named. The track is keyed, so a list that
+	 * put a page before one already ahead of it would have the browser move the node rather than
+	 * re-render it, and moving a node resets the scroll of everything inside it: sliding back to an
+	 * earlier tab dropped the page behind it to its top, while swiping the same way left it alone.
+	 */
 	const visible = $derived(
-		(sliding !== null ? [index, sliding] : [index - 1, index, index + 1]).filter(
-			(i) => i >= 0 && i < MAIN_PAGES.length
-		)
+		(sliding !== null ? [index, sliding] : [index - 1, index, index + 1])
+			.filter((i) => i >= 0 && i < MAIN_PAGES.length)
+			.sort((a, b) => a - b)
 	);
 
 	const progress = $derived(Math.min(1, Math.abs(offset) / width));
