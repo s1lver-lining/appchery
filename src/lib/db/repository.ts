@@ -714,18 +714,21 @@ export async function setMatchEndTotal(
 	total: number | null,
 	shootOff = false
 ) {
-	const end = await ensureMatchEnd(activityId, endNo, shootOff);
-	await clearSideArrows(end.id, side);
-	await db()
-		.update(schema.end)
-		.set(
-			side === 'us'
-				? { subtotal: total ?? 0, updatedAt: Date.now() }
-				: { opponentSubtotal: total, updatedAt: Date.now() }
-		)
-		.where(eq(schema.end.id, end.id));
-	await log('round_end', end.id, 'update');
-	await refreshMatchTotals(activityId);
+	// Serialised, or the two sides of a new end each find it missing and each insert one.
+	await transaction(async () => {
+		const end = await ensureMatchEnd(activityId, endNo, shootOff);
+		await clearSideArrows(end.id, side);
+		await db()
+			.update(schema.end)
+			.set(
+				side === 'us'
+					? { subtotal: total ?? 0, updatedAt: Date.now() }
+					: { opponentSubtotal: total, updatedAt: Date.now() }
+			)
+			.where(eq(schema.end.id, end.id));
+		await log('round_end', end.id, 'update');
+		await refreshMatchTotals(activityId);
+	});
 }
 
 /** Arrows for one side of one end, replacing whatever was there: an end is entered, not appended to. */
@@ -789,40 +792,43 @@ export async function setMatchArrows(
 }
 
 export async function deleteMatchEnd(activityId: string, endNo: number) {
-	const end = (await listEnds(activityId)).find((row) => row.endNo === endNo);
-	if (!end) return;
-	const now = Date.now();
-	const shots = await listShots(end.id);
-	if (shots.length > 0) {
-		await db()
-			.update(schema.shot)
-			.set({ deletedAt: now, updatedAt: now })
-			.where(
-				inArray(
-					schema.shot.id,
-					shots.map((shot) => shot.id)
-				)
-			);
-		await logMany('shot', shots.map((shot) => shot.id), 'delete');
-	}
-	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, end.id));
-	await log('round_end', end.id, 'delete');
+	// Renumbering the ends after it is several statements: half of it is a match with a hole.
+	await transaction(async () => {
+		const end = (await listEnds(activityId)).find((row) => row.endNo === endNo);
+		if (!end) return;
+		const now = Date.now();
+		const shots = await listShots(end.id);
+		if (shots.length > 0) {
+			await db()
+				.update(schema.shot)
+				.set({ deletedAt: now, updatedAt: now })
+				.where(
+					inArray(
+						schema.shot.id,
+						shots.map((shot) => shot.id)
+					)
+				);
+			await logMany('shot', shots.map((shot) => shot.id), 'delete');
+		}
+		await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, end.id));
+		await log('round_end', end.id, 'delete');
 
-	/**
-	 * The ends that came after it close the gap. A match is a run of ends played in order, and an
-	 * end four with no end three reads as a mistake rather than as a match with a hole in it.
-	 */
-	for (const later of (await listEnds(activityId)).filter(
-		(row) => !row.isShootOff && row.endNo > endNo
-	)) {
-		await db()
-			.update(schema.end)
-			.set({ endNo: later.endNo - 1, updatedAt: now })
-			.where(eq(schema.end.id, later.id));
-		await log('round_end', later.id, 'update');
-	}
+		/**
+		 * The ends that came after it close the gap. A match is a run of ends played in order, and an
+		 * end four with no end three reads as a mistake rather than as a match with a hole in it.
+		 */
+		for (const later of (await listEnds(activityId)).filter(
+			(row) => !row.isShootOff && row.endNo > endNo
+		)) {
+			await db()
+				.update(schema.end)
+				.set({ endNo: later.endNo - 1, updatedAt: now })
+				.where(eq(schema.end.id, later.id));
+			await log('round_end', later.id, 'update');
+		}
 
-	await refreshMatchTotals(activityId);
+		await refreshMatchTotals(activityId);
+	});
 }
 
 /**
