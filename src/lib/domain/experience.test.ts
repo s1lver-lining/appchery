@@ -198,6 +198,24 @@ describe('experience', () => {
 		expect(both.total - one.total).toBe(24 * XP_PER_ARROW);
 	});
 
+	// One unreadable row must cost its own points and no more: a NaN total is an unreadable app.
+	it('is never poisoned by a value that cannot be worked out', () => {
+		const corrupt = activity({
+			id: 'a',
+			kind: 'scoring',
+			arrowsShot: Number.NaN,
+			totalScore: Number.NaN,
+			round: {
+				...wa720,
+				stages: [{ ...wa720.stages[0], faceSize: Number.NaN }]
+			}
+		});
+		const good = activity({ id: 'b', arrowsShot: 100 });
+		const result = experience({ activities: [corrupt, good], badges: [] });
+		expect(result.total).toBe(100 * XP_PER_ARROW);
+		expect(Number.isFinite(result.level)).toBe(true);
+	});
+
 	it('places the archer inside their level', () => {
 		const result = experience({ activities: [activity({ id: 'a', arrowsShot: 300 })], badges: [] });
 		expect(result.total).toBe(600);

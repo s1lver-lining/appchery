@@ -40,7 +40,10 @@ export const XP_SOURCES: XpSource[] = ['arrows', 'rounds', 'badges', 'matches'];
 
 export interface XpShare {
 	xp: number;
-	/** What produced it: arrows shot, rounds finished, badges held, matches won or drawn. */
+	/**
+	 * What produced it: arrows shot, rounds finished, badges held, matches won. A drawn match counts
+	 * here too, because it paid: the label that quotes this figure says so.
+	 */
 	count: number;
 }
 
@@ -103,6 +106,13 @@ const BOT_WEIGHT: Record<BotLevel, number> = {
 const clamp = (value: number, low: number, high: number) => Math.min(high, Math.max(low, value));
 
 /**
+ * Nothing leaves here as NaN. A single corrupt face size or score would otherwise spread through the
+ * total to the level, the bar and every share on the page, turning one unreadable row into an
+ * unreadable app: a contribution that cannot be worked out is worth nothing instead.
+ */
+const finite = (xp: number) => (Number.isFinite(xp) ? Math.round(xp) : 0);
+
+/**
  * How hard one stage of a round is to hit, as a multiple of an 18m indoor round. Its two ingredients
  * are the only ones on the card: how far away the face is, and how big it is.
  */
@@ -112,8 +122,10 @@ export function stageDifficulty(stage: RoundStage): number {
 	const metres =
 		stage.distance.unit === 'yd' ? yardsToMetres(stage.distance.value) : stage.distance.value;
 	if (metres <= 0) return 1;
-	const facePerMetre = stage.faceSize / metres;
-	return clamp(REFERENCE_FACE_PER_METRE / facePerMetre, MIN_DIFFICULTY, MAX_DIFFICULTY);
+	const difficulty = REFERENCE_FACE_PER_METRE / (stage.faceSize / metres);
+	// A face size that arrived unreadable leaves the round at the plain rate rather than at NaN.
+	if (!Number.isFinite(difficulty)) return 1;
+	return clamp(difficulty, MIN_DIFFICULTY, MAX_DIFFICULTY);
 }
 
 /** Weighted by the arrows each stage asks for, so a WA 1440 is not averaged as four equal quarters. */
@@ -146,18 +158,17 @@ export function roundXp(activity: XpActivity): number {
 	const best = maxScore(activity.round, scoreSetOf(activity.round));
 	const ratio = best > 0 ? clamp(activity.totalScore / best, 0, 1) : 0;
 	const scored = SCORE_FLOOR + (1 - SCORE_FLOOR) * ratio;
-	return Math.round(
-		activity.arrowsShot * XP_PER_ROUND_ARROW * roundDifficulty(activity.round) * scored
-	);
+	return finite(activity.arrowsShot * XP_PER_ROUND_ARROW * roundDifficulty(activity.round) * scored);
 }
 
 /** What a match result paid, on top of the arrows it took to get there. A loss pays nothing. */
 export function matchXp(activity: XpActivity): number {
 	const match = activity.match;
 	if (!match || (!match.won && !match.drawn)) return 0;
-	const opponent = match.bot ? BOT_WEIGHT[match.bot] : 1;
+	// A stage or a bot the catalogue does not know counts as the plain rate rather than as nothing.
+	const opponent = (match.bot ? BOT_WEIGHT[match.bot] : 1) ?? 1;
 	const share = match.won ? 1 : DRAW_SHARE;
-	return Math.round(XP_MATCH_WIN * STAGE_WEIGHT[match.stage] * opponent * share);
+	return finite(XP_MATCH_WIN * (STAGE_WEIGHT[match.stage] ?? 1) * opponent * share);
 }
 
 export function badgeXp(key: string): number {
@@ -185,9 +196,10 @@ export function experience(input: XpInput): Experience {
 	};
 
 	for (const activity of input.activities) {
-		if (activity.arrowsShot > 0) {
-			sources.arrows.xp += activity.arrowsShot * XP_PER_ARROW;
-			sources.arrows.count += activity.arrowsShot;
+		const arrows = finite(activity.arrowsShot);
+		if (arrows > 0) {
+			sources.arrows.xp += arrows * XP_PER_ARROW;
+			sources.arrows.count += arrows;
 		}
 		const round = roundXp(activity);
 		if (round > 0) {
@@ -203,7 +215,7 @@ export function experience(input: XpInput): Experience {
 
 	// A key with no badge behind it pays nothing, so a row left by an older catalogue cannot inflate.
 	for (const key of new Set(input.badges)) {
-		const xp = badgeXp(key);
+		const xp = finite(badgeXp(key));
 		if (xp <= 0) continue;
 		sources.badges.xp += xp;
 		sources.badges.count += 1;
