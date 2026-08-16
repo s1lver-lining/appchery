@@ -1110,6 +1110,7 @@ insetHint:
 		hint: 'Every arrow, every round, every badge, every match won.',
 		levelStat: 'Level',
 		level: 'Level {level}',
+		levelUp: 'Level up',
 		levelShort: 'Lv {level}',
 		points: '{xp} XP',
 		intoLevel: '{into} of {span} XP',

@@ -36,6 +36,8 @@
 	import { goto } from '$app/navigation';
 	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { levelUpAward } from '$lib/levelUp';
+	import type { Award } from '$lib/ui/Fireworks.svelte';
 	import ArrowPad from '$lib/ui/ArrowPad.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
@@ -53,7 +55,16 @@
 	 * line, theirs on the right, an end to a row. Totals can be typed straight in, because a match is
 	 * shot on the clock and the arrows are often somebody else's to call out.
 	 */
-	let { activity, onchange }: { activity: ActivityRow; onchange: () => void } = $props();
+	let {
+		activity,
+		onchange,
+		oncelebrate
+	}: {
+		activity: ActivityRow;
+		onchange: () => void;
+		/** Handed up rather than shown here: the page around this one owns the fireworks. */
+		oncelebrate?: (award: Award) => void;
+	} = $props();
 
 	type Row = Awaited<ReturnType<typeof loadMatch>>['ends'][number];
 
@@ -396,7 +407,11 @@
 		const decided = result?.decided === true;
 		const settled = decided && !wasDecided;
 		wasDecided = decided;
-		if (settled && config?.forSelf) await awardBadges();
+		if (!settled || !config?.forSelf) return;
+		await awardBadges();
+		// After the badges, since the win and anything it earned are both paid before the level is read.
+		const climbed = await levelUpAward($t);
+		if (climbed) oncelebrate?.(climbed);
 	}
 
 	async function clearEnd(endNo: number) {

@@ -1118,6 +1118,7 @@ insetHint:
 		hint: 'Chaque flèche, chaque volée comptée, chaque badge, chaque match gagné.',
 		levelStat: 'Niveau',
 		level: 'Niveau {level}',
+		levelUp: 'Niveau supérieur',
 		levelShort: 'Niv {level}',
 		points: '{xp} XP',
 		intoLevel: '{into} XP sur {span}',

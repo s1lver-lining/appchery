@@ -142,6 +142,14 @@ export const dismissedBest = storedString('appchery.dismissedBest');
 export const celebratedBests = storedList('appchery.celebratedBests');
 
 /**
+ * The level the archer has already been told they reached. Experience is never stored, so this is
+ * the only way to tell a level climbed just now from one climbed months ago: zero means the app has
+ * never looked, which is what stops an archer who is already level twelve being congratulated for it
+ * the first time this runs.
+ */
+export const celebratedLevel = storedNumber('appchery.celebratedLevel', 0);
+
+/**
  * Whether the badges page lists badges with their rules rather than showing the grid of icons. The
  * grid is the default: a wall of badges is the point of them, and the detail is one tap away.
  */

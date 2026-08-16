@@ -97,6 +97,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
+	import { levelUpAward } from '$lib/levelUp';
 	import { defaultBowId, formatDateTime, dateFormats } from '$lib/prefs';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { longpress } from '$lib/ui/longpress';
@@ -187,13 +188,15 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	let celebrations = $state<Award[]>([]);
 
 	async function announceBadges() {
-		const won = await awardBadges();
-		// Left alone when nothing was won, so counting on past a badge does not clear it off the screen.
-		if (won.length === 0) return;
-		celebrations = won.map((key) => ({
+		const queue: Award[] = (await awardBadges()).map((key) => ({
 			title: $t('badges.new'),
 			subtitle: $t(`badges.list.${key}.name`)
 		}));
+		const climbed = await levelUpAward($t);
+		if (climbed) queue.push(climbed);
+		// Left alone when nothing was won, so counting on past a badge does not clear it off the screen.
+		if (queue.length === 0) return;
+		celebrations = queue;
 	}
 
 	/** Held down, the minus runs away with itself, faster the longer it is held. */

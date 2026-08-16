@@ -34,7 +34,9 @@
 	} from '$lib/domain/stats';
 	import { experience, type Experience } from '$lib/domain/experience';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
+	import { get } from 'svelte/store';
 	import {
+		celebratedLevel,
 		defaultBowId,
 		dismissedBest,
 		homeStatPrimary,
@@ -120,6 +122,8 @@
 			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 		}));
 		earned = experience(await loadExperienceInput());
+		// Only ever from nothing, so opening the home page can never swallow a level up still to be shown.
+		if (get(celebratedLevel) === 0) celebratedLevel.set(earned.level);
 		volume = toVolume(all);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 	}

@@ -41,6 +41,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
+	import { levelUpAward } from '$lib/levelUp';
 	import LeaveDialog from '$lib/ui/LeaveDialog.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
 	import ArrowNumberChart from '$lib/ui/ArrowNumberChart.svelte';
@@ -232,6 +233,9 @@
 		for (const key of await awardBadges()) {
 			queue.push({ title: $t('badges.new'), subtitle: $t(`badges.list.${key}.name`), score: null });
 		}
+		// Last of the three, because the round and the badges it won are what paid for it.
+		const climbed = await levelUpAward($t);
+		if (climbed) queue.push(climbed);
 		celebrations = queue;
 	}
 
@@ -857,7 +861,7 @@
 </script>
 
 {#if activity && activity.kind === 'match'}
-	<Match {activity} onchange={refresh} />
+	<Match {activity} onchange={refresh} oncelebrate={(award) => (celebrations = [award])} />
 {:else if activity && activity.kind === 'tuning'}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
