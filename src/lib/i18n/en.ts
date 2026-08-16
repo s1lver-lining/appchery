@@ -2,7 +2,7 @@
 export const en = {
 	app: {
 		name: 'Appchery',
-		tagline: 'Track your shooting. Tune your bow.',
+		tagline: 'Archery Scoring & Training',
 		exitTitle: 'Close Appchery?',
 		exitBody: 'Everything is already saved on this device.',
 		exitAction: 'Close'
@@ -19,7 +19,7 @@ export const en = {
 		home: 'Home',
 		sessions: 'Sessions',
 		equipment: 'Equipment',
-		stats: 'Stats',
+		stats: 'Statistics',
 		settings: 'Settings'
 	},
 	common: {
@@ -914,11 +914,87 @@ export const en = {
 		linkBadges: 'Badges',
 		linkShare: 'Share',
 		linkTricks: 'Tips and tricks',
+		linkMuscles: 'Muscles',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
 			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',
 		recalcAction: 'Recheck',
 		recalcResult: '{awarded} awarded, {revoked} taken back.'
+	},
+	muscles: {
+		title: 'Muscles',
+		intro:
+			'What a shot asks of the body, muscle by muscle and moment by moment. Pick the muscles an exercise trains.',
+		phaseTitle: 'The shot',
+		play: 'Play the shot',
+		pause: 'Pause',
+		working: 'Working now',
+		nothingWorking: 'Nothing much: this is the moment before the work starts.',
+		selection: 'Picked for this exercise',
+		selectionEmpty: 'Tap a muscle on the figure, or one in the list below.',
+		clear: 'Clear',
+		coverage: 'Covers {percent}% of what the shot asks',
+		peak: 'Works hardest at the {phase}',
+		deepTitle: 'Under the surface',
+		insetHint:
+			'The shoulder blade twice: from behind on the left, and turned over on the right, where the subscapularis lies against the ribs. The trapezius and the deltoid have been lifted away.',
+		load: { 1: 'Light', 2: 'Working', 3: 'Hardest' },
+		view: { back: 'Back', front: 'Front', deep: 'Deep' },
+		inset: {
+			scapula: 'The shoulder blade, both faces',
+			forearm: 'The draw forearm, opened',
+			trunk: 'The waist, cut across'
+		},
+		role: {
+			mover: 'Makes the draw happen',
+			stabiliser: 'Holds the joint still',
+			postural: 'Holds the archer up',
+			fault: 'Should stay quiet'
+		},
+		roleShort: { mover: 'Mover', stabiliser: 'Stabiliser', postural: 'Postural', fault: 'Fault' },
+		side: { draw: 'String arm', bow: 'Bow arm' },
+		phase: {
+			stance: 'Stance',
+			set: 'Set',
+			setup: 'Setup',
+			draw: 'Draw',
+			anchor: 'Anchor',
+			transfer: 'Transfer',
+			expansion: 'Expansion',
+			release: 'Release',
+			followThrough: 'Follow through'
+		},
+		name: {
+			rhomboids: 'Rhomboids',
+			trapeziusUpper: 'Upper trapezius',
+			trapeziusMid: 'Middle trapezius',
+			trapeziusLower: 'Lower trapezius',
+			levatorScapulae: 'Levator scapulae',
+			latissimus: 'Latissimus dorsi',
+			teresMajor: 'Teres major',
+			serratusAnterior: 'Serratus anterior',
+			erectorSpinae: 'Erector spinae',
+			deltoidPosterior: 'Rear deltoid',
+			deltoidLateral: 'Side deltoid',
+			deltoidAnterior: 'Front deltoid',
+			supraspinatus: 'Supraspinatus',
+			infraspinatus: 'Infraspinatus',
+			teresMinor: 'Teres minor',
+			subscapularis: 'Subscapularis',
+			pectoralisMajor: 'Pectoralis major',
+			biceps: 'Biceps',
+			triceps: 'Triceps',
+			forearmFlexors: 'Forearm flexors',
+			forearmExtensors: 'Forearm extensors',
+			fingerFlexors: 'Finger flexors',
+			rectusAbdominis: 'Abdominals',
+			obliques: 'Obliques',
+			transverseAbdominis: 'Transverse abdominis',
+			glutes: 'Glutes',
+			quadriceps: 'Quadriceps',
+			hamstrings: 'Hamstrings',
+			calves: 'Calves'
+		}
 	},
 	badges: {
 		title: 'Badges',

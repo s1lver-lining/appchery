@@ -3,7 +3,7 @@ import type { Dictionary } from './index';
 export const fr: Dictionary = {
 	app: {
 		name: 'Appchery',
-		tagline: 'Suivez vos tirs. Réglez votre arc.',
+		tagline: 'Scores et entraînement en tir à l\'arc',
 		exitTitle: 'Fermer Appchery ?',
 		exitBody: 'Tout est déjà enregistré sur cet appareil.',
 		exitAction: 'Fermer'
@@ -20,7 +20,7 @@ export const fr: Dictionary = {
 		home: 'Accueil',
 		sessions: 'Séances',
 		equipment: 'Matériel',
-		stats: 'Stats',
+		stats: 'Statistiques',
 		settings: 'Paramètres'
 	},
 	common: {
@@ -919,11 +919,92 @@ export const fr: Dictionary = {
 		linkBadges: 'Badges',
 		linkShare: 'Partager',
 		linkTricks: 'Astuces',
+		linkMuscles: 'Muscles',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
 			'Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.',
 		recalcAction: 'Vérifier',
 		recalcResult: '{awarded} obtenus, {revoked} retirés.'
+	},
+	muscles: {
+		title: 'Muscles',
+		intro:
+			"Ce que le tir demande au corps, muscle par muscle et moment par moment. Choisissez les muscles qu'un exercice travaille.",
+		phaseTitle: 'Le tir',
+		play: 'Dérouler le tir',
+		pause: 'Pause',
+		working: 'Au travail',
+		nothingWorking: "Presque rien : c'est le moment d'avant.",
+		selection: 'Choisis pour cet exercice',
+		selectionEmpty: 'Touchez un muscle sur la silhouette, ou dans la liste ci-dessous.',
+		clear: 'Effacer',
+		coverage: 'Couvre {percent} % de ce que le tir demande',
+		peak: 'Travaille le plus à {phase}',
+		deepTitle: 'Sous la surface',
+		insetHint:
+			"L'omoplate deux fois : de dos à gauche, et retournée à droite, où le sous-scapulaire se plaque contre les côtes. Le trapèze et le deltoïde ont été écartés.",
+		load: { 1: 'Léger', 2: 'Au travail', 3: 'À fond' },
+		view: { back: 'Dos', front: 'Face', deep: 'Profond' },
+		inset: {
+			scapula: "L'omoplate, ses deux faces",
+			forearm: "L'avant-bras de corde, ouvert",
+			trunk: 'La taille, en coupe'
+		},
+		role: {
+			mover: 'Fait le mouvement',
+			stabiliser: "Tient l'articulation",
+			postural: "Tient l'archer debout",
+			fault: 'Doit rester tranquille'
+		},
+		roleShort: {
+			mover: 'Moteur',
+			stabiliser: 'Stabilisateur',
+			postural: 'Postural',
+			fault: 'Défaut'
+		},
+		side: { draw: 'Bras de corde', bow: "Bras d'arc" },
+		phase: {
+			stance: 'Position',
+			set: 'Mise en place',
+			setup: 'Levée',
+			draw: 'Armement',
+			anchor: 'Ancrage',
+			transfer: 'Transfert',
+			expansion: 'Expansion',
+			release: 'Décoche',
+			followThrough: 'Accompagnement'
+		},
+		name: {
+			rhomboids: 'Rhomboïdes',
+			trapeziusUpper: 'Trapèze supérieur',
+			trapeziusMid: 'Trapèze moyen',
+			trapeziusLower: 'Trapèze inférieur',
+			levatorScapulae: "Élévateur de l'omoplate",
+			latissimus: 'Grand dorsal',
+			teresMajor: 'Grand rond',
+			serratusAnterior: 'Dentelé antérieur',
+			erectorSpinae: 'Érecteurs du rachis',
+			deltoidPosterior: 'Deltoïde postérieur',
+			deltoidLateral: 'Deltoïde moyen',
+			deltoidAnterior: 'Deltoïde antérieur',
+			supraspinatus: 'Sus-épineux',
+			infraspinatus: 'Sous-épineux',
+			teresMinor: 'Petit rond',
+			subscapularis: 'Sous-scapulaire',
+			pectoralisMajor: 'Grand pectoral',
+			biceps: 'Biceps',
+			triceps: 'Triceps',
+			forearmFlexors: "Fléchisseurs de l'avant-bras",
+			forearmExtensors: "Extenseurs de l'avant-bras",
+			fingerFlexors: 'Fléchisseurs des doigts',
+			rectusAbdominis: 'Grand droit',
+			obliques: 'Obliques',
+			transverseAbdominis: 'Transverse',
+			glutes: 'Fessiers',
+			quadriceps: 'Quadriceps',
+			hamstrings: 'Ischio-jambiers',
+			calves: 'Mollets'
+		}
 	},
 	badges: {
 		title: 'Badges',

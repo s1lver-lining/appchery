@@ -16,7 +16,8 @@
 		{ href: '/badges', icon: 'medal', label: $t('settings.linkBadges') },
 		{ href: '/timer', icon: 'clock', label: $t('timer.title') },
 		{ href: '/share', icon: 'qr', label: $t('settings.linkShare') },
-		{ href: '/tricks', icon: 'bulb', label: $t('settings.linkTricks') }
+		{ href: '/tricks', icon: 'bulb', label: $t('settings.linkTricks') },
+		{ href: '/muscles', icon: 'muscle', label: $t('settings.linkMuscles') }
 	]);
 </script>
 
