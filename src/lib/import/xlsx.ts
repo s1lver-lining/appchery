@@ -12,6 +12,8 @@
  * seen. None of that is an error, so none of it throws.
  */
 
+import { LIMITS } from './limits';
+
 export interface SheetTable {
 	name: string;
 	/** Header labels exactly as written in the first non-empty row. */
@@ -32,6 +34,7 @@ export function looksLikeZip(bytes: Uint8Array): boolean {
 export async function readWorkbook(input: ArrayBuffer | Uint8Array): Promise<SheetTable[]> {
 	const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
 	if (!looksLikeZip(bytes)) throw new WorkbookError('notAWorkbook');
+	if (bytes.length > LIMITS.fileBytes) throw new WorkbookError('tooLarge');
 
 	let files: Map<string, Uint8Array>;
 	try {
@@ -53,7 +56,7 @@ export async function readWorkbook(input: ArrayBuffer | Uint8Array): Promise<She
 	const sheets = sheetIndex(text('xl/workbook.xml'), text('xl/_rels/workbook.xml.rels'), files);
 
 	const tables: SheetTable[] = [];
-	for (const { name, path } of sheets) {
+	for (const { name, path } of sheets.slice(0, LIMITS.sheets)) {
 		const xml = text(path);
 		if (xml === null) continue;
 		try {
@@ -148,11 +151,15 @@ function readSheet(name: string, xml: string, shared: string[]): SheetTable {
 			const attrs = `<c${cellMatch[1]}>`;
 			const reference = attribute(attrs, 'r');
 			const index = reference ? columnIndex(reference) : cells.length;
-			cells[index] = cellValue(attrs, cellMatch[2] ?? '', shared);
+			if (index >= LIMITS.columnsPerRow) continue;
+			cells[index] = cellValue(attrs, cellMatch[2] ?? '', shared).slice(0, LIMITS.cellChars);
 		}
 		// Row numbers are authoritative when present: a sheet may skip empty rows entirely, and
 		// collapsing them would pair a row of data with the wrong header on a ragged export.
 		const at = declared > 0 ? declared - 1 : rows.length;
+		// A cell claiming row a million is a claim about the sheet's size, not a row of data, and
+		// honouring it would allocate the array it names.
+		if (at >= LIMITS.rowsPerSheet) continue;
 		rows[at] = cells;
 	}
 
@@ -166,7 +173,7 @@ function readSheet(name: string, xml: string, shared: string[]): SheetTable {
 	const body: Record<string, string>[] = [];
 	for (const row of filled.slice(headerAt + 1)) {
 		if (!row.some((cell) => (cell ?? '').trim() !== '')) continue;
-		const record: Record<string, string> = {};
+		const record: Record<string, string> = Object.create(null);
 		headers.forEach((header, i) => (record[header] = (row[i] ?? '').trim()));
 		// Columns past the header row are kept under a positional name rather than thrown away, so a
 		// future export that adds a column before anyone updates the aliases is still recoverable.
@@ -242,6 +249,7 @@ async function unzip(bytes: Uint8Array): Promise<Map<string, Uint8Array>> {
 	}
 
 	const files = new Map<string, Uint8Array>();
+	let unpacked = 0;
 	for (let i = 0; i < count && offset + 46 <= bytes.length; i++) {
 		if (view.getUint32(offset, true) !== 0x02014b50) break;
 		const method = view.getUint16(offset + 10, true);
@@ -265,8 +273,11 @@ async function unzip(bytes: Uint8Array): Promise<Map<string, Uint8Array>> {
 			local + 30 + view.getUint16(local + 26, true) + view.getUint16(local + 28, true);
 		const raw = bytes.subarray(dataAt, dataAt + compressedSize);
 
-		if (method === 0) files.set(name, raw);
+		if (method === 0) files.set(name, raw.slice(0, LIMITS.partBytes));
 		else if (method === 8) files.set(name, await inflateRaw(raw));
+		unpacked += files.get(name)?.length ?? 0;
+		// A part that unzips to more than the whole app is allowed to hold is a bomb, not an export.
+		if (unpacked > LIMITS.totalBytes) throw new Error('unpacked too much');
 		// Any other method (bzip2, lzma) is left out rather than guessed at.
 	}
 	return files;
@@ -292,7 +303,9 @@ async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
 	if (typeof DecompressionStream === 'function') {
 		try {
 			const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-			return new Uint8Array(await new Response(stream).arrayBuffer());
+			const out = new Uint8Array(await new Response(stream).arrayBuffer());
+			if (out.length > LIMITS.partBytes) throw new Error('part too large');
+			return out;
 		} catch {
 			// Falls through to the hand written inflater rather than failing the whole import.
 		}
@@ -343,6 +356,7 @@ function inflate(data: Uint8Array): Uint8Array {
 	let outAt = 0;
 
 	const grow = (needed: number) => {
+		if (outAt + needed > LIMITS.partBytes) throw new Error('part too large');
 		if (outAt + needed <= out.length) return;
 		let size = out.length * 2;
 		while (size < outAt + needed) size *= 2;

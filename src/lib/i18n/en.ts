@@ -885,6 +885,7 @@ export const en = {
 		skipped: '{n} rows could not be read and will be left out.',
 		imported: 'Imported {sessions} sessions and {arrows} arrows.',
 		error: {
+			tooLarge: 'That file is too large to read on a phone.',
 			notAWorkbook: 'That file is not an .xlsx export.',
 			unreadableWorkbook: 'That file could not be opened. Export it again from the other app.',
 			nothingFound: 'Nothing recognisable was found in that file.'

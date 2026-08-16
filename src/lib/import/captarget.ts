@@ -26,6 +26,7 @@ import type { RoundDefinition } from '$lib/domain/rounds/types';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import { scoreAt } from '$lib/domain/rounds/geometry';
 import { FREE_SCORE_KIND } from '$lib/domain/freeScore';
+import { LIMITS, safeCount, safeText } from './limits';
 
 export interface ImportedShot {
 	value: number;
@@ -176,7 +177,13 @@ function column(table: Table, field: keyof typeof ALIASES): string | null {
 
 function cell(table: Table, row: Row, field: keyof typeof ALIASES): string {
 	const header = column(table, field);
-	return header ? (row[header] ?? '').trim() : '';
+	// Bounded here rather than at each caller: everything read out of the file comes through this.
+	return header ? safeText(row[header] ?? '') : '';
+}
+
+/** What becomes part of a row id, which is shorter than free text and never shown to anybody. */
+function idCell(table: Table, row: Row, field: keyof typeof ALIASES): string {
+	return safeText(cell(table, row, field), LIMITS.idChars);
 }
 
 /* Value parsing */
@@ -255,7 +262,7 @@ interface ParsedArrow {
 export function parseArrows(raw: string): ParsedArrow[] {
 	if (!raw) return [];
 	const arrows: ParsedArrow[] = [];
-	for (const token of raw.split(/[,;|\n]+/)) {
+	for (const token of raw.split(/[,;|\n]+/).slice(0, LIMITS.arrowsPerActivity)) {
 		const trimmed = token.trim();
 		if (!trimmed) continue;
 		const parts = trimmed.split(':');
@@ -458,12 +465,13 @@ export function planCapTargetImport(
 			};
 			sessions.set(key, session);
 		}
-		session.activities.push(round.activity);
+		// A session cannot hold more rounds than an archer could shoot in a day many times over.
+		if (session.activities.length < LIMITS.activitiesPerSession) session.activities.push(round.activity);
 		// A session dated later than its own rounds, or not dated at all, takes their date.
 		if (!Number.isFinite(session.startedAt)) session.startedAt = round.activity.startedAt;
 	}
 
-	const list = [...sessions.values()];
+	const list = [...sessions.values()].slice(0, LIMITS.sessions);
 	for (const session of list) {
 		session.activities.sort((a, b) => a.startedAt - b.startedAt);
 		shareOutArrows(session);
@@ -520,7 +528,7 @@ function shareOutArrows(session: ImportedSession) {
 
 	scoreOnly.forEach((activity, index) => {
 		const share = weight > 0 ? Math.round((spare * totals[index]) / weight) : 0;
-		activity.reportedArrows = floors[index] + share;
+		activity.reportedArrows = safeCount(floors[index] + share, LIMITS.arrowsPerActivity);
 		reshapeRound(activity);
 	});
 
@@ -564,7 +572,7 @@ function readArrowLists(table: Table | undefined): Map<string, ParsedArrow[]> {
 	if (!header) return byId;
 
 	for (const row of table.rows) {
-		const id = cell(table, row, 'id');
+		const id = idCell(table, row, 'id');
 		const arrows = parseArrows(row[header] ?? '');
 		if (!id || arrows.length === 0) continue;
 		// A repeated id means the export split one round over several rows, so they are joined.
@@ -586,7 +594,7 @@ function readSessions(table: Table | undefined, warnings: WarningLog): Map<strin
 				warnings.add('undatedRow', table.name);
 				continue;
 			}
-			const id = cell(table, row, 'id') || `date-${startedAt}-${sessions.size}`;
+			const id = idCell(table, row, 'id') || `date-${startedAt}-${sessions.size}`;
 			const distance = toNumber(cell(table, row, 'distance'));
 			const indoorColumn = column(table, 'isIndoor');
 			const indoor = indoorColumn ? toBoolean(row[indoorColumn] ?? '') : null;
@@ -598,7 +606,7 @@ function readSessions(table: Table | undefined, warnings: WarningLog): Map<strin
 				label: cell(table, row, 'title') || null,
 				notes: sessionNotes(distance, indoor, cell(table, row, 'notes')),
 				trainingArrows: 0,
-				totalArrows: Math.max(0, Math.round(toNumber(cell(table, row, 'totalArrows')) ?? 0)),
+				totalArrows: safeCount(toNumber(cell(table, row, 'totalArrows')), LIMITS.arrows),
 				countedArrows: countedArrows(table, row),
 				unrecordedExercises: 0,
 				activities: []
@@ -614,7 +622,7 @@ function readSessions(table: Table | undefined, warnings: WarningLog): Map<strin
 function countedArrows(table: Table, row: Row): number | null {
 	if (!has(table, 'countedArrows')) return null;
 	const value = toNumber(cell(table, row, 'countedArrows'));
-	return value === null ? null : Math.max(0, Math.round(value));
+	return value === null ? null : safeCount(value, LIMITS.arrows);
 }
 
 /**
@@ -649,7 +657,8 @@ function readShoots(
 
 	table.rows.forEach((row, index) => {
 		try {
-			const externalId = cell(table, row, 'id') || `${prefix}-${index}`;
+			if (planned.length >= LIMITS.sessions * 4) return;
+			const externalId = idCell(table, row, 'id') || `${prefix}-${index}`;
 			const startedAt = toTimestamp(cell(table, row, 'date'));
 			if (startedAt === null) {
 				warnings.add('undatedRow', table.name);
@@ -657,7 +666,8 @@ function readShoots(
 			}
 
 			const raw = arrowsById.get(externalId) ?? [];
-			const reportedTotal = toNumber(cell(table, row, 'total'));
+			const total = toNumber(cell(table, row, 'total'));
+			const reportedTotal = total === null ? null : safeCount(total, LIMITS.score);
 			const faceSize = clamp(toNumber(cell(table, row, 'faceSize')), 10, MAX_FACE, 122);
 			const rawDistance = toNumber(cell(table, row, 'distance'));
 			const distance = rawDistance !== null && rawDistance > 0 && rawDistance <= MAX_DISTANCE
@@ -673,7 +683,7 @@ function readShoots(
 			// not even in the session's own totals, so there is nothing to import but the fact that
 			// it happened, which is recorded on the session rather than invented as an activity.
 			if (arrows.length === 0 && (reportedTotal === null || reportedTotal === 0)) {
-				const key = cell(table, row, 'sessionId');
+				const key = idCell(table, row, 'sessionId');
 				if (key) unrecorded.set(key, (unrecorded.get(key) ?? 0) + 1);
 				return;
 			}
@@ -685,7 +695,7 @@ function readShoots(
 			);
 
 			planned.push({
-				sessionKey: cell(table, row, 'sessionId'),
+				sessionKey: idCell(table, row, 'sessionId'),
 				externalId,
 				activity: {
 					externalId: `${prefix}-${externalId}`,

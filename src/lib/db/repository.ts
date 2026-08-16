@@ -15,6 +15,7 @@ import {
 } from '$lib/domain/matches';
 import type { CapTargetPlan } from '$lib/import/captarget';
 import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
+import { LIMITS, safeCount, safeText } from '$lib/import/limits';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -1485,13 +1486,13 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 			.values({
 				...base,
 				id: sessionId,
-				label: planned.label,
+				label: planned.label === null ? null : safeText(planned.label, LIMITS.idChars),
 				startedAt: planned.startedAt,
 				kind: planned.kind,
 				// What the archer added to an imported session is theirs, and a second import of the
 				// same file must not take it back: only what the export itself carries is rewritten.
 				bowId: options.bowId ?? existing?.bowId ?? null,
-				notes: sessionNote(planned, existing?.notes ?? null)
+				notes: safeText(sessionNote(planned, existing?.notes ?? null), LIMITS.textChars) || null
 			});
 		await log('session', sessionId, 'insert');
 		report.sessions += 1;
@@ -1511,7 +1512,9 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 					roundDefinitionId: null,
 					// Scoring with no arrows behind it keeps where it was shot and nothing more: written
 					// as a round definition it would be counted as a round it never was.
-					roundDefinition: freeScore ? null : JSON.stringify(activity.round),
+					roundDefinition: freeScore
+						? null
+						: JSON.stringify({ ...activity.round, name: safeText(activity.round.name, LIMITS.idChars) }),
 					measurements: freeScore
 						? serialiseFreeScore({
 								distance: stage?.distance?.value ?? null,
@@ -1522,14 +1525,17 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 					startedAt: activity.startedAt,
 					// A round whose arrows the export did not carry keeps the total it reported: the
 					// score is the thing the archer shot for, and it is not recoverable any other way.
-					totalScore: shots.length
-						? shots.reduce((sum, shot) => sum + shot.value, 0)
-						: (activity.reportedTotal ?? 0),
+					totalScore: safeCount(
+						shots.length
+							? shots.reduce((sum, shot) => sum + shot.value, 0)
+							: (activity.reportedTotal ?? 0),
+						LIMITS.score
+					),
 					count10s: shots.filter((shot) => shot.zoneLabel === '10' || shot.zoneLabel === 'X').length,
 					countX: shots.filter((shot) => shot.zoneLabel === 'X').length,
-					arrowsShot: shots.length || activity.reportedArrows,
+					arrowsShot: safeCount(shots.length || activity.reportedArrows, LIMITS.arrows),
 					status: 'complete',
-					notes: activity.notes
+					notes: activity.notes === null ? null : safeText(activity.notes) || null
 				});
 			await log('activity', activityId, 'insert');
 			report.activities += 1;
@@ -1577,7 +1583,7 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 					sessionId,
 					kind: 'training',
 					startedAt: planned.startedAt,
-					arrowsShot: planned.trainingArrows,
+					arrowsShot: safeCount(planned.trainingArrows, LIMITS.arrows),
 					status: 'complete'
 				});
 			await log('activity', training.id, 'insert');

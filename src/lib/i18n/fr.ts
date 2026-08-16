@@ -891,6 +891,7 @@ export const fr: Dictionary = {
 		skipped: '{n} lignes illisibles seront ignorées.',
 		imported: '{sessions} séances et {arrows} flèches importées.',
 		error: {
+			tooLarge: 'Ce fichier est trop volumineux pour être lu sur un téléphone.',
 			notAWorkbook: "Ce fichier n'est pas un export .xlsx.",
 			unreadableWorkbook: "Ce fichier n'a pas pu être ouvert. Réexportez-le depuis l'autre application.",
 			nothingFound: "Rien d'exploitable n'a été trouvé dans ce fichier."
