@@ -1018,6 +1018,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 														</span>
 													{:else if format}
 														<MatchGlyph {format} size={22} />
+													{:else if a.kind === FREE_SCORE_KIND}
+														<!-- The face it was shot on, with no rings drawn: there are no arrows to place. -->
+														<span
+															class="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-sunk text-muted"
+														>
+															<Icon name="target" size={18} />
+														</span>
 													{/if}
 												</span>
 												<div class="min-w-0 flex-1">
