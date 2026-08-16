@@ -340,13 +340,25 @@
 		aimAtToday();
 	});
 
-	// As soon as there is a pane, not on arrival: the pager slides this page in before the path says so.
+	// Held back until the offset is on it, or the weeks paint at the top and jump a frame later.
+	let withheld = $state(anchoredOn === startOfDay(Date.now()) && lastScrollTop > 0);
+	function reveal() {
+		withheld = false;
+	}
+	// Never withheld for long, whatever happens to the restore below.
+	$effect(() => {
+		const timer = setTimeout(reveal, 500);
+		return () => clearTimeout(timer);
+	});
+
+	// As soon as there is a pane, not on arrival: the pager slides this page in before the path says
+	// so. `anchor` is set by an action a pass later, so waiting on it is waiting for a paint.
 	let restored = false;
 	$effect(() => {
-		if (restored || !scrollPane || !loaded || !anchor || tab !== 'list') return;
+		if (restored || !scrollPane || !loaded || tab !== 'list') return;
 		restored = true;
 		// Only when today has already been aimed at. Otherwise the aiming is this visit's job.
-		if (anchoredOn !== today) return;
+		if (anchoredOn !== today) return reveal();
 		restoreOffset(lastScrollTop);
 	});
 
@@ -356,13 +368,14 @@
 	// Over several frames: a list still being laid out clamps the offset, and the clamp is recorded
 	// as the archer's own scroll, losing it for good.
 	function restoreOffset(to: number, tries = 12) {
-		if (to <= 0 || !scrollPane) return;
+		if (to <= 0 || !scrollPane) return reveal();
 		restoring = true;
 		scrollPane.scrollTop = to;
 		if (scrollPane.scrollTop < to && tries > 0) {
 			requestAnimationFrame(() => restoreOffset(to, tries - 1));
 			return;
 		}
+		reveal();
 		// A frame later, so the scroll event this one caused is the last one ignored.
 		requestAnimationFrame(() => (restoring = false));
 	}
@@ -750,6 +763,7 @@
 			bind:this={scrollPane}
 			class="-mx-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4
 				{$fullNewSessionButton ? 'pb-4' : 'pb-20'}"
+			style={withheld && tab === 'list' ? 'visibility: hidden' : ''}
 			onscroll={(event) => {
 				// The calendar shares this pane, and its offset means nothing to the list.
 				if (tab === 'list' && !restoring) lastScrollTop = event.currentTarget.scrollTop;
