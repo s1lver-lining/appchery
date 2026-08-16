@@ -2,6 +2,8 @@ import { describe, it, expect } from 'vitest';
 import { en } from './en';
 import { fr } from './fr';
 import { LOCALES } from './index';
+import { tricksEn, type TricksDictionary } from './tricks.en';
+import { tricksFr } from './tricks.fr';
 import { TUNING_TEMPLATES } from '../domain/tuning/templates';
 import { planSeason } from '../domain/plans';
 
@@ -69,6 +71,46 @@ describe('translations', () => {
 			expect(broken).toEqual([]);
 		});
 	}
+});
+
+/**
+ * The tricks are lists rather than keys, so the types only hold their shape: a French list one
+ * trick short would compile. These check what the types cannot.
+ */
+describe('tricks', () => {
+	const LOCALISED: Record<string, TricksDictionary> = { fr: tricksFr };
+
+	for (const [name, dictionary] of Object.entries(LOCALISED)) {
+		it(`${name} keeps the same groups in the same order`, () => {
+			expect(dictionary.groups.map((group) => group.key)).toEqual(
+				tricksEn.groups.map((group) => group.key)
+			);
+		});
+
+		it(`${name} translates every trick of every group`, () => {
+			const counts = (dict: TricksDictionary) =>
+				Object.fromEntries(dict.groups.map((group) => [group.key, group.tricks.length]));
+			expect(counts(dictionary)).toEqual(counts(tricksEn));
+		});
+
+		it(`${name} leaves no trick blank`, () => {
+			const blank = dictionary.groups.flatMap((group) =>
+				group.tricks
+					.filter((trick) => trick.lead.trim() === '' || trick.body.trim() === '')
+					.map((trick) => `${group.key}: ${trick.lead}`)
+			);
+			expect(blank).toEqual([]);
+		});
+	}
+
+	it('leads every trick with the move, ending in a full stop', () => {
+		const unended = [tricksEn, ...Object.values(LOCALISED)].flatMap((dict) =>
+			dict.groups.flatMap((group) =>
+				group.tricks.filter((trick) => !/[.?!]$/.test(trick.lead)).map((trick) => trick.lead)
+			)
+		);
+		expect(unended).toEqual([]);
+	});
 });
 
 /**

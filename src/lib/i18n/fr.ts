@@ -914,6 +914,7 @@ export const fr: Dictionary = {
 		volatile: 'En mémoire, perdu au rechargement',
 		linkBadges: 'Badges',
 		linkShare: 'Partager',
+		linkTricks: 'Astuces',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
 			'Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.',

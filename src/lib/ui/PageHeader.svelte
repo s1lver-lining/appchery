@@ -14,6 +14,7 @@
 		| 'bow'
 		| 'stats'
 		| 'badges'
+		| 'tricks'
 		| 'settings';
 
 	let {
@@ -151,6 +152,22 @@
 					/>
 				{/each}
 			</g>
+		</svg>
+	{:else if motif === 'tricks'}
+		<!-- Arrows fanned out of a quiver: a page of what was in there all along. -->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-56 text-brand"
+			viewBox="0 0 140 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			{#each [-24, -8, 8, 24] as angle, i (angle)}
+				<g transform="rotate({angle} 78 104)" opacity={0.3 - i * 0.05}>
+					<path d="M78 104V16" stroke="currentColor" stroke-width="3" />
+					<path d="M78 12l-7 16 7-5 7 5z" fill="currentColor" />
+				</g>
+			{/each}
 		</svg>
 	{:else if motif === 'badges'}
 		<!-- The stats fletching, over a shaft drawn the full width so it enters and leaves the header. -->

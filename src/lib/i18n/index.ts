@@ -1,6 +1,8 @@
 import { derived, writable } from 'svelte/store';
 import { en } from './en';
 import { fr } from './fr';
+import { tricksEn, type TricksDictionary } from './tricks.en';
+import { tricksFr } from './tricks.fr';
 
 export type Locale = 'en' | 'fr';
 export const LOCALES: Locale[] = ['en', 'fr'];
@@ -16,6 +18,12 @@ const DICTIONARIES: Record<Locale, Dictionary> = { en, fr };
 
 export const LOCALE_NAMES: Record<Locale, string> = { en: 'English', fr: 'Français' };
 
+/**
+ * The tricks are kept out of the dictionaries: they are paragraphs of prose read on one page, not
+ * labels the UI fills in, and they would double the length of the file every other label lives in.
+ */
+const TRICKS: Record<Locale, TricksDictionary> = { en: tricksEn, fr: tricksFr };
+
 const STORAGE_KEY = 'appchery.locale';
 
 function initialLocale(): Locale {
@@ -27,6 +35,8 @@ function initialLocale(): Locale {
 }
 
 export const locale = writable<Locale>(initialLocale());
+
+export const tricks = derived(locale, ($locale) => TRICKS[$locale]);
 
 locale.subscribe((value) => {
 	if (typeof window === 'undefined') return;

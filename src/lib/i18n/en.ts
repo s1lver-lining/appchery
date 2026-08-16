@@ -909,6 +909,7 @@ export const en = {
 		volatile: 'In memory, lost on reload',
 		linkBadges: 'Badges',
 		linkShare: 'Share',
+		linkTricks: 'Tips and tricks',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
 			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',

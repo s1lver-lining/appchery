@@ -252,7 +252,7 @@ export const timerSound = flag('appchery.timerSound', true);
 /**
  * Whether the sheet says so when one numbered arrow keeps landing away from the others. On by
  * default: a shaft that is out is worth knowing about, and the reading is deliberately hard to
- * trigger. See doc/tricks.md.
+ * trigger. It is one of the tricks the app lists, in src/lib/i18n/tricks.en.ts.
  */
 export const arrowDriftWarning = flag('appchery.arrowDriftWarning', true);
 

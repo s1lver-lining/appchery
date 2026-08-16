@@ -81,7 +81,9 @@ nobody notices until a result is disputed.
 
 ## Tricks
 
-When a feature is implemented in a way that is not obvious, add a comment explaining the trick in /home/u/scripts/appchery/doc/tricks.md.
+When a feature is implemented in a way that is not obvious, add the trick to the tricks dictionary,
+`src/lib/i18n/tricks.en.ts`, and translate it in `tricks.fr.ts`. The app shows them on its tips and
+tricks page, so a trick nobody translated fails the build rather than shipping in English.
 
 This is a good example of a trick, describing a feature that is not obvious to the user:
 **Change what the two figures count.** Press and hold either figure in the header, or right click it,

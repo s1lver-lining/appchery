@@ -34,6 +34,7 @@
 		| 'list'
 		| 'share'
 		| 'qr'
+		| 'bulb'
 		| 'help';
 
 	let {
@@ -152,6 +153,10 @@
 		<rect x="3.4" y="14.2" width="6.4" height="6.4" rx="1.2" />
 		<path d="M6.6 6.6h.01M17.4 6.6h.01M6.6 17.4h.01" stroke-width="2.6" />
 		<path d="M14.2 14.2h2.6v2.6h-2.6zM18.6 14.2h2M14.2 18.6v2M18 18.6h2.6M17.4 21h.01" />
+	{:else if name === 'bulb'}
+		<!-- The lamp over the head: something you did not know the app could do. -->
+		<path d="M9.2 17.4a6 6 0 1 1 5.6 0" />
+		<path d="M9.6 17.6h4.8M10.4 20.4h3.2" />
 	{:else if name === 'help'}
 		<circle cx="12" cy="12" r="9" />
 		<path d="M9.5 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6" />
