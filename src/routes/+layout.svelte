@@ -90,8 +90,13 @@
 		};
 	});
 
+	/** A cold start reports the launch through both the promise and the listener, so it is deduped. */
+	let handedUrl: string | null = null;
+
 	/** Android hands over a content URI rather than a file, and only the platform can read it. */
 	async function openHandedFile(url: string) {
+		if (url === handedUrl) return;
+		handedUrl = url;
 		if (!/\.xlsx(\?|$)/i.test(url) && !url.startsWith('content://')) return;
 		try {
 			const { Filesystem } = await import('@capacitor/filesystem');
