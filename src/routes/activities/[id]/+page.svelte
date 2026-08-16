@@ -229,14 +229,24 @@
 		await writes;
 		const queue: typeof celebrations = [];
 		if (!$celebratedBests.includes(activityId)) queue.push(...(await recordWon()));
+		queue.push(...(await earned()));
+		celebrations = queue;
+	}
+
+	/**
+	 * The badges the shooting just won and the level it reached, in that order: a badge pays too, so
+	 * the level can only be read once the badges behind it are in.
+	 */
+	async function earned(): Promise<Award[]> {
 		// A badge is only ever awarded once, so it needs no guard of its own against a second look.
-		for (const key of await awardBadges()) {
-			queue.push({ title: $t('badges.new'), subtitle: $t(`badges.list.${key}.name`), score: null });
-		}
-		// Last of the three, because the round and the badges it won are what paid for it.
+		const queue: Award[] = (await awardBadges()).map((key) => ({
+			title: $t('badges.new'),
+			subtitle: $t(`badges.list.${key}.name`),
+			score: null
+		}));
 		const climbed = await levelUpAward($t);
 		if (climbed) queue.push(climbed);
-		celebrations = queue;
+		return queue;
 	}
 
 	/** The record this round set, if it set one, as the card that announces it. */
@@ -812,7 +822,31 @@
 		freeArrows = Math.max(0, freeArrows + delta);
 		const next = freeArrows;
 		arrowWrite = arrowWrite.then(() => updateFreeScore(id, { arrowsShot: next }));
+		// Arrows taken back off the counter cannot have won anything, so only additions are checked.
+		if (delta > 0) armFreeCheck();
 	}
+
+	/**
+	 * Asked once the taps stop, not on each of them: what these arrows won is read from every activity
+	 * ever shot, which is far too much work to put behind a plus button being pressed six times.
+	 */
+	let freeCheck: ReturnType<typeof setTimeout> | null = null;
+
+	function armFreeCheck() {
+		if (freeCheck) clearTimeout(freeCheck);
+		freeCheck = setTimeout(async () => {
+			freeCheck = null;
+			// The counter writes behind itself, so the history has to hold the arrows before it is asked.
+			await arrowWrite;
+			const queue = await earned();
+			if (queue.length > 0) celebrations = queue;
+		}, 600);
+	}
+
+	// A page left behind must not light up the one that replaced it.
+	$effect(() => () => {
+		if (freeCheck) clearTimeout(freeCheck);
+	});
 
 	async function saveFreeScore() {
 		if (!activity) return;

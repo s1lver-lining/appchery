@@ -204,7 +204,7 @@ export const tricksFr: TricksDictionary = {
 			tricks: [
 				{
 					lead: 'Ils vous trouvent.',
-					body: 'Les badges sont décernés au fil du tir, et ils s’annoncent avec le feu d’artifice d’un record. Le ciel s’illumine à quatre moments: la fin d’un tir, un match gagné, des flèches ajoutées au compteur de la séance, et un niveau franchi. Tout ce qu’un même instant a gagné passe sous une seule salve: une dernière flèche qui bat un record, gagne deux badges et fait monter d’un niveau montre les quatre cartes ensemble. La liste est derrière le menu à trois points de la page de stats, ou la médaille de la grille de l’app.'
+					body: 'Les badges sont décernés au fil du tir, et ils s’annoncent avec le feu d’artifice d’un record. Le ciel s’illumine à quatre moments: la fin d’un tir, un match gagné, des flèches ajoutées à l’un ou l’autre compteur, et un niveau franchi. Tout ce qu’un même instant a gagné passe sous une seule salve: une dernière flèche qui bat un record, gagne deux badges et fait monter d’un niveau montre les quatre cartes ensemble. La liste est derrière le menu à trois points de la page de stats, ou la médaille de la grille de l’app.'
 				},
 				{
 					lead: 'Les flèches hors cible comptent.',
