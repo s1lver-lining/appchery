@@ -31,6 +31,15 @@
 	let metric = $state<Metric>('arrows');
 	let picked = $state<number | null>(null);
 
+	/**
+	 * A selection points at one bar of one set of bars. Change the filter and the bar under the
+	 * index is a different week, so the figures below would read as somebody else's.
+	 */
+	$effect(() => {
+		void buckets;
+		picked = null;
+	});
+
 	const PLOT = 112;
 
 	const valueOf = (bucket: VolumeBucket) =>
@@ -144,17 +153,27 @@
 				{/each}
 			</div>
 
-			<div class="relative flex items-end gap-px" style="height: {PLOT}px">
+			<!-- The empty space above the bars clears the selection rather than picking the bar under
+				it: pointing at nothing is how somebody says they are done reading a bar. -->
+			<div
+				class="relative flex items-end gap-px"
+				style="height: {PLOT}px"
+				role="presentation"
+				onclick={() => (picked = null)}
+			>
 				{#each buckets as bucket, index (bucket.at)}
 					{@const value = valueOf(bucket)}
 					<button
-						class="group flex h-full flex-1 flex-col justify-end"
+						class="group flex flex-1 flex-col justify-end"
 						aria-label="{bucketLabel(bucket.at)}: {$t('stats.barLabel', {
 							arrows: bucket.arrows,
 							rounds: bucket.rounds
 						})}"
 						aria-pressed={picked === index}
-						onclick={() => (picked = picked === index ? null : index)}
+						onclick={(event) => {
+							event.stopPropagation();
+							picked = picked === index ? null : index;
+						}}
 					>
 						{#if value <= 0}
 							<!-- A hairline where nothing was shot, so time off reads as rest, not as missing data. -->
