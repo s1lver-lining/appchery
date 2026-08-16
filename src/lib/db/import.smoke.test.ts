@@ -203,6 +203,27 @@ describe('importPlan', () => {
 		expect(rows[0].sessionId).toBe('imported:session:sess-move-b');
 	});
 
+	it('keeps what the archer added to an imported session when the file is imported again', async () => {
+		const first = plan(29);
+		first.sessions[0].externalId = 'sess-kept';
+		await importPlan(first, { bowId: 'bow-1' });
+
+		const id = 'imported:session:sess-kept';
+		await proxy
+			.update(schema.session)
+			.set({ notes: 'Windy, new tab.\n\nCapTarget import\nCapTarget · 50m' })
+			.where(eq(schema.session.id, id));
+
+		await importPlan(renamed('sess-kept'));
+
+		const [session] = (await proxy.select().from(schema.session)).filter((row) => row.id === id);
+		expect(session.notes?.startsWith('Windy, new tab.')).toBe(true);
+		// The bow the archer set is not taken back by an import that names none.
+		expect(session.bowId).toBe('bow-1');
+		// What the import writes is still refreshed, once, under its marker.
+		expect(session.notes?.match(/CapTarget import/g)).toHaveLength(1);
+	});
+
 	it('leaves sessions the archer created alone', async () => {
 		const now = Date.now();
 		await proxy.insert(schema.session).values({

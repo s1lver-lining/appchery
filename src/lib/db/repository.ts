@@ -1488,8 +1488,10 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 				label: planned.label,
 				startedAt: planned.startedAt,
 				kind: planned.kind,
-				bowId: options.bowId ?? null,
-				notes: sessionNote(planned, null)
+				// What the archer added to an imported session is theirs, and a second import of the
+				// same file must not take it back: only what the export itself carries is rewritten.
+				bowId: options.bowId ?? existing?.bowId ?? null,
+				notes: sessionNote(planned, existing?.notes ?? null)
 			});
 		await log('session', sessionId, 'insert');
 		report.sessions += 1;
