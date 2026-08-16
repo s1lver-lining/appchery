@@ -1129,7 +1129,7 @@ insetHint:
 			arrows: '{n} arrows shot',
 			rounds: '{n} rounds finished',
 			badges: '{n} badges earned',
-			matches: '{n} matches won'
+			matches: '{n} matches won or drawn'
 		},
 		rates: 'What things are worth',
 		rules: {

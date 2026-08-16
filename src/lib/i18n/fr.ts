@@ -1137,7 +1137,7 @@ insetHint:
 			arrows: '{n} flèches tirées',
 			rounds: '{n} séries terminées',
 			badges: '{n} badges obtenus',
-			matches: '{n} matchs gagnés'
+			matches: '{n} matchs gagnés ou nuls'
 		},
 		rates: 'Ce que valent les choses',
 		rules: {
