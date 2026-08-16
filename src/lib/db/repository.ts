@@ -3,6 +3,7 @@ import { db, schema, transaction } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
+import type { XpActivity, XpInput } from '$lib/domain/experience';
 import { weekArrowGoalOn, onlyActive } from '$lib/domain/plans';
 import {
 	parseConfig,
@@ -11,7 +12,8 @@ import {
 	matchScore,
 	wonFromBehind,
 	gatherNames,
-	type MatchConfig
+	type MatchConfig,
+	type MatchEnd
 } from '$lib/domain/matches';
 import type { CapTargetPlan } from '$lib/import/captarget';
 import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
@@ -1449,6 +1451,78 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 		sightMarks: marks,
 		// Asked per week, so a season that had not begun or is over sets no bar for the weeks around it.
 		weekArrowGoal: (weekStart: number) => weekArrowGoalOn(weekStart, live.slots, live.plans)
+	};
+}
+
+/**
+ * Everything the experience points are worked out from. Lighter than the badge input on purpose: the
+ * home page reads it on every visit, and points are decided by what an activity totalled rather than
+ * by what any single arrow did, so nothing here has to touch the shots.
+ */
+export async function loadExperienceInput(): Promise<XpInput> {
+	const activities = await listAllActivities();
+	const badges = await listBadges();
+
+	const matches = activities.filter((activity) => activity.kind === 'match');
+	const ends = matches.length
+		? await db()
+				.select()
+				.from(schema.end)
+				.where(
+					and(
+						inArray(
+							schema.end.activityId,
+							matches.map((activity) => activity.id)
+						),
+						isNull(schema.end.deletedAt)
+					)
+				)
+		: [];
+
+	const endsByMatch = new Map<string, MatchEnd[]>();
+	for (const end of ends) {
+		const list = endsByMatch.get(end.activityId) ?? [];
+		list.push({
+			endNo: end.endNo,
+			ours: end.subtotal,
+			theirs: end.opponentSubtotal,
+			shootOff: end.isShootOff === 1,
+			winner: (end.winner as 'us' | 'them' | null) ?? null
+		});
+		endsByMatch.set(end.activityId, list);
+	}
+
+	const results = new Map<string, NonNullable<XpActivity['match']>>();
+	for (const activity of matches) {
+		const config = parseConfig(activity.matchConfig);
+		// A card kept for somebody else earns them nothing: it is not their result to be paid for.
+		if (!config?.forSelf) continue;
+		const result = tally(config, endsByMatch.get(activity.id) ?? []);
+		results.set(activity.id, {
+			won: result.winner === 'us',
+			drawn: result.drawn,
+			stage: config.stage,
+			bot: config.bot
+		});
+	}
+
+	return {
+		activities: activities.map((activity) => ({
+			id: activity.id,
+			sessionId: activity.sessionId,
+			startedAt: activity.startedAt,
+			totalScore: activity.totalScore,
+			arrowsShot: activity.arrowsShot,
+			count10s: activity.count10s,
+			countX: activity.countX,
+			roundDefinitionId: activity.roundDefinitionId,
+			round: activity.roundDefinition
+				? (JSON.parse(activity.roundDefinition) as RoundDefinition)
+				: null,
+			kind: activity.kind,
+			match: results.get(activity.id) ?? null
+		})),
+		badges: badges.map((row) => row.key)
 	};
 }
 
