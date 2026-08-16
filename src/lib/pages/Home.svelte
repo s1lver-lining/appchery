@@ -10,6 +10,7 @@
 	import {
 		listSessions,
 		listAllActivities,
+		loadExperienceInput,
 		listPlanSlots,
 		listPlans,
 		createSession,
@@ -31,6 +32,7 @@
 		type ActivityLike,
 		type ScoredActivity
 	} from '$lib/domain/stats';
+	import { experience, type Experience } from '$lib/domain/experience';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import {
 		defaultBowId,
@@ -44,6 +46,7 @@
 	import { defaultNameKey, hasHappened } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
 	import AppGrid from '$lib/ui/AppGrid.svelte';
+	import { withOrigin } from '$lib/nav';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
@@ -57,6 +60,8 @@
 	/** Every arrow shot, whatever produced it, which is what the header figures count. */
 	let volume = $state<ScoredActivity[]>([]);
 	let counts = $state<Record<string, number>>({});
+	/** Worked out from the history rather than stored, so it is never out of step with what is below. */
+	let earned = $state<Experience | null>(null);
 	let slots = $state<Awaited<ReturnType<typeof listPlanSlots>>>([]);
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
 	let planningAt = $state<number | null>(null);
@@ -114,6 +119,7 @@
 			roundDefinitionId: a.roundDefinitionId,
 			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 		}));
+		earned = experience(await loadExperienceInput());
 		volume = toVolume(all);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 	}
@@ -240,7 +246,16 @@
 	 * Either header figure can be swapped for another, so an archer training to a weekly plan is not
 	 * stuck reading a monthly total. Held per device: it is how this phone is read, not archer data.
 	 */
-	const STAT_KEYS = ['monthArrows', 'weekArrows', 'yearArrows', 'totalArrows', 'weekGoal', 'none'] as const;
+	const STAT_KEYS = [
+		'monthArrows',
+		'weekArrows',
+		'yearArrows',
+		'totalArrows',
+		'weekGoal',
+		'level',
+		'experience',
+		'none'
+	] as const;
 	type StatKey = (typeof STAT_KEYS)[number];
 
 	const stats = $derived<Record<StatKey, { label: string; value: number }>>({
@@ -249,6 +264,8 @@
 		yearArrows: { label: $t('home.thisYear'), value: year.arrows },
 		totalArrows: { label: $t('stats.totalArrows'), value: allTime.arrows },
 		weekGoal: { label: $t('home.weekGoalStat'), value: weekGoal },
+		level: { label: $t('experience.levelStat'), value: earned?.level ?? 1 },
+		experience: { label: $t('experience.title'), value: earned?.total ?? 0 },
 		none: { label: $t('home.statNone'), value: 0 }
 	});
 
@@ -432,10 +449,21 @@
 		</div>
 	{/if}
 
-	{#if next || unfinished}
+	{#if next || unfinished || earned}
 		<!-- What is coming and what was left half done: the two things worth a tap before anything else. -->
+		<!-- The level shares the line rather than taking one of its own: it is a standing, not an event. -->
 		<section>
-			{@render heading($t('home.upNext'))}
+			<div class="mb-2 flex items-baseline justify-between px-1">
+				<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+					{next || unfinished ? $t('home.upNext') : ''}
+				</h2>
+				{#if earned}
+					<a class="flex items-center gap-1 text-xs font-medium text-brand-text" href={withOrigin('/experience', '/')}>
+						{$t('experience.levelShort', { level: earned.level })}
+						<span class="rotate-180"><Icon name="back" size={14} /></span>
+					</a>
+				{/if}
+			</div>
 			<div class="space-y-2">
 				{#if next}
 					<button
