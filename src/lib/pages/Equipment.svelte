@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { dataVersion } from '$lib/db/changed';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
@@ -93,6 +94,7 @@
 		loaded = true;
 	}
 	$effect(() => {
+		void $dataVersion;
 		refresh();
 	});
 
