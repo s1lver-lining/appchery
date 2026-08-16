@@ -112,7 +112,7 @@ export const GUIDE_STEPS: GuideStep[] = [
 		bow: 'recurve',
 		category: 'measure',
 		diagram: 'drawLength',
-		settings: ['arrowLength']
+		settings: ['drawLength', 'arrowLength']
 	},
 	{
 		key: 'bow-strength',

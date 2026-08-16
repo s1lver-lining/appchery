@@ -147,6 +147,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Avec un arc par défaut, toucher l’onglet matériel y va directement. Maintenez l’onglet, ou passez par le menu à trois points de la page de l’arc, pour atteindre la liste de tous les arcs.'
 				},
 				{
+					lead: 'La section archer appartient à l’arc.',
+					body: 'La main d’arc et l’allonge sont rangées avec chaque arc plutôt qu’avec vous, parce que le même archer allonge moins sur un longbow que sur un poulies, et qu’un arc emprunté dans l’autre sens se tire dans l’autre sens. Elles sont versionnées comme tout autre réglage : une allonge modifiée reste dans l’historique.'
+				},
+				{
 					lead: 'Un arc créé depuis une sortie est l’arc de cette sortie.',
 					body: 'Sans aucun arc enregistré, la section réglages de l’écran d’ajout propose le formulaire directement. L’arc créé là est affecté à la séance qui l’a demandé, qu’il devienne votre arc par défaut ou non.'
 				},

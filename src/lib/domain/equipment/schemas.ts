@@ -22,6 +22,16 @@ export interface SettingField {
 	group: string;
 }
 
+/**
+ * What the archer brings to whichever bow is picked up: the hand it is shot from and how far it is
+ * drawn. Kept per bow all the same, because the same archer draws a longbow shorter than a compound
+ * and may well shoot one of them the other way round.
+ */
+const ARCHER_FIELDS: SettingField[] = [
+	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Archer' },
+	{ key: 'drawLength', label: 'Draw length', kind: 'lengthMm', unit: 'in', group: 'Archer' }
+];
+
 const ARROW_FIELDS: SettingField[] = [
 	{ key: 'arrowSpine', label: 'Arrow spine', kind: 'number', group: 'Arrows' },
 	{ key: 'arrowLength', label: 'Arrow length', kind: 'lengthMm', unit: 'in', group: 'Arrows' },
@@ -41,7 +51,6 @@ const REST_FIELDS: SettingField[] = [
 ];
 
 const RECURVE: SettingField[] = [
-	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
 	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight on fingers', kind: 'number', unit: 'lb', group: 'Bow' },
@@ -51,9 +60,7 @@ const RECURVE: SettingField[] = [
 ];
 
 const COMPOUND: SettingField[] = [
-	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
 	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
-	{ key: 'drawLength', label: 'Draw length', kind: 'lengthMm', unit: 'in', group: 'Bow' },
 	{ key: 'peakWeight', label: 'Peak weight', kind: 'number', unit: 'lb', group: 'Bow' },
 	{ key: 'letOff', label: 'Let-off', kind: 'number', unit: '%', group: 'Bow' },
 	{ key: 'axleToAxle', label: 'Axle to axle', kind: 'lengthMm', unit: 'in', group: 'Bow' },
@@ -65,7 +72,6 @@ const COMPOUND: SettingField[] = [
 ];
 
 const BAREBOW: SettingField[] = [
-	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
 	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight on fingers', kind: 'number', unit: 'lb', group: 'Bow' },
@@ -77,7 +83,6 @@ const BAREBOW: SettingField[] = [
 ];
 
 const LONGBOW: SettingField[] = [
-	{ key: 'handedness', label: 'Bow hand', kind: 'select', options: ['Right', 'Left'], group: 'Bow' },
 	{ key: 'bowMass', label: 'Bow mass', kind: 'massG', unit: 'kg', group: 'Bow' },
 	{ key: 'braceHeight', label: 'Brace height', kind: 'lengthCm', unit: 'cm', group: 'Bow' },
 	{ key: 'drawWeight', label: 'Draw weight at your draw', kind: 'number', unit: 'lb', group: 'Bow' },
@@ -86,10 +91,10 @@ const LONGBOW: SettingField[] = [
 ];
 
 export const BOW_SCHEMAS: Record<BowType, SettingField[]> = {
-	recurve: [...RECURVE, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
-	compound: [...COMPOUND, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
-	barebow: [...BAREBOW, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
-	longbow: [...LONGBOW, ...STRING_FIELDS, ...ARROW_FIELDS]
+	recurve: [...ARCHER_FIELDS, ...RECURVE, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
+	compound: [...ARCHER_FIELDS, ...COMPOUND, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
+	barebow: [...ARCHER_FIELDS, ...BAREBOW, ...STRING_FIELDS, ...REST_FIELDS, ...ARROW_FIELDS],
+	longbow: [...ARCHER_FIELDS, ...LONGBOW, ...STRING_FIELDS, ...ARROW_FIELDS]
 };
 
 export type BowSettings = Record<string, string | number | null>;

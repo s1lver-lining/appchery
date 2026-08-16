@@ -152,6 +152,10 @@ export const tricksEn = {
 					body: 'With a default bow set, tapping the equipment tab goes straight to it. Hold the tab, or use the dots menu on the bow page, to reach the list of every bow.'
 				},
 				{
+					lead: 'The archer section belongs to the bow.',
+					body: 'Bow hand and draw length sit with each bow rather than with you, because the same archer draws a longbow shorter than a compound, and a bow borrowed the other way round is shot the other way round. They are versioned like every other setting, so a changed draw length is in the history.'
+				},
+				{
 					lead: 'A bow made from an outing is that outing’s bow.',
 					body: 'With no bow recorded at all, the tuning section of the add screen offers the form directly. The bow made there is set on the session that asked for it, whether or not it becomes your default bow.'
 				},
