@@ -63,7 +63,7 @@
 		activity: ActivityRow;
 		onchange: () => void;
 		/** Handed up rather than shown here: the page around this one owns the fireworks. */
-		oncelebrate?: (award: Award) => void;
+		oncelebrate?: (awards: Award[]) => void;
 	} = $props();
 
 	type Row = Awaited<ReturnType<typeof loadMatch>>['ends'][number];
@@ -398,9 +398,10 @@
 	}
 
 	/**
-	 * A badge is the archer's own, so a card kept for somebody else earns nothing. Checked only when
-	 * the match has just been decided: awarding reads every activity ever shot, which is not something
-	 * to do on the way through an end.
+	 * What the last end of a match won: the badges it earned, and the level it took the archer to. A
+	 * card kept for somebody else earns nothing, since the result is not theirs. Checked only when the
+	 * match has just been decided, because awarding reads every activity ever shot, which is not
+	 * something to do on the way through an end.
 	 */
 	let wasDecided = false;
 	async function celebrate() {
@@ -408,10 +409,14 @@
 		const settled = decided && !wasDecided;
 		wasDecided = decided;
 		if (!settled || !config?.forSelf) return;
-		await awardBadges();
+		const queue: Award[] = (await awardBadges()).map((key) => ({
+			title: $t('badges.new'),
+			subtitle: $t(`badges.list.${key}.name`)
+		}));
 		// After the badges, since the win and anything it earned are both paid before the level is read.
 		const climbed = await levelUpAward($t);
-		if (climbed) oncelebrate?.(climbed);
+		if (climbed) queue.push(climbed);
+		if (queue.length > 0) oncelebrate?.(queue);
 	}
 
 	async function clearEnd(endNo: number) {

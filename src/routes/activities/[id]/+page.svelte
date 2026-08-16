@@ -861,7 +861,7 @@
 </script>
 
 {#if activity && activity.kind === 'match'}
-	<Match {activity} onchange={refresh} oncelebrate={(award) => (celebrations = [award])} />
+	<Match {activity} onchange={refresh} oncelebrate={(awards) => (celebrations = awards)} />
 {:else if activity && activity.kind === 'tuning'}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
