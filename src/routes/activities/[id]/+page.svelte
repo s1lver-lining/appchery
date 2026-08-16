@@ -98,8 +98,13 @@
 	 * slot is what lets the archer keep scoring while the previous end is still being written.
 	 */
 	let queued = $state<{ key: string; shots: Omit<Shot, 'ordinal'>[] }[]>([]);
-	/** Rows hidden by an undo that is still in flight. */
-	let hiddenTail = $state(0);
+	/** Stored rows an undo has taken off the sheet whose delete has not reached the database yet. */
+	let dropped = $state(0);
+	/**
+	 * Ends undone before their own write landed. The write still goes through, so the reload that
+	 * follows it hands the row straight back: the key is held here until then to hide it again.
+	 */
+	const cancelled = new Set<string>();
 	let pending = $state<Omit<Shot, 'ordinal'>[]>([]);
 	let editing = $state<{ endId: string; shotId: string; endNo: number; ordinal: number } | null>(
 		null
@@ -161,7 +166,9 @@
 
 	const sheetRows = $derived<SheetRow[]>(
 		[
-			...stored.map((row) => ({
+			// Undone rows come off the committed ends, never off the tail of the two lists together: an
+			// arrow entered while an undo is in flight would otherwise hide the new end instead.
+			...stored.slice(0, Math.max(0, stored.length - dropped)).map((row) => ({
 				key: row.end.id,
 				endId: row.end.id,
 				subtotal: row.end.subtotal,
@@ -186,7 +193,7 @@
 					y: s.y
 				}))
 			}))
-		].slice(0, stored.length + queued.length - hiddenTail)
+		]
 	);
 
 	/** The end being entered, read the way the finished ones are: sorted if asked, numbered if asked. */
@@ -511,6 +518,9 @@
 			// Swap both together so the row never exists twice or vanishes between the two updates.
 			stored = fresh;
 			queued = queued.filter((q) => q.key !== key);
+			// Undone while it was being written: the reload has just handed it back, so hide it again
+			// here rather than a frame later, and let the queued delete take it for good.
+			if (cancelled.delete(key)) dropped += 1;
 			activity = await getActivity(activityId);
 		});
 	}
@@ -618,18 +628,35 @@
 		pending = pending.slice(0, -1);
 	}
 
-	/** Undo for an end already entered: hide it at once, then wait for queued writes before deleting. */
-	async function undoEnd() {
-		if (sheetRows.length === 0) return;
-		hiddenTail += 1;
-		try {
-			await writes;
-			await deleteLastEnd(activityId);
-			stored = await loadRows();
-			activity = await getActivity(activityId);
-		} finally {
-			hiddenTail = Math.max(0, hiddenTail - 1);
+	/**
+	 * Undo for an end already entered: off the sheet the moment it is asked for, and out of the
+	 * database on the same chain the ends are written on. Off the chain, a delete could overtake the
+	 * write of an arrow entered meanwhile and take that end instead of the one undone.
+	 */
+	function undoEnd() {
+		const last = sheetRows.at(-1);
+		if (!last) return;
+		if (last.endId) dropped += 1;
+		else {
+			queued = queued.filter((q) => q.key !== last.key);
+			cancelled.add(last.key);
 		}
+
+		writes = writes.then(async () => {
+			try {
+				await deleteLastEnd(activityId);
+				const fresh = await loadRows();
+				const row = await getActivity(activityId);
+				// The shorter sheet and the count of rows it is still hiding go in together, or the
+				// frame between the two renders one row short and the sheet blinks.
+				stored = fresh;
+				dropped = Math.max(0, dropped - 1);
+				activity = row;
+			} catch (error) {
+				dropped = Math.max(0, dropped - 1);
+				throw error;
+			}
+		});
 	}
 
 	/**
