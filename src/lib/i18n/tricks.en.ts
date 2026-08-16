@@ -209,7 +209,7 @@ export const tricksEn = {
 			tricks: [
 				{
 					lead: 'They find you.',
-					body: 'Badges are awarded as you shoot, and the ones that finish a round announce themselves with the same fireworks a personal best does. A last arrow that sets a record and earns two badges shows all three cards under one volley. The list is behind the dots menu on the stats page, or the medal in the app grid.'
+					body: 'Badges are awarded as you shoot, and they announce themselves with the same fireworks a personal best does. The sky lights up at four moments: finishing a round, winning a match, adding arrows on the session counter, and going up a level. Whatever a single moment won is shown under one volley, so a last arrow that sets a record, earns two badges and takes you up a level shows all four cards together. The list is behind the dots menu on the stats page, or the medal in the app grid.'
 				},
 				{
 					lead: 'Untargeted arrows count.',
