@@ -1,13 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { musclesIn, type MuscleView } from '$lib/domain/muscles';
-import { BACK, FRONT, OUTLINE, centroid, contains, mirror, type Region } from './muscleMap';
+import { BACK, FRONT, bodyEdge, centroid, contains, sample, type Region } from './muscleMap';
 
 const VIEWS: [MuscleView, Region[]][] = [
 	['back', BACK],
 	['front', FRONT]
 ];
 
-const body = [...OUTLINE, ...mirror(OUTLINE).reverse()];
+/** The drawn edges, not the corners they were built from: a spline bows out past its own points. */
+const body = bodyEdge();
 
 describe('the muscle figure', () => {
 	for (const [view, regions] of VIEWS) {
@@ -26,12 +27,11 @@ describe('the muscle figure', () => {
 
 			it('keeps every muscle inside the body', () => {
 				for (const region of regions) {
-					for (const point of region.points) {
-						expect({ id: region.id, inside: contains(body, point) }).toEqual({
-							id: region.id,
-							inside: true
-						});
-					}
+					const outside = sample(region.points).filter((point) => !contains(body, point));
+					expect({ id: region.id, strayed: outside.length }).toEqual({
+						id: region.id,
+						strayed: 0
+					});
 				}
 			});
 
@@ -43,7 +43,9 @@ describe('the muscle figure', () => {
 			it('leaves every muscle a middle of its own to be tapped on', () => {
 				for (let i = 0; i < regions.length; i++) {
 					const middle = centroid(regions[i].points);
-					const covered = regions.slice(i + 1).find((later) => contains(later.points, middle));
+					const covered = regions
+						.slice(i + 1)
+						.find((later) => contains(sample(later.points), middle));
 					expect({ id: regions[i].id, coveredBy: covered?.id }).toEqual({
 						id: regions[i].id,
 						coveredBy: undefined

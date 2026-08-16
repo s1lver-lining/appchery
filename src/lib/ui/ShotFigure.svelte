@@ -1,40 +1,59 @@
 <script lang="ts">
-	import { SHOT_PHASES, musclesInPhase, type ShotPhase } from '$lib/domain/muscles';
+	import { SHOT_PHASES, loadAt, musclesInPhase, type ShotPhase } from '$lib/domain/muscles';
+	import { BACK, TRUNK, mirror, smooth } from './muscleMap';
 
 	/**
-	 * The archer, seen from behind and slightly to the side, moving through the shot. The muscle map
-	 * says where a muscle is; this says when it works, which is the half an exercise database needs
-	 * and a static chart cannot give.
+	 * The archer, seen from behind, moving through the shot. The muscle map says where a muscle is;
+	 * this says when it works, which is the half an exercise database needs and a static chart cannot
+	 * give.
 	 *
-	 * The figure is joints and limbs rather than a drawing per phase: each phase is a set of hand and
-	 * elbow positions, and everything between two phases is worked out on the way. That is what makes
-	 * it move instead of flick, and it means a phase is edited by moving three numbers.
+	 * It is the same body as the map, drawn from the same outline and in the same coordinates, so the
+	 * two figures read as one archer rather than two diagrams. Only the arms are posed: each phase is
+	 * a set of hand and elbow positions and everything between two phases is worked out on the way,
+	 * which is what makes it move instead of flick.
 	 */
 	let {
 		phase = 'anchor',
-		playing = false
-	}: { phase?: ShotPhase; playing?: boolean } = $props();
+		playing = false,
+		bones = false
+	}: { phase?: ShotPhase; playing?: boolean; bones?: boolean } = $props();
 
 	type Pose = { bowHand: [number, number]; elbow: [number, number]; drawHand: [number, number] };
 
-	/** Where the arms are at each named moment. The trunk barely moves, which is rather the point. */
+	/**
+	 * Where the arms are at each named moment, in the map's coordinates: the head is around y 30, the
+	 * shoulders y 86, the hips y 210. The anchor puts the string hand under the jaw and against the
+	 * face, because that is where an anchor is — a hand floating behind the head is nobody's shot.
+	 */
 	const POSES: Record<ShotPhase, Pose> = {
-		stance: { bowHand: [122, 168], elbow: [82, 132], drawHand: [88, 168] },
-		set: { bowHand: [132, 146], elbow: [96, 142], drawHand: [112, 146] },
-		setup: { bowHand: [148, 56], elbow: [116, 44], drawHand: [130, 60] },
-		draw: { bowHand: [154, 84], elbow: [128, 54], drawHand: [116, 82] },
-		// The string hand comes under the jaw, not onto it: drawn on the chin it vanishes behind the head.
-		anchor: { bowHand: [156, 86], elbow: [70, 72], drawHand: [98, 86] },
-		transfer: { bowHand: [157, 86], elbow: [66, 78], drawHand: [96, 86] },
-		expansion: { bowHand: [158, 87], elbow: [61, 83], drawHand: [93, 87] },
-		release: { bowHand: [159, 88], elbow: [46, 84], drawHand: [74, 82] },
-		followThrough: { bowHand: [160, 90], elbow: [38, 80], drawHand: [60, 74] }
+		stance: { bowHand: [138, 232], elbow: [56, 150], drawHand: [76, 220] },
+		set: { bowHand: [162, 148], elbow: [80, 152], drawHand: [124, 150] },
+		setup: { bowHand: [176, 30], elbow: [122, 20], drawHand: [140, 36] },
+		draw: { bowHand: [186, 66], elbow: [132, 30], drawHand: [126, 56] },
+		anchor: { bowHand: [188, 74], elbow: [34, 70], drawHand: [98, 54] },
+		transfer: { bowHand: [189, 74], elbow: [29, 74], drawHand: [96, 54] },
+		expansion: { bowHand: [190, 75], elbow: [23, 78], drawHand: [93, 55] },
+		release: { bowHand: [191, 76], elbow: [12, 80], drawHand: [74, 52] },
+		followThrough: { bowHand: [192, 78], elbow: [2, 76], drawHand: [56, 42] }
 	};
 
 	// Each arm leaves its own shoulder. One shared point in the middle of the chest draws a bar
 	// through the archer instead of a pair of shoulders, which is what the body is actually for here.
-	const BOW_SHOULDER: [number, number] = [116, 94];
-	const DRAW_SHOULDER: [number, number] = [84, 94];
+	const BOW_SHOULDER: [number, number] = [149, 94];
+	const DRAW_SHOULDER: [number, number] = [51, 94];
+	/** Half a limb, so a bow reads as a bow rather than as a line beside the archer. */
+	const LIMB = 88;
+
+	/**
+	 * The back's own muscles, the same shapes the map draws, shaded by what this moment asks of them.
+	 * Only the trunk: the arms here are posed rather than hanging, so an arm muscle drawn in its
+	 * resting place would sit in mid air beside the archer.
+	 */
+	const ARM_MUSCLES = new Set(['deltoidPosterior', 'triceps', 'forearmExtensors']);
+	const MUSCLES_SHOWN = BACK.filter((region) => !ARM_MUSCLES.has(region.id)).flatMap((region) => [
+		{ id: region.id, d: smooth(region.points) },
+		{ id: region.id, d: smooth(mirror(region.points)) }
+	]);
 
 	const target = $derived(SHOT_PHASES.indexOf(phase));
 	/**
@@ -85,76 +104,258 @@
 	/** The phase the figure is actually in, which while playing is not the one that was asked for. */
 	const shown = $derived(wrap(Math.round(at)));
 
+	/** What each muscle of the trunk is doing at the moment the figure is actually in. */
+	const load = $derived(Object.fromEntries(musclesInPhase(shown).map((e) => [e.id, e.load])));
+
 	/**
-	 * How lit the back is: the share of the shot's hardest work happening now. The glow is a summary,
-	 * not an anatomy claim, so it sits over the shoulder blades where the archer feels it.
+	 * How far apart the shoulder blades sit at this moment, as a share of their resting gap. Drawing
+	 * the bones is only worth it if they move: scapular retraction is the whole shot and it is the one
+	 * thing a muscle figure cannot show, because a muscle drawn on a silhouette never goes anywhere.
 	 */
-	const effort = $derived(
-		musclesInPhase(shown).filter((entry) => entry.load === 3).length / 6
-	);
+	const RETRACTION: Record<ShotPhase, number> = {
+		stance: 1,
+		set: 1,
+		setup: 1.05,
+		draw: 0.72,
+		anchor: 0.52,
+		transfer: 0.44,
+		expansion: 0.36,
+		release: 0.34,
+		followThrough: 0.5
+	};
+
+	/**
+	 * Whether the fingers are on the string. Before the set they are not, and from the release they
+	 * are not again, so the string runs straight from limb to limb: a string bent round a hand that
+	 * has let go is the one thing in this drawing that could never happen.
+	 */
+	const hookAt = (entry: ShotPhase) => (loadAt(entry, 'fingerFlexors') > 0 ? 1 : 0);
+	const hook = $derived.by(() => {
+		const from = hookAt(wrap(Math.floor(at)));
+		const to = hookAt(wrap(Math.floor(at) + 1));
+		return lerp(from, to, at - Math.floor(at));
+	});
+
+	/** Where the string is pulled to: the draw hand while it is hooked, the bow's own line when not. */
+	const nock = $derived([
+		lerp(pose.bowHand[0], pose.drawHand[0], hook),
+		lerp(pose.bowHand[1], pose.drawHand[1], hook)
+	]);
+
+	const gap = $derived.by(() => {
+		const from = RETRACTION[wrap(Math.floor(at))];
+		const to = RETRACTION[wrap(Math.floor(at) + 1)];
+		return lerp(from, to, at - Math.floor(at));
+	});
+
+	/** One shoulder blade: a rounded triangle, point down, with the spine of the blade across it. */
+	const BLADE = smooth([
+		[4, 0], [24, -5], [36, 4], [30, 24], [18, 42], [8, 32], [2, 14]
+	]);
+
+	/**
+	 * Where a blade's origin sits. The blades converge on the spine but never meet it or each other:
+	 * a pair that crosses over at full draw is drawing a retraction no shoulder can make.
+	 */
+	const bladeX = $derived(52 + 10 * (1 - gap));
+
+	/** Halfway along the bow arm, which is where its elbow is: that arm is meant to be straight. */
+	const bowElbow = $derived([
+		BOW_SHOULDER[0] + (pose.bowHand[0] - BOW_SHOULDER[0]) * 0.5,
+		BOW_SHOULDER[1] + (pose.bowHand[1] - BOW_SHOULDER[1]) * 0.5
+	]);
+
+	/** The unit normal to a→b, which is the direction a limb has width in. */
+	function normal(a: number[], b: number[]): number[] {
+		const [dx, dy] = [b[0] - a[0], b[1] - a[1]];
+		const length = Math.hypot(dx, dy) || 1;
+		return [-dy / length, dx / length];
+	}
+
+	/** A limb with some meat on it: thick at the shoulder, thinner by the time it reaches the hand. */
+	function limb(from: number[], to: number[], wide: number, thin: number): string {
+		const n = normal(from, to);
+		return smooth([
+			[from[0] + n[0] * wide, from[1] + n[1] * wide],
+			[to[0] + n[0] * thin, to[1] + n[1] * thin],
+			[to[0] - n[0] * thin, to[1] - n[1] * thin],
+			[from[0] - n[0] * wide, from[1] - n[1] * wide]
+		]);
+	}
+
+	/**
+	 * A bent limb as one shape rather than two. Drawn as an upper arm and a forearm butted together it
+	 * shows a seam at the elbow and a corner where an elbow should be round; walking one outline down
+	 * the outside and back up the inside gives the joint its bend. The width at the elbow follows the
+	 * bisector of the two bones, which is what keeps the shape from pinching as the arm closes.
+	 */
+	function bentLimb(a: number[], b: number[], c: number[], widths: number[]): string {
+		const first = normal(a, b);
+		const second = normal(b, c);
+		const middle = [first[0] + second[0], first[1] + second[1]];
+		const scale = Math.hypot(middle[0], middle[1]) || 1;
+		const mid = [middle[0] / scale, middle[1] / scale];
+		const off = (point: number[], n: number[], w: number, sign: number) => [
+			point[0] + n[0] * w * sign,
+			point[1] + n[1] * w * sign
+		];
+		return smooth([
+			off(a, first, widths[0], 1),
+			off(b, mid, widths[1], 1),
+			off(c, second, widths[2], 1),
+			off(c, second, widths[2], -1),
+			off(b, mid, widths[1], -1),
+			off(a, first, widths[0], -1)
+		]);
+	}
 </script>
 
-<svg viewBox="0 0 200 300" class="w-full" role="img" aria-label={shown}>
+<svg viewBox="-30 -6 262 404" class="w-full" role="img" aria-label={shown}>
 	<!-- Ground, so the stance has something to stand on and the figure has a scale. -->
-	<line x1="34" y1="272" x2="166" y2="272" stroke="var(--c-line)" stroke-width="1.5" />
+	<line x1="46" y1="390" x2="154" y2="390" stroke="var(--c-line)" stroke-width="1.6" />
 
-	<!-- Legs, which hold their shape through the whole shot: the shot is made above the hips. -->
-	<g stroke="var(--c-muted)" stroke-width="14" stroke-linecap="round" stroke-linejoin="round" fill="none">
-		<path d="M92 168 86 216 82 266" />
-		<path d="M108 168 116 216 120 266" />
-	</g>
-	<g stroke="var(--c-muted)" stroke-width="7" stroke-linecap="round" fill="none">
-		<path d="M78 268h14M116 268h14" />
-	</g>
+	<!-- The same body the muscle map draws, minus the arms: this figure poses its own. -->
+	<path d={TRUNK} fill="var(--c-surface)" stroke="var(--c-line)" stroke-width="1.4" />
 
-	<!-- The trunk: wide across the shoulders, narrow at the waist, so the back has somewhere to be. -->
-	<path
-		d="M74 88 C72 118 78 142 82 170 L118 170 C122 142 128 118 126 88 C116 82 84 82 74 88z"
-		fill="var(--c-surface)"
-		stroke="var(--c-line)"
-		stroke-width="1.5"
-	/>
+	{#if bones}
+		<!--
+			The frame the shot is built on: a ribcage the blades slide across, the spine they slide
+			towards, and the pelvis the whole thing stacks on. The blades move; nothing else does.
+		-->
+		<g fill="none" stroke="var(--c-muted)" stroke-width="1.3" stroke-linecap="round">
+			<!-- Ribs, drawn as pairs curving down and forward off the spine. -->
+			{#each [0, 1, 2, 3, 4, 5] as rib (rib)}
+				{@const y = 100 + rib * 12}
+				{@const w = [26, 32, 37, 38, 35, 28][rib]}
+				<path d="M100 {y}q{w} 2 {w * 0.86} {14}" />
+				<path d="M100 {y}q{-w} 2 {-w * 0.86} {14}" />
+			{/each}
+			<!-- Spine: the stack of vertebrae from the neck to the pelvis. -->
+			{#each [80, 90, 100, 110, 120, 130, 140, 150, 160, 170, 180, 190] as y (y)}
+				<rect x="95" y={y} width="10" height="7" rx="2.5" fill="var(--c-surface)" />
+			{/each}
+			<!-- The pelvis the whole stack stands on: wide at the crest, narrowing to the seat. -->
+			<path
+				d="M68 200q32-9 64 0q1 16-6 25q-9 3-13 14q-4 8-13 8t-13-8q-4-11-13-14q-7-9-6-25z"
+				fill="var(--c-surface)"
+				stroke-width="1.4"
+			/>
+		</g>
 
-	<!-- The shoulder blades, brightening as the shot loads the back. Two of them, where they are. -->
-	<g class="transition-[opacity] duration-200" opacity={0.15 + 0.85 * Math.min(1, effort)}>
-		<ellipse cx="89" cy="106" rx="9" ry="15" fill="var(--c-accent)" fill-opacity="0.85" />
-		<ellipse cx="111" cy="106" rx="9" ry="15" fill="var(--c-accent)" fill-opacity="0.85" />
-	</g>
+		<!-- The shoulder blades, which is the point of drawing bones at all: they slide as the shot draws. -->
+		<g class="transition-none">
+			<path
+				d={BLADE}
+				transform="translate({bladeX} 96)"
+				fill="var(--c-accent)"
+				fill-opacity="0.5"
+				stroke="var(--c-muted)"
+				stroke-width="1.3"
+			/>
+			<path
+				d={BLADE}
+				transform="translate({200 - bladeX} 96) scale(-1 1)"
+				fill="var(--c-accent)"
+				fill-opacity="0.5"
+				stroke="var(--c-muted)"
+				stroke-width="1.3"
+			/>
+		</g>
+	{:else}
+	<!-- The back at work, lighting up muscle by muscle as the shot moves through it. -->
+	{#each MUSCLES_SHOWN as shape, index (index)}
+		<path
+			d={shape.d}
+			fill="var(--c-accent)"
+			fill-opacity={[0, 0.3, 0.6, 1][load[shape.id] ?? 0] * 0.9}
+			stroke="var(--c-line)"
+			stroke-width="0.6"
+			stroke-opacity={load[shape.id] ? 1 : 0}
+			class="transition-[fill-opacity] duration-300"
+		/>
+	{/each}
+	{/if}
 
 	<!-- The bow: a recurve at the bow hand, with the string running back to wherever the fingers are. -->
 	<g stroke="var(--c-ink)" fill="none" stroke-linecap="round">
 		<path
-			d="M{pose.bowHand[0]} {pose.bowHand[1] - 58}
-			   Q{pose.bowHand[0] + 11} {pose.bowHand[1]} {pose.bowHand[0]} {pose.bowHand[1] + 58}"
-			stroke-width="3"
+			d="M{pose.bowHand[0]} {pose.bowHand[1] - LIMB}
+			   Q{pose.bowHand[0] + 13} {pose.bowHand[1]} {pose.bowHand[0]} {pose.bowHand[1] + LIMB}"
+			stroke-width="3.2"
 		/>
 		<path
-			d="M{pose.bowHand[0]} {pose.bowHand[1] - 58} L{pose.drawHand[0]} {pose.drawHand[1]} L{pose
-				.bowHand[0]} {pose.bowHand[1] + 58}"
+			d="M{pose.bowHand[0]} {pose.bowHand[1] - LIMB} L{nock[0]} {nock[1]} L{pose
+				.bowHand[0]} {pose.bowHand[1] + LIMB}"
 			stroke-width="1.3"
 		/>
 	</g>
 
-	<!-- Bow arm: shoulder straight out to the hand, because a bent bow arm is not a shot. -->
+	<!--
+		Bow arm: shoulder straight out to the hand, because a bent bow arm is not a shot. Drawn in two
+		lengths so the elbow is somewhere rather than nowhere, with the forearm the thinner of them.
+	-->
 	<path
-		d="M{BOW_SHOULDER[0]} {BOW_SHOULDER[1]} L{pose.bowHand[0]} {pose.bowHand[1]}"
-		stroke="var(--c-muted)"
-		stroke-width="11"
-		stroke-linecap="round"
-		fill="none"
+		d={bentLimb(BOW_SHOULDER, bowElbow, pose.bowHand, [10, 7, 5])}
+		fill="var(--c-sunk)"
+		stroke="var(--c-line)"
+		stroke-width="1.2"
 	/>
-	<!-- Draw arm, in the brand colour: the elbow is the joint that tells one phase from the next. -->
+	<circle cx={bowElbow[0]} cy={bowElbow[1]} r="3" fill="none" stroke="var(--c-line)" stroke-width="1" />
+	<!-- The deltoid cap, so the arm grows out of a shoulder instead of being pinned to a rib. -->
+	<circle
+		cx={BOW_SHOULDER[0]}
+		cy={BOW_SHOULDER[1]}
+		r="10"
+		fill="var(--c-sunk)"
+		stroke="var(--c-line)"
+		stroke-width="1.2"
+	/>
+	<!--
+		Draw arm, in the brand colour, and see-through: from behind it passes in front of the upper
+		back, and a solid arm would hide the trapezius exactly when the shot is asking most of it.
+	-->
 	<path
-		d="M{DRAW_SHOULDER[0]} {DRAW_SHOULDER[1]} L{pose.elbow[0]} {pose.elbow[1]} L{pose
-			.drawHand[0]} {pose.drawHand[1]}"
+		d={bentLimb(DRAW_SHOULDER, pose.elbow, pose.drawHand, [10, 7, 4.5])}
+		fill="var(--c-brand)"
+		fill-opacity="0.35"
 		stroke="var(--c-brand)"
-		stroke-width="11"
-		stroke-linecap="round"
-		stroke-linejoin="round"
-		fill="none"
+		stroke-opacity="0.8"
+		stroke-width="1.2"
 	/>
-
-	<!-- Head last, so an arm coming to the face passes behind it rather than across it. -->
-	<path d="M100 70v18" stroke="var(--c-line)" stroke-width="11" stroke-linecap="round" />
-	<circle cx="100" cy="58" r="15" fill="var(--c-surface)" stroke="var(--c-line)" stroke-width="1.5" />
+	<circle
+		cx={DRAW_SHOULDER[0]}
+		cy={DRAW_SHOULDER[1]}
+		r="10"
+		fill="var(--c-brand)"
+		fill-opacity="0.35"
+		stroke="var(--c-brand)"
+		stroke-opacity="0.8"
+		stroke-width="1.2"
+	/>
+	<!-- The drawing elbow, marked: it is the joint that tells one phase of the shot from the next. -->
+	<circle
+		cx={pose.elbow[0]}
+		cy={pose.elbow[1]}
+		r="3.4"
+		fill="var(--c-brand)"
+		stroke="var(--c-brand)"
+		stroke-width="1"
+	/>
+	<g stroke="var(--c-brand)" stroke-width="1.6" stroke-linecap="round" fill="none" opacity={hook}>
+		{#each [-4, 0, 4] as finger (finger)}
+			<path
+				d="M{pose.drawHand[0] - 6} {pose.drawHand[1] + finger} h7"
+			/>
+		{/each}
+	</g>
+	<circle cx={pose.drawHand[0]} cy={pose.drawHand[1]} r="4" fill="var(--c-brand)" />
+	<!-- The bow hand on the grip, so the bow is held rather than balanced on the end of an arm. -->
+	<circle
+		cx={pose.bowHand[0]}
+		cy={pose.bowHand[1]}
+		r="5"
+		fill="var(--c-sunk)"
+		stroke="var(--c-line)"
+		stroke-width="1.2"
+	/>
 </svg>

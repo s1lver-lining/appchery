@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { MUSCLES, loadAt, type MuscleId, type ShotPhase } from '$lib/domain/muscles';
+	import { smooth } from './muscleMap';
 
 	/**
 	 * The muscles that do not reach the skin. Four of them wrap the shoulder blade, one holds three
@@ -28,15 +29,18 @@
 	 */
 	const SHAPES: Record<Inset, { id: MuscleId; d: string }[]> = {
 		scapula: [
-			{ id: 'levatorScapulae', d: 'M2 0 20 2 28 26 14 28z' },
-			{ id: 'supraspinatus', d: 'M23 27 92 18 93 29 28 40z' },
-			{ id: 'infraspinatus', d: 'M30 52 88 36 76 72 50 92z' },
-			{ id: 'teresMinor', d: 'M50 94 66 76 70 88 54 104z' },
-			{ id: 'subscapularis', d: 'M126 30 182 22 160 104 140 70z' }
+			{ id: 'levatorScapulae', d: smooth([[9,2],[19,5],[26,24],[17,26]]) },
+			{ id: 'supraspinatus', d: smooth([[29,29],[60,23],[88,20],[90,29],[60,34],[33,38]]) },
+			{ id: 'infraspinatus', d: smooth([[32,53],[60,44],[85,38],[78,64],[62,82],[50,90]]) },
+			{ id: 'teresMinor', d: smooth([[52,93],[65,78],[70,87],[56,101]]) },
+			{ id: 'subscapularis', d: smooth([[128,32],[158,26],[179,24],[164,72],[152,99],[141,70]]) }
 		],
 		forearm: [
 			// The belly at the elbow, and the three tendons it sends down to the fingers on the string.
-			{ id: 'fingerFlexors', d: 'M24 44 88 50 122 62 148 66 152 76 118 76 86 80 26 70z' }
+			{
+				id: 'fingerFlexors',
+				d: smooth([[26,46],[60,48],[90,53],[122,63],[147,68],[150,75],[118,75],[86,79],[28,69]])
+			}
 		],
 		trunk: [
 			// A ring, because that is the shape of it: a belt drawn round the waist under everything else.

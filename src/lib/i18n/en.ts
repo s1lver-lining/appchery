@@ -918,7 +918,7 @@ export const en = {
 		version: 'Version {version}',
 		build: 'build {n}',
 		licence: 'Licensed under {name}',
-		linkMuscles: 'Muscles',
+		linkMuscles: 'Anatomy',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
 			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',
@@ -926,9 +926,12 @@ export const en = {
 		recalcResult: '{awarded} awarded, {revoked} taken back.'
 	},
 	muscles: {
-		title: 'Muscles',
+		title: 'Anatomy',
 		intro:
 			'What a shot asks of the body, muscle by muscle and moment by moment. Pick the muscles an exercise trains.',
+		bones: 'Bones',
+		bonesHint:
+			'Watch the shoulder blades. They slide in towards the spine as the draw comes back, and that sliding is the shot: no muscle drawn on a still figure can show it.',
 		phaseTitle: 'The shot',
 		play: 'Play the shot',
 		pause: 'Pause',
@@ -943,7 +946,7 @@ export const en = {
 		insetHint:
 			'The shoulder blade twice: from behind on the left, and turned over on the right, where the subscapularis lies against the ribs. The trapezius and the deltoid have been lifted away.',
 		load: { 1: 'Light', 2: 'Working', 3: 'Hardest' },
-		view: { back: 'Back', front: 'Front', deep: 'Deep' },
+		view: { back: 'Back', front: 'Front', both: 'Both', deep: 'Deep' },
 		inset: {
 			scapula: 'The shoulder blade, both faces',
 			forearm: 'The draw forearm, opened',

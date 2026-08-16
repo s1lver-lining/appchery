@@ -15,6 +15,7 @@
 		type ShotPhase
 	} from '$lib/domain/muscles';
 	import Icon from '$lib/ui/Icon.svelte';
+	import MuscleBoard from '$lib/ui/MuscleBoard.svelte';
 	import MuscleInsets from '$lib/ui/MuscleInsets.svelte';
 	import MuscleMap from '$lib/ui/MuscleMap.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -28,9 +29,14 @@
 	const origin = $derived(originOf($page.url, '/'));
 	$effect(() => setPageUp(origin));
 
-	let view = $state<MuscleView>('back');
+	/** The figure on show. `both` is not a side of the body, so it is a choice of layout, not a view. */
+	type Board = MuscleView | 'both';
+	const VIEWS: Board[] = ['back', 'front', 'both', 'deep'];
+	let view = $state<Board>('back');
 	let phase = $state<ShotPhase>('anchor');
 	let playing = $state(false);
+	/** Whether the shot figure shows its muscles or the frame they pull on. */
+	let bones = $state(false);
 	let selected = $state<MuscleId[]>([]);
 
 	const pick = (id: MuscleId) => (selected = toggleMuscle(selected, id));
@@ -38,7 +44,6 @@
 	const working = $derived(musclesInPhase(phase));
 	const coverage = $derived(Math.round(shotCoverage(selected) * 100));
 
-	const VIEWS: MuscleView[] = ['back', 'front', 'deep'];
 </script>
 
 <PageHeader motif="session" title={$t('muscles.title')}>
@@ -56,16 +61,29 @@
 	<section class="rounded-2xl border border-line bg-surface p-4">
 		<div class="mb-2 flex items-center justify-between">
 			<h2 class="text-sm font-semibold text-muted">{$t('muscles.phaseTitle')}</h2>
-			<button
-				class="rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
-				onclick={() => (playing = !playing)}
-			>
-				{playing ? $t('muscles.pause') : $t('muscles.play')}
-			</button>
+			<div class="flex gap-2">
+				<!-- Two readings of one body: what pulls, and what it pulls on. -->
+				<div class="flex overflow-hidden rounded-lg border border-line text-sm">
+					{#each [false, true] as choice (choice)}
+						<button
+							class="px-2.5 py-1.5 {bones === choice ? 'bg-brand/10 font-semibold' : ''}"
+							onclick={() => (bones = choice)}
+						>
+							{choice ? $t('muscles.bones') : $t('muscles.title')}
+						</button>
+					{/each}
+				</div>
+				<button
+					class="rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
+					onclick={() => (playing = !playing)}
+				>
+					{playing ? $t('muscles.pause') : $t('muscles.play')}
+				</button>
+			</div>
 		</div>
 
 		<div class="grid gap-3 sm:grid-cols-2">
-			<ShotFigure {phase} {playing} />
+			<ShotFigure {phase} {playing} {bones} />
 
 			<div class="min-w-0">
 				<!-- The phases as a strip: it is a sequence, so it is read left to right and tapped along. -->
@@ -86,6 +104,9 @@
 					{/each}
 				</div>
 
+				{#if bones}
+					<p class="mt-3 text-xs text-muted">{$t('muscles.bonesHint')}</p>
+				{/if}
 				<h3 class="mt-3 text-xs font-semibold text-muted">{$t('muscles.working')}</h3>
 				{#if working.length === 0}
 					<p class="text-xs text-muted">{$t('muscles.nothingWorking')}</p>
@@ -129,6 +150,8 @@
 		{#if view === 'deep'}
 			<h3 class="mb-2 text-sm font-semibold">{$t('muscles.deepTitle')}</h3>
 			<MuscleInsets {selected} {phase} onpick={pick} />
+		{:else if view === 'both'}
+			<MuscleBoard {selected} {phase} onpick={pick} />
 		{:else}
 			<div class="mx-auto max-w-xs">
 				<MuscleMap {view} {selected} {phase} onpick={pick} />

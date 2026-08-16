@@ -8,7 +8,7 @@
 		type MuscleView,
 		type ShotPhase
 	} from '$lib/domain/muscles';
-	import { BACK, BODY, FRONT, mirror, pointsAttr } from './muscleMap';
+	import { BACK, BODY, FRONT, mirror, smooth } from './muscleMap';
 
 	/**
 	 * The archer's muscles, drawn to be pointed at. Every shape here was drawn for this app rather
@@ -56,8 +56,9 @@
 	}
 </script>
 
-<svg viewBox="0 0 200 400" class="w-full" role="group" aria-label={$t(`muscles.view.${view}`)}>
-	<polygon points={BODY} fill="var(--c-surface)" stroke="var(--c-line)" stroke-width="1.5" />
+<svg viewBox="0 0 200 398" class="w-full" role="group" aria-label={$t(`muscles.view.${view}`)}>
+	<!-- One body, arms included: a shoulder is not a seam between two drawings. -->
+	<path d={BODY} fill="var(--c-surface)" stroke="var(--c-line)" stroke-width="1.4" />
 
 	{#each regions as region (region.id)}
 		{@const label = $t(`muscles.name.${region.id}`)}
@@ -77,12 +78,12 @@
 		>
 			<title>{label}</title>
 			{#each [region.points, mirror(region.points)] as half}
-				<polygon
-					points={pointsAttr(half)}
+				<path
+					d={smooth(half)}
 					fill={fill(region.id)}
 					fill-opacity={opacity(region.id)}
 					stroke={selected.includes(region.id) ? 'var(--c-brand)' : 'var(--c-line)'}
-					stroke-width={selected.includes(region.id) ? 1.6 : 0.8}
+					stroke-width={selected.includes(region.id) ? 1.4 : 0.7}
 					class="transition-[fill,fill-opacity] duration-300"
 				/>
 			{/each}

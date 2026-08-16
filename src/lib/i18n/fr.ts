@@ -923,7 +923,7 @@ export const fr: Dictionary = {
 		version: 'Version {version}',
 		build: 'build {n}',
 		licence: 'Sous licence {name}',
-		linkMuscles: 'Muscles',
+		linkMuscles: 'Anatomie',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
 			'Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.',
@@ -931,9 +931,12 @@ export const fr: Dictionary = {
 		recalcResult: '{awarded} obtenus, {revoked} retirés.'
 	},
 	muscles: {
-		title: 'Muscles',
+		title: 'Anatomie',
 		intro:
 			"Ce que le tir demande au corps, muscle par muscle et moment par moment. Choisissez les muscles qu'un exercice travaille.",
+		bones: 'Os',
+		bonesHint:
+			"Regardez les omoplates. Elles glissent vers la colonne à mesure que l'armement recule, et c'est ce glissement qui fait le tir : aucun muscle dessiné sur une silhouette figée ne peut le montrer.",
 		phaseTitle: 'Le tir',
 		play: 'Dérouler le tir',
 		pause: 'Pause',
@@ -948,7 +951,7 @@ export const fr: Dictionary = {
 		insetHint:
 			"L'omoplate deux fois : de dos à gauche, et retournée à droite, où le sous-scapulaire se plaque contre les côtes. Le trapèze et le deltoïde ont été écartés.",
 		load: { 1: 'Léger', 2: 'Au travail', 3: 'À fond' },
-		view: { back: 'Dos', front: 'Face', deep: 'Profond' },
+		view: { back: 'Dos', front: 'Face', both: 'Les deux', deep: 'Profond' },
 		inset: {
 			scapula: "L'omoplate, ses deux faces",
 			forearm: "L'avant-bras de corde, ouvert",
