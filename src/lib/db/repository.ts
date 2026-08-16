@@ -736,52 +736,56 @@ export async function setMatchArrows(
 	shots: Omit<Shot, 'ordinal'>[],
 	shootOff = false
 ) {
-	const end = await ensureMatchEnd(activityId, endNo, shootOff);
+	// Serialised as well as committed once: two arrows tapped in quickly each replace the side's
+	// arrows wholesale, and out of order the shorter set overwrites the longer one.
+	await transaction(async () => {
+		const end = await ensureMatchEnd(activityId, endNo, shootOff);
 
-	const previous = (await listShots(end.id)).filter((shot) => shot.side === side);
-	if (previous.length > 0) {
-		const now = Date.now();
+		const previous = (await listShots(end.id)).filter((shot) => shot.side === side);
+		if (previous.length > 0) {
+			const now = Date.now();
+			await db()
+				.update(schema.shot)
+				.set({ deletedAt: now, updatedAt: now })
+				.where(
+					inArray(
+						schema.shot.id,
+						previous.map((shot) => shot.id)
+					)
+				);
+			await logMany('shot', previous.map((shot) => shot.id), 'delete');
+		}
+
+		if (shots.length > 0) {
+			const rows = shots.map((shot, index) => ({
+				...stamp(),
+				endId: end.id,
+				ordinal: index + 1,
+				value: shot.value,
+				zoneLabel: shot.zoneLabel,
+				side,
+				x: shot.x,
+				y: shot.y,
+				source: shot.source
+			}));
+			await db().insert(schema.shot).values(rows);
+			await logMany('shot', rows.map((row) => row.id), 'insert');
+		}
+
+		// Arrows are the truth once they exist: the end total follows them rather than the other way.
+		const total = shots.reduce((sum, shot) => sum + shot.value, 0);
 		await db()
-			.update(schema.shot)
-			.set({ deletedAt: now, updatedAt: now })
-			.where(
-				inArray(
-					schema.shot.id,
-					previous.map((shot) => shot.id)
-				)
-			);
-		await logMany('shot', previous.map((shot) => shot.id), 'delete');
-	}
+			.update(schema.end)
+			.set(
+				side === 'us'
+					? { subtotal: total, updatedAt: Date.now() }
+					: { opponentSubtotal: total, updatedAt: Date.now() }
+			)
+			.where(eq(schema.end.id, end.id));
+		await log('round_end', end.id, 'update');
 
-	if (shots.length > 0) {
-		const rows = shots.map((shot, index) => ({
-			...stamp(),
-			endId: end.id,
-			ordinal: index + 1,
-			value: shot.value,
-			zoneLabel: shot.zoneLabel,
-			side,
-			x: shot.x,
-			y: shot.y,
-			source: shot.source
-		}));
-		await db().insert(schema.shot).values(rows);
-		await logMany('shot', rows.map((row) => row.id), 'insert');
-	}
-
-	// Arrows are the truth once they exist: the end total follows them rather than the other way.
-	const total = shots.reduce((sum, shot) => sum + shot.value, 0);
-	await db()
-		.update(schema.end)
-		.set(
-			side === 'us'
-				? { subtotal: total, updatedAt: Date.now() }
-				: { opponentSubtotal: total, updatedAt: Date.now() }
-		)
-		.where(eq(schema.end.id, end.id));
-	await log('round_end', end.id, 'update');
-
-	await refreshMatchTotals(activityId);
+		await refreshMatchTotals(activityId);
+	});
 }
 
 export async function deleteMatchEnd(activityId: string, endNo: number) {
