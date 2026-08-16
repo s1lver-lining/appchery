@@ -253,19 +253,23 @@
 	let pulsing = $state(false);
 
 	/**
-	 * Once per visit rather than once per mount. The pager keeps this page alive behind the one on
+	 * Once, on first arrival rather than at mount. The pager keeps this page alive behind the one on
 	 * show, so a list anchored at mount was aimed while it was off screen: it arrived at its top, and
-	 * the ring it rang was rung to nobody. Arriving is what the list reacts to, however it is reached.
+	 * the ring it rang was rung to nobody.
+	 *
+	 * Not on every arrival, though. Coming back from a session is not a request to move: the archer
+	 * was reading whatever week they opened it from, and dropping them on today loses their place.
 	 */
 	let anchored = false;
 	$effect(() => {
-		if ($page.url.pathname !== '/sessions') {
-			anchored = false;
-			return;
-		}
+		if ($page.url.pathname !== '/sessions') return;
 		if (anchored || !loaded || !anchor || tab !== 'list') return;
 		anchored = true;
-		// After the frame that lays the weeks out, otherwise it aims at a list still growing above it.
+		aimAtToday();
+	});
+
+	// After the frame that lays the weeks out, otherwise it aims at a list still growing above it.
+	function aimAtToday() {
 		requestAnimationFrame(() => {
 			if (!anchor || !scrollPane) return;
 			// The whole week when it fits, since the days around today are what says how the week went.
@@ -275,7 +279,7 @@
 			pulsing = true;
 			setTimeout(() => (pulsing = false), 1400);
 		});
-	});
+	}
 
 	/**
 	 * The pane is scrolled by hand rather than through scrollIntoView, which also scrolls every
