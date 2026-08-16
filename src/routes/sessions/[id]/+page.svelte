@@ -1113,6 +1113,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 										{@const diagram = a.kind === 'tuning' && a.templateKey ? diagramOf(a.templateKey) : null}
 										{@const format = a.kind === 'match' ? matchOf(a)?.format : null}
 										<li>
+											<!-- Selection is drawn inside the row: the tab deck clips, and a ring outside the
+												row's own edge is the part of it the clip takes. -->
 											<a
 												href="/activities/{a.id}"
 												use:longpress={() => holdActivity(a.id)}
@@ -1122,7 +1124,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 													toggleActivity(a.id);
 												}}
 												class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
-													{isSelected(a.id) ? 'ring-2 ring-brand' : ''}"
+													{isSelected(a.id) ? 'inset-ring-2 inset-ring-brand' : ''}"
 											>
 												{#if selecting}
 													<span
