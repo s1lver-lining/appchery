@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc, asc, inArray, like } from 'drizzle-orm';
+import { eq, and, isNull, isNotNull, desc, asc, inArray, like } from 'drizzle-orm';
 import { db, schema, transaction } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
@@ -131,27 +131,54 @@ export async function deleteSession(id: string) {
 	await log('session', id, 'delete');
 }
 
-// One statement, one log row per id: a batch has to reach a sync as the rows it actually deleted.
+/**
+ * The ids of `ids` that are really there and in the state the caller means to change. A selection is
+ * made on screen and acted on a moment later, and an import can hard delete and rewrite rows under
+ * it in between, so the batch is narrowed to what exists before anything is written or logged: the
+ * change log is what a sync sends, and a row that never moved must not be announced as if it had.
+ */
+async function presentIds(
+	table: typeof schema.session | typeof schema.activity,
+	ids: string[],
+	state: 'live' | 'deleted'
+): Promise<string[]> {
+	const rows = await db()
+		.select({ id: table.id })
+		.from(table)
+		.where(
+			and(
+				inArray(table.id, ids),
+				state === 'live' ? isNull(table.deletedAt) : isNotNull(table.deletedAt)
+			)
+		);
+	return rows.map((row) => row.id);
+}
+
+// One statement, one log row per row that moved: a batch reaches a sync as the rows it really took.
 export async function deleteSessions(ids: string[]) {
 	if (ids.length === 0) return;
 	await transaction(async () => {
+		const present = await presentIds(schema.session, ids, 'live');
+		if (present.length === 0) return;
 		const now = Date.now();
 		await db()
 			.update(schema.session)
 			.set({ deletedAt: now, updatedAt: now })
-			.where(inArray(schema.session.id, ids));
-		await logMany('session', ids, 'delete');
+			.where(inArray(schema.session.id, present));
+		await logMany('session', present, 'delete');
 	});
 }
 
 export async function restoreSessions(ids: string[]) {
 	if (ids.length === 0) return;
 	await transaction(async () => {
+		const present = await presentIds(schema.session, ids, 'deleted');
+		if (present.length === 0) return;
 		await db()
 			.update(schema.session)
 			.set({ deletedAt: null, updatedAt: Date.now() })
-			.where(inArray(schema.session.id, ids));
-		await logMany('session', ids, 'update');
+			.where(inArray(schema.session.id, present));
+		await logMany('session', present, 'update');
 	});
 }
 
@@ -162,11 +189,13 @@ export async function setSessionsBow(
 ) {
 	if (ids.length === 0) return;
 	await transaction(async () => {
+		const present = await presentIds(schema.session, ids, 'live');
+		if (present.length === 0) return;
 		await db()
 			.update(schema.session)
 			.set({ ...value, updatedAt: Date.now() })
-			.where(inArray(schema.session.id, ids));
-		await logMany('session', ids, 'update');
+			.where(inArray(schema.session.id, present));
+		await logMany('session', present, 'update');
 	});
 }
 
@@ -375,27 +404,31 @@ export async function deleteActivity(id: string) {
 	await log('activity', id, 'delete');
 }
 
-/** A selection removed at once, logged row by row for the same reason `deleteSessions` is. */
+/** A selection removed at once, narrowed and logged for the same reason `deleteSessions` is. */
 export async function deleteActivities(ids: string[]) {
 	if (ids.length === 0) return;
 	await transaction(async () => {
+		const present = await presentIds(schema.activity, ids, 'live');
+		if (present.length === 0) return;
 		const now = Date.now();
 		await db()
 			.update(schema.activity)
 			.set({ deletedAt: now, updatedAt: now })
-			.where(inArray(schema.activity.id, ids));
-		await logMany('activity', ids, 'delete');
+			.where(inArray(schema.activity.id, present));
+		await logMany('activity', present, 'delete');
 	});
 }
 
 export async function restoreActivities(ids: string[]) {
 	if (ids.length === 0) return;
 	await transaction(async () => {
+		const present = await presentIds(schema.activity, ids, 'deleted');
+		if (present.length === 0) return;
 		await db()
 			.update(schema.activity)
 			.set({ deletedAt: null, updatedAt: Date.now() })
-			.where(inArray(schema.activity.id, ids));
-		await logMany('activity', ids, 'update');
+			.where(inArray(schema.activity.id, present));
+		await logMany('activity', present, 'update');
 	});
 }
 

@@ -193,6 +193,13 @@
 		refresh();
 	});
 
+	// An import rewrites rows under a selection made a moment ago, so the picked ids stop meaning
+	// the outings that were picked. The selection is dropped rather than acted on afterwards.
+	$effect(() => {
+		void $dataVersion;
+		endSelection();
+	});
+
 	/**
 	 * The session is created and opened immediately. Conditions are fetched on the session page
 	 * afterwards, because waiting on a geolocation prompt here left the button stuck on "fetching".

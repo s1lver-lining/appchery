@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
+	import { dataVersion } from '$lib/db/changed';
 	import { t } from '$lib/i18n';
 	import { templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import {
@@ -99,8 +100,14 @@
 		const latest = await currentRevision(bowId);
 		draft = latest ? JSON.parse(latest.settings) : {};
 	}
+	/**
+	 * Read again when the database is replaced wholesale, or the page goes on showing revisions an
+	 * import has just thrown away, and the draft standing against them would be saved back over it.
+	 */
 	$effect(() => {
+		void $dataVersion;
 		refresh();
+		leaving = null;
 	});
 
 	/** The group whose sheet is open. Values are written to the draft as they are typed and the
