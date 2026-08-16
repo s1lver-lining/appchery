@@ -185,9 +185,11 @@
 				key: q.key,
 				endId: null,
 				subtotal: q.shots.reduce((sum, s) => sum + s.value, 0),
-				shots: displayOrder(q.shots).map((s, i) => ({
+				// Numbered before it is sorted, the way the end being entered is: number after and the
+				// arrows read 1, 2, 3 down the sorted row until the write lands and renumbers them.
+				shots: displayOrder(q.shots.map((s, i) => ({ ...s, ordinal: i + 1 }))).map((s) => ({
 					id: null,
-					ordinal: i + 1,
+					ordinal: s.ordinal,
 					zoneLabel: s.zoneLabel,
 					x: s.x,
 					y: s.y
