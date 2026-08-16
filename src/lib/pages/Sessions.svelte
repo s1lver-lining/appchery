@@ -347,23 +347,50 @@
 	 * the archer was reading whatever week they opened it from, and dropping them on today loses
 	 * their place. Asking for today again is what tapping the sessions tab while already here does.
 	 */
-	let restored = false;
 	$effect(() => {
 		if ($page.url.pathname !== '/sessions') return;
-		if (!loaded || !anchor || tab !== 'list') return;
-		if (anchoredOn !== today) {
-			anchoredOn = today;
-			aimAtToday();
+		if (anchoredOn === today || !loaded || !anchor || tab !== 'list') return;
+		anchoredOn = today;
+		aimAtToday();
+	});
+
+	/**
+	 * Put back where it was being read, as soon as there is a pane to put it back in rather than on
+	 * arrival. The pager mounts this page as the neighbour of the one on show and slides it in before
+	 * the path says so, so a restore that waited to be arrived at would be watched happening: the
+	 * list rides in at its top and jumps once it lands.
+	 */
+	let restored = false;
+	$effect(() => {
+		if (restored || !scrollPane || !loaded || !anchor || tab !== 'list') return;
+		restored = true;
+		// Only when today has already been aimed at. Otherwise the aiming is this visit's job.
+		if (anchoredOn !== today) return;
+		restoreOffset(lastScrollTop);
+	});
+
+	/** Set while the offset is being put back, so the scroll that causes is not read as the archer's. */
+	let restoring = false;
+
+	/**
+	 * Asked over several frames rather than once. Reached through the tab bar this page mounts off
+	 * screen as a neighbour, with its weeks still being laid out, and a scrollTop set past the end of
+	 * a list that has not grown into it yet is clamped silently rather than refused.
+	 *
+	 * Which would be recoverable, except that the clamp scrolls the pane, and the pane records what
+	 * it is scrolled to: one early attempt would overwrite the offset with zero and lose it for good.
+	 */
+	function restoreOffset(to: number, tries = 12) {
+		if (to <= 0 || !scrollPane) return;
+		restoring = true;
+		scrollPane.scrollTop = to;
+		if (scrollPane.scrollTop < to && tries > 0) {
+			requestAnimationFrame(() => restoreOffset(to, tries - 1));
 			return;
 		}
-		if (restored) return;
-		restored = true;
-		// Put back where it was being read. Not aiming at today is only half of leaving the archer
-		// where they were: the pane itself is new, so without this the list comes back at its top.
-		requestAnimationFrame(() => {
-			if (scrollPane) scrollPane.scrollTop = lastScrollTop;
-		});
-	});
+		// A frame later, so the scroll event this one caused is the last one ignored.
+		requestAnimationFrame(() => (restoring = false));
+	}
 
 	$effect(() => {
 		const asked = $tabAsked;
@@ -737,7 +764,7 @@
 				{$fullNewSessionButton ? 'pb-4' : 'pb-20'}"
 			onscroll={(event) => {
 				// The calendar shares this pane, and its offset means nothing to the list.
-				if (tab === 'list') lastScrollTop = event.currentTarget.scrollTop;
+				if (tab === 'list' && !restoring) lastScrollTop = event.currentTarget.scrollTop;
 			}}
 		>
 			<!-- A plan's slots count as something to show: a first week can be planned before it is shot. -->
