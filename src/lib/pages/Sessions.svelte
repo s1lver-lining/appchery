@@ -8,11 +8,11 @@
 	let lastViewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
 	let lastDay: number | null = null;
 
+	// A day rather than a yes, so an app left running overnight opens on the new today.
+	let anchoredOn: number | null = null;
 	let lastAsked = 0;
 	/** How far down the list was read, for the same reason and across the same unmount. */
 	let lastScrollTop = 0;
-	/** Whether an offset is on record at all, which says the list has been read before. */
-	let offsetSaved = false;
 </script>
 
 <script lang="ts">
@@ -332,32 +332,21 @@
 	/** Rung on today's row when the list settles on it, so arriving says which day it landed on. */
 	let pulsing = $state(false);
 
-	// Opening a session is the only navigation that unmounts this page, so an instance built with an
-	// offset already on record is one the archer is coming back to rather than coming to.
-	const resuming = offsetSaved;
-	let skipAim = resuming;
-
-	// Every arrival opens on today, except the one that is a return from a session.
-	let arrived = false;
+	// Once a day, not once an arrival: coming back from a session is not a request to move.
 	$effect(() => {
-		if ($page.url.pathname !== '/sessions') {
-			arrived = false;
-			return;
-		}
-		if (arrived || !loaded || !anchor || tab !== 'list') return;
-		arrived = true;
-		if (skipAim) {
-			skipAim = false;
-			return;
-		}
+		if ($page.url.pathname !== '/sessions') return;
+		if (anchoredOn === today || !loaded || !anchor || tab !== 'list') return;
+		anchoredOn = today;
 		aimAtToday();
 	});
 
 	// As soon as there is a pane, not on arrival: the pager slides this page in before the path says so.
 	let restored = false;
 	$effect(() => {
-		if (restored || !resuming || !scrollPane || !loaded || !anchor || tab !== 'list') return;
+		if (restored || !scrollPane || !loaded || !anchor || tab !== 'list') return;
 		restored = true;
+		// Only when today has already been aimed at. Otherwise the aiming is this visit's job.
+		if (anchoredOn !== today) return;
 		restoreOffset(lastScrollTop);
 	});
 
@@ -763,9 +752,7 @@
 				{$fullNewSessionButton ? 'pb-4' : 'pb-20'}"
 			onscroll={(event) => {
 				// The calendar shares this pane, and its offset means nothing to the list.
-				if (tab !== 'list' || restoring) return;
-				lastScrollTop = event.currentTarget.scrollTop;
-				offsetSaved = true;
+				if (tab === 'list' && !restoring) lastScrollTop = event.currentTarget.scrollTop;
 			}}
 		>
 			<!-- A plan's slots count as something to show: a first week can be planned before it is shot. -->
