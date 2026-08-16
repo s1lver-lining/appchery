@@ -418,7 +418,7 @@
 	</div>
 
 
-	<div class="safe-bottom space-y-2 bg-surface px-4 py-3">
+	<div class="safe-bottom-gap space-y-2 bg-surface px-4 pt-3">
 		<!--
 			The arrow area keeps its height whether or not anything has been found. Letting it collapse made
 			the buttons jump every time a detection came and went, which on a hand held phone is constantly.

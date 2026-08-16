@@ -163,7 +163,7 @@
 		</div>
 	</div>
 
-	<div class="safe-bottom px-4 pt-2 pb-4">
+	<div class="safe-bottom-gap px-4 pt-2">
 		{#if error}
 			<p class="mb-2 text-center text-sm text-danger">{error}</p>
 		{:else if saved}

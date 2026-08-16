@@ -170,6 +170,15 @@ body {
 }
 
 /*
+ * The inset with room of its own added to it. A panel whose buttons end the screen needs a gap
+ * under them, and on a phone with no inset to speak of the inset on its own leaves none, which
+ * puts a save button on the edge of the tab bar.
+ */
+.safe-bottom-gap {
+	padding-bottom: calc(env(safe-area-inset-bottom) + 1.25rem);
+}
+
+/*
  * A single ring on the row the sessions list opened on, so the eye is told where it landed rather
  * than having to find the date. Skipped where motion is unwelcome: it says nothing the pill does not.
  */

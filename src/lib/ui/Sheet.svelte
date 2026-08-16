@@ -40,7 +40,7 @@
 		></button>
 
 		<div
-			class="safe-bottom relative w-full max-w-sm rounded-t-2xl border border-line bg-surface p-4 shadow-xl sm:m-4 sm:rounded-2xl"
+			class="safe-bottom-gap relative w-full max-w-sm rounded-t-2xl border border-line bg-surface p-4 shadow-xl sm:m-4 sm:rounded-2xl"
 			role="dialog"
 			aria-label={title}
 		>
