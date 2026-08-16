@@ -8,11 +8,11 @@
 	let lastViewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
 	let lastDay: number | null = null;
 
-	// A day rather than a yes, so an app left running overnight opens on the new today.
-	let anchoredOn: number | null = null;
 	let lastAsked = 0;
 	/** How far down the list was read, for the same reason and across the same unmount. */
 	let lastScrollTop = 0;
+	/** Whether an offset is on record at all, which says the list has been read before. */
+	let offsetSaved = false;
 </script>
 
 <script lang="ts">
@@ -329,24 +329,35 @@
 		};
 	}
 
-	/** Rung once, on the row the list settled on, and never again for the life of the page. */
+	/** Rung on today's row when the list settles on it, so arriving says which day it landed on. */
 	let pulsing = $state(false);
 
-	// Once a day, not once an arrival: coming back from a session is not a request to move.
+	// Opening a session is the only navigation that unmounts this page, so an instance built with an
+	// offset already on record is one the archer is coming back to rather than coming to.
+	const resuming = offsetSaved;
+	let skipAim = resuming;
+
+	// Every arrival opens on today, except the one that is a return from a session.
+	let arrived = false;
 	$effect(() => {
-		if ($page.url.pathname !== '/sessions') return;
-		if (anchoredOn === today || !loaded || !anchor || tab !== 'list') return;
-		anchoredOn = today;
+		if ($page.url.pathname !== '/sessions') {
+			arrived = false;
+			return;
+		}
+		if (arrived || !loaded || !anchor || tab !== 'list') return;
+		arrived = true;
+		if (skipAim) {
+			skipAim = false;
+			return;
+		}
 		aimAtToday();
 	});
 
 	// As soon as there is a pane, not on arrival: the pager slides this page in before the path says so.
 	let restored = false;
 	$effect(() => {
-		if (restored || !scrollPane || !loaded || !anchor || tab !== 'list') return;
+		if (restored || !resuming || !scrollPane || !loaded || !anchor || tab !== 'list') return;
 		restored = true;
-		// Only when today has already been aimed at. Otherwise the aiming is this visit's job.
-		if (anchoredOn !== today) return;
 		restoreOffset(lastScrollTop);
 	});
 
@@ -377,15 +388,28 @@
 	});
 
 	// After the frame that lays the weeks out, otherwise it aims at a list still growing above it.
-	function aimAtToday() {
+	// Asked again while it waits, since coming off the calendar tab has no list to aim at yet.
+	function aimAtToday(tries = 5) {
 		requestAnimationFrame(() => {
-			if (!anchor || !scrollPane) return;
+			if (!anchor || !scrollPane) {
+				if (tries > 0) aimAtToday(tries - 1);
+				return;
+			}
 			// The whole week when it fits, since the days around today are what says how the week went.
 			if (anchor.offsetHeight <= scrollPane.clientHeight || !todayRow) bring(anchor, 0);
 			else bring(todayRow, (scrollPane.clientHeight - todayRow.offsetHeight) / 2);
-			if (!todayRow) return;
+			if (todayRow) pulse();
+		});
+	}
+
+	// Taken off and put back a frame later, or asking again while it is still ringing restarts nothing.
+	let pulseTimer: ReturnType<typeof setTimeout> | null = null;
+	function pulse() {
+		pulsing = false;
+		if (pulseTimer) clearTimeout(pulseTimer);
+		requestAnimationFrame(() => {
 			pulsing = true;
-			setTimeout(() => (pulsing = false), 1400);
+			pulseTimer = setTimeout(() => (pulsing = false), 1400);
 		});
 	}
 
@@ -739,7 +763,9 @@
 				{$fullNewSessionButton ? 'pb-4' : 'pb-20'}"
 			onscroll={(event) => {
 				// The calendar shares this pane, and its offset means nothing to the list.
-				if (tab === 'list' && !restoring) lastScrollTop = event.currentTarget.scrollTop;
+				if (tab !== 'list' || restoring) return;
+				lastScrollTop = event.currentTarget.scrollTop;
+				offsetSaved = true;
 			}}
 		>
 			<!-- A plan's slots count as something to show: a first week can be planned before it is shot. -->
