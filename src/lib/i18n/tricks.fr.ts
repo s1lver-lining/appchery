@@ -147,6 +147,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Avec un arc par défaut, toucher l’onglet matériel y va directement. Maintenez l’onglet, ou passez par le menu à trois points de la page de l’arc, pour atteindre la liste de tous les arcs.'
 				},
 				{
+					lead: 'Un arc créé depuis une sortie est l’arc de cette sortie.',
+					body: 'Sans aucun arc enregistré, la section réglages de l’écran d’ajout propose le formulaire directement. L’arc créé là est affecté à la séance qui l’a demandé, qu’il devienne votre arc par défaut ou non.'
+				},
+				{
 					lead: 'Les repères de viseur se remplissent seuls.',
 					body: 'Ajoutez une distance et l’app en déduit la hauteur à partir des repères déjà tirés : trois ou plus sont ajustés par une parabole, deux par une droite. Un repère déduit est en pointillés et précédé d’un tilde. Le toucher vide le champ pour taper le vrai repère par-dessus, et laisser le champ vide ramène l’estimation.'
 				},

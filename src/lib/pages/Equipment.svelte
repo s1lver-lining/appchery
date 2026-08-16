@@ -3,7 +3,7 @@
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { BOW_TYPES, type BowType } from '$lib/domain/tuning/templates';
-	import { listBows, createBow, type BowRow } from '$lib/db/repository';
+	import { listBows, createBow, updateSession, type BowRow } from '$lib/db/repository';
 	import { defaultBowId } from '$lib/prefs';
 	import { withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -86,6 +86,9 @@
 		refresh();
 	});
 
+	/** The outing that sent the archer here to make a bow, and is waiting to be shot with it. */
+	const forSession = $derived($page.url.searchParams.get('session'));
+
 	async function add() {
 		if (!name.trim()) {
 			nameMissing = true;
@@ -97,6 +100,12 @@
 		if (first) defaultBowId.set(id);
 		name = '';
 		adding = false;
+		// A bow made for one outing is that outing's bow, whether or not it is the default one.
+		if (forSession) {
+			await updateSession(forSession, { bowId: id, bowType: null });
+			goto(`/sessions/${forSession}`);
+			return;
+		}
 		goto(`/equipment/${id}`);
 	}
 </script>

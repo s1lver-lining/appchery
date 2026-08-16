@@ -152,6 +152,10 @@ export const tricksEn = {
 					body: 'With a default bow set, tapping the equipment tab goes straight to it. Hold the tab, or use the dots menu on the bow page, to reach the list of every bow.'
 				},
 				{
+					lead: 'A bow made from an outing is that outing’s bow.',
+					body: 'With no bow recorded at all, the tuning section of the add screen offers the form directly. The bow made there is set on the session that asked for it, whether or not it becomes your default bow.'
+				},
+				{
 					lead: 'Sight marks fill themselves in.',
 					body: 'Add a distance and the app works out the height from the marks you shot in: three or more are fitted with a parabola, two with a line. A worked out mark is dashed and led by a tilde. Tapping it clears the field so the real mark can be typed over it, and leaving the field empty brings the estimate back.'
 				},

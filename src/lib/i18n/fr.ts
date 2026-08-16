@@ -96,6 +96,7 @@ export const fr: Dictionary = {
 	},
 	session: {
 		bow: 'Arc',
+		pickBow: 'Choisir un arc',
 		noBow: 'Non renseigné',
 		genericBow: "Type d'arc générique",
 		myBows: 'Mes arcs',

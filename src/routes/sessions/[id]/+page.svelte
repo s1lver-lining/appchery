@@ -430,6 +430,22 @@
 		goto(`/activities/${await createScoringActivity(id, round)}`);
 	}
 
+	/**
+	 * Says which bow this outing is on, from the one place that needs to know. With no bow recorded
+	 * at all there is nothing to pick from, so it goes to the form and the bow made there comes back
+	 * to this session; otherwise the settings tab already holds the list.
+	 */
+	async function chooseBow() {
+		if (bows.length > 0) {
+			adding = false;
+			tab = 'settings';
+			return;
+		}
+		// Written first: the equipment page hands the new bow back by id, and a slot has no row yet.
+		const id = await materialise();
+		goto(`/equipment?add=1&session=${id}&from=${encodeURIComponent(`/sessions/${id}`)}`);
+	}
+
 	async function startTuning(key: string) {
 		const id = await materialise();
 		goto(`/activities/${await createTuningActivity(id, key)}`);
@@ -1248,9 +1264,18 @@
 				<section>
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('tuning.title')}</h3>
 					{#if !selectedBowType}
-						<p class="rounded-xl border border-dashed border-line p-4 text-sm text-muted">
-							{$t('tuning.noBowSelected')}
-						</p>
+						<!-- Nothing here can be offered without knowing the bow, so the note carries the way
+							to say which one: the form when there is no bow at all, the tab when there is. -->
+						<div class="rounded-xl border border-dashed border-line p-4">
+							<p class="text-sm text-muted">{$t('tuning.noBowSelected')}</p>
+							<button
+								class="mt-3 flex items-center gap-1.5 text-sm font-semibold text-brand-text"
+								onclick={chooseBow}
+							>
+								<Icon name="plus" size={16} />
+								{bows.length === 0 ? $t('equipment.addBow') : $t('session.pickBow')}
+							</button>
+						</div>
 					{:else}
 						<div class="grid gap-2 sm:grid-cols-2">
 							{#each tuningTemplates as template (template.key)}

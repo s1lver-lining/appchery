@@ -95,6 +95,7 @@ export const en = {
 	},
 	session: {
 		bow: 'Bow',
+		pickBow: 'Choose a bow',
 		noBow: 'Not set',
 		genericBow: 'Generic bow type',
 		myBows: 'My bows',
