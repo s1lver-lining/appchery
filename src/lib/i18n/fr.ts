@@ -746,6 +746,7 @@ export const fr: Dictionary = {
 		volumeKind: {
 			match: 'Matchs',
 			tuning: 'Réglages',
+			freeScore: 'Score seul',
 			training: 'Flèches libres'
 		},
 		bestOn: 'Record le {date}',
@@ -834,6 +835,36 @@ export const fr: Dictionary = {
 			notJson: "Ce fichier n'est pas un JSON lisible.",
 			notABackup: "Ce fichier n'est pas une sauvegarde Appchery.",
 			tooNew: "Cette sauvegarde vient d'une version plus récente. Mettez Appchery à jour."
+		}
+	},
+	freeScore: {
+		title: 'Score seul',
+		group: 'Compté sans les flèches',
+		hint: 'Des flèches comptées et un total, sans le détail flèche par flèche.',
+		setupHint: 'Où cela a été tiré. Les flèches et le score se saisissent au fil du tir.',
+		create: 'Commencer',
+		arrows: 'Flèches tirées',
+		total: 'Score total',
+		average: '{value} par flèche'
+	},
+	importer: {
+		title: 'Importer depuis une autre application',
+		hint: "Chargez un export CapTarget (.xlsx). Les séances déjà importées sont mises à jour ; le reste de l'appareil n'est pas touché.",
+		choose: 'Choisir un export',
+		confirmTitle: 'Importer ce fichier ?',
+		confirmAction: 'Importer',
+		bow: 'Arc utilisé pour ces séances',
+		noBow: "Ne pas renseigner d'arc",
+		working: 'Import en cours…',
+		progress: '{done} séances sur {total} écrites.',
+		workingHint: 'Écriture des séances et recomptage des badges.',
+		confirmBody: '{name} contient {sessions} séances, {rounds} comptages et {arrows} flèches.',
+		skipped: '{n} lignes illisibles seront ignorées.',
+		imported: '{sessions} séances et {arrows} flèches importées.',
+		error: {
+			notAWorkbook: "Ce fichier n'est pas un export .xlsx.",
+			unreadableWorkbook: "Ce fichier n'a pas pu être ouvert. Réexportez-le depuis l'autre application.",
+			nothingFound: "Rien d'exploitable n'a été trouvé dans ce fichier."
 		}
 	},
 	storage: {

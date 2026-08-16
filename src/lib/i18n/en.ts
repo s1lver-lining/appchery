@@ -742,6 +742,7 @@ export const en = {
 		volumeKind: {
 			match: 'Matches',
 			tuning: 'Tuning',
+			freeScore: 'Score only',
 			training: 'Free arrows'
 		},
 		bestOn: 'Best on {date}',
@@ -828,6 +829,36 @@ export const en = {
 			notJson: 'That file is not readable JSON.',
 			notABackup: 'That file is not an Appchery backup.',
 			tooNew: 'That backup came from a newer version of the app. Update Appchery first.'
+		}
+	},
+	freeScore: {
+		title: 'Score only',
+		group: 'Scored without arrows',
+		hint: 'Arrows counted and a total, with no arrow by arrow record.',
+		setupHint: 'Where this was shot. The arrows and the score are entered as you go.',
+		create: 'Start',
+		arrows: 'Arrows shot',
+		total: 'Total score',
+		average: '{value} per arrow'
+	},
+	importer: {
+		title: 'Import from another app',
+		hint: 'Load a CapTarget export (.xlsx). Sessions already imported are refreshed; nothing else on this device is touched.',
+		choose: 'Choose an export',
+		confirmTitle: 'Import this file?',
+		confirmAction: 'Import',
+		bow: 'Bow these sessions were shot with',
+		noBow: 'Do not set a bow',
+		working: 'Importing…',
+		progress: '{done} of {total} sessions written.',
+		workingHint: 'Writing the sessions and recounting the badges.',
+		confirmBody: '{name} holds {sessions} sessions, {rounds} scored rounds and {arrows} arrows.',
+		skipped: '{n} rows could not be read and will be left out.',
+		imported: 'Imported {sessions} sessions and {arrows} arrows.',
+		error: {
+			notAWorkbook: 'That file is not an .xlsx export.',
+			unreadableWorkbook: 'That file could not be opened. Export it again from the other app.',
+			nothingFound: 'Nothing recognisable was found in that file.'
 		}
 	},
 	storage: {

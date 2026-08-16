@@ -46,7 +46,7 @@ export function toVolume(activities: ActivityLike[]): ActivityLike[] {
 }
 
 /** What the round chip calls the arrows that belong to no round, in the order it offers them. */
-export const VOLUME_KINDS = ['match', 'tuning', 'training'] as const;
+export const VOLUME_KINDS = ['match', 'tuning', 'freeScore', 'training'] as const;
 
 /**
  * What the round chip files an activity under: the shape it was shot at, or what it was when there

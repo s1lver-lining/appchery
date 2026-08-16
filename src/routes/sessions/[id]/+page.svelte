@@ -28,6 +28,7 @@
 		END_COUNTS,
 		ARROWS_PER_END
 	} from '$lib/domain/rounds/custom';
+import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { BOT_LEVELS } from '$lib/domain/bots';
 	import {
@@ -597,6 +598,7 @@
 				: $t('match.title');
 			return stage ? `${stage} · ${name}` : name;
 		}
+		if (a.kind === FREE_SCORE_KIND) return $t('freeScore.title');
 		// The procedure's name, not the key it is stored under: the row said "limb-alignment".
 		if (a.kind === 'tuning')
 			return a.templateKey && getTemplate(a.templateKey)
@@ -1025,11 +1027,16 @@
 															? $t('tuning.title')
 															: a.kind === 'match'
 																? matchSummary(a)
-																: `${a.arrowsShot} ${$t('score.arrow')}`}
+																: a.kind === FREE_SCORE_KIND
+																	? `${freeScoreLabel(parseFreeScore(a.measurements))} · ${a.arrowsShot} ${$t('score.arrow')}`
+																	: `${a.arrowsShot} ${$t('score.arrow')}`}
 													</p>
 												</div>
 												{#if a.kind === 'scoring'}
 													<span class="tabular text-xl font-bold">{a.totalScore}</span>
+												{:else if a.kind === FREE_SCORE_KIND}
+													<!-- Lighter than a round's total: it is a score, but not one that compares. -->
+													<span class="tabular text-xl font-semibold text-muted">{a.totalScore}</span>
 												{:else if a.kind === 'match'}
 													<!-- The result rather than the score: a match is won or lost, never a number. -->
 													{@const state = matchState(a)}
@@ -1310,6 +1317,25 @@
 							{/each}
 						</div>
 					{/if}
+				</section>
+				<!-- Last, and on its own: it is the entry for shooting that fits none of the shapes
+					above, so offering it beside them would only make them harder to read. -->
+				<section>
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('freeScore.group')}</h3>
+					<a
+						href="/sessions/{sessionId}/free"
+						class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+					>
+						<span
+							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
+						>
+							<Icon name="target" size={20} />
+						</span>
+						<span class="min-w-0">
+							<span class="block font-medium">{$t('freeScore.title')}</span>
+							<span class="mt-0.5 block text-xs text-muted">{$t('freeScore.hint')}</span>
+						</span>
+					</a>
 				</section>
 			</div>
 		</div>

@@ -642,9 +642,9 @@ describe('volumeRoundKey', () => {
 		);
 	});
 
-	it('offers a key for each of the three kinds of arrow that had no round', () => {
+	it('offers a key for every kind of arrow that had no round', () => {
 		const keys = VOLUME_KINDS.map((kind) => volumeRoundKey({ ...activity({ id: kind }), kind }));
-		expect(keys).toEqual(['kind:match', 'kind:tuning', 'kind:training']);
+		expect(keys).toEqual(['kind:match', 'kind:tuning', 'kind:freeScore', 'kind:training']);
 	});
 
 	it('reads an activity carrying no kind as a round, which is what a round only list holds', () => {

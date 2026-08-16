@@ -75,6 +75,13 @@
 		type ShotRow,
 		type BowRow
 	} from '$lib/db/repository';
+	import {
+		FREE_SCORE_KIND,
+		parseFreeScore,
+		freeScoreLabel,
+		freeScoreAverage
+	} from '$lib/domain/freeScore';
+	import { updateFreeScore } from '$lib/db/repository';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { scrim } from '$lib/ui/statusBar';
@@ -704,6 +711,41 @@
 		await refresh();
 	}
 
+	/* Scoring with no arrows written down, see src/lib/domain/freeScore.ts. */
+
+	const freeScore = $derived(
+		activity?.kind === FREE_SCORE_KIND ? parseFreeScore(activity.measurements) : null
+	);
+	/**
+	 * The score is typed rather than counted, so it is held while the archer types and written on
+	 * the way out of the field: saving each keystroke turns a corrected 104 into a 1, a 10 and a 104.
+	 */
+	let scoreDraft = $state<number | string>('');
+	let scoreLoaded = $state<string | null>(null);
+	$effect(() => {
+		if (!activity || activity.kind !== FREE_SCORE_KIND || scoreLoaded === activity.id) return;
+		scoreLoaded = activity.id;
+		scoreDraft = activity.totalScore;
+	});
+
+	async function countFreeArrows(delta: number) {
+		if (!activity) return;
+		await updateFreeScore(activity.id, { arrowsShot: Math.max(0, activity.arrowsShot + delta) });
+		await refresh();
+	}
+
+	async function saveFreeScore() {
+		if (!activity) return;
+		const value = Number(scoreDraft);
+		if (!Number.isFinite(value) || value < 0) {
+			scoreDraft = activity.totalScore;
+			return;
+		}
+		if (Math.round(value) === activity.totalScore) return;
+		await updateFreeScore(activity.id, { totalScore: value });
+		await refresh();
+	}
+
 	async function remove() {
 		const sessionId = activity?.sessionId;
 		await deleteActivity(activityId);
@@ -883,6 +925,71 @@
 				{bow ? $t('tuning.noSettings') : $t('tuning.noBowSelected')}
 			</p>
 		{/if}
+
+		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+			<Icon name="trash" size={16} />
+			{$t('activity.delete')}
+		</button>
+	</div>
+
+{:else if activity && freeScore}
+	<!--
+		No target face and no keypad: this page exists because the arrows were never recorded one by
+		one. It asks the two things the archer does know, and counts nothing on their behalf.
+	-->
+	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
+		<header>
+			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
+			<h1 class="text-2xl font-bold tracking-tight">{$t('freeScore.title')}</h1>
+			<p class="text-sm text-muted">{freeScoreLabel(freeScore)}</p>
+		</header>
+
+		<section class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3.5">
+			<div>
+				<p class="tabular text-2xl leading-none font-bold">{activity.arrowsShot}</p>
+				<p class="mt-1 text-xs text-muted">{$t('freeScore.arrows')}</p>
+			</div>
+			<div class="flex items-center gap-1.5">
+				<button
+					class="touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
+					disabled={activity.arrowsShot === 0}
+					aria-label={$t('session.oneLess')}
+					onclick={() => countFreeArrows(-1)}
+				>
+					−
+				</button>
+				{#each [1, 3, 6] as step (step)}
+					<button
+						class="tabular rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium"
+						onclick={() => countFreeArrows(step)}
+					>
+						+{step}
+					</button>
+				{/each}
+			</div>
+		</section>
+
+		<section class="rounded-xl border border-line bg-surface p-3.5">
+			<label class="block text-sm text-muted" for="free-score-total">{$t('freeScore.total')}</label>
+			<input
+				id="free-score-total"
+				type="number"
+				inputmode="numeric"
+				min="0"
+				class="tabular mt-1 w-full rounded-lg border border-line bg-bg p-3 text-2xl font-bold text-ink"
+				bind:value={scoreDraft}
+				onblur={saveFreeScore}
+				onchange={saveFreeScore}
+			/>
+			{#if freeScoreAverage(activity.totalScore, activity.arrowsShot) !== null}
+				<p class="tabular mt-2 text-sm text-muted">
+					{$t('freeScore.average', {
+						value: freeScoreAverage(activity.totalScore, activity.arrowsShot)!.toFixed(2)
+					})}
+				</p>
+			{/if}
+			<p class="mt-2 text-xs text-muted">{$t('freeScore.hint')}</p>
+		</section>
 
 		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
 			<Icon name="trash" size={16} />

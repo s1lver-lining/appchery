@@ -3,6 +3,7 @@
 	import { closeOnBack } from './dismiss.svelte';
 	import { scrim } from './statusBar';
 	import { lockScroll } from './scrollLock';
+	import { portal } from './portal';
 
 	/**
 	 * Deletions here remove scores that exist nowhere else, so they ask first. The confirming button
@@ -29,7 +30,7 @@
 	);
 </script>
 
-<div class="fixed inset-0 z-[60] flex items-center justify-center p-4" use:lockScroll>
+<div class="fixed inset-0 z-[60] flex items-center justify-center p-4" use:portal use:lockScroll>
 	<button class="absolute inset-0 bg-black/50" use:scrim={0.5} aria-label={$t('common.cancel')} onclick={oncancel}
 	></button>
 
@@ -39,7 +40,7 @@
 		aria-label={title}
 	>
 		<h2 class="text-base font-bold">{title}</h2>
-		<p class="mt-1 text-sm text-muted">{message}</p>
+		<p class="mt-1 text-sm whitespace-pre-line text-muted">{message}</p>
 
 		<div class="mt-4 flex gap-2">
 			<button class="flex-1 rounded-lg border border-line py-2 text-sm font-medium" onclick={oncancel}>

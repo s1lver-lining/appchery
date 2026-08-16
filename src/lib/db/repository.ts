@@ -13,6 +13,8 @@ import {
 	gatherNames,
 	type MatchConfig
 } from '$lib/domain/matches';
+import type { CapTargetPlan } from '$lib/import/captarget';
+import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
 
@@ -164,6 +166,48 @@ export async function createScoringActivity(sessionId: string, round: RoundDefin
 		});
 	await log('activity', base.id, 'insert');
 	return base.id;
+}
+
+/**
+ * Scoring nobody wrote down arrow by arrow, see src/lib/domain/freeScore.ts. It carries no round
+ * definition on purpose: what makes it safe to keep a score on is that nothing can mistake it for
+ * a round, and a round definition is exactly what everything else looks for.
+ */
+export async function createFreeScoreActivity(sessionId: string, setup: FreeScoreSetup) {
+	await unplan(sessionId);
+	const base = stamp();
+	await db().insert(schema.activity).values({
+		...base,
+		sessionId,
+		kind: FREE_SCORE_KIND,
+		measurements: serialiseFreeScore(setup),
+		startedAt: base.createdAt,
+		status: 'in_progress'
+	});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+/**
+ * The two figures this kind of activity is made of. Written straight to the columns rather than
+ * derived from arrows, because there are no arrows to derive them from: that is the whole point.
+ */
+export async function updateFreeScore(
+	activityId: string,
+	patch: { arrowsShot?: number; totalScore?: number; setup?: FreeScoreSetup }
+) {
+	await db()
+		.update(schema.activity)
+		.set({
+			...(patch.arrowsShot === undefined ? {} : { arrowsShot: Math.max(0, Math.round(patch.arrowsShot)) }),
+			...(patch.totalScore === undefined ? {} : { totalScore: Math.max(0, Math.round(patch.totalScore)) }),
+			...(patch.setup === undefined ? {} : { measurements: serialiseFreeScore(patch.setup) }),
+			// Complete the moment it holds anything: there is no last arrow to wait for.
+			status: 'complete',
+			updatedAt: Date.now()
+		})
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
 }
 
 export async function createTuningActivity(sessionId: string, templateKey: string) {
@@ -1371,4 +1415,202 @@ export function shotFromZone(zone: Zone, source: Shot['source'] = 'manual'): Omi
 /** Plotted arrows carry coordinates, and the value is derived from them rather than entered twice. */
 export function shotFromPlot(zone: Zone, x: number, y: number): Omit<Shot, 'ordinal'> {
 	return { value: zone.value, zoneLabel: zone.label, x, y, source: 'plotted' };
+}
+
+/* Imports from other apps */
+
+/**
+ * Writing a plan read out of another app's export, see src/lib/import/captarget.ts.
+ *
+ * Imported rows are keyed by what the other app called them rather than by a fresh uuid, so running
+ * the same file again replaces what it wrote last time instead of doubling every score. That is the
+ * only sane behaviour for a file an archer will re-export after adding a month of shooting to it,
+ * and it is why the prefix matters: nothing outside an import can ever collide with these ids.
+ *
+ * Rows the archer has since created by hand are untouched, and so is an imported row the new file
+ * no longer mentions: a shorter export is a smaller export, not an instruction to delete history.
+ */
+const IMPORT_PREFIX = 'imported:';
+
+function importedId(kind: string, externalId: string): string {
+	return `${IMPORT_PREFIX}${kind}:${externalId}`;
+}
+
+export interface ImportReport {
+	sessions: number;
+	activities: number;
+	arrows: number;
+	replaced: number;
+}
+
+export interface ImportOptions {
+	/** The bow every imported session was shot with, when the archer says which one it was. */
+	bowId?: string | null;
+	/**
+	 * Called after each session is written. A file holding years of shooting takes long enough that
+	 * the screen has to be able to say how far along it is, and only the loop knows.
+	 */
+	onProgress?: (done: number, total: number) => void;
+}
+
+export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {}): Promise<ImportReport> {
+	const report: ImportReport = { sessions: 0, activities: 0, arrows: 0, replaced: 0 };
+	const total = plan.sessions.length;
+	options.onProgress?.(0, total);
+
+	for (const planned of plan.sessions) {
+		const sessionId = importedId('session', planned.externalId);
+		const existing = await getSession(sessionId);
+		if (existing) report.replaced += 1;
+		await clearImportedSession(sessionId);
+
+		const now = Date.now();
+		const base = { createdAt: now, updatedAt: now, deviceId: deviceId() };
+		await db()
+			.insert(schema.session)
+			.values({
+				...base,
+				id: sessionId,
+				label: planned.label,
+				startedAt: planned.startedAt,
+				kind: planned.kind,
+				bowId: options.bowId ?? null,
+				notes: sessionNote(planned)
+			});
+		await log('session', sessionId, 'insert');
+		report.sessions += 1;
+
+		for (const activity of planned.activities) {
+			const activityId = importedId('activity', activity.externalId);
+			const shots = activity.ends.flatMap((end) => end.shots);
+			const [stage] = activity.round.stages;
+			const freeScore = activity.kind === FREE_SCORE_KIND;
+			await db()
+				.insert(schema.activity)
+				.values({
+					...base,
+					id: activityId,
+					sessionId,
+					kind: activity.kind,
+					roundDefinitionId: null,
+					// Scoring with no arrows behind it keeps where it was shot and nothing more: written
+					// as a round definition it would be counted as a round it never was.
+					roundDefinition: freeScore ? null : JSON.stringify(activity.round),
+					measurements: freeScore
+						? serialiseFreeScore({
+								distance: stage?.distance?.value ?? null,
+								unit: stage?.distance?.unit ?? 'm',
+								faceSize: stage?.faceSize ?? 122
+							})
+						: null,
+					startedAt: activity.startedAt,
+					// A round whose arrows the export did not carry keeps the total it reported: the
+					// score is the thing the archer shot for, and it is not recoverable any other way.
+					totalScore: shots.length
+						? shots.reduce((sum, shot) => sum + shot.value, 0)
+						: (activity.reportedTotal ?? 0),
+					count10s: shots.filter((shot) => shot.zoneLabel === '10' || shot.zoneLabel === 'X').length,
+					countX: shots.filter((shot) => shot.zoneLabel === 'X').length,
+					arrowsShot: shots.length || activity.reportedArrows,
+					status: 'complete',
+					notes: activity.notes
+				});
+			await log('activity', activityId, 'insert');
+			report.activities += 1;
+
+			for (const end of activity.ends) {
+				const endBase = stamp();
+				await db()
+					.insert(schema.end)
+					.values({
+						...endBase,
+						activityId,
+						stageIndex: 0,
+						endNo: end.endNo,
+						subtotal: end.shots.reduce((sum, shot) => sum + shot.value, 0)
+					});
+				await log('round_end', endBase.id, 'insert');
+
+				if (end.shots.length === 0) continue;
+				const rows = end.shots.map((shot, index) => ({
+					...stamp(),
+					endId: endBase.id,
+					ordinal: index + 1,
+					value: shot.value,
+					zoneLabel: shot.zoneLabel,
+					x: shot.x,
+					y: shot.y,
+					// Provenance is kept honest: an arrow read out of a file was not scored here.
+					source: shot.x === null ? 'manual' : 'plotted'
+				}));
+				await db().insert(schema.shot).values(rows);
+				await logMany('shot', rows.map((row) => row.id), 'insert');
+				report.arrows += rows.length;
+			}
+		}
+
+		if (planned.trainingArrows > 0) {
+			// Written here rather than through addTrainingArrows, which dates the activity now: an
+			// import is the one caller whose arrows were shot on a day that is not today, and dating
+			// them today piles years of volume onto the day the file was opened.
+			const training = stamp();
+			await db()
+				.insert(schema.activity)
+				.values({
+					...training,
+					sessionId,
+					kind: 'training',
+					startedAt: planned.startedAt,
+					arrowsShot: planned.trainingArrows,
+					status: 'complete'
+				});
+			await log('activity', training.id, 'insert');
+			report.arrows += planned.trainingArrows;
+		}
+
+		options.onProgress?.(report.sessions, total);
+	}
+
+	return report;
+}
+
+/**
+ * What the export said about the outing, plus what it could not say. An exercise CapTarget lists
+ * without arrows and without a score leaves no count anywhere in the file, not even in the session's
+ * own totals, so it is written down in words: an arrow figure that is quietly short is worse than
+ * one the archer knows is short.
+ */
+function sessionNote(planned: CapTargetPlan['sessions'][number]): string | null {
+	const parts = [planned.notes, planned.unrecordedExercises > 0
+		? `${planned.unrecordedExercises} exercise${planned.unrecordedExercises > 1 ? 's' : ''} with no arrows recorded in the export`
+		: null].filter(Boolean);
+	return parts.length > 0 ? parts.join('\n') : null;
+}
+
+/**
+ * Takes a previously imported session's rows away for real rather than soft deleting them. A
+ * tombstone is how the archer deleting an outing is told apart from an outing that never was; a
+ * re-import is neither, and leaving tombstones behind would make every re-run of the same file
+ * grow the database it is meant to be replacing rows in.
+ */
+async function clearImportedSession(sessionId: string) {
+	const activities = await db()
+		.select({ id: schema.activity.id })
+		.from(schema.activity)
+		.where(eq(schema.activity.sessionId, sessionId));
+	const activityIds = activities.map((row) => row.id);
+
+	if (activityIds.length > 0) {
+		const ends = await db()
+			.select({ id: schema.end.id })
+			.from(schema.end)
+			.where(inArray(schema.end.activityId, activityIds));
+		const endIds = ends.map((row) => row.id);
+		for (let i = 0; i < endIds.length; i += 100) {
+			await db().delete(schema.shot).where(inArray(schema.shot.endId, endIds.slice(i, i + 100)));
+		}
+		await db().delete(schema.end).where(inArray(schema.end.activityId, activityIds));
+		await db().delete(schema.activity).where(eq(schema.activity.sessionId, sessionId));
+	}
+	await db().delete(schema.session).where(eq(schema.session.id, sessionId));
 }
