@@ -722,6 +722,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				{/if}
 			</span>
 
+			<!-- One line rather than two: the ceiling sits at the right, so the record reads beside
+				what it was scored on instead of costing the card another row. -->
 			<span class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
 				{#each round.stages as stage, i (i)}
 					{@const distance = stageDistance(stage)}
@@ -730,27 +732,22 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					{/if}
 				{/each}
 				<span class="tabular">{$t('round.arrows', { n: totalArrows(round) })}</span>
-				<span class="text-line">·</span>
-				<span class="tabular">
+				{#if stats}
+					<span class="text-line">·</span>
+					<span class="tabular text-brand-text">
+						{$t('round.yourBest', { n: stats.best.totalScore })}
+					</span>
+				{/if}
+				{#if withDate}
+					<span class="text-line">·</span>
+					<span class="truncate">{whenShot(round)}</span>
+				{/if}
+				<span class="tabular ml-auto pl-1">
 					{roundNeedsVerification(round)
 						? $t('round.unverifiedShort')
 						: $t('round.max', { n: maxScore(round, getScoreSet(round.scoreSetId)) })}
 				</span>
 			</span>
-
-			<!-- The number to beat, and when it was last gone for: one line, the record leading. -->
-			{#if stats || withDate}
-				<span class="mt-1 flex items-baseline gap-2 text-[11px]">
-					{#if stats}
-						<span class="tabular text-brand-text">
-							{$t('round.yourBest', { n: stats.best.totalScore })}
-						</span>
-					{/if}
-					{#if withDate}
-						<span class="ml-auto truncate text-muted">{whenShot(round)}</span>
-					{/if}
-				</span>
-			{/if}
 		</span>
 	</button>
 {/snippet}
