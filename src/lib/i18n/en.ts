@@ -181,7 +181,23 @@ export const en = {
 		action: 'Undo',
 		sessionDeleted: 'Session deleted',
 		activityDeleted: 'Activity deleted',
-		matchDeleted: 'Match deleted'
+		matchDeleted: 'Match deleted',
+		sessionsDeleted: '{n} sessions deleted',
+		activitiesDeleted: '{n} activities removed'
+	},
+	// Working on several rows at once: what the bar at the foot of a list says while one is on.
+	select: {
+		count: '{n} selected',
+		all: 'Select all',
+		none: 'Select none',
+		changeBow: 'Change bow',
+		deleteAll: 'Delete all',
+		removeAll: 'Remove all',
+		bowTitle: 'Bow for the selected sessions',
+		deleteTitle: 'Delete the selected sessions?',
+		deleteBody: '{n} sessions, with everything recorded in them.',
+		removeTitle: 'Remove the selected activities?',
+		removeBody: '{n} activities, with the arrows scored in them.'
 	},
 	timer: {
 		title: 'Timer',

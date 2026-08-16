@@ -52,6 +52,10 @@ export const tricksEn = {
 					body: 'The display section of the settings turns the round plus button in the corner into the full width bar.'
 				},
 				{
+					lead: 'Work on several outings at once.',
+					body: 'Hold a session down, or right click it, and the list turns into a selection: tapping picks rows instead of opening them. The bar at the foot then changes the bow of everything picked, or deletes it all, and the same hold works on the activities inside a session.'
+				},
+				{
 					lead: 'A planned slot costs nothing.',
 					body: 'Opening a session a plan calls for writes nothing to the database. It becomes a real session the moment an arrow, a note or a setting is entered in it, so a week nobody shot leaves no trace to clean up.'
 				}

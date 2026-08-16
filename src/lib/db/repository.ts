@@ -131,6 +131,45 @@ export async function deleteSession(id: string) {
 	await log('session', id, 'delete');
 }
 
+// One statement, one log row per id: a batch has to reach a sync as the rows it actually deleted.
+export async function deleteSessions(ids: string[]) {
+	if (ids.length === 0) return;
+	await transaction(async () => {
+		const now = Date.now();
+		await db()
+			.update(schema.session)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(inArray(schema.session.id, ids));
+		await logMany('session', ids, 'delete');
+	});
+}
+
+export async function restoreSessions(ids: string[]) {
+	if (ids.length === 0) return;
+	await transaction(async () => {
+		await db()
+			.update(schema.session)
+			.set({ deletedAt: null, updatedAt: Date.now() })
+			.where(inArray(schema.session.id, ids));
+		await logMany('session', ids, 'update');
+	});
+}
+
+/** A generic type and a bow of one's own are exclusive, so both columns are written together. */
+export async function setSessionsBow(
+	ids: string[],
+	value: { bowId: string | null; bowType: string | null }
+) {
+	if (ids.length === 0) return;
+	await transaction(async () => {
+		await db()
+			.update(schema.session)
+			.set({ ...value, updatedAt: Date.now() })
+			.where(inArray(schema.session.id, ids));
+		await logMany('session', ids, 'update');
+	});
+}
+
 /* Activities */
 
 /**
@@ -334,6 +373,30 @@ export async function deleteActivity(id: string) {
 		.set({ deletedAt: now, updatedAt: now })
 		.where(eq(schema.activity.id, id));
 	await log('activity', id, 'delete');
+}
+
+/** A selection removed at once, logged row by row for the same reason `deleteSessions` is. */
+export async function deleteActivities(ids: string[]) {
+	if (ids.length === 0) return;
+	await transaction(async () => {
+		const now = Date.now();
+		await db()
+			.update(schema.activity)
+			.set({ deletedAt: now, updatedAt: now })
+			.where(inArray(schema.activity.id, ids));
+		await logMany('activity', ids, 'delete');
+	});
+}
+
+export async function restoreActivities(ids: string[]) {
+	if (ids.length === 0) return;
+	await transaction(async () => {
+		await db()
+			.update(schema.activity)
+			.set({ deletedAt: null, updatedAt: Date.now() })
+			.where(inArray(schema.activity.id, ids));
+		await logMany('activity', ids, 'update');
+	});
 }
 
 /**

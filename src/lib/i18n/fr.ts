@@ -182,7 +182,22 @@ export const fr: Dictionary = {
 		action: 'Annuler',
 		sessionDeleted: 'Séance supprimée',
 		activityDeleted: 'Activité supprimée',
-		matchDeleted: 'Match supprimé'
+		matchDeleted: 'Match supprimé',
+		sessionsDeleted: '{n} séances supprimées',
+		activitiesDeleted: '{n} activités retirées'
+	},
+	select: {
+		count: '{n} sélectionnées',
+		all: 'Tout sélectionner',
+		none: 'Tout désélectionner',
+		changeBow: 'Changer d’arc',
+		deleteAll: 'Tout supprimer',
+		removeAll: 'Tout retirer',
+		bowTitle: 'Arc des séances sélectionnées',
+		deleteTitle: 'Supprimer les séances sélectionnées ?',
+		deleteBody: '{n} séances, avec tout ce qui y est consigné.',
+		removeTitle: 'Retirer les activités sélectionnées ?',
+		removeBody: '{n} activités, avec les flèches qui y sont marquées.'
 	},
 	timer: {
 		title: 'Chronomètre',

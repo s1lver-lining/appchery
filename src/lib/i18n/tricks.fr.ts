@@ -47,6 +47,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'La section affichage des paramètres transforme le bouton plus rond du coin en barre pleine largeur.'
 				},
 				{
+					lead: 'Travailler sur plusieurs séances à la fois.',
+					body: 'Maintenez une séance appuyée, ou faites un clic droit, et la liste passe en sélection : une touche coche la ligne au lieu de l’ouvrir. La barre du bas change alors l’arc de tout ce qui est coché, ou supprime le tout, et le même appui long fonctionne sur les activités d’une séance.'
+				},
+				{
 					lead: 'Un créneau planifié ne coûte rien.',
 					body: 'Ouvrir une séance qu’un programme réclame n’écrit rien dans la base. Elle devient une vraie séance dès qu’une flèche, une note ou un réglage y est saisi : une semaine que personne n’a tirée ne laisse donc rien à nettoyer.'
 				}

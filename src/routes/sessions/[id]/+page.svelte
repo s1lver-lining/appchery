@@ -80,6 +80,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		listActivities,
 		listAllActivities,
 		listBows,
+		deleteActivities,
+		restoreActivities,
 		createScoringActivity,
 		createTuningActivity,
 		createMatchActivity,
@@ -97,6 +99,9 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { defaultBowId, formatDateTime, dateFormats } from '$lib/prefs';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
+	import { longpress } from '$lib/ui/longpress';
+	import SelectionBar from '$lib/ui/SelectionBar.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { scrim, ownsStatusBar } from '$lib/ui/statusBar';
 	import { lockScroll } from '$lib/ui/scrollLock';
@@ -588,6 +593,50 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		goto('/sessions');
 	}
 
+	// Held down to enter, the same gesture the session list is worked on as a selection with.
+	let selecting = $state(false);
+	let selected = $state<string[]>([]);
+	let confirmingRemove = $state(false);
+
+	const isSelected = $derived((id: string) => selected.includes(id));
+
+	function holdActivity(id: string) {
+		selecting = true;
+		if (!selected.includes(id)) selected = [...selected, id];
+	}
+
+	function toggleActivity(id: string) {
+		selected = selected.includes(id) ? selected.filter((a) => a !== id) : [...selected, id];
+	}
+
+	function endSelection() {
+		selecting = false;
+		selected = [];
+	}
+
+	// The rows belong to the tab they are listed in, so leaving it puts the selection down.
+	$effect(() => {
+		if (tab !== 'overview') endSelection();
+	});
+
+	closeOnBack(() => selecting, endSelection);
+
+	async function removeSelected() {
+		confirmingRemove = false;
+		const ids = selected;
+		await deleteActivities(ids);
+		endSelection();
+		await refresh();
+		offerUndo({
+			message: $t('undo.activitiesDeleted', { n: ids.length }),
+			label: $t('undo.action'),
+			undo: async () => {
+				await restoreActivities(ids);
+				await refresh();
+			}
+		});
+	}
+
 	/** A match is named by who it was against, since that is the whole of what it was. */
 	const matchOf = (a: ActivityRow) => parseConfig(a.matchConfig);
 
@@ -1067,8 +1116,23 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 										<li>
 											<a
 												href="/activities/{a.id}"
-												class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3"
+												use:longpress={() => holdActivity(a.id)}
+												onclick={(event) => {
+													if (!selecting) return;
+													event.preventDefault();
+													toggleActivity(a.id);
+												}}
+												class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
+													{isSelected(a.id) ? 'ring-2 ring-brand' : ''}"
 											>
+												{#if selecting}
+													<span
+														class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border
+															{isSelected(a.id) ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+													>
+														{#if isSelected(a.id)}<Icon name="check" size={13} />{/if}
+													</span>
+												{/if}
 												<!-- The picture the row was started from, so what was done is recognised rather than read.
 												Dropped where the screen cannot spare the width. -->
 												<span class="hidden shrink-0 min-[301px]:flex">
@@ -1264,7 +1328,35 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				{/if}
 			{/snippet}
 		</TabDeck>
+
+		{#if selecting && tab === 'overview'}
+			<SelectionBar
+				count={selected.length}
+				total={listedActivities.length}
+				onall={() =>
+					(selected =
+						selected.length >= listedActivities.length ? [] : listedActivities.map((a) => a.id))}
+				onclear={endSelection}
+				actions={[
+					{
+						label: $t('select.removeAll'),
+						icon: 'trash',
+						danger: true,
+						onselect: () => (confirmingRemove = true)
+					}
+				]}
+			/>
+		{/if}
 	</div>
+
+	{#if confirmingRemove}
+		<ConfirmDialog
+			title={$t('select.removeTitle')}
+			message={$t('select.removeBody', { n: selected.length })}
+			onconfirm={removeSelected}
+			oncancel={() => (confirmingRemove = false)}
+		/>
+	{/if}
 
 	{#if adding}
 		<div class="fixed inset-0 z-50 flex flex-col bg-bg" use:ownsStatusBar use:lockScroll>

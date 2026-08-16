@@ -31,9 +31,14 @@
 		listAllActivities,
 		listPlanSlots,
 		listPlans,
+		listBows,
 		createSession,
-		updateSession
+		updateSession,
+		deleteSessions,
+		restoreSessions,
+		setSessionsBow
 	} from '$lib/db/repository';
+	import { BOW_TYPES } from '$lib/domain/tuning/templates';
 	import {
 		upcoming,
 		weekdayOf,
@@ -59,8 +64,12 @@
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import SelectionBar from '$lib/ui/SelectionBar.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
+	import { longpress } from '$lib/ui/longpress';
+	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
 	import { lockScroll } from '$lib/ui/scrollLock';
@@ -95,9 +104,65 @@
 		planningAt = Date.now();
 	}
 	let loaded = $state(false);
+	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
+
+	// Entered by holding a row down and left by the cross, so a plain tap still opens what it lands on.
+	let selecting = $state(false);
+	let selected = $state<string[]>([]);
+	let pickingBow = $state(false);
+	let confirmingDelete = $state(false);
+
+	const isSelected = $derived((id: string) => selected.includes(id));
+
+	function hold(id: string) {
+		selecting = true;
+		if (!selected.includes(id)) selected = [...selected, id];
+	}
+
+	function toggle(id: string) {
+		selected = selected.includes(id) ? selected.filter((s) => s !== id) : [...selected, id];
+	}
+
+	function endSelection() {
+		selecting = false;
+		selected = [];
+	}
+
+	async function applyBow(value: string) {
+		pickingBow = false;
+		const ids = selected;
+		await setSessionsBow(
+			ids,
+			value.startsWith('bow:')
+				? { bowId: value.slice(4), bowType: null }
+				: { bowId: null, bowType: value || null }
+		);
+		endSelection();
+		await refresh();
+	}
+
+	// Offered back as the batch it was: the delete is soft, so the same rows go back untouched.
+	async function deleteSelected() {
+		confirmingDelete = false;
+		const ids = selected;
+		await deleteSessions(ids);
+		endSelection();
+		await refresh();
+		offerUndo({
+			message: $t('undo.sessionsDeleted', { n: ids.length }),
+			label: $t('undo.action'),
+			undo: async () => {
+				await restoreSessions(ids);
+				await refresh();
+			}
+		});
+	}
+
+	closeOnBack(() => selecting, endSelection);
 
 	async function refresh() {
 		sessions = await listSessions();
+		bows = await listBows();
 		slots = await listPlanSlots();
 		plans = await listPlans();
 		const activities = await listAllActivities();
@@ -371,6 +436,13 @@
 			: []
 	);
 
+	/** Only what is on screen: "all" cannot mean rows a search or a month has put out of sight. */
+	const listedIds = $derived(
+		tab === 'list'
+			? found.map((s) => s.id)
+			: (selectedDay !== null ? daySessions : monthSessions).map((s) => s.id)
+	);
+
 	const today = startOfDay(Date.now());
 
 	const isCompetition = (s: Session) => s.kind === 'competition';
@@ -459,7 +531,15 @@
 {#snippet card(s: Session, withDate: boolean)}
 	<a
 		href="/sessions/{s.id}"
+		use:longpress={() => hold(s.id)}
+		onclick={(event) => {
+			// While a selection is on, a tap picks rather than opens: the row is a checkbox for now.
+			if (!selecting) return;
+			event.preventDefault();
+			toggle(s.id);
+		}}
 		class="relative flex flex-1 items-center gap-3 overflow-hidden rounded-xl border p-3 pl-4 transition-colors active:bg-sunk/40
+			{isSelected(s.id) ? 'ring-2 ring-brand' : ''}
 			{isCompetition(s)
 			? 'border-competition/40 bg-gradient-to-r from-competition/12 to-surface'
 			: isToday(s)
@@ -470,6 +550,15 @@
 	>
 		{#if isCompetition(s)}
 			<span class="absolute inset-y-0 left-0 w-1 bg-competition"></span>
+		{/if}
+
+		{#if selecting}
+			<span
+				class="flex h-5 w-5 shrink-0 items-center justify-center rounded-full border
+					{isSelected(s.id) ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+			>
+				{#if isSelected(s.id)}<Icon name="check" size={13} />{/if}
+			</span>
 		{/if}
 
 		{#if isCompetition(s)}
@@ -831,7 +920,25 @@
 	</div>
 
 	<!-- Sticky rather than fixed, so it sits under the list yet never scrolls out of reach. -->
-	{#if $fullNewSessionButton}
+	{#if selecting}
+		<!-- The way to start an outing stands down while a selection is on: the bar is what the
+			list is for at that moment, and two bars at the foot of it is one too many. -->
+		<SelectionBar
+			count={selected.length}
+			total={listedIds.length}
+			onall={() => (selected = selected.length >= listedIds.length ? [] : listedIds)}
+			onclear={endSelection}
+			actions={[
+				{ label: $t('select.changeBow'), icon: 'bow', onselect: () => (pickingBow = true) },
+				{
+					label: $t('select.deleteAll'),
+					icon: 'trash',
+					danger: true,
+					onselect: () => (confirmingDelete = true)
+				}
+			]}
+		/>
+	{:else if $fullNewSessionButton}
 		<div class="sticky bottom-0 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 			<div class="mx-auto flex w-full max-w-2xl gap-2">
 				<MoreMenu label={$t('sessions.moreKinds')} items={NEW_KINDS} />
@@ -883,6 +990,31 @@
 		{/each}
 	</ul>
 </Sheet>
+
+<Sheet open={pickingBow} title={$t('select.bowTitle')} onclose={() => (pickingBow = false)}>
+	<ul class="space-y-1">
+		<!-- The same list the session settings tab offers, so one bow means the same thing on both. -->
+		{#each [{ value: '', label: $t('session.noBow') }, ...bows.map((b) => ({ value: `bow:${b.id}`, label: b.name })), ...BOW_TYPES.map((type) => ({ value: type, label: $t(`bow.${type}`) }))] as option (option.value)}
+			<li>
+				<button
+					class="w-full rounded-lg px-2 py-2.5 text-left text-sm"
+					onclick={() => applyBow(option.value)}
+				>
+					{option.label}
+				</button>
+			</li>
+		{/each}
+	</ul>
+</Sheet>
+
+{#if confirmingDelete}
+	<ConfirmDialog
+		title={$t('select.deleteTitle')}
+		message={$t('select.deleteBody', { n: selected.length })}
+		onconfirm={deleteSelected}
+		oncancel={() => (confirmingDelete = false)}
+	/>
+{/if}
 
 {#if planningAt !== null}
 	<DateTimeDialog
