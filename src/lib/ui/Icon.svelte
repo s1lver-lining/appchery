@@ -33,6 +33,7 @@
 		| 'grid'
 		| 'list'
 		| 'share'
+		| 'qr'
 		| 'help';
 
 	let {
@@ -144,6 +145,13 @@
 		<path d="M12 3.6v11" />
 		<path d="M8.4 7.2 12 3.6l3.6 3.6" />
 		<path d="M5.5 12.4v6.4a1.6 1.6 0 0 0 1.6 1.6h9.8a1.6 1.6 0 0 0 1.6-1.6v-6.4" />
+	{:else if name === 'qr'}
+		<!-- Three corners and a scatter of modules: a code drawn small enough to still read as one. -->
+		<rect x="3.4" y="3.4" width="6.4" height="6.4" rx="1.2" />
+		<rect x="14.2" y="3.4" width="6.4" height="6.4" rx="1.2" />
+		<rect x="3.4" y="14.2" width="6.4" height="6.4" rx="1.2" />
+		<path d="M6.6 6.6h.01M17.4 6.6h.01M6.6 17.4h.01" stroke-width="2.6" />
+		<path d="M14.2 14.2h2.6v2.6h-2.6zM18.6 14.2h2M14.2 18.6v2M18 18.6h2.6M17.4 21h.01" />
 	{:else if name === 'help'}
 		<circle cx="12" cy="12" r="9" />
 		<path d="M9.5 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6" />

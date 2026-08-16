@@ -8,6 +8,14 @@ export const fr: Dictionary = {
 		exitBody: 'Tout est déjà enregistré sur cet appareil.',
 		exitAction: 'Fermer'
 	},
+	// The poster that hands the app to somebody else: the address of the app, as a code.
+	invite: {
+		title: 'Partager',
+		print: 'Imprimer',
+		scan: 'Scannez le code, ou tapez l’adresse',
+		body: 'Appchery garde vos scores, vos séances et les réglages de vos arcs sur votre téléphone. Rien à créer, rien à payer.',
+		free: 'Libre et open source, sous licence AGPL.'
+	},
 	nav: {
 		home: 'Accueil',
 		sessions: 'Séances',
@@ -905,6 +913,7 @@ export const fr: Dictionary = {
 		persistent: 'Persistant',
 		volatile: 'En mémoire, perdu au rechargement',
 		linkBadges: 'Badges',
+		linkShare: 'Partager',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
 			'Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.',

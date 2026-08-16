@@ -310,7 +310,7 @@
 		<!-- Over the page but under the tab bar: what it offers back is worth a glance, not the screen. -->
 		<UndoBar />
 
-		<nav class="safe-bottom flex border-t border-line bg-surface">
+		<nav data-tabbar class="safe-bottom flex border-t border-line bg-surface">
 			{#each tabs as tab (tab.href)}
 				<a
 					href={tab.href}

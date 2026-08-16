@@ -214,3 +214,10 @@ body {
 		transform: translateY(0);
 	}
 }
+
+/* A page sent to a printer is a poster, and the tab bar is not part of it. */
+@media print {
+	[data-tabbar] {
+		display: none;
+	}
+}

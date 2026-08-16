@@ -68,7 +68,8 @@
 		{ href: withOrigin('/plans', '/settings'), icon: 'chart', label: $t('plans.title') },
 		{ href: withOrigin('/tuning', '/settings'), icon: 'wrench', label: $t('tuning.guideTitle') },
 		{ href: withOrigin('/badges', '/settings'), icon: 'medal', label: $t('settings.linkBadges') },
-		{ href: withOrigin('/timer', '/settings'), icon: 'clock', label: $t('timer.title') }
+		{ href: withOrigin('/timer', '/settings'), icon: 'clock', label: $t('timer.title') },
+		{ href: withOrigin('/share', '/settings'), icon: 'qr', label: $t('settings.linkShare') }
 	]);
 
 	const TABS = $derived([

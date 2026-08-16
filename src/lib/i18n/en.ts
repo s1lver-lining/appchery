@@ -7,6 +7,14 @@ export const en = {
 		exitBody: 'Everything is already saved on this device.',
 		exitAction: 'Close'
 	},
+	// The poster that hands the app to somebody else: the address of the app, as a code.
+	invite: {
+		title: 'Share',
+		print: 'Print',
+		scan: 'Scan the code, or type the address',
+		body: 'Appchery keeps your scores, your sessions and your bow settings on your own phone. Nothing to sign up for, nothing to pay.',
+		free: 'Free and open source, under the AGPL.'
+	},
 	nav: {
 		home: 'Home',
 		sessions: 'Sessions',
@@ -900,6 +908,7 @@ export const en = {
 		persistent: 'Persistent',
 		volatile: 'In memory, lost on reload',
 		linkBadges: 'Badges',
+		linkShare: 'Share',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
 			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',
