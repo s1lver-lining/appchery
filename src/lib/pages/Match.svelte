@@ -799,9 +799,9 @@
 
 						<!-- The row below the keys, in equal parts: neither action leads the other. -->
 						{#snippet footer()}
-							<div class="flex items-center gap-2 border-t border-line bg-sunk/60 px-3 py-2">
+							<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 								<button
-									class="flex-1 basis-0 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+									class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm"
 									onclick={() => (cursor = null)}
 								>
 									{$t('common.done')}
@@ -815,7 +815,7 @@
 								</button>
 								{#if rows.some((row) => row.endNo === cursor?.endNo)}
 									<button
-										class="flex-1 basis-0 rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
+										class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
 										onclick={() => cursor && clearEnd(cursor.endNo)}
 									>
 										{$t('match.deleteEnd')}

@@ -1266,11 +1266,13 @@
 					{/if}
 				</div>
 
-				<!-- The row below the keys: undoing, filming, and dropping the end already written. -->
-				<div class="flex items-center gap-2 border-t border-line bg-sunk/60 px-3 py-2">
+				<!-- The row below the keys: undoing, filming, and dropping the end already written.
+					Stretched rather than centred, so a label that wraps to two lines does not leave the
+					buttons beside it short and the row looking half filled. -->
+				<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 					{#if editing || editingPending !== null}
 						<button
-							class="flex-1 rounded-lg border border-line bg-surface px-4 py-2 text-sm"
+							class="flex flex-1 items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm"
 							onclick={() => {
 								editing = null;
 								editingPending = null;
@@ -1281,7 +1283,7 @@
 					{:else}
 						{#if currentSlot && !plotting}
 							<button
-								class="rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
+								class="flex items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
 								disabled={pending.length === 0}
 								onclick={undo}
 							>
@@ -1297,7 +1299,7 @@
 						{/if}
 						{#if sheetRows.length > 0}
 							<button
-								class="rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted"
+								class="flex items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted"
 								onclick={undoEnd}
 							>
 								{$t('score.undoEnd')}
