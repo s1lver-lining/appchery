@@ -33,7 +33,7 @@
 	type Board = MuscleView | 'both';
 	const VIEWS: Board[] = ['back', 'front', 'both', 'deep'];
 	let view = $state<Board>('back');
-	let phase = $state<ShotPhase>('anchor');
+	let phase = $state<ShotPhase | null>(null);
 	let playing = $state(false);
 	/** Whether the shot figure shows its muscles or the frame they pull on. */
 	let bones = $state(false);
@@ -41,7 +41,7 @@
 
 	const pick = (id: MuscleId) => (selected = toggleMuscle(selected, id));
 
-	const working = $derived(musclesInPhase(phase));
+	const working = $derived(phase ? musclesInPhase(phase) : []);
 	const coverage = $derived(Math.round(shotCoverage(selected) * 100));
 
 </script>
@@ -57,83 +57,7 @@
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 	<p class="text-sm text-muted">{$t('muscles.intro')}</p>
 
-	<!-- The shot itself. Scrubbing it is how a muscle's moment is found, so it comes first. -->
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<div class="mb-2 flex items-center justify-between">
-			<h2 class="text-sm font-semibold text-muted">{$t('muscles.phaseTitle')}</h2>
-			<div class="flex gap-2">
-				<!-- Two readings of one body: what pulls, and what it pulls on. -->
-				<div class="flex overflow-hidden rounded-lg border border-line text-sm">
-					{#each [false, true] as choice (choice)}
-						<button
-							class="px-2.5 py-1.5 {bones === choice ? 'bg-brand/10 font-semibold' : ''}"
-							onclick={() => (bones = choice)}
-						>
-							{choice ? $t('muscles.bones') : $t('muscles.title')}
-						</button>
-					{/each}
-				</div>
-				<button
-					class="rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
-					onclick={() => (playing = !playing)}
-				>
-					{playing ? $t('muscles.pause') : $t('muscles.play')}
-				</button>
-			</div>
-		</div>
-
-		<div class="grid gap-3 sm:grid-cols-2">
-			<ShotFigure {phase} {playing} {bones} />
-
-			<div class="min-w-0">
-				<!-- The phases as a strip: it is a sequence, so it is read left to right and tapped along. -->
-				<div class="flex flex-wrap gap-1">
-					{#each SHOT_PHASES as entry (entry)}
-						<button
-							class="rounded-lg border px-2 py-1 text-[11px] leading-tight
-								{phase === entry && !playing
-								? 'border-brand bg-brand/10 font-semibold'
-								: 'border-line'}"
-							onclick={() => {
-								playing = false;
-								phase = entry;
-							}}
-						>
-							{$t(`muscles.phase.${entry}`)}
-						</button>
-					{/each}
-				</div>
-
-				{#if bones}
-					<p class="mt-3 text-xs text-muted">{$t('muscles.bonesHint')}</p>
-				{/if}
-				<h3 class="mt-3 text-xs font-semibold text-muted">{$t('muscles.working')}</h3>
-				{#if working.length === 0}
-					<p class="text-xs text-muted">{$t('muscles.nothingWorking')}</p>
-				{:else}
-					<ul class="mt-1 space-y-0.5">
-						{#each working as entry (entry.id)}
-							<li class="flex items-center gap-2 text-xs">
-								<!-- Three pips rather than a word: the load is a quantity and reads faster as one. -->
-								<span class="flex shrink-0 gap-0.5" aria-label={$t(`muscles.load.${entry.load}`)}>
-									{#each [1, 2, 3] as pip (pip)}
-										<span
-											class="size-1.5 rounded-full {pip <= entry.load
-												? 'bg-accent'
-												: 'bg-sunk'}"
-										></span>
-									{/each}
-								</span>
-								<span class="min-w-0 truncate">{$t(`muscles.name.${entry.id}`)}</span>
-							</li>
-						{/each}
-					</ul>
-				{/if}
-			</div>
-		</div>
-	</section>
-
-	<!-- The picker. The same shading as the shot above, so the two figures say the same thing. -->
+	<!-- The picker, first: it is what the page is for, and the shot below shades it in the same way. -->
 	<section class="rounded-2xl border border-line bg-surface p-4">
 		<div class="mb-3 flex gap-1">
 			{#each VIEWS as entry (entry)}
@@ -201,6 +125,106 @@
 		{/if}
 	</section>
 
+	<!-- The shot. Scrubbing it shades the body above, so the two figures always say the same thing. -->
+	<section class="rounded-2xl border border-line bg-surface p-4">
+		<div class="mb-2 flex items-center justify-between">
+			<h2 class="text-sm font-semibold text-muted">{$t('muscles.phaseTitle')}</h2>
+			<div class="flex gap-2">
+				<!-- Two readings of one body: what pulls, and what it pulls on. -->
+				<div class="flex overflow-hidden rounded-lg border border-line text-sm">
+					{#each [false, true] as choice (choice)}
+						<button
+							class="px-2.5 py-1.5 {bones === choice ? 'bg-brand/10 font-semibold' : ''}"
+							onclick={() => (bones = choice)}
+						>
+							{choice ? $t('muscles.bones') : $t('muscles.title')}
+						</button>
+					{/each}
+				</div>
+				<button
+					class="rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
+					onclick={() => (playing = !playing)}
+				>
+					{playing ? $t('muscles.pause') : $t('muscles.play')}
+				</button>
+			</div>
+		</div>
+
+		<div class="grid gap-3 sm:grid-cols-2">
+			<ShotFigure {phase} {playing} {bones} />
+
+			<div class="min-w-0">
+				<!-- The phases as a strip: it is a sequence, so it is read left to right and tapped along. -->
+				<div class="flex flex-wrap gap-1">
+					<!-- Nothing chosen comes first and is where the page starts: with the whole body quiet,
+						 tapping a muscle is a way of asking its name rather than a change to a diagram. -->
+					{#each [null, ...SHOT_PHASES] as entry (entry ?? 'none')}
+						<button
+							class="rounded-lg border px-2 py-1 text-[11px] leading-tight
+								{phase === entry && !playing
+								? 'border-brand bg-brand/10 font-semibold'
+								: 'border-line'}"
+							onclick={() => {
+								playing = false;
+								phase = entry;
+							}}
+						>
+							{entry ? $t(`muscles.phase.${entry}`) : $t('muscles.phase.none')}
+						</button>
+					{/each}
+				</div>
+
+				{#if bones}
+					<p class="mt-3 text-xs text-muted">{$t('muscles.bonesHint')}</p>
+				{/if}
+				<h3 class="mt-3 text-xs font-semibold text-muted">{$t('muscles.working')}</h3>
+				{#if working.length === 0}
+					<p class="text-xs text-muted">
+						{phase ? $t('muscles.nothingWorking') : $t('muscles.pickAPhase')}
+					</p>
+				{:else}
+					<ul class="mt-1 space-y-0.5">
+						{#each working as entry (entry.id)}
+							<li class="flex items-center gap-2 text-xs">
+								<!-- Three pips rather than a word: the load is a quantity and reads faster as one. -->
+								<span class="flex shrink-0 gap-0.5" aria-label={$t(`muscles.load.${entry.load}`)}>
+									{#each [1, 2, 3] as pip (pip)}
+										<span
+											class="size-1.5 rounded-full {pip <= entry.load
+												? 'bg-accent'
+												: 'bg-sunk'}"
+										></span>
+									{/each}
+								</span>
+								<span class="min-w-0 truncate">{$t(`muscles.name.${entry.id}`)}</span>
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
+		</div>
+	</section>
+
+	<!--
+		The real thing, for the times a stylised map is not enough. The plate is a century old and out
+		of copyright, and it shows what a drawing built for tapping cannot: the trapezius peeled back
+		on one side so the rhomboids and the cuff underneath are visible on the other.
+	-->
+	<section class="rounded-2xl border border-line bg-surface p-4">
+		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('muscles.plateTitle')}</h2>
+		<figure>
+			<img
+				src="/diagrams/back_anatomy.png"
+				alt={$t('muscles.plateAlt')}
+				loading="lazy"
+				class="mx-auto w-full max-w-sm rounded-lg"
+			/>
+			<figcaption class="mt-2 text-[11px] leading-tight text-muted">
+				{$t('muscles.plateCaption')}
+			</figcaption>
+		</figure>
+	</section>
+
 	<!-- Every muscle, in one list, for the times a name is quicker to find than a shape. -->
 	<section class="rounded-2xl border border-line bg-surface p-4">
 		<ul class="grid gap-1 sm:grid-cols-2">
@@ -218,9 +242,9 @@
 								{#if entry.side}· {$t(`muscles.side.${entry.side}`)}{/if}
 							</span>
 						</span>
-						{#if loadAt(phase, entry.id) > 0}
+						{#if phase && loadAt(phase, entry.id) > 0}
 							<span class="shrink-0 text-[11px] font-semibold text-accent">
-								{loadAt(phase, entry.id)}
+								{loadAt(phase!, entry.id)}
 							</span>
 						{/if}
 					</button>

@@ -932,25 +932,29 @@ export const en = {
 		bones: 'Bones',
 		bonesHint:
 			'Watch the shoulder blades. They slide in towards the spine as the draw comes back, and that sliding is the shot: no muscle drawn on a still figure can show it.',
+		plateTitle: 'The back, drawn from life',
+		plateAlt: 'An anatomical plate of the muscles of the back, with the trapezius intact on one side and lifted away on the other.',
+		plateCaption:
+			"The trapezius is whole on the left and taken off on the right, showing the rhomboids, the levator scapulae and the cuff beneath it. From Gray's Anatomy, 1918, long out of copyright.",
 		phaseTitle: 'The shot',
 		play: 'Play the shot',
 		pause: 'Pause',
+		pickAPhase: 'Pick a moment of the shot to see what it asks for.',
 		working: 'Working now',
 		nothingWorking: 'Nothing much: this is the moment before the work starts.',
-		selection: 'Picked for this exercise',
+		selection: 'Selected',
 		selectionEmpty: 'Tap a muscle on the figure, or one in the list below.',
 		clear: 'Clear',
 		coverage: 'Covers {percent}% of what the shot asks',
 		peak: 'Works hardest at the {phase}',
 		deepTitle: 'Under the surface',
-		insetHint:
-			'The shoulder blade twice: from behind on the left, and turned over on the right, where the subscapularis lies against the ribs. The trapezius and the deltoid have been lifted away.',
+insetHint:
+			'Both blades, with the trapezius and the deltoid lifted away. Picking a muscle picks it on both sides, the same as on the body.',
 		load: { 1: 'Light', 2: 'Working', 3: 'Hardest' },
 		view: { back: 'Back', front: 'Front', both: 'Both', deep: 'Deep' },
 		inset: {
-			scapula: 'The shoulder blade, both faces',
-			forearm: 'The draw forearm, opened',
-			trunk: 'The waist, cut across'
+			scapulaBack: 'The shoulder blades, from behind',
+			scapulaFront: 'Their far side, against the ribs',
 		},
 		role: {
 			mover: 'Makes the draw happen',
@@ -959,8 +963,9 @@ export const en = {
 			fault: 'Should stay quiet'
 		},
 		roleShort: { mover: 'Mover', stabiliser: 'Stabiliser', postural: 'Postural', fault: 'Fault' },
-		side: { draw: 'String arm', bow: 'Bow arm' },
+		side: { draw: 'String arm', bow: 'Bow arm', left: "The archer's left", right: "The archer's right", },
 		phase: {
+			none: 'None',
 			stance: 'Stance',
 			set: 'Set',
 			setup: 'Setup',
@@ -997,7 +1002,10 @@ export const en = {
 			rectusAbdominis: 'Abdominals',
 			obliques: 'Obliques',
 			transverseAbdominis: 'Transverse abdominis',
-			glutes: 'Glutes',
+			gluteusMaximus: 'Gluteus maximus',
+			gluteusMedius: 'Gluteus medius',
+			tensorFasciaeLatae: 'Tensor fasciae latae',
+			iliopsoas: 'Iliopsoas',
 			quadriceps: 'Quadriceps',
 			hamstrings: 'Hamstrings',
 			calves: 'Calves'

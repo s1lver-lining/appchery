@@ -34,7 +34,10 @@ export type MuscleId =
 	| 'rectusAbdominis'
 	| 'obliques'
 	| 'transverseAbdominis'
-	| 'glutes'
+	| 'gluteusMaximus'
+	| 'gluteusMedius'
+	| 'tensorFasciaeLatae'
+	| 'iliopsoas'
 	| 'quadriceps'
 	| 'hamstrings'
 	| 'calves';
@@ -54,8 +57,13 @@ export type Muscle = {
 	id: MuscleId;
 	view: MuscleView;
 	role: MuscleRole;
-	/** The close up a deep muscle is drawn in, and which surface muscle has to be lifted to see it. */
-	inset?: 'scapula' | 'forearm' | 'trunk';
+	/**
+	 * The close up a deep muscle is drawn in. Only the shoulder blade has one: it carries four
+	 * muscles that lie over and under each other and a drawing genuinely sorts them out. A muscle
+	 * that would be alone in its own panel is picked from the list instead, because a close up of one
+	 * shape is a caption with a picture stuck to it.
+	 */
+	inset?: 'scapula';
 	/** Which side of the archer works it, when it is not both. */
 	side?: 'draw' | 'bow';
 };
@@ -78,7 +86,7 @@ export const MUSCLES: Muscle[] = [
 	{ id: 'deltoidLateral', view: 'front', role: 'mover', side: 'bow' },
 	{ id: 'deltoidAnterior', view: 'front', role: 'mover', side: 'bow' },
 	{ id: 'supraspinatus', view: 'deep', role: 'mover', inset: 'scapula', side: 'bow' },
-	{ id: 'infraspinatus', view: 'deep', role: 'stabiliser', inset: 'scapula' },
+	{ id: 'infraspinatus', view: 'back', role: 'stabiliser', inset: 'scapula' },
 	{ id: 'teresMinor', view: 'deep', role: 'stabiliser', inset: 'scapula' },
 	{ id: 'subscapularis', view: 'deep', role: 'stabiliser', inset: 'scapula' },
 	{ id: 'pectoralisMajor', view: 'front', role: 'stabiliser', side: 'bow' },
@@ -86,11 +94,14 @@ export const MUSCLES: Muscle[] = [
 	{ id: 'triceps', view: 'back', role: 'stabiliser', side: 'bow' },
 	{ id: 'forearmFlexors', view: 'front', role: 'stabiliser', side: 'draw' },
 	{ id: 'forearmExtensors', view: 'back', role: 'stabiliser', side: 'bow' },
-	{ id: 'fingerFlexors', view: 'deep', role: 'stabiliser', inset: 'forearm', side: 'draw' },
+	{ id: 'fingerFlexors', view: 'deep', role: 'stabiliser', side: 'draw' },
 	{ id: 'rectusAbdominis', view: 'front', role: 'postural' },
 	{ id: 'obliques', view: 'front', role: 'postural' },
-	{ id: 'transverseAbdominis', view: 'deep', role: 'postural', inset: 'trunk' },
-	{ id: 'glutes', view: 'back', role: 'postural' },
+	{ id: 'transverseAbdominis', view: 'deep', role: 'postural' },
+	{ id: 'gluteusMaximus', view: 'back', role: 'postural' },
+	{ id: 'gluteusMedius', view: 'back', role: 'postural' },
+	{ id: 'tensorFasciaeLatae', view: 'front', role: 'postural' },
+	{ id: 'iliopsoas', view: 'front', role: 'postural' },
 	{ id: 'quadriceps', view: 'front', role: 'postural' },
 	{ id: 'hamstrings', view: 'back', role: 'postural' },
 	{ id: 'calves', view: 'back', role: 'postural' }
@@ -139,7 +150,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 	stance: {
 		quadriceps: 2,
 		hamstrings: 2,
-		glutes: 2,
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 2,
+		iliopsoas: 2,
 		calves: 2,
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
@@ -149,7 +163,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 	set: {
 		quadriceps: 2,
 		hamstrings: 2,
-		glutes: 2,
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1,
 		calves: 2,
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
@@ -161,6 +178,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		deltoidAnterior: 3,
 		deltoidLateral: 3,
 		supraspinatus: 3,
+		// Lifting a bow overhead turns the shoulder blade and holds the head of the arm bone down
+		// while it goes: that is the cuff's work, and the teres major's, long before the draw.
+		infraspinatus: 2,
+		teresMajor: 2,
 		serratusAnterior: 3,
 		trapeziusUpper: 2,
 		levatorScapulae: 1,
@@ -170,7 +191,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2,
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1,
 		calves: 1
 	},
 	draw: {
@@ -194,7 +218,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		obliques: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2,
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1,
 		calves: 1
 	},
 	anchor: {
@@ -216,7 +243,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1
 	},
 	// The load moves off the arm and onto the back. The biceps letting go is the point of the phase.
 	transfer: {
@@ -237,7 +267,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1
 	},
 	expansion: {
 		rhomboids: 3,
@@ -260,7 +293,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		obliques: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1
 	},
 	// The fingers stop working and everything else keeps going: that is what makes it a release
 	// rather than a letdown. The extensors are what the hand relaxes into, not what it pulls with.
@@ -279,7 +315,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1
 	},
 	followThrough: {
 		rhomboids: 2,
@@ -293,7 +332,10 @@ export const PHASE_LOAD: Record<ShotPhase, Partial<Record<MuscleId, Load>>> = {
 		erectorSpinae: 2,
 		transverseAbdominis: 2,
 		quadriceps: 2,
-		glutes: 2,
+		gluteusMaximus: 2,
+		gluteusMedius: 2,
+		tensorFasciaeLatae: 1,
+		iliopsoas: 1,
 		calves: 1
 	}
 };

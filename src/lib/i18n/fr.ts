@@ -937,25 +937,29 @@ export const fr: Dictionary = {
 		bones: 'Os',
 		bonesHint:
 			"Regardez les omoplates. Elles glissent vers la colonne à mesure que l'armement recule, et c'est ce glissement qui fait le tir : aucun muscle dessiné sur une silhouette figée ne peut le montrer.",
+		plateTitle: "Le dos, d'après nature",
+		plateAlt: "Une planche anatomique des muscles du dos, trapèze intact d'un côté et écarté de l'autre.",
+		plateCaption:
+			"Le trapèze est entier à gauche et retiré à droite, découvrant les rhomboïdes, l'élévateur de l'omoplate et la coiffe. Extrait du Gray's Anatomy, 1918, depuis longtemps dans le domaine public.",
 		phaseTitle: 'Le tir',
 		play: 'Dérouler le tir',
 		pause: 'Pause',
+		pickAPhase: "Choisissez un moment du tir pour voir ce qu'il demande.",
 		working: 'Au travail',
 		nothingWorking: "Presque rien : c'est le moment d'avant.",
-		selection: 'Choisis pour cet exercice',
+		selection: 'Sélection',
 		selectionEmpty: 'Touchez un muscle sur la silhouette, ou dans la liste ci-dessous.',
 		clear: 'Effacer',
 		coverage: 'Couvre {percent} % de ce que le tir demande',
 		peak: 'Travaille le plus à {phase}',
 		deepTitle: 'Sous la surface',
-		insetHint:
-			"L'omoplate deux fois : de dos à gauche, et retournée à droite, où le sous-scapulaire se plaque contre les côtes. Le trapèze et le deltoïde ont été écartés.",
+insetHint:
+			"Les deux omoplates, trapèze et deltoïde écartés. Choisir un muscle le choisit des deux côtés, comme sur le corps.",
 		load: { 1: 'Léger', 2: 'Au travail', 3: 'À fond' },
 		view: { back: 'Dos', front: 'Face', both: 'Les deux', deep: 'Profond' },
 		inset: {
-			scapula: "L'omoplate, ses deux faces",
-			forearm: "L'avant-bras de corde, ouvert",
-			trunk: 'La taille, en coupe'
+			scapulaBack: 'Les omoplates, vues de dos',
+			scapulaFront: "Leur face avant, contre les côtes",
 		},
 		role: {
 			mover: 'Fait le mouvement',
@@ -969,8 +973,9 @@ export const fr: Dictionary = {
 			postural: 'Postural',
 			fault: 'Défaut'
 		},
-		side: { draw: 'Bras de corde', bow: "Bras d'arc" },
+		side: { draw: 'Bras de corde', bow: "Bras d'arc", left: "La gauche de l'archer", right: "La droite de l'archer", },
 		phase: {
+			none: 'Aucun',
 			stance: 'Position',
 			set: 'Mise en place',
 			setup: 'Levée',
@@ -1007,7 +1012,10 @@ export const fr: Dictionary = {
 			rectusAbdominis: 'Grand droit',
 			obliques: 'Obliques',
 			transverseAbdominis: 'Transverse',
-			glutes: 'Fessiers',
+			gluteusMaximus: 'Grand fessier',
+			gluteusMedius: 'Moyen fessier',
+			tensorFasciaeLatae: 'Tenseur du fascia lata',
+			iliopsoas: 'Psoas-iliaque',
 			quadriceps: 'Quadriceps',
 			hamstrings: 'Ischio-jambiers',
 			calves: 'Mollets'

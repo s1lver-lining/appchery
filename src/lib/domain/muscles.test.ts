@@ -20,13 +20,24 @@ describe('the muscle list', () => {
 		expect(new Set(MUSCLE_IDS).size).toBe(MUSCLE_IDS.length);
 	});
 
-	it('gives every deep muscle a close up to be found in, because no silhouette shows it', () => {
-		for (const entry of musclesIn('deep')) expect(entry.inset).toBeTruthy();
+	it('draws a close up only where one sorts out muscles that lie over each other', () => {
+		// The five round the shoulder blade earn a panel. Muscles that would be alone in one do not:
+		// they are still pickable from the list, which is all a single shape ever needed.
+		expect(MUSCLES.filter((entry) => entry.inset).map((entry) => entry.id)).toEqual([
+			'levatorScapulae',
+			'supraspinatus',
+			'infraspinatus',
+			'teresMinor',
+			'subscapularis'
+		]);
 	});
 
-	it('leaves the surface muscles out of the close ups, so each is drawn in one place', () => {
-		for (const entry of MUSCLES) {
-			if (entry.view !== 'deep') expect(entry.inset).toBeUndefined();
+	it('lets a muscle be both on the figure and in a close up when it is genuinely both', () => {
+		// The infraspinatus reaches the skin under the trapezius, so an archer can be shown where to
+		// feel it; the rest of the cuff never surfaces and lives only in the close up.
+		expect(muscle('infraspinatus')?.view).toBe('back');
+		for (const id of ['supraspinatus', 'teresMinor', 'subscapularis'] as const) {
+			expect(muscle(id)?.view).toBe('deep');
 		}
 	});
 

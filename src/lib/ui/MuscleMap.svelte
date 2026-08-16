@@ -8,7 +8,18 @@
 		type MuscleView,
 		type ShotPhase
 	} from '$lib/domain/muscles';
-	import { BACK, BODY, FRONT, mirror, smooth } from './muscleMap';
+	import {
+		BACK,
+		BODY,
+		EXTENSOR_TENDONS,
+		FLEXOR_TENDONS,
+		FRONT,
+		HAND_LINES,
+		PALM,
+		THENAR,
+		mirror,
+		smooth
+	} from './muscleMap';
 
 	/**
 	 * The archer's muscles, drawn to be pointed at. Every shape here was drawn for this app rather
@@ -35,6 +46,19 @@
 
 	const regions = $derived(view === 'front' ? FRONT : view === 'back' ? BACK : []);
 
+	/**
+	 * The tendons in the hand. On the front they belong to the finger flexors, which are what a
+	 * string hangs from; on the back to the extensors, which open a hand and take no part in a shot.
+	 * They light with their muscle, so the release reads as the flexors going quiet rather than as
+	 * anything on the back of the arm switching on.
+	 */
+	const tendons = $derived(view === 'front' ? FLEXOR_TENDONS : EXTENSOR_TENDONS);
+	const tendonOwner = $derived<MuscleId>(
+		view === 'front' ? 'fingerFlexors' : 'forearmExtensors'
+	);
+	const handLabel = $derived($t(`muscles.name.${tendonOwner}`));
+	/** Mirroring a path is a flip about the midline, which SVG can do without rewriting the numbers. */
+	const FLIP = 'translate(200 0) scale(-1 1)';
 
 	/**
 	 * How hard a muscle works is one quantity, so it is shown as one colour getting stronger rather
@@ -79,14 +103,74 @@
 			<title>{label}</title>
 			{#each [region.points, mirror(region.points)] as half}
 				<path
-					d={smooth(half)}
+					d={smooth(half, region.corners)}
 					fill={fill(region.id)}
 					fill-opacity={opacity(region.id)}
-					stroke={selected.includes(region.id) ? 'var(--c-brand)' : 'var(--c-line)'}
-					stroke-width={selected.includes(region.id) ? 1.4 : 0.7}
+					stroke={selected.includes(region.id) ? 'var(--c-brand)' : 'var(--c-muted)'}
+					stroke-opacity={selected.includes(region.id) ? 1 : 0.45}
+					stroke-width={selected.includes(region.id) ? 1.4 : 0.9}
 					class="transition-[fill,fill-opacity] duration-300"
 				/>
 			{/each}
 		</g>
 	{/each}
+
+	<!--
+		The hand. It is shaded and shaped like the muscles around it, so it has to answer to a tap like
+		one: the pad at the base of the thumb and the tendons crossing the palm belong to the muscle
+		that works the fingers, and picking either of them picks that muscle.
+	-->
+	<g
+		role="checkbox"
+		tabindex="0"
+		aria-checked={selected.includes(tendonOwner)}
+		aria-label={handLabel}
+		class="cursor-pointer outline-none"
+		onclick={() => onpick?.(tendonOwner)}
+		onkeydown={(event) => {
+			if (event.key === 'Enter' || event.key === ' ') {
+				event.preventDefault();
+				onpick?.(tendonOwner);
+			}
+		}}
+	>
+		<title>{handLabel}</title>
+		{#each [null, FLIP] as flip (flip)}
+			<!-- The palm itself, invisible but there to be hit: tendons are too thin to aim a thumb at. -->
+			<path d={smooth(PALM)} transform={flip} fill="transparent" stroke="none" />
+			{#if view === 'front'}
+				<path
+					d={smooth(THENAR)}
+					transform={flip}
+					fill={fill(tendonOwner)}
+					fill-opacity={phase ? opacity(tendonOwner) : 1}
+					stroke="var(--c-muted)"
+					stroke-opacity="0.45"
+					stroke-width="0.9"
+					class="transition-[fill,fill-opacity] duration-300"
+				/>
+			{/if}
+			<g
+				stroke={fill(tendonOwner)}
+				stroke-opacity={phase ? opacity(tendonOwner) : 0.55}
+				stroke-width="1.1"
+				fill="none"
+				stroke-linecap="round"
+				class="transition-[stroke,stroke-opacity] duration-300"
+			>
+				{#each tendons as tendon (tendon)}
+					<path d={tendon} transform={flip} />
+				{/each}
+			</g>
+		{/each}
+	</g>
+
+	<!-- What makes a hand read as a hand: the wrist crease, the knuckles, and the fingers. -->
+	<g stroke="var(--c-line)" stroke-width="0.8" fill="none" stroke-linecap="round">
+		{#each [null, FLIP] as flip (flip)}
+			{#each HAND_LINES as line (line)}
+				<path d={line} transform={flip} />
+			{/each}
+		{/each}
+	</g>
 </svg>
