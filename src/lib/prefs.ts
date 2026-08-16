@@ -52,6 +52,15 @@ export const dateFormats = derived([locale, use24Hour], ([$locale, $use24]) => {
 	};
 });
 
+/**
+ * Grouped the way the app's own language groups, not the way the device does: an app set to French
+ * on an English phone writes 8 420, and every figure big enough to need a separator agrees.
+ */
+export const formatNumber = derived(locale, ($locale) => {
+	const formatter = new Intl.NumberFormat($locale);
+	return (value: number) => formatter.format(value);
+});
+
 export const formatDateTime = derived(dateFormats, ($f) => $f.dateTime);
 export const formatDayDateTime = derived(dateFormats, ($f) => $f.dayDateTime);
 export const formatTime = derived(dateFormats, ($f) => $f.time);

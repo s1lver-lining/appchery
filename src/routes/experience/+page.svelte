@@ -19,6 +19,7 @@
 		type Experience,
 		type XpSource
 	} from '$lib/domain/experience';
+	import { formatNumber } from '$lib/prefs';
 	import { originOf, setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -49,31 +50,28 @@
 	 * The rules, each with the sum it is. The figures are read from the domain rather than written out
 	 * again here, so a rate that changes changes the page that explains it.
 	 */
-	const RATES: {
-		key: string;
-		params: Record<string, string | number>;
-		terms?: string[];
-		example?: boolean;
-	}[] = [
-		{ key: 'arrows', params: { xp: XP_PER_ARROW } },
+	const RATES = $derived<
+		{ key: string; params: Record<string, string | number>; terms?: string[]; example?: boolean }[]
+	>([
+		{ key: 'arrows', params: { xp: $formatNumber(XP_PER_ARROW) } },
 		{
 			key: 'rounds',
 			params: {
-				xp: XP_PER_ROUND_ARROW,
-				face: REFERENCE_FACE_CM,
-				metres: REFERENCE_DISTANCE_M,
-				floor: SCORE_FLOOR,
-				rest: 1 - SCORE_FLOOR,
-				min: MIN_DIFFICULTY,
-				max: MAX_DIFFICULTY
+				xp: $formatNumber(XP_PER_ROUND_ARROW),
+				face: $formatNumber(REFERENCE_FACE_CM),
+				metres: $formatNumber(REFERENCE_DISTANCE_M),
+				floor: $formatNumber(SCORE_FLOOR),
+				rest: $formatNumber(1 - SCORE_FLOOR),
+				min: $formatNumber(MIN_DIFFICULTY),
+				max: $formatNumber(MAX_DIFFICULTY)
 			},
 			terms: ['difficulty', 'form'],
 			example: true
 		},
 		{ key: 'badges', params: {} },
-		{ key: 'matches', params: { xp: XP_MATCH_WIN, draw: DRAW_SHARE } },
-		{ key: 'levels', params: { step: LEVEL_STEP }, example: true }
-	];
+		{ key: 'matches', params: { xp: $formatNumber(XP_MATCH_WIN), draw: $formatNumber(DRAW_SHARE) } },
+		{ key: 'levels', params: { step: $formatNumber(LEVEL_STEP) }, example: true }
+	]);
 
 	const share = (xp: number) => (earned && earned.total > 0 ? (xp / earned.total) * 100 : 0);
 	const slices = $derived(
@@ -120,13 +118,13 @@
 			<div class="mt-2 flex items-baseline justify-between text-xs text-muted">
 				<p class="tabular">
 					{$t('experience.intoLevel', {
-						into: earned.into.toLocaleString(),
-						span: earned.span.toLocaleString()
+						into: $formatNumber(earned.into),
+						span: $formatNumber(earned.span)
 					})}
 				</p>
 				<p class="tabular">
 					{$t('experience.toNext', {
-						xp: earned.toNext.toLocaleString(),
+						xp: $formatNumber(earned.toNext),
 						level: earned.level + 1
 					})}
 				</p>
@@ -144,7 +142,7 @@
 				<div class="flex flex-wrap items-center justify-center gap-5">
 					<ShareDonut {slices}>
 						{#snippet centre()}
-							<p class="tabular text-2xl leading-none font-bold">{earned!.total.toLocaleString()}</p>
+							<p class="tabular text-2xl leading-none font-bold">{$formatNumber(earned!.total)}</p>
 							<p class="mt-1 text-[11px] text-muted">{$t('experience.total')}</p>
 						{/snippet}
 					</ShareDonut>
@@ -168,8 +166,8 @@
 										</span>
 									</div>
 									<p class="tabular truncate text-xs text-muted">
-										{$t(`experience.sourceCounts.${source}`, { n: part.count.toLocaleString() })}
-										· {$t('experience.points', { xp: part.xp.toLocaleString() })}
+										{$t(`experience.sourceCounts.${source}`, { n: $formatNumber(part.count) })}
+										· {$t('experience.points', { xp: $formatNumber(part.xp) })}
 									</p>
 								</div>
 							</li>

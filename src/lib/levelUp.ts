@@ -1,5 +1,5 @@
 import { get } from 'svelte/store';
-import { celebratedLevel } from '$lib/prefs';
+import { celebratedLevel, formatNumber } from '$lib/prefs';
 import { loadExperienceInput } from '$lib/db/repository';
 import { experience } from '$lib/domain/experience';
 import type { Award } from '$lib/ui/Fireworks.svelte';
@@ -24,7 +24,7 @@ export async function levelUpAward(
 	if (told === 0 || level <= told) return null;
 	return {
 		title: t('experience.levelUp'),
-		subtitle: t('experience.points', { xp: total.toLocaleString() }),
+		subtitle: t('experience.points', { xp: get(formatNumber)(total) }),
 		score: level
 	};
 }
