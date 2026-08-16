@@ -733,10 +733,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			.slice(0, 3)
 	);
 
-	/**
-	 * What is typed in the picker's search box. The catalogue is long enough that scrolling it is
-	 * the slow way to a round whose name the archer already knows.
-	 */
+	/** What is typed in the picker's search box: the catalogue is long to scroll for a known name. */
 	let query = $state('');
 	const searching = $derived(query.trim().length > 0);
 
@@ -846,8 +843,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				{/if}
 			</span>
 
-			<!-- One line rather than two: the ceiling sits at the right, so the record reads beside
-				what it was scored on instead of costing the card another row. -->
+			<!-- One line rather than two: the record reads beside what it was scored on. -->
 			<span class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
 				{#each round.stages as stage, i (i)}
 					{@const distance = stageDistance(stage)}
@@ -1369,8 +1365,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				</button>
 			</header>
 
-			<!-- Fixed above the list rather than scrolling with it: the box is what the long catalogue
-				is reached through, so it has to stay reachable however far down the archer has gone. -->
+			<!-- Above the list rather than scrolling with it: the catalogue is reached through it. -->
 			<div class="mx-auto w-full max-w-2xl px-4 pt-3">
 				<div class="relative">
 					<span class="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">

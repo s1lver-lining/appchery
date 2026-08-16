@@ -101,10 +101,7 @@
 	let queued = $state<{ key: string; shots: Omit<Shot, 'ordinal'>[] }[]>([]);
 	/** Stored rows an undo has taken off the sheet whose delete has not reached the database yet. */
 	let dropped = $state(0);
-	/**
-	 * Ends undone before their own write landed. The write still goes through, so the reload that
-	 * follows it hands the row straight back: the key is held here until then to hide it again.
-	 */
+	// Ends undone before their write landed: the reload that follows hands the row straight back.
 	const cancelled = new Set<string>();
 	let pending = $state<Omit<Shot, 'ordinal'>[]>([]);
 	let editing = $state<{ endId: string; shotId: string; endNo: number; ordinal: number } | null>(
@@ -167,8 +164,8 @@
 
 	const sheetRows = $derived<SheetRow[]>(
 		[
-			// Undone rows come off the committed ends, never off the tail of the two lists together: an
-			// arrow entered while an undo is in flight would otherwise hide the new end instead.
+			// Off the committed ends, not off the tail of both lists: an arrow entered while an undo is
+			// in flight would otherwise hide the new end instead.
 			...stored.slice(0, Math.max(0, stored.length - dropped)).map((row) => ({
 				key: row.end.id,
 				endId: row.end.id,
@@ -186,8 +183,7 @@
 				key: q.key,
 				endId: null,
 				subtotal: q.shots.reduce((sum, s) => sum + s.value, 0),
-				// Numbered before it is sorted, the way the end being entered is: number after and the
-				// arrows read 1, 2, 3 down the sorted row until the write lands and renumbers them.
+				// Numbered before it is sorted: after, and the arrows read 1, 2, 3 down the sorted row.
 				shots: displayOrder(q.shots.map((s, i) => ({ ...s, ordinal: i + 1 }))).map((s) => ({
 					id: null,
 					ordinal: s.ordinal,
@@ -521,8 +517,7 @@
 			// Swap both together so the row never exists twice or vanishes between the two updates.
 			stored = fresh;
 			queued = queued.filter((q) => q.key !== key);
-			// Undone while it was being written: the reload has just handed it back, so hide it again
-			// here rather than a frame later, and let the queued delete take it for good.
+			// Undone mid write: the reload has just handed it back, so hide it again in the same swap.
 			if (cancelled.delete(key)) dropped += 1;
 			activity = await getActivity(activityId);
 		});
@@ -631,11 +626,8 @@
 		pending = pending.slice(0, -1);
 	}
 
-	/**
-	 * Undo for an end already entered: off the sheet the moment it is asked for, and out of the
-	 * database on the same chain the ends are written on. Off the chain, a delete could overtake the
-	 * write of an arrow entered meanwhile and take that end instead of the one undone.
-	 */
+	// On the chain the ends are written on: off it, a delete could overtake the write of an arrow
+	// entered meanwhile and take that end instead of the one undone.
 	function undoEnd() {
 		const last = sheetRows.at(-1);
 		if (!last) return;
@@ -650,8 +642,7 @@
 				await deleteLastEnd(activityId);
 				const fresh = await loadRows();
 				const row = await getActivity(activityId);
-				// The shorter sheet and the count of rows it is still hiding go in together, or the
-				// frame between the two renders one row short and the sheet blinks.
+				// Together, or the frame between the two renders one row short and the sheet blinks.
 				stored = fresh;
 				dropped = Math.max(0, dropped - 1);
 				activity = row;
@@ -698,11 +689,8 @@
 	const bowType = $derived((bow?.type ?? 'recurve') as BowType);
 
 	/**
-	 * The procedure read for this bow's own hand. No switch here, unlike the guide: the activity is
-	 * being run on one bow, and that bow's record already says which way its readings go.
-	 *
-	 * Taken from the guide's own wording rather than from the template, which is the English the
-	 * templates are declared in: the same procedure must not read in two languages on two pages.
+	 * The procedure read for this bow's own hand. Worded by the guide rather than by the template,
+	 * which only carries the English it is declared in.
 	 */
 	const procedureText = $derived(
 		guideStep
@@ -1196,9 +1184,8 @@
 										{/if}
 									</button>
 								{:else}
-									<!-- Numbered like a written end is: an end waiting on its write sits here for as
-										long as the write takes, and a number that goes away and comes back reads as
-										the app having lost track of which arrow was which. -->
+									<!-- Numbered like a written end is: an end sits here for as long as its write takes,
+										and a number that goes away and comes back reads as the app having lost it. -->
 									<span
 										class="tabular relative flex h-[var(--chip)] w-[var(--chip)] shrink-0 items-center justify-center rounded text-[calc(var(--chip)*0.46)] font-bold"
 										style={chipStyle(shot.zoneLabel)}
@@ -1354,8 +1341,7 @@
 				</div>
 
 				<!-- The row below the keys: undoing, filming, and dropping the end already written.
-					Stretched rather than centred, so a label that wraps to two lines does not leave the
-					buttons beside it short and the row looking half filled. -->
+					Stretched so a label that wraps to two lines does not leave the others short. -->
 				<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 					{#if editing || editingPending !== null}
 						<button

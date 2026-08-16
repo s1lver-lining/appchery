@@ -35,12 +35,8 @@ export function initDb(): Promise<void> {
 let writeLock: Promise<unknown> = Promise.resolve();
 
 /**
- * A run of writes committed once instead of statement by statement. Every statement crosses to the
- * SQLite worker and, outside a transaction, commits on its own: recording one end costs eight of
- * those round trips, which is most of the delay between tapping an arrow and seeing it land.
- *
- * Serialised rather than nested, because there is one connection and SQLite has no nested
- * transaction: a second BEGIN would fail, and a rollback would take the other caller's writes.
+ * A run of writes committed once rather than statement by statement, which outside a transaction is
+ * a worker round trip and a commit each. Serialised: one connection, and SQLite has no nested BEGIN.
  */
 export function transaction<T>(work: () => Promise<T>): Promise<T> {
 	const run = writeLock.then(async () => {

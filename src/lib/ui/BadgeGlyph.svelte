@@ -25,12 +25,8 @@
 </script>
 
 {#if arrow}
-	<!--
-		An unearned arrow keeps its hue but loses most of its life: the colour is the name of the award
-		and still has to be readable, yet an archer scanning the wall wants to see at a glance which
-		arrows are theirs. Washed out and dim against full strength does that; a difference in opacity
-		alone never did.
-	-->
+	<!-- An unearned arrow keeps its hue but loses most of its life: the colour is the name of the
+		award, and an archer scanning the wall still has to see at a glance which ones are theirs. -->
 	<span
 		class="inline-flex items-center justify-center rounded-full border"
 		style="width: {size * 1.35}px; height: {size * 1.35}px;

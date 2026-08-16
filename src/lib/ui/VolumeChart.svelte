@@ -32,10 +32,7 @@
 	let metric = $state<Metric>('arrows');
 	let picked = $state<number | null>(null);
 
-	/**
-	 * A selection points at one bar of one set of bars. Change the filter and the bar under the
-	 * index is a different week, so the figures below would read as somebody else's.
-	 */
+	// A selection points at one bar of one set of bars: refiltered, the index is a different week.
 	$effect(() => {
 		void buckets;
 		picked = null;
@@ -87,10 +84,7 @@
 	/** Kinds nothing was shot in are dropped from the legend rather than sitting there empty. */
 	const present = $derived(keys.filter((key) => buckets.some((b) => (b.byKey[key]?.arrows ?? 0) > 0)));
 
-	/**
-	 * What a bar stands for, not where it starts. A week's bar covers seven days and a month's a
-	 * month, and naming either by its first day reads as a figure for that one day.
-	 */
+	// What a bar stands for, not where it starts: naming a week by its first day reads as that day.
 	const bucketLabel = $derived((at: number) => {
 		if (grain === 'month') return $dateFormats.monthYear(at);
 		if (grain === 'day') return $dateFormats.date(at);
@@ -128,8 +122,7 @@
 						: shown.arrows}
 			</p>
 			<p class="min-w-0 flex-1 text-xs text-muted">{bucketLabel(shown.at)}</p>
-			<!-- The way back to the whole window, beside the span it was narrowed to: tapping the bar
-				again does it too, but a bar a few pixels wide is a poor thing to have to find. -->
+			<!-- Tapping the bar again does this too, but a weekly bar is a few pixels wide. -->
 			<button
 				class="-my-1 shrink-0 self-center rounded-lg p-1 text-muted"
 				aria-label={$t('stats.clearBar')}
@@ -172,8 +165,7 @@
 				{/each}
 			</div>
 
-			<!-- The empty space above the bars clears the selection rather than picking the bar under
-				it: pointing at nothing is how somebody says they are done reading a bar. -->
+			<!-- The space above the bars clears the selection rather than picking the bar under it. -->
 			<div
 				class="relative flex items-end gap-px"
 				style="height: {PLOT}px"
@@ -238,8 +230,7 @@
 					{@const label = axisLabel(bucket.at, index)}
 					{#if label}
 						{@const at = ((index + 0.5) / buckets.length) * 100}
-						<!-- Shifted by where it sits rather than always by half: centred in the middle of the
-							plot, and tucked inside at either end, where half a label hung off the page. -->
+						<!-- Shifted by where it sits, so the end labels tuck inside instead of off the page. -->
 						<span
 							class="absolute text-[10px] leading-none whitespace-nowrap text-muted"
 							style="left: {at}%; transform: translateX(-{at}%)"

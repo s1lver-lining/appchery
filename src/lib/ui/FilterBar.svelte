@@ -153,8 +153,8 @@
 		size allowed. The visible row cannot be measured at a size it is not being drawn at without the
 		measurement chasing its own tail, and the smallest is what says whether one line is possible.
 
-		Sized to nothing and clipped: three unwrapped rows side by side are far wider than the page,
-		and invisible is not the same as taking no room, so the page grew a scrollbar for them.
+		Sized to nothing and clipped: invisible is not the same as taking no room, and three unwrapped
+		rows side by side gave the page a scrollbar.
 	-->
 	<div
 		class="pointer-events-none invisible absolute top-0 left-0 flex h-0 w-0 overflow-hidden"

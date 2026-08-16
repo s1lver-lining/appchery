@@ -8,13 +8,7 @@
 	let lastViewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
 	let lastDay: number | null = null;
 
-	/**
-	 * The day the list was last aimed at today, and the last tab tap it answered. Out here for the
-	 * same reason: opening a session unmounts the page, so an instance flag is a fresh one on the way
-	 * back and the list would jump to today under an archer who was reading last winter.
-	 *
-	 * Kept as a day rather than a yes, so an app left running overnight opens on the new today.
-	 */
+	// A day rather than a yes, so an app left running overnight opens on the new today.
 	let anchoredOn: number | null = null;
 	let lastAsked = 0;
 	/** How far down the list was read, for the same reason and across the same unmount. */
@@ -338,15 +332,7 @@
 	/** Rung once, on the row the list settled on, and never again for the life of the page. */
 	let pulsing = $state(false);
 
-	/**
-	 * Aimed on arrival rather than at mount. The pager keeps this page alive behind the one on show,
-	 * so a list anchored at mount was aimed while it was off screen: it arrived at its top, and the
-	 * ring it rang was rung to nobody.
-	 *
-	 * Once a day, though, not once an arrival: coming back from a session is not a request to move,
-	 * the archer was reading whatever week they opened it from, and dropping them on today loses
-	 * their place. Asking for today again is what tapping the sessions tab while already here does.
-	 */
+	// Once a day, not once an arrival: coming back from a session is not a request to move.
 	$effect(() => {
 		if ($page.url.pathname !== '/sessions') return;
 		if (anchoredOn === today || !loaded || !anchor || tab !== 'list') return;
@@ -354,12 +340,7 @@
 		aimAtToday();
 	});
 
-	/**
-	 * Put back where it was being read, as soon as there is a pane to put it back in rather than on
-	 * arrival. The pager mounts this page as the neighbour of the one on show and slides it in before
-	 * the path says so, so a restore that waited to be arrived at would be watched happening: the
-	 * list rides in at its top and jumps once it lands.
-	 */
+	// As soon as there is a pane, not on arrival: the pager slides this page in before the path says so.
 	let restored = false;
 	$effect(() => {
 		if (restored || !scrollPane || !loaded || !anchor || tab !== 'list') return;
@@ -372,14 +353,8 @@
 	/** Set while the offset is being put back, so the scroll that causes is not read as the archer's. */
 	let restoring = false;
 
-	/**
-	 * Asked over several frames rather than once. Reached through the tab bar this page mounts off
-	 * screen as a neighbour, with its weeks still being laid out, and a scrollTop set past the end of
-	 * a list that has not grown into it yet is clamped silently rather than refused.
-	 *
-	 * Which would be recoverable, except that the clamp scrolls the pane, and the pane records what
-	 * it is scrolled to: one early attempt would overwrite the offset with zero and lose it for good.
-	 */
+	// Over several frames: a list still being laid out clamps the offset, and the clamp is recorded
+	// as the archer's own scroll, losing it for good.
 	function restoreOffset(to: number, tries = 12) {
 		if (to <= 0 || !scrollPane) return;
 		restoring = true;
