@@ -46,6 +46,9 @@ export function longpress(node: HTMLElement, onhold: () => void) {
 		current();
 	};
 
+	// iOS answers a held link with its own preview card, which would come up over the selection.
+	node.style.setProperty('-webkit-touch-callout', 'none');
+
 	node.addEventListener('pointerdown', onDown);
 	node.addEventListener('pointermove', onMove);
 	node.addEventListener('pointerup', cancel);
