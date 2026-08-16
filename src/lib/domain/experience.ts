@@ -60,7 +60,7 @@ export interface Experience {
 export const XP_PER_ARROW = 2;
 /** Paid on top of the arrows, and only once the round has been shot to the end. */
 export const XP_PER_ROUND_ARROW = 3;
-export const XP_MATCH_WIN = 300;
+export const XP_MATCH_WIN = 250;
 /** A draw is a match survived rather than won, so it pays half. */
 export const DRAW_SHARE = 0.5;
 /** What a round still pays when nothing at all went in the middle, so a bad day is not a wasted one. */
