@@ -36,6 +36,7 @@
 		| 'qr'
 		| 'bulb'
 		| 'muscle'
+		| 'level'
 		| 'help';
 
 	let {
@@ -165,6 +166,11 @@
 		<!-- The lamp over the head: something you did not know the app could do. -->
 		<path d="M9.2 17.4a6 6 0 1 1 5.6 0" />
 		<path d="M9.6 17.6h4.8M10.4 20.4h3.2" />
+	{:else if name === 'level'}
+		<!-- Chevrons climbing: a level is the one above the last one. -->
+		<path d="M6 18.4l6-4.4 6 4.4" />
+		<path d="M6 12.4l6-4.4 6 4.4" />
+		<path d="M9.6 5.2L12 3.4l2.4 1.8" />
 	{:else if name === 'help'}
 		<circle cx="12" cy="12" r="9" />
 		<path d="M9.5 9.4a2.6 2.6 0 0 1 5 .9c0 1.7-2.5 2-2.5 3.6" />

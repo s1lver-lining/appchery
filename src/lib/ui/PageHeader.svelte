@@ -15,6 +15,7 @@
 		| 'stats'
 		| 'badges'
 		| 'tricks'
+		| 'experience'
 		| 'settings';
 
 	let {
@@ -167,6 +168,24 @@
 					<path d="M78 104V16" stroke="currentColor" stroke-width="3" />
 					<path d="M78 12l-7 16 7-5 7 5z" fill="currentColor" />
 				</g>
+			{/each}
+		</svg>
+	{:else if motif === 'experience'}
+		<!-- Arcs struck one inside the next, each reaching higher: what a level costs over the last one. -->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 140 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			{#each [0, 1, 2, 3, 4] as step (step)}
+				<path
+					d="M{18 + step * 8} 104 A {86 - step * 16} {86 - step * 16} 0 0 1 {126 - step * 4} {30 - step * 4}"
+					stroke="currentColor"
+					stroke-width="3"
+					opacity={0.1 + step * 0.05}
+				/>
 			{/each}
 		</svg>
 	{:else if motif === 'badges'}

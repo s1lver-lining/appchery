@@ -1113,6 +1113,38 @@ insetHint:
 			calves: 'Mollets'
 		}
 	},
+	experience: {
+		title: 'Expérience',
+		hint: 'Chaque flèche, chaque volée comptée, chaque badge, chaque match gagné.',
+		level: 'Niveau {level}',
+		levelShort: 'Niv {level}',
+		points: '{xp} XP',
+		intoLevel: '{into} XP sur {span}',
+		toNext: '{xp} XP avant le niveau {level}',
+		total: 'Expérience acquise',
+		nextLevelAt: 'Niveau {level} à {xp} XP',
+		sources: "D'où elle vient",
+		empty: "Rien de tiré, donc rien d'acquis.",
+		share: '{percent} %',
+		sourceNames: {
+			arrows: 'Flèches',
+			rounds: 'Séries',
+			badges: 'Badges',
+			matches: 'Matchs'
+		},
+		sourceCounts: {
+			arrows: '{n} flèches tirées',
+			rounds: '{n} séries terminées',
+			badges: '{n} badges obtenus',
+			matches: '{n} matchs gagnés'
+		},
+		rates: 'Ce que valent les choses',
+		rateArrows: 'Chaque flèche qui compte dans votre volume rapporte {xp} XP, quel que soit le motif du tir.',
+		rateRounds: "Une série menée à son terme rapporte en plus, selon l'éloignement du blason pour sa taille et selon votre score. Une série laissée en chemin ne rapporte que ses flèches.",
+		rateBadges: "Un badge rapporte une seule fois, la première fois qu'il est obtenu, et chacun vaut une somme différente. S'il tombe lors de la revérification des réglages, ses points tombent avec lui.",
+		rateMatches: "Gagner un match qui est le vôtre rapporte {xp} XP, davantage plus haut dans le tableau et face à un adversaire plus fort. Un match nul rapporte la moitié, une défaite rien, et une feuille tenue pour quelqu'un d'autre ne rapporte rien du tout.",
+		rateDeterministic: "Rien n'est mis de côté: le total est recalculé sur l'historique tel qu'il est, donc supprimer une session reprend exactement ce qu'elle avait donné."
+	},
 	badges: {
 		title: 'Badges',
 		hint: 'Gagnés en tirant, gardés une fois acquis.',

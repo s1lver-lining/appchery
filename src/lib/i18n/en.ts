@@ -1105,6 +1105,38 @@ insetHint:
 			calves: 'Calves'
 		}
 	},
+	experience: {
+		title: 'Experience',
+		hint: 'Every arrow, every round, every badge, every match won.',
+		level: 'Level {level}',
+		levelShort: 'Lv {level}',
+		points: '{xp} XP',
+		intoLevel: '{into} of {span} XP',
+		toNext: '{xp} XP to level {level}',
+		total: 'Experience earned',
+		nextLevelAt: 'Level {level} at {xp} XP',
+		sources: 'Where it came from',
+		empty: 'Nothing shot yet, so nothing earned yet.',
+		share: '{percent}%',
+		sourceNames: {
+			arrows: 'Arrows',
+			rounds: 'Rounds',
+			badges: 'Badges',
+			matches: 'Matches'
+		},
+		sourceCounts: {
+			arrows: '{n} arrows shot',
+			rounds: '{n} rounds finished',
+			badges: '{n} badges earned',
+			matches: '{n} matches won'
+		},
+		rates: 'What things are worth',
+		rateArrows: 'Every arrow that counts towards your volume pays {xp} XP, whatever it was shot for.',
+		rateRounds: 'A round shot to the end pays again, by how far away the face was for its size and by what you scored on it. A round left half shot pays nothing beyond its arrows.',
+		rateBadges: 'A badge pays once, the first time it is earned, and each one is worth a different amount. Lose it to the recheck in the settings and its points go with it.',
+		rateMatches: 'Winning a match of your own pays {xp} XP, more the further up a bracket it was and the harder the opponent. A draw pays half, a loss nothing, and a card kept for somebody else pays nothing at all.',
+		rateDeterministic: 'Nothing is banked: the total is worked out from the history as it stands, so deleting a session takes back exactly what it gave.'
+	},
 	badges: {
 		title: 'Badges',
 		hint: 'Earned by shooting, kept once won.',

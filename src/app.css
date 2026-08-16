@@ -35,6 +35,15 @@
 	--c-medal-bronze: #c07a3e;
 	--c-medal-silver: #b7bec6;
 	--c-medal-gold: #d9a441;
+
+	/*
+	 * Where the experience came from. Borrowed from colours the app already assigns rather than
+	 * invented, so each source wears the hue its own part of the app wears, in either theme.
+	 */
+	--c-xp-arrows: var(--c-kind-practice);
+	--c-xp-rounds: var(--c-comp-blue);
+	--c-xp-badges: var(--c-medal-gold);
+	--c-xp-matches: var(--c-win);
 }
 
 /*
