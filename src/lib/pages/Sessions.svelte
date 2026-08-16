@@ -7,6 +7,16 @@
 	 */
 	let lastViewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
 	let lastDay: number | null = null;
+
+	/**
+	 * The day the list was last aimed at today, and the last tab tap it answered. Out here for the
+	 * same reason: opening a session unmounts the page, so an instance flag is a fresh one on the way
+	 * back and the list would jump to today under an archer who was reading last winter.
+	 *
+	 * Kept as a day rather than a yes, so an app left running overnight opens on the new today.
+	 */
+	let anchoredOn: number | null = null;
+	let lastAsked = 0;
 </script>
 
 <script lang="ts">
@@ -253,23 +263,21 @@
 	let pulsing = $state(false);
 
 	/**
-	 * Once, on first arrival rather than at mount. The pager keeps this page alive behind the one on
-	 * show, so a list anchored at mount was aimed while it was off screen: it arrived at its top, and
-	 * the ring it rang was rung to nobody.
+	 * Aimed on arrival rather than at mount. The pager keeps this page alive behind the one on show,
+	 * so a list anchored at mount was aimed while it was off screen: it arrived at its top, and the
+	 * ring it rang was rung to nobody.
 	 *
-	 * Not on every arrival, though. Coming back from a session is not a request to move: the archer
-	 * was reading whatever week they opened it from, and dropping them on today loses their place.
-	 * Asking for today again is what tapping the sessions tab while already here is for.
+	 * Once a day, though, not once an arrival: coming back from a session is not a request to move,
+	 * the archer was reading whatever week they opened it from, and dropping them on today loses
+	 * their place. Asking for today again is what tapping the sessions tab while already here does.
 	 */
-	let anchored = false;
 	$effect(() => {
 		if ($page.url.pathname !== '/sessions') return;
-		if (anchored || !loaded || !anchor || tab !== 'list') return;
-		anchored = true;
+		if (anchoredOn === today || !loaded || !anchor || tab !== 'list') return;
+		anchoredOn = today;
 		aimAtToday();
 	});
 
-	let lastAsked = 0;
 	$effect(() => {
 		const asked = $tabAsked;
 		if (!asked || asked.href !== '/sessions' || asked.at === lastAsked) return;
