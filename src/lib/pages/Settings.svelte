@@ -44,6 +44,10 @@
 	} from '$lib/fullscreen';
 	import { installable, promptInstall } from '$lib/install';
 	import { refreshApp } from '$lib/update';
+	import { appVersion, appBuild } from '$lib/build';
+
+	/** Named rather than read from package.json, which no bundle ships. */
+	const LICENCE = 'AGPL-3.0-only';
 
 	const info = dbInfo();
 
@@ -157,6 +161,21 @@
 		{#snippet pane(key)}
 			{#if key === 'app'}
 				<AppGrid from="/settings" />
+
+				<!-- What this build is, for a bug report: the release, the commit count behind it, and
+					the licence the whole thing is under. -->
+				<section>
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.about')}</h2>
+					<div class="rounded-xl border border-line bg-surface p-4 text-center">
+						<p class="font-semibold">{$t('app.name')}</p>
+						<p class="mt-0.5 text-xs text-muted">{$t('app.tagline')}</p>
+						<p class="tabular mt-2 text-xs text-muted">
+							{$t('settings.version', { version: appVersion })}
+							{#if appBuild}· {$t('settings.build', { n: appBuild })}{/if}
+						</p>
+						<p class="mt-0.5 text-xs text-muted">{$t('settings.licence', { name: LICENCE })}</p>
+					</div>
+				</section>
 
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.language')}</h2>

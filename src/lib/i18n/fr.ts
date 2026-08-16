@@ -919,6 +919,10 @@ export const fr: Dictionary = {
 		linkBadges: 'Badges',
 		linkShare: 'Partager',
 		linkTricks: 'Astuces',
+		about: 'À propos',
+		version: 'Version {version}',
+		build: 'build {n}',
+		licence: 'Sous licence {name}',
 		linkMuscles: 'Muscles',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:

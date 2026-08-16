@@ -914,6 +914,10 @@ export const en = {
 		linkBadges: 'Badges',
 		linkShare: 'Share',
 		linkTricks: 'Tips and tricks',
+		about: 'About',
+		version: 'Version {version}',
+		build: 'build {n}',
+		licence: 'Licensed under {name}',
 		linkMuscles: 'Muscles',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
