@@ -768,10 +768,26 @@
 		scoreDraft = activity.totalScore;
 	});
 
-	async function countFreeArrows(delta: number) {
+	/**
+	 * Counted here and written behind, because a tap that waits for the database loses the next one:
+	 * six taps on +1 landed as two while each write was in flight.
+	 */
+	let freeArrows = $state(0);
+	let freeArrowsLoaded = $state<string | null>(null);
+	$effect(() => {
+		if (!activity || activity.kind !== FREE_SCORE_KIND || freeArrowsLoaded === activity.id) return;
+		freeArrowsLoaded = activity.id;
+		freeArrows = activity.arrowsShot;
+	});
+
+	let arrowWrite: Promise<unknown> = Promise.resolve();
+
+	function countFreeArrows(delta: number) {
 		if (!activity) return;
-		await updateFreeScore(activity.id, { arrowsShot: Math.max(0, activity.arrowsShot + delta) });
-		await refresh();
+		const id = activity.id;
+		freeArrows = Math.max(0, freeArrows + delta);
+		const next = freeArrows;
+		arrowWrite = arrowWrite.then(() => updateFreeScore(id, { arrowsShot: next }));
 	}
 
 	async function saveFreeScore() {
@@ -986,13 +1002,13 @@
 
 		<section class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3.5">
 			<div>
-				<p class="tabular text-2xl leading-none font-bold">{activity.arrowsShot}</p>
+				<p class="tabular text-2xl leading-none font-bold">{freeArrows}</p>
 				<p class="mt-1 text-xs text-muted">{$t('freeScore.arrows')}</p>
 			</div>
 			<div class="flex items-center gap-1.5">
 				<button
 					class="touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
-					disabled={activity.arrowsShot === 0}
+					disabled={freeArrows === 0}
 					aria-label={$t('session.oneLess')}
 					onclick={() => countFreeArrows(-1)}
 				>
@@ -1021,10 +1037,10 @@
 				onblur={saveFreeScore}
 				onchange={saveFreeScore}
 			/>
-			{#if freeScoreAverage(activity.totalScore, activity.arrowsShot) !== null}
+			{#if freeScoreAverage(activity.totalScore, freeArrows) !== null}
 				<p class="tabular mt-2 text-sm text-muted">
 					{$t('freeScore.average', {
-						value: freeScoreAverage(activity.totalScore, activity.arrowsShot)!.toFixed(2)
+						value: freeScoreAverage(activity.totalScore, freeArrows)!.toFixed(2)
 					})}
 				</p>
 			{/if}
