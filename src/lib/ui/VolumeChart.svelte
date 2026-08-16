@@ -199,9 +199,12 @@
 				{#each buckets as bucket, index (bucket.at)}
 					{@const label = axisLabel(bucket.at, index)}
 					{#if label}
+						{@const at = ((index + 0.5) / buckets.length) * 100}
+						<!-- Shifted by where it sits rather than always by half: centred in the middle of the
+							plot, and tucked inside at either end, where half a label hung off the page. -->
 						<span
-							class="absolute -translate-x-1/2 text-[10px] leading-none whitespace-nowrap text-muted"
-							style="left: {((index + 0.5) / buckets.length) * 100}%"
+							class="absolute text-[10px] leading-none whitespace-nowrap text-muted"
+							style="left: {at}%; transform: translateX(-{at}%)"
 						>
 							{label}
 						</span>

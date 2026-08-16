@@ -152,16 +152,22 @@
 		The same row three times off screen: full size, abbreviated, and abbreviated at the smallest
 		size allowed. The visible row cannot be measured at a size it is not being drawn at without the
 		measurement chasing its own tail, and the smallest is what says whether one line is possible.
+
+		Sized to nothing and clipped: three unwrapped rows side by side are far wider than the page,
+		and invisible is not the same as taking no room, so the page grew a scrollbar for them.
 	-->
-	<div class="pointer-events-none invisible absolute top-0 left-0 flex" aria-hidden="true">
-		<div class="flex gap-[0.6em] text-sm" bind:clientWidth={fullWidth}>
+	<div
+		class="pointer-events-none invisible absolute top-0 left-0 flex h-0 w-0 overflow-hidden"
+		aria-hidden="true"
+	>
+		<div class="flex shrink-0 gap-[0.6em] text-sm" bind:clientWidth={fullWidth}>
 			{@render row(shown(false), ICON)}
 		</div>
-		<div class="flex gap-[0.6em] text-sm" bind:clientWidth={shortWidth}>
+		<div class="flex shrink-0 gap-[0.6em] text-sm" bind:clientWidth={shortWidth}>
 			{@render row(shown(true), ICON)}
 		</div>
 		<div
-			class="flex gap-[0.6em]"
+			class="flex shrink-0 gap-[0.6em]"
 			style="font-size: {FLOOR * 0.875}rem"
 			bind:clientWidth={floorWidth}
 		>
