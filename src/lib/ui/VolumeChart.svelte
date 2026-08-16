@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { dateFormats } from '$lib/prefs';
 	import { grainEnd, type Grain, type VolumeBucket } from '$lib/domain/stats';
+	import Icon from './Icon.svelte';
 
 	/**
 	 * What was shot over the window, one bar per day, week or month. The bars stack by the kind of
@@ -119,14 +120,23 @@
 	<!-- The headline reads the whole window; tapping a bar swaps it for that bar, then back. -->
 	<div class="mt-2 flex items-baseline gap-2">
 		{#if shown}
-			<p class="tabular text-3xl leading-none font-bold text-brand-text">
+			<p class="tabular shrink-0 text-3xl leading-none font-bold text-brand-text">
 				{metric === 'perArrow'
 					? (shown.perArrow?.toFixed(2) ?? '—')
 					: metric === 'rounds'
 						? shown.rounds
 						: shown.arrows}
 			</p>
-			<p class="text-xs text-muted">{bucketLabel(shown.at)}</p>
+			<p class="min-w-0 flex-1 text-xs text-muted">{bucketLabel(shown.at)}</p>
+			<!-- The way back to the whole window, beside the span it was narrowed to: tapping the bar
+				again does it too, but a bar a few pixels wide is a poor thing to have to find. -->
+			<button
+				class="-my-1 shrink-0 self-center rounded-lg p-1 text-muted"
+				aria-label={$t('stats.clearBar')}
+				onclick={() => (picked = null)}
+			>
+				<Icon name="close" size={16} />
+			</button>
 		{:else}
 			<p class="tabular text-3xl leading-none font-bold text-brand-text">{headline}</p>
 			<p class="text-xs text-muted">{headlineLabel}</p>

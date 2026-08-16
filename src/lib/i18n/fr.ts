@@ -725,6 +725,7 @@ export const fr: Dictionary = {
 		slice: '{rounds} tirs · {arrows} flèches',
 		barLabel: '{arrows} flèches sur {rounds} tirs',
 		barRange: 'du {from} au {to}',
+		clearBar: 'Revenir à toute la période',
 		scaleHint: 'du plus ancien au plus récent',
 		byKind: 'Score selon le type de session',
 		emptyRange: 'Rien de tiré sur cette période.',
