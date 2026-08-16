@@ -234,6 +234,11 @@ export const MIGRATIONS: string[][] = [
 	[`ALTER TABLE plan ADD COLUMN start_date INTEGER;`, `ALTER TABLE plan ADD COLUMN end_date INTEGER;`],
 	// 0016 outings left naming a bow deleted before the delete knew to hand them its type
 	[
+		// Logged before the repair, while the rows can still be told apart by the bow they name.
+		`INSERT INTO change_log (table_name, row_id, op, changed_at, synced_at)
+			SELECT 'session', id, 'update', CAST(strftime('%s', 'now') AS INTEGER) * 1000, NULL
+			FROM session
+			WHERE bow_id IN (SELECT id FROM bow WHERE deleted_at IS NOT NULL);`,
 		`UPDATE session
 			SET bow_type = COALESCE((SELECT type FROM bow WHERE bow.id = session.bow_id), bow_type),
 				bow_id = NULL,

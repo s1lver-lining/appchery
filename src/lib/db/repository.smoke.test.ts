@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
-import { and, inArray, isNull } from 'drizzle-orm';
+import { and, eq, inArray, isNull } from 'drizzle-orm';
 import * as schema from './schema';
 import { MIGRATIONS } from './migrations';
 
@@ -175,11 +175,21 @@ describe('the repair that frees outings from a deleted bow', () => {
 				.values({ id, createdAt: now, updatedAt: now, deviceId: 'd', startedAt: now, kind: 'practice', bowId });
 		}
 
-		sqlite.exec(MIGRATIONS[MIGRATIONS.length - 1][0]);
+		for (const statement of MIGRATIONS[MIGRATIONS.length - 1]) sqlite.exec(statement);
 
 		const rows = await proxy.select().from(schema.session).where(inArray(schema.session.id, ['sess-orphan', 'sess-fine']));
 		const byId = new Map(rows.map((row) => [row.id, row]));
 		expect(byId.get('sess-orphan')).toMatchObject({ bowId: null, bowType: 'recurve' });
 		expect(byId.get('sess-fine')).toMatchObject({ bowId: 'bow-here', bowType: null });
+	});
+
+	it('writes a change of its own for every row it repaired, and for no other', async () => {
+		const logged = await proxy
+			.select()
+			.from(schema.changeLog)
+			.where(eq(schema.changeLog.tableName, 'session'));
+
+		expect(logged.map((row) => row.rowId)).toEqual(['sess-orphan']);
+		expect(logged[0]).toMatchObject({ op: 'update', syncedAt: null });
 	});
 });
