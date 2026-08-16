@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { goto } from '$app/navigation';
-	import { t } from '$lib/i18n';
+	import { t, locale } from '$lib/i18n';
 	import { overrideStatusBar } from '$lib/theme';
 	import { getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
 	import {
@@ -22,7 +22,7 @@
 	} from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import { getTemplate } from '$lib/domain/tuning/templates';
-	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
+	import { GUIDE_STEPS, stepText } from '$lib/domain/tuning/guide';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import BraceTuning from '$lib/ui/BraceTuning.svelte';
 	import WeightRatio from '$lib/ui/WeightRatio.svelte';
@@ -137,9 +137,10 @@
 	);
 
 	/** The same picture the guide draws for this procedure: the geometry is the same on both pages. */
-	const diagram = $derived(
-		GUIDE_STEPS.find((step) => step.templateKey === activity?.templateKey)?.diagram ?? null
+	const guideStep = $derived(
+		GUIDE_STEPS.find((step) => step.templateKey === activity?.templateKey) ?? null
 	);
+	const diagram = $derived(guideStep?.diagram ?? null);
 
 	interface SheetRow {
 		key: string;
@@ -669,11 +670,21 @@
 	/**
 	 * The procedure read for this bow's own hand. No switch here, unlike the guide: the activity is
 	 * being run on one bow, and that bow's record already says which way its readings go.
+	 *
+	 * Taken from the guide's own wording rather than from the template, which is the English the
+	 * templates are declared in: the same procedure must not read in two languages on two pages.
 	 */
+	const procedureText = $derived(
+		guideStep
+			? stepText(guideStep.key, $locale, savedSettings.handedness === 'Left' ? 'left' : 'right')
+			: null
+	);
+	const steps = $derived((procedure: TuningTemplate) => procedureText?.steps ?? procedure.steps);
 	const interpretation = $derived((procedure: TuningTemplate) =>
-		savedSettings.handedness === 'Left' && procedure.interpretationLeft
+		procedureText?.results ??
+		(savedSettings.handedness === 'Left' && procedure.interpretationLeft
 			? procedure.interpretationLeft
-			: procedure.interpretation
+			: procedure.interpretation)
 	);
 	/**
 	 * Only the fields this procedure can actually move. Offering the whole bow invites an unrelated
@@ -820,7 +831,7 @@
 				{/if}
 				<h2 class="mb-2 text-sm font-semibold">{$t('tuning.steps')}</h2>
 				<ol class="list-decimal space-y-1 pl-5 text-sm">
-					{#each template.steps as step (step)}
+					{#each steps(template) as step (step)}
 						<li>{step}</li>
 					{/each}
 				</ol>
