@@ -62,9 +62,9 @@ export const XP_PER_ARROW = 2;
 export const XP_PER_ROUND_ARROW = 3;
 export const XP_MATCH_WIN = 300;
 /** A draw is a match survived rather than won, so it pays half. */
-const DRAW_SHARE = 0.5;
+export const DRAW_SHARE = 0.5;
 /** What a round still pays when nothing at all went in the middle, so a bad day is not a wasted one. */
-const SCORE_FLOOR = 0.5;
+export const SCORE_FLOOR = 0.5;
 
 /**
  * The face an 18m indoor round is shot on, in centimetres per metre of distance. Difficulty is
@@ -72,10 +72,12 @@ const SCORE_FLOOR = 0.5;
  * size is twice the shot to make, and that ratio is the whole of what distance and face size decide
  * together.
  */
-const REFERENCE_FACE_PER_METRE = 40 / 18;
+export const REFERENCE_FACE_CM = 40;
+export const REFERENCE_DISTANCE_M = 18;
+const REFERENCE_FACE_PER_METRE = REFERENCE_FACE_CM / REFERENCE_DISTANCE_M;
 /** Bounds on the multiplier, so an unusual round cannot pay a multiple of a normal one. */
-const MIN_DIFFICULTY = 0.5;
-const MAX_DIFFICULTY = 2;
+export const MIN_DIFFICULTY = 0.5;
+export const MAX_DIFFICULTY = 2;
 
 /** A bracket climbed is worth more the further up it goes, and a final most of all. */
 const STAGE_WEIGHT: Record<MatchStage, number> = {
@@ -163,7 +165,7 @@ export function badgeXp(key: string): number {
 }
 
 /** Points the level counts from, so level one starts at nothing and the curve steepens from there. */
-const LEVEL_STEP = 100;
+export const LEVEL_STEP = 100;
 
 export function xpForLevel(level: number): number {
 	return LEVEL_STEP * Math.max(0, level - 1) ** 2;

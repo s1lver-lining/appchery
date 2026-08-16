@@ -1139,10 +1139,37 @@ insetHint:
 			matches: '{n} matchs gagnés'
 		},
 		rates: 'Ce que valent les choses',
-		rateArrows: 'Chaque flèche qui compte dans votre volume rapporte {xp} XP, quel que soit le motif du tir.',
-		rateRounds: "Une série menée à son terme rapporte en plus, selon l'éloignement du blason pour sa taille et selon votre score. Une série laissée en chemin ne rapporte que ses flèches.",
-		rateBadges: "Un badge rapporte une seule fois, la première fois qu'il est obtenu, et chacun vaut une somme différente. S'il tombe lors de la revérification des réglages, ses points tombent avec lui.",
-		rateMatches: "Gagner un match qui est le vôtre rapporte {xp} XP, davantage plus haut dans le tableau et face à un adversaire plus fort. Un match nul rapporte la moitié, une défaite rien, et une feuille tenue pour quelqu'un d'autre ne rapporte rien du tout.",
+		rules: {
+			arrows: {
+				title: 'Flèches',
+				formula: 'flèches tirées × {xp} XP',
+				body: "Chaque flèche qui compte dans votre volume rapporte autant, quel que soit le motif du tir: un échauffement, une procédure, un match, une série comptée. C'est la seule chose qui rapporte quoi qu'il arrive."
+			},
+			rounds: {
+				title: 'Séries menées à leur terme',
+				formula: 'flèches × {xp} × difficulté × forme',
+				difficulty: 'difficulté = ({face} ÷ {metres}) ÷ (blason en cm ÷ distance en m), tenue entre {min} et {max}',
+				form: 'forme = {floor} + {rest} × (votre score ÷ le maximum possible)',
+				body: "Payée en plus des flèches, et seulement une fois la série terminée. La difficulté mesure le blason par rapport à un tir à 18m sur un blason de 40cm, qui vaut donc 1: un blason plus éloigné pour sa taille vaut davantage. La forme ne descend jamais sous {floor}, car une mauvaise série reste une série tirée.",
+				example: 'Un WA 720 à 70m à 640 points: 72 × 3 × 1,28 × 0,94 = 260 XP'
+			},
+			badges: {
+				title: 'Badges',
+				formula: 'la valeur inscrite sur le badge, une fois',
+				body: "Chaque badge vaut sa propre somme, de 100 pour battre le robot débutant à 2000 pour vingt cinq mille flèches. Il rapporte la première fois qu'il est obtenu et plus jamais. S'il tombe lors de la revérification de l'onglet données des réglages, ses points tombent avec lui."
+			},
+			matches: {
+				title: 'Matchs gagnés',
+				formula: '{xp} XP × tour × adversaire',
+				body: "En plus des flèches que le match a demandées. Le tour va de 1 pour un match hors tableau à 2 pour une finale, et l'adversaire de 0,6 pour le robot débutant à 1,5 pour le professionnel, une personne comptant 1. Un match nul en rapporte {draw}, une défaite rien, et une feuille tenue pour quelqu'un d'autre ne rapporte rien du tout, flèches comprises."
+			},
+			levels: {
+				title: 'Niveaux',
+				formula: 'le niveau n commence à {step} × (n − 1)² XP',
+				body: "Chaque niveau coûte plus que le précédent, et il n'y a pas de dernier.",
+				example: 'Niveau 2 à 100 XP, niveau 10 à 8 100, niveau 20 à 36 100.'
+			}
+		},
 		rateDeterministic: "Rien n'est mis de côté: le total est recalculé sur l'historique tel qu'il est, donc supprimer une session reprend exactement ce qu'elle avait donné."
 	},
 	badges: {

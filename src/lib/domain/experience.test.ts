@@ -100,6 +100,12 @@ describe('rounds', () => {
 		expect(outdoor).toBeGreaterThan(inside);
 	});
 
+	// The worked example the experience page prints, so the sum on screen cannot drift from the rule.
+	it('pays a WA 720 at 70m scored 640 the 260 points the page quotes', () => {
+		expect(roundDifficulty(wa720)).toBeCloseTo(1.28, 2);
+		expect(roundXp(finished(wa720, 640))).toBe(260);
+	});
+
 	it('pays nothing for arrows that belong to no round', () => {
 		expect(roundXp(activity({ id: 'a', kind: 'training', arrowsShot: 60 }))).toBe(0);
 	});

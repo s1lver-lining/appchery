@@ -7,7 +7,15 @@
 		experience,
 		XP_SOURCES,
 		XP_PER_ARROW,
+		XP_PER_ROUND_ARROW,
 		XP_MATCH_WIN,
+		SCORE_FLOOR,
+		DRAW_SHARE,
+		LEVEL_STEP,
+		MIN_DIFFICULTY,
+		MAX_DIFFICULTY,
+		REFERENCE_FACE_CM,
+		REFERENCE_DISTANCE_M,
 		type Experience,
 		type XpSource
 	} from '$lib/domain/experience';
@@ -37,6 +45,36 @@
 	const percentIntoLevel = $derived(
 		earned && earned.span > 0 ? (earned.into / earned.span) * 100 : 0
 	);
+	/**
+	 * The rules, each with the sum it is. The figures are read from the domain rather than written out
+	 * again here, so a rate that changes changes the page that explains it.
+	 */
+	const RATES: {
+		key: string;
+		params: Record<string, string | number>;
+		terms?: string[];
+		example?: boolean;
+	}[] = [
+		{ key: 'arrows', params: { xp: XP_PER_ARROW } },
+		{
+			key: 'rounds',
+			params: {
+				xp: XP_PER_ROUND_ARROW,
+				face: REFERENCE_FACE_CM,
+				metres: REFERENCE_DISTANCE_M,
+				floor: SCORE_FLOOR,
+				rest: 1 - SCORE_FLOOR,
+				min: MIN_DIFFICULTY,
+				max: MAX_DIFFICULTY
+			},
+			terms: ['difficulty', 'form'],
+			example: true
+		},
+		{ key: 'badges', params: {} },
+		{ key: 'matches', params: { xp: XP_MATCH_WIN, draw: DRAW_SHARE } },
+		{ key: 'levels', params: { step: LEVEL_STEP }, example: true }
+	];
+
 	const share = (xp: number) => (earned && earned.total > 0 ? (xp / earned.total) * 100 : 0);
 	const slices = $derived(
 		earned
@@ -146,13 +184,41 @@
 			<h2 class="mb-3 text-[11px] font-semibold tracking-wider text-muted uppercase">
 				{$t('experience.rates')}
 			</h2>
-			<ul class="space-y-2.5 text-sm text-muted">
-				<li>{$t('experience.rateArrows', { xp: XP_PER_ARROW })}</li>
-				<li>{$t('experience.rateRounds')}</li>
-				<li>{$t('experience.rateBadges')}</li>
-				<li>{$t('experience.rateMatches', { xp: XP_MATCH_WIN })}</li>
-				<li>{$t('experience.rateDeterministic')}</li>
-			</ul>
+
+			<div class="space-y-5">
+				{#each RATES as rate (rate.key)}
+					<div>
+						<h3 class="text-sm font-semibold">{$t(`experience.rules.${rate.key}.title`)}</h3>
+						<!-- The sum itself, given room and centred: a rule you can check beats a rule you trust. -->
+						<p
+							class="tabular mt-2 overflow-x-auto rounded-xl bg-sunk px-3 py-2.5 text-center text-sm whitespace-nowrap"
+						>
+							{$t(`experience.rules.${rate.key}.formula`, rate.params)}
+						</p>
+						{#if rate.terms}
+							<ul class="mt-2 space-y-1">
+								{#each rate.terms as term (term)}
+									<li class="tabular text-center text-xs text-muted">
+										{$t(`experience.rules.${rate.key}.${term}`, rate.params)}
+									</li>
+								{/each}
+							</ul>
+						{/if}
+						<p class="mt-2 text-sm text-muted">
+							{$t(`experience.rules.${rate.key}.body`, rate.params)}
+						</p>
+						{#if rate.example}
+							<p class="tabular mt-1.5 text-xs text-muted">
+								{$t(`experience.rules.${rate.key}.example`)}
+							</p>
+						{/if}
+					</div>
+				{/each}
+			</div>
+
+			<p class="mt-5 border-t border-line pt-4 text-sm text-muted">
+				{$t('experience.rateDeterministic')}
+			</p>
 		</section>
 	</div>
 {/if}

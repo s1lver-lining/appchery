@@ -1131,10 +1131,37 @@ insetHint:
 			matches: '{n} matches won'
 		},
 		rates: 'What things are worth',
-		rateArrows: 'Every arrow that counts towards your volume pays {xp} XP, whatever it was shot for.',
-		rateRounds: 'A round shot to the end pays again, by how far away the face was for its size and by what you scored on it. A round left half shot pays nothing beyond its arrows.',
-		rateBadges: 'A badge pays once, the first time it is earned, and each one is worth a different amount. Lose it to the recheck in the settings and its points go with it.',
-		rateMatches: 'Winning a match of your own pays {xp} XP, more the further up a bracket it was and the harder the opponent. A draw pays half, a loss nothing, and a card kept for somebody else pays nothing at all.',
+		rules: {
+			arrows: {
+				title: 'Arrows',
+				formula: 'arrows shot × {xp} XP',
+				body: 'Every arrow that counts towards your volume pays the same, whatever it was shot for: a warm up, a procedure, a match, a scored round. This is the only thing that pays no matter how it went.'
+			},
+			rounds: {
+				title: 'Rounds shot to the end',
+				formula: 'arrows × {xp} × difficulty × form',
+				difficulty: 'difficulty = ({face} ÷ {metres}) ÷ (face in cm ÷ distance in m), kept between {min} and {max}',
+				form: 'form = {floor} + {rest} × (your score ÷ the best possible)',
+				body: 'Paid on top of the arrows, and only once the round is complete. Difficulty is the face measured against an 18m round on a 40cm face, so that round is worth 1 and a face further away for its size is worth more. Form never falls below {floor}, because a bad round is still a round shot.',
+				example: 'A WA 720 at 70m scored 640: 72 × 3 × 1.28 × 0.94 = 260 XP'
+			},
+			badges: {
+				title: 'Badges',
+				formula: 'the value written on the badge, once',
+				body: 'Each badge is worth its own amount, from 100 for beating the beginner bot to 2000 for twenty five thousand arrows. It pays the first time it is earned and never again. Lose one to the recheck in the settings data tab and its points go with it.'
+			},
+			matches: {
+				title: 'Matches won',
+				formula: '{xp} XP × stage × opponent',
+				body: 'On top of the arrows the match took. Stage runs from 1 for a match outside any bracket to 2 for a final, and the opponent from 0.6 for the beginner bot to 1.5 for the professional, a person counting 1. A draw pays {draw} of it, a loss nothing, and a card kept for somebody else pays nothing at all, arrows included.'
+			},
+			levels: {
+				title: 'Levels',
+				formula: 'level n begins at {step} × (n − 1)² XP',
+				body: 'Each level costs more than the one before it, and there is no last one.',
+				example: 'Level 2 at 100 XP, level 10 at 8,100, level 20 at 36,100.'
+			}
+		},
 		rateDeterministic: 'Nothing is banked: the total is worked out from the history as it stands, so deleting a session takes back exactly what it gave.'
 	},
 	badges: {
