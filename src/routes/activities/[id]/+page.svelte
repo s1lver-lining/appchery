@@ -1146,11 +1146,21 @@
 										{/if}
 									</button>
 								{:else}
+									<!-- Numbered like a written end is: an end waiting on its write sits here for as
+										long as the write takes, and a number that goes away and comes back reads as
+										the app having lost track of which arrow was which. -->
 									<span
-										class="tabular flex h-[var(--chip)] w-[var(--chip)] shrink-0 items-center justify-center rounded text-[calc(var(--chip)*0.46)] font-bold"
+										class="tabular relative flex h-[var(--chip)] w-[var(--chip)] shrink-0 items-center justify-center rounded text-[calc(var(--chip)*0.46)] font-bold"
 										style={chipStyle(shot.zoneLabel)}
 									>
 										{shot.zoneLabel}
+										{#if $showArrowNumbers}
+											<span
+												class="absolute right-px bottom-px text-[calc(var(--chip)*0.28)] leading-none font-semibold opacity-70"
+											>
+												{shot.ordinal}
+											</span>
+										{/if}
 									</span>
 								{/if}
 							{/each}
