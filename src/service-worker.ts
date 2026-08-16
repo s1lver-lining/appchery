@@ -59,7 +59,7 @@ worker.addEventListener('fetch', (event) => {
 				} catch {
 					// A share the worker cannot read leaves the page to say nothing was handed over.
 				}
-				return Response.redirect(target.pathname, 303);
+				return Response.redirect(new URL(target.pathname, location.origin).href, 303);
 			})()
 		);
 		return;
