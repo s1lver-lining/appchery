@@ -225,6 +225,20 @@ export const tricksFr: TricksDictionary = {
 			]
 		},
 		{
+			key: 'experience',
+			title: 'Expérience',
+			tricks: [
+				{
+					lead: 'Rien n’est mis de côté.',
+					body: 'Les points d’expérience ne sont jamais stockés : le total est recalculé sur l’historique tel qu’il est, donc un même historique donne toujours le même niveau. Supprimer une séance reprend donc exactement ce qu’elle avait donné, flèches, tir compté et match gagné compris, et corriger un score déplace les points avec lui. Les badges sont la seule chose qui survive au tir qui les a gagnés, parce que le badge lui-même y survit : perdez-en un à la revérification de l’onglet données des paramètres et ses points partent avec lui.'
+				},
+				{
+					lead: 'Le niveau peut tenir l’en-tête.',
+					body: 'Maintenez l’un des deux chiffres en haut de la page d’accueil et choisissez le niveau, ou le total d’expérience, à la place d’un compte de flèches.'
+				}
+			]
+		},
+		{
 			key: 'sharing',
 			title: 'Partage',
 			tricks: [

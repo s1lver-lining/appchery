@@ -230,6 +230,20 @@ export const tricksEn = {
 			]
 		},
 		{
+			key: 'experience',
+			title: 'Experience',
+			tricks: [
+				{
+					lead: 'Nothing is banked.',
+					body: 'Experience points are never stored: the total is worked out afresh from the history as it stands, so the same history always gives the same level. That means deleting a session takes back exactly what it gave, arrows, round and match win alike, and correcting a score moves the points with it. Badges are the one thing that outlives their shooting, because the badge itself does: lose one to the recheck in the settings data tab and its points go with it.'
+				},
+				{
+					lead: 'The level can ride the header.',
+					body: 'Hold either figure at the top of the home page and pick the level, or the experience total, instead of a count of arrows.'
+				}
+			]
+		},
+		{
 			key: 'sharing',
 			title: 'Sharing',
 			tricks: [
