@@ -21,9 +21,8 @@
 		COMPETITION_COLOURS,
 		noAnimations
 	} from '$lib/prefs';
-	import { recalculateBadges, importPlan, listBows, type BowRow } from '$lib/db/repository';
-	import { readWorkbook, WorkbookError } from '$lib/import/xlsx';
-	import { planCapTargetImport, type CapTargetPlan } from '$lib/import/captarget';
+	import { recalculateBadges } from '$lib/db/repository';
+	import ImportDialog from '$lib/ui/ImportDialog.svelte';
 	import {
 		exportBackup,
 		importBackup,
@@ -36,9 +35,6 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
-	import { portal } from '$lib/ui/portal';
-	import { scrim } from '$lib/ui/statusBar';
-	import { lockScroll } from '$lib/ui/scrollLock';
 	import Icon from '$lib/ui/Icon.svelte';
 	import AppGrid from '$lib/ui/AppGrid.svelte';
 	import {
@@ -84,37 +80,8 @@
 	/** Held aside until the archer confirms, because restoring replaces everything already stored. */
 	let pendingFile = $state<File | null>(null);
 	let importInput = $state<HTMLInputElement | null>(null);
-	/**
-	 * A read export waiting to be written. The file is parsed before anything is asked, so the
-	 * confirmation can say what is actually in it rather than what its name suggests.
-	 */
-	let pendingImport = $state<{ name: string; plan: CapTargetPlan } | null>(null);
-	let importNotice = $state<string | null>(null);
-	let importError = $state<string | null>(null);
-	/**
-	 * Writing years of shooting takes long enough to look like nothing is happening, so it says so
-	 * on the screen instead of greying the page out and leaving the archer to guess.
-	 */
-	let importing = $state(false);
-	let importProgress = $state({ done: 0, total: 0 });
-	/**
-	 * The bar's own share of the work. Writing the sessions is nearly all of it, and recounting the
-	 * badges is the rest, so the bar stops just short until the badges are done rather than sitting
-	 * full while the screen is still held.
-	 */
-	const importFraction = $derived(
-		importProgress.total === 0 ? 0 : (importProgress.done / importProgress.total) * 0.9
-	);
-	/**
-	 * The bow the imported sessions were shot with. The export names no bow, and guessing one would
-	 * attribute scores to equipment that may have nothing to do with them, so this is asked rather
-	 * than assumed and left unset when the archer does not say.
-	 */
-	let importBowId = $state<string>('');
-	let bows = $state<BowRow[]>([]);
-	$effect(() => {
-		listBows().then((rows) => (bows = rows.filter((bow) => bow.isActive)));
-	});
+	/** The file being imported, which the dialog reads, asks about and writes on its own. */
+	let importFile = $state<File | null>(null);
 
 	/**
 	 * Permission is requested the moment the archer opts in, not silently at session start, and a
@@ -172,75 +139,11 @@
 		input.value = '';
 	}
 
-	/**
-	 * Reading the export is done before the archer is asked anything, so the question can be about
-	 * what the file holds. Nothing is written by this: it only produces the plan the dialog reports.
-	 */
-	async function chooseImport(event: Event) {
+	function chooseImport(event: Event) {
 		const input = event.currentTarget as HTMLInputElement;
-		const file = input.files?.[0] ?? null;
+		importFile = input.files?.[0] ?? null;
+		// Cleared so choosing the same file twice still fires a change event.
 		input.value = '';
-		if (!file) return;
-
-		busy = true;
-		importError = null;
-		importNotice = null;
-		try {
-			const plan = planCapTargetImport(await readWorkbook(await file.arrayBuffer()));
-			if (plan.summary.sessions === 0) importError = $t('importer.error.nothingFound');
-			else pendingImport = { name: file.name, plan };
-		} catch (e) {
-			importError = e instanceof WorkbookError ? $t(`importer.error.${e.message}`) : String(e);
-		} finally {
-			// In a finally because a half read file must not leave every button on the tab disabled.
-			busy = false;
-		}
-	}
-
-	async function runImport() {
-		const pending = pendingImport;
-		pendingImport = null;
-		if (!pending) return;
-
-		busy = true;
-		importing = true;
-		importProgress = { done: 0, total: pending.plan.sessions.length };
-		importError = null;
-		try {
-			const report = await importPlan(pending.plan, {
-				bowId: importBowId || null,
-				onProgress: (done, total) => (importProgress = { done, total })
-			});
-			// Years of shooting arriving at once earns whatever it earns, so the badges are rechecked.
-			await recalculateBadges();
-			importNotice = $t('importer.imported', {
-				sessions: report.sessions,
-				arrows: report.arrows
-			});
-		} catch (e) {
-			importError = String(e);
-		} finally {
-			importing = false;
-			busy = false;
-		}
-	}
-
-	/** The summary the confirmation shows: what was found, and what could not be read. */
-	function importSummary(pending: { name: string; plan: CapTargetPlan }): string {
-		const { summary, warnings } = pending.plan;
-		const lines = [
-			$t('importer.confirmBody', {
-				name: pending.name,
-				sessions: summary.sessions,
-				rounds: summary.rounds,
-				arrows: summary.arrows
-			})
-		];
-		const skipped = warnings
-			.filter((w) => w.code === 'undatedRow' || w.code === 'unreadableRow')
-			.reduce((sum, w) => sum + w.count, 0);
-		if (skipped > 0) lines.push($t('importer.skipped', { n: skipped }));
-		return lines.join('\n');
 	}
 
 	async function restore() {
@@ -636,21 +539,6 @@
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('importer.hint')}</p>
 
-						{#if bows.length > 0}
-							<label class="mt-3 block text-sm">
-								<span class="text-muted">{$t('importer.bow')}</span>
-								<select
-									class="mt-1 w-full rounded-lg border border-line bg-sunk px-3 py-2 text-sm"
-									bind:value={importBowId}
-								>
-									<option value="">{$t('importer.noBow')}</option>
-									{#each bows as bow (bow.id)}
-										<option value={bow.id}>{bow.name}</option>
-									{/each}
-								</select>
-							</label>
-						{/if}
-
 						<button
 							class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 							disabled={busy}
@@ -666,16 +554,6 @@
 							class="hidden"
 							onchange={chooseImport}
 						/>
-
-						{#if importNotice}
-							<p class="mt-3 flex items-center gap-1.5 text-sm text-brand-text">
-								<Icon name="target" size={16} />
-								{importNotice}
-							</p>
-						{/if}
-						{#if importError}
-							<p class="mt-3 text-sm text-danger">{importError}</p>
-						{/if}
 					</div>
 				</section>
 
@@ -715,47 +593,7 @@
 
 <!-- No way out of this one on purpose: the write is half done and there is nothing safe to cancel
 	into, so the screen is held until it finishes. -->
-{#if importing}
-	<div
-		class="fixed inset-0 z-[60] flex items-center justify-center p-4"
-		use:portal
-		use:lockScroll
-		role="alertdialog"
-		aria-busy="true"
-		aria-label={$t('importer.working')}
-	>
-		<!-- The status bar sits above the sheet rather than under it, so it is darkened to match. -->
-		<div class="absolute inset-0 bg-black/50" use:scrim={0.5}></div>
-		<div class="relative w-full max-w-xs rounded-2xl border border-line bg-surface p-4 shadow-xl">
-			<p class="font-semibold">{$t('importer.working')}</p>
-			<p class="mt-1 text-sm text-muted">
-				{importProgress.total > 0 && importProgress.done < importProgress.total
-					? $t('importer.progress', { done: importProgress.done, total: importProgress.total })
-					: $t('importer.workingHint')}
-			</p>
-
-			<div
-				class="mt-3 h-2 overflow-hidden rounded-full bg-sunk"
-				role="progressbar"
-				aria-valuemin={0}
-				aria-valuemax={100}
-				aria-valuenow={Math.round(importFraction * 100)}
-			>
-				<div
-					class="h-full rounded-full bg-brand transition-[width] duration-200"
-					style="width: {Math.round(importFraction * 100)}%"
-				></div>
-			</div>
-		</div>
-	</div>
+{#if importFile}
+	<ImportDialog file={importFile} onclose={() => (importFile = null)} />
 {/if}
 
-{#if pendingImport}
-	<ConfirmDialog
-		title={$t('importer.confirmTitle')}
-		message={importSummary(pendingImport)}
-		confirmLabel={$t('importer.confirmAction')}
-		onconfirm={runImport}
-		oncancel={() => (pendingImport = null)}
-	/>
-{/if}

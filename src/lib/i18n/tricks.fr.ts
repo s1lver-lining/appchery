@@ -235,6 +235,14 @@ export const tricksFr: TricksDictionary = {
 			title: 'Ailleurs',
 			tricks: [
 				{
+					lead: 'Ouvrez un export CapTarget avec Appchery.',
+					body: "Exportez depuis CapTarget et choisissez Appchery dans le menu de partage, ou ouvrez le .xlsx depuis vos fichiers. Réimporter après un export plus récent met à jour ce qui avait été écrit au lieu de le dupliquer, et vos séances saisies ici ne sont jamais touchées."
+				},
+				{
+					lead: "Un score sans les flèches est une activité à part.",
+					body: "Le plotting libre et les jeux de score sont enregistrés comme une activité score seul : une distance, un blason, un nombre de flèches et un total. Ses flèches comptent dans votre volume, et son score reste hors des moyennes et des records, faute de volées derrière lui."
+				},
+				{
 					lead: 'Supprimer ne demande rien, et rend tout.',
 					body: 'Une séance, un tir ou un match part dès que vous touchez supprimer, et un bandeau au-dessus de la barre d’onglets le propose en retour pendant six secondes. Rien n’est vraiment perdu avant longtemps : une suppression ne fait que masquer la ligne.'
 				},

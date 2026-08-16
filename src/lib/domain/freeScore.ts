@@ -5,7 +5,7 @@ import type { LengthUnit } from './rounds/types';
  *
  * Free plotting, a scoring game, a drill somebody kept a running total of: the archer knows how far
  * away they stood, what face they shot at, how many arrows they let go and what it all added up to,
- * and nothing else. Recorded as a round it would be a lie — a round has ends, and a round with six
+ * and nothing else. Recorded as a round it would be a lie: a round has ends, and a round with six
  * invented arrows scoring sixty two is a thing no archer has ever shot.
  *
  * So it is its own kind of activity. It has no ends, no arrows of its own and no round definition,

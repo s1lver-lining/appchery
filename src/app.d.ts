@@ -5,6 +5,15 @@ declare global {
 			spare?: boolean;
 		}
 	}
+
+	/** File handling, which no TypeScript lib declares yet: the manifest claims .xlsx exports. */
+	interface LaunchParams {
+		files?: FileSystemFileHandle[];
+	}
+
+	interface LaunchQueue {
+		setConsumer(consumer: (params: LaunchParams) => void): void;
+	}
 }
 
 export {};

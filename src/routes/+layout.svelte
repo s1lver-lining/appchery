@@ -21,6 +21,7 @@
 	import { t } from '$lib/i18n';
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
+	import { incomingFile, namedFile } from '$lib/import/incoming';
 	import { watchForUpdates } from '$lib/update';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import UndoBar from '$lib/ui/UndoBar.svelte';
@@ -64,6 +65,46 @@
 		{ href: '/stats', key: 'nav.stats', icon: 'chart' },
 		{ href: '/settings', key: 'nav.settings', icon: 'sliders' }
 	];
+
+	// An export opened from a file manager or handed over by another app: the file is carried in and
+	// the import page picks it up, so opening one is the whole of what the archer has to do.
+	$effect(() => {
+		if (!Capacitor.isNativePlatform()) {
+			const queue = (window as unknown as { launchQueue?: LaunchQueue }).launchQueue;
+			queue?.setConsumer(async (params) => {
+				const [handle] = params.files ?? [];
+				if (!handle) return;
+				incomingFile.set(await handle.getFile());
+				goto('/import');
+			});
+			return;
+		}
+
+		App.getLaunchUrl().then((launch) => {
+			if (launch?.url) openHandedFile(launch.url);
+		});
+		const listener = App.addListener('appUrlOpen', (event) => openHandedFile(event.url));
+		return () => {
+			listener.then((l) => l.remove());
+		};
+	});
+
+	/** Android hands over a content URI rather than a file, and only the platform can read it. */
+	async function openHandedFile(url: string) {
+		if (!/\.xlsx(\?|$)/i.test(url) && !url.startsWith('content://')) return;
+		try {
+			const { Filesystem } = await import('@capacitor/filesystem');
+			const { data } = await Filesystem.readFile({ path: url });
+			const binary = atob(typeof data === 'string' ? data : '');
+			const bytes = Uint8Array.from(binary, (c) => c.charCodeAt(0));
+			const name = decodeURIComponent(url.split('/').pop() ?? '').split('?')[0];
+			incomingFile.set(namedFile(new Blob([bytes as BlobPart]), name));
+			goto('/import');
+		} catch {
+			// A file the platform will not hand over leaves the import page to say so.
+			goto('/import');
+		}
+	}
 
 	// The hardware key climbs the tree rather than unwinding history, so a long detour inside one
 	// section still leaves the app in one press from its root.

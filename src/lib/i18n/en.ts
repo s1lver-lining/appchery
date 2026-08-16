@@ -842,6 +842,11 @@ export const en = {
 		average: '{value} per arrow'
 	},
 	importer: {
+		nothingHanded: 'No file was handed over. Open an export from your files, or pick one in the settings.',
+		openSettings: 'Go to settings',
+		reading: 'Reading the file…',
+		doneTitle: 'Imported',
+		failedTitle: 'Import failed',
 		title: 'Import from another app',
 		hint: 'Load a CapTarget export (.xlsx). Sessions already imported are refreshed; nothing else on this device is touched.',
 		choose: 'Choose an export',

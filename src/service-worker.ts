@@ -1,5 +1,6 @@
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
+import { SHARE_CACHE, SHARE_KEY } from '$lib/import/incoming';
 
 /**
  * Precaches the whole app on install, because a scoring app that needs the network at the range is
@@ -37,8 +38,32 @@ worker.addEventListener('activate', (event) => {
 	);
 });
 
+// An export shared from another app arrives as a POST that no static host can answer, so the file is
+// parked in a cache and the import page is told to come and collect it.
 worker.addEventListener('fetch', (event) => {
 	const request = event.request;
+	const target = new URL(request.url);
+	if (request.method === 'POST' && target.pathname.endsWith('/import')) {
+		event.respondWith(
+			(async () => {
+				try {
+					const form = await request.formData();
+					const file = form.get('file');
+					if (file instanceof File) {
+						const cache = await caches.open(SHARE_CACHE);
+						await cache.put(
+							SHARE_KEY,
+							new Response(file, { headers: { 'x-filename': file.name } })
+						);
+					}
+				} catch {
+					// A share the worker cannot read leaves the page to say nothing was handed over.
+				}
+				return Response.redirect(target.pathname, 303);
+			})()
+		);
+		return;
+	}
 	if (request.method !== 'GET') return;
 
 	const url = new URL(request.url);

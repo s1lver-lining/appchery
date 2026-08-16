@@ -240,6 +240,14 @@ export const tricksEn = {
 			title: 'Elsewhere',
 			tricks: [
 				{
+					lead: 'Open a CapTarget export with Appchery.',
+					body: 'Export from CapTarget and pick Appchery in the share sheet, or open the .xlsx from your files. Importing again after a later export refreshes what it wrote instead of doubling it, and the sessions you recorded here are never touched.'
+				},
+				{
+					lead: 'A score with no arrows behind it is its own activity.',
+					body: 'Free plotting and scoring games are recorded as a score only activity: a distance, a face, an arrow count and a total. Its arrows count towards your volume, and its score stays out of averages and personal bests, because there are no ends behind it.'
+				},
+				{
 					lead: 'Deleting asks nothing, and gives it back.',
 					body: 'A session, a round or a match goes the moment you tap delete, and a strip above the tab bar offers it back for six seconds. Nothing is really gone until much later: a delete only hides the row.'
 				},

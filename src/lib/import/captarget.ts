@@ -494,7 +494,7 @@ export function planCapTargetImport(
  * How many arrows each round was shot with, and how many the session has left over.
  *
  * CapTarget records two kinds of round. One carries its arrows, and there is nothing to work out.
- * The other — free plotting, and whatever else it counts as a "situation" — carries a score and
+ * The other, free plotting and whatever else it counts as a "situation", carries a score and
  * nothing else, because the export leaves the arrows behind. Those rounds still happened, and their
  * arrows are still in the session's own counters, so the counters are what they are recovered from:
  * the session says how many arrows were shot at a score, the rounds that carry their arrows account

@@ -848,6 +848,11 @@ export const fr: Dictionary = {
 		average: '{value} par flèche'
 	},
 	importer: {
+		nothingHanded: "Aucun fichier n'a été transmis. Ouvrez un export depuis vos fichiers, ou choisissez-en un dans les paramètres.",
+		openSettings: 'Aller aux paramètres',
+		reading: 'Lecture du fichier…',
+		doneTitle: 'Import terminé',
+		failedTitle: "Échec de l'import",
 		title: 'Importer depuis une autre application',
 		hint: "Chargez un export CapTarget (.xlsx). Les séances déjà importées sont mises à jour ; le reste de l'appareil n'est pas touché.",
 		choose: 'Choisir un export',
