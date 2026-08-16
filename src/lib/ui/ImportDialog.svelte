@@ -115,7 +115,7 @@
 				<label class="mt-3 block text-sm">
 					<span class="text-muted">{$t('importer.bow')}</span>
 					<select
-						class="mt-1 w-full rounded-lg border border-line bg-sunk px-3 py-2 text-sm"
+						class="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink"
 						bind:value={bowId}
 					>
 						<option value="">{$t('importer.noBow')}</option>
