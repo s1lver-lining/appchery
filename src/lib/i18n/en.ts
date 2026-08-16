@@ -720,6 +720,7 @@ export const en = {
 		},
 		slice: '{rounds} rounds · {arrows} arrows',
 		barLabel: '{arrows} arrows over {rounds} rounds',
+		barRange: '{from} to {to}',
 		scaleHint: 'oldest to newest, faded to solid',
 		byKind: 'Score by kind of session',
 		emptyRange: 'Nothing shot in this period.',

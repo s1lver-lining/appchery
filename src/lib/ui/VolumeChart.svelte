@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { dateFormats } from '$lib/prefs';
-	import type { Grain, VolumeBucket } from '$lib/domain/stats';
+	import { grainEnd, type Grain, type VolumeBucket } from '$lib/domain/stats';
 
 	/**
 	 * What was shot over the window, one bar per day, week or month. The bars stack by the kind of
@@ -86,9 +86,18 @@
 	/** Kinds nothing was shot in are dropped from the legend rather than sitting there empty. */
 	const present = $derived(keys.filter((key) => buckets.some((b) => (b.byKey[key]?.arrows ?? 0) > 0)));
 
-	const bucketLabel = $derived((at: number) =>
-		grain === 'month' ? $dateFormats.monthYear(at) : $dateFormats.date(at)
-	);
+	/**
+	 * What a bar stands for, not where it starts. A week's bar covers seven days and a month's a
+	 * month, and naming either by its first day reads as a figure for that one day.
+	 */
+	const bucketLabel = $derived((at: number) => {
+		if (grain === 'month') return $dateFormats.monthYear(at);
+		if (grain === 'day') return $dateFormats.date(at);
+		return $t('stats.barRange', {
+			from: $dateFormats.shortDate(at),
+			to: $dateFormats.date(grainEnd(at, grain))
+		});
+	});
 
 	/** One label per week of days, per month of weeks: thirty of them would be unreadable. */
 	const everyNth = $derived(Math.max(1, Math.ceil(buckets.length / 8)));

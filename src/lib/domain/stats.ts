@@ -165,6 +165,11 @@ export interface VolumeBucket {
 	byKey: Record<string, { arrows: number; rounds: number }>;
 }
 
+/** The last day a bucket covers, so a bar can say which span it stands for and not just where it starts. */
+export function grainEnd(at: number, grain: Grain): number {
+	return startOfDay(nextGrain(at, grain) - DAY_MS);
+}
+
 /**
  * The main chart's series: contiguous buckets between two instants, each split by a key so the bars
  * can be stacked. Every arrow counts, finished round or not, because volume is what was loosed.
