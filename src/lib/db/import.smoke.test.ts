@@ -92,6 +92,12 @@ function plan(total: number): CapTargetPlan {
 	};
 }
 
+function renamed(externalId: string): CapTargetPlan {
+	const next = plan(29);
+	next.sessions[0].externalId = externalId;
+	return next;
+}
+
 describe('importPlan', () => {
 	it('dates the volume arrows the day they were shot, not the day of the import', async () => {
 		await importPlan(plan(29));
@@ -179,6 +185,22 @@ describe('importPlan', () => {
 			(row) => row.id === 'imported:session:sess-2'
 		)!;
 		expect(session2.notes).toContain('3 exercises');
+	});
+
+	it('survives a re-export that moved a round to another session', async () => {
+		const first = plan(29);
+		first.sessions[0].externalId = 'sess-move-a';
+		await importPlan(first);
+
+		const second = plan(29);
+		second.sessions[0].externalId = 'sess-move-b';
+		await importPlan(second);
+
+		const rows = (await proxy.select().from(schema.activity)).filter(
+			(row) => row.id === 'imported:activity:shoot-1'
+		);
+		expect(rows).toHaveLength(1);
+		expect(rows[0].sessionId).toBe('imported:session:sess-move-b');
 	});
 
 	it('leaves sessions the archer created alone', async () => {

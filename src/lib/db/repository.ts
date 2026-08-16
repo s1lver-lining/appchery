@@ -1472,6 +1472,11 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 		const existing = await getSession(sessionId);
 		if (existing) report.replaced += 1;
 		await clearImportedSession(sessionId);
+		// A later export can move a round to another session, and its row is keyed by the round
+		// rather than by its parent, so the copy under the old parent has to go with it.
+		await clearImportedActivities(
+			planned.activities.map((activity) => importedId('activity', activity.externalId))
+		);
 
 		const now = Date.now();
 		const base = { createdAt: now, updatedAt: now, deviceId: deviceId() };
@@ -1484,7 +1489,7 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 				startedAt: planned.startedAt,
 				kind: planned.kind,
 				bowId: options.bowId ?? null,
-				notes: sessionNote(planned)
+				notes: sessionNote(planned, null)
 			});
 		await log('session', sessionId, 'insert');
 		report.sessions += 1;
@@ -1583,17 +1588,27 @@ export async function importPlan(plan: CapTargetPlan, options: ImportOptions = {
 	return report;
 }
 
+/** Everything from this line down was written by an import, so a re-import may rewrite it. */
+const IMPORT_NOTE_MARKER = 'CapTarget import';
+
 /**
  * What the export said about the outing, plus what it could not say. An exercise CapTarget lists
  * without arrows and without a score leaves no count anywhere in the file, not even in the session's
  * own totals, so it is written down in words: an arrow figure that is quietly short is worse than
  * one the archer knows is short.
+ *
+ * Anything the archer typed above the marker is theirs and survives every later import of the file.
  */
-function sessionNote(planned: CapTargetPlan['sessions'][number]): string | null {
-	const parts = [planned.notes, planned.unrecordedExercises > 0
-		? `${planned.unrecordedExercises} exercise${planned.unrecordedExercises > 1 ? 's' : ''} with no arrows recorded in the export`
-		: null].filter(Boolean);
-	return parts.length > 0 ? parts.join('\n') : null;
+function sessionNote(planned: CapTargetPlan['sessions'][number], existing: string | null): string | null {
+	const details = [planned.notes];
+	if (planned.unrecordedExercises > 0) {
+		const n = planned.unrecordedExercises;
+		details.push(`${n} exercise${n > 1 ? 's' : ''} with no arrows recorded in the export`);
+	}
+	const written = details.filter(Boolean).join('\n');
+	const kept = (existing ?? '').split(IMPORT_NOTE_MARKER)[0].trim();
+	const parts = [kept, written ? `${IMPORT_NOTE_MARKER}\n${written}` : ''].filter(Boolean);
+	return parts.length > 0 ? parts.join('\n\n') : null;
 }
 
 /** Every session an import wrote, taken away in one go so a bad import can be undone wholesale. */
@@ -1629,6 +1644,24 @@ export async function deleteEverything(): Promise<void> {
 		schema.changeLog
 	];
 	for (const table of tables) await db().delete(table);
+}
+
+/** Rows an earlier import wrote for the same activities, wherever they ended up sitting. */
+async function clearImportedActivities(ids: string[]) {
+	if (ids.length === 0) return;
+	for (let i = 0; i < ids.length; i += 100) {
+		const chunk = ids.slice(i, i + 100);
+		const ends = await db()
+			.select({ id: schema.end.id })
+			.from(schema.end)
+			.where(inArray(schema.end.activityId, chunk));
+		const endIds = ends.map((row) => row.id);
+		if (endIds.length > 0) {
+			await db().delete(schema.shot).where(inArray(schema.shot.endId, endIds));
+			await db().delete(schema.end).where(inArray(schema.end.activityId, chunk));
+		}
+		await db().delete(schema.activity).where(inArray(schema.activity.id, chunk));
+	}
 }
 
 /**
