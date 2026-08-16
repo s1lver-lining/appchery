@@ -45,7 +45,11 @@
 		<p class="truncate font-semibold {filled ? '' : 'text-muted'}">
 			{$t(`badges.list.${key}.name`)}
 		</p>
-		<p class="text-xs text-muted">{hint}</p>
+		<!-- What it pays, on the end of the rule: it is part of what the badge is worth chasing. -->
+		<p class="text-xs text-muted">
+			{hint}
+			<span class="whitespace-nowrap">{$t('badges.xpWorth', { xp: badge.definition.xp })}</span>
+		</p>
 
 		{#if badge.earnedAt !== null}
 			<p class="mt-1 text-xs font-medium text-accent">

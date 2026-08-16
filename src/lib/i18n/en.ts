@@ -1176,6 +1176,7 @@ insetHint:
 		viewDetail: 'Show the rules',
 		new: 'Badge earned',
 		/** The progression arrows all read the same way, so their rule is written once. */
+		xpWorth: '(+{xp} XP)',
 		arrowHint: '36 arrows at {metres}m on a {face}cm face, {score} points',
 		families: {
 			volume: 'Arrows shot',

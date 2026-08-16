@@ -1183,6 +1183,7 @@ insetHint:
 		viewGrid: 'Afficher la grille',
 		viewDetail: 'Afficher les règles',
 		new: 'Badge obtenu',
+		xpWorth: '(+{xp} XP)',
 		arrowHint: '36 flèches à {metres} m sur blason de {face} cm, {score} points',
 		families: {
 			volume: 'Flèches tirées',
