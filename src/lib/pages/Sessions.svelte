@@ -17,6 +17,8 @@
 	 */
 	let anchoredOn: number | null = null;
 	let lastAsked = 0;
+	/** How far down the list was read, for the same reason and across the same unmount. */
+	let lastScrollTop = 0;
 </script>
 
 <script lang="ts">
@@ -271,11 +273,22 @@
 	 * the archer was reading whatever week they opened it from, and dropping them on today loses
 	 * their place. Asking for today again is what tapping the sessions tab while already here does.
 	 */
+	let restored = false;
 	$effect(() => {
 		if ($page.url.pathname !== '/sessions') return;
-		if (anchoredOn === today || !loaded || !anchor || tab !== 'list') return;
-		anchoredOn = today;
-		aimAtToday();
+		if (!loaded || !anchor || tab !== 'list') return;
+		if (anchoredOn !== today) {
+			anchoredOn = today;
+			aimAtToday();
+			return;
+		}
+		if (restored) return;
+		restored = true;
+		// Put back where it was being read. Not aiming at today is only half of leaving the archer
+		// where they were: the pane itself is new, so without this the list comes back at its top.
+		requestAnimationFrame(() => {
+			if (scrollPane) scrollPane.scrollTop = lastScrollTop;
+		});
 	});
 
 	$effect(() => {
@@ -624,6 +637,10 @@
 			bind:this={scrollPane}
 			class="-mx-4 min-h-0 flex-1 overflow-y-auto overscroll-y-contain px-4
 				{$fullNewSessionButton ? 'pb-4' : 'pb-20'}"
+			onscroll={(event) => {
+				// The calendar shares this pane, and its offset means nothing to the list.
+				if (tab === 'list') lastScrollTop = event.currentTarget.scrollTop;
+			}}
 		>
 			<!-- A plan's slots count as something to show: a first week can be planned before it is shot. -->
 			{#if rows.length === 0 && tab === 'list'}
