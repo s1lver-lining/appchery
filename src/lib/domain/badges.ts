@@ -454,12 +454,12 @@ export const PROGRESSION_ARROWS: ProgressionArrow[] = [
 	{ key: 'fftaBlue', colour: 'blue', metres: 20, faceSize: 80, score: 280, xp: 300 },
 	{ key: 'fftaRed', colour: 'red', metres: 25, faceSize: 80, score: 280, xp: 400 },
 	{ key: 'fftaYellow', colour: 'yellow', metres: 30, faceSize: 80, score: 280, xp: 500 },
-	{ key: 'fftaBronzeRecurve', colour: 'bronze', metres: 40, faceSize: 80, score: 280, bowType: 'recurve', xp: 700 },
-	{ key: 'fftaSilverRecurve', colour: 'silver', metres: 60, faceSize: 122, score: 280, bowType: 'recurve', xp: 1_000 },
-	{ key: 'fftaGoldRecurve', colour: 'gold', metres: 70, faceSize: 122, score: 280, bowType: 'recurve', xp: 1_500 },
-	{ key: 'fftaBronzeCompound', colour: 'bronze', metres: 40, faceSize: 80, score: 310, bowType: 'compound', xp: 700 },
-	{ key: 'fftaSilverCompound', colour: 'silver', metres: 50, faceSize: 80, score: 310, bowType: 'compound', xp: 1_000 },
-	{ key: 'fftaGoldCompound', colour: 'gold', metres: 50, faceSize: 80, score: 330, bowType: 'compound', xp: 1_500 }
+	{ key: 'fftaBronzeRecurve', colour: 'bronze', metres: 40, faceSize: 80, score: 280, bowType: 'recurve', xp: 1_000 },
+	{ key: 'fftaSilverRecurve', colour: 'silver', metres: 60, faceSize: 122, score: 280, bowType: 'recurve', xp: 1_500 },
+	{ key: 'fftaGoldRecurve', colour: 'gold', metres: 70, faceSize: 122, score: 280, bowType: 'recurve', xp: 2_500 },
+	{ key: 'fftaBronzeCompound', colour: 'bronze', metres: 40, faceSize: 80, score: 310, bowType: 'compound', xp: 1_000 },
+	{ key: 'fftaSilverCompound', colour: 'silver', metres: 50, faceSize: 80, score: 310, bowType: 'compound', xp: 1_500 },
+	{ key: 'fftaGoldCompound', colour: 'gold', metres: 50, faceSize: 80, score: 330, bowType: 'compound', xp: 2_500 }
 ];
 
 /**
@@ -700,7 +700,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'firstCompetition',
 		family: 'milestone',
 		icon: 'medal',
-		xp: 300,
+		xp: 500,
 		earnedAt: (h) => first(h.finished, (a) => COMPETITIVE.includes(a.sessionKind))
 	},
 	{

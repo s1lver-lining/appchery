@@ -1148,7 +1148,7 @@ insetHint:
 			badges: {
 				title: 'Badges',
 				formula: 'the value written on the badge, once',
-				body: 'Each badge is worth its own amount, from 100 for beating the beginner bot to 2000 for twenty five thousand arrows. It pays the first time it is earned and never again. Lose one to the recheck in the settings data tab and its points go with it.'
+				body: 'Each badge is worth its own amount, from 100 for beating the beginner bot to 2500 for a gold progression arrow. It pays the first time it is earned and never again. Lose one to the recheck in the settings data tab and its points go with it.'
 			},
 			matches: {
 				title: 'Matches won',

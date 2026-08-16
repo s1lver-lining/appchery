@@ -1156,7 +1156,7 @@ insetHint:
 			badges: {
 				title: 'Badges',
 				formula: 'la valeur inscrite sur le badge, une fois',
-				body: "Chaque badge vaut sa propre somme, de 100 pour battre le robot débutant à 2000 pour vingt cinq mille flèches. Il rapporte la première fois qu'il est obtenu et plus jamais. S'il tombe lors de la revérification de l'onglet données des réglages, ses points tombent avec lui."
+				body: "Chaque badge vaut sa propre somme, de 100 pour battre le robot débutant à 2500 pour une flèche de progression or. Il rapporte la première fois qu'il est obtenu et plus jamais. S'il tombe lors de la revérification de l'onglet données des réglages, ses points tombent avec lui."
 			},
 			matches: {
 				title: 'Matchs gagnés',
