@@ -585,6 +585,7 @@ export const fr: Dictionary = {
 		next: 'Prochaine',
 		resume: 'Reprendre',
 		thisWeek: 'Cette semaine',
+		elsewhere: 'Tout le reste',
 		newBest: 'Nouveau record'
 	},
 	share: {

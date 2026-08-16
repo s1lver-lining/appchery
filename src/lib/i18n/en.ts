@@ -581,6 +581,7 @@ export const en = {
 		next: 'Next',
 		resume: 'Carry on',
 		thisWeek: 'This week',
+		elsewhere: 'Everywhere else',
 		newBest: 'New personal best'
 	},
 	share: {

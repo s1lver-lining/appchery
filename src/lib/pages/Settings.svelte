@@ -34,8 +34,8 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
-	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
-	import { withOrigin } from '$lib/nav';
+	import Icon from '$lib/ui/Icon.svelte';
+	import AppGrid from '$lib/ui/AppGrid.svelte';
 	import {
 		fullscreenSupported,
 		isFullscreen,
@@ -62,17 +62,6 @@
 	 * app looks, what it records while shooting, and what happens to the data afterwards.
 	 */
 	let tab = $state<'app' | 'shooting' | 'data'>('app');
-	/** Pages that live nowhere else in the tab bar, gathered where an archer goes looking for them. */
-	const SHORTCUTS = $derived<{ href: string; icon: IconName; label: string }[]>([
-		{ href: withOrigin('/equipment?list=1', '/settings'), icon: 'bow', label: $t('settings.linkEquipment') },
-		{ href: withOrigin('/plans', '/settings'), icon: 'chart', label: $t('plans.title') },
-		{ href: withOrigin('/tuning', '/settings'), icon: 'wrench', label: $t('tuning.guideTitle') },
-		{ href: withOrigin('/badges', '/settings'), icon: 'medal', label: $t('settings.linkBadges') },
-		{ href: withOrigin('/timer', '/settings'), icon: 'clock', label: $t('timer.title') },
-		{ href: withOrigin('/share', '/settings'), icon: 'qr', label: $t('settings.linkShare') },
-		{ href: withOrigin('/tricks', '/settings'), icon: 'bulb', label: $t('settings.linkTricks') }
-	]);
-
 	const TABS = $derived([
 		{ key: 'app' as const, label: $t('settings.appTab') },
 		{ key: 'shooting' as const, label: $t('settings.shootingTab') },
@@ -167,19 +156,7 @@
 	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4" swipeable={false}>
 		{#snippet pane(key)}
 			{#if key === 'app'}
-				<!-- The rest of the app, from the page that is always one tap away. Four across, icon
-					over word, and the icon takes whatever room the word does not. -->
-				<nav class="grid grid-cols-4 gap-2">
-					{#each SHORTCUTS as item (item.href)}
-						<a
-							href={item.href}
-							class="flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-line bg-surface px-1 text-center"
-						>
-							<span class="text-brand-text"><Icon name={item.icon} size={32} /></span>
-							<span class="text-[11px] leading-tight text-muted">{item.label}</span>
-						</a>
-					{/each}
-				</nav>
+				<AppGrid from="/settings" />
 
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.language')}</h2>

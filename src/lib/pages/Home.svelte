@@ -42,6 +42,7 @@
 	import { startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey, hasHappened } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
+	import AppGrid from '$lib/ui/AppGrid.svelte';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
@@ -559,6 +560,11 @@
 		{/if}
 	</section>
 
+	<!-- Last on the page, where a page that has been read out ends: everywhere else to go. -->
+	<section>
+		{@render heading($t('home.elsewhere'))}
+		<AppGrid from="/" />
+	</section>
 </div>
 
 <!-- The one action this page exists for, kept where the thumb lands, with the rest behind the arrow. -->
