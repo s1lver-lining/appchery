@@ -87,6 +87,10 @@ export async function createWebDriver(filename = 'appchery.db'): Promise<SqlDriv
 	}
 
 	await run('PRAGMA foreign_keys = ON;', [], false);
+	// Every commit otherwise flushes the OPFS file, which Firefox charges several milliseconds for,
+	// and an end costs a handful of commits. NORMAL cannot corrupt the database: the most it can
+	// cost is the last transaction, in a power loss, on a file the archer can also export.
+	await run('PRAGMA synchronous = NORMAL;', [], false);
 
 	return {
 		kind: persistent ? 'wasm-opfs' : 'wasm-memory',

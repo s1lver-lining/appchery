@@ -1,5 +1,5 @@
 import { eq, and, isNull, desc, asc, inArray, like } from 'drizzle-orm';
-import { db, schema } from './index';
+import { db, schema, transaction } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
@@ -419,34 +419,37 @@ export async function recordEnd(
 	settingValue: number | null = null
 ) {
 	const endBase = stamp();
-	await db()
-		.insert(schema.end)
-		.values({
-			...endBase,
-			activityId,
-			stageIndex,
-			endNo,
-			subtotal: shots.reduce((sum, s) => sum + s.value, 0),
-			video,
-			settingValue
-		});
-	await log('round_end', endBase.id, 'insert');
+	// The whole end as one commit: it is the write the archer waits on between every group of arrows.
+	return transaction(async () => {
+		await db()
+			.insert(schema.end)
+			.values({
+				...endBase,
+				activityId,
+				stageIndex,
+				endNo,
+				subtotal: shots.reduce((sum, s) => sum + s.value, 0),
+				video,
+				settingValue
+			});
+		await log('round_end', endBase.id, 'insert');
 
-	const rows = shots.map((s, index) => ({
-		...stamp(),
-		endId: endBase.id,
-		ordinal: index + 1,
-		value: s.value,
-		zoneLabel: s.zoneLabel,
-		x: s.x,
-		y: s.y,
-		source: s.source
-	}));
-	await db().insert(schema.shot).values(rows);
-	await logMany('shot', rows.map((r) => r.id), 'insert');
+		const rows = shots.map((s, index) => ({
+			...stamp(),
+			endId: endBase.id,
+			ordinal: index + 1,
+			value: s.value,
+			zoneLabel: s.zoneLabel,
+			x: s.x,
+			y: s.y,
+			source: s.source
+		}));
+		await db().insert(schema.shot).values(rows);
+		await logMany('shot', rows.map((r) => r.id), 'insert');
 
-	await refreshActivityTotals(activityId);
-	return endBase.id;
+		await refreshActivityTotals(activityId);
+		return endBase.id;
+	});
 }
 
 /** Editing a recorded arrow, from tapping it on the score sheet. */
@@ -909,23 +912,29 @@ export async function deleteLastEnd(activityId: string) {
  */
 export async function deleteEnd(activityId: string, endId: string) {
 	const now = Date.now();
-	const shots = await listShots(endId);
-	if (shots.length > 0) {
+	// One commit, like recording an end: an undo is waited on the same way an arrow is.
+	await transaction(async () => {
+		const shots = await listShots(endId);
+		if (shots.length > 0) {
+			await db()
+				.update(schema.shot)
+				.set({ deletedAt: now, updatedAt: now })
+				.where(
+					inArray(
+						schema.shot.id,
+						shots.map((s) => s.id)
+					)
+				);
+			await logMany('shot', shots.map((s) => s.id), 'delete');
+		}
 		await db()
-			.update(schema.shot)
+			.update(schema.end)
 			.set({ deletedAt: now, updatedAt: now })
-			.where(
-				inArray(
-					schema.shot.id,
-					shots.map((s) => s.id)
-				)
-			);
-		await logMany('shot', shots.map((s) => s.id), 'delete');
-	}
-	await db().update(schema.end).set({ deletedAt: now, updatedAt: now }).where(eq(schema.end.id, endId));
-	await log('round_end', endId, 'delete');
+			.where(eq(schema.end.id, endId));
+		await log('round_end', endId, 'delete');
 
-	await refreshActivityTotals(activityId);
+		await refreshActivityTotals(activityId);
+	});
 }
 
 export interface BowUsage {

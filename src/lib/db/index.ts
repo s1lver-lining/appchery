@@ -32,6 +32,34 @@ export function initDb(): Promise<void> {
 	return initPromise;
 }
 
+let writeLock: Promise<unknown> = Promise.resolve();
+
+/**
+ * A run of writes committed once instead of statement by statement. Every statement crosses to the
+ * SQLite worker and, outside a transaction, commits on its own: recording one end costs eight of
+ * those round trips, which is most of the delay between tapping an arrow and seeing it land.
+ *
+ * Serialised rather than nested, because there is one connection and SQLite has no nested
+ * transaction: a second BEGIN would fail, and a rollback would take the other caller's writes.
+ */
+export function transaction<T>(work: () => Promise<T>): Promise<T> {
+	const run = writeLock.then(async () => {
+		if (!driver) throw new Error('initDb() must be awaited before using transaction()');
+		await driver.exec('BEGIN');
+		try {
+			const result = await work();
+			await driver.exec('COMMIT');
+			return result;
+		} catch (error) {
+			await driver.exec('ROLLBACK').catch(() => {});
+			throw error;
+		}
+	});
+	// Held whatever happens, or one failed run wedges every write after it.
+	writeLock = run.catch(() => {});
+	return run;
+}
+
 export function db(): SqliteRemoteDatabase<typeof schema> {
 	if (!database) throw new Error('initDb() must be awaited before using db()');
 	return database;
