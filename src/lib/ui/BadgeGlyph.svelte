@@ -26,14 +26,17 @@
 
 {#if arrow}
 	<!--
-		An unearned arrow keeps its colour and is only dimmed: the colour is the name of the award, and
-		a wall of grey tells an archer nothing about what is left to shoot.
+		An unearned arrow keeps its hue but loses most of its life: the colour is the name of the award
+		and still has to be readable, yet an archer scanning the wall wants to see at a glance which
+		arrows are theirs. Washed out and dim against full strength does that; a difference in opacity
+		alone never did.
 	-->
 	<span
-		class="inline-flex items-center justify-center rounded-full border {earned ? '' : 'opacity-55'}"
+		class="inline-flex items-center justify-center rounded-full border"
 		style="width: {size * 1.35}px; height: {size * 1.35}px;
-			background: color-mix(in srgb, {COLOURS[arrow.colour]} 22%, var(--color-surface));
-			border-color: color-mix(in srgb, {COLOURS[arrow.colour]} 55%, var(--color-line))"
+			background: color-mix(in srgb, {COLOURS[arrow.colour]} {earned ? 30 : 8}%, var(--color-surface));
+			border-color: color-mix(in srgb, {COLOURS[arrow.colour]} {earned ? 85 : 25}%, var(--color-line));
+			{earned ? '' : 'filter: grayscale(0.65); opacity: 0.5;'}"
 	>
 		<!--
 			Outlined in the page's own ink as well as filled, because a white arrow on a light theme and
