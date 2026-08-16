@@ -1013,6 +1013,11 @@ export const en = {
 		build: 'build {n}',
 		licence: 'Licensed under {name}',
 		linkMuscles: 'Anatomy',
+		forgetTitle: 'Celebrate again',
+		forgetHint:
+			'The app remembers which levels and which records it has already set the fireworks off for, so it never announces the same one twice. This forgets all of it: the next thing you earn is celebrated as if it were new. Badges need nothing here, because one taken back by the recheck is celebrated again the moment it is re-earned.',
+		forgetAction: 'Forget what was celebrated',
+		forgetResult: 'Forgotten. The next round, match or arrow counted brings the fireworks back.',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
 			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',

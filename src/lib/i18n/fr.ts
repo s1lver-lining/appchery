@@ -1016,6 +1016,11 @@ export const fr: Dictionary = {
 		build: 'build {n}',
 		licence: 'Sous licence {name}',
 		linkMuscles: 'Anatomie',
+		forgetTitle: 'Fêter à nouveau',
+		forgetHint:
+			"L'app retient les niveaux et les records pour lesquels elle a déjà lancé le feu d'artifice, afin de ne jamais annoncer deux fois la même chose. Ceci oublie tout: la prochaine chose acquise est fêtée comme si elle était nouvelle. Les badges n'ont besoin de rien ici, car un badge retiré par la revérification est fêté à nouveau dès qu'il est regagné.",
+		forgetAction: 'Oublier ce qui a été fêté',
+		forgetResult: 'Oublié. Le prochain tir, match ou compte de flèches ramène le feu d’artifice.',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
 			'Un badge acquis est conservé. La vérification le confronte aux tirs encore enregistrés : tout badge dont les tirs ont disparu est retiré.',

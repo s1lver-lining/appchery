@@ -19,7 +19,10 @@
 		fullNewSessionButton,
 		competitionColour,
 		COMPETITION_COLOURS,
-		noAnimations
+		noAnimations,
+		celebratedLevel,
+		celebratedBests,
+		dismissedBest
 	} from '$lib/prefs';
 	import { recalculateBadges, deleteImportedSessions, deleteEverything } from '$lib/db/repository';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
@@ -115,6 +118,21 @@
 		const { awarded, revoked } = await recalculateBadges();
 		badgeNotice = $t('settings.recalcResult', { awarded: awarded.length, revoked: revoked.length });
 		busy = false;
+	}
+
+	let celebrationNotice = $state<string | null>(null);
+
+	/**
+	 * Every memory of a celebration already given, cleared at once. The badges are deliberately not
+	 * here: one revoked by the recheck is announced again the moment it is re-earned, so they need no
+	 * forgetting of their own.
+	 */
+	function forgetCelebrations() {
+		// One, not nothing: nothing means the app has never looked, which announces no level at all.
+		celebratedLevel.set(1);
+		celebratedBests.set([]);
+		dismissedBest.set(null);
+		celebrationNotice = $t('settings.forgetResult');
 	}
 
 	async function exportToFile() {
@@ -598,6 +616,26 @@
 							<p class="mt-3 flex items-center gap-1.5 text-sm text-brand-text">
 								<Icon name="medal" size={16} />
 								{badgeNotice}
+							</p>
+						{/if}
+					</div>
+				</section>
+
+				<section>
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.forgetTitle')}</h2>
+					<div class="rounded-xl border border-line bg-surface p-4">
+						<p class="text-sm text-muted">{$t('settings.forgetHint')}</p>
+						<button
+							class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+							disabled={busy}
+							onclick={forgetCelebrations}
+						>
+							{$t('settings.forgetAction')}
+						</button>
+						{#if celebrationNotice}
+							<p class="mt-3 flex items-center gap-1.5 text-sm text-brand-text">
+								<Icon name="star" size={16} />
+								{celebrationNotice}
 							</p>
 						{/if}
 					</div>
