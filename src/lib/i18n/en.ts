@@ -131,6 +131,7 @@ export const en = {
 		time: 'Time',
 		days: 'd',
 		addActivity: 'Add an activity',
+		searchActivity: 'Search rounds and procedures',
 		scoringGroup: 'Scoring',
 		recentGroup: 'Recently shot',
 		delete: 'Delete this session',

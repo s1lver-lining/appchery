@@ -53,7 +53,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	} from '$lib/domain/matches';
 	import { summariseByRound, shapeKey, type ScoredActivity } from '$lib/domain/stats';
 	import { formatDistance } from '$lib/domain/units';
-	import { defaultNameKey } from '$lib/domain/sessions';
+	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
@@ -123,6 +123,11 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		{ key: 'settings' as const, label: $t('session.settingsTab') }
 	]);
 	let adding = $state(false);
+	/** Opened fresh every time: a search is about the round being looked for now, not the last one. */
+	function openPicker() {
+		query = '';
+		adding = true;
+	}
 	let fetching = $state(false);
 	let notice = $state<string | null>(null);
 	/** The name reads as a heading until tapped, so the page does not look like a form. */
@@ -679,10 +684,52 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			.slice(0, 3)
 	);
 
+	/**
+	 * What is typed in the picker's search box. The catalogue is long enough that scrolling it is
+	 * the slow way to a round whose name the archer already knows.
+	 */
+	let query = $state('');
+	const searching = $derived(query.trim().length > 0);
+
+	/** A round answers to its name, its governing body, and the distances it is shot at. */
+	const roundMatches = (round: RoundDefinition) =>
+		matchesQuery(query, [
+			round.name,
+			round.governingBody,
+			$t(`round.discipline.${round.discipline}`),
+			...round.stages.map(stageDistance)
+		]);
+
 	/** Disciplines in the order the catalogue lists them, so target comes before the rarer shapes. */
-	const disciplines = $derived([...new Set(CATALOGUE.map((round) => round.discipline))]);
+	const disciplines = $derived(
+		[...new Set(CATALOGUE.map((round) => round.discipline))].filter(
+			(discipline) => roundsOf(discipline).length > 0
+		)
+	);
 	const roundsOf = (discipline: string) =>
-		CATALOGUE.filter((round) => round.discipline === discipline);
+		CATALOGUE.filter((round) => round.discipline === discipline && roundMatches(round));
+
+	const foundRecent = $derived(recent.filter(roundMatches));
+	const foundMatchFormats = $derived(
+		MATCH_FORMATS.filter((format) =>
+			matchesQuery(query, [$t(`match.format.${format}`), $t(`match.formatHint.${format}`), $t('match.group')])
+		)
+	);
+	const foundTemplates = $derived(
+		tuningTemplates.filter((template) =>
+			matchesQuery(query, [$t(`tuning.template.${template.key}`), $t('tuning.title')])
+		)
+	);
+	const foundCustom = $derived(matchesQuery(query, [$t('round.custom'), $t('round.customHint')]));
+	const foundFree = $derived(matchesQuery(query, [$t('freeScore.title'), $t('freeScore.hint')]));
+	const nothingFound = $derived(
+		searching &&
+			disciplines.length === 0 &&
+			foundMatchFormats.length === 0 &&
+			foundTemplates.length === 0 &&
+			!foundCustom &&
+			!foundFree
+	);
 
 	/** The picture a tuning procedure earns, taken from the guide that already names them. */
 	const diagramOf = (templateKey: string) =>
@@ -699,6 +746,34 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	usually scores on it. The face is drawn from the same zone map that scores a tap, so the picture
 	on the card and the target in the activity cannot disagree.
 -->
+{#snippet matchGroup()}
+	{#if foundMatchFormats.length > 0}
+		<div>
+			<h4 class="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
+				{$t('match.group')}
+			</h4>
+			<div class="grid gap-2 sm:grid-cols-2">
+				{#each foundMatchFormats as format (format)}
+					<button
+						class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+						onclick={() => openMatch(format)}
+					>
+						<span class="flex shrink-0 items-center justify-center">
+							<MatchGlyph {format} />
+						</span>
+						<span class="min-w-0 flex-1">
+							<span class="block font-medium">{$t(`match.format.${format}`)}</span>
+							<span class="mt-0.5 block text-xs text-muted">
+								{$t(`match.formatHint.${format}`)}
+							</span>
+						</span>
+					</button>
+				{/each}
+			</div>
+		</div>
+	{/if}
+{/snippet}
+
 {#snippet roundCard(round: RoundDefinition, withDate: boolean)}
 	{@const stats = statsOf(round)}
 	<button
@@ -959,7 +1034,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 								<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
 								<button
 									class="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
-									onclick={() => (adding = true)}
+									onclick={openPicker}
 								>
 									<Icon name="plus" size={16} />
 									{$t('common.add')}
@@ -970,7 +1045,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 								<EmptyState
 									title={$t('empty.activities.title')}
 									body={$t('empty.activities.body')}
-									action={{ label: $t('common.add'), onclick: () => (adding = true) }}
+									action={{ label: $t('common.add'), onclick: openPicker }}
 								>
 									{#snippet sample()}
 										<!-- What a scored round looks like once it is in the list. -->
@@ -1202,36 +1277,67 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				</button>
 			</header>
 
+			<!-- Fixed above the list rather than scrolling with it: the box is what the long catalogue
+				is reached through, so it has to stay reachable however far down the archer has gone. -->
+			<div class="mx-auto w-full max-w-2xl px-4 pt-3">
+				<div class="relative">
+					<span class="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">
+						<Icon name="search" size={16} />
+					</span>
+					<input
+						class="w-full rounded-full border border-line bg-surface py-1.5 pr-8 pl-8 text-sm text-ink outline-none placeholder:text-muted"
+						type="text"
+						placeholder={$t('session.searchActivity')}
+						aria-label={$t('session.searchActivity')}
+						bind:value={query}
+					/>
+					{#if searching}
+						<button
+							class="absolute top-1/2 right-2 -translate-y-1/2 text-muted"
+							aria-label={$t('common.close')}
+							onclick={() => (query = '')}
+						>
+							<Icon name="close" size={14} />
+						</button>
+					{/if}
+				</div>
+			</div>
+
 			<div class="mx-auto w-full max-w-2xl flex-1 space-y-6 overflow-y-auto p-4">
+				{#if nothingFound}
+					<p class="py-8 text-center text-sm text-muted">{$t('sessions.noMatch')}</p>
+				{/if}
 				<!-- Most archers shoot two or three rounds, so the ones already shot come first. -->
-				{#if recent.length > 0}
+				{#if foundRecent.length > 0}
 					<section>
 						<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.recentGroup')}</h3>
 						<div class="grid gap-2 sm:grid-cols-2">
-							{#each recent as round (round.id)}
+							{#each foundRecent as round (round.id)}
 								{@render roundCard(round, true)}
 							{/each}
 						</div>
 					</section>
 				{/if}
 
-				<section>
+				<section class:hidden={disciplines.length === 0 && foundMatchFormats.length === 0 && !foundCustom}>
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('session.scoringGroup')}</h3>
 					<!-- The custom round leads: it is the one entry that is not a name to recognise. -->
-					<a
-						href="/sessions/{sessionId}/custom"
-						class="mb-2 flex items-center gap-3 rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
-					>
-						<span
-							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-text"
+					{#if foundCustom}
+						<a
+							href="/sessions/{sessionId}/custom"
+							class="mb-2 flex items-center gap-3 rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
 						>
-							<Icon name="plus" size={20} />
-						</span>
-						<span class="min-w-0">
-							<span class="block font-medium text-brand-text">{$t('round.custom')}</span>
-							<span class="mt-0.5 block text-xs text-muted">{$t('round.customHint')}</span>
-						</span>
-					</a>
+							<span
+								class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-text"
+							>
+								<Icon name="plus" size={20} />
+							</span>
+							<span class="min-w-0">
+								<span class="block font-medium text-brand-text">{$t('round.custom')}</span>
+								<span class="mt-0.5 block text-xs text-muted">{$t('round.customHint')}</span>
+							</span>
+						</a>
+					{/if}
 
 					<!-- One section per discipline: a field course and an indoor round are different errands. -->
 					<div class="space-y-4">
@@ -1248,36 +1354,14 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							</div>
 
 							<!-- Right after target: a match is shot on a target face, so it belongs beside them. -->
-							{#if discipline === 'target'}
-								<div>
-									<h4 class="mb-1.5 text-xs font-semibold tracking-wide text-muted uppercase">
-										{$t('match.group')}
-									</h4>
-									<div class="grid gap-2 sm:grid-cols-2">
-										{#each MATCH_FORMATS as format (format)}
-											<button
-												class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
-												onclick={() => openMatch(format)}
-											>
-												<span class="flex shrink-0 items-center justify-center">
-													<MatchGlyph {format} />
-												</span>
-												<span class="min-w-0 flex-1">
-													<span class="block font-medium">{$t(`match.format.${format}`)}</span>
-													<span class="mt-0.5 block text-xs text-muted">
-														{$t(`match.formatHint.${format}`)}
-													</span>
-												</span>
-											</button>
-										{/each}
-									</div>
-								</div>
-							{/if}
+							{#if discipline === 'target'}{@render matchGroup()}{/if}
 						{/each}
+						<!-- A search that narrows the rounds away must not take the matches with them. -->
+						{#if !disciplines.includes('target')}{@render matchGroup()}{/if}
 					</div>
 				</section>
 
-				<section>
+				<section class:hidden={foundTemplates.length === 0 && searching}>
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('tuning.title')}</h3>
 					{#if !selectedBowType}
 						<!-- Nothing here can be offered without knowing the bow, so the note carries the way
@@ -1294,7 +1378,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 						</div>
 					{:else}
 						<div class="grid gap-2 sm:grid-cols-2">
-							{#each tuningTemplates as template (template.key)}
+							{#each foundTemplates as template (template.key)}
 								{@const diagram = diagramOf(template.key)}
 								<button
 									class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
@@ -1324,7 +1408,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				</section>
 				<!-- Last, and on its own: it is the entry for shooting that fits none of the shapes
 					above, so offering it beside them would only make them harder to read. -->
-				<section>
+				<section class:hidden={!foundFree}>
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('freeScore.group')}</h3>
 					<a
 						href="/sessions/{sessionId}/free"

@@ -133,6 +133,7 @@ export const fr: Dictionary = {
 		time: 'Heure',
 		days: 'j',
 		addActivity: 'Ajouter une activité',
+		searchActivity: 'Rechercher un tir ou une procédure',
 		scoringGroup: 'Tir compté',
 		recentGroup: 'Tirés récemment',
 		delete: 'Supprimer cette séance',
