@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { goto } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { t, locale } from '$lib/i18n';
 	import { overrideStatusBar } from '$lib/theme';
 	import { getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
@@ -41,6 +41,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
+	import LeaveDialog from '$lib/ui/LeaveDialog.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
 	import ArrowNumberChart from '$lib/ui/ArrowNumberChart.svelte';
 	import Match from '$lib/pages/Match.svelte';
@@ -741,6 +742,37 @@
 	 * Closes the loop: the adjustment becomes a bow revision, and the activity records which
 	 * revision it produced, so a later score traces back to the test that caused the change.
 	 */
+	/**
+	 * An adjustment typed into the fields is not the bow's record until it is applied, so leaving the
+	 * page asks rather than dropping it. Notes are left out: their own button is right beside them.
+	 */
+	let leaving = $state<(() => void) | null>(null);
+	let leavingNow = false;
+
+	beforeNavigate((navigation) => {
+		if (settingChanges.length === 0 || leavingNow || !navigation.to) return;
+		const to = navigation.to.url;
+		navigation.cancel();
+		leaving = () => goto(to);
+	});
+
+	function proceedLeaving() {
+		const leave = leaving;
+		leaving = null;
+		leavingNow = true;
+		leave?.();
+	}
+
+	async function applyAndLeave() {
+		await applyAdjustment();
+		proceedLeaving();
+	}
+
+	function discardAndLeave() {
+		draft = { ...savedSettings };
+		proceedLeaving();
+	}
+
 	async function applyAdjustment() {
 		if (!bow || settingChanges.length === 0) return;
 		const reason = [template ? templateName : null, notes.trim()].filter(Boolean).join(': ');
@@ -1572,6 +1604,17 @@
 
 {#if sharing}
 	<Scorecard data={cardData} onclose={() => (sharing = false)} />
+{/if}
+
+{#if leaving}
+	<LeaveDialog
+		title={$t('leave.tuningTitle')}
+		message={$t('leave.tuningBody', { n: settingChanges.length })}
+		saveLabel={$t('tuning.apply')}
+		onsave={applyAndLeave}
+		ondiscard={discardAndLeave}
+		oncancel={() => (leaving = null)}
+	/>
 {/if}
 
 {:else}

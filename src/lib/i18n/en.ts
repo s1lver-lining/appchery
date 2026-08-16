@@ -185,6 +185,14 @@ export const en = {
 		sessionsDeleted: '{n} sessions deleted',
 		activitiesDeleted: '{n} activities removed'
 	},
+	// Leaving a page with settings entered but never written down as a revision.
+	leave: {
+		discard: 'Discard',
+		bowTitle: 'Unsaved settings',
+		bowBody: 'This bow has {n} changes that are not part of any revision yet.',
+		tuningTitle: 'Unsaved adjustment',
+		tuningBody: 'This test has {n} adjustments that have not been applied to the bow yet.'
+	},
 	// Working on several rows at once: what the bar at the foot of a list says while one is on.
 	select: {
 		count: '{n} selected',

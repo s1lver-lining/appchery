@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { MAIN_PAGES, mainPageIndex } from '$lib/nav';
+	import { askToLeave, MAIN_PAGES, mainPageIndex } from '$lib/nav';
 	import { swipe, COMMIT_RATIO, SNAP_MS, SNAP_EASE } from './swipe';
 	import Home from '$lib/pages/Home.svelte';
 	import Sessions from '$lib/pages/Sessions.svelte';
@@ -123,6 +123,11 @@
 
 		duration = SNAP_MS;
 		if (!reachable || !(far || flicked)) {
+			offset = 0;
+			return;
+		}
+		// A swipe changes no URL, so a page holding unsaved work would slide away without being asked.
+		if (askToLeave(() => settle(target))) {
 			offset = 0;
 			return;
 		}

@@ -1,4 +1,4 @@
-import { writable } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 
 /** The pages reachable from the tab bar. They are the roots of the navigation tree. */
 export const MAIN_PAGES = ['/', '/sessions', '/equipment', '/stats', '/settings'] as const;
@@ -44,6 +44,22 @@ export function registerBackGuard(guard: () => boolean) {
 export function runBackGuards(list: (() => boolean)[]): boolean {
 	for (let i = list.length - 1; i >= 0; i--) if (list[i]()) return true;
 	return false;
+}
+
+// A page holding changes nobody saved claims the ways out a navigation never reaches, such as a swipe.
+const leavers = writable<((leave: () => void) => void)[]>([]);
+
+export function registerLeaveGuard(ask: (leave: () => void) => void) {
+	leavers.update((list) => [...list, ask]);
+	return () => leavers.update((list) => list.filter((g) => g !== ask));
+}
+
+/** True when a guard took the move: it asks the archer, and runs `leave` itself if they allow it. */
+export function askToLeave(leave: () => void): boolean {
+	const guard = get(leavers).at(-1);
+	if (!guard) return false;
+	guard(leave);
+	return true;
 }
 
 /**

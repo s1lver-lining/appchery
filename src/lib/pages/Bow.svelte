@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
 	import { templatesForBowType, type BowType } from '$lib/domain/tuning/templates';
 	import {
@@ -36,13 +37,15 @@
 		type SightMarkRow
 	} from '$lib/db/repository';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
-	import { withOrigin } from '$lib/nav';
+	import { afterNavigate, beforeNavigate } from '$app/navigation';
+	import { registerLeaveGuard, withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
+	import LeaveDialog from '$lib/ui/LeaveDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
 	import { lockScroll } from '$lib/ui/scrollLock';
@@ -134,6 +137,52 @@
 		reason = '';
 		await refresh();
 		saving = false;
+	}
+
+	/**
+	 * A draft only becomes history once it is a revision, so walking away from one asks rather than
+	 * dropping it silently. Every way out is covered: a link, the back key, and a swipe of the pager,
+	 * which never navigates and so would slide the page away under a change nobody kept.
+	 */
+	let leaving = $state<(() => void) | null>(null);
+	let leavingNow = $state(false);
+
+	// The pager keeps this page mounted behind the one on show, which has its own ways out to answer for.
+	const onShow = $derived(
+		$page.url.pathname === '/equipment' || $page.url.pathname === `/equipment/${bowId}`
+	);
+
+	$effect(() => {
+		if (pending.length === 0 || leavingNow || !onShow) return;
+		return registerLeaveGuard((leave) => (leaving = leave));
+	});
+
+	beforeNavigate((navigation) => {
+		if (pending.length === 0 || leavingNow || !onShow || !navigation.to) return;
+		const to = navigation.to.url;
+		navigation.cancel();
+		leaving = () => goto(to);
+	});
+
+	// The page rides in the pager as well, so it outlives the move it stood aside for and rearms here.
+	afterNavigate(() => (leavingNow = false));
+
+	/** The answer given, so the move that was held is let through without asking a second time. */
+	function proceed() {
+		const leave = leaving;
+		leaving = null;
+		leavingNow = true;
+		leave?.();
+	}
+
+	async function saveAndLeave() {
+		await save();
+		proceed();
+	}
+
+	function discardAndLeave() {
+		draft = { ...saved };
+		proceed();
 	}
 
 	/**
@@ -672,6 +721,17 @@
 	</div>
 {:else}
 	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+{/if}
+
+{#if leaving}
+	<LeaveDialog
+		title={$t('leave.bowTitle')}
+		message={$t('leave.bowBody', { n: pending.length })}
+		saveLabel={$t('equipment.saveRevision')}
+		onsave={saveAndLeave}
+		ondiscard={discardAndLeave}
+		oncancel={() => (leaving = null)}
+	/>
 {/if}
 
 {#if editingGroup}

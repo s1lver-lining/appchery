@@ -186,6 +186,13 @@ export const fr: Dictionary = {
 		sessionsDeleted: '{n} séances supprimées',
 		activitiesDeleted: '{n} activités retirées'
 	},
+	leave: {
+		discard: 'Abandonner',
+		bowTitle: 'Réglages non enregistrés',
+		bowBody: 'Cet arc a {n} modifications qui ne font encore partie d’aucune révision.',
+		tuningTitle: 'Réglage non enregistré',
+		tuningBody: 'Ce test a {n} réglages qui n’ont pas encore été appliqués à l’arc.'
+	},
 	select: {
 		count: '{n} sélectionnées',
 		all: 'Tout sélectionner',
