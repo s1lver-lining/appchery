@@ -31,6 +31,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Le menu à trois points de la liste des séances active l’objectif hebdomadaire. La pastille de chaque semaine affiche alors 72/230 flèches, en comptant les objectifs des créneaux et les flèches libres de chaque programme. Une semaine qui atteint son objectif passe à la couleur de l’app.'
 				},
 				{
+					lead: 'L’onglet séances retrouve aujourd’hui.',
+					body: 'La liste s’ouvre sur aujourd’hui, puis reste où vous l’avez laissée : revenir d’une séance vous rend la semaine que vous lisiez. Touchez l’onglet séances alors que la liste est déjà affichée pour être ramené à aujourd’hui, qui s’illumine à l’arrivée.'
+				},
+				{
 					lead: 'La recherche lit toute la sortie.',
 					body: 'Le champ au-dessus de la liste cherche dans le nom d’une séance, son lieu, ses notes et le nom de chaque tir et de chaque procédure qui s’y trouve. Chaque mot tapé doit être trouvé quelque part, dans n’importe quel ordre, et les accents sont ignorés.'
 				},
@@ -144,7 +148,7 @@ export const tricksFr: TricksDictionary = {
 			tricks: [
 				{
 					lead: 'L’onglet matériel ouvre votre arc par défaut.',
-					body: 'Avec un arc par défaut, toucher l’onglet matériel y va directement. Maintenez l’onglet, ou passez par le menu à trois points de la page de l’arc, pour atteindre la liste de tous les arcs.'
+					body: 'Avec un arc par défaut, toucher l’onglet matériel y va directement. Touchez l’onglet une seconde fois, maintenez-le, ou passez par le menu à trois points de la page de l’arc, pour atteindre la liste de tous les arcs.'
 				},
 				{
 					lead: 'La section archer appartient à l’arc.',

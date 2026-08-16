@@ -36,6 +36,10 @@ export const tricksEn = {
 					body: 'The dots menu on the sessions list turns the weekly goal on. Each week’s pill then reads 72/230 arrows, counting the slot goals and the free arrows of every plan. A week that reaches its goal turns brand coloured.'
 				},
 				{
+					lead: 'The sessions tab finds today again.',
+					body: 'The list opens on today, then stays where you put it: coming back from a session leaves you in the week you were reading. Tap the sessions tab while the list is already on show to be taken back to today, which rings as it arrives.'
+				},
+				{
 					lead: 'The search reads the whole outing.',
 					body: 'The box above the list matches a session’s name, its place, its notes and the name of every round and procedure shot in it. Every word typed has to be found somewhere, in any order, and accents are ignored.'
 				},
@@ -149,7 +153,7 @@ export const tricksEn = {
 			tricks: [
 				{
 					lead: 'The equipment tab opens your default bow.',
-					body: 'With a default bow set, tapping the equipment tab goes straight to it. Hold the tab, or use the dots menu on the bow page, to reach the list of every bow.'
+					body: 'With a default bow set, tapping the equipment tab goes straight to it. Tap the tab a second time, hold it, or use the dots menu on the bow page, to reach the list of every bow.'
 				},
 				{
 					lead: 'The archer section belongs to the bow.',
