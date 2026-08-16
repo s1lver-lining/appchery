@@ -238,6 +238,10 @@ export const tricksEn = {
 					body: 'Experience points are never stored: the total is worked out afresh from the history as it stands, so the same history always gives the same level. That means deleting a session takes back exactly what it gave, arrows, round and match win alike, and correcting a score moves the points with it. Badges are the one thing that outlives their shooting, because the badge itself does: lose one to the recheck in the settings data tab and its points go with it.'
 				},
 				{
+					lead: 'A celebration is remembered per device.',
+					body: 'The app keeps the level it last congratulated you for, so it never announces the same one twice, and it lowers that mark on its own when a deleted session costs you a level: win it back and the fireworks come back with it. To be congratulated for where you already stand, the celebrate again button in the settings data tab forgets the lot, levels and records alike.'
+				},
+				{
 					lead: 'The level can ride the header.',
 					body: 'Hold either figure at the top of the home page and pick the level, or the experience total, instead of a count of arrows.'
 				}

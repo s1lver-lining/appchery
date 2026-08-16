@@ -233,6 +233,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Les points d’expérience ne sont jamais stockés : le total est recalculé sur l’historique tel qu’il est, donc un même historique donne toujours le même niveau. Supprimer une séance reprend donc exactement ce qu’elle avait donné, flèches, tir compté et match gagné compris, et corriger un score déplace les points avec lui. Les badges sont la seule chose qui survive au tir qui les a gagnés, parce que le badge lui-même y survit : perdez-en un à la revérification de l’onglet données des paramètres et ses points partent avec lui.'
 				},
 				{
+					lead: 'Une célébration est retenue par appareil.',
+					body: 'L’app garde le niveau pour lequel elle vous a félicité en dernier, pour ne jamais annoncer deux fois le même, et elle abaisse ce repère toute seule quand une séance supprimée vous coûte un niveau: regagnez-le et le feu d’artifice revient avec lui. Pour être félicité de là où vous êtes déjà, le bouton fêter à nouveau de l’onglet données des réglages oublie tout, niveaux et records compris.'
+				},
+				{
 					lead: 'Le niveau peut tenir l’en-tête.',
 					body: 'Maintenez l’un des deux chiffres en haut de la page d’accueil et choisissez le niveau, ou le total d’expérience, à la place d’un compte de flèches.'
 				}
