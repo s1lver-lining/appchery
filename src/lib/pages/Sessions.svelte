@@ -29,7 +29,7 @@
 		type Occurrence
 	} from '$lib/domain/plans';
 	import { parseConfig } from '$lib/domain/matches';
-	import { withOrigin } from '$lib/nav';
+	import { tabAsked, withOrigin } from '$lib/nav';
 	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -259,12 +259,23 @@
 	 *
 	 * Not on every arrival, though. Coming back from a session is not a request to move: the archer
 	 * was reading whatever week they opened it from, and dropping them on today loses their place.
+	 * Asking for today again is what tapping the sessions tab while already here is for.
 	 */
 	let anchored = false;
 	$effect(() => {
 		if ($page.url.pathname !== '/sessions') return;
 		if (anchored || !loaded || !anchor || tab !== 'list') return;
 		anchored = true;
+		aimAtToday();
+	});
+
+	let lastAsked = 0;
+	$effect(() => {
+		const asked = $tabAsked;
+		if (!asked || asked.href !== '/sessions' || asked.at === lastAsked) return;
+		lastAsked = asked.at;
+		// Today lives on the list, so asking for it on the month grid means opening the list first.
+		tab = 'list';
 		aimAtToday();
 	});
 
