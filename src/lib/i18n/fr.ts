@@ -847,6 +847,27 @@ export const fr: Dictionary = {
 		total: 'Score total',
 		average: '{value} par flèche'
 	},
+	danger: {
+		title: 'Zone dangereuse',
+		imported: 'Supprimer les séances importées',
+		importedHint: "Supprime toutes les séances écrites par un import, et rien de ce que vous avez saisi ici.",
+		importedRemoved: '{n} séances importées supprimées.',
+		everything: 'Supprimer toutes les données',
+		everythingHint: 'Supprime toutes les séances, activités, arcs, plans et badges de cet appareil.',
+		everythingRemoved: 'Tout a été supprimé.',
+		confirmTitle: {
+			imported: 'Supprimer les séances importées ?',
+			everything: 'Tout supprimer ?'
+		},
+		confirmBody: {
+			imported: "Toutes les séances écrites par un import disparaissent, avec leurs comptages et leurs flèches. Les séances saisies dans Appchery sont conservées.",
+			everything: "Toutes les séances, activités, arcs, plans et badges de cet appareil disparaissent. Exportez une sauvegarde d'abord si vous voulez en récupérer quelque chose."
+		},
+		confirmAction: {
+			imported: 'Supprimer les imports',
+			everything: 'Tout supprimer'
+		}
+	},
 	importer: {
 		nothingHanded: "Aucun fichier n'a été transmis. Ouvrez un export depuis vos fichiers, ou choisissez-en un dans les paramètres.",
 		openSettings: 'Aller aux paramètres',

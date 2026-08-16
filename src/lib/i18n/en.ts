@@ -841,6 +841,27 @@ export const en = {
 		total: 'Total score',
 		average: '{value} per arrow'
 	},
+	danger: {
+		title: 'Danger zone',
+		imported: 'Remove imported sessions',
+		importedHint: 'Deletes every session an import wrote, and nothing you recorded here.',
+		importedRemoved: 'Removed {n} imported sessions.',
+		everything: 'Remove all data',
+		everythingHint: 'Deletes every session, activity, bow, plan and badge on this device.',
+		everythingRemoved: 'Everything was removed.',
+		confirmTitle: {
+			imported: 'Remove imported sessions?',
+			everything: 'Remove everything?'
+		},
+		confirmBody: {
+			imported: 'Every session written by an import goes, with its rounds and arrows. Sessions you recorded in Appchery are kept.',
+			everything: 'Every session, activity, bow, plan and badge on this device goes. Export a backup first if you want any of it back.'
+		},
+		confirmAction: {
+			imported: 'Remove imported',
+			everything: 'Remove everything'
+		}
+	},
 	importer: {
 		nothingHanded: 'No file was handed over. Open an export from your files, or pick one in the settings.',
 		openSettings: 'Go to settings',

@@ -21,7 +21,7 @@
 		COMPETITION_COLOURS,
 		noAnimations
 	} from '$lib/prefs';
-	import { recalculateBadges } from '$lib/db/repository';
+	import { recalculateBadges, deleteImportedSessions, deleteEverything } from '$lib/db/repository';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
 	import {
 		exportBackup,
@@ -144,6 +144,29 @@
 		importFile = input.files?.[0] ?? null;
 		// Cleared so choosing the same file twice still fires a change event.
 		input.value = '';
+	}
+
+	let dangerDialog = $state<'imported' | 'everything' | null>(null);
+	let dangerNotice = $state<string | null>(null);
+
+	async function runDanger() {
+		const mode = dangerDialog;
+		dangerDialog = null;
+		if (!mode) return;
+		busy = true;
+		try {
+			if (mode === 'imported') {
+				const removed = await deleteImportedSessions();
+				dangerNotice = $t('danger.importedRemoved', { n: removed });
+			} else {
+				await deleteEverything();
+				dangerNotice = $t('danger.everythingRemoved');
+			}
+		} catch (e) {
+			dangerNotice = String(e);
+		} finally {
+			busy = false;
+		}
 	}
 
 	async function restore() {
@@ -576,6 +599,34 @@
 						{/if}
 					</div>
 				</section>
+
+				<!-- Last on the tab, and the only place in the app that throws shooting away. -->
+				<section>
+					<h2 class="mb-2 text-sm font-semibold text-danger">{$t('danger.title')}</h2>
+					<div class="rounded-xl border border-danger/40 bg-danger/5 p-4">
+						<p class="text-sm text-muted">{$t('danger.importedHint')}</p>
+						<button
+							class="mt-3 w-full rounded-lg border border-danger/60 py-2 text-sm font-medium text-danger disabled:opacity-50"
+							disabled={busy}
+							onclick={() => (dangerDialog = 'imported')}
+						>
+							{$t('danger.imported')}
+						</button>
+
+						<p class="mt-4 text-sm text-muted">{$t('danger.everythingHint')}</p>
+						<button
+							class="mt-3 w-full rounded-lg bg-danger py-2 text-sm font-semibold text-white disabled:opacity-50"
+							disabled={busy}
+							onclick={() => (dangerDialog = 'everything')}
+						>
+							{$t('danger.everything')}
+						</button>
+
+						{#if dangerNotice}
+							<p class="mt-3 text-sm text-muted">{dangerNotice}</p>
+						{/if}
+					</div>
+				</section>
 			{/if}
 		{/snippet}
 	</TabDeck>
@@ -597,3 +648,12 @@
 	<ImportDialog file={importFile} onclose={() => (importFile = null)} />
 {/if}
 
+{#if dangerDialog}
+	<ConfirmDialog
+		title={$t(`danger.confirmTitle.${dangerDialog}`)}
+		message={$t(`danger.confirmBody.${dangerDialog}`)}
+		confirmLabel={$t(`danger.confirmAction.${dangerDialog}`)}
+		onconfirm={runDanger}
+		oncancel={() => (dangerDialog = null)}
+	/>
+{/if}

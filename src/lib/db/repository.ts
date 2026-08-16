@@ -1,4 +1,4 @@
-import { eq, and, isNull, desc, asc, inArray } from 'drizzle-orm';
+import { eq, and, isNull, desc, asc, inArray, like } from 'drizzle-orm';
 import { db, schema } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
@@ -1585,6 +1585,41 @@ function sessionNote(planned: CapTargetPlan['sessions'][number]): string | null 
 		? `${planned.unrecordedExercises} exercise${planned.unrecordedExercises > 1 ? 's' : ''} with no arrows recorded in the export`
 		: null].filter(Boolean);
 	return parts.length > 0 ? parts.join('\n') : null;
+}
+
+/** Every session an import wrote, taken away in one go so a bad import can be undone wholesale. */
+export async function deleteImportedSessions(): Promise<number> {
+	const sessions = await db()
+		.select({ id: schema.session.id })
+		.from(schema.session)
+		.where(like(schema.session.id, `${IMPORT_PREFIX}%`));
+
+	for (const session of sessions) await clearImportedSession(session.id);
+	return sessions.length;
+}
+
+/**
+ * Everything the app holds, gone. Rows rather than the file itself, so the database it leaves behind
+ * is the one a fresh install would have made rather than a schema this build has to migrate again.
+ */
+export async function deleteEverything(): Promise<void> {
+	// Children first, so nothing is left pointing at a parent that has gone.
+	const tables = [
+		schema.shot,
+		schema.end,
+		schema.activity,
+		schema.session,
+		schema.bowRevision,
+		schema.sightMark,
+		schema.bow,
+		schema.arrowSet,
+		schema.planSlot,
+		schema.plan,
+		schema.favouriteRound,
+		schema.badge,
+		schema.changeLog
+	];
+	for (const table of tables) await db().delete(table);
 }
 
 /**
