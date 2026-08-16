@@ -866,6 +866,15 @@ export const en = {
 		}
 	},
 	importer: {
+		warnings: 'Worth knowing',
+		warning: {
+			unreadableRow: '{n} rows could not be read and were left out.',
+			undatedRow: '{n} rows carried no usable date and were left out.',
+			orphanRow: '{n} rounds named a session the file does not contain, and were given one of their own.',
+			droppedCoordinates: '{n} rounds had arrow positions that did not match their scores, so the positions were dropped and the scores kept.',
+			unknownSheet: 'The sheet "{detail}" was not recognised and was left alone.',
+			noSessionSheet: 'The file carries no session sheet, so every round was given a session of its own.'
+		},
 		nothingHanded: 'No file was handed over. Open an export from your files, or pick one in the settings.',
 		openSettings: 'Go to settings',
 		reading: 'Reading the file…',

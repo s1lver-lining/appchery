@@ -63,6 +63,16 @@
 			.reduce((sum, w) => sum + w.count, 0)
 	);
 
+	/**
+	 * Everything the reader could not take at face value, worst first. Shown at the end rather than
+	 * only before: what was skipped is a fact about the shooting that was just written, and an
+	 * archer who finds a session missing next month deserves to have been told today.
+	 */
+	const ORDER = ['unreadableRow', 'undatedRow', 'orphanRow', 'droppedCoordinates', 'unknownSheet', 'noSessionSheet'];
+	const warnings = $derived(
+		[...(plan?.warnings ?? [])].sort((a, b) => ORDER.indexOf(a.code) - ORDER.indexOf(b.code))
+	);
+
 	async function run() {
 		if (!plan) return;
 		stage = 'writing';
@@ -95,40 +105,46 @@
 >
 	<div class="absolute inset-0 bg-black/50" use:scrim={0.5}></div>
 
-	<div class="relative w-full max-w-xs rounded-2xl border border-line bg-surface p-4 shadow-xl">
+	<!-- The body scrolls on its own so a file with forty warnings cannot push the buttons off the
+		bottom of a phone. -->
+	<div
+		class="relative flex max-h-[85dvh] w-full max-w-xs flex-col rounded-2xl border border-line bg-surface p-4 shadow-xl"
+	>
 		{#if stage === 'reading'}
 			<p class="font-semibold">{$t('importer.reading')}</p>
 			<p class="mt-1 truncate text-sm text-muted">{file.name}</p>
 		{:else if stage === 'confirm' && plan}
 			<h2 class="text-base font-bold">{$t('importer.confirmTitle')}</h2>
-			<p class="mt-1 text-sm text-muted">
-				{$t('importer.confirmBody', {
-					name: file.name,
-					sessions: plan.summary.sessions,
-					rounds: plan.summary.rounds,
-					arrows: plan.summary.arrows
-				})}
-			</p>
-			{#if skipped > 0}
-				<p class="mt-1 text-sm text-muted">{$t('importer.skipped', { n: skipped })}</p>
-			{/if}
+			<div class="min-h-0 flex-1 overflow-y-auto">
+				<p class="mt-1 text-sm text-muted">
+					{$t('importer.confirmBody', {
+						name: file.name,
+						sessions: plan.summary.sessions,
+						rounds: plan.summary.rounds,
+						arrows: plan.summary.arrows
+					})}
+				</p>
+				{#if skipped > 0}
+					<p class="mt-1 text-sm text-muted">{$t('importer.skipped', { n: skipped })}</p>
+				{/if}
 
-			{#if bows.length > 0}
-				<label class="mt-3 block text-sm">
-					<span class="text-muted">{$t('importer.bow')}</span>
-					<select
-						class="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink"
-						bind:value={bowId}
-					>
-						<option value="">{$t('importer.noBow')}</option>
-						{#each bows as bow (bow.id)}
-							<option value={bow.id}>{bow.name}</option>
-						{/each}
-					</select>
-				</label>
-			{/if}
+				{#if bows.length > 0}
+					<label class="mt-3 block text-sm">
+						<span class="text-muted">{$t('importer.bow')}</span>
+						<select
+							class="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2 text-sm text-ink"
+							bind:value={bowId}
+						>
+							<option value="">{$t('importer.noBow')}</option>
+							{#each bows as bow (bow.id)}
+								<option value={bow.id}>{bow.name}</option>
+							{/each}
+						</select>
+					</label>
+				{/if}
+			</div>
 
-			<div class="mt-4 flex gap-2">
+			<div class="mt-4 flex shrink-0 gap-2">
 				<button class="flex-1 rounded-lg border border-line py-2 text-sm font-medium" onclick={onclose}>
 					{$t('common.cancel')}
 				</button>
@@ -163,9 +179,25 @@
 				{#if stage === 'done'}<Icon name="target" size={16} />{/if}
 				{stage === 'done' ? $t('importer.doneTitle') : $t('importer.failedTitle')}
 			</p>
-			<p class="mt-1 text-sm text-muted">{stage === 'done' ? result : error}</p>
+			<div class="min-h-0 flex-1 overflow-y-auto">
+				<p class="mt-1 text-sm text-muted">{stage === 'done' ? result : error}</p>
+
+				{#if stage === 'done' && warnings.length > 0}
+					<h3 class="mt-3 text-sm font-semibold">{$t('importer.warnings')}</h3>
+					<ul class="mt-1 space-y-1 text-sm text-muted">
+						{#each warnings as warning (warning.code + (warning.detail ?? ''))}
+							<li class="rounded-lg bg-sunk px-2 py-1.5">
+								{$t(`importer.warning.${warning.code}`, {
+									n: warning.count,
+									detail: warning.detail ?? ''
+								})}
+							</li>
+						{/each}
+					</ul>
+				{/if}
+			</div>
 			<button
-				class="mt-4 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+				class="mt-4 w-full shrink-0 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 				onclick={onclose}
 			>
 				{$t('common.close')}

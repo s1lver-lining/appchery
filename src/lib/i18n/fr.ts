@@ -872,6 +872,15 @@ export const fr: Dictionary = {
 		}
 	},
 	importer: {
+		warnings: 'À savoir',
+		warning: {
+			unreadableRow: '{n} lignes illisibles ont été ignorées.',
+			undatedRow: '{n} lignes sans date exploitable ont été ignorées.',
+			orphanRow: "{n} comptages désignaient une séance absente du fichier : une séance leur a été créée.",
+			droppedCoordinates: "{n} comptages avaient des positions de flèches incohérentes avec leurs scores : les positions ont été abandonnées, les scores conservés.",
+			unknownSheet: 'La feuille « {detail} » n\'a pas été reconnue et a été laissée de côté.',
+			noSessionSheet: "Le fichier ne contient pas de feuille de séances : chaque comptage a reçu une séance."
+		},
 		nothingHanded: "Aucun fichier n'a été transmis. Ouvrez un export depuis vos fichiers, ou choisissez-en un dans les paramètres.",
 		openSettings: 'Aller aux paramètres',
 		reading: 'Lecture du fichier…',
