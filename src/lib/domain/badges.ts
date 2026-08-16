@@ -6,7 +6,7 @@ import {
 	STRONG_WIND_KMH,
 	type ScoredActivity
 } from './stats';
-import { BOT_LEVELS } from './bots';
+import { BOT_LEVELS, type BotLevel } from './bots';
 import { startOfDay, startOfWeek } from './dates';
 import { yardsToMetres } from './units';
 
@@ -95,6 +95,12 @@ export interface BadgeDefinition {
 	key: string;
 	family: BadgeFamily;
 	icon: BadgeIcon;
+	/**
+	 * Experience points the badge pays the first time it is earned. Required rather than optional and
+	 * set one badge at a time, because two badges of the same family are rarely the same work: beating
+	 * the professional bot is not beating the beginner, see src/lib/domain/experience.ts.
+	 */
+	xp: number;
 	/** Set on the award badges that only count when a particular bow was used. */
 	bowType?: string;
 	/** Figures the description quotes, so the rule and the words it is explained in cannot drift. */
@@ -377,6 +383,14 @@ function longestDistance(activity: BadgeActivity): number {
 	return Math.max(0, ...distances);
 }
 
+/** The bot ladder pays by the rung: a professional's group is a different afternoon to a beginner's. */
+const BOT_BADGE_XP: Record<BotLevel, number> = {
+	beginner: 100,
+	amateur: 250,
+	advanced: 600,
+	professional: 1_200
+};
+
 const SEVENTY_METRE_ROUNDS = ['wa720-70m', 'wa360-70m'];
 const EIGHTEEN_METRE_ROUNDS = ['wa-indoor-18m', 'wa-indoor-300-18m'];
 const COMPETITIVE = ['competition', 'qualification'];
@@ -386,21 +400,23 @@ function personalBests(history: History): BadgeActivity[] {
 	return history.finished.filter((a) => isPersonalBest(a, history.finished));
 }
 
-function volume(key: string, target: number): BadgeDefinition {
+function volume(key: string, target: number, xp: number): BadgeDefinition {
 	return {
 		key,
 		family: 'volume',
 		icon: 'chart',
+		xp,
 		earnedAt: (h) => whenReached(h.shooting, (a) => a.arrowsShot, target),
 		progress: (h) => ({ current: totalArrows(h), target })
 	};
 }
 
-function habitDays(key: string, target: number): BadgeDefinition {
+function habitDays(key: string, target: number, xp: number): BadgeDefinition {
 	return {
 		key,
 		family: 'habit',
 		icon: 'star',
+		xp,
 		earnedAt: (h) => daysShot(h)[target - 1] ?? null,
 		progress: (h) => ({ current: daysShot(h).length, target })
 	};
@@ -424,6 +440,7 @@ export interface ProgressionArrow {
 	faceSize: number;
 	score: number;
 	bowType?: string;
+	xp: number;
 }
 
 /**
@@ -432,17 +449,17 @@ export interface ProgressionArrow {
  * beat. The first five are open to any bow, the metal ones ask for the bow they were written for.
  */
 export const PROGRESSION_ARROWS: ProgressionArrow[] = [
-	{ key: 'fftaWhite', colour: 'white', metres: 10, faceSize: 80, score: 280 },
-	{ key: 'fftaBlack', colour: 'black', metres: 15, faceSize: 80, score: 280 },
-	{ key: 'fftaBlue', colour: 'blue', metres: 20, faceSize: 80, score: 280 },
-	{ key: 'fftaRed', colour: 'red', metres: 25, faceSize: 80, score: 280 },
-	{ key: 'fftaYellow', colour: 'yellow', metres: 30, faceSize: 80, score: 280 },
-	{ key: 'fftaBronzeRecurve', colour: 'bronze', metres: 40, faceSize: 80, score: 280, bowType: 'recurve' },
-	{ key: 'fftaSilverRecurve', colour: 'silver', metres: 60, faceSize: 122, score: 280, bowType: 'recurve' },
-	{ key: 'fftaGoldRecurve', colour: 'gold', metres: 70, faceSize: 122, score: 280, bowType: 'recurve' },
-	{ key: 'fftaBronzeCompound', colour: 'bronze', metres: 40, faceSize: 80, score: 310, bowType: 'compound' },
-	{ key: 'fftaSilverCompound', colour: 'silver', metres: 50, faceSize: 80, score: 310, bowType: 'compound' },
-	{ key: 'fftaGoldCompound', colour: 'gold', metres: 50, faceSize: 80, score: 330, bowType: 'compound' }
+	{ key: 'fftaWhite', colour: 'white', metres: 10, faceSize: 80, score: 280, xp: 200 },
+	{ key: 'fftaBlack', colour: 'black', metres: 15, faceSize: 80, score: 280, xp: 250 },
+	{ key: 'fftaBlue', colour: 'blue', metres: 20, faceSize: 80, score: 280, xp: 300 },
+	{ key: 'fftaRed', colour: 'red', metres: 25, faceSize: 80, score: 280, xp: 400 },
+	{ key: 'fftaYellow', colour: 'yellow', metres: 30, faceSize: 80, score: 280, xp: 500 },
+	{ key: 'fftaBronzeRecurve', colour: 'bronze', metres: 40, faceSize: 80, score: 280, bowType: 'recurve', xp: 700 },
+	{ key: 'fftaSilverRecurve', colour: 'silver', metres: 60, faceSize: 122, score: 280, bowType: 'recurve', xp: 1_000 },
+	{ key: 'fftaGoldRecurve', colour: 'gold', metres: 70, faceSize: 122, score: 280, bowType: 'recurve', xp: 1_500 },
+	{ key: 'fftaBronzeCompound', colour: 'bronze', metres: 40, faceSize: 80, score: 310, bowType: 'compound', xp: 700 },
+	{ key: 'fftaSilverCompound', colour: 'silver', metres: 50, faceSize: 80, score: 310, bowType: 'compound', xp: 1_000 },
+	{ key: 'fftaGoldCompound', colour: 'gold', metres: 50, faceSize: 80, score: 330, bowType: 'compound', xp: 1_500 }
 ];
 
 /**
@@ -468,6 +485,7 @@ function progressionArrow(arrow: ProgressionArrow): BadgeDefinition {
 		key: arrow.key,
 		family: 'ffta',
 		icon: 'medal',
+		xp: arrow.xp,
 		bowType: arrow.bowType,
 		earnedAt: (h) => first(h.finished, (a) => matchesArrow(a, arrow))
 	};
@@ -478,12 +496,14 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'firstMatchWon',
 		family: 'milestone',
 		icon: 'medal',
+		xp: 200,
 		earnedAt: (h) => h.won[0]?.startedAt ?? null
 	},
 	{
 		key: 'tenMatchesWon',
 		family: 'milestone',
 		icon: 'medal',
+		xp: 600,
 		hintParams: { matches: 10 },
 		earnedAt: (h) => h.won[9]?.startedAt ?? null,
 		progress: (h) => ({ current: h.won.length, target: 10 })
@@ -493,6 +513,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'comebackWin',
 		family: 'milestone',
 		icon: 'star',
+		xp: 500,
 		earnedAt: (h) => h.won.find((a) => a.match?.fromBehind)?.startedAt ?? null
 	},
 	// One a level: the bots are a ladder, and each rung is worth saying you climbed.
@@ -501,6 +522,7 @@ export const BADGES: BadgeDefinition[] = [
 			key: `beat${level[0].toUpperCase()}${level.slice(1)}`,
 			family: 'milestone',
 			icon: 'target',
+			xp: BOT_BADGE_XP[level],
 			earnedAt: (h) => h.won.find((a) => a.match?.bot === level)?.startedAt ?? null
 		})
 	),
@@ -508,6 +530,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'halfMarathon',
 		family: 'volume',
 		icon: 'chart',
+		xp: 250,
 		hintParams: { arrows: 210 },
 		earnedAt: (h) => whenSessionReached(h, 210),
 		progress: (h) => ({ current: biggestSession(h), target: 210 })
@@ -516,22 +539,24 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'marathon',
 		family: 'volume',
 		icon: 'chart',
+		xp: 600,
 		hintParams: { arrows: 420 },
 		earnedAt: (h) => whenSessionReached(h, 420),
 		progress: (h) => ({ current: biggestSession(h), target: 420 })
 	},
-	volume('thousandArrows', 1_000),
-	volume('fiveThousandArrows', 5_000),
-	volume('tenThousandArrows', 10_000),
-	volume('twentyFiveThousandArrows', 25_000),
+	volume('thousandArrows', 1_000, 200),
+	volume('fiveThousandArrows', 5_000, 500),
+	volume('tenThousandArrows', 10_000, 900),
+	volume('twentyFiveThousandArrows', 25_000, 2_000),
 
-	habitDays('sevenDays', 7),
-	habitDays('thirtyDays', 30),
-	habitDays('hundredDays', 100),
+	habitDays('sevenDays', 7, 100),
+	habitDays('thirtyDays', 30, 300),
+	habitDays('hundredDays', 100, 900),
 	{
 		key: 'threeDaysRunning',
 		family: 'habit',
 		icon: 'star',
+		xp: 150,
 		earnedAt: (h) => dayRuns(h).find((entry) => entry.run >= 3)?.at ?? null,
 		progress: (h) => ({ current: Math.max(0, ...dayRuns(h).map((e) => e.run)), target: 3 })
 	},
@@ -539,6 +564,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'fourSeasons',
 		family: 'habit',
 		icon: 'star',
+		xp: 1200,
 		earnedAt: (h) => monthRuns(h).find((entry) => entry.run >= 12)?.at ?? null,
 		progress: (h) => ({ current: Math.max(0, ...monthRuns(h).map((e) => e.run)), target: 12 })
 	},
@@ -546,6 +572,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'groundhogDay',
 		family: 'habit',
 		icon: 'star',
+		xp: 400,
 		hintParams: { rounds: 25 },
 		earnedAt: (h) => whenRepeated(h, 25),
 		progress: (h) => ({ current: mostRepeated(h), target: 25 })
@@ -554,6 +581,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'everyWeek',
 		family: 'habit',
 		icon: 'star',
+		xp: 400,
 		earnedAt: (h) => weekStreak(h, 8, (week) => week.arrows > 0),
 		progress: (h) => ({ current: longestWeekStreak(h, (week) => week.arrows > 0), target: 8 })
 	},
@@ -561,6 +589,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'onPlan',
 		family: 'habit',
 		icon: 'chart',
+		xp: 350,
 		// Each week against what the plans asked of that week: a week no plan covered asks for nothing.
 		earnedAt: (h) => weekStreak(h, 4, onPlanWeek(h)),
 		progress: (h) => ({ current: longestWeekStreak(h, onPlanWeek(h)), target: 4 })
@@ -570,6 +599,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'threeRecords',
 		family: 'record',
 		icon: 'medal',
+		xp: 400,
 		earnedAt: (h) => whenDistinct(personalBests(h), roundKey, 3),
 		progress: (h) => ({ current: distinctCount(personalBests(h), roundKey), target: 3 })
 	},
@@ -578,6 +608,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'firstXAt70',
 		family: 'accuracy',
 		icon: 'target',
+		xp: 500,
 		earnedAt: (h) =>
 			first(
 				h.finished,
@@ -588,6 +619,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'thirtyAt18',
 		family: 'accuracy',
 		icon: 'target',
+		xp: 700,
 		earnedAt: (h) =>
 			first(
 				h.finished,
@@ -600,6 +632,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'goldenEnd',
 		family: 'accuracy',
 		icon: 'target',
+		xp: 600,
 		// Ten ring rounds only: a 9 is the gold there, and means nothing on a field or 3D face.
 		earnedAt: (h) =>
 			first(
@@ -616,6 +649,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'handfulOfArrows',
 		family: 'accuracy',
 		icon: 'target',
+		xp: 500,
 		hintParams: { arrows: GROUP_ARROWS },
 		earnedAt: (h) =>
 			first(h.finished, (a) =>
@@ -630,6 +664,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'iSeeRed',
 		family: 'accuracy',
 		icon: 'target',
+		xp: 800,
 		hintParams: { value: RED_VALUE },
 		// Only on the ten ring face: a 7 on a field or 3D round is a different arrow entirely.
 		earnedAt: (h) =>
@@ -645,6 +680,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'tourist',
 		family: 'milestone',
 		icon: 'sun',
+		xp: 250,
 		earnedAt: (h) => whenDistinct(h.shooting, placeOf, 5),
 		progress: (h) => ({ current: distinctCount(h.shooting, placeOf), target: 5 })
 	},
@@ -652,6 +688,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'frostbite',
 		family: 'milestone',
 		icon: 'snow',
+		xp: 300,
 		hintParams: { temp: COLD_C, metres: OUTDOOR_METRES },
 		earnedAt: (h) =>
 			first(
@@ -663,12 +700,14 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'firstCompetition',
 		family: 'milestone',
 		icon: 'medal',
+		xp: 300,
 		earnedAt: (h) => first(h.finished, (a) => COMPETITIVE.includes(a.sessionKind))
 	},
 	{
 		key: 'twoBowTypes',
 		family: 'milestone',
 		icon: 'bow',
+		xp: 200,
 		earnedAt: (h) => whenDistinct(h.scoring, (a) => a.bowType, 2),
 		progress: (h) => ({ current: distinctCount(h.scoring, (a) => a.bowType), target: 2 })
 	},
@@ -676,18 +715,21 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'seventyMetres',
 		family: 'milestone',
 		icon: 'target',
+		xp: 250,
 		earnedAt: (h) => first(h.finished, (a) => longestDistance(a) >= 70)
 	},
 	{
 		key: 'ninetyMetres',
 		family: 'milestone',
 		icon: 'target',
+		xp: 500,
 		earnedAt: (h) => first(h.finished, (a) => longestDistance(a) >= 90)
 	},
 	{
 		key: 'firstTuning',
 		family: 'milestone',
 		icon: 'wrench',
+		xp: 150,
 		earnedAt: (h) =>
 			first(
 				[...h.activities].sort((a, b) => a.startedAt - b.startedAt),
@@ -698,6 +740,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'fiveSightMarks',
 		family: 'milestone',
 		icon: 'sight',
+		xp: 200,
 		earnedAt: (h) => {
 			const perBow = new Map<string, number[]>();
 			for (const mark of [...h.sightMarks].sort((a, b) => a.createdAt - b.createdAt)) {
@@ -718,6 +761,7 @@ export const BADGES: BadgeDefinition[] = [
 		key: 'stormArcher',
 		family: 'milestone',
 		icon: 'storm',
+		xp: 300,
 		hintParams: { kmh: STRONG_WIND_KMH, metres: OUTDOOR_METRES },
 		earnedAt: (h) =>
 			first(
