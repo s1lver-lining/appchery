@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { get } from 'svelte/store';
 	import { t } from '$lib/i18n';
 	import { incomingFile, namedFile, SHARE_CACHE, SHARE_KEY } from '$lib/import/incoming';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
@@ -14,7 +15,8 @@
 	});
 
 	async function claim() {
-		const handed = $incomingFile;
+		// Read once rather than subscribed: claiming it clears the store, which would run this again.
+		const handed = get(incomingFile);
 		if (handed) {
 			incomingFile.set(null);
 			file = handed;
