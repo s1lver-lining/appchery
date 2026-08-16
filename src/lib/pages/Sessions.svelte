@@ -22,6 +22,7 @@
 </script>
 
 <script lang="ts">
+	import { dataVersion } from '$lib/db/changed';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
@@ -123,6 +124,7 @@
 		}, {});
 	}
 	$effect(() => {
+		void $dataVersion;
 		refresh();
 	});
 

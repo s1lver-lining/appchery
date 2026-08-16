@@ -23,6 +23,7 @@
 	} from '$lib/prefs';
 	import { recalculateBadges, deleteImportedSessions, deleteEverything } from '$lib/db/repository';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
+	import { dataChanged } from '$lib/db/changed';
 	import {
 		exportBackup,
 		importBackup,
@@ -162,6 +163,7 @@
 				await deleteEverything();
 				dangerNotice = $t('danger.everythingRemoved');
 			}
+			dataChanged();
 		} catch (e) {
 			dangerNotice = String(e);
 		} finally {
@@ -179,6 +181,7 @@
 		backupNotice = null;
 		try {
 			const report = await importBackup(parseBackup(await file.text()));
+			dataChanged();
 			backupNotice = $t('backup.imported', { n: report.rows });
 		} catch (e) {
 			backupError =

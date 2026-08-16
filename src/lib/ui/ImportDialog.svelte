@@ -3,6 +3,7 @@
 	import { readWorkbook, WorkbookError } from '$lib/import/xlsx';
 	import { planCapTargetImport, type CapTargetPlan } from '$lib/import/captarget';
 	import { importPlan, listBows, recalculateBadges, type BowRow } from '$lib/db/repository';
+	import { dataChanged } from '$lib/db/changed';
 	import { portal } from './portal';
 	import { scrim } from './statusBar';
 	import { lockScroll } from './scrollLock';
@@ -73,6 +74,7 @@
 			});
 			// Years of shooting arriving at once earns whatever it earns, so the badges are rechecked.
 			await recalculateBadges();
+			dataChanged();
 			result = $t('importer.imported', { sessions: report.sessions, arrows: report.arrows });
 			stage = 'done';
 		} catch (e) {

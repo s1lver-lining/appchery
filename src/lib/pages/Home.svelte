@@ -3,6 +3,7 @@
 </script>
 
 <script lang="ts">
+	import { dataVersion } from '$lib/db/changed';
 	import { tick } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { t } from '$lib/i18n';
@@ -117,6 +118,7 @@
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 	}
 	$effect(() => {
+		void $dataVersion;
 		refresh();
 	});
 
