@@ -4,6 +4,7 @@
 	import { originOf, setPageUp } from '$lib/nav';
 	import { encodeQr, qrPath } from '$lib/domain/qr';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { ownsStatusBar } from '$lib/ui/statusBar';
 
 	/**
 	 * The poster: the address of the app as a code somebody can point a phone at, and the same
@@ -26,7 +27,9 @@
 
 <svelte:head><title>{$t('invite.title')} · {$t('app.name')}</title></svelte:head>
 
-<div class="poster flex min-h-full flex-col bg-bg">
+<!-- The poster wears the page background top to bottom, so the bar takes it too rather than
+	keeping the brand band of the page this one was opened from. -->
+<div class="poster flex min-h-full flex-col bg-bg" use:ownsStatusBar>
 	<div class="safe-top flex items-center justify-between px-4 py-3 no-print">
 		<a href={from} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
 			<Icon name="back" size={22} />
