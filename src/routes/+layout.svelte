@@ -10,6 +10,7 @@
 	// once Settings is opened would already have missed it.
 	import '$lib/install';
 	import {
+		askTab,
 		backGuards,
 		isMainPage,
 		originOf,
@@ -267,7 +268,15 @@
 		if (onGestureBar(event, href)) return;
 		pressed = true;
 		event.preventDefault();
-		if ($page.url.pathname !== href) goto(href);
+		if ($page.url.pathname !== href) {
+			goto(href);
+			return;
+		}
+		// Already here: the tap asks this page for itself. The equipment slot answers with the list,
+		// which the bow it usually shows is the only thing standing in front of; everything else is
+		// left to the page, which knows what going back to its own start means.
+		if (holdsList(href) && !$page.url.searchParams.has('list')) goto('/equipment?list=1');
+		else askTab(href);
 	}
 
 	/**

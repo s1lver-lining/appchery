@@ -61,6 +61,17 @@ export function withOrigin(href: string, from: string): string {
 	return `${href}${href.includes('?') ? '&' : '?'}from=${encodeURIComponent(from)}`;
 }
 
+/**
+ * Bumped when a tab is tapped for the page already on show. Tapping the tab you are on is the one
+ * gesture that asks a page for itself, so it is the one a page can answer by going back to where it
+ * opens: the alternative is doing that on every arrival, which overrides the back key.
+ */
+export const tabAsked = writable<{ href: string; at: number } | null>(null);
+
+export function askTab(href: string) {
+	tabAsked.set({ href, at: Date.now() });
+}
+
 export type TabNav = { count: number; index: number; select: (index: number) => void };
 
 /** The in page tabs of the current page, so a swipe moves between them instead of between pages. */
