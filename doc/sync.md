@@ -7,6 +7,58 @@ Nothing here changes the first rule of the app: the local SQLite database is the
 and everything works forever with the server switched off. Sync is additive. An archer who never
 signs in must not be able to tell this phase happened.
 
+## 0. What the app does, in one place
+
+The rules an archer could observe, stated plainly. Everything after this section explains why.
+
+**Without an account.** Everything works, forever. Nothing is uploaded, no network is required, and
+the sync module is never even loaded. This is the app; the rest is additive.
+
+**Signing in.** Optional, from the settings data tab, with an email and a password. Every row already
+on the device is claimed by that account, so a history shot years before the account existed becomes
+the account's history. Signing out changes nothing on the device.
+
+**What travels.** The shooting record and the equipment behind it: sessions, activities, ends, shots,
+bows, revisions, arrow sets, sight marks, plans and favourites. Nothing else.
+
+**What never travels.** Badges, experience, personal bests, preferences, theme, celebration state,
+and bow photos. The first five are recomputed on each device from the record itself. A photo stays on
+the phone until photo sync gets its own storage and policies.
+
+**When it happens.** On signing in, when the app comes back to the front, when the network returns,
+and on the button in the settings account card. Never on a timer, and never mid round.
+
+**When there is no signal.** Everything carries on. Changes queue in the change log, the account card
+says how many are waiting and when the last exchange was, and they go up at the next trigger. A
+failed exchange is silent: at a range, offline is the normal case rather than an error.
+
+**Two devices at once.** Each row is decided by whichever copy was edited last, ties broken by device
+id so both devices reach the same answer. A session is never merged: the copy created first wins
+whole. A delete beats an edit of exactly the same age, because a resurrected session is worse than a
+lost correction to something being thrown away.
+
+**Erasing.** Wiping the device asks you to sign out first, and deleting the account's server data is
+a separate action that never touches the phone. Restoring a backup queues everything in it to be
+sent, tombstones included.
+
+**Handles.** Optional and asked for late: the friends screen asks the first time it is opened, so an
+archer who only wants two devices in step never becomes findable. Reserved names cannot be taken and
+a handle just left is held for thirty days before anybody else may have it.
+
+**Following.** One directional. A public profile can be followed by anyone; a private one approves
+each follower. You can see who follows you and remove any of them.
+
+**Sharing.** A switch on one activity. Shared, it is visible to whoever your profile already allows;
+unshared, it is gone from everywhere, because nothing was ever copied. What travels is the activity,
+its ends and its shots. Never the session, so the place, the weather and the bow stay private. A
+deleted activity stops being shared even if it was.
+
+**Blocking.** The blocked account sees exactly what a private profile shows. It can still send follow
+requests, which go nowhere and never reach your list, and it is never told.
+
+**What a follower sees offline.** Whatever was cached at the last exchange. Following, sharing and
+blocking need a connection and say so rather than queueing silently.
+
 ## 1. What is already in place
 
 Phase 1 built the scaffolding and phase 2 left it untouched, which is exactly what was intended:

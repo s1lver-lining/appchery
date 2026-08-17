@@ -21,6 +21,7 @@
     "db:push:prod": "supabase db push --project-ref $APPCHERY_SUPABASE_PROD",
     "db:check": "./scripts/check-sql.sh",
     "server:check": "node scripts/check-server.mjs",
+    "browser:check": "node scripts/check-browser.mjs",
     "deploy:prod": "./scripts/deploy.sh prod",
     "predev": "./scripts/sync-sqlite.sh",
     "prebuild": "./scripts/sync-sqlite.sh",

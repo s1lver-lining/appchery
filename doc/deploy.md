@@ -1,45 +1,132 @@
 # Deploying
 
-Four things ship separately: the web app, the two Supabase databases, and the native builds. The web
-app and the database are versioned together, so the order matters: **database first, app second.**
+Pick the job you are doing.
 
-## Environments
+| I want to… | Go to |
+|---|---|
+| Ship a code change, no schema change | [1. Ship the app](#1-ship-the-app) |
+| Ship a change that adds or alters a column | [2. Ship a model change](#2-ship-a-model-change) |
+| Check everything before shipping | [3. The four checks](#3-the-four-checks) |
+| Set up a new environment from scratch | [4. New environment](#4-new-environment) |
+| Ship the phone apps | [5. Native](#5-native) |
+| Undo a bad deploy | [6. Rollback](#6-rollback) |
 
-| | Web | Database |
-|---|---|---|
-| preprod | Cloudflare Pages `appchery-preprod`, branch `preprod` | Supabase project, ref in `APPCHERY_SUPABASE_PREPROD` |
-| prod | Cloudflare Pages `appchery`, branch `main` | Supabase project, ref in `APPCHERY_SUPABASE_PROD` |
+Two environments, each with its own Supabase project and its own Pages project:
 
-Each web build bakes in its own database. `.env.preprod` and `.env.production`, both gitignored,
-both copied from `.env.example`:
+| | Web | Database | Env file |
+|---|---|---|---|
+| preprod | `appchery-preprod`, branch `preprod` | ref in `APPCHERY_SUPABASE_PREPROD` | `.env.preprod` |
+| prod | `appchery`, branch `main` | ref in `APPCHERY_SUPABASE_PROD` | `.env.production` |
+
+Both env files are gitignored and hold two public values, copied from `.env.example`:
 
 ```
 PUBLIC_SUPABASE_URL=https://<ref>.supabase.co
-PUBLIC_SUPABASE_ANON_KEY=<anon key>
+PUBLIC_SUPABASE_ANON_KEY=<anon or publishable key>
 ```
 
-The anon key is public by design and Row Level Security is what protects the data. A service role key
-never belongs in these files, in the repository, or in the bundle.
+The anon key is meant to ship and Row Level Security is what protects the data. A service role key
+never belongs in these files, in the repository, or in a bundle. Without an env file the app builds
+and works with sync switched off, and `deploy.sh` says so and carries on.
 
-Without an env file the app builds and works, with sync switched off. `deploy.sh` says so and
-continues.
-
-## Release
+The project refs are not stored anywhere, so export them in the shell you deploy from, or
+`db:push:*` fails with `Missing value for flag --project-ref`:
 
 ```bash
-npm test && npm run check && npm run db:check   # all three must pass
-
-npm run db:push:preprod                          # 1. database
-npm run deploy:preprod                           # 2. app  → https://appchery-preprod.pages.dev
-
-npm run db:push:prod                             # 3. database
-npm run deploy:prod                              # 4. app, asks for confirmation
+export APPCHERY_SUPABASE_PREPROD=<preprod ref>
+export APPCHERY_SUPABASE_PROD=<prod ref>
 ```
 
-`deploy.sh` builds in the matching Vite mode, refuses to deploy if `build/_headers` lost the
-cross-origin isolation headers, and warns on a dirty tree.
+## 1. Ship the app
 
-## Web, first time
+No schema change: the database is untouched and only the bundle moves.
+
+```bash
+npm test && npm run check      # unit tests and types
+npm run deploy:preprod         # → https://appchery-preprod.pages.dev
+npm run deploy:prod            # asks for confirmation
+```
+
+## 2. Ship a model change
+
+A column added on the device is a column added on the server, in the same commit. **The database
+goes first and the app second**, in both environments: a client that pushes a column the server has
+never heard of gets an error, while a server holding a column no client sends yet is harmless.
+
+```bash
+# 1. Write both migrations. Never edit one that has been pushed.
+npx supabase migration new add_whatever      # server: supabase/migrations/
+$EDITOR src/lib/db/migrations.ts             # client: append a group, mirror it in schema.ts
+
+# 2. Prove them
+npm run db:check                             # policies still hold, RLS still forced
+npm test                                     # client migrations still apply
+
+# 3. Preprod: database, then app
+npm run db:push:preprod
+npm run server:check                         # the deployed policies, through a real auth flow
+npm run deploy:preprod
+
+# 4. Production: database, then app
+npm run db:push:prod
+npm run deploy:prod
+```
+
+The rules that keep this safe are in [migration.md](./migration.md). The two that bite hardest:
+never edit a migration that has been pushed anywhere, and every new server table needs forced RLS
+and a policy or `db:check` fails.
+
+## 3. The four checks
+
+Each covers what the one before it cannot.
+
+```bash
+npm test              # domain logic, merges, migrations, against a real SQLite
+npm run check         # types, and every locale against the reference dictionary
+npm run db:check      # server migrations and every policy, on a throwaway Postgres in Docker
+npm run server:check  # the same policies through GoTrue and PostgREST on a real deployment
+```
+
+And, when sync itself changed, the app driven as an archer drives it:
+
+```bash
+npm run build:preprod && npx vite preview --port 4174 &
+npm run browser:check -- http://127.0.0.1:4174
+```
+
+Two browser contexts are two devices with two databases and two signed in sessions. It proves an
+outing recorded on one reaches the other, that an edit travels back, and that the app keeps working
+with the network off. It needs the **built** app rather than the dev server, because offline support
+is the service worker's job and a dev server has none.
+
+`server:check` and `browser:check` write real rows under fixed test accounts and clear them again,
+so they belong on preprod. `server:check` refuses production outright.
+
+## 4. New environment
+
+### The database
+
+Create the project on supabase.com, then:
+
+```bash
+npx supabase login
+npx supabase link --project-ref "$APPCHERY_SUPABASE_PREPROD"
+npm run db:push:preprod
+npm run server:check
+```
+
+Three settings the migrations cannot carry, in the project dashboard:
+
+- **Auth → Providers → Email**: confirmations off for preprod so sign up returns a session at once,
+  on for production. The account card handles both.
+- **Auth → SMTP**: a real provider for production. The built in sender allows a handful of messages
+  an hour, so password resets fail without it.
+- **Auth → URL Configuration**: that environment's Pages hostname.
+
+Nothing else: every RPC is a SQL function in a migration, so there are no Edge Functions to deploy
+and no server code of ours to run.
+
+### The web project
 
 ```bash
 npx wrangler login
@@ -47,11 +134,10 @@ npx wrangler pages project create appchery --production-branch main
 npx wrangler pages project create appchery-preprod --production-branch preprod
 ```
 
-Each project's production branch must match the branch `deploy.sh` sends it, or Cloudflare serves the
-deployment as a preview on a fresh hostname. OPFS databases are per origin, so a moving hostname is
-an empty database.
-
-In CI, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `CI=true` skips the production prompt.
+Each project's production branch must match the branch `deploy.sh` sends it, or Cloudflare serves a
+preview on a fresh hostname. OPFS databases are per origin, so a moving hostname is an empty
+database. In CI, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`; `CI=true` skips the
+production prompt.
 
 **The build must be served with these headers**, which `static/_headers` carries:
 
@@ -61,45 +147,17 @@ Cross-Origin-Embedder-Policy: require-corp
 ```
 
 Without them there is no OPFS, the app runs on an in-memory database, and a reload loses everything.
-It says so on screen rather than failing silently, but it is not a usable deployment.
-
-## Database, first time
-
-Create the project on supabase.com, then:
-
-```bash
-export APPCHERY_SUPABASE_PREPROD=<ref>
-npm run db:push:preprod
-```
-
-Then, in the project dashboard:
-
-- **Auth → Email**: turn confirmations on for prod.
-- **Auth → SMTP**: point it at a real provider. The built-in sender allows a handful of messages an
-  hour and is for testing only, so password resets fail without this.
-- **Auth → URL configuration**: the site URL for that environment's Pages hostname.
-
-Nothing else needs configuring: every RPC is a SQL function in a migration, so there are no Edge
-Functions to deploy and no server code of ours to run.
-
-Then prove the deployment, which `npm run db:check` cannot do because it never speaks to GoTrue or
-PostgREST:
-
-```bash
-npm run server:check          # against .env.preprod
-```
-
-It signs up two accounts and leaves their rows behind, so it is for preprod. It refuses production.
+It says so on screen rather than failing silently, but it is not a usable deployment. `deploy.sh`
+refuses to deploy a build whose `_headers` lost them.
 
 ### Moving off supabase.com later
 
-The migrations in `supabase/migrations/` are plain SQL against plain Postgres, and the app reaches the
-server through the URL and anon key alone. Self-hosting means running the `supabase/docker` stack,
-applying the same migrations to it, and changing the two values in the env file. Individual installs
-can also be pointed elsewhere without a rebuild, through the `sync_state.endpoint` override described
-in [sync.md](./sync.md).
+The migrations are plain SQL against plain Postgres and the app reaches the server through a URL and
+an anon key. Self-hosting is the `supabase/docker` stack, the same migrations applied to it, and two
+changed values in the env file. Individual installs can also be pointed elsewhere without a rebuild,
+through the `sync_state.endpoint` override in [sync.md](./sync.md).
 
-## Native
+## 5. Native
 
 ```bash
 npm run cap:sync          # build the web app and copy it into ios/ and android/
@@ -110,11 +168,12 @@ npx cap open android      # build the bundle from Android Studio
 Native builds use platform SQLite, so the isolation headers do not apply to them. They read the same
 `.env.production` as the production web build.
 
-## Rollback
+## 6. Rollback
 
 ```bash
-npx wrangler pages deployment list --project-name appchery   # find the previous deployment
+npx wrangler pages deployment list --project-name appchery
 ```
 
-Promote it from the Cloudflare dashboard. The database does not roll back: migrations are additive
-and older app versions keep working against a newer schema, which is the reason for that rule.
+Promote the previous deployment from the Cloudflare dashboard. **The database does not roll back.**
+Migrations are additive and older app versions keep working against a newer schema, which is exactly
+why that rule exists.

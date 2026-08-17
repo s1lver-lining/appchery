@@ -4,9 +4,12 @@
  *
  * Usage: node scripts/check-server.mjs [.env.preprod]
  *
- * It signs up two accounts and leaves rows behind, so it belongs on preprod. Running it against
- * production puts test accounts in the real user list, which is why the file is named rather than
- * assumed and why production is refused outright.
+ * Two fixed accounts, reused run after run and signed in rather than signed up when they already
+ * exist, so repeated checks leave two rows in the user list and never a growing pile. Their data is
+ * cleared at both ends of the run: before, so a half finished run cannot fail the next one, and
+ * after, so the project is left as it was found.
+ *
+ * It still writes real rows under real accounts, so it belongs on preprod, and production is refused.
  */
 import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
@@ -32,6 +35,12 @@ if (!URL || !KEY) {
 }
 console.log(`checking ${URL}\n`);
 
+/** Fixed, so the project accumulates two accounts rather than two per run. */
+const ACCOUNTS = {
+	a: { email: 'appchery.check.a@example.com', password: 'appchery-check-a-pw' },
+	b: { email: 'appchery.check.b@example.com', password: 'appchery-check-b-pw' }
+};
+
 const stamp = Date.now();
 const results = [];
 function check(name, ok, detail = '') {
@@ -40,17 +49,36 @@ function check(name, ok, detail = '') {
 }
 
 async function signUp(tag) {
+	const { email, password } = ACCOUNTS[tag];
 	const client = createClient(URL, KEY, { auth: { persistSession: false, autoRefreshToken: false } });
-	const email = `appchery.e2e.${tag}.${stamp}@example.com`;
-	const { data, error } = await client.auth.signUp({ email, password: `Test-${stamp}-pw` });
-	if (error) throw new Error(`${tag} sign up: ${error.message}`);
+
+	const existing = await client.auth.signInWithPassword({ email, password });
+	if (existing.data?.session) return { client, id: existing.data.user.id, email };
+
+	const { data, error } = await client.auth.signUp({ email, password });
+	if (error) throw new Error(`${tag} sign in and sign up both failed: ${error.message}`);
 	if (!data.session) throw new Error(`${tag} sign up returned no session (confirmations on?)`);
 	return { client, id: data.user.id, email };
 }
 
+/** Everything a previous run wrote, so each run starts from the same place and leaves it that way. */
+async function clear(who, other) {
+	void other;
+	await who.client.from('block').delete().eq('blocker_id', who.id);
+	await who.client.from('follow').delete().eq('follower_id', who.id);
+	await who.client.from('follow').delete().eq('followee_id', who.id);
+	for (const table of ['shot', 'round_end', 'activity', 'session']) {
+		await who.client.from(table).delete().eq('user_id', who.id);
+	}
+	await who.client.from('profile').update({ is_public: false }).eq('user_id', who.id);
+}
+
 const a = await signUp('a');
 const b = await signUp('b');
-check('two accounts sign up and receive a session', Boolean(a.id && b.id));
+check('two accounts sign in and receive a session', Boolean(a.id && b.id));
+
+await clear(a, b);
+await clear(b, a);
 
 const now = Date.now();
 const base = (id) => ({ id, created_at: now, updated_at: now, deleted_at: null, device_id: 'e2e' });
@@ -204,6 +232,9 @@ check('an unauthenticated caller reaches nothing', (anonRows ?? []).length === 0
 const { error: anonRpc } = await anon.rpc('lookup_profile', { wanted: handleA });
 check('and cannot call the lookup function', Boolean(anonRpc), anonRpc?.message);
 
+await clear(a, b);
+await clear(b, a);
+
 console.log(`\n${results.filter((r) => r.ok).length}/${results.length} checks passed`);
-console.log(`accounts: ${a.email} / ${b.email}`);
+console.log(`accounts reused, rows cleared: ${a.email} / ${b.email}`);
 if (results.some((r) => !r.ok)) process.exitCode = 1;
