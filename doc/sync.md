@@ -226,9 +226,10 @@ Steps 1 to 3 are independently shippable and useless alone. Steps 4 to 6 are the
 7. **Done.** Wipe, restore and import made sync safe.
 8. **Done.** Orchestration and triggers in `src/lib/sync/index.ts` and `watch.ts`, sync state in the
    settings account card.
-9. **Done against the stubs.** `./scripts/check-sql.sh` proves ownership isolation on every synced
-   table, the block indistinguishability, the handle rules and the lookup rate limit. Still to do
-   against a real stack: auth, PostgREST and storage, which the stubs cannot speak for.
+9. **Done.** `./scripts/check-sql.sh` proves ownership isolation on every synced table, the block
+   indistinguishability, the handle rules and the lookup rate limit against plain Postgres, and
+   `npm run server:check` proves the same behaviour through GoTrue and PostgREST on a real
+   deployment. Storage has no bucket yet, so it waits for photo sync.
 10. **Done.** Phase 3.1 client: handle claim, profile pages, follow and block, share toggle,
     offline cache.
 

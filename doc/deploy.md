@@ -82,6 +82,15 @@ Then, in the project dashboard:
 Nothing else needs configuring: every RPC is a SQL function in a migration, so there are no Edge
 Functions to deploy and no server code of ours to run.
 
+Then prove the deployment, which `npm run db:check` cannot do because it never speaks to GoTrue or
+PostgREST:
+
+```bash
+npm run server:check          # against .env.preprod
+```
+
+It signs up two accounts and leaves their rows behind, so it is for preprod. It refuses production.
+
 ### Moving off supabase.com later
 
 The migrations in `supabase/migrations/` are plain SQL against plain Postgres, and the app reaches the
