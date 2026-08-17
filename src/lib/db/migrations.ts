@@ -244,5 +244,19 @@ export const MIGRATIONS: string[][] = [
 				bow_id = NULL,
 				updated_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000
 			WHERE bow_id IN (SELECT id FROM bow WHERE deleted_at IS NOT NULL);`
+	],
+	// 0017 who a row belongs to, nullable because everything shot before signing in belongs to nobody
+	[
+		`ALTER TABLE bow ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE bow_revision ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE arrow_set ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE session ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE activity ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE round_end ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE shot ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE plan ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE plan_slot ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE sight_mark ADD COLUMN user_id TEXT;`,
+		`ALTER TABLE favourite_round ADD COLUMN user_id TEXT;`
 	]
 ];

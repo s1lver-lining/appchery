@@ -9,8 +9,21 @@ const syncColumns = {
 	deviceId: text('device_id').notNull()
 };
 
-export const bow = sqliteTable('bow', {
+/**
+ * Sync columns plus the account a row belongs to, on the tables that actually travel. Null until the
+ * archer signs in, and null forever for somebody who never does: inventing an owner for local rows
+ * would make the column a lie on every device that stays offline.
+ *
+ * badge carries none of this. Badges are derived from the shooting record and recomputed per device,
+ * see doc/sync.md section 2.
+ */
+const ownedColumns = {
 	...syncColumns,
+	userId: text('user_id')
+};
+
+export const bow = sqliteTable('bow', {
+	...ownedColumns,
 	name: text('name').notNull(),
 	/** recurve | compound | barebow | longbow */
 	type: text('type').notNull(),
@@ -24,7 +37,7 @@ export const bow = sqliteTable('bow', {
 export const bowRevision = sqliteTable(
 	'bow_revision',
 	{
-		...syncColumns,
+		...ownedColumns,
 		bowId: text('bow_id').notNull(),
 		revisionNo: integer('revision_no').notNull(),
 		settings: text('settings').notNull(),
@@ -36,7 +49,7 @@ export const bowRevision = sqliteTable(
 );
 
 export const arrowSet = sqliteTable('arrow_set', {
-	...syncColumns,
+	...ownedColumns,
 	label: text('label').notNull(),
 	spine: integer('spine'),
 	/** Canonical metric storage, displayed in inches. */
@@ -50,7 +63,7 @@ export const arrowSet = sqliteTable('arrow_set', {
 
 /** One outing, holding the bow used, the conditions, and every activity done during it. */
 export const session = sqliteTable('session', {
-	...syncColumns,
+	...ownedColumns,
 	label: text('label'),
 	startedAt: integer('started_at').notNull(),
 	/** practice | competition | qualification | planned */
@@ -74,7 +87,7 @@ export const session = sqliteTable('session', {
 export const activity = sqliteTable(
 	'activity',
 	{
-		...syncColumns,
+		...ownedColumns,
 		sessionId: text('session_id').notNull(),
 		/** scoring | tuning */
 		kind: text('kind').notNull(),
@@ -114,7 +127,7 @@ export const activity = sqliteTable(
 export const end = sqliteTable(
 	'round_end',
 	{
-		...syncColumns,
+		...ownedColumns,
 		activityId: text('activity_id').notNull(),
 		stageIndex: integer('stage_index').notNull(),
 		endNo: integer('end_no').notNull(),
@@ -146,7 +159,7 @@ export const end = sqliteTable(
 export const shot = sqliteTable(
 	'shot',
 	{
-		...syncColumns,
+		...ownedColumns,
 		endId: text('end_id').notNull(),
 		ordinal: integer('ordinal').notNull(),
 		value: integer('value').notNull(),
@@ -165,7 +178,7 @@ export const shot = sqliteTable(
 
 /** A repeating week of intended outings. Several can run at once: a plan is a habit, not a mode. */
 export const plan = sqliteTable('plan', {
-	...syncColumns,
+	...ownedColumns,
 	name: text('name').notNull(),
 	/**
 	 * Arrows the week asks for that belong to no particular outing: shoot them whenever, they still
@@ -189,7 +202,7 @@ export const plan = sqliteTable('plan', {
 export const planSlot = sqliteTable(
 	'plan_slot',
 	{
-		...syncColumns,
+		...ownedColumns,
 		planId: text('plan_id').notNull(),
 		/** 0 is Monday, so the week reads the way the calendar on the sessions page does. */
 		weekday: integer('weekday').notNull(),
@@ -208,7 +221,7 @@ export const planSlot = sqliteTable(
 export const sightMark = sqliteTable(
 	'sight_mark',
 	{
-		...syncColumns,
+		...ownedColumns,
 		bowId: text('bow_id').notNull(),
 		distance: integer('distance').notNull(),
 		/** m | yd, held per mark: an archer shooting both keeps both without converting either. */
@@ -234,7 +247,7 @@ export const sightMark = sqliteTable(
 export const favouriteRound = sqliteTable(
 	'favourite_round',
 	{
-		...syncColumns,
+		...ownedColumns,
 		roundKey: text('round_key').notNull()
 	},
 	(t) => [index('idx_favourite_round_key').on(t.roundKey)]

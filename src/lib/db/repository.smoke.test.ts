@@ -175,7 +175,8 @@ describe('the repair that frees outings from a deleted bow', () => {
 				.values({ id, createdAt: now, updatedAt: now, deviceId: 'd', startedAt: now, kind: 'practice', bowId });
 		}
 
-		for (const statement of MIGRATIONS[MIGRATIONS.length - 1]) sqlite.exec(statement);
+		// 0016 by number, not whichever migration happens to be last: appending one is routine.
+		for (const statement of MIGRATIONS[15]) sqlite.exec(statement);
 
 		const rows = await proxy.select().from(schema.session).where(inArray(schema.session.id, ['sess-orphan', 'sess-fine']));
 		const byId = new Map(rows.map((row) => [row.id, row]));
