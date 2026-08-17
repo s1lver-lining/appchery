@@ -35,3 +35,8 @@ test/datasets/prepared/
 
 # Byte code from the training scripts
 __pycache__/
+
+# Per environment Supabase settings, one file per Pages project. .env.example is the template.
+.env
+.env.*
+!.env.example

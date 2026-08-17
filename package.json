@@ -8,6 +8,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
+    "build:preprod": "vite build --mode preprod",
     "preview": "vite preview",
     "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
     "test": "vitest run",
@@ -16,9 +17,13 @@
     "cap:sync": "npm run build && cap sync",
     "sync:sqlite": "./scripts/sync-sqlite.sh",
     "deploy:preprod": "./scripts/deploy.sh preprod",
+    "db:push:preprod": "supabase db push --project-ref $APPCHERY_SUPABASE_PREPROD",
+    "db:push:prod": "supabase db push --project-ref $APPCHERY_SUPABASE_PROD",
+    "db:check": "./scripts/check-sql.sh",
     "deploy:prod": "./scripts/deploy.sh prod",
     "predev": "./scripts/sync-sqlite.sh",
     "prebuild": "./scripts/sync-sqlite.sh",
+    "prebuild:preprod": "./scripts/sync-sqlite.sh",
     "postinstall": "./scripts/sync-sqlite.sh"
   },
   "type": "module",

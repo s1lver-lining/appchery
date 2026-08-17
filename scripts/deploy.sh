@@ -81,7 +81,19 @@ else
 	echo "Deploying ${COMMIT}${DIRTY} to ${PROJECT}"
 fi
 
-npm run build
+# Each target builds in its own Vite mode, so preprod bakes in .env.preprod and production bakes in
+# .env.production. That is what points the two bundles at their own Supabase project.
+if [ "$TARGET" = prod ]; then
+	npm run build
+else
+	npm run build:preprod
+fi
+
+# A bundle with no server configured is a working offline app, so this warns rather than refusing.
+ENV_FILE="$([ "$TARGET" = prod ] && echo .env.production || echo .env.preprod)"
+if [ ! -f "$ENV_FILE" ]; then
+	echo "Note: no ${ENV_FILE}, so this bundle ships without sync. See .env.example." >&2
+fi
 
 # _headers carries the cross-origin isolation the OPFS database needs, and it is easy to lose to a
 # stray change in static/. Without it the app still boots, but on an in-memory database that loses
