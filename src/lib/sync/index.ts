@@ -66,7 +66,7 @@ async function run(): Promise<void> {
 
 	try {
 		await push(client, user.id);
-		await pull(client);
+		await pull(client, user.id);
 		const state = await readSyncState();
 		syncStatus.set({
 			phase: 'idle',

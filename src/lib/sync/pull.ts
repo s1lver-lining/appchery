@@ -26,7 +26,7 @@ export interface PullResult {
 
 export class PullError extends Error {}
 
-export async function pull(client: SupabaseClient): Promise<PullResult> {
+export async function pull(client: SupabaseClient, userId: string): Promise<PullResult> {
 	const state = await readSyncState();
 	const start = state.lastPullCursor ?? '1970-01-01T00:00:00Z';
 	let applied = 0;
@@ -41,6 +41,10 @@ export async function pull(client: SupabaseClient): Promise<PullResult> {
 			const { data, error } = await client
 				.from(name)
 				.select('*')
+				// Only this archer's rows. The policies also make somebody else's shared activities
+				// readable, and without this filter they would land in the local tables and count
+				// towards this archer's own totals.
+				.eq('user_id', userId)
 				.gt('server_updated_at', cursor)
 				.order('server_updated_at', { ascending: true })
 				.limit(PAGE);
@@ -60,7 +64,7 @@ export async function pull(client: SupabaseClient): Promise<PullResult> {
 		}
 	}
 
-	const high = await highWaterMark(client);
+	const high = await highWaterMark(client, userId);
 	await writeSyncState({ lastSyncAt: Date.now(), ...(high ? { lastPullCursor: high } : {}) });
 	if (applied > 0) dataChanged();
 
@@ -72,12 +76,13 @@ export async function pull(client: SupabaseClient): Promise<PullResult> {
  * so a pull interrupted between two tables resumes from where it started rather than declaring
  * itself finished. Re-reading rows is free; missing one is not.
  */
-async function highWaterMark(client: SupabaseClient): Promise<string | null> {
+async function highWaterMark(client: SupabaseClient, userId: string): Promise<string | null> {
 	let latest: string | null = null;
 	for (const { name } of OWNED_TABLES) {
 		const { data, error } = await client
 			.from(name)
 			.select('server_updated_at')
+			.eq('user_id', userId)
 			.order('server_updated_at', { ascending: false })
 			.limit(1);
 		if (error) throw new PullError(`${name}: ${error.message}`);
@@ -143,7 +148,7 @@ function toLocalRow(
 }
 
 /** Everything the server holds, read from scratch. What a device asks for the first time it signs in. */
-export async function pullEverything(client: SupabaseClient): Promise<PullResult> {
+export async function pullEverything(client: SupabaseClient, userId: string): Promise<PullResult> {
 	await writeSyncState({ lastPullCursor: null });
-	return pull(client);
+	return pull(client, userId);
 }

@@ -85,6 +85,10 @@ function fakeServer() {
 					void columns;
 					return query;
 				},
+				eq(column: string, value: unknown) {
+					query.filters.push((row) => row[column] === value);
+					return query;
+				},
 				gt(column: string, value: string) {
 					query.filters.push((row) => String(row[column]) > value);
 					return query;
@@ -204,6 +208,28 @@ describe('push', () => {
 });
 
 describe('pull', () => {
+	it('leaves a shared activity belonging to another account out of these tables', async () => {
+		const server = fakeServer();
+		server.rowsOf('activity').set('activity-theirs', {
+			id: 'activity-theirs',
+			created_at: 10,
+			updated_at: 10,
+			deleted_at: null,
+			device_id: 'device-z',
+			user_id: 'user-2',
+			session_id: 'session-z',
+			kind: 'scoring',
+			started_at: 10,
+			shared_at: 11,
+			server_updated_at: '2026-01-01T00:00:00.000Z'
+		});
+
+		const result = await pull(server.client as never, USER);
+
+		expect(result.applied).toBe(0);
+		expect(await proxy.select().from(schema.activity)).toEqual([]);
+	});
+
 	it('writes a row this device has never seen', async () => {
 		const server = fakeServer();
 		server.rowsOf('session').set('session-remote', {
@@ -219,7 +245,7 @@ describe('pull', () => {
 			server_updated_at: '2026-01-01T00:00:00.000Z'
 		});
 
-		const result = await pull(server.client as never);
+		const result = await pull(server.client as never, USER);
 
 		expect(result.applied).toBe(1);
 		const [row] = await proxy.select().from(schema.session).where(eq(schema.session.id, 'session-remote'));
@@ -243,7 +269,7 @@ describe('pull', () => {
 			server_updated_at: '2026-01-01T00:00:00.000Z'
 		});
 
-		const result = await pull(server.client as never);
+		const result = await pull(server.client as never, USER);
 
 		expect(result).toMatchObject({ applied: 0, skipped: 1 });
 		const [row] = await proxy.select().from(schema.session).where(eq(schema.session.id, 'session-a'));
@@ -264,7 +290,7 @@ describe('pull', () => {
 			server_updated_at: '2026-01-01T00:00:00.000Z'
 		});
 
-		await pull(server.client as never);
+		await pull(server.client as never, USER);
 
 		const pending = await proxy.select().from(schema.changeLog).where(isNull(schema.changeLog.syncedAt));
 		expect(pending).toEqual([]);
@@ -284,8 +310,8 @@ describe('pull', () => {
 			server_updated_at: '2026-01-01T00:00:00.000Z'
 		});
 
-		await pull(server.client as never);
-		expect(await pull(server.client as never)).toMatchObject({ applied: 0, skipped: 0 });
+		await pull(server.client as never, USER);
+		expect(await pull(server.client as never, USER)).toMatchObject({ applied: 0, skipped: 0 });
 	});
 });
 
