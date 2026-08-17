@@ -114,9 +114,16 @@ an irreversible act asks a question first.
 
 `syncNow()` pushes then pulls, guarded so only one runs at a time, exposing a store with idle,
 syncing, error, pending count and last success. It runs on sign in, on app resume, on regaining
-connectivity, on a manual button, and after a session closes. Never on a timer while scoring.
+connectivity, and on the manual button. Never on a timer, and never mid round: the change log keeps
+what is owed, so an exchange can always wait for a natural pause.
+
+An earlier draft of this plan also listed "after a session closes". There is no such moment in the
+app: a session is never finished, it simply stops being added to, so there is no event to hang it on.
+
 Failures are silent and retried: being offline at a range is the normal case, not an error. Sync is
-absent from the boot path entirely, so a broken sync can never stop somebody scoring.
+absent from the boot path entirely, so a broken sync can never stop somebody scoring. `watchSync()`
+returns without loading anything unless a server is configured and a session is already stored, so a
+device that never signs in never fetches the client library at all.
 
 The settings account section shows, signed out, that sync is optional and everything works without
 it. Signed in it shows the account, the last sync, the pending count and sign out. Signing out keeps
