@@ -30,6 +30,8 @@ export interface SyncStateRow {
 	lastPullCursor: string | null;
 	lastPushCursor: string | null;
 	endpoint: string | null;
+	/** Epoch ms of the last exchange that finished, or null for a device that has never synced. */
+	lastSyncAt: number | null;
 }
 
 export async function readSyncState(): Promise<SyncStateRow> {
@@ -41,7 +43,8 @@ export async function readSyncState(): Promise<SyncStateRow> {
 		deviceId: deviceId(),
 		lastPullCursor: null,
 		lastPushCursor: null,
-		endpoint: null
+		endpoint: null,
+		lastSyncAt: null
 	};
 	await db().insert(schema.syncState).values(created);
 	return created;

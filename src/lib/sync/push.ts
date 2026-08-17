@@ -77,6 +77,7 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 		if (batch.length < CHUNK) break;
 	}
 
+	await writeSyncState({ lastSyncAt: Date.now() });
 	return { uploaded, pending: await pendingCount() };
 }
 

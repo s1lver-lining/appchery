@@ -61,7 +61,7 @@ export async function pull(client: SupabaseClient): Promise<PullResult> {
 	}
 
 	const high = await highWaterMark(client);
-	if (high) await writeSyncState({ lastPullCursor: high });
+	await writeSyncState({ lastSyncAt: Date.now(), ...(high ? { lastPullCursor: high } : {}) });
 	if (applied > 0) dataChanged();
 
 	return { applied, skipped };

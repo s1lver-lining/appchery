@@ -258,5 +258,7 @@ export const MIGRATIONS: string[][] = [
 		`ALTER TABLE plan_slot ADD COLUMN user_id TEXT;`,
 		`ALTER TABLE sight_mark ADD COLUMN user_id TEXT;`,
 		`ALTER TABLE favourite_round ADD COLUMN user_id TEXT;`
-	]
+	],
+	// 0018 when the server and this device last agreed, so the account card can say so offline
+	[`ALTER TABLE sync_state ADD COLUMN last_sync_at INTEGER;`]
 ];

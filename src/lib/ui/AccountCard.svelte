@@ -3,7 +3,9 @@
 	import { t } from '$lib/i18n';
 	import Icon from './Icon.svelte';
 	import { account, signIn, signUp, signOut, requestPasswordReset, AuthError, initAuth, unclaimedRowCount } from '$lib/sync/auth';
-	import { hasBuiltInServer } from '$lib/sync/config';
+	import { hasBuiltInServer, readSyncState } from '$lib/sync/config';
+	import { pendingCount } from '$lib/sync/push';
+	import { locale } from '$lib/i18n';
 
 	/**
 	 * The whole of sync as an archer meets it: an optional account, and a promise that signing out
@@ -18,14 +20,41 @@
 	let notice = $state<string | null>(null);
 	let error = $state<string | null>(null);
 	let unclaimed = $state(0);
+	let lastSyncAt = $state<number | null>(null);
+	let waiting = $state(0);
 
 	const configured = hasBuiltInServer();
 
 	onMount(async () => {
 		if (!configured) return;
-		await initAuth();
-		unclaimed = await unclaimedRowCount();
+		// Restoring a session can try to refresh a token, which needs a network. Failing that must
+		// still leave the card readable: what it mostly has to say offline is when the last sync was.
+		try {
+			await initAuth();
+		} catch {
+			error = $t('account.error.offline');
+		}
+		await refresh();
 	});
+
+	/**
+	 * Read from the local database, never from the server. This card is looked at precisely when
+	 * somebody suspects they have no signal, so it has to answer without one.
+	 */
+	async function refresh() {
+		unclaimed = await unclaimedRowCount();
+		const state = await readSyncState();
+		lastSyncAt = state.lastSyncAt;
+		waiting = await pendingCount();
+	}
+
+	const syncedLabel = $derived(
+		lastSyncAt === null
+			? $t('account.neverSynced')
+			: $t('account.lastSync', {
+					at: new Date(lastSyncAt).toLocaleString($locale, { dateStyle: 'medium', timeStyle: 'short' })
+				})
+	);
 
 	/**
 	 * Supabase reports a wrong password and an unknown address with the same message, and repeating
@@ -54,7 +83,7 @@
 				notice = claimed();
 			}
 			password = '';
-			unclaimed = await unclaimedRowCount();
+			await refresh();
 		} catch (e) {
 			error = explain(e);
 		}
@@ -98,6 +127,10 @@
 			<p class="text-sm text-muted">{$t('account.noServer')}</p>
 		{:else if $account}
 			<p class="text-sm font-medium">{$t('account.signedInAs', { email: $account.email ?? '' })}</p>
+			<p class="tabular mt-1 text-sm text-muted">{syncedLabel}</p>
+			{#if waiting > 0}
+				<p class="mt-1 text-sm text-muted">{$t('account.waiting', { n: waiting })}</p>
+			{/if}
 			<p class="mt-1 text-sm text-muted">{$t('account.signOutKeeps')}</p>
 			<button
 				class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"

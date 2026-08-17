@@ -24,6 +24,8 @@ export async function initAuth(): Promise<void> {
 	const client = await supabase();
 	if (!client) return;
 
+	// The stored session is read locally, so this answers with no network. A refresh that needs one
+	// and cannot have one leaves the archer signed in with what is on disk, which is the honest state.
 	const { data } = await client.auth.getSession();
 	account.set(toAccount(data.session?.user));
 

@@ -290,5 +290,7 @@ export const syncState = sqliteTable('sync_state', {
 	deviceId: text('device_id').notNull(),
 	lastPullCursor: text('last_pull_cursor'),
 	lastPushCursor: text('last_push_cursor'),
-	endpoint: text('endpoint')
+	endpoint: text('endpoint'),
+	/** Read on a screen that has to work with no signal, so it is stored rather than asked for. */
+	lastSyncAt: integer('last_sync_at')
 });
