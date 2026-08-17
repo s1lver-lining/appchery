@@ -52,11 +52,16 @@
 	import { appVersion, appBuild } from '$lib/build';
 	import AccountCard from '$lib/ui/AccountCard.svelte';
 	import { account } from '$lib/sync/auth';
+	import { diagnoseStorage, type StorageProblem } from '$lib/db/diagnosis';
 
 	/** Named rather than read from package.json, which no bundle ships. */
 	const LICENCE = 'AGPL-3.0-only';
 
 	const info = dbInfo();
+	let storageProblem = $state<StorageProblem | null>(null);
+	$effect(() => {
+		if (!info.persistent) diagnoseStorage().then((problem) => (storageProblem = problem));
+	});
 
 	// The browser owns this, so the switch follows it: leaving fullscreen by the system gesture or
 	// the back key has to move the toggle too, or it starts lying.
@@ -542,6 +547,11 @@
 						<code class="rounded bg-sunk px-1">{info.kind}</code>
 						· {info.persistent ? $t('settings.persistent') : $t('settings.volatile')}
 					</p>
+					<!-- Only when it went wrong, and then in full: this is the one screen somebody is sent
+						to when their scores did not survive a reload. -->
+					{#if !info.persistent && storageProblem}
+						<p class="mt-1 text-sm text-danger">{$t(`settings.storageWhy.${storageProblem}`)}</p>
+					{/if}
 				</section>
 
 				<section>

@@ -1034,6 +1034,13 @@ export const en = {
 		storage: 'Storage',
 		persistent: 'Persistent',
 		volatile: 'In memory, lost on reload',
+		storageWhy: {
+			insecure: 'This address is not a secure context, so the browser will not keep a database here. Open the app over HTTPS, or on localhost.',
+			notIsolated: 'The page is not cross-origin isolated: the server is not sending the two isolation headers.',
+			blocked: 'The browser is refusing to store data for this site. Check that site data is not set to be cleared or blocked for this address, then reload.',
+			noOpfs: 'This browser has no private file system for the app to store a database in.',
+			unknown: 'Another window of Appchery probably has the database open, or the browser is still clearing this site. Close the other windows and reload.'
+		},
 		linkBadges: 'Badges',
 		linkShare: 'Share',
 		linkTricks: 'Tips and tricks',

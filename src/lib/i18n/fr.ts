@@ -1037,6 +1037,13 @@ export const fr: Dictionary = {
 		storage: 'Stockage',
 		persistent: 'Persistant',
 		volatile: 'En mémoire, perdu au rechargement',
+		storageWhy: {
+			insecure: "Cette adresse n'est pas un contexte sécurisé : le navigateur n'y conservera pas de base. Ouvrez l'app en HTTPS, ou sur localhost.",
+			notIsolated: "La page n'est pas isolée : le serveur n'envoie pas les deux en-têtes d'isolation.",
+			blocked: "Le navigateur refuse de stocker des données pour ce site. Vérifiez que les données du site ne sont pas bloquées ou effacées à la fermeture pour cette adresse, puis rechargez.",
+			noOpfs: "Ce navigateur n'a pas de système de fichiers privé où stocker une base.",
+			unknown: "Une autre fenêtre d'Appchery a probablement la base ouverte, ou le navigateur efface encore ce site. Fermez les autres fenêtres et rechargez."
+		},
 		linkBadges: 'Badges',
 		linkShare: 'Partager',
 		linkTricks: 'Astuces',
