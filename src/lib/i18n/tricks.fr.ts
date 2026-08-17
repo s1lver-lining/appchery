@@ -275,6 +275,14 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: 'L’app fonctionne sans réseau.',
 					body: 'La météo et les noms de lieux ont besoin du réseau au moment où ils sont récupérés ; rien d’autre.'
+				},
+				{
+					lead: 'Se connecter adopte ce qui est déjà là.',
+					body: 'Le compte est facultatif et arrive tard, volontairement : tout ce que vous avez tiré avant de vous connecter est repris par le compte au moment où vous le faites, au lieu de repartir de zéro. Se déconnecter ne change rien sur l’appareil, et vos tirs restent que vous vous reconnectiez ou non.'
+				},
+				{
+					lead: 'Effacer l’appareil demande d’abord une déconnexion.',
+					body: 'Vider ce téléphone et fermer votre compte sont deux gestes distincts, et aucun n’entraîne l’autre. Déconnectez-vous, puis effacez : le compte garde ce qu’il a déjà.'
 				}
 			]
 		}

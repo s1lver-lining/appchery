@@ -68,9 +68,20 @@ the consumed log ids and advance `last_push_cursor`. A tombstone is an ordinary 
 `deleted_at` set. A failed chunk leaves everything after it pending, so a retry resumes rather than
 restarts, which is what makes a bulk import of thousands of rows survivable.
 
+Ownership is stamped here rather than in the repository. `src/lib/db/repository.ts` knows nothing
+about accounts and is better for it: the local database has one archer and is the source of truth,
+so who owns a row is a fact about syncing. Push claims every ownerless row before it sends anything,
+which is also what makes signing in adopt a history shot years earlier.
+
+Adoption never touches `updated_at`. It changes who owns a row, not what it says, and bumping the
+timestamp would let a device that has been offline for a month outrank a genuinely newer copy.
+
 ### Pull
 
-The cursor is the server side `updated_at` high water mark in `last_pull_cursor`. Fetch rows newer
+The cursor is `server_updated_at`, a column the server maintains by trigger and no client can write.
+The client's own `updated_at` cannot serve: it is a device clock, and one phone set a year ahead
+would drag the cursor forward and hide every other device's rows until the real world caught up.
+`updated_at` stays what it always was, the field last writer wins compares. Fetch rows newer
 than it, ordered, paged, applied parent before child inside one transaction. Pulled rows must not
 re-enter `change_log`, so pull writes through its own path rather than the repository. `dataChanged()`
 fires after a pull that wrote anything, or the mounted pages go on showing what they read on load.
@@ -90,7 +101,14 @@ explicit action that never touches the phone, and wiping the phone never touches
 is a side effect of the other, because the archer asking to free up space on a phone is not asking to
 lose their history, and an archer closing an account is not asking to wipe the device in their hand.
 
-Restoring a backup re-enqueues every restored row as pending rather than clearing the log.
+Restoring a backup drops the log and the cursors the file was carrying, because they describe a sync
+that happened on another device, and re-enqueues every restored row as pending instead. Tombstones
+are enqueued with the rest: a delete that reached the file has to reach the server too, or the next
+pull brings the deleted session back.
+
+The wipe guard lives in the settings screen rather than in the repository, and that is a data safety
+measure, not a security one. It is the same device and the same archer either way; the point is that
+an irreversible act asks a question first.
 
 ## 5. Orchestration
 
@@ -181,13 +199,24 @@ Not a review at the end. Each of these is a task:
 
 Steps 1 to 3 are independently shippable and useless alone. Steps 4 to 6 are the feature.
 
-1. Supabase project, mirrored schema, RLS, and the phase 3.1 social tables and policies alongside.
-2. Client migration adding nullable `user_id` to every user table.
-3. Auth: magic link, optional, skippable, with the settings account section.
-4. Push over the change log.
-5. Pull with the cursor.
-6. Conflict resolution, as pure functions over two row sets so they test without a network.
-7. Wipe, restore and import made sync safe.
-8. Orchestration, triggers and sync state UI.
-9. Security tests and policy tests.
+1. **Done.** Supabase project, mirrored schema, RLS, and the phase 3.1 social tables and policies
+   alongside. `./scripts/check-sql.sh` applies them to a throwaway Postgres and runs the policy tests.
+2. **Done.** Client migration 0017 adding nullable `user_id` to every table that travels.
+3. **Done.** Auth: email and password, optional, skippable, with the settings account card.
+4. **Done.** Push over the change log.
+5. **Done.** Pull with the cursor.
+6. **Done.** Conflict resolution, as pure functions in `src/lib/sync/merge.ts`.
+7. **Done.** Wipe, restore and import made sync safe.
+8. Orchestration, triggers and sync state UI. Until this exists, nothing calls push or pull.
+9. The rest of the security work in section 7, against a real stack rather than the stubs.
 10. Phase 3.1 client: handle claim, profile pages, follow and block, share toggle, offline cache.
+
+### Configuration
+
+`PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` at build time, read through `import.meta.env`
+rather than SvelteKit's `$env/static/public`, which fails the build when a variable is missing.
+Missing is the normal case: a build with no server is the offline app, which is the app.
+
+A self hoster overrides both per install through `sync_state.endpoint`, stored as `url|anonKey`.
+Anything malformed there is ignored rather than obeyed, so a typo cannot take the built-in server
+away from an archer who never touched the setting.

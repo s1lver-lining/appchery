@@ -280,6 +280,14 @@ export const tricksEn = {
 				{
 					lead: 'The app works with no signal.',
 					body: 'Weather and place names need a network at the moment they are fetched; nothing else does.'
+				},
+				{
+					lead: 'Signing in adopts what is already here.',
+					body: 'An account is optional and arrives late on purpose: everything you shot before signing in is claimed by the account the moment you do, rather than starting you empty. Signing out changes nothing on the device, and your shooting stays whether or not you ever sign in again.'
+				},
+				{
+					lead: 'Erasing the device asks you to sign out first.',
+					body: 'Emptying this phone and closing your account are separate acts, and neither does the other. Sign out, then erase, and the account keeps what it already has.'
 				}
 			]
 		}
