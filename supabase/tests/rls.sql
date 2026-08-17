@@ -270,6 +270,73 @@ begin
 end;
 $$;
 
+-- A handle cannot be taken by writing the column directly. The rules live in a trigger and the
+-- grant is narrowed, because a rule only enforced in a function guards nothing the table exposes.
+do $$
+begin
+	begin
+		update public.profile set handle = 'admin' where user_id = auth.uid();
+		raise exception 'a reserved handle can be taken by updating the row';
+	exception when others then
+		-- Two defences, and either is a pass: the column is not granted, and the trigger refuses the
+		-- value even if some future grant hands the column back.
+		if sqlerrm not in ('handle unavailable', 'permission denied for table profile') then raise; end if;
+	end;
+end;
+$$;
+
+-- A deleted activity stops being shared. Deleting is the one action whose failure the archer who
+-- took it can never see.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+update public.activity set deleted_at = 3 where id = 'activity-a';
+
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$
+begin
+	if (select count(*) from public.activity where id = 'activity-a') <> 0 then
+		raise exception 'a deleted activity is still shared';
+	end if;
+end;
+$$;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+update public.activity set deleted_at = null where id = 'activity-a';
+
+-- Approving a follower may set the status and nothing else, or a followee could hand somebody
+-- else's pending request to an account that never asked for it.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select public.request_follow('11111111-1111-1111-1111-111111111111');
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$
+begin
+	begin
+		update public.follow set follower_id = '11111111-1111-1111-1111-111111111111'
+		where followee_id = '11111111-1111-1111-1111-111111111111';
+		raise exception 'a follow can be moved between accounts';
+	exception when others then
+		if sqlerrm = 'a follow can be moved between accounts' then raise; end if;
+	end;
+end;
+$$;
+
+-- The pull cursor has to be a total order: rows written by one statement must still be separable,
+-- or a page boundary inside them steps over the rest.
+do $$
+declare
+	distinct_marks integer;
+begin
+	insert into public.session (id, created_at, updated_at, device_id, started_at)
+	select 'batch-' || i, 1, 1, 'device-a', 1 from generate_series(1, 5) as i;
+
+	select count(distinct server_updated_at) into distinct_marks
+	from public.session where id like 'batch-%';
+
+	if distinct_marks <> 5 then
+		raise exception 'rows written together share a cursor value (% distinct)', distinct_marks;
+	end if;
+end;
+$$;
+
 reset role;
 
 -- Nothing in the schema is addressable without a token, whatever the policies say.

@@ -199,7 +199,36 @@ rather than queueing something that sits unsent for days. Sharing is the excepti
 row the archer already owns, so it is written locally and travels with the next exchange like any
 other edit.
 
-## 7. Security work, as its own step
+## 7. What the review found
+
+Four holes, each proved against the deployment before being fixed, and each the same mistake: a rule
+enforced in a function with the table left writable underneath it. Migration 0004 closes them.
+
+- **Any archer could take `@admin`.** `claim_handle` checked the reserved and retired lists, but
+  `grant update on profile` let a client write the column directly. The grant is now column scoped and
+  a trigger enforces the lists whatever the grants say.
+- **A deleted activity stayed shared.** The shared policies never looked at `deleted_at`, so an
+  archer who deleted a shared round went on showing it. Deleting is the one action whose failure the
+  person who took it cannot see.
+- **A followee could rewrite `follower_id`**, turning one archer's pending request into an approved
+  follow for an account that never asked. Approving may now set the status and nothing else.
+- **The pull cursor was not a total order.** `now()` is the transaction clock, so every row of one
+  upsert shared a `server_updated_at`, and a page boundary landing inside such a group stepped over
+  the rest of it. `clock_timestamp()` ticks per row.
+
+Three client bugs went with them:
+
+- **Pull could lose a row.** The cursor was read after the pull rather than before it, so a row
+  another device wrote while the pull was running was stepped over and never fetched again.
+- **A local winner never reached the server.** When the local copy won the merge, pull skipped it and
+  left nothing behind to push, so a row edited on a device with a slow clock could hold the server on
+  an older version for good. Pull now queues the winner, but only when the two genuinely differ:
+  queueing the rows a pull reads back from its own push would loop for ever.
+- **The friends list kept the people who left.** The social refresh wrote the accounts it found and
+  never reset the ones it stopped finding, so somebody who unfollowed, or who blocked this archer,
+  stayed in the list as followed.
+
+## 8. Security work, as its own step
 
 Not a review at the end. Each of these is a task:
 
@@ -212,7 +241,7 @@ Not a review at the end. Each of these is a task:
 - Storage buckets, when bow photos eventually sync, keyed by user id with their own policies.
 - No service role key in the client, ever, on any platform.
 
-## 8. Order of work
+## 9. Order of work
 
 Steps 1 to 3 are independently shippable and useless alone. Steps 4 to 6 are the feature.
 

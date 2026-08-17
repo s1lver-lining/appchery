@@ -296,6 +296,37 @@ describe('pull', () => {
 		expect(pending).toEqual([]);
 	});
 
+	/**
+	 * The case that used to diverge for good: the local row was pushed and marked synced, then another
+	 * device with a clock running behind overwrote it. Local wins the merge, so nothing was applied,
+	 * and nothing was left to send the winner back up either.
+	 */
+	it('queues the local winner so the server catches up with it', async () => {
+		await insertSession('session-a', { updatedAt: 900, label: 'edited here' });
+
+		const server = fakeServer();
+		server.rowsOf('session').set('session-a', {
+			id: 'session-a',
+			created_at: 100,
+			updated_at: 200,
+			deleted_at: null,
+			device_id: 'device-b',
+			user_id: USER,
+			started_at: 100,
+			kind: 'practice',
+			label: 'older, from the other phone',
+			server_updated_at: '2026-01-01T00:00:00.000Z'
+		});
+
+		await pull(server.client as never, USER);
+
+		const pending = await proxy.select().from(schema.changeLog).where(isNull(schema.changeLog.syncedAt));
+		expect(pending.map((row) => row.rowId)).toEqual(['session-a']);
+
+		await push(server.client as never, USER);
+		expect(server.rowsOf('session').get('session-a')).toMatchObject({ label: 'edited here' });
+	});
+
 	it('reads nothing twice once the cursor has moved', async () => {
 		const server = fakeServer();
 		server.rowsOf('session').set('session-remote', {

@@ -7,6 +7,9 @@ create schema if not exists auth;
 
 create table auth.users (id uuid primary key);
 
+-- Supabase grants this; without it a test calling auth.uid() directly fails where the real thing works.
+grant usage on schema auth to authenticated;
+
 -- The real one reads a JWT claim. This reads a session setting so a test can become somebody.
 create or replace function auth.uid()
 returns uuid

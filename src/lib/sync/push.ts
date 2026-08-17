@@ -1,5 +1,5 @@
 import { getTableColumns } from 'drizzle-orm';
-import { and, asc, eq, inArray, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { db, schema } from '$lib/db';
 import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from './tables';
@@ -33,11 +33,13 @@ interface PendingEntry {
 }
 
 export async function pendingCount(): Promise<number> {
-	const rows = await db()
-		.select({ id: schema.changeLog.id })
+	// Counted in SQLite rather than by reading the rows: a bulk import leaves tens of thousands of
+	// entries pending, and this is read every time the settings screen opens.
+	const [row] = await db()
+		.select({ n: sql<number>`count(*)` })
 		.from(schema.changeLog)
 		.where(isNull(schema.changeLog.syncedAt));
-	return rows.length;
+	return Number(row?.n ?? 0);
 }
 
 export async function push(client: SupabaseClient, userId: string): Promise<PushResult> {

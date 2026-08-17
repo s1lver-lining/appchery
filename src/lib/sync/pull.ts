@@ -1,6 +1,6 @@
 import { getTableColumns, inArray } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { db, transaction } from '$lib/db';
+import { db, schema, transaction } from '$lib/db';
 import { OWNED_TABLES, LOCAL_ONLY_COLUMNS, type OwnedTableName } from './tables';
 import { readSyncState, writeSyncState } from './config';
 import { resolveWithDeletes, type Mergeable } from './merge';
@@ -31,6 +31,14 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 	const start = state.lastPullCursor ?? '1970-01-01T00:00:00Z';
 	let applied = 0;
 	let skipped = 0;
+
+	/**
+	 * The mark is taken before a single row is read, and becomes the new cursor only once every table
+	 * has been walked. Taking it afterwards would move the cursor past rows that another device wrote
+	 * while this pull was running but that this pull never asked for, and those rows would then never
+	 * be pulled at all.
+	 */
+	const mark = await highWaterMark(client, userId);
 
 	// Parents before children, so an activity never lands before the session it belongs to.
 	for (const { name, table } of OWNED_TABLES) {
@@ -64,17 +72,16 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 		}
 	}
 
-	const high = await highWaterMark(client, userId);
-	await writeSyncState({ lastSyncAt: Date.now(), ...(high ? { lastPullCursor: high } : {}) });
+	await writeSyncState({ lastSyncAt: Date.now(), ...(mark ? { lastPullCursor: mark } : {}) });
 	if (applied > 0) dataChanged();
 
 	return { applied, skipped };
 }
 
 /**
- * The cursor is only advanced to a mark the server itself reports after every table has been read,
- * so a pull interrupted between two tables resumes from where it started rather than declaring
- * itself finished. Re-reading rows is free; missing one is not.
+ * The newest row the server holds for this archer, across every table. Read before the pull rather
+ * than after it, and written only if the pull finishes: an interrupted pull resumes from where it
+ * started. Re-reading rows is free, and missing one is not.
  */
 async function highWaterMark(client: SupabaseClient, userId: string): Promise<string | null> {
 	let latest: string | null = null;
@@ -111,8 +118,20 @@ async function applyRows(name: string, table: OwnedTable, remote: Record<string,
 			const candidate = toLocalRow(columns, skip, incoming);
 
 			if (local && resolveWithDeletes(name, local, candidate as unknown as Mergeable) === 'local') {
-				// The local copy is the newer one, and it is still pending in the change log, so the next
-				// push carries it up and the server converges on it. Nothing to do here but leave it be.
+				/**
+				 * The local copy wins, so the server may be holding an older one. Leaving it alone is not
+				 * enough: the row may have been pushed and marked synced, then edited on another device
+				 * whose clock ran behind, and nothing would ever send the winner up again.
+				 *
+				 * Only when the two genuinely differ, though. Every pull reads back the rows this device
+				 * has just pushed, and those tie on the merge; queueing those would push them again on the
+				 * next exchange, and again after that, for ever.
+				 */
+				if (!matches(local as unknown as Record<string, unknown>, candidate)) {
+					await db()
+						.insert(schema.changeLog)
+						.values({ tableName: name, rowId: String(incoming.id), op: 'update', changedAt: Date.now(), syncedAt: null });
+				}
 				skipped += 1;
 				continue;
 			}
@@ -127,6 +146,11 @@ async function applyRows(name: string, table: OwnedTable, remote: Record<string,
 	});
 
 	return { applied, skipped };
+}
+
+/** Whether the server already holds exactly what this device holds, column for column. */
+function matches(local: Record<string, unknown>, candidate: Record<string, unknown>): boolean {
+	return Object.keys(candidate).every((key) => local[key] === candidate[key]);
 }
 
 /**

@@ -46,16 +46,31 @@ async function client() {
 
 /* Handles */
 
-/** The archer's own handle, or null while they have never claimed one. */
+const HANDLE_KEY = 'appchery.handle';
+
+/**
+ * The archer's own handle, or null while they have never claimed one.
+ *
+ * Remembered locally once known, because the friends page shows the claim form when this is null.
+ * Asking an archer with no signal to choose the handle they already hold, and then failing when they
+ * try, is worse than showing the handle it saw last.
+ */
 export async function myHandle(): Promise<string | null> {
 	const user = get(account);
 	if (!user) return null;
 
-	const instance = await supabase();
-	if (!instance) return null;
+	const remembered = localStorage.getItem(`${HANDLE_KEY}.${user.id}`);
 
-	const { data } = await instance.from('profile').select('handle').eq('user_id', user.id).limit(1);
-	return (data?.[0]?.handle as string | undefined) ?? null;
+	const instance = await supabase();
+	if (!instance) return remembered;
+
+	const { data, error } = await instance.from('profile').select('handle').eq('user_id', user.id).limit(1);
+	if (error) return remembered;
+
+	const handle = (data?.[0]?.handle as string | undefined) ?? null;
+	if (handle) localStorage.setItem(`${HANDLE_KEY}.${user.id}`, handle);
+	else localStorage.removeItem(`${HANDLE_KEY}.${user.id}`);
+	return handle;
 }
 
 /**
@@ -63,11 +78,15 @@ export async function myHandle(): Promise<string | null> {
  * are database rules, because a check the client performs is a check an archer can skip.
  */
 export async function claimHandle(handle: string, displayName?: string): Promise<void> {
+	const wanted = handle.trim().toLowerCase();
 	const { error } = await (await client()).rpc('claim_handle', {
-		wanted: handle.trim().toLowerCase(),
+		wanted,
 		display: displayName?.trim() || null
 	});
 	if (error) throw new SocialError(error.message);
+
+	const user = get(account);
+	if (user) localStorage.setItem(`${HANDLE_KEY}.${user.id}`, wanted);
 }
 
 export async function setProfilePublic(isPublic: boolean): Promise<void> {
@@ -272,6 +291,23 @@ export async function refreshSocial(): Promise<void> {
 			followers.set(follower, String(row.status));
 			ids.add(follower);
 		}
+	}
+
+	/**
+	 * Anybody no longer in the graph is reset, and what they shared is dropped. Without this a profile
+	 * that unfollowed, or that blocked this archer, would sit in the friends list as followed for ever:
+	 * the refresh only ever wrote the accounts it found, and never the ones it stopped finding.
+	 */
+	const stale = await db()
+		.select({ userId: schema.socialProfile.userId })
+		.from(schema.socialProfile);
+	for (const { userId } of stale) {
+		if (ids.has(userId)) continue;
+		await db()
+			.update(schema.socialProfile)
+			.set({ followStatus: 'none', followsUs: 'none' })
+			.where(eq(schema.socialProfile.userId, userId));
+		await db().delete(schema.socialActivity).where(eq(schema.socialActivity.ownerId, userId));
 	}
 
 	if (ids.size > 0) {
