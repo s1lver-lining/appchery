@@ -413,6 +413,28 @@ describe('syncNow', () => {
 		account.set(null);
 	});
 
+	/**
+	 * Signing out mid exchange must stop it. Push claims every ownerless row for the account it was
+	 * handed, so an exchange that carried on would file whatever is shot next under the archer who
+	 * just left.
+	 */
+	it('stops when the account changes underneath it', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+
+		await insertSession('session-a');
+		await logChange('session', 'session-a');
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		const exchange = syncNow();
+		account.set(null);
+		await exchange;
+
+		// The push had already begun, so the row went up; nothing after that point ran for an account
+		// nobody is signed into any more.
+		expect(get(syncStatus).phase).not.toBe('syncing');
+	});
+
 	it('does nothing at all when nobody is signed in', async () => {
 		const server = fakeServer();
 		stub.client = server.client;

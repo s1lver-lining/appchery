@@ -134,7 +134,7 @@ export async function lookup(handle: string): Promise<Profile | null> {
 		followStatus: String(row.follow_status ?? 'none'),
 		followsUs: 'none'
 	};
-	await cacheProfile(profile);
+	await cacheProfile(profile, false);
 	return profile;
 }
 
@@ -242,14 +242,18 @@ export { setActivityShared as setShared } from '$lib/db/repository';
 
 /* Refreshing the cache */
 
-async function cacheProfile(profile: Profile): Promise<void> {
+/**
+ * `followsUs` is only written when the caller actually knows it. A handle lookup answers what that
+ * profile is and whether we follow them, and says nothing about the other direction; writing 'none'
+ * from it would drop somebody out of the followers list until the next full refresh.
+ */
+async function cacheProfile(profile: Profile, knowsFollowsUs = true): Promise<void> {
 	const row = {
 		userId: profile.userId,
 		handle: profile.handle,
 		displayName: profile.displayName,
 		isPublic: profile.isPublic ? 1 : 0,
 		followStatus: profile.followStatus,
-		followsUs: profile.followsUs,
 		cachedAt: Date.now()
 	};
 	const existing = await db()
@@ -258,9 +262,12 @@ async function cacheProfile(profile: Profile): Promise<void> {
 		.where(eq(schema.socialProfile.userId, profile.userId));
 
 	if (existing.length > 0) {
-		await db().update(schema.socialProfile).set(row).where(eq(schema.socialProfile.userId, profile.userId));
+		await db()
+			.update(schema.socialProfile)
+			.set(knowsFollowsUs ? { ...row, followsUs: profile.followsUs } : row)
+			.where(eq(schema.socialProfile.userId, profile.userId));
 	} else {
-		await db().insert(schema.socialProfile).values(row);
+		await db().insert(schema.socialProfile).values({ ...row, followsUs: profile.followsUs });
 	}
 }
 
@@ -330,6 +337,15 @@ export async function refreshSocial(): Promise<void> {
 	}
 
 	await refreshSharedActivities([...following.keys()]);
+}
+
+/**
+ * One profile's shared activities, fetched on demand. Browsing a public profile is allowed to show
+ * what it shares without following it first, and the background refresh only ever covers the accounts
+ * this archer follows, so the profile page asks for its own.
+ */
+export async function refreshSharedFor(userId: string): Promise<void> {
+	await refreshSharedActivities([userId]);
 }
 
 /**

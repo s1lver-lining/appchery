@@ -56,17 +56,39 @@ async function run(): Promise<void> {
 	const user = get(account);
 	if (!user) return;
 
-	// Nothing to say to a server that cannot be reached. The next trigger tries again.
-	if (typeof navigator !== 'undefined' && navigator.onLine === false) return;
+	/**
+	 * Nothing to say to a server that cannot be reached, but the archer pressed a button and is owed
+	 * an answer: the card reads this as "no connection" rather than sitting there saying nothing.
+	 */
+	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+		syncStatus.update((current) => ({ ...current, phase: 'error', error: 'offline' }));
+		return;
+	}
 
 	const client = await supabase();
 	if (!client) return;
 
 	syncStatus.update((current) => ({ ...current, phase: 'syncing', error: null }));
 
+	/**
+	 * An exchange belongs to the account that started it. Signing out, or signing in as somebody else,
+	 * while one is in flight must stop it: push claims every ownerless row for the account it was
+	 * given, so carrying on would file the next archer's shooting under the last archer's name.
+	 */
+	const stillOurs = () => get(account)?.id === user.id;
+
+	/** Abandoning an exchange has to leave the state readable, or the button stays disabled for good. */
+	const stop = async () => {
+		syncStatus.update((current) => ({ ...current, phase: 'idle' }));
+		await refreshSyncStatus();
+	};
+
 	try {
 		await push(client, user.id);
+		if (!stillOurs()) return stop();
+
 		await pull(client, user.id);
+		if (!stillOurs()) return stop();
 
 		// The friends screen has to be legible before it is opened, and a social side that is briefly
 		// stale is worth far less than a sync that fails over it, so this never breaks the exchange.

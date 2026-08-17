@@ -189,6 +189,45 @@ begin
 end;
 $$;
 
+-- The graph is readable along its own edges, and only along them: a friends screen that cannot read
+-- the handle of somebody who follows you cannot list them at all.
+--
+-- The block from the section above is lifted first, because a block deletes the edges and this is
+-- about what an edge grants.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+delete from public.block where blocked_id = '22222222-2222-2222-2222-222222222222';
+do $$
+begin
+	if (select count(*) from public.profile where user_id = '22222222-2222-2222-2222-222222222222') <> 0 then
+		raise exception 'a stranger''s profile is readable without an edge to it';
+	end if;
+end;
+$$;
+
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+select public.claim_handle('archer_two_graph', 'Archer Two');
+select public.request_follow('11111111-1111-1111-1111-111111111111');
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$
+begin
+	if (select count(*) from public.profile where user_id = '22222222-2222-2222-2222-222222222222') <> 1 then
+		raise exception 'somebody who asked to follow you cannot be listed';
+	end if;
+end;
+$$;
+
+-- Blocking removes the edge, and with it the reading it allowed.
+select public.block_account('22222222-2222-2222-2222-222222222222');
+do $$
+begin
+	if (select count(*) from public.profile where user_id = '22222222-2222-2222-2222-222222222222') <> 0 then
+		raise exception 'a blocked account is still readable through the graph';
+	end if;
+end;
+$$;
+delete from public.block where blocked_id = '22222222-2222-2222-2222-222222222222';
+
 -- Handles are the app's only public names, so the rules that decide who may hold one are database
 -- constraints and not client validation.
 set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';

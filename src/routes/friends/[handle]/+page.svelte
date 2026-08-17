@@ -3,11 +3,13 @@
 	import { t, locale } from '$lib/i18n';
 	import { setPageUp } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { account } from '$lib/sync/auth';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import {
 		cachedProfile,
 		lookup,
+		refreshSharedFor,
 		follow,
 		unfollow,
 		block,
@@ -47,6 +49,9 @@
 		const fresh = await lookup(wanted).catch(() => null);
 		if (fresh) {
 			profile = fresh;
+			// Asked for here rather than left to the background refresh, which only covers the accounts
+			// this archer follows: a public profile shows what it shares to anybody browsing it.
+			await refreshSharedFor(fresh.userId).catch(() => {});
 			shared = await sharedBy(fresh.userId);
 		}
 	}
@@ -91,6 +96,9 @@
 				{profile.isPublic ? $t('friends.publicProfile') : $t('friends.privateProfile')}
 			</p>
 
+			<!-- Your own profile offers neither: following yourself is refused by the server and blocking
+				yourself is a question nobody meant to ask. -->
+			{#if profile.userId !== $account?.id}
 			<div class="mt-3 flex gap-2">
 				{#if profile.followStatus === 'none'}
 					<button
@@ -117,6 +125,7 @@
 					{$t('friends.block')}
 				</button>
 			</div>
+			{/if}
 		</section>
 
 		{#if shared.length === 0}

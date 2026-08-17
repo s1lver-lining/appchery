@@ -37,6 +37,11 @@ let writeLock: Promise<unknown> = Promise.resolve();
 /**
  * A run of writes committed once rather than statement by statement, which outside a transaction is
  * a worker round trip and a commit each. Serialised: one connection, and SQLite has no nested BEGIN.
+ *
+ * **Only for work the archer asked for, never for background work.** One connection means a write
+ * issued while this is open joins it, so a rollback here discards whatever else was in flight. A
+ * sync rolling back an arrow entered a second earlier is the worst thing this app could do, which is
+ * why nothing in `src/lib/sync` calls this.
  */
 export function transaction<T>(work: () => Promise<T>): Promise<T> {
 	const run = writeLock.then(async () => {

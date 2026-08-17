@@ -12,9 +12,14 @@
 	 * work alone, and an inert button would only ask a question the app cannot answer.
 	 */
 
-	let { activityId, sharedAt, onchange }: {
+	let { activityId, sharedAt, isMatch = false, onchange }: {
 		activityId: string;
 		sharedAt: number | null;
+		/**
+		 * A match carries somebody else's name and somebody else's arrows, and they never agreed to
+		 * either being published. Until sharing can ask them, a match is not offered for sharing.
+		 */
+		isMatch?: boolean;
 		onchange?: (sharedAt: number | null) => void;
 	} = $props();
 
@@ -31,7 +36,7 @@
 	}
 </script>
 
-{#if $account}
+{#if $account && !isMatch}
 	<div class="rounded-xl border border-line bg-surface p-4">
 		<div class="flex items-center justify-between gap-3">
 			<span class="text-sm font-medium">{sharedAt === null ? $t('friends.share') : $t('friends.shared')}</span>

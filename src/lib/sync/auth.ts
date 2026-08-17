@@ -1,5 +1,5 @@
 import { writable } from 'svelte/store';
-import { db, schema, transaction } from '$lib/db';
+import { db, schema } from '$lib/db';
 import { isNull, sql } from 'drizzle-orm';
 import { supabase } from './client';
 import { OWNED_TABLES } from './tables';
@@ -99,7 +99,12 @@ export async function requestPasswordReset(email: string): Promise<void> {
 export async function adoptLocalRows(userId: string): Promise<number> {
 	let adopted = 0;
 
-	await transaction(async () => {
+	/**
+	 * No transaction, for the same reason pull has none: one connection means a rollback would also
+	 * discard whatever the archer was writing at that moment. Adoption is idempotent, so a run that
+	 * stops halfway is finished by the next push rather than undone.
+	 */
+	{
 		for (const { name, table } of OWNED_TABLES) {
 			const orphans = await db()
 				.select({ id: table.id })
@@ -123,7 +128,7 @@ export async function adoptLocalRows(userId: string): Promise<number> {
 			}
 			adopted += orphans.length;
 		}
-	});
+	}
 
 	return adopted;
 }

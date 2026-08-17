@@ -1,6 +1,6 @@
 import { getTableColumns, inArray } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
-import { db, schema, transaction } from '$lib/db';
+import { db, schema } from '$lib/db';
 import { OWNED_TABLES, LOCAL_ONLY_COLUMNS, type OwnedTableName } from './tables';
 import { readSyncState, writeSyncState } from './config';
 import { resolveWithDeletes, type Mergeable } from './merge';
@@ -109,7 +109,15 @@ async function applyRows(name: string, table: OwnedTable, remote: Record<string,
 	let applied = 0;
 	let skipped = 0;
 
-	await transaction(async () => {
+	/**
+	 * Deliberately not wrapped in a transaction. There is one connection, so a write the archer makes
+	 * while a transaction is open joins it, and a rollback here would take the arrow they entered a
+	 * second ago with it. A pull is background work and must never be able to undo the foreground.
+	 *
+	 * Nothing is lost by dropping it: applying a row is idempotent, and the cursor only moves once
+	 * every table has been walked, so a pull that stops halfway is simply done again.
+	 */
+	{
 		const existing = await db().select().from(table).where(inArray(table.id, ids));
 		const byId = new Map(existing.map((row) => [row.id, row as unknown as Mergeable]));
 
@@ -143,7 +151,7 @@ async function applyRows(name: string, table: OwnedTable, remote: Record<string,
 			}
 			applied += 1;
 		}
-	});
+	}
 
 	return { applied, skipped };
 }

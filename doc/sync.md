@@ -1,13 +1,14 @@
 # Appchery — Sync and social
 
-Plan for phase 3 (sync) and phase 3.1 (profiles, follows, shared activities). Companion to
-[architecture.md](./architecture.md) and [data-model.md](./data-model.md).
+How syncing and the social side work, as built. Companion to [architecture.md](./architecture.md)
+and [data-model.md](./data-model.md); deployment is [deploy.md](./deploy.md) and schema changes are
+[migration.md](./migration.md).
 
-Nothing here changes the first rule of the app: the local SQLite database is the source of truth,
-and everything works forever with the server switched off. Sync is additive. An archer who never
-signs in must not be able to tell this phase happened.
+The first rule of the app is unchanged: the local SQLite database is the source of truth, and
+everything works forever with the server switched off. Sync is additive, and an archer who never
+signs in cannot tell it exists.
 
-## 0. What the app does, in one place
+## 1. What the app does, in one place
 
 The rules an archer could observe, stated plainly. Everything after this section explains why.
 
@@ -59,26 +60,6 @@ requests, which go nowhere and never reach your list, and it is never told.
 **What a follower sees offline.** Whatever was cached at the last exchange. Following, sharing and
 blocking need a connection and say so rather than queueing silently.
 
-## 1. What is already in place
-
-Phase 1 built the scaffolding and phase 2 left it untouched, which is exactly what was intended:
-
-- `change_log` records every mutation with its table, row id, operation and timestamp, and a null
-  `synced_at` meaning pending. All persistence goes through `src/lib/db/repository.ts`, so the log
-  is complete by construction.
-- `sync_state` holds a device id, a pull cursor, a push cursor and an endpoint. Never written yet.
-- Every user table carries `created_at`, `updated_at`, `deleted_at` and `device_id`.
-- Deletes are soft everywhere, so tombstones exist to be pushed.
-- `src/lib/db/backup.ts` already serialises every table in parent before child order. That ordering
-  is the order sync applies rows in, and it is worth keeping the two lists in one place.
-
-Three gaps the scaffolding does not cover, answered in section 4.
-
-1. `change_log` stores no payload, only a row reference, so push reads current row state. Ten edits
-   of one end collapse into one upload, which is a feature, but a hard deleted row is unpushable.
-2. `wipeAll()` and the import reset path hard delete and clear `change_log`.
-3. Bulk import can enqueue thousands of pending rows at once.
-
 ## 2. What syncs, and what deliberately does not
 
 **Synced.** The raw shooting record and the equipment behind it: `session`, `activity`, `end`,
@@ -110,7 +91,7 @@ Nullable because rows shot before signing in have no owner. Signing in stamps ev
 the new user id and marks them pending, which is what adopting existing data into an account means.
 Local only use never reads the column.
 
-## 4. Push, pull, and the three gaps
+## 4. Push and pull
 
 ### Push
 
@@ -133,10 +114,21 @@ timestamp would let a device that has been offline for a month outrank a genuine
 The cursor is `server_updated_at`, a column the server maintains by trigger and no client can write.
 The client's own `updated_at` cannot serve: it is a device clock, and one phone set a year ahead
 would drag the cursor forward and hide every other device's rows until the real world caught up.
-`updated_at` stays what it always was, the field last writer wins compares. Fetch rows newer
-than it, ordered, paged, applied parent before child inside one transaction. Pulled rows must not
-re-enter `change_log`, so pull writes through its own path rather than the repository. `dataChanged()`
-fires after a pull that wrote anything, or the mounted pages go on showing what they read on load.
+`updated_at` stays what it always was, the field last writer wins compares.
+
+The mark is read **before** a single row is fetched and written only once every table has been
+walked, so a row another device writes during the pull is picked up next time rather than stepped
+over. Rows arrive parent before child. Pulled rows do not re-enter `change_log`, or two devices would
+push each other's rows to each other for ever, with one exception: when the local copy wins the merge
+and genuinely differs from the server's, an entry is queued so the next push carries the winner up.
+Without that a row pushed and then overwritten by a device with a slow clock would leave the two
+sides disagreeing for good. `dataChanged()` fires after a pull that wrote anything, or the mounted
+pages go on showing what they read on load.
+
+Nothing in `src/lib/sync` opens a transaction, and that is deliberate. There is one connection, so a
+write the archer makes while a transaction is open joins it, and a rollback in background work would
+discard the arrow they entered a second ago. Applying a row is idempotent and the cursor only moves
+at the end, so a pull that stops halfway is simply done again.
 
 ### Conflicts
 
@@ -164,13 +156,22 @@ an irreversible act asks a question first.
 
 ## 5. Orchestration
 
-`syncNow()` pushes then pulls, guarded so only one runs at a time, exposing a store with idle,
-syncing, error, pending count and last success. It runs on sign in, on app resume, on regaining
-connectivity, and on the manual button. Never on a timer, and never mid round: the change log keeps
-what is owed, so an exchange can always wait for a natural pause.
+`syncNow()` pushes, pulls, then refreshes the social cache, guarded so only one exchange runs at a
+time: a second caller waits for the first rather than uploading the same rows twice. It runs on sign
+in, on app resume, on regaining connectivity, and on the manual button. Never on a timer, and never
+mid round: the change log keeps what is owed, so an exchange can always wait for a natural pause.
 
-An earlier draft of this plan also listed "after a session closes". There is no such moment in the
-app: a session is never finished, it simply stops being added to, so there is no event to hang it on.
+There is no "after a session closes" trigger because there is no such moment in the app: a session is
+never finished, it simply stops being added to.
+
+An exchange belongs to the account that started it, and is abandoned if that changes underneath it.
+Push claims every ownerless row for the account it was handed, so an exchange carrying on through a
+sign out would file whatever is shot next under the archer who just left. Abandoning still leaves the
+state readable, or the button would stay disabled for good.
+
+Ordering is what makes a failure safe: rows are uploaded first and marked as sent afterwards. A run
+that dies in between uploads them again, and an upsert of a row the server already has changes
+nothing. The opposite order would mark work as sent that never left the device.
 
 Failures are silent and retried: being offline at a range is the normal case, not an error. Sync is
 absent from the boot path entirely, so a broken sync can never stop somebody scoring. `watchSync()`
@@ -178,8 +179,12 @@ returns without loading anything unless a server is configured and a session is 
 device that never signs in never fetches the client library at all.
 
 The settings account section shows, signed out, that sync is optional and everything works without
-it. Signed in it shows the account, the last sync, the pending count and sign out. Signing out keeps
-the local database untouched.
+it. Signed in it shows the account, when the last exchange was, how much is waiting, and sign out.
+An exchange attempted with no connection says so rather than appearing to do nothing.
+
+Signing out keeps this device's shooting untouched and takes the social cache with it: profiles and
+shared activities belong to other people, and a shared phone must not show one archer the friends and
+scores of the one before them.
 
 ## 6. Phase 3.1: profiles, follows, shared activities
 
@@ -251,7 +256,7 @@ rather than queueing something that sits unsent for days. Sharing is the excepti
 row the archer already owns, so it is written locally and travels with the next exchange like any
 other edit.
 
-## 7. What the review found
+## 7. Bugs found and closed
 
 Four holes, each proved against the deployment before being fixed, and each the same mistake: a rule
 enforced in a function with the table left writable underneath it. Migration 0004 closes them.
@@ -288,7 +293,26 @@ Six client bugs went with them:
 - **Erasing everything spared the social cache.** `deleteEverything` listed the tables by hand and
   the two cache tables were added after it.
 
-## 8. Security work, as its own step
+A later pass over the social screens and the orchestration found six more:
+
+- **The followers list could never be built.** The refresh read the `profile` table directly, but the
+  only select policy was `profile_select_own`, so it came back empty: a follower whose handle had
+  never been typed in was invisible, and pending requests with them. Reading is now granted along the
+  edges of the graph, and a block removes the edge.
+- **A public profile showed nothing it had shared.** The background refresh only fetches for accounts
+  this archer follows, so browsing a public profile without following it showed an empty page. The
+  profile page now asks for that archer's shared activities itself.
+- **A handle lookup dropped somebody out of the followers list.** It cached the profile with
+  `follows_us: none`, which it has no way of knowing, overwriting the real answer.
+- **Background work could roll back the archer's own writes.** Pull and adoption ran inside
+  transactions, and with one connection a write made while one is open joins it: a failed pull would
+  have discarded an arrow entered a moment earlier. Nothing in sync opens a transaction now.
+- **An exchange survived the account changing under it**, so a sign out mid sync could file the next
+  archer's shooting under the last one's name.
+- **Sharing a match published somebody else's name.** A match card carries the opponent and their
+  arrows, and they never agreed to either. Matches are not offered for sharing.
+
+## 8. Where the security rests
 
 Not a review at the end. Each of these is a task:
 
@@ -301,28 +325,9 @@ Not a review at the end. Each of these is a task:
 - Storage buckets, when bow photos eventually sync, keyed by user id with their own policies.
 - No service role key in the client, ever, on any platform.
 
-## 9. Order of work
+## 9. Configuration and checks
 
-Steps 1 to 3 are independently shippable and useless alone. Steps 4 to 6 are the feature.
-
-1. **Done.** Supabase project, mirrored schema, RLS, and the phase 3.1 social tables and policies
-   alongside. `./scripts/check-sql.sh` applies them to a throwaway Postgres and runs the policy tests.
-2. **Done.** Client migration 0017 adding nullable `user_id` to every table that travels.
-3. **Done.** Auth: email and password, optional, skippable, with the settings account card.
-4. **Done.** Push over the change log.
-5. **Done.** Pull with the cursor.
-6. **Done.** Conflict resolution, as pure functions in `src/lib/sync/merge.ts`.
-7. **Done.** Wipe, restore and import made sync safe.
-8. **Done.** Orchestration and triggers in `src/lib/sync/index.ts` and `watch.ts`, sync state in the
-   settings account card.
-9. **Done.** `./scripts/check-sql.sh` proves ownership isolation on every synced table, the block
-   indistinguishability, the handle rules and the lookup rate limit against plain Postgres, and
-   `npm run server:check` proves the same behaviour through GoTrue and PostgREST on a real
-   deployment. Storage has no bucket yet, so it waits for photo sync.
-10. **Done.** Phase 3.1 client: handle claim, profile pages, follow and block, share toggle,
-    offline cache.
-
-### Configuration
+### Where the server comes from
 
 `PUBLIC_SUPABASE_URL` and `PUBLIC_SUPABASE_ANON_KEY` at build time, read through `import.meta.env`
 rather than SvelteKit's `$env/static/public`, which fails the build when a variable is missing.
@@ -331,3 +336,14 @@ Missing is the normal case: a build with no server is the offline app, which is 
 A self hoster overrides both per install through `sync_state.endpoint`, stored as `url|anonKey`.
 Anything malformed there is ignored rather than obeyed, so a typo cannot take the built-in server
 away from an archer who never touched the setting.
+
+### What proves it still works
+
+```bash
+npm test              # merges, migrations, push and pull against a real SQLite
+npm run db:check      # every policy, on a throwaway Postgres
+npm run server:check  # the same policies through GoTrue and PostgREST, on a deployment
+npm run browser:check # two browser devices, one archer, through the real screens
+```
+
+The last two need a project to talk to and belong on preprod. See [deploy.md](./deploy.md).

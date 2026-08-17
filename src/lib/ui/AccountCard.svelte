@@ -133,6 +133,9 @@
 			<p class="tabular mt-1 text-sm text-muted">
 				{$syncStatus.phase === 'syncing' ? $t('account.syncing') : syncedLabel}
 			</p>
+			{#if $syncStatus.error === 'offline'}
+				<p class="mt-1 text-sm text-muted">{$t('account.error.offline')}</p>
+			{/if}
 			{#if $syncStatus.pending > 0}
 				<p class="mt-1 text-sm text-muted">{$t('account.waiting', { n: $syncStatus.pending })}</p>
 			{/if}

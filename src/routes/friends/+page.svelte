@@ -113,6 +113,11 @@
 		busy = false;
 	}
 
+	// Everybody the device knows of, so a shared activity can name whoever shared it. A sharer missing
+	// from here is one the cache has not caught up with, and a card that links nowhere is better than
+	// a link to /friends/ that lands on this page again.
+	const known = $derived(new Map([...mine, ...theirs].map((profile) => [profile.userId, profile])));
+
 	function shownName(profile: Profile) {
 		return profile.displayName || `@${profile.handle}`;
 	}
@@ -256,11 +261,14 @@
 						<EmptyState title={$t('friends.emptyFeedTitle')} body={$t('friends.emptyFeedBody')} />
 					{:else}
 						{#each feed as shared (shared.id)}
+							{@const sharer = known.get(shared.ownerId)}
 							<a
 								class="block rounded-xl border border-line bg-surface p-3"
-								href="/friends/{mine.find((p) => p.userId === shared.ownerId)?.handle ?? ''}"
+								href={sharer ? `/friends/${sharer.handle}` : '/friends'}
 							>
-								<p class="text-sm font-medium">{roundName(shared)}</p>
+								<p class="text-sm font-medium">
+									{roundName(shared)}{sharer ? ` · ${shownName(sharer)}` : ''}
+								</p>
 								<p class="tabular mt-0.5 text-xs text-muted">
 									{shownDate(Number(shared.activity.started_at ?? shared.sharedAt))}
 									· {shared.activity.total_score}

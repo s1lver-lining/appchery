@@ -1045,6 +1045,7 @@
 			<ShareToggle
 				activityId={activity.id}
 				sharedAt={activity.sharedAt}
+				isMatch={Boolean(activity.matchConfig)}
 				onchange={(at) => (activity = activity ? { ...activity, sharedAt: at } : activity)}
 			/>
 		{/if}
@@ -1118,6 +1119,7 @@
 			<ShareToggle
 				activityId={activity.id}
 				sharedAt={activity.sharedAt}
+				isMatch={Boolean(activity.matchConfig)}
 				onchange={(at) => (activity = activity ? { ...activity, sharedAt: at } : activity)}
 			/>
 		{/if}
@@ -1521,6 +1523,7 @@
 			<ShareToggle
 				activityId={activity.id}
 				sharedAt={activity.sharedAt}
+				isMatch={Boolean(activity.matchConfig)}
 				onchange={(at) => (activity = activity ? { ...activity, sharedAt: at } : activity)}
 			/>
 		{/if}
