@@ -50,6 +50,7 @@
 	import { installable, promptInstall } from '$lib/install';
 	import { refreshApp } from '$lib/update';
 	import { appVersion, appBuild } from '$lib/build';
+	import AccountCard from '$lib/ui/AccountCard.svelte';
 
 	/** Named rather than read from package.json, which no bundle ships. */
 	const LICENCE = 'AGPL-3.0-only';
@@ -526,6 +527,10 @@
 					{/if}
 				</section>
 			{:else}
+				<!-- First on the tab because it decides where the data lives, and above the backup card
+					because an account is the answer to the same worry a backup answers. -->
+				<AccountCard />
+
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.storage')}</h2>
 					<p class="text-sm">

@@ -845,6 +845,32 @@ export const fr: Dictionary = {
 		experimental:
 			'Le marquage par caméra est expérimental. Vérifiez toujours les valeurs avant de les garder.'
 	},
+	account: {
+		title: 'Compte',
+		hint: 'La synchronisation est facultative. Tout fonctionne sans compte, et fonctionnera toujours.',
+		signedInAs: 'Connecté avec {email}',
+		email: 'Adresse e-mail',
+		password: 'Mot de passe',
+		signIn: 'Se connecter',
+		signUp: 'Créer un compte',
+		signOut: 'Se déconnecter',
+		haveAccount: "J'ai déjà un compte",
+		needAccount: "J'ai besoin d'un compte",
+		forgot: 'Mot de passe oublié',
+		resetSent: 'Si cette adresse a un compte, un lien de réinitialisation arrive.',
+		confirmEmail: 'Confirmez votre adresse par e-mail, puis connectez-vous.',
+		adopted: 'Vos {n} enregistrements existants appartiennent maintenant à ce compte.',
+		adoptedNone: 'Connecté.',
+		unclaimed: "{n} enregistrements sur cet appareil n'appartiennent encore à aucun compte.",
+		signOutKeeps: 'Se déconnecter ne change rien sur cet appareil : vos tirs restent ici.',
+		noServer: "Cette version n'a aucun serveur de synchronisation configuré.",
+		wipeSignedIn: 'Déconnectez-vous avant d\'effacer cet appareil.',
+		error: {
+			credentials: 'Cette adresse et ce mot de passe ne correspondent à aucun compte.',
+			offline: 'Pas de connexion. Réessayez quand vous aurez du réseau.',
+			unknown: 'Une erreur est survenue. Réessayez.'
+		}
+	},
 	backup: {
 		title: 'Sauvegarde',
 		hint: 'Tout est stocké sur cet appareil uniquement. Exportez un fichier à conserver ailleurs.',

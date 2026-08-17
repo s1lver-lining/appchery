@@ -49,6 +49,10 @@ const ssl = process.env.APPCHERY_SSL === '1';
 
 export default defineConfig({
 	plugins: [crossOriginIsolation(), ...(ssl ? [basicSsl()] : []), tailwindcss(), sveltekit()],
+	// PUBLIC_ alongside Vite's own prefix, so the sync server can be baked in without SvelteKit's
+	// $env/static/public, which fails the build when a variable is absent. Absent is the normal case
+	// here: a build with no server configured is a working offline app, not a broken one.
+	envPrefix: ['VITE_', 'PUBLIC_'],
 	// sqlite-wasm ships its own worker and .wasm; pre-bundling breaks their
 	// relative resolution.
 	optimizeDeps: { exclude: ['@sqlite.org/sqlite-wasm'] },

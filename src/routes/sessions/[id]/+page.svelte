@@ -345,6 +345,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			updatedAt: now,
 			deletedAt: null,
 			deviceId: '',
+			// Nobody owns an outing that was never written, and it never reaches a push.
+			userId: null,
 			label: slot.label,
 			startedAt: virtualAt,
 			kind: 'planned',

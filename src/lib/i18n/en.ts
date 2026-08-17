@@ -842,6 +842,32 @@ export const en = {
 		denied: 'Camera permission is required to score from the camera.',
 		experimental: 'Camera scoring is experimental. Always check the values before keeping them.'
 	},
+	account: {
+		title: 'Account',
+		hint: 'Sync is optional. Everything works without an account, and always will.',
+		signedInAs: 'Signed in as {email}',
+		email: 'Email',
+		password: 'Password',
+		signIn: 'Sign in',
+		signUp: 'Create an account',
+		signOut: 'Sign out',
+		haveAccount: 'I already have an account',
+		needAccount: 'I need an account',
+		forgot: 'Forgotten password',
+		resetSent: 'If that address has an account, a reset link is on its way.',
+		confirmEmail: 'Check your email to confirm the address, then sign in.',
+		adopted: 'Your {n} existing records now belong to this account.',
+		adoptedNone: 'Signed in.',
+		unclaimed: '{n} records on this device belong to no account yet.',
+		signOutKeeps: 'Signing out changes nothing on this device: your shooting stays here.',
+		noServer: 'This build has no sync server configured.',
+		wipeSignedIn: 'Sign out before erasing this device.',
+		error: {
+			credentials: 'That email and password do not match an account.',
+			offline: 'No connection. Try again when you have signal.',
+			unknown: 'Something went wrong. Try again.'
+		}
+	},
 	backup: {
 		title: 'Backup',
 		hint: 'Everything is stored on this device only. Export a file you can keep somewhere else.',
