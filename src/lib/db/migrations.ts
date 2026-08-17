@@ -217,5 +217,32 @@ export const MIGRATIONS: string[][] = [
 		`CREATE INDEX IF NOT EXISTS idx_plan_slot_plan ON plan_slot (plan_id, weekday);`,
 		`CREATE INDEX IF NOT EXISTS idx_shot_end ON shot (end_id);`,
 		`CREATE INDEX IF NOT EXISTS idx_sight_mark_bow ON sight_mark (bow_id, distance);`
+	],
+	// 0002 sharing an activity, and a read only copy of the social side so it is legible with no signal
+	[
+		`ALTER TABLE activity ADD COLUMN shared_at INTEGER;`,
+		// Somebody else's profile as it was last seen. A cache: never a source, never pushed.
+		`CREATE TABLE IF NOT EXISTS social_profile (
+			user_id TEXT PRIMARY KEY NOT NULL,
+			handle TEXT NOT NULL,
+			display_name TEXT,
+			is_public INTEGER NOT NULL DEFAULT 0,
+			/** none | pending | approved, from this device's point of view. */
+			follow_status TEXT NOT NULL DEFAULT 'none',
+			/** Set on the accounts following us, so one table answers both directions. */
+			follows_us TEXT NOT NULL DEFAULT 'none',
+			cached_at INTEGER NOT NULL
+		);`,
+		// An activity somebody shared, kept whole as the JSON the profile page renders. Held apart from
+		// the archer's own tables so nobody else's arrows can reach their statistics.
+		`CREATE TABLE IF NOT EXISTS social_activity (
+			id TEXT PRIMARY KEY NOT NULL,
+			owner_id TEXT NOT NULL,
+			shared_at INTEGER NOT NULL,
+			payload TEXT NOT NULL,
+			cached_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_social_activity_owner ON social_activity (owner_id, shared_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_social_profile_handle ON social_profile (handle);`
 	]
 ];

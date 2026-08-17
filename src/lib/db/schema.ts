@@ -118,7 +118,12 @@ export const activity = sqliteTable(
 		arrowsShot: integer('arrows_shot').notNull().default(0),
 		/** in_progress | complete | abandoned */
 		status: text('status').notNull().default('in_progress'),
-		notes: text('notes')
+		notes: text('notes'),
+		/**
+		 * When this activity was shared, or null. Sharing is a flag rather than a row per viewer, so
+		 * unsharing revokes: nothing was ever copied to anybody. See doc/sync.md section 6.
+		 */
+		sharedAt: integer('shared_at')
 	},
 	(t) => [index('idx_activity_session').on(t.sessionId, t.startedAt)]
 );
@@ -283,6 +288,44 @@ export const changeLog = sqliteTable(
 		syncedAt: integer('synced_at')
 	},
 	(t) => [index('idx_change_log_pending').on(t.syncedAt)]
+);
+
+/**
+ * Somebody else's profile as it was last seen, so the friends screen reads at a range with no
+ * signal. A cache and never a source: nothing here is pushed, and anything the server disagrees with
+ * is overwritten on the next look.
+ */
+export const socialProfile = sqliteTable(
+	'social_profile',
+	{
+		userId: text('user_id').primaryKey(),
+		handle: text('handle').notNull(),
+		displayName: text('display_name'),
+		isPublic: integer('is_public').notNull().default(0),
+		/** none | pending | approved, from this device's point of view. */
+		followStatus: text('follow_status').notNull().default('none'),
+		/** Whether they follow us, so one table answers both directions of the graph. */
+		followsUs: text('follows_us').notNull().default('none'),
+		cachedAt: integer('cached_at').notNull()
+	},
+	(t) => [index('idx_social_profile_handle').on(t.handle)]
+);
+
+/**
+ * An activity somebody shared, kept whole as the JSON its card and score sheet render from. Held
+ * apart from the archer's own tables on purpose: somebody else's arrows must never reach their
+ * averages, their records or their badges.
+ */
+export const socialActivity = sqliteTable(
+	'social_activity',
+	{
+		id: text('id').primaryKey(),
+		ownerId: text('owner_id').notNull(),
+		sharedAt: integer('shared_at').notNull(),
+		payload: text('payload').notNull(),
+		cachedAt: integer('cached_at').notNull()
+	},
+	(t) => [index('idx_social_activity_owner').on(t.ownerId, t.sharedAt)]
 );
 
 export const syncState = sqliteTable('sync_state', {
