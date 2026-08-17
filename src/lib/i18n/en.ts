@@ -859,6 +859,8 @@ export const en = {
 		adopted: 'Your {n} existing records now belong to this account.',
 		adoptedNone: 'Signed in.',
 		unclaimed: '{n} records on this device belong to no account yet.',
+		syncNow: 'Sync now',
+		syncing: 'Syncing…',
 		lastSync: 'Last synced {at}',
 		neverSynced: 'Not synced yet.',
 		waiting: '{n} changes waiting for a connection.',

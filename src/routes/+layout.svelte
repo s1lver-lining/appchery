@@ -24,6 +24,7 @@
 	import { theme } from '$lib/theme';
 	import { incomingFile, namedFile } from '$lib/import/incoming';
 	import { watchForUpdates } from '$lib/update';
+	import { watchSync } from '$lib/sync/watch';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import UndoBar from '$lib/ui/UndoBar.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -40,6 +41,9 @@
 	let confirmingExit = $state(false);
 
 	$effect(() => watchForUpdates());
+	// Only once the database is open, because an exchange reads it. Returns immediately and loads
+	// nothing unless a server is configured and somebody is signed in.
+	$effect(() => (ready ? watchSync() : undefined));
 
 	$effect(() => {
 		// Touch the store so the theme attribute is applied before the shell first paints.

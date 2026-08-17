@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, beforeEach, vi } from 'vitest';
 import { DatabaseSync } from 'node:sqlite';
 import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { eq, isNull } from 'drizzle-orm';
+import { get } from 'svelte/store';
 import * as schema from '$lib/db/schema';
 import { MIGRATIONS } from '$lib/db/migrations';
 
@@ -35,6 +36,14 @@ vi.mock('$lib/db', async () => {
 });
 vi.mock('$lib/db/changed', () => ({ dataChanged: () => {} }));
 
+// The stand-in server, swapped per test. syncNow reaches for its client through this module.
+const stub = vi.hoisted(() => ({ client: null as unknown }));
+vi.mock('./client', () => ({
+	supabase: async () => stub.client,
+	clientFor: async () => stub.client,
+	forgetClient: () => {}
+}));
+
 const store = new Map<string, string>();
 vi.stubGlobal('localStorage', {
 	getItem: (key: string) => store.get(key) ?? null,
@@ -43,6 +52,8 @@ vi.stubGlobal('localStorage', {
 
 const { push } = await import('./push');
 const { pull } = await import('./pull');
+const { syncNow, syncStatus } = await import('./index');
+const { account } = await import('./auth');
 
 const USER = 'user-1';
 
@@ -275,5 +286,36 @@ describe('pull', () => {
 
 		await pull(server.client as never);
 		expect(await pull(server.client as never)).toMatchObject({ applied: 0, skipped: 0 });
+	});
+});
+
+describe('syncNow', () => {
+	it('runs one exchange when several triggers fire together', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+
+		await insertSession('session-a');
+		await logChange('session', 'session-a');
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await Promise.all([syncNow(), syncNow(), syncNow()]);
+
+		// Resume, regained connectivity and the manual button can all land at once. One upload.
+		expect(server.upserts).toEqual(['session:session-a']);
+		expect(get(syncStatus).phase).toBe('idle');
+		expect(get(syncStatus).pending).toBe(0);
+		account.set(null);
+	});
+
+	it('does nothing at all when nobody is signed in', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		await insertSession('session-b');
+		await logChange('session', 'session-b');
+		account.set(null);
+
+		await syncNow();
+
+		expect(server.upserts).toEqual([]);
 	});
 });

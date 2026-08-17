@@ -3,8 +3,8 @@
 	import { t } from '$lib/i18n';
 	import Icon from './Icon.svelte';
 	import { account, signIn, signUp, signOut, requestPasswordReset, AuthError, initAuth, unclaimedRowCount } from '$lib/sync/auth';
-	import { hasBuiltInServer, readSyncState } from '$lib/sync/config';
-	import { pendingCount } from '$lib/sync/push';
+	import { hasBuiltInServer } from '$lib/sync/config';
+	import { syncNow, syncStatus, refreshSyncStatus } from '$lib/sync';
 	import { locale } from '$lib/i18n';
 
 	/**
@@ -20,8 +20,6 @@
 	let notice = $state<string | null>(null);
 	let error = $state<string | null>(null);
 	let unclaimed = $state(0);
-	let lastSyncAt = $state<number | null>(null);
-	let waiting = $state(0);
 
 	const configured = hasBuiltInServer();
 
@@ -43,16 +41,14 @@
 	 */
 	async function refresh() {
 		unclaimed = await unclaimedRowCount();
-		const state = await readSyncState();
-		lastSyncAt = state.lastSyncAt;
-		waiting = await pendingCount();
+		await refreshSyncStatus();
 	}
 
 	const syncedLabel = $derived(
-		lastSyncAt === null
+		$syncStatus.lastSyncAt === null
 			? $t('account.neverSynced')
 			: $t('account.lastSync', {
-					at: new Date(lastSyncAt).toLocaleString($locale, { dateStyle: 'medium', timeStyle: 'short' })
+					at: new Date($syncStatus.lastSyncAt).toLocaleString($locale, { dateStyle: 'medium', timeStyle: 'short' })
 				})
 	);
 
@@ -84,6 +80,8 @@
 			}
 			password = '';
 			await refresh();
+			// The point of signing in is the exchange, so it starts here rather than on the next resume.
+			if ($account) void sync();
 		} catch (e) {
 			error = explain(e);
 		}
@@ -92,6 +90,11 @@
 
 	function claimed(): string {
 		return unclaimed > 0 ? $t('account.adopted', { n: unclaimed }) : $t('account.adoptedNone');
+	}
+
+	async function sync() {
+		await syncNow();
+		await refresh();
 	}
 
 	async function leave() {
@@ -127,10 +130,19 @@
 			<p class="text-sm text-muted">{$t('account.noServer')}</p>
 		{:else if $account}
 			<p class="text-sm font-medium">{$t('account.signedInAs', { email: $account.email ?? '' })}</p>
-			<p class="tabular mt-1 text-sm text-muted">{syncedLabel}</p>
-			{#if waiting > 0}
-				<p class="mt-1 text-sm text-muted">{$t('account.waiting', { n: waiting })}</p>
+			<p class="tabular mt-1 text-sm text-muted">
+				{$syncStatus.phase === 'syncing' ? $t('account.syncing') : syncedLabel}
+			</p>
+			{#if $syncStatus.pending > 0}
+				<p class="mt-1 text-sm text-muted">{$t('account.waiting', { n: $syncStatus.pending })}</p>
 			{/if}
+			<button
+				class="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+				disabled={busy || $syncStatus.phase === 'syncing'}
+				onclick={sync}
+			>
+				{$t('account.syncNow')}
+			</button>
 			<p class="mt-1 text-sm text-muted">{$t('account.signOutKeeps')}</p>
 			<button
 				class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
