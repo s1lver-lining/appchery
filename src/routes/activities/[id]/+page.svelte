@@ -39,6 +39,7 @@
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
+	import ShareToggle from '$lib/ui/ShareToggle.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { levelUpAward } from '$lib/levelUp';
@@ -1040,6 +1041,14 @@
 			</p>
 		{/if}
 
+		{#if activity}
+			<ShareToggle
+				activityId={activity.id}
+				sharedAt={activity.sharedAt}
+				onchange={(at) => (activity = activity ? { ...activity, sharedAt: at } : activity)}
+			/>
+		{/if}
+
 		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
 			<Icon name="trash" size={16} />
 			{$t('activity.delete')}
@@ -1104,6 +1113,14 @@
 			{/if}
 			<p class="mt-2 text-xs text-muted">{$t('freeScore.hint')}</p>
 		</section>
+
+		{#if activity}
+			<ShareToggle
+				activityId={activity.id}
+				sharedAt={activity.sharedAt}
+				onchange={(at) => (activity = activity ? { ...activity, sharedAt: at } : activity)}
+			/>
+		{/if}
 
 		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
 			<Icon name="trash" size={16} />
@@ -1499,6 +1516,14 @@
 				label={$t('score.arrowNumbers')}
 			/>
 		</div>
+
+		{#if activity}
+			<ShareToggle
+				activityId={activity.id}
+				sharedAt={activity.sharedAt}
+				onchange={(at) => (activity = activity ? { ...activity, sharedAt: at } : activity)}
+			/>
+		{/if}
 
 		<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
 			<Icon name="trash" size={16} />

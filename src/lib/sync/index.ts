@@ -67,6 +67,11 @@ async function run(): Promise<void> {
 	try {
 		await push(client, user.id);
 		await pull(client, user.id);
+
+		// The friends screen has to be legible before it is opened, and a social side that is briefly
+		// stale is worth far less than a sync that fails over it, so this never breaks the exchange.
+		const { refreshSocial } = await import('./social');
+		await refreshSocial().catch(() => {});
 		const state = await readSyncState();
 		syncStatus.set({
 			phase: 'idle',

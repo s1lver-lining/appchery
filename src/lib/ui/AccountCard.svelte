@@ -143,7 +143,13 @@
 			>
 				{$t('account.syncNow')}
 			</button>
-			<p class="mt-1 text-sm text-muted">{$t('account.signOutKeeps')}</p>
+			<a
+				class="mt-2 flex w-full items-center justify-center rounded-lg border border-line py-2 text-sm font-medium"
+				href="/friends"
+			>
+				{$t('friends.title')}
+			</a>
+			<p class="mt-3 text-sm text-muted">{$t('account.signOutKeeps')}</p>
 			<button
 				class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 				disabled={busy}

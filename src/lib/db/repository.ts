@@ -406,6 +406,19 @@ export async function deleteActivity(id: string) {
 	await log('activity', id, 'delete');
 }
 
+/**
+ * Shared, or not shared. Who can then see it is the profile's business and the block list's, so this
+ * is one flag rather than a row per viewer, and unsharing revokes because nothing was ever copied.
+ */
+export async function setActivityShared(id: string, shared: boolean) {
+	const now = Date.now();
+	await db()
+		.update(schema.activity)
+		.set({ sharedAt: shared ? now : null, updatedAt: now })
+		.where(eq(schema.activity.id, id));
+	await log('activity', id, 'update');
+}
+
 /** A selection removed at once, narrowed and logged for the same reason `deleteSessions` is. */
 export async function deleteActivities(ids: string[]) {
 	if (ids.length === 0) return;
