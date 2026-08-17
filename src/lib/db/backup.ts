@@ -90,6 +90,11 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
 	}
 
 	for (const [name, table] of TABLES) {
+		// The file's own log and cursors describe a sync that happened on another device at another
+		// time. Restoring them would tell this device that rows it has never sent are already up, so
+		// they are dropped here and rebuilt below as a history waiting to be pushed.
+		if (name === 'changeLog' || name === 'syncState') continue;
+
 		const list = backup.tables[name];
 		if (!Array.isArray(list) || list.length === 0) continue;
 		restored += 1;
@@ -104,7 +109,32 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
 		}
 	}
 
+	await enqueueRestored();
+
 	return { rows, tables: restored };
+}
+
+/**
+ * Every restored row, marked as waiting to be pushed. A restore is the one moment a device's whole
+ * history appears at once without a single mutation behind it, and a sync that trusted the empty log
+ * would decide there was nothing to send and quietly leave the account holding the older copy.
+ *
+ * Rows already carrying a tombstone are enqueued too: a delete that reached the file has to reach the
+ * server as well, or the next pull brings the deleted session back.
+ */
+async function enqueueRestored(): Promise<void> {
+	const changedAt = Date.now();
+	// The sync layer's list, so a table that travels can never be restored without being enqueued.
+	const { OWNED_TABLES } = await import('$lib/sync/tables');
+	for (const { name, table } of OWNED_TABLES) {
+		const ids = await db().select({ id: table.id }).from(table);
+		for (let i = 0; i < ids.length; i += 100) {
+			const chunk = ids.slice(i, i + 100);
+			await db()
+				.insert(schema.changeLog)
+				.values(chunk.map(({ id }) => ({ tableName: name, rowId: id, op: 'update', changedAt, syncedAt: null })));
+		}
+	}
 }
 
 export function backupFilename(at = Date.now()): string {
