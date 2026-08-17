@@ -103,7 +103,7 @@ src/lib/
     equipment/   bow-type setting schemas and revision diffing
     stats.ts     personal bests, averages, trends
   i18n/          reference dictionary and locales
-  sync/          change log, push/pull, conflict resolution      <- phase 3
+  sync/          change log, push/pull, conflict resolution      <- see sync.md
   vision/        gold detection, ellipse fit, impact tracking     <- see camera-scoring.md
   ui/            components
 routes/
@@ -348,9 +348,14 @@ camera on people at a shooting line, this is worth treating as non-negotiable.
 | **1 — Foundation** (done) | DB and migrations, round engine, zone geometry, score sheet with editable arrows, sessions holding activities, custom rounds, tuning templates, bows, theming, i18n, opt-in conditions | You can shoot a round and see the score |
 | **2 — Depth** (done, pending verification) | Tap-to-plot with a magnifying face and group metrics, versioned bow revisions with per-type setting schemas, tuning runs that write their resulting revision, personal bests and trends, bow photos, field and 3D rounds | The app is genuinely useful solo, offline, forever |
 | **3 — Sync** | Supabase schema, auth, RLS, push/pull over the change log, multi-device | Optional login syncs cleanly and is skippable |
+| **3.1 — Social** | Handles, public and private profiles, following, blocking, shared activities, published profile card | You can follow an archer and read what they chose to share |
 | **4 — Vision** | Rectification, hole detection, opt-in photo capture, on-device inference | A photo produces a correct, confirmable end |
 
 Phases 1 and 2 have no server dependency at all. That is the point.
+
+Phase 3 has no publicly readable row anywhere: every policy is `user_id = auth.uid()`. Phase 3.1
+opens the app's first public surface, so its tables and policies are designed and migrated with
+phase 3 while no client screen reads them until later. See [sync.md](./sync.md) for both.
 
 ## 9. Decisions taken
 
