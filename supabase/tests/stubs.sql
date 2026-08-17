@@ -15,3 +15,50 @@ stable
 as $$
 	select nullif(current_setting('request.jwt.claim.sub', true), '')::uuid;
 $$;
+
+/*
+ * The not null columns each table needs beyond the four every row has, so the isolation test can
+ * insert one row per table without a hand written INSERT for each. Test scaffolding, never migrated:
+ * the synced tables carry no foreign keys, so any value of the right type will do.
+ */
+create or replace function public.test_extra_columns(name text)
+returns text
+language sql
+immutable
+as $$
+	select case name
+		when 'bow' then ', name, type'
+		when 'arrow_set' then ', label'
+		when 'bow_revision' then ', bow_id, revision_no, settings, effective_from'
+		when 'session' then ', started_at'
+		when 'activity' then ', session_id, kind, started_at'
+		when 'round_end' then ', activity_id, stage_index, end_no'
+		when 'shot' then ', end_id, ordinal, value, zone_label'
+		when 'plan' then ', name'
+		when 'plan_slot' then ', plan_id, weekday, minute_of_day'
+		when 'sight_mark' then ', bow_id, distance, unit'
+		when 'favourite_round' then ', round_key'
+		else ''
+	end;
+$$;
+
+create or replace function public.test_extra_values(name text)
+returns text
+language sql
+immutable
+as $$
+	select case name
+		when 'bow' then ', ''a bow'', ''recurve'''
+		when 'arrow_set' then ', ''a set'''
+		when 'bow_revision' then ', ''bow-1'', 1, ''{}'', 1'
+		when 'session' then ', 1'
+		when 'activity' then ', ''session-1'', ''scoring'', 1'
+		when 'round_end' then ', ''activity-1'', 0, 1'
+		when 'shot' then ', ''end-1'', 1, 10, ''10'''
+		when 'plan' then ', ''a plan'''
+		when 'plan_slot' then ', ''plan-1'', 0, 600'
+		when 'sight_mark' then ', ''bow-1'', 18, ''m'''
+		when 'favourite_round' then ', ''wa18'''
+		else ''
+	end;
+$$;

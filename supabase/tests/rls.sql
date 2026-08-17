@@ -65,6 +65,54 @@ begin
 end;
 $$;
 
+/*
+ * The same three questions asked of every synced table, from the table list itself rather than from
+ * a list written here: a table added to the schema and forgotten in this file would otherwise be
+ * exactly the table nobody checked.
+ */
+do $$
+declare
+	name text;
+	seen integer;
+	owner uuid := '11111111-1111-1111-1111-111111111111';
+	other uuid := '22222222-2222-2222-2222-222222222222';
+begin
+	foreach name in array array[
+		'bow', 'arrow_set', 'bow_revision', 'session', 'activity', 'round_end',
+		'shot', 'plan', 'plan_slot', 'sight_mark', 'favourite_round'
+	] loop
+		execute format('set local request.jwt.claim.sub = %L', owner);
+		execute format(
+			'insert into public.%I (id, created_at, updated_at, device_id%s) values (%L, 1, 1, %L%s)',
+			name,
+			public.test_extra_columns(name),
+			'row-' || name,
+			'device-a',
+			public.test_extra_values(name)
+		);
+
+		execute format('set local request.jwt.claim.sub = %L', other);
+
+		execute format('select count(*) from public.%I where id = %L', name, 'row-' || name) into seen;
+		if seen <> 0 then
+			raise exception '% is readable by a second account', name;
+		end if;
+
+		execute format('update public.%I set updated_at = 2 where id = %L', name, 'row-' || name);
+		if found then
+			raise exception '% is writable by a second account', name;
+		end if;
+
+		execute format('delete from public.%I where id = %L', name, 'row-' || name);
+		if found then
+			raise exception '% is deletable by a second account', name;
+		end if;
+	end loop;
+end;
+$$;
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+
 -- An unshared activity stays invisible even on a public profile.
 set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
 select public.claim_handle('archer_one', 'Archer One');
@@ -138,6 +186,87 @@ begin
 	if (select count(*) from public.follow where followee_id = '11111111-1111-1111-1111-111111111111') <> 0 then
 		raise exception 'a blocked account''s follow request reached the pending list';
 	end if;
+end;
+$$;
+
+-- Handles are the app's only public names, so the rules that decide who may hold one are database
+-- constraints and not client validation.
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$
+declare
+	failed boolean;
+begin
+	foreach failed in array array[true] loop
+		-- Reserved: nobody registers a handle an archer would read as the app speaking.
+		begin
+			perform public.claim_handle('admin');
+			raise exception 'a reserved handle can be claimed';
+		exception when others then
+			if sqlerrm <> 'handle unavailable' then raise; end if;
+		end;
+
+		-- Shape: enforced by the check constraint, whatever a client sends.
+		begin
+			perform public.claim_handle('No Spaces Allowed');
+			raise exception 'a malformed handle can be claimed';
+		exception when others then
+			if sqlerrm = 'a malformed handle can be claimed' then raise; end if;
+		end;
+
+		-- Case insensitive uniqueness, or two archers hold what reads as one name.
+		begin
+			perform public.claim_handle('ARCHER_ONE');
+			raise exception 'a handle differing only in case can be claimed';
+		exception
+			when unique_violation then null;
+		end;
+	end loop;
+end;
+$$;
+
+-- A handle just left is held rather than freed, so nobody inherits the mentions of whoever left it.
+select public.claim_handle('archer_two');
+select public.claim_handle('archer_two_renamed');
+
+-- Read as the owner, because an archer has no grant on this table and that is the point of it.
+reset role;
+do $$
+begin
+	if not exists (select 1 from public.retired_handle where handle = 'archer_two') then
+		raise exception 'an abandoned handle was not retired';
+	end if;
+end;
+$$;
+set local role authenticated;
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$
+begin
+	begin
+		perform public.claim_handle('archer_two');
+		raise exception 'a handle retired minutes ago was handed to somebody else';
+	exception when others then
+		if sqlerrm <> 'handle unavailable' then raise; end if;
+	end;
+end;
+$$;
+
+-- Lookup is rate limited, or the handle list is a directory anybody can walk.
+do $$
+declare
+	i integer;
+begin
+	for i in 1..25 loop
+		begin
+			perform public.lookup_profile('archer_one');
+		exception when others then
+			if sqlerrm = 'too many lookups' then
+				return;
+			end if;
+			raise;
+		end;
+	end loop;
+	raise exception 'handle lookup is not rate limited';
 end;
 $$;
 
