@@ -178,9 +178,19 @@ is why the two are separate systems rather than one.
 
 ### Offline
 
-Followed profiles and the activities they shared are pulled into local SQLite so they are readable
-at the range. Changing anything social, following, sharing, blocking, needs a connection and says so
-clearly rather than queueing something that sits unsent for days.
+Followed profiles and the activities they shared are cached in `social_profile` and `social_activity`
+so the friends screen opens at a range with no signal. Both are caches and never sources: nothing in
+them is pushed, and a shared activity is held whole as JSON rather than in the archer's own tables,
+because somebody else's arrows must never reach these averages, records or badges.
+
+For the same reason pull filters every table to `user_id = auth.uid()`. The policies deliberately
+make a followed archer's shared activities readable, and an unfiltered pull would quietly file them
+among this archer's own rows.
+
+Changing anything social, following, sharing, blocking, needs a connection and says so clearly
+rather than queueing something that sits unsent for days. Sharing is the exception: it is a flag on a
+row the archer already owns, so it is written locally and travels with the next exchange like any
+other edit.
 
 ## 7. Security work, as its own step
 
@@ -207,9 +217,13 @@ Steps 1 to 3 are independently shippable and useless alone. Steps 4 to 6 are the
 5. **Done.** Pull with the cursor.
 6. **Done.** Conflict resolution, as pure functions in `src/lib/sync/merge.ts`.
 7. **Done.** Wipe, restore and import made sync safe.
-8. Orchestration, triggers and sync state UI. Until this exists, nothing calls push or pull.
-9. The rest of the security work in section 7, against a real stack rather than the stubs.
-10. Phase 3.1 client: handle claim, profile pages, follow and block, share toggle, offline cache.
+8. **Done.** Orchestration and triggers in `src/lib/sync/index.ts` and `watch.ts`, sync state in the
+   settings account card.
+9. **Done against the stubs.** `./scripts/check-sql.sh` proves ownership isolation on every synced
+   table, the block indistinguishability, the handle rules and the lookup rate limit. Still to do
+   against a real stack: auth, PostgREST and storage, which the stubs cannot speak for.
+10. **Done.** Phase 3.1 client: handle claim, profile pages, follow and block, share toggle,
+    offline cache.
 
 ### Configuration
 

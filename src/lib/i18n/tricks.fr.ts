@@ -281,6 +281,18 @@ export const tricksFr: TricksDictionary = {
 					body: 'Le compte est facultatif et arrive tard, volontairement : tout ce que vous avez tiré avant de vous connecter est repris par le compte au moment où vous le faites, au lieu de repartir de zéro. Se déconnecter ne change rien sur l’appareil, et vos tirs restent que vous vous reconnectiez ou non.'
 				},
 				{
+					lead: 'L’identifiant est demandé tard, et une seule fois.',
+					body: 'La synchronisation n’a besoin d’aucun identifiant. La page Amis en demande un la première fois que vous l’ouvrez, si bien qu’un archer qui veut seulement ses scores sur deux appareils ne devient jamais trouvable.'
+				},
+				{
+					lead: 'Le partage est un interrupteur, pas une liste.',
+					body: 'Une activité est partagée ou elle ne l’est pas, et qui la voit découle de votre profil, public ou privé. L’éteindre la reprend partout, car rien n’a jamais été copié à personne. Le lieu, la météo et l’arc ne voyagent jamais avec.'
+				},
+				{
+					lead: 'Bloquer ne dit rien.',
+					body: 'Un archer bloqué voit votre profil exactement comme un profil privé, et peut encore demander à vous suivre. La demande ne vous parvient jamais, et il n’en est pas informé.'
+				},
+				{
 					lead: 'Effacer l’appareil demande d’abord une déconnexion.',
 					body: 'Vider ce téléphone et fermer votre compte sont deux gestes distincts, et aucun n’entraîne l’autre. Déconnectez-vous, puis effacez : le compte garde ce qu’il a déjà.'
 				}

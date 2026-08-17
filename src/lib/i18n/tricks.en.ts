@@ -286,6 +286,18 @@ export const tricksEn = {
 					body: 'An account is optional and arrives late on purpose: everything you shot before signing in is claimed by the account the moment you do, rather than starting you empty. Signing out changes nothing on the device, and your shooting stays whether or not you ever sign in again.'
 				},
 				{
+					lead: 'A handle is asked for late, and only once.',
+					body: 'Syncing needs no handle at all. The friends page asks for one the first time you open it, so an archer who only wants their scores on two devices never becomes findable by anybody.'
+				},
+				{
+					lead: 'Sharing is a switch, not a list.',
+					body: 'An activity is shared or it is not, and who sees it follows from your profile being public or private. Turning it off takes it back everywhere, because nothing was ever copied to anybody. The place, the weather and the bow never travel with it.'
+				},
+				{
+					lead: 'Blocking says nothing.',
+					body: 'A blocked archer sees your profile exactly as a private one looks, and can still ask to follow you. The request never reaches you, and they are never told.'
+				},
+				{
 					lead: 'Erasing the device asks you to sign out first.',
 					body: 'Emptying this phone and closing your account are separate acts, and neither does the other. Sign out, then erase, and the account keeps what it already has.'
 				}
