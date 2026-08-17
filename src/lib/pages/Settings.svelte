@@ -51,6 +51,7 @@
 	import { refreshApp } from '$lib/update';
 	import { appVersion, appBuild } from '$lib/build';
 	import AccountCard from '$lib/ui/AccountCard.svelte';
+	import { account } from '$lib/sync/auth';
 
 	/** Named rather than read from package.json, which no bundle ships. */
 	const LICENCE = 'AGPL-3.0-only';
@@ -178,6 +179,10 @@
 			if (mode === 'imported') {
 				const removed = await deleteImportedSessions();
 				dangerNotice = $t('danger.importedRemoved', { n: removed });
+			} else if ($account) {
+				// Erasing the device and closing the account are separate acts, and neither implies the
+				// other: an archer freeing up a phone is not asking to lose their history, see doc/sync.md.
+				dangerNotice = $t('account.wipeSignedIn');
 			} else {
 				await deleteEverything();
 				dangerNotice = $t('danger.everythingRemoved');
@@ -660,9 +665,12 @@
 						</button>
 
 						<p class="mt-4 text-sm text-muted">{$t('danger.everythingHint')}</p>
+						{#if $account}
+							<p class="mt-1 text-sm text-muted">{$t('account.wipeSignedIn')}</p>
+						{/if}
 						<button
 							class="mt-3 w-full rounded-lg bg-danger py-2 text-sm font-semibold text-white disabled:opacity-50"
-							disabled={busy}
+							disabled={busy || Boolean($account)}
 							onclick={() => (dangerDialog = 'everything')}
 						>
 							{$t('danger.everything')}
