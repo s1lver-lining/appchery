@@ -32,8 +32,21 @@ npm run check   # schema.ts and the app agree
 - `ALTER TABLE ... ADD COLUMN` is safe. Renaming and dropping are not: SQLite rewrites the table,
   and old app versions may still be running against it on another device.
 - A migration that repairs data must log to `change_log` before it repairs, or the repair never
-  reaches the server. Migration 0016 is the worked example.
+  reaches the server: log the rows it is about to touch, then touch them.
 - A test that needs a specific migration indexes it by number, never by "the last one".
+
+### Never squash again
+
+Migration 0001 is a collapse of the eighteen migrations written during development. It was safe
+exactly once, because every database that had run them was thrown away on purpose.
+
+Squashing costs two things once anybody's data is real, and neither announces itself:
+
+- The array length is the schema version. Collapse to one group and a device sitting at version 18
+  runs nothing, looks fine, then silently skips the next migration you append, because 18 is already
+  past it.
+- Backup files carry the version they were written at, and a restore refuses anything higher than
+  `MIGRATIONS.length`. Shortening the array makes existing backup files unreadable.
 
 ## Server, Postgres
 

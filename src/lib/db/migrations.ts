@@ -5,7 +5,9 @@
 
 // Never edit a released migration: databases that already ran it silently diverge. Append instead.
 export const MIGRATIONS: string[][] = [
-	// 0001 initial schema
+	// 0001 the schema as the development phase left it, collapsed from the eighteen migrations that
+	// built it up. Safe to collapse only because every database that ran them was thrown away; from
+	// here on, a change is a new group appended below and never an edit to this one.
 	[
 		`CREATE TABLE IF NOT EXISTS bow (
 			id TEXT PRIMARY KEY NOT NULL,
@@ -16,7 +18,9 @@ export const MIGRATIONS: string[][] = [
 			name TEXT NOT NULL,
 			type TEXT NOT NULL,
 			is_active INTEGER NOT NULL DEFAULT 1,
-			notes TEXT
+			notes TEXT,
+			photo TEXT,
+			user_id TEXT
 		);`,
 		`CREATE TABLE IF NOT EXISTS arrow_set (
 			id TEXT PRIMARY KEY NOT NULL,
@@ -31,7 +35,8 @@ export const MIGRATIONS: string[][] = [
 			fletching TEXT,
 			nock TEXT,
 			total_grain REAL,
-			count INTEGER
+			count INTEGER,
+			user_id TEXT
 		);`,
 		`CREATE TABLE IF NOT EXISTS bow_revision (
 			id TEXT PRIMARY KEY NOT NULL,
@@ -44,9 +49,9 @@ export const MIGRATIONS: string[][] = [
 			settings TEXT NOT NULL,
 			arrow_set_id TEXT REFERENCES arrow_set(id),
 			reason TEXT,
-			effective_from INTEGER NOT NULL
+			effective_from INTEGER NOT NULL,
+			user_id TEXT
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_bow_revision_bow ON bow_revision (bow_id, revision_no);`,
 		`CREATE TABLE IF NOT EXISTS session (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -55,7 +60,6 @@ export const MIGRATIONS: string[][] = [
 			device_id TEXT NOT NULL,
 			label TEXT,
 			started_at INTEGER NOT NULL,
-			ended_at INTEGER,
 			kind TEXT NOT NULL DEFAULT 'practice',
 			bow_id TEXT REFERENCES bow(id),
 			bow_type TEXT,
@@ -64,7 +68,9 @@ export const MIGRATIONS: string[][] = [
 			latitude REAL,
 			longitude REAL,
 			weather TEXT,
-			notes TEXT
+			notes TEXT,
+			arrow_goal INTEGER,
+			user_id TEXT
 		);`,
 		`CREATE TABLE IF NOT EXISTS activity (
 			id TEXT PRIMARY KEY NOT NULL,
@@ -82,15 +88,16 @@ export const MIGRATIONS: string[][] = [
 			adjustment_made TEXT,
 			resulting_revision_id TEXT REFERENCES bow_revision(id),
 			started_at INTEGER NOT NULL,
-			ended_at INTEGER,
 			total_score INTEGER NOT NULL DEFAULT 0,
 			count_10s INTEGER NOT NULL DEFAULT 0,
 			count_x INTEGER NOT NULL DEFAULT 0,
 			arrows_shot INTEGER NOT NULL DEFAULT 0,
 			status TEXT NOT NULL DEFAULT 'in_progress',
-			notes TEXT
+			notes TEXT,
+			match_config TEXT,
+			measurements TEXT,
+			user_id TEXT
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_activity_session ON activity (session_id, started_at);`,
 		`CREATE TABLE IF NOT EXISTS round_end (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -100,9 +107,14 @@ export const MIGRATIONS: string[][] = [
 			activity_id TEXT NOT NULL REFERENCES activity(id),
 			stage_index INTEGER NOT NULL,
 			end_no INTEGER NOT NULL,
-			subtotal INTEGER NOT NULL DEFAULT 0
+			subtotal INTEGER NOT NULL DEFAULT 0,
+			video TEXT,
+			opponent_subtotal INTEGER,
+			is_shoot_off INTEGER NOT NULL DEFAULT 0,
+			winner TEXT,
+			setting_value REAL,
+			user_id TEXT
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_end_activity ON round_end (activity_id);`,
 		`CREATE TABLE IF NOT EXISTS shot (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -116,55 +128,22 @@ export const MIGRATIONS: string[][] = [
 			x REAL,
 			y REAL,
 			source TEXT NOT NULL DEFAULT 'manual',
-			arrow_id TEXT
+			arrow_id TEXT,
+			side TEXT NOT NULL DEFAULT 'us',
+			user_id TEXT
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_shot_end ON shot (end_id);`,
-		`CREATE TABLE IF NOT EXISTS change_log (
-			id INTEGER PRIMARY KEY AUTOINCREMENT,
-			table_name TEXT NOT NULL,
-			row_id TEXT NOT NULL,
-			op TEXT NOT NULL,
-			changed_at INTEGER NOT NULL,
-			synced_at INTEGER
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_change_log_pending ON change_log (synced_at);`,
-		`CREATE TABLE IF NOT EXISTS sync_state (
-			id TEXT PRIMARY KEY NOT NULL,
-			device_id TEXT NOT NULL,
-			last_pull_cursor TEXT,
-			last_push_cursor TEXT,
-			endpoint TEXT
-		);`
-	],
-	// 0002 bow photo, shown in the equipment list
-	[`ALTER TABLE bow ADD COLUMN photo TEXT;`],
-	// 0003 nothing ever ended a session or an activity, and completion is derived from the arrows
-	[`ALTER TABLE session DROP COLUMN ended_at;`, `ALTER TABLE activity DROP COLUMN ended_at;`],
-	// 0004 the file name of the scoring video kept for this end, when recording was on
-	[`ALTER TABLE round_end ADD COLUMN video TEXT;`],
-	// 0005 rounds pinned to the top of the stats page
-	[
-		`CREATE TABLE IF NOT EXISTS favourite_round (
-			id TEXT PRIMARY KEY NOT NULL,
-			created_at INTEGER NOT NULL,
-			updated_at INTEGER NOT NULL,
-			deleted_at INTEGER,
-			device_id TEXT NOT NULL,
-			round_key TEXT NOT NULL
-		);`,
-		`CREATE INDEX IF NOT EXISTS idx_favourite_round_key ON favourite_round (round_key);`
-	],
-	// 0006 an arrow count to aim for during one session
-	[`ALTER TABLE session ADD COLUMN arrow_goal INTEGER;`],
-	// 0007 repeating weeks of intended outings
-	[
 		`CREATE TABLE IF NOT EXISTS plan (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
 			updated_at INTEGER NOT NULL,
 			deleted_at INTEGER,
 			device_id TEXT NOT NULL,
-			name TEXT NOT NULL
+			name TEXT NOT NULL,
+			free_arrows INTEGER,
+			is_active INTEGER NOT NULL DEFAULT 1,
+			start_date INTEGER,
+			end_date INTEGER,
+			user_id TEXT
 		);`,
 		`CREATE TABLE IF NOT EXISTS plan_slot (
 			id TEXT PRIMARY KEY NOT NULL,
@@ -176,14 +155,9 @@ export const MIGRATIONS: string[][] = [
 			weekday INTEGER NOT NULL,
 			minute_of_day INTEGER NOT NULL,
 			arrow_goal INTEGER,
-			label TEXT
+			label TEXT,
+			user_id TEXT
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_plan_slot_plan ON plan_slot (plan_id, weekday);`
-	],
-	// 0008 arrows a plan asks for that are not tied to any one outing
-	[`ALTER TABLE plan ADD COLUMN free_arrows INTEGER;`],
-	// 0009 sight marks, one row per distance the bow is sighted in at
-	[
 		`CREATE TABLE IF NOT EXISTS sight_mark (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -196,14 +170,19 @@ export const MIGRATIONS: string[][] = [
 			height TEXT,
 			windage TEXT,
 			clicker TEXT,
-			plunger TEXT
+			plunger TEXT,
+			interpolated INTEGER NOT NULL DEFAULT 0,
+			user_id TEXT
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_sight_mark_bow ON sight_mark (bow_id, distance);`
-	],
-	// 0010 marks worked out from the others rather than shot in
-	[`ALTER TABLE sight_mark ADD COLUMN interpolated INTEGER NOT NULL DEFAULT 0;`],
-	// 0011 goals the archer has reached, kept once earned
-	[
+		`CREATE TABLE IF NOT EXISTS favourite_round (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			round_key TEXT NOT NULL,
+			user_id TEXT
+		);`,
 		`CREATE TABLE IF NOT EXISTS badge (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -213,52 +192,30 @@ export const MIGRATIONS: string[][] = [
 			key TEXT NOT NULL,
 			earned_at INTEGER NOT NULL
 		);`,
-		`CREATE INDEX IF NOT EXISTS idx_badge_key ON badge (key);`
-	],
-	// 0012 a plan put aside without being thrown away
-	[`ALTER TABLE plan ADD COLUMN is_active INTEGER NOT NULL DEFAULT 1;`],
-	// 0013 head to head matches, which are scored against somebody rather than against a round
-	[
-		`ALTER TABLE activity ADD COLUMN match_config TEXT;`,
-		`ALTER TABLE round_end ADD COLUMN opponent_subtotal INTEGER;`,
-		`ALTER TABLE round_end ADD COLUMN is_shoot_off INTEGER NOT NULL DEFAULT 0;`,
-		`ALTER TABLE round_end ADD COLUMN winner TEXT;`,
-		`ALTER TABLE shot ADD COLUMN side TEXT NOT NULL DEFAULT 'us';`
-	],
-	// 0014 procedures that compare groups across a bow setting, and the figures a procedure measures
-	[
-		`ALTER TABLE round_end ADD COLUMN setting_value REAL;`,
-		`ALTER TABLE activity ADD COLUMN measurements TEXT;`
-	],
-	// 0015 the season a plan runs for, so it stops asking for the week once it is over
-	[`ALTER TABLE plan ADD COLUMN start_date INTEGER;`, `ALTER TABLE plan ADD COLUMN end_date INTEGER;`],
-	// 0016 outings left naming a bow deleted before the delete knew to hand them its type
-	[
-		// Logged before the repair, while the rows can still be told apart by the bow they name.
-		`INSERT INTO change_log (table_name, row_id, op, changed_at, synced_at)
-			SELECT 'session', id, 'update', CAST(strftime('%s', 'now') AS INTEGER) * 1000, NULL
-			FROM session
-			WHERE bow_id IN (SELECT id FROM bow WHERE deleted_at IS NOT NULL);`,
-		`UPDATE session
-			SET bow_type = COALESCE((SELECT type FROM bow WHERE bow.id = session.bow_id), bow_type),
-				bow_id = NULL,
-				updated_at = CAST(strftime('%s', 'now') AS INTEGER) * 1000
-			WHERE bow_id IN (SELECT id FROM bow WHERE deleted_at IS NOT NULL);`
-	],
-	// 0017 who a row belongs to, nullable because everything shot before signing in belongs to nobody
-	[
-		`ALTER TABLE bow ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE bow_revision ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE arrow_set ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE session ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE activity ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE round_end ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE shot ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE plan ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE plan_slot ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE sight_mark ADD COLUMN user_id TEXT;`,
-		`ALTER TABLE favourite_round ADD COLUMN user_id TEXT;`
-	],
-	// 0018 when the server and this device last agreed, so the account card can say so offline
-	[`ALTER TABLE sync_state ADD COLUMN last_sync_at INTEGER;`]
+		`CREATE TABLE IF NOT EXISTS change_log (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			table_name TEXT NOT NULL,
+			row_id TEXT NOT NULL,
+			op TEXT NOT NULL,
+			changed_at INTEGER NOT NULL,
+			synced_at INTEGER
+		);`,
+		`CREATE TABLE IF NOT EXISTS sync_state (
+			id TEXT PRIMARY KEY NOT NULL,
+			device_id TEXT NOT NULL,
+			last_pull_cursor TEXT,
+			last_push_cursor TEXT,
+			endpoint TEXT,
+			last_sync_at INTEGER
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_activity_session ON activity (session_id, started_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_badge_key ON badge (key);`,
+		`CREATE INDEX IF NOT EXISTS idx_bow_revision_bow ON bow_revision (bow_id, revision_no);`,
+		`CREATE INDEX IF NOT EXISTS idx_change_log_pending ON change_log (synced_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_end_activity ON round_end (activity_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_favourite_round_key ON favourite_round (round_key);`,
+		`CREATE INDEX IF NOT EXISTS idx_plan_slot_plan ON plan_slot (plan_id, weekday);`,
+		`CREATE INDEX IF NOT EXISTS idx_shot_end ON shot (end_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_sight_mark_bow ON sight_mark (bow_id, distance);`
+	]
 ];
