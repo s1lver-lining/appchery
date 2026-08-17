@@ -9,7 +9,8 @@
 - **Live camera scoring** (planned): sweep the camera over the target and confirm what it found.
 
 Design and rationale live in [doc/architecture.md](doc/architecture.md) and
-[doc/data-model.md](doc/data-model.md). Read those before making structural changes.
+[doc/data-model.md](doc/data-model.md). Read those before making structural changes. Shipping is
+[doc/deploy.md](doc/deploy.md); schema changes are [doc/migration.md](doc/migration.md).
 
 ## Stack
 
@@ -57,23 +58,9 @@ npm run deploy:prod      # → appchery, asks for confirmation
 ./scripts/deploy.sh preprod --dry-run
 ```
 
-Two separate Pages projects rather than one project with preview branches: preview deployments get
-a fresh hostname each time, and OPFS databases are per-origin, so preprod would start empty on
-every deploy. Override the project names with `APPCHERY_PAGES_PREPROD` and `APPCHERY_PAGES_PROD`.
-
-First run needs `npx wrangler login`; in CI, set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`
-instead, and the production confirmation prompt is skipped when `CI=true`. Create the two projects
-once, then attach custom domains from the Pages dashboard:
-
-```bash
-npx wrangler pages project create appchery --production-branch main
-npx wrangler pages project create appchery-preprod --production-branch preprod
-```
-
-**Each project's production branch must match the branch `deploy.sh` sends it** — `main` for prod,
-`preprod` for preprod. Cloudflare serves a deployment on the project root only when the two agree;
-otherwise it becomes a preview, reachable at `preprod.appchery-preprod.pages.dev` instead. That is a
-different origin, so preprod would open a different OPFS database and look like it lost its data.
+Environments, first time setup, the database side, and the release order live in
+[doc/deploy.md](doc/deploy.md). Schema changes on either database are in
+[doc/migration.md](doc/migration.md).
 
 ### Installing on a phone
 

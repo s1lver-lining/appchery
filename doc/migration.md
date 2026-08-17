@@ -1,0 +1,86 @@
+# Migrations
+
+Two independent migration systems: the SQLite database on the device, and the Postgres database on
+the server. They are never generated from each other. A column added to one is added to the other by
+hand, in the same commit.
+
+## Client, SQLite
+
+`src/lib/db/migrations.ts` holds an array of statement groups. Index 0 is migration 0001, and the
+array index plus one is the version written to SQLite's `user_version`. They are strings, not files,
+because a webview has no filesystem to read migrations from.
+
+**Never edit a released migration.** Databases that already ran it will not run it again, and they
+silently diverge. Append a new one instead.
+
+### Add a migration
+
+1. Append a group to the end of the array in `src/lib/db/migrations.ts`, with a `// 00NN what it does` comment.
+2. Mirror the change in `src/lib/db/schema.ts`, so Drizzle's types match the columns that now exist.
+3. Mirror it in `supabase/migrations/` too if the table syncs, and add the column to
+   `src/lib/sync/tables.ts` if it is a whole new table.
+4. `npm test`
+
+```bash
+npm test        # smoke tests apply every migration to a real SQLite
+npm run check   # schema.ts and the app agree
+```
+
+### Rules
+
+- One group per migration, applied in one transaction by the runner.
+- `ALTER TABLE ... ADD COLUMN` is safe. Renaming and dropping are not: SQLite rewrites the table,
+  and old app versions may still be running against it on another device.
+- A migration that repairs data must log to `change_log` before it repairs, or the repair never
+  reaches the server. Migration 0016 is the worked example.
+- A test that needs a specific migration indexes it by number, never by "the last one".
+
+## Server, Postgres
+
+`supabase/migrations/`, plain SQL, applied in filename order. Filenames are
+`<utc timestamp>_<name>.sql`.
+
+### Add a migration
+
+```bash
+npx supabase migration new add_something   # creates the timestamped file
+$EDITOR supabase/migrations/*_add_something.sql
+npm run db:check                           # applies every migration to a throwaway Postgres, runs the policy tests
+```
+
+`npm run db:check` needs Docker and takes a few seconds. It uses plain `postgres:16` with
+`supabase/tests/stubs.sql` standing in for `auth.uid()` and the roles, so it proves the SQL applies
+and the policies behave. It says nothing about GoTrue or PostgREST.
+
+### Rules
+
+- **Every new table needs RLS enabled, forced, and a policy**, or `npm run db:check` fails. A table
+  meant to be unreachable still gets forced RLS and policies for the security definer functions that
+  use it; what keeps clients out is the absent grant.
+- Grants are explicit. A new table is addressable by nobody until it is granted to `authenticated`.
+- Never edit a migration that has been pushed to preprod or prod. Append.
+- Add a case to `supabase/tests/rls.sql` for any policy that decides who reads somebody else's rows.
+
+## Applying server migrations
+
+Local stack:
+
+```bash
+npx supabase start      # applies everything in supabase/migrations
+npx supabase db reset   # reapply from scratch after editing an unreleased migration
+```
+
+Remote, one project per environment:
+
+```bash
+export APPCHERY_SUPABASE_PREPROD=<preprod project ref>
+export APPCHERY_SUPABASE_PROD=<prod project ref>
+
+npm run db:push:preprod
+npm run db:push:prod
+```
+
+`db push` applies only the migrations that project has not seen. Order of work for any schema
+change: local, then preprod, then prod, and the server migration goes out **before** the app build
+that needs it. A client that pushes a column the server does not have gets an error; a server with a
+column no client sends yet is harmless.
