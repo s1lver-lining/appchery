@@ -268,7 +268,7 @@ enforced in a function with the table left writable underneath it. Migration 000
   upsert shared a `server_updated_at`, and a page boundary landing inside such a group stepped over
   the rest of it. `clock_timestamp()` ticks per row.
 
-Three client bugs went with them:
+Six client bugs went with them:
 
 - **Pull could lose a row.** The cursor was read after the pull rather than before it, so a row
   another device wrote while the pull was running was stepped over and never fetched again.
@@ -279,6 +279,14 @@ Three client bugs went with them:
 - **The friends list kept the people who left.** The social refresh wrote the accounts it found and
   never reset the ones it stopped finding, so somebody who unfollowed, or who blocked this archer,
   stayed in the list as followed.
+- **Adoption could not carry a large history.** Signing in wrote one log entry per adopted row in a
+  single statement, which exceeds SQLite's parameter limit for anybody who had imported years of
+  shooting: the sign in that was meant to claim everything would have failed outright.
+- **Signing out left another archer's data on the device.** The shooting record staying is the point,
+  but the cached profiles and shared activities belong to other people, and a shared device would
+  have shown one archer the friends and scores of the one before them.
+- **Erasing everything spared the social cache.** `deleteEverything` listed the tables by hand and
+  the two cache tables were added after it.
 
 ## 8. Security work, as its own step
 

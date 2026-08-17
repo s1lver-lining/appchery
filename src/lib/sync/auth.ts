@@ -66,6 +66,16 @@ export async function signIn(email: string, password: string): Promise<void> {
 export async function signOut(): Promise<void> {
 	const instance = await supabase();
 	if (instance) await instance.auth.signOut();
+
+	/**
+	 * The shooting record stays, because it is this device's own and signing out must never cost an
+	 * archer their history. What other people shared does not: it belongs to them, it was only ever a
+	 * cache, and leaving it behind would show one archer another archer's friends and scores on a
+	 * device they both use.
+	 */
+	await db().delete(schema.socialActivity);
+	await db().delete(schema.socialProfile);
+
 	account.set(null);
 }
 
@@ -100,9 +110,17 @@ export async function adoptLocalRows(userId: string): Promise<number> {
 			await db().update(table).set({ userId }).where(isNull(table.userId));
 
 			const changedAt = Date.now();
-			await db()
-				.insert(schema.changeLog)
-				.values(orphans.map(({ id }) => ({ tableName: name, rowId: id, op: 'update', changedAt, syncedAt: null })));
+			// Chunked: SQLite takes a limited number of parameters per statement, and an archer signing
+			// in after importing years of shooting adopts tens of thousands of rows at once.
+			for (let i = 0; i < orphans.length; i += 100) {
+				await db()
+					.insert(schema.changeLog)
+					.values(
+						orphans
+							.slice(i, i + 100)
+							.map(({ id }) => ({ tableName: name, rowId: id, op: 'update', changedAt, syncedAt: null }))
+					);
+			}
 			adopted += orphans.length;
 		}
 	});

@@ -1842,6 +1842,8 @@ export async function deleteEverything(): Promise<void> {
 		schema.plan,
 		schema.favouriteRound,
 		schema.badge,
+		schema.socialActivity,
+		schema.socialProfile,
 		schema.changeLog
 	];
 	for (const table of tables) await db().delete(table);

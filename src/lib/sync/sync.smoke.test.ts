@@ -141,7 +141,16 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	for (const table of [schema.shot, schema.end, schema.activity, schema.session, schema.changeLog, schema.syncState]) {
+	for (const table of [
+		schema.shot,
+		schema.end,
+		schema.activity,
+		schema.session,
+		schema.changeLog,
+		schema.syncState,
+		schema.socialProfile,
+		schema.socialActivity
+	]) {
 		await proxy.delete(table);
 	}
 });
@@ -343,6 +352,46 @@ describe('pull', () => {
 
 		await pull(server.client as never, USER);
 		expect(await pull(server.client as never, USER)).toMatchObject({ applied: 0, skipped: 0 });
+	});
+});
+
+describe('adoption and signing out', () => {
+	it('claims a history far larger than one SQL statement can carry', async () => {
+		const many = 450;
+		for (let i = 0; i < many; i++) await insertSession(`bulk-${i}`, { userId: null });
+
+		const { adoptLocalRows } = await import('./auth');
+		const adopted = await adoptLocalRows(USER);
+
+		expect(adopted).toBe(many);
+		const pending = await proxy.select().from(schema.changeLog).where(isNull(schema.changeLog.syncedAt));
+		expect(pending).toHaveLength(many);
+	});
+
+	it('drops what other archers shared when the account signs out', async () => {
+		await proxy.insert(schema.socialProfile).values({
+			userId: 'someone-else',
+			handle: 'their_handle',
+			displayName: 'Somebody',
+			isPublic: 1,
+			followStatus: 'approved',
+			followsUs: 'none',
+			cachedAt: 1
+		});
+		await proxy.insert(schema.socialActivity).values({
+			id: 'their-activity',
+			ownerId: 'someone-else',
+			sharedAt: 1,
+			payload: '{}',
+			cachedAt: 1
+		});
+
+		const { signOut } = await import('./auth');
+		await signOut();
+
+		// A shared device must not show one archer the friends and scores of the one before them.
+		expect(await proxy.select().from(schema.socialProfile)).toEqual([]);
+		expect(await proxy.select().from(schema.socialActivity)).toEqual([]);
 	});
 });
 
