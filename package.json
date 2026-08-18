@@ -10,7 +10,7 @@
     "build": "vite build",
     "build:preprod": "vite build --mode preprod",
     "preview": "vite preview",
-    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+    "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && svelte-check --tsconfig ./tsconfig.site.json",
     "test": "vitest run",
     "test:watch": "vitest",
     "db:generate": "drizzle-kit generate",
