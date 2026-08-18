@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
-# Builds the app and publishes it to a Cloudflare Pages project.
+# Pushes the server migrations, then builds the app and publishes it to a Cloudflare Pages project.
+#
+# The database goes first and the app second, always: a client that pushes a column the server has
+# never heard of gets an error, while a server holding a column no client sends yet is harmless.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -11,6 +14,8 @@ PREPROD_PROJECT="${APPCHERY_PAGES_PREPROD:-appchery-preprod}"
 
 TARGET=""
 DRY_RUN=0
+SKIP_DB=0
+SKIP_CHECKS=0
 
 usage() {
 	echo "Usage: $0 <preprod|prod> [--dry-run]"
@@ -18,9 +23,13 @@ usage() {
 	echo "  preprod    Deploy to ${PREPROD_PROJECT} → https://${PREPROD_PROJECT}.pages.dev"
 	echo "  prod       Deploy to ${PROD_PROJECT} → https://${PROD_PROJECT}.pages.dev"
 	echo "             Asks for confirmation."
-	echo "  --dry-run  Build and report what would be deployed, without uploading."
+	echo "  --dry-run  Report the migrations and the build that would go out, without sending either."
+	echo "  --skip-db  Deploy the app alone, for a change that touches no migration."
+	echo "  --skip-checks  Skip db:check before pushing. Refused for prod."
 	echo
 	echo "Project names come from APPCHERY_PAGES_PROD and APPCHERY_PAGES_PREPROD if set."
+	echo "The database is APPCHERY_SUPABASE_PROD or APPCHERY_SUPABASE_PREPROD, with its password in"
+	echo "SUPABASE_DB_PASSWORD or PROD_DB_PASS / PREPROD_DB_PASS in .env."
 	echo "Authentication is wrangler's own: a browser login, or CLOUDFLARE_API_TOKEN and"
 	echo "CLOUDFLARE_ACCOUNT_ID in the environment for CI."
 }
@@ -29,6 +38,8 @@ while [ $# -gt 0 ]; do
 	case "$1" in
 	preprod | prod) TARGET="$1" ;;
 	--dry-run) DRY_RUN=1 ;;
+	--skip-db) SKIP_DB=1 ;;
+	--skip-checks) SKIP_CHECKS=1 ;;
 	-h | --help)
 		usage
 		exit 0
@@ -50,8 +61,31 @@ fi
 
 if [ "$TARGET" = prod ]; then
 	PROJECT="$PROD_PROJECT"
+	DB_REF="${APPCHERY_SUPABASE_PROD:-}"
+	DB_PASS_NAME="PROD_DB_PASS"
 else
 	PROJECT="$PREPROD_PROJECT"
+	DB_REF="${APPCHERY_SUPABASE_PREPROD:-}"
+	DB_PASS_NAME="PREPROD_DB_PASS"
+fi
+
+# Read from .env rather than asked for: a deploy that stops halfway to prompt is a deploy somebody
+# runs in a hurry and answers wrong. Never echoed, and .env is not in the repository.
+DB_PASS="${SUPABASE_DB_PASSWORD:-}"
+if [ -z "$DB_PASS" ] && [ -f .env ]; then
+	DB_PASS="$(grep -E "^${DB_PASS_NAME}=" .env | head -1 | cut -d= -f2- | tr -d '"'"'"'\r')"
+fi
+
+if [ "$SKIP_DB" = 0 ] && [ -z "$DB_REF" ]; then
+	echo "$0: no database configured for ${TARGET}." >&2
+	echo "Set APPCHERY_SUPABASE_$(echo "$TARGET" | tr '[:lower:]' '[:upper:]'), or pass --skip-db to" >&2
+	echo "deploy the app alone. Shipping an app whose columns the server lacks is the one order that breaks." >&2
+	exit 2
+fi
+
+if [ "$SKIP_CHECKS" = 1 ] && [ "$TARGET" = prod ]; then
+	echo "$0: --skip-checks is refused for prod: the policies guard everybody's data." >&2
+	exit 2
 fi
 
 # A dirty tree deploys whatever happens to be on disk, which makes a production URL impossible to
@@ -62,8 +96,23 @@ if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
 fi
 COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 
+# What the database would take, worked out before anything is asked or sent, so a production
+# confirmation names the migrations rather than hiding them behind a yes.
+PENDING=""
+if [ "$SKIP_DB" = 0 ]; then
+	PENDING="$(npx supabase db push --project-ref "$DB_REF" --password "$DB_PASS" --dry-run 2>/dev/null |
+		grep -oE '[0-9]{14}_[a-z0-9_]+\.sql' | sort -u || true)"
+fi
+
 if [ "$TARGET" = prod ]; then
 	echo "About to deploy ${COMMIT}${DIRTY} to production: ${PROJECT}"
+	if [ -n "$PENDING" ]; then
+		echo "Migrations that would be applied to the production database first:"
+		echo "$PENDING" | sed 's/^/  /'
+		echo "A migration cannot be rolled back by deploying the old app again."
+	elif [ "$SKIP_DB" = 0 ]; then
+		echo "The production database is already up to date."
+	fi
 	if [ -n "$DIRTY" ] && [ "${CI:-}" != true ]; then
 		echo "Commit first, or the deployed bundle will not match any commit." >&2
 	fi
@@ -79,6 +128,24 @@ if [ "$TARGET" = prod ]; then
 	fi
 else
 	echo "Deploying ${COMMIT}${DIRTY} to ${PROJECT}"
+fi
+
+# The database first, and only then the app. `db push` applies what the project has not seen, so a
+# deploy that changes no migration reaches this and does nothing.
+if [ "$SKIP_DB" = 0 ] && [ -n "$PENDING" ]; then
+	if [ "$SKIP_CHECKS" = 0 ]; then
+		echo "Checking the migrations and the policies before they leave"
+		npm run db:check
+	fi
+
+	if [ "$DRY_RUN" = 1 ]; then
+		echo "Dry run: would apply to ${DB_REF}:"
+		echo "$PENDING" | sed 's/^/  /'
+	else
+		npx supabase db push --project-ref "$DB_REF" --password "$DB_PASS" --yes
+	fi
+elif [ "$SKIP_DB" = 0 ]; then
+	echo "Database already up to date"
 fi
 
 # Each target builds in its own Vite mode, so preprod bakes in .env.preprod and production bakes in
