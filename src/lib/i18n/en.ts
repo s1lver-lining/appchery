@@ -1665,8 +1665,9 @@ insetHint:
 		open: 'Open the app',
 		openLong: 'Open Appchery',
 		hero: {
-			title: 'Every arrow, on the phone that shot it.',
-			body: 'Score a round, tune a bow, train for the shot. Appchery records it all on your own device, works with no signal at all, and asks for nothing in return.',
+			title: 'Everything you did on the shooting line, in one place.',
+			body: 'Score a round, tune a bow, count the arrows nobody counts, train for the shot. Appchery keeps the whole outing on your own device, works with no signal at all, and asks for nothing in return.',
+			session: 'An outing as the app records it',
 			free: 'Free, open source, no account needed',
 			offline: 'Works offline'
 		},
@@ -1717,6 +1718,8 @@ insetHint:
 		sample: {
 			round: 'WA 720 · 70m',
 			end: 'End 4 of 12',
+			place: 'Club field',
+			when: 'Tuesday, 18:30',
 			average: 'Rolling average'
 		}
 	}

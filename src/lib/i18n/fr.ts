@@ -1680,8 +1680,9 @@ insetHint:
 		open: 'Ouvrir l’appli',
 		openLong: 'Ouvrir Appchery',
 		hero: {
-			title: 'Chaque flèche, sur le téléphone qui l’a tirée.',
-			body: 'Marquez un tir, réglez un arc, préparez le geste. Appchery enregistre tout sur votre appareil, fonctionne sans le moindre réseau, et ne demande rien en retour.',
+			title: 'Tout ce que vous avez fait sur le pas de tir, au même endroit.',
+			body: 'Marquez un tir, réglez un arc, comptez les flèches que personne ne compte, préparez le geste. Appchery garde la sortie entière sur votre appareil, fonctionne sans le moindre réseau, et ne demande rien en retour.',
+			session: 'Une sortie telle que l’appli l’enregistre',
 			free: 'Gratuit, libre, sans compte',
 			offline: 'Fonctionne hors ligne'
 		},
@@ -1732,6 +1733,8 @@ insetHint:
 		sample: {
 			round: 'WA 720 · 70m',
 			end: 'Volée 4 sur 12',
+			place: 'Terrain du club',
+			when: 'Mardi, 18h30',
 			average: 'Moyenne glissante'
 		}
 	}

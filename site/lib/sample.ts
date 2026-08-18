@@ -1,4 +1,5 @@
 import { BADGES, type EarnedBadge } from '$lib/domain/badges';
+import type { IconName } from '$lib/ui/Icon.svelte';
 import { EXERCISES } from '$lib/domain/exercises';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import type { Shot } from '$lib/domain/rounds/types';
@@ -91,3 +92,50 @@ export const SAMPLE_BADGES: EarnedBadge[] = (
 }));
 
 export const SAMPLE_EXERCISE = EXERCISES.find((entry) => entry.key === 'bandPullApart')!;
+
+/**
+ * One outing, laid out the way the app lays one out: a goal to shoot against, the weather it was
+ * shot in, the arrows that belong to no round, and everything done that day. The kinds are the
+ * point of the list, so it holds a round, a tuning, a strength set and a run rather than four
+ * rounds.
+ */
+export interface SampleActivity {
+	kind: 'scoring' | 'other';
+	icon: IconName;
+	/** A dictionary key where the app already has the words, so the list speaks both languages. */
+	titleKey?: string;
+	title?: string;
+	detailKey?: string;
+	detail?: string;
+	score?: number;
+}
+
+export const SESSION = {
+	arrows: 245,
+	goal: 300,
+	trainingArrows: 24,
+	temperature: '14°',
+	wind: '12 km/h',
+	activities: [
+		{
+			kind: 'scoring',
+			icon: 'target',
+			title: 'WA 720 (70m)',
+			detail: '72 · 12 × 6',
+			score: 648
+		},
+		{
+			kind: 'other',
+			icon: 'wrench',
+			titleKey: 'tuning.template.weight-ratio',
+			detailKey: 'tuning.title'
+		},
+		{
+			kind: 'other',
+			icon: 'exercise',
+			titleKey: 'exercises.item.bandPullApart.name',
+			detail: '3 × 15'
+		},
+		{ kind: 'other', icon: 'run', titleKey: 'exercises.activity.running', detail: '5.2 km · 27 min' }
+	] satisfies SampleActivity[]
+};
