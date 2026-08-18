@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { LOCALES, LOCALE_NAMES, locale, t } from '$lib/i18n';
-	import { APP_URL, SOURCE_URL } from './app';
+	import { APP_URL } from './app';
 </script>
 
 <footer class="border-t border-line bg-surface">
@@ -11,7 +11,6 @@
 		</div>
 		<div class="flex flex-wrap items-center gap-4 sm:ml-auto">
 			<a class="font-medium text-brand-text" href={APP_URL}>app.appchery.com</a>
-			<a class="font-medium text-brand-text" href={SOURCE_URL}>{$t('site.footer.source')}</a>
 			<span class="flex gap-2">
 				{#each LOCALES as code (code)}
 					<button

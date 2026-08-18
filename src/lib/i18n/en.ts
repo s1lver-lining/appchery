@@ -1709,7 +1709,6 @@ insetHint:
 			body: 'It opens in the browser and installs to the home screen from there. Nothing to sign up for.'
 		},
 		footer: {
-			source: 'Source code',
 			licence: 'Free software under the AGPL.',
 			language: 'Language'
 		},

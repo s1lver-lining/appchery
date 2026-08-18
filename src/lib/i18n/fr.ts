@@ -1724,7 +1724,6 @@ insetHint:
 			body: 'Elle s’ouvre dans le navigateur et s’installe sur l’écran d’accueil depuis là. Aucune inscription.'
 		},
 		footer: {
-			source: 'Code source',
 			licence: 'Logiciel libre sous licence AGPL.',
 			language: 'Langue'
 		},
