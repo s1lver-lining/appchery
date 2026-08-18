@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs the target face detector over a picture and reports what it found.
+# Runs the target face detector over a picture or a recorded session and reports what it found.
 #
 #   ./scripts/arrow_detector.sh photo.jpg
 #   ./scripts/arrow_detector.sh photo.jpg -o overlay.png
@@ -7,7 +7,15 @@
 #   ./scripts/arrow_detector.sh photo.jpg --ml               # the learned detector
 #   ./scripts/arrow_detector.sh photo.jpg --ml --threshold 0.5
 #
-# Any format the browser can decode works: png, jpg, webp, gif, bmp, avif.
+#   ./scripts/arrow_detector.sh session.webm                 # writes session-overlay.mp4
+#   ./scripts/arrow_detector.sh session.webm --watch         # and plays it
+#   ./scripts/arrow_detector.sh session.webm --json          # just the numbers, no video written
+#   ./scripts/arrow_detector.sh session.webm --limit 300     # only the first 300 frames
+#
+# Any format the browser can decode works: png, jpg, webp, gif, bmp, avif. A video is anything ffmpeg
+# decodes, and is replayed through the live scanner rather than analysed frame by frame: the
+# background reference, the settle counter and the tracker's evidence all build up over time, so
+# frames considered independently would measure a detector the app does not ship.
 #
 # Both detectors answer in the same coordinates and draw the same way, so running one after the other
 # over the same picture shows exactly where they disagree.
@@ -20,7 +28,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-	echo "usage: $(basename "$0") <image> [--ml] [-o overlay.png] [--json] [--scale 2] [--threshold 0.4]" >&2
+	echo "usage: $(basename "$0") <image|video> [--ml] [-o out] [--json] [--watch] [--scale 2] [--threshold 0.4]" >&2
 	exit 2
 fi
 
@@ -41,5 +49,15 @@ if [[ -z "$CHROMIUM" ]]; then
 	echo "No Chromium found. Install one, or set CHROMIUM to its path." >&2
 	exit 1
 fi
+
+# A video is decoded and re-encoded by ffmpeg, so it has to be there before anything starts.
+case "${1,,}" in
+	*.webm | *.mp4 | *.mov | *.mkv | *.avi | *.m4v)
+		if ! command -v ffmpeg >/dev/null || ! command -v ffprobe >/dev/null; then
+			echo "ffmpeg and ffprobe are needed to replay a video. Install them first." >&2
+			exit 1
+		fi
+		;;
+esac
 
 CHROMIUM="$CHROMIUM" exec node scripts/arrow_detector.mjs "$@"

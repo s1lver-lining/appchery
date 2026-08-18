@@ -15,7 +15,7 @@ import { extname, resolve, join } from 'node:path';
 const args = process.argv.slice(2);
 
 /** Flags that take a value, so the value is never mistaken for the file name. */
-const TAKES_VALUE = new Set(['-o', '--output', '--scale', '--tune', '--threshold']);
+const TAKES_VALUE = new Set(['-o', '--output', '--scale', '--tune', '--threshold', '--limit', '--every', '--arrows']);
 
 const flags = new Map();
 const loose = [];
@@ -40,10 +40,13 @@ const threshold = Number(flags.get('--threshold')) || undefined;
 
 if (!input) {
 	console.error(
-		'usage: arrow_detector.sh <image> [--ml] [-o overlay.png] [--json] [--scale 2] [--threshold 0.4]'
+		'usage: arrow_detector.sh <image|video> [--ml] [-o out] [--json] [--scale 2] [--threshold 0.4]'
 	);
 	process.exit(2);
 }
+
+/** Anything ffmpeg will decode as a session recording, which is a different job from a photograph. */
+const VIDEO = new Set(['.webm', '.mp4', '.mov', '.mkv', '.avi', '.m4v']);
 
 const MIME = {
 	'.png': 'image/png',
@@ -66,6 +69,21 @@ if (learned) {
 		console.error('  node scripts/prepare-arrows.mjs && .venv-ml/bin/python scripts/train-arrows.py');
 		process.exit(1);
 	}
+}
+
+if (VIDEO.has(extname(input).toLowerCase())) {
+	const { replayVideo } = await import('./video_detector.mjs');
+	await replayVideo({
+		input,
+		output,
+		watch: flags.has('--watch'),
+		model,
+		json,
+		limit: Number(flags.get('--limit')) || 0,
+		everyMs: Number(flags.get('--every')) || 0,
+		arrows: Number(flags.get('--arrows')) || 0
+	});
+	process.exit(0);
 }
 
 const bundled = await build({

@@ -21,6 +21,8 @@ export interface ScanResult {
 	arrows: Impact[];
 	/** Detections still gathering evidence, drawn faintly so the archer sees it working. */
 	pending: Impact[];
+	/** Proposals this frame produced, before the tracker judged them. Diagnostic, not used for scoring. */
+	detections: number;
 }
 
 export interface ScannerOptions {
@@ -90,6 +92,19 @@ export class Scanner {
 
 	get locatedAll(): FaceLocation[] {
 		return this.faces;
+	}
+
+	/** Frames the face has held still, exposed so a replay can show why detection is or is not running. */
+	get settleCount(): number {
+		return this.settled;
+	}
+
+	get arrows(): Impact[] {
+		return this.tracker.arrows;
+	}
+
+	get pending(): Impact[] {
+		return this.tracker.pending;
 	}
 
 	/**
@@ -167,7 +182,8 @@ export class Scanner {
 				steady,
 				found: [],
 				arrows: this.tracker.arrows,
-				pending: this.tracker.pending
+				pending: this.tracker.pending,
+				detections: 0
 			};
 		}
 
@@ -216,7 +232,8 @@ export class Scanner {
 			steady,
 			found,
 			arrows: this.tracker.arrows,
-			pending: this.tracker.pending
+			pending: this.tracker.pending,
+			detections: detections.length
 		};
 	}
 
