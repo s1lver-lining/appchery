@@ -776,7 +776,7 @@ export const fr: Dictionary = {
 		},
 		bestOn: 'Record le {date}',
 		spread: 'Écart',
-		distribution: 'Où les flèches ont touché',
+		distribution: 'Où les flèches sont arrivées',
 		byEnd: 'Au fil du tir',
 		byEndHint: "Moyenne par flèche à chaque volée, dans l'ordre où elles ont été tirées.",
 		byEndCount: 'Sur {n} tirs.',
@@ -812,7 +812,7 @@ export const fr: Dictionary = {
 			partOfDay: 'Score selon le moment de la journée',
 			weekday: 'Score selon le jour de la semaine',
 			place: 'Score selon le lieu',
-			distribution: 'Où les flèches ont touché',
+			distribution: 'Où les flèches sont arrivées',
 			volumeByRound: 'Flèches par tir'
 		},
 		perArrowHint: 'Score par flèche, pour comparer des tirs de longueurs différentes.',
