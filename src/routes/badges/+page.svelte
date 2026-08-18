@@ -16,7 +16,15 @@
 	const origin = $derived(originOf($page.url, '/stats'));
 	$effect(() => setPageUp(origin));
 
-	const FAMILIES: BadgeFamily[] = ['volume', 'habit', 'record', 'accuracy', 'milestone', 'ffta'];
+	const FAMILIES: BadgeFamily[] = [
+		'volume',
+		'habit',
+		'record',
+		'accuracy',
+		'milestone',
+		'training',
+		'ffta'
+	];
 
 	let badges = $state<EarnedBadge[]>([]);
 	let opened = $state<EarnedBadge | null>(null);

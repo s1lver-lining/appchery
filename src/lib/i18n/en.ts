@@ -1464,7 +1464,7 @@ insetHint:
 	},
 	badges: {
 		title: 'Badges',
-		hint: 'Earned by shooting, kept once won.',
+		hint: 'Earned by shooting and by the work behind it, kept once won.',
 		earnedCount: '{n} of {total} earned',
 		earnedOn: 'Earned {date}',
 		locked: 'Not earned yet',
@@ -1482,9 +1482,30 @@ insetHint:
 			record: 'Records',
 			accuracy: 'Accuracy',
 			milestone: 'Firsts',
+			training: 'Training',
 			ffta: 'FFTA progression arrows'
 		},
 		list: {
+			firstStrength: {
+				name: 'Off the Line',
+				hint: 'Finish a set of strength work.'
+			},
+			tenStrengthSessions: {
+				name: 'Built, Not Bought',
+				hint: 'Do {target} sessions of strength work.'
+			},
+			hundredSets: {
+				name: 'A Hundred Sets',
+				hint: 'Complete {target} sets in all.'
+			},
+			firstRun: {
+				name: 'First Steps',
+				hint: 'Record a run.'
+			},
+			fiftyKilometres: {
+				name: 'Long Way Round',
+				hint: 'Run 50 km in all.'
+			},
 			beatBeginner: {
 				name: 'First Blood, Silicon',
 				hint: 'Beat the beginner bot.'

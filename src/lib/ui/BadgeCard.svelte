@@ -48,7 +48,10 @@
 		<!-- What it pays, on the end of the rule: it is part of what the badge is worth chasing. -->
 		<p class="text-xs text-muted">
 			{hint}
-			<span class="whitespace-nowrap">{$t('badges.xpWorth', { xp: badge.definition.xp })}</span>
+			<!-- Training badges pay nothing, and a badge reading plus nothing looks like a bug. -->
+			{#if badge.definition.xp > 0}
+				<span class="whitespace-nowrap">{$t('badges.xpWorth', { xp: badge.definition.xp })}</span>
+			{/if}
 		</p>
 
 		{#if badge.earnedAt !== null}

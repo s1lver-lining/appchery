@@ -146,8 +146,17 @@ describe('matches', () => {
 });
 
 describe('badges', () => {
-	it('values every badge in the catalogue', () => {
-		for (const badge of BADGES) expect(badge.xp).toBeGreaterThan(0);
+	it('values every badge earned by shooting', () => {
+		for (const badge of BADGES.filter((entry) => entry.family !== 'training'))
+			expect(badge.xp).toBeGreaterThan(0);
+	});
+
+	// The level is a record of shooting, so a badge won by running or by bandwork pays nothing at all.
+	it('pays nothing for a badge earned away from the shooting line', () => {
+		const training = BADGES.filter((entry) => entry.family === 'training');
+		expect(training.length).toBeGreaterThan(0);
+		for (const badge of training) expect(badge.xp).toBe(0);
+		expect(experience({ activities: [], badges: training.map((entry) => entry.key) }).total).toBe(0);
 	});
 
 	it('pays a badge once however many rows name it', () => {

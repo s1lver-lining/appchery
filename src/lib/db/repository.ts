@@ -17,8 +17,15 @@ import {
 	type MatchEnd
 } from '$lib/domain/matches';
 import type { CapTargetPlan } from '$lib/import/captarget';
-import { STRENGTH_KIND, isStrengthDone, serialiseStrength, type StrengthPlan } from '$lib/domain/strength';
-import { RUNNING_KIND, isRunDone, serialiseRun, type RunRecord } from '$lib/domain/running';
+import {
+	STRENGTH_KIND,
+	isStrengthDone,
+	parseStrength,
+	serialiseStrength,
+	setsDone,
+	type StrengthPlan
+} from '$lib/domain/strength';
+import { RUNNING_KIND, isRunDone, parseRun, serialiseRun, type RunRecord } from '$lib/domain/running';
 import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
 import { LIMITS, safeCount, safeText } from '$lib/import/limits';
 
@@ -1445,6 +1452,18 @@ export async function listBadges() {
  * Everything the badge rules read, gathered in one pass. Assembled here rather than in the domain
  * because the rules must stay testable without a database, see doc/dev_guidelines.md.
  */
+/** What an activity that shoots nothing did, read off its measurements once for the badge rules. */
+function trainingFigures(kind: string, measurements: string | null) {
+	if (kind === STRENGTH_KIND) {
+		return { setsDone: setsDone(parseStrength(measurements)), distanceM: 0, seconds: 0 };
+	}
+	if (kind === RUNNING_KIND) {
+		const run = parseRun(measurements);
+		return { setsDone: 0, distanceM: run.distanceM ?? 0, seconds: run.durationSeconds ?? 0 };
+	}
+	return null;
+}
+
 export async function loadBadgeInput(): Promise<BadgeInput> {
 	const activities = await listAllActivities();
 	const sessions = await listSessions();
@@ -1540,7 +1559,8 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 				temperatureC: typeof weather?.temperatureC === 'number' ? weather.temperatureC : null,
 				location: session?.location ?? null,
 				ends: endsByActivity.get(activity.id) ?? [],
-				match: matchResults.get(activity.id) ?? null
+				match: matchResults.get(activity.id) ?? null,
+				training: trainingFigures(activity.kind, activity.measurements)
 			};
 		}),
 		sightMarks: marks,

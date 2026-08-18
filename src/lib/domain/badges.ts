@@ -8,6 +8,8 @@ import {
 	type ScoredActivity
 } from './stats';
 import { BOT_LEVELS, type BotLevel } from './bots';
+import { STRENGTH_KIND } from './strength';
+import { RUNNING_KIND } from './running';
 import { startOfDay, startOfWeek } from './dates';
 import { yardsToMetres } from './units';
 
@@ -19,7 +21,14 @@ import { yardsToMetres } from './units';
  * happened to look. Awarding is the caller's job, see src/lib/db/repository.ts.
  */
 
-export type BadgeFamily = 'volume' | 'habit' | 'record' | 'accuracy' | 'milestone' | 'ffta';
+export type BadgeFamily =
+	| 'volume'
+	| 'habit'
+	| 'record'
+	| 'accuracy'
+	| 'milestone'
+	| 'training'
+	| 'ffta';
 
 /** A subset of the icon set, named here so the domain never imports from the UI. */
 export type BadgeIcon =
@@ -32,7 +41,9 @@ export type BadgeIcon =
 	| 'storm'
 	| 'snow'
 	| 'sun'
-	| 'chart';
+	| 'chart'
+	| 'exercise'
+	| 'run';
 
 export interface BadgeEnd {
 	/** Which stage of the round the end belongs to, which is what gives it its face size. */
@@ -58,6 +69,11 @@ export interface BadgeActivity extends ScoredActivity {
 	temperatureC: number | null;
 	location: string | null;
 	ends: BadgeEnd[];
+	/**
+	 * What an activity that shoots nothing did, worked out where the measurements are parsed. Null on
+	 * everything that shoots, which is what keeps a training rule from ever reading a round.
+	 */
+	training?: { setsDone: number; distanceM: number; seconds: number } | null;
 	/**
 	 * How a match ended, on match activities the archer shot themselves. Null everywhere else, and on
 	 * a card kept for somebody else: their win is not the archer's to be given a badge for.
@@ -90,6 +106,10 @@ interface History extends BadgeInput {
 	finished: BadgeActivity[];
 	/** Matches the archer shot and won, oldest first. */
 	won: BadgeActivity[];
+	/** Strength sessions, oldest first. Never shooting, so they are counted nowhere else. */
+	strength: BadgeActivity[];
+	/** Runs, oldest first. */
+	runs: BadgeActivity[];
 }
 
 export interface BadgeDefinition {
@@ -144,6 +164,10 @@ function prepare(input: BadgeInput): History {
 		// Every badge counts from here, so the one place a badge can learn about arrows is the one
 		// place that has to know an hour of bandwork shot none of them.
 		shooting: byDate.filter((a) => shootsArrows(a.kind) && a.arrowsShot > 0),
+		// Counted by the work in them rather than by the row existing: an activity opened and left
+		// empty is not a session of anything.
+		strength: byDate.filter((a) => a.kind === STRENGTH_KIND && (a.training?.setsDone ?? 0) > 0),
+		runs: byDate.filter((a) => a.kind === RUNNING_KIND && (a.training?.distanceM ?? 0) > 0),
 		scoring,
 		finished: scoring.filter(isComplete),
 		won: byDate.filter((a) => a.match?.won === true)
@@ -414,6 +438,39 @@ function volume(key: string, target: number, xp: number): BadgeDefinition {
 	};
 }
 
+/** Every set of every strength session, which is what a body of strength work is measured in. */
+function totalSets(history: History): number {
+	return history.strength.reduce((sum, a) => sum + (a.training?.setsDone ?? 0), 0);
+}
+
+/** Metres run, kept in metres so a badge counting kilometres rounds once, at the end. */
+function totalRun(history: History): number {
+	return history.runs.reduce((sum, a) => sum + (a.training?.distanceM ?? 0), 0);
+}
+
+/**
+ * Training badges pay nothing. The level is a record of shooting, and an archer who ran a marathon
+ * has not shot a single arrow: what these are worth is being on the list, see doc/badges.md.
+ */
+function training(
+	key: string,
+	icon: BadgeIcon,
+	target: number,
+	running: (history: History) => number,
+	list: (history: History) => BadgeActivity[],
+	per: (activity: BadgeActivity) => number
+): BadgeDefinition {
+	return {
+		key,
+		family: 'training',
+		icon,
+		xp: 0,
+		hintParams: { target },
+		earnedAt: (h) => whenReached(list(h), per, target),
+		progress: (h) => ({ current: running(h), target })
+	};
+}
+
 function habitDays(key: string, target: number, xp: number): BadgeDefinition {
 	return {
 		key,
@@ -495,6 +552,27 @@ function progressionArrow(arrow: ProgressionArrow): BadgeDefinition {
 }
 
 export const BADGES: BadgeDefinition[] = [
+	// Training: work done for the shooting rather than shooting. Nothing here touches an arrow.
+	training('firstStrength', 'exercise', 1, (h) => h.strength.length, (h) => h.strength, () => 1),
+	training('tenStrengthSessions', 'exercise', 10, (h) => h.strength.length, (h) => h.strength, () => 1),
+	training(
+		'hundredSets',
+		'exercise',
+		100,
+		totalSets,
+		(h) => h.strength,
+		(a) => a.training?.setsDone ?? 0
+	),
+	training('firstRun', 'run', 1, (h) => h.runs.length, (h) => h.runs, () => 1),
+	// Counted in kilometres rather than in the metres it is stored in: nobody chases 50,000 of them.
+	training(
+		'fiftyKilometres',
+		'run',
+		50,
+		(h) => Math.floor(totalRun(h) / 1000),
+		(h) => h.runs,
+		(a) => (a.training?.distanceM ?? 0) / 1000
+	),
 	{
 		key: 'firstMatchWon',
 		family: 'milestone',

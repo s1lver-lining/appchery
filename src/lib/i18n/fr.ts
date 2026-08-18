@@ -1477,7 +1477,7 @@ insetHint:
 	},
 	badges: {
 		title: 'Badges',
-		hint: 'Gagnés en tirant, gardés une fois acquis.',
+		hint: 'Gagnés en tirant et par le travail derrière, gardés une fois acquis.',
 		earnedCount: '{n} sur {total} obtenus',
 		earnedOn: 'Obtenu le {date}',
 		locked: 'Pas encore obtenu',
@@ -1494,9 +1494,30 @@ insetHint:
 			record: 'Records',
 			accuracy: 'Précision',
 			milestone: 'Premières fois',
+			training: 'Entraînement',
 			ffta: 'Flèches de progression FFTA'
 		},
 		list: {
+			firstStrength: {
+				name: 'Le premier pas',
+				hint: 'Terminer une série de renforcement.'
+			},
+			tenStrengthSessions: {
+				name: 'Construit, pas acheté',
+				hint: 'Faire {target} séances de renforcement.'
+			},
+			hundredSets: {
+				name: 'Cent séries',
+				hint: 'Terminer {target} séries en tout.'
+			},
+			firstRun: {
+				name: 'Premières foulées',
+				hint: 'Noter une sortie de course.'
+			},
+			fiftyKilometres: {
+				name: 'Le tour du lac',
+				hint: 'Courir 50 km en tout.'
+			},
 			beatBeginner: {
 				name: 'Premier circuit',
 				hint: 'Battre le bot débutant.'

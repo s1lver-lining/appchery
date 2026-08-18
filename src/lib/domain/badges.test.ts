@@ -479,3 +479,72 @@ describe('what an end did is judged on a whole end', () => {
 		expect(badge([activity({ id: 'b', ends: golden })], 'goldenEnd').earnedAt).toBe(MONDAY);
 	});
 });
+
+/**
+ * Training badges: the one thing that notices an activity which shoots nothing. Everything else in
+ * the catalogue has to stay blind to them, which is what the last two cases here check.
+ */
+describe('training badges', () => {
+	const strength = (id: string, sets: number, at = MONDAY): BadgeActivity =>
+		activity({
+			id,
+			startedAt: at,
+			kind: 'strength',
+			arrowsShot: 0,
+			totalScore: 0,
+			roundDefinitionId: null,
+			round: null,
+			training: { setsDone: sets, distanceM: 0, seconds: 0 }
+		});
+
+	const run = (id: string, metres: number, at = MONDAY): BadgeActivity =>
+		activity({
+			id,
+			startedAt: at,
+			kind: 'running',
+			arrowsShot: 0,
+			totalScore: 0,
+			roundDefinitionId: null,
+			round: null,
+			training: { setsDone: 0, distanceM: metres, seconds: 1800 }
+		});
+
+	it('is earned by the first session that did any work', () => {
+		expect(badge([strength('s', 3)], 'firstStrength').earnedAt).toBe(MONDAY);
+		expect(badge([run('r', 5000)], 'firstRun').earnedAt).toBe(MONDAY);
+	});
+
+	it('ignores an activity that was opened and left empty', () => {
+		expect(badge([strength('s', 0)], 'firstStrength').earnedAt).toBeNull();
+		expect(badge([run('r', 0)], 'firstRun').earnedAt).toBeNull();
+	});
+
+	it('counts sets across sessions and dates the one that got there', () => {
+		const sessions = Array.from({ length: 10 }, (_, i) => strength(`s${i}`, 10, MONDAY + i * DAY));
+		expect(badge(sessions, 'hundredSets').earnedAt).toBe(MONDAY + 9 * DAY);
+		expect(badge(sessions.slice(0, 5), 'hundredSets')).toMatchObject({
+			earnedAt: null,
+			progress: { current: 50, target: 100 }
+		});
+	});
+
+	it('counts kilometres across runs', () => {
+		const runs = Array.from({ length: 5 }, (_, i) => run(`r${i}`, 10_000, MONDAY + i * DAY));
+		expect(badge(runs, 'fiftyKilometres').earnedAt).toBe(MONDAY + 4 * DAY);
+	});
+
+	it('pays nothing, because the level is a record of shooting', () => {
+		for (const key of ['firstStrength', 'tenStrengthSessions', 'hundredSets', 'firstRun', 'fiftyKilometres'])
+			expect(BADGES.find((b) => b.key === key)!.xp).toBe(0);
+	});
+
+	it('leaves the arrow badges alone, however much training is done', () => {
+		const training = [strength('s', 40), run('r', 60_000)];
+		expect(badge(training, 'thousandArrows').progress?.current).toBe(0);
+		expect(badge(training, 'thousandArrows').earnedAt).toBeNull();
+	});
+
+	it('does not count a training session as a day shot', () => {
+		expect(badge([strength('s', 6), run('r', 5000)], 'sevenDays').earnedAt).toBeNull();
+	});
+});
