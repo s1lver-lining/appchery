@@ -149,6 +149,10 @@ async function step({ src, nowMs, want }) {
 
 	const state = window.REPLAY.push(reduced, nowMs);
 	const summary = {
+		// Where the face landed, so the caller can measure how much the fit shakes between frames.
+		cx: state.faces[0]?.cx ?? null,
+		cy: state.faces[0]?.cy ?? null,
+		radius: state.faces[0]?.semiMajor ?? null,
 		faces: state.faces.length,
 		steady: state.steady,
 		settled: state.settled,
@@ -226,6 +230,25 @@ async function step({ src, nowMs, want }) {
 
 function report(input, states, fps, learned, json) {
 	const detections = states.filter((s) => s.detected);
+	/**
+	 * How far the fitted centre moves between consecutive frames, as a share of the face radius. This
+	 * is the flicker the archer sees as the overlay jumping, and it is the only way to tell a fix from
+	 * a change of mood about one.
+	 */
+	const jumps = [];
+	const onDetect = [];
+	const onTrack = [];
+	for (let i = 1; i < states.length; i++) {
+		const before = states[i - 1];
+		const now = states[i];
+		if (before.cx === null || now.cx === null || !now.radius) continue;
+		const jump = Math.hypot(now.cx - before.cx, now.cy - before.cy) / now.radius;
+		jumps.push(jump);
+		(now.detected ? onDetect : onTrack).push(jump);
+	}
+	const mean = (list) => (list.length ? list.reduce((a, b) => a + b, 0) / list.length : 0);
+	jumps.sort((a, b) => a - b);
+	const at = (share) => (jumps.length ? jumps[Math.floor(jumps.length * share)] : 0);
 	const cost = detections.map((s) => s.cost).sort((a, b) => a - b);
 	const summary = {
 		video: basename(input),
@@ -237,6 +260,12 @@ function report(input, states, fps, learned, json) {
 		detectionPasses: detections.length,
 		proposals: detections.reduce((total, s) => total + s.detections, 0),
 		arrowsConfirmed: Math.max(0, ...states.map((s) => s.arrows)),
+		jitterMedian: Number((at(0.5) * 100).toFixed(2)),
+		jitterP90: Number((at(0.9) * 100).toFixed(2)),
+		jitterP99: Number((at(0.99) * 100).toFixed(2)),
+		jitterOnDetect: Number((mean(onDetect) * 100).toFixed(2)),
+		jitterOnTrack: Number((mean(onTrack) * 100).toFixed(2)),
+		jitterFrozen: jumps.length ? Number(((jumps.filter((j) => j === 0).length / jumps.length) * 100).toFixed(1)) : 0,
 		medianDetectMs: cost.length ? Number(cost[Math.floor(cost.length / 2)].toFixed(1)) : 0,
 		worstDetectMs: cost.length ? Number(cost[cost.length - 1].toFixed(1)) : 0
 	};
@@ -252,6 +281,7 @@ function report(input, states, fps, learned, json) {
 	console.log(`  steady enough     ${summary.framesSteady} frames (${share(summary.framesSteady)})`);
 	console.log(`  proposals         ${summary.proposals} over ${summary.detectionPasses} detection passes`);
 	console.log(`  arrows confirmed  ${summary.arrowsConfirmed}`);
+	console.log(`  fit jitter        ${summary.jitterMedian}% of radius median, ${summary.jitterP90}% at p90`);
 	console.log(`  detection cost    ${summary.medianDetectMs}ms median, ${summary.worstDetectMs}ms worst`);
 
 	// The two numbers that explain a session that found nothing, which the frame count alone cannot.

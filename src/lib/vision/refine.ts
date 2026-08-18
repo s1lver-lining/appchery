@@ -1,4 +1,5 @@
-import { classify, type RingColour } from './rings';
+import type { RingColour } from './rings';
+import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
 /**
@@ -97,39 +98,118 @@ const ANGLES = 24;
  */
 const EDGE_WEIGHT = 3;
 
+/**
+ * How wide the soft edge of a colour decision is, in the units each test uses.
+ *
+ * The fit is found by walking downhill, so the thing being walked on has to have a slope. Counting
+ * samples that land in the right colour does not: a move smaller than the blur between two rings
+ * flips no sample at all, the score comes back identical, and the descent concludes it is already at
+ * the best place it can reach. That deadband is about a ring wide, which is why the overlay used to
+ * sit still for a third of a second and then jump. Scoring each sample by how well it matches instead
+ * of whether it matches gives every small move somewhere to go.
+ */
+const VALUE_SOFT = 25;
+const SATURATION_SOFT = 0.12;
+const HUE_SOFT = 14;
+
+/** Rises from 0 to 1 across a band of width `soft` centred on `edge`. */
+function ramp(value: number, edge: number, soft: number): number {
+	return Math.min(1, Math.max(0, (value - edge) / soft + 0.5));
+}
+
+/** How far into a hue window a hue sits, softly, measured the short way round the circle. */
+function inHue(h: number, low: number, high: number): number {
+	const centre = (low + high) / 2;
+	const half = (high - low) / 2;
+	const away = Math.abs(((h - centre + 540) % 360) - 180);
+	return 1 - ramp(away, half, HUE_SOFT);
+}
+
+/** How much a pixel looks like one target colour, from 0 to 1, with no hard decision anywhere. */
+function affinity(r: number, g: number, b: number, colour: RingColour): number {
+	const { h, s, v } = rgbToHsv(r, g, b);
+	const bright = ramp(v, 70, VALUE_SOFT);
+	const colourful = ramp(s, 0.22, SATURATION_SOFT);
+
+	switch (colour) {
+		case 'dark':
+			return 1 - bright;
+		case 'light':
+			return bright * (1 - colourful) * ramp(v, 150, VALUE_SOFT);
+		case 'grey':
+			return bright * (1 - colourful) * (1 - ramp(v, 150, VALUE_SOFT));
+		case 'gold':
+			return bright * colourful * inHue(h, 35, 75);
+		case 'red':
+			return bright * colourful * inHue(h, -30, 20);
+		case 'blue':
+			return bright * colourful * inHue(h, 170, 260);
+		default:
+			return 0;
+	}
+}
+
+/** The best match among the colours a ring is allowed to show. */
+function best(r: number, g: number, b: number, colours: RingColour[]): number {
+	let most = 0;
+	for (const colour of colours) most = Math.max(most, affinity(r, g, b, colour));
+	return most;
+}
+
 function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 	const cos = Math.cos(face.rotation);
 	const sin = Math.sin(face.rotation);
 	let hits = 0;
 	let total = 0;
 
-	const at = (radius: number, angle: number): RingColour | null => {
+	/**
+	 * Bilinear, because rounding a sample to the nearest pixel quantises the fit exactly the way
+	 * counting colours does: the geometry can slide most of a pixel before any sample reads anything
+	 * different.
+	 */
+	const at = (radius: number, angle: number, colours: RingColour[]): number | null => {
 		const fx = Math.cos(angle) * radius * face.semiMajor;
 		const fy = Math.sin(angle) * radius * face.semiMinor;
-		const x = Math.round(face.cx + fx * cos - fy * sin);
-		const y = Math.round(face.cy + fx * sin + fy * cos);
-		if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) return null;
-		const p = (y * frame.width + x) * 4;
-		return classify(frame.data[p], frame.data[p + 1], frame.data[p + 2]);
+		const x = face.cx + fx * cos - fy * sin;
+		const y = face.cy + fx * sin + fy * cos;
+		if (x < 0 || y < 0 || x >= frame.width - 1 || y >= frame.height - 1) return null;
+
+		const x0 = Math.floor(x);
+		const y0 = Math.floor(y);
+		const ax = x - x0;
+		const ay = y - y0;
+		let r = 0;
+		let g = 0;
+		let b = 0;
+		for (let j = 0; j <= 1; j++) {
+			for (let i = 0; i <= 1; i++) {
+				const weight = (i ? ax : 1 - ax) * (j ? ay : 1 - ay);
+				const p = ((y0 + j) * frame.width + (x0 + i)) * 4;
+				r += frame.data[p] * weight;
+				g += frame.data[p + 1] * weight;
+				b += frame.data[p + 2] * weight;
+			}
+		}
+		return best(r, g, b, colours);
 	};
 
 	for (let i = 0; i < ANGLES; i++) {
 		const angle = (i / ANGLES) * Math.PI * 2;
 
 		for (const band of layout.bands) {
-			const colour = at(band.radius, angle);
-			if (colour === null) continue;
+			const match = at(band.radius, angle, band.colours);
+			if (match === null) continue;
 			total += 1;
-			if (band.colours.includes(colour)) hits += 1;
+			hits += match;
 		}
 
 		for (const edge of layout.edges) {
-			const inside = at(edge.radius - EDGE_OFFSET, angle);
-			const outside = at(edge.radius + EDGE_OFFSET, angle);
+			const inside = at(edge.radius - EDGE_OFFSET, angle, edge.inner);
+			const outside = at(edge.radius + EDGE_OFFSET, angle, edge.outer);
 			if (inside === null || outside === null) continue;
 			total += EDGE_WEIGHT;
 			// Both sides at once: either alone is satisfied by a fit that has slid a whole ring over.
-			if (edge.inner.includes(inside) && edge.outer.includes(outside)) hits += EDGE_WEIGHT;
+			hits += EDGE_WEIGHT * inside * outside;
 		}
 	}
 
@@ -155,7 +235,7 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 	let bestScore = ringAgreement(frame, start);
 
 	// Steps as a share of the face radius, halving each round.
-	for (let step = 0.06; step >= 0.0075; step /= 2) {
+	for (let step = 0.06; step >= 0.002; step /= 2) {
 		let improved = true;
 		while (improved) {
 			improved = false;
@@ -186,7 +266,7 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 			for (const candidate of candidates) {
 				if (candidate.semiMinor < 4 || candidate.semiMajor < 4) continue;
 				const score = ringAgreement(frame, candidate);
-				if (score > bestScore + 1e-4) {
+				if (score > bestScore + 1e-7) {
 					bestScore = score;
 					best = candidate;
 					improved = true;
