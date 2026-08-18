@@ -26,6 +26,13 @@
 		() => true,
 		() => oncancel()
 	);
+
+	/**
+	 * The dialog can open under a finger already down, because the tab bar moves on the press and the
+	 * navigation it starts is what asks. The click that press ends with would land on the scrim and
+	 * dismiss the question unread, so the scrim only answers a press that began on it.
+	 */
+	let pressedScrim = $state(false);
 </script>
 
 <div class="fixed inset-0 z-[60] flex items-center justify-center p-4" use:portal use:lockScroll>
@@ -33,7 +40,8 @@
 		class="absolute inset-0 bg-black/50"
 		use:scrim={0.5}
 		aria-label={$t('common.cancel')}
-		onclick={oncancel}
+		onpointerdown={() => (pressedScrim = true)}
+		onclick={() => pressedScrim && oncancel()}
 	></button>
 
 	<div
