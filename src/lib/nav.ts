@@ -1,24 +1,32 @@
-import { get, writable } from 'svelte/store';
+import { get, writable } from "svelte/store";
 
 /**
  * The pages the swipe pager holds, in the order they sit on its track. They are the roots of the
  * navigation tree. The feed opens the track without a tab of its own: it is reached by swiping left
  * off home, which is what the home page's own offer of it teaches.
  */
-export const MAIN_PAGES = ['/feed', '/', '/sessions', '/equipment', '/stats', '/settings'] as const;
+export const MAIN_PAGES = [
+  "/feed",
+  "/",
+  "/sessions",
+  "/equipment",
+  "/stats",
+  "/settings",
+] as const;
 
-const strip = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path);
+const strip = (path: string) =>
+  path.length > 1 ? path.replace(/\/+$/, "") : path;
 
 export function isMainPage(path: string): boolean {
-	return (MAIN_PAGES as readonly string[]).includes(strip(path));
+  return (MAIN_PAGES as readonly string[]).includes(strip(path));
 }
 
 /** Where the back key goes from `path`, or null when the path is already a root. */
 export function parentPath(path: string): string | null {
-	const here = strip(path);
-	if (isMainPage(here)) return null;
-	const up = here.slice(0, here.lastIndexOf('/')) || '/';
-	return isMainPage(up) ? up : '/';
+  const here = strip(path);
+  if (isMainPage(here)) return null;
+  const up = here.slice(0, here.lastIndexOf("/")) || "/";
+  return isMainPage(up) ? up : "/";
 }
 
 /**
@@ -28,8 +36,8 @@ export function parentPath(path: string): string | null {
 export const pageUp = writable<string | null>(null);
 
 export function setPageUp(href: string) {
-	pageUp.set(href);
-	return () => pageUp.update((c) => (c === href ? null : c));
+  pageUp.set(href);
+  return () => pageUp.update((c) => (c === href ? null : c));
 }
 
 /**
@@ -40,35 +48,35 @@ const guards = writable<(() => boolean)[]>([]);
 export const backGuards = { subscribe: guards.subscribe };
 
 export function registerBackGuard(guard: () => boolean) {
-	guards.update((list) => [...list, guard]);
-	return () => guards.update((list) => list.filter((g) => g !== guard));
+  guards.update((list) => [...list, guard]);
+  return () => guards.update((list) => list.filter((g) => g !== guard));
 }
 
 /** The last guard registered answers first: it is the innermost thing on screen. */
 export function runBackGuards(list: (() => boolean)[]): boolean {
-	for (let i = list.length - 1; i >= 0; i--) if (list[i]()) return true;
-	return false;
+  for (let i = list.length - 1; i >= 0; i--) if (list[i]()) return true;
+  return false;
 }
 
 // A page holding changes nobody saved claims the ways out a navigation never reaches, such as a swipe.
 const leavers = writable<((leave: () => void) => void)[]>([]);
 
 export function registerLeaveGuard(ask: (leave: () => void) => void) {
-	leavers.update((list) => [...list, ask]);
-	return () => leavers.update((list) => list.filter((g) => g !== ask));
+  leavers.update((list) => [...list, ask]);
+  return () => leavers.update((list) => list.filter((g) => g !== ask));
 }
 
 /** Whether anything on screen would ask before it is left, which is what makes a way out a question. */
 export function leaveGuarded(): boolean {
-	return get(leavers).length > 0;
+  return get(leavers).length > 0;
 }
 
 /** True when a guard took the move: it asks the archer, and runs `leave` itself if they allow it. */
 export function askToLeave(leave: () => void): boolean {
-	const guard = get(leavers).at(-1);
-	if (!guard) return false;
-	guard(leave);
-	return true;
+  const guard = get(leavers).at(-1);
+  if (!guard) return false;
+  guard(leave);
+  return true;
 }
 
 /**
@@ -76,14 +84,19 @@ export function askToLeave(leave: () => void): boolean {
  * it, because the alternative is unwinding history: a page reached twice by different routes has to
  * go back to the one the archer actually came from, not to the one its URL sits under.
  */
-export function originOf<T extends string | null>(url: URL, fallback: T): string | T {
-	const from = url.searchParams.get('from');
-	// Only in app paths, so a crafted link cannot send the back arrow somewhere else entirely.
-	return from && from.startsWith('/') && !from.startsWith('//') ? from : fallback;
+export function originOf<T extends string | null>(
+  url: URL,
+  fallback: T,
+): string | T {
+  const from = url.searchParams.get("from");
+  // Only in app paths, so a crafted link cannot send the back arrow somewhere else entirely.
+  return from && from.startsWith("/") && !from.startsWith("//")
+    ? from
+    : fallback;
 }
 
 export function withOrigin(href: string, from: string): string {
-	return `${href}${href.includes('?') ? '&' : '?'}from=${encodeURIComponent(from)}`;
+  return `${href}${href.includes("?") ? "&" : "?"}from=${encodeURIComponent(from)}`;
 }
 
 /**
@@ -94,17 +107,21 @@ export function withOrigin(href: string, from: string): string {
 export const tabAsked = writable<{ href: string; at: number } | null>(null);
 
 export function askTab(href: string) {
-	tabAsked.set({ href, at: Date.now() });
+  tabAsked.set({ href, at: Date.now() });
 }
 
-export type TabNav = { count: number; index: number; select: (index: number) => void };
+export type TabNav = {
+  count: number;
+  index: number;
+  select: (index: number) => void;
+};
 
 /** The in page tabs of the current page, so a swipe moves between them instead of between pages. */
 export const pageTabs = writable<TabNav | null>(null);
 
 export function registerTabs(nav: TabNav) {
-	pageTabs.set(nav);
-	return () => pageTabs.update((current) => (current === nav ? null : current));
+  pageTabs.set(nav);
+  return () => pageTabs.update((current) => (current === nav ? null : current));
 }
 
 /**
@@ -114,23 +131,25 @@ export function registerTabs(nav: TabNav) {
 const mainScroll = new Map<string, number>();
 
 export function keepMainScroll(path: string, top: number) {
-	mainScroll.set(strip(path), top);
+  mainScroll.set(strip(path), top);
 }
 
 export function mainScrollOf(path: string): number {
-	return mainScroll.get(strip(path)) ?? 0;
+  return mainScroll.get(strip(path)) ?? 0;
 }
 
 /** Bumped when a page is asked for its top, so a pager page already mounted goes there too. */
-export const mainScrollReset = writable<{ path: string; at: number } | null>(null);
+export const mainScrollReset = writable<{ path: string; at: number } | null>(
+  null,
+);
 
 /** A tab tap asks for the page itself, which starts at its top however far down it was left. */
 export function forgetMainScroll(path: string) {
-	mainScroll.delete(strip(path));
-	mainScrollReset.set({ path: strip(path), at: Date.now() });
+  mainScroll.delete(strip(path));
+  mainScrollReset.set({ path: strip(path), at: Date.now() });
 }
 
 /** Where `path` sits in the pager, or -1 when it is not one of the swipeable main pages. */
 export function mainPageIndex(path: string): number {
-	return (MAIN_PAGES as readonly string[]).indexOf(strip(path));
+  return (MAIN_PAGES as readonly string[]).indexOf(strip(path));
 }

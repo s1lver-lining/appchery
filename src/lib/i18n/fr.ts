@@ -431,8 +431,6 @@ export const fr: Dictionary = {
 		tightest: 'Plus groupé',
 		plotTitle: 'Band {brace} cm',
 		plotHint: 'Touchez le blason à l’endroit de chaque impact.',
-		undoArrow: 'Annuler la flèche',
-		saveEnd: 'Enregistrer la volée',
 		chartEmpty: 'Tirez une volée à au moins deux bands pour voir les courbes.',
 		chartLabel: 'Hauteur et taille du groupement selon le band',
 		chartUnits: 'Hauteur à gauche, taille du groupement à droite, en cm',

@@ -18,6 +18,8 @@
 		otherShots = [],
 		highlight = null,
 		mode = $bindable('number'),
+		plotOnly = false,
+		showPerimeter = false,
 		flush = false,
 		title,
 		footer,
@@ -33,19 +35,27 @@
 		/** The arrow being replaced, ringed so it is clear which one the next touch moves. */
 		highlight?: { x: number; y: number } | null;
 		mode?: 'number' | 'face';
+		/** An input the face answers on its own, such as a group being plotted: the keys stay locked. */
+		plotOnly?: boolean;
+		/** Rings the group's own outline, which is the whole reading of a tuning end. */
+		showPerimeter?: boolean;
 		/** Sat against the edges of the screen, as a panel that rose from the bottom of it. */
 		flush?: boolean;
 		/** What is being filled in, said in the panel's own strip. */
 		title?: Snippet;
 		/** The actions under the keys. Inside the panel, so putting it away takes them with it. */
 		footer?: Snippet;
-		onpick: (zone: Zone) => void;
+		/** Not given by a plot only pad, which has no keys to pick from. */
+		onpick?: (zone: Zone) => void;
 		onplot: (x: number, y: number) => void;
 		/** Puts the pad away. A panel that rises has to say how it goes back down. */
 		onclose?: () => void;
 	} = $props();
 
 	const keypad = $derived(scorableZones(scoreSet));
+	// The switch is left on show while it is locked, so the face reads as the input rather than as
+	// all this input has.
+	const shown = $derived(plotOnly ? 'face' : mode);
 
 	/**
 	 * The bar looks like something to pull, so it is: a drag downwards puts the pad away. Handled
@@ -123,8 +133,9 @@
 		<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
 			{#each [{ key: 'number' as const, label: $t('score.byNumber') }, { key: 'face' as const, label: $t('score.plotMode') }] as option (option.key)}
 				<button
-					class="rounded-md px-2 py-1 text-[11px] font-medium
-						{mode === option.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+					class="rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-40
+						{shown === option.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+					disabled={plotOnly}
 					onclick={() => (mode = option.key)}
 				>
 					{option.label}
@@ -134,7 +145,7 @@
 	</header>
 
 	<div class="p-3">
-		{#if mode === 'face'}
+		{#if shown === 'face'}
 			<div class="mx-auto aspect-square w-full max-w-72">
 				<TargetFace
 					{scoreSet}
@@ -142,8 +153,9 @@
 					{otherShots}
 					{highlight}
 					interactive
-					showOtherToggle
+					showOtherToggle={otherShots.length > 0}
 					showCentreToggle
+					{showPerimeter}
 					{onplot}
 				/>
 			</div>
@@ -155,7 +167,7 @@
 						style={chipStyle(zone)}
 						onclick={() => {
 							buzz();
-							onpick(zone);
+							onpick?.(zone);
 						}}
 					>
 						{zone.label}
@@ -165,7 +177,7 @@
 					class="rounded-xl border border-line py-3 text-lg font-bold text-muted transition-transform active:scale-95"
 					onclick={() => {
 						buzz();
-						onpick(missZone(scoreSet));
+						onpick?.(missZone(scoreSet));
 					}}
 				>
 					{$t('score.miss')}

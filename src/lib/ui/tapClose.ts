@@ -7,21 +7,21 @@
  * question nobody has read yet.
  */
 export function tapClose(node: HTMLElement, close: () => void) {
-	let began = false;
-	let act = close;
-	const down = () => (began = true);
-	const up = () => {
-		if (!began) return;
-		began = false;
-		act();
-	};
-	node.addEventListener('pointerdown', down);
-	node.addEventListener('click', up);
-	return {
-		update: (next: () => void) => (act = next),
-		destroy: () => {
-			node.removeEventListener('pointerdown', down);
-			node.removeEventListener('click', up);
-		}
-	};
+  let began = false;
+  let act = close;
+  const down = () => (began = true);
+  const up = () => {
+    if (!began) return;
+    began = false;
+    act();
+  };
+  node.addEventListener("pointerdown", down);
+  node.addEventListener("click", up);
+  return {
+    update: (next: () => void) => (act = next),
+    destroy: () => {
+      node.removeEventListener("pointerdown", down);
+      node.removeEventListener("click", up);
+    },
+  };
 }

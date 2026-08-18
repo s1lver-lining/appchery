@@ -14,9 +14,10 @@
 		type ShotRow
 	} from '$lib/db/repository';
 	import type { Shot } from '$lib/domain/rounds/types';
+	import ArrowPad from './ArrowPad.svelte';
+	import AutoScore from './AutoScore.svelte';
 	import BraceCurves from './BraceCurves.svelte';
 	import Icon from './Icon.svelte';
-	import TargetFace from './TargetFace.svelte';
 	import { ownsStatusBar } from './statusBar';
 	import { lockScroll } from './scrollLock';
 
@@ -53,6 +54,7 @@
 	/** The height an end is being plotted for, in millimetres, and the arrows placed so far. */
 	let plotting = $state<{ braceMm: number; shots: Omit<Shot, 'ordinal'>[] } | null>(null);
 	let adding = $state(false);
+	let scanning = $state(false);
 	/** A number input binds a number, and an empty field binds null, so the value is not a string. */
 	let newBrace = $state<number | null>(null);
 
@@ -107,6 +109,23 @@
 			...plotting,
 			shots: [...plotting.shots, shotFromPlot(scoreAt(scoreSet, x, y), x, y)]
 		};
+	}
+
+	/**
+	 * An end here has no declared length, so the camera is capped only to keep a misread boss from
+	 * pouring arrows into a group. Nothing it finds is written without being accepted anyway.
+	 */
+	const SCAN_CAP = 12;
+
+	function acceptDetected(points: { x: number; y: number }[]) {
+		scanning = false;
+		if (!plotting) return;
+		for (const point of points.slice(0, SCAN_CAP - plotting.shots.length)) plot(point.x, point.y);
+	}
+
+	function videoName(braceMm: number): string {
+		const at = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+		return `appchery-${activity.id}-brace${braceMm}-${at}.webm`;
 	}
 
 	async function commit() {
@@ -250,38 +269,58 @@
 			</button>
 		</header>
 
-		<div class="mx-auto w-full max-w-md flex-1 space-y-3 overflow-y-auto p-4">
-			<!-- Capped rather than filling: the face is square, and a tall phone would push the
-				buttons that finish the end off the bottom of the screen. -->
-			<div class="mx-auto w-full max-w-[min(80vw,22rem)]">
-				<TargetFace
-					{scoreSet}
-					shots={plotting.shots.map((shot, index) => ({ ...shot, ordinal: index + 1 }))}
-					interactive
-					showPerimeter
-					showCentreToggle
-					onplot={plot}
-				/>
-			</div>
-			<p class="text-center text-xs text-muted">{$t('brace.plotHint')}</p>
+		<div class="mx-auto w-full max-w-md flex-1 overflow-y-auto p-4">
+			<!-- The same pad the rounds are scored on, with the keys locked: a group is read off where
+				the arrows landed, and a number carries none of that. -->
+			<ArrowPad
+				{scoreSet}
+				plotOnly
+				showPerimeter
+				shots={plotting.shots.map((shot, index) => ({ ...shot, ordinal: index + 1 }))}
+				onplot={plot}
+			>
+				{#snippet title()}
+					{$t('brace.plotHint')}
+				{/snippet}
 
-			<div class="flex gap-2">
-				<button
-					class="flex-1 rounded-lg border border-line py-2.5 text-sm font-semibold disabled:opacity-40"
-					disabled={plotting.shots.length === 0}
-					onclick={() =>
-						plotting && (plotting = { ...plotting, shots: plotting.shots.slice(0, -1) })}
-				>
-					{$t('brace.undoArrow')}
-				</button>
-				<button
-					class="flex-1 rounded-lg bg-brand py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-40"
-					disabled={plotting.shots.length === 0}
-					onclick={commit}
-				>
-					{$t('brace.saveEnd')}
-				</button>
-			</div>
+				{#snippet footer()}
+					<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
+						<button
+							class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap disabled:opacity-40"
+							disabled={(plotting?.shots.length ?? 0) === 0}
+							onclick={() =>
+								plotting && (plotting = { ...plotting, shots: plotting.shots.slice(0, -1) })}
+						>
+							{$t('common.undo')}
+						</button>
+						<button
+							class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-2 py-2 text-sm font-semibold whitespace-nowrap text-brand-text"
+							onclick={() => (scanning = true)}
+						>
+							<Icon name="camera" size={18} />
+							{$t('auto.open')}
+						</button>
+						<button
+							class="flex flex-1 basis-0 items-center justify-center rounded-lg bg-brand px-2 py-2 text-sm font-semibold whitespace-nowrap text-brand-ink disabled:opacity-40"
+							disabled={(plotting?.shots.length ?? 0) === 0}
+							onclick={commit}
+						>
+							{$t('common.save')}
+						</button>
+					</div>
+				{/snippet}
+			</ArrowPad>
 		</div>
 	</div>
+{/if}
+
+{#if scanning && plotting}
+	<AutoScore
+		{scoreSet}
+		remaining={SCAN_CAP - plotting.shots.length}
+		videoName={videoName(plotting.braceMm)}
+		onaccept={acceptDetected}
+		onrecorded={() => {}}
+		onclose={() => (scanning = false)}
+	/>
 {/if}

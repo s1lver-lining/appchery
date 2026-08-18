@@ -431,8 +431,6 @@ export const en = {
 		tightest: 'Tightest',
 		plotTitle: 'Brace height {brace} cm',
 		plotHint: 'Tap the face where each arrow landed.',
-		undoArrow: 'Undo arrow',
-		saveEnd: 'Save the end',
 		chartEmpty: 'Plot an end at two heights or more to see the curves.',
 		chartLabel: 'Group height and group size against brace height',
 		chartUnits: 'Group height left, group size right, both in cm',
