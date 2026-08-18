@@ -43,3 +43,11 @@ __pycache__/
 
 # The landing page build, the same as build/ but for appchery.com.
 build-site/
+
+# Overlay videos the arrow detector writes. Recordings and their replays are large and belong beside
+# the datasets, never in a commit.
+/*.webm
+/*.mp4
+/*.mkv
+/*.mov
+*-overlay.mp4
