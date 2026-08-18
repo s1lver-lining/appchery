@@ -411,7 +411,8 @@
 		if (!settled || !config?.forSelf) return;
 		const queue: Award[] = (await awardBadges()).map((key) => ({
 			title: $t('badges.new'),
-			subtitle: $t(`badges.list.${key}.name`)
+			subtitle: $t(`badges.list.${key}.name`),
+			href: '/badges'
 		}));
 		// After the badges, since the win and anything it earned are both paid before the level is read.
 		const climbed = await levelUpAward($t);

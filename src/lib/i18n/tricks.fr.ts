@@ -207,6 +207,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Les badges sont décernés au fil du tir, et ils s’annoncent avec le feu d’artifice d’un record. Le ciel s’illumine à quatre moments: la fin d’un tir, un match gagné, des flèches ajoutées à l’un ou l’autre compteur, et un niveau franchi. Tout ce qu’un même instant a gagné passe sous une seule salve: une dernière flèche qui bat un record, gagne deux badges et fait monter d’un niveau montre les quatre cartes ensemble. La liste est derrière le menu à trois points de la page de stats, ou la médaille de la grille de l’app.'
 				},
 				{
+					lead: 'Une carte dans le ciel ouvre la page qui va avec.',
+					body: 'Touchez une carte de badge pendant le feu d’artifice et la liste des badges s’ouvre ; touchez une carte de niveau et c’est la page d’expérience qui s’ouvre. La flèche de retour ramène au tir en cours.'
+				},
+				{
 					lead: 'Les flèches hors cible comptent.',
 					body: 'Le compteur de flèches de la page de séance alimente les badges de volume et d’assiduité comme n’importe quel tir compté, et un badge gagné par ces flèches s’affiche par-dessus la page de séance.'
 				},

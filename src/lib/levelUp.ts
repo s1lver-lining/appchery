@@ -36,6 +36,7 @@ export async function levelUpAward(
 	return {
 		title: t('experience.levelUp'),
 		subtitle: t('experience.points', { xp: get(formatNumber)(total) }),
-		score: level
+		score: level,
+		href: '/experience'
 	};
 }

@@ -243,7 +243,8 @@
 		const queue: Award[] = (await awardBadges()).map((key) => ({
 			title: $t('badges.new'),
 			subtitle: $t(`badges.list.${key}.name`),
-			score: null
+			score: null,
+			href: '/badges'
 		}));
 		const climbed = await levelUpAward($t);
 		if (climbed) queue.push(climbed);

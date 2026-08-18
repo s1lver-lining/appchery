@@ -212,6 +212,10 @@ export const tricksEn = {
 					body: 'Badges are awarded as you shoot, and they announce themselves with the same fireworks a personal best does. The sky lights up at four moments: finishing a round, winning a match, adding arrows on either arrow counter, and going up a level. Whatever a single moment won is shown under one volley, so a last arrow that sets a record, earns two badges and takes you up a level shows all four cards together. The list is behind the dots menu on the stats page, or the medal in the app grid.'
 				},
 				{
+					lead: 'A card in the sky opens the page behind it.',
+					body: 'Tap a badge card while the fireworks are up and the badge list opens; tap a level up card and the experience page opens. The back arrow returns to the round you were shooting.'
+				},
+				{
 					lead: 'Untargeted arrows count.',
 					body: 'The arrow counter on the session page feeds the volume and habit badges like any scored round, and a badge one of those arrows earns goes up over the session page.'
 				},

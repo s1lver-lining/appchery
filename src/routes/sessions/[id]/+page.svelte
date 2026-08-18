@@ -190,7 +190,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	async function announceBadges() {
 		const queue: Award[] = (await awardBadges()).map((key) => ({
 			title: $t('badges.new'),
-			subtitle: $t(`badges.list.${key}.name`)
+			subtitle: $t(`badges.list.${key}.name`),
+			href: '/badges'
 		}));
 		const climbed = await levelUpAward($t);
 		if (climbed) queue.push(climbed);

@@ -1,5 +1,7 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
+	import { withOrigin } from '$lib/nav';
 	import Icon from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 
@@ -8,6 +10,8 @@
 		title: string;
 		subtitle: string;
 		score?: number | null;
+		/** Where the thing just won can be looked at properly, for the awards that have such a page. */
+		href?: string | null;
 	}
 
 	/**
@@ -60,10 +64,16 @@
 	<div class="absolute inset-x-0 top-[22%] flex flex-col items-center gap-2 px-6">
 		<!-- Keyed by position: two things won at once can carry the same words, a record and its badge. -->
 		{#each awards as award, i (i)}
-			<button
+			<!-- Carrying where it was won, so the back arrow returns to the round rather than to the
+				page the badge list normally hangs off. -->
+			{@const to = award.href ? withOrigin(award.href, $page.url.pathname) : null}
+			<svelte:element
+				this={to ? 'a' : 'button'}
+				href={to}
+				role={to ? undefined : 'button'}
 				class="pointer-events-auto card flex w-full max-w-sm items-center gap-3 rounded-2xl border border-accent/50 bg-surface/95 px-5 py-4 shadow-2xl backdrop-blur"
 				style="--card-delay: {i * 260}ms"
-				onclick={onclose}
+				onclick={to ? undefined : onclose}
 			>
 				<span class="text-accent"><Icon name="medal" size={30} filled /></span>
 				<span class="min-w-0 flex-1 text-left">
@@ -75,7 +85,10 @@
 				{#if award.score != null}
 					<span class="tabular text-3xl leading-none font-bold">{award.score}</span>
 				{/if}
-			</button>
+				{#if to}
+					<span class="-rotate-90 shrink-0 text-muted"><Icon name="chevronUp" size={16} /></span>
+				{/if}
+			</svelte:element>
 		{/each}
 	</div>
 </div>
