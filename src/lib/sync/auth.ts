@@ -2,6 +2,7 @@ import { writable } from 'svelte/store';
 import { db, schema } from '$lib/db';
 import { isNull, sql } from 'drizzle-orm';
 import { supabase } from './client';
+import { writeSyncState } from './config';
 import { OWNED_TABLES } from '$lib/db/synced';
 
 // Signing in is optional and additive. The device is the source of truth; the account is a copy.
@@ -65,6 +66,12 @@ export async function signOut(): Promise<void> {
 	// phone must not show one archer the friends and scores of the one before them.
 	await db().delete(schema.socialActivity);
 	await db().delete(schema.socialProfile);
+
+	// The cursors belong to the account that just left. Whoever signs in next would otherwise ask
+	// the server only for rows newer than somebody else's last exchange and never see the rest of
+	// their own history. Starting over costs one full pull, and a pull applies the same rows twice
+	// for nothing.
+	await writeSyncState({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
 
 	account.set(null);
 }

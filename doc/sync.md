@@ -188,7 +188,8 @@ An exchange attempted with no connection says so rather than appearing to do not
 
 Signing out keeps this device's shooting untouched and takes the social cache with it: profiles and
 shared activities belong to other people, and a shared phone must not show one archer the friends and
-scores of the one before them.
+scores of the one before them. It takes the cursors too, because they describe the account that just
+left: whoever signs in next starts from nothing rather than from somebody else's last exchange.
 
 ## 6. Phase 3.1: profiles, follows, shared activities
 
@@ -382,6 +383,9 @@ A pass over push and pull found two more:
 - **A refused change was marked as sent.** Push stamped `synced_at` on every log entry below the
   chunk it had just uploaded, and one already given up on sits below it: the archer's retry button
   cleared the refusal and found nothing left to send.
+- **Signing in as somebody else inherited the last archer's cursor**, so the second account's pull
+  asked only for rows newer than the first account's last exchange and the rest of its history never
+  came down. Signing out clears the cursors.
 - **Erasing the device left the cursors behind.** Wiping cleared every row but not `sync_state`, so
   signing back in asked the server only for what had changed since the last exchange and the history
   it still held never came back down. The endpoint stays: where the server is is a setting.

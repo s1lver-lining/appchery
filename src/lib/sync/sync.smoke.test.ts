@@ -531,6 +531,25 @@ describe('adoption and signing out', () => {
 		expect(await proxy.select().from(schema.socialProfile)).toEqual([]);
 		expect(await proxy.select().from(schema.socialActivity)).toEqual([]);
 	});
+
+	it('leaves no cursor behind for whoever signs in next', async () => {
+		await proxy.insert(schema.syncState).values({
+			id: 'local',
+			deviceId: 'device-a',
+			lastPullCursor: '2026-01-01T00:00:00.000Z',
+			lastPushCursor: '900',
+			endpoint: null,
+			lastSyncAt: 5
+		});
+
+		const { signOut } = await import('./auth');
+		await signOut();
+
+		// The next archer would otherwise ask only for rows newer than this archer's last exchange,
+		// and never see the rest of their own history.
+		const [state] = await proxy.select().from(schema.syncState);
+		expect(state).toMatchObject({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
+	});
 });
 
 describe('syncNow', () => {
