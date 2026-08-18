@@ -235,7 +235,7 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 	let bestScore = ringAgreement(frame, start);
 
 	// Steps as a share of the face radius, halving each round.
-	for (let step = 0.06; step >= 0.002; step /= 2) {
+	for (let step = 0.06; step >= 0.0075; step /= 2) {
 		let improved = true;
 		while (improved) {
 			improved = false;
@@ -266,7 +266,7 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 			for (const candidate of candidates) {
 				if (candidate.semiMinor < 4 || candidate.semiMajor < 4) continue;
 				const score = ringAgreement(frame, candidate);
-				if (score > bestScore + 1e-7) {
+				if (score > bestScore + 1e-4) {
 					bestScore = score;
 					best = candidate;
 					improved = true;

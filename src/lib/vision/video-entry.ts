@@ -32,15 +32,50 @@ export class Replay {
 	private readonly scanner: Scanner;
 	private last = -Infinity;
 
-	constructor(
-		private readonly detectEveryMs: number,
-		model: unknown | null,
-		private readonly cropper: ((face: FaceLocation, size: number, span: number) => Frame | null) | null
-	) {
+	/** The frame the crop is cut from, kept only for the length of one push. */
+	private full: Frame | null = null;
+
+	constructor(detectEveryMs: number, model: unknown | null) {
+		this.detectEveryMs = detectEveryMs;
 		this.scanner = new Scanner({
 			model: (model ?? null) as never,
-			crop: cropper ?? null
+			crop: model ? (face, size, span) => this.cut(face, size, span) : null
 		});
+	}
+
+	private readonly detectEveryMs: number;
+
+	/**
+	 * The rectified square the learned detector is fed, cut from the full frame rather than the
+	 * reduced one the face was found on. Nearest neighbour, because that is how the training crops
+	 * were sampled: shown a cleaner picture than it learnt on, the model has no way to know.
+	 */
+	private cut(face: FaceLocation, size: number, span: number): Frame | null {
+		const frame = this.full;
+		if (!frame) return null;
+		const factor = this.scanner.scaleFactor;
+		const cos = Math.cos(face.rotation);
+		const sin = Math.sin(face.rotation);
+		const data = new Uint8ClampedArray(size * size * 4);
+
+		for (let j = 0; j < size; j++) {
+			for (let i = 0; i < size; i++) {
+				const fx = ((i + 0.5) / size) * 2 * span - span;
+				const fy = ((j + 0.5) / size) * 2 * span - span;
+				const px = fx * face.semiMajor * factor;
+				const py = fy * face.semiMinor * factor;
+				const x = Math.round(face.cx * factor + px * cos - py * sin);
+				const y = Math.round(face.cy * factor + px * sin + py * cos);
+				const at = (j * size + i) * 4;
+				data[at + 3] = 255;
+				if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
+				const p = (y * frame.width + x) * 4;
+				data[at] = frame.data[p];
+				data[at + 1] = frame.data[p + 1];
+				data[at + 2] = frame.data[p + 2];
+			}
+		}
+		return { width: size, height: size, data };
 	}
 
 	setLimit(limit: number) {
@@ -51,8 +86,12 @@ export class Replay {
 		return this.scanner.scaleFactor;
 	}
 
-	/** Feeds one already reduced frame, at the timestamp it would have arrived at in a live session. */
-	push(small: Frame, nowMs: number): FrameState {
+	/**
+	 * Feeds one frame, at the timestamp it would have arrived at in a live session, along with the
+	 * reduced copy detection runs on. The full frame is only ever read to cut a crop from.
+	 */
+	push(full: Frame, small: Frame, nowMs: number): FrameState {
+		this.full = full;
 		const started = performance.now();
 
 		if (nowMs - this.last >= this.detectEveryMs) {
