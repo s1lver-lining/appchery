@@ -26,6 +26,7 @@
     "dev:site": "vite dev --config vite.site.config.ts",
     "build:site": "vite build --config vite.site.config.ts",
     "preview:site": "vite preview --config vite.site.config.ts",
+    "deploy:site": "./scripts/deploy-site.sh",
     "predev": "./scripts/sync-sqlite.sh",
     "prebuild": "./scripts/sync-sqlite.sh",
     "prebuild:preprod": "./scripts/sync-sqlite.sh",
