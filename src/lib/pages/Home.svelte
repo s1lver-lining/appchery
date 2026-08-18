@@ -58,6 +58,7 @@
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
+	import { tapClose } from '$lib/ui/tapClose';
 	import { lockScroll } from '$lib/ui/scrollLock';
 
 	let sessions = $state<Awaited<ReturnType<typeof listSessions>>>([]);
@@ -713,7 +714,7 @@
 			class="absolute inset-0 bg-black/40"
 			use:scrim={0.4}
 			aria-label={$t('common.close')}
-			onclick={() => (picking = null)}
+			use:tapClose={() => (picking = null)}
 		></button>
 
 		<div class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl">
