@@ -55,6 +55,7 @@
 	import { dateFormats } from '$lib/prefs';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { setPageUp, withOrigin } from '$lib/nav';
+	import { tap as buzz } from '$lib/haptics';
 	import {
 		getActivity,
 		listAllActivities,
@@ -544,6 +545,7 @@
 	}
 
 	async function tapZone(zone: Zone) {
+		buzz();
 		// An arrow of the end being entered is replaced in place, never appended as another one.
 		if (editingPending !== null) {
 			pending = pending.map((shot, i) => (i === editingPending ? shotFromZone(zone) : shot));
