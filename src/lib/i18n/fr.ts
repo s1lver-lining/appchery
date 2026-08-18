@@ -875,7 +875,7 @@ export const fr: Dictionary = {
 		lastSync: 'Dernière synchronisation {at}',
 		neverSynced: 'Pas encore synchronisé.',
 		waiting: '{n} changements en attente de connexion.',
-		signOutKeeps: 'Se déconnecter ne change rien sur cet appareil : vos tirs restent ici.',
+		signOutKeeps: 'Se déconnecter ne change rien sur cet appareil : vos données locales sont conservées.',
 		noServer: "Cette version n'a aucun serveur de synchronisation configuré.",
 		wipeSignedIn: 'Déconnectez-vous avant d\'effacer cet appareil.',
 		error: {
