@@ -91,7 +91,7 @@
 
 <svg viewBox="0 0 200 398" class={className} role="group" aria-label={$t(`muscles.view.${view}`)}>
 	<!-- One body, arms included: a shoulder is not a seam between two drawings. -->
-	<path d={BODY} fill="var(--c-surface)" stroke="var(--c-line)" stroke-width="1.4" />
+	<path d={BODY} fill="var(--c-surface)" stroke="var(--c-figure)" stroke-width="1.4" />
 
 	{#each regions as region (region.id)}
 		{@const label = $t(`muscles.name.${region.id}`)}
@@ -175,7 +175,7 @@
 	</g>
 
 	<!-- What makes a hand read as a hand: the wrist crease, the knuckles, and the fingers. -->
-	<g stroke="var(--c-line)" stroke-width="0.8" fill="none" stroke-linecap="round">
+	<g stroke="var(--c-figure)" stroke-width="0.8" fill="none" stroke-linecap="round">
 		{#each [null, FLIP] as flip (flip)}
 			{#each HAND_LINES as line (line)}
 				<path d={line} transform={flip} />

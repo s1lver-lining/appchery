@@ -103,9 +103,9 @@
 			>
 				{#each blades(face) as blade (blade.side)}
 					<g transform={blade.transform}>
-						<path d={BONE} fill="var(--c-bg)" stroke="var(--c-line)" stroke-width="1.5" />
+						<path d={BONE} fill="var(--c-bg)" stroke="var(--c-figure)" stroke-width="1.5" />
 						{#if face === 'scapulaBack'}
-							<path d={SPINE} stroke="var(--c-line)" stroke-width="1.5" fill="none" />
+							<path d={SPINE} stroke="var(--c-figure)" stroke-width="1.5" fill="none" />
 						{/if}
 						{#each SHAPES[face] as shape (shape.id)}
 							{@const label = $t(`muscles.name.${shape.id}`)}
@@ -118,7 +118,8 @@
 								class="cursor-pointer outline-none transition-[fill,fill-opacity] duration-300"
 								fill={fill(shape.id)}
 								fill-opacity={opacity(shape.id)}
-								stroke={selected.includes(shape.id) ? 'var(--c-brand)' : 'var(--c-line)'}
+								stroke={selected.includes(shape.id) ? 'var(--c-brand)' : 'var(--c-muted)'}
+								stroke-opacity={selected.includes(shape.id) ? 1 : 0.45}
 								stroke-width={selected.includes(shape.id) ? 1.6 : 0.8}
 								onclick={() => onpick?.(shape.id)}
 								onkeydown={(event) => {

@@ -64,6 +64,13 @@
 	--c-accent: #d99b20;
 	--c-danger: #a3392c;
 
+	/*
+	 * The line a body is drawn with. A divider only has to be found, so `--c-line` sits barely off
+	 * the surface it separates; a silhouette has to be read from across the room, and at that weight
+	 * the figure dissolved into its own background, worst of all on a dark screen.
+	 */
+	--c-figure: #9a8a72;
+
 	/* Bronze, red and blue, checked for separation under deuteranopia against the light surface. */
 	--c-kind-practice: #b87a26;
 	/* Named apart from the kind variable, which a chosen competition colour overwrites at runtime. */
@@ -107,6 +114,9 @@
 		--c-accent: #e8b45c;
 		--c-danger: #e0776a;
 
+		/* Warmer and paler than the light one, to clear a surface that is nearly black. */
+		--c-figure: #7a7061;
+
 		/* Their own steps rather than the light ones: a flipped theme loses the separation. */
 		--c-kind-practice: #b58430;
 		--c-kind-competition-base: #5fb07f;
@@ -138,6 +148,9 @@
 	--c-brand-text: #e0a95c;
 	--c-accent: #e8b45c;
 	--c-danger: #e0776a;
+
+	/* Warmer and paler than the light one, to clear a surface that is nearly black. */
+	--c-figure: #7a7061;
 
 	/* Their own steps rather than the light ones: a flipped theme loses the separation. */
 	--c-kind-practice: #b58430;
