@@ -18,7 +18,7 @@ silently diverge. Append a new one instead.
 1. Append a group to the end of the array in `src/lib/db/migrations.ts`, with a `// 00NN what it does` comment.
 2. Mirror the change in `src/lib/db/schema.ts`, so Drizzle's types match the columns that now exist.
 3. Mirror it in `supabase/migrations/` too if the table syncs, and add the column to
-   `src/lib/sync/tables.ts` if it is a whole new table.
+   `src/lib/db/synced.ts` if it is a whole new table.
 4. `npm test`
 
 ```bash
