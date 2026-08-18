@@ -595,7 +595,8 @@ export const fr: Dictionary = {
 		subtitle: 'Ce que les archers que vous suivez ont choisi de partager.',
 		hintTitle: 'Nouveaux tirs partagés',
 		hintBody: 'Glissez vers la gauche, ou touchez ici, pour lire le fil.',
-		hintNever: 'Ne plus le proposer'
+		hintNever: 'Ne plus le proposer',
+		bestShared: 'Meilleur partagé'
 	},
 	home: {
 		title: 'Appchery',

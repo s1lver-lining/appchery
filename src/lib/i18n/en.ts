@@ -593,7 +593,9 @@ export const en = {
 		subtitle: 'What the archers you follow chose to share.',
 		hintTitle: 'New shared activities',
 		hintBody: 'Swipe left, or tap here, to read the feed.',
-		hintNever: 'Stop offering this'
+		hintNever: 'Stop offering this',
+		/** Their best among what they shared, which is all this device can see. Never called a record. */
+		bestShared: 'Best shared'
 	},
 	home: {
 		title: 'Appchery',

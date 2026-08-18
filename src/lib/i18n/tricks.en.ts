@@ -260,6 +260,10 @@ export const tricksEn = {
 					body: 'The share button in the scoring header opens the round as a card built to be posted: score, arrows, tens, Xs, and the end by end shape. A personal best turns the card gold and adds a ribbon.'
 				},
 				{
+					lead: 'The medal in the feed is not a record.',
+					body: 'A shared round marked "best shared" is the highest of that same round the archer has shared with you, and nothing more. Their real record is worked out on their own phone from every round they ever shot, most of which never travels, so the feed says only what it can actually see.'
+				},
+				{
 					lead: 'The share page is a poster.',
 					body: 'The code in the app grid is laid out to be printed as well as scanned: printing it gives an A3 sheet in plain black and white, with the address written under the code for anybody who would rather type it.'
 				}

@@ -77,6 +77,33 @@
 	/** A procedure has no total worth reading, and a free score's is not one that compares. */
 	const scoreOf = (shared: SharedActivity) =>
 		kindOf(shared) === 'tuning' ? null : Number(shared.activity.total_score ?? 0);
+
+	/** One archer's rounds of one shape, which is the only grouping the shared rows can be compared in. */
+	const shapeOf = (shared: SharedActivity) =>
+		`${shared.ownerId}:${shared.activity.round_definition_id ?? roundOf(shared)?.name ?? ''}`;
+
+	/**
+	 * Their best on that round among what they shared, which is all this device can see: badges,
+	 * records and the rest of the shooting stay on their phone, and a real personal best cannot be
+	 * worked out from a feed. Only where they shared the same round more than once, because a lone
+	 * round is trivially the best of itself and a marker that is always on says nothing.
+	 */
+	const bestShared = $derived.by(() => {
+		const tally = new Map<string, { top: number; count: number }>();
+		for (const shared of feed) {
+			if (kindOf(shared) !== 'scoring') continue;
+			const key = shapeOf(shared);
+			const seen = tally.get(key) ?? { top: -Infinity, count: 0 };
+			tally.set(key, { top: Math.max(seen.top, Number(shared.activity.total_score ?? 0)), count: seen.count + 1 });
+		}
+		return tally;
+	});
+
+	function isBest(shared: SharedActivity): boolean {
+		if (kindOf(shared) !== 'scoring') return false;
+		const group = bestShared.get(shapeOf(shared));
+		return !!group && group.count > 1 && Number(shared.activity.total_score ?? 0) === group.top;
+	}
 </script>
 
 {#if feed.length === 0}
@@ -86,11 +113,22 @@
 {:else}
 	{#each feed as shared (shared.id)}
 		{@const sharer = known.get(shared.ownerId)}
+		{@const kind = kindOf(shared)}
 		{@const round = roundOf(shared)}
-		{@const template = kindOf(shared) === 'tuning' ? templateOf(shared) : null}
+		{@const template = kind === 'tuning' ? templateOf(shared) : null}
 		{@const score = scoreOf(shared)}
+		{@const best = isBest(shared)}
+		<!-- Each kind carries its own colour, so a procedure and a scored round are told apart before
+			either is read. A round they beat their own shared best on takes the medal colour the rest of
+			the app already spends on a record. -->
 		<a
-			class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+			class="flex items-center gap-3 rounded-xl border p-3 {best
+				? 'border-accent/60 bg-gradient-to-r from-accent/10 to-surface'
+				: kind === 'scoring'
+					? 'border-line bg-gradient-to-r from-brand/6 to-surface'
+					: kind === 'tuning'
+						? 'border-line bg-sunk/40'
+						: 'border-line bg-surface'}"
 			href={sharer ? `/friends/${sharer.handle}` : '/friends'}
 		>
 			<!-- Dropped where the screen cannot spare the width, as in the session's own list. -->
@@ -99,7 +137,7 @@
 					<span class="h-9 w-9">
 						<TargetFace scoreSet={getScoreSet(round.scoreSetId)} />
 					</span>
-				{:else if kindOf(shared) === 'tuning'}
+				{:else if kind === 'tuning'}
 					<span
 						class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border"
 						style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
@@ -122,7 +160,17 @@
 			</span>
 
 			<div class="min-w-0 flex-1">
-				<p class="truncate text-sm font-medium">{title(shared)}</p>
+				<p class="flex items-center gap-1.5">
+					<span class="truncate text-sm font-medium">{title(shared)}</span>
+					{#if best}
+						<span
+							class="flex shrink-0 items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent"
+						>
+							<Icon name="medal" size={10} filled />
+							{$t('feed.bestShared')}
+						</span>
+					{/if}
+				</p>
 				<p class="tabular mt-0.5 truncate text-xs text-muted">
 					{sharer ? `${shownName(sharer)} · ` : ''}{shownDate(
 						Number(shared.activity.started_at ?? shared.sharedAt)
@@ -132,9 +180,11 @@
 
 			{#if score !== null}
 				<span
-					class="tabular text-xl font-bold {kindOf(shared) === FREE_SCORE_KIND
+					class="tabular shrink-0 text-xl {kind === FREE_SCORE_KIND
 						? 'font-semibold text-muted'
-						: ''}">{score}</span
+						: best
+							? 'font-bold text-accent'
+							: 'font-bold'}">{score}</span
 				>
 			{/if}
 		</a>

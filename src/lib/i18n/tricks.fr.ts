@@ -255,6 +255,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Le bouton de partage de l’en-tête de score ouvre le tir sous forme de carte faite pour être publiée : score, flèches, dix, X, et la forme volée par volée. Un record passe la carte en or et lui ajoute un ruban.'
 				},
 				{
+					lead: 'La médaille du fil n’est pas un record.',
+					body: 'Un tir marqué « meilleur partagé » est le plus haut de ce même tir que l’archer a partagé avec vous, rien de plus. Son vrai record est calculé sur son téléphone à partir de tout ce qu’il a tiré, dont l’essentiel ne voyage jamais : le fil ne dit donc que ce qu’il peut réellement voir.'
+				},
+				{
 					lead: 'La page de partage est une affiche.',
 					body: 'Le code de la grille de l’app est composé pour être imprimé autant que scanné : l’imprimer donne une feuille A3 en noir et blanc, avec l’adresse écrite sous le code pour qui préfère la taper.'
 				}
