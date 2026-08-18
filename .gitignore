@@ -40,3 +40,6 @@ __pycache__/
 .env
 .env.*
 !.env.example
+
+# The landing page build, the same as build/ but for appchery.com.
+build-site/

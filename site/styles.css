@@ -1,0 +1,7 @@
+/* The app's own tokens and base rules, so the page cannot drift from the product it shows. */
+@import '../src/app.css';
+
+/* Tailwind scans from the stylesheet it is imported into, which is src/ for the app: the landing
+   page and the components it borrows both have to be named for their classes to be emitted. */
+@source '.';
+@source '../src/lib';
