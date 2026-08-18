@@ -3,6 +3,7 @@
 	import { t } from '$lib/i18n';
 	import { scorableZones, missZone } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet, Shot, Zone } from '$lib/domain/rounds/types';
+	import { tap as buzz } from '$lib/haptics';
 	import Icon from './Icon.svelte';
 	import TargetFace from './TargetFace.svelte';
 
@@ -152,14 +153,20 @@
 					<button
 						class="tabular rounded-xl py-3 text-lg font-bold shadow-sm transition-transform active:scale-95"
 						style={chipStyle(zone)}
-						onclick={() => onpick(zone)}
+						onclick={() => {
+							buzz();
+							onpick(zone);
+						}}
 					>
 						{zone.label}
 					</button>
 				{/each}
 				<button
 					class="rounded-xl border border-line py-3 text-lg font-bold text-muted transition-transform active:scale-95"
-					onclick={() => onpick(missZone(scoreSet))}
+					onclick={() => {
+						buzz();
+						onpick(missZone(scoreSet));
+					}}
 				>
 					{$t('score.miss')}
 				</button>
