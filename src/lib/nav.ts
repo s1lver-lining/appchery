@@ -58,6 +58,11 @@ export function registerLeaveGuard(ask: (leave: () => void) => void) {
 	return () => leavers.update((list) => list.filter((g) => g !== ask));
 }
 
+/** Whether anything on screen would ask before it is left, which is what makes a way out a question. */
+export function leaveGuarded(): boolean {
+	return get(leavers).length > 0;
+}
+
 /** True when a guard took the move: it asks the archer, and runs `leave` itself if they allow it. */
 export function askToLeave(leave: () => void): boolean {
 	const guard = get(leavers).at(-1);

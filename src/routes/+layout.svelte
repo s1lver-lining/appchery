@@ -13,6 +13,7 @@
 	import {
 		askTab,
 		forgetMainScroll,
+		leaveGuarded,
 		backGuards,
 		isMainPage,
 		originOf,
@@ -328,10 +329,17 @@
 		// Left button and primary touch only: the middle click and the long press have their own jobs.
 		if (event.button !== 0) return;
 		if (onGestureBar(event, href)) return;
-		pressed = true;
-		event.preventDefault();
 		// A tab stands for the top of its page, so the tap drops wherever that page was left.
 		forgetMainScroll(href);
+		// A page holding unsaved work answers a way out with a question. Asked on the press, it would
+		// stand under a finger already down, and the click ending that press would take it away
+		// unread, so this one tab tap waits for the release the link navigates on anyway.
+		if (leaveGuarded()) {
+			cancelHold();
+			return;
+		}
+		pressed = true;
+		event.preventDefault();
 		if ($page.url.pathname !== href) {
 			goto(href);
 			return;
