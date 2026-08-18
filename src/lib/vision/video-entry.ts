@@ -5,7 +5,9 @@
 // This drives the real `Scanner` the same way `AutoScore.svelte` does, at the same detection rate,
 // so what the overlay shows is what an archer would have seen through the phone.
 import { Scanner } from './pipeline';
-import { toImageCoords } from './face';
+import { detectFaces, toImageCoords } from './face';
+import { refineFace } from './refine';
+import { verifyRings } from './rings';
 import { scoreAt, decimalScore } from '../domain/rounds/geometry';
 import { WA_10_RING } from '../domain/rounds/seed';
 import type { Frame, FaceLocation, Impact } from './types';
@@ -144,5 +146,33 @@ export class Replay {
 			cost: performance.now() - started,
 			detected
 		};
+	}
+}
+
+/**
+ * Follows the face through a recording, for the labelling tool rather than for scoring.
+ *
+ * Arrows do not move once they are in the boss, and the face fit gives a frame in which they do not
+ * move either: an impact clicked once sits at the same face coordinate in every later frame, whatever
+ * the camera did in between. So one click labels a whole video, and this is what turns the click into
+ * a position on each frame.
+ */
+export class FaceTrack {
+	private faces: FaceLocation[] = [];
+
+	/** The face on this frame, refit from the last one where possible and searched for when not. */
+	push(small: Frame): FaceLocation | null {
+		if (this.faces.length > 0) {
+			const followed = this.faces.map((face) => refineFace(small, face));
+			// A fit that has fallen off the target is worse than no fit, so it is dropped and searched again.
+			if (followed[0] && verifyRings(small, followed[0]).ok) {
+				this.faces = followed;
+				return followed[0];
+			}
+		}
+
+		const found = detectFaces(small).filter((face) => verifyRings(small, face).ok);
+		this.faces = found;
+		return found[0] ?? null;
 	}
 }

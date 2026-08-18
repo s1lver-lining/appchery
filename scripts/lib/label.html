@@ -1,0 +1,224 @@
+<!doctype html>
+<meta charset="utf-8" />
+<title>Appchery arrow labelling</title>
+<style>
+	:root { color-scheme: dark; --ink: #e8e8e8; --dim: #9aa0a6; --good: #00e676; --warn: #ffc107; }
+	* { box-sizing: border-box; }
+	body { margin: 0; font: 14px system-ui, sans-serif; background: #16181c; color: var(--ink); display: grid; grid-template-columns: 1fr 300px; height: 100vh; }
+	main { overflow: auto; display: grid; place-items: center; padding: 12px; }
+	aside { border-left: 1px solid #2a2e35; padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
+	canvas { max-width: 100%; max-height: calc(100vh - 24px); cursor: crosshair; border-radius: 6px; }
+	h1 { font-size: 15px; margin: 0; }
+	.dim { color: var(--dim); font-size: 12px; line-height: 1.5; }
+	button { font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid #3a3f47; background: #22262c; color: var(--ink); cursor: pointer; }
+	button:hover { background: #2b3038; }
+	button.primary { background: #14532d; border-color: #166534; }
+	button.bad { background: #4c1d24; border-color: #7f1d1d; }
+	.row { display: flex; gap: 8px; flex-wrap: wrap; }
+	ol { margin: 0; padding-left: 20px; }
+	li { margin: 3px 0; }
+	.pill { display: inline-block; padding: 1px 7px; border-radius: 99px; background: #22262c; font-size: 12px; }
+	select { width: 100%; padding: 6px; background: #22262c; color: var(--ink); border: 1px solid #3a3f47; border-radius: 6px; }
+	.mode { font-weight: 600; }
+</style>
+
+<main><canvas id="view"></canvas></main>
+<aside>
+	<h1>Arrow labelling</h1>
+	<select id="pick"></select>
+	<div class="mode" id="mode"></div>
+	<p class="dim" id="help"></p>
+	<div class="row">
+		<button id="undo">Undo click</button>
+		<button id="clear">Clear all</button>
+	</div>
+	<div class="row">
+		<button id="prev">&larr; Frame</button>
+		<button id="next">Frame &rarr;</button>
+	</div>
+	<div class="row">
+		<button id="keep" class="primary">Frame is good</button>
+		<button id="reject" class="bad">Fit is wrong</button>
+	</div>
+	<div>
+		<div class="dim">Arrows on the face</div>
+		<ol id="list"></ol>
+	</div>
+	<div class="row"><button id="save" class="primary">Save this video</button></div>
+	<p class="dim" id="status"></p>
+</aside>
+
+<script type="module">
+	const view = document.getElementById('view');
+	const context = view.getContext('2d');
+	let videos = [];
+	let current = 0;
+	let sample = 0;
+	let arrows = [];
+	let rejected = new Set();
+
+	const el = (id) => document.getElementById(id);
+
+	videos = await (await fetch('/manifest')).json();
+	if (videos.length === 0) {
+		el('status').textContent = 'Nothing prepared. Run: node scripts/label-arrows.mjs prepare';
+	}
+
+	el('pick').innerHTML = videos
+		.map((v, i) => `<option value="${i}">${v.video.slice(-28)}${v.labels ? ' (labelled)' : ''}</option>`)
+		.join('');
+	el('pick').onchange = () => load(Number(el('pick').value));
+
+	function video() {
+		return videos[current];
+	}
+
+	/** The best of the offered frames to click on: fitted well, and with the face actually in shot. */
+	function best(v) {
+		const scores = v.geometry.map((f) => (f ? f.support * (f.visible ?? 1) : 0));
+		return scores.indexOf(Math.max(...scores));
+	}
+
+	/**
+	 * The face fit for the frame on screen. Everything is stored in face coordinates, so this is what
+	 * turns a click into a label and a label back into a place on any other frame.
+	 */
+	function face() {
+		return video().geometry[sample];
+	}
+
+	function toFace(px, py) {
+		const f = face();
+		const dx = px - f.cx;
+		const dy = py - f.cy;
+		const cos = Math.cos(-f.rotation);
+		const sin = Math.sin(-f.rotation);
+		return { x: (dx * cos - dy * sin) / f.semiMajor, y: (dx * sin + dy * cos) / f.semiMinor };
+	}
+
+	function toImage(x, y) {
+		const f = face();
+		const px = x * f.semiMajor;
+		const py = y * f.semiMinor;
+		const cos = Math.cos(f.rotation);
+		const sin = Math.sin(f.rotation);
+		return { x: f.cx + px * cos - py * sin, y: f.cy + px * sin + py * cos };
+	}
+
+	function load(index) {
+		current = index;
+		/**
+		 * Opens on the best fitted frame of the recording, wherever it falls. A click is stored in face
+		 * coordinates, so it is only as good as the rings it was placed against: labelling on a mediocre
+		 * fit puts every propagated copy of that label in the wrong place.
+		 */
+		sample = best(videos[index]);
+		arrows = video().labels?.arrows ? [...video().labels.arrows] : [];
+		rejected = new Set(video().labels?.rejected ?? []);
+		el('pick').value = String(index);
+		draw();
+	}
+
+	async function draw() {
+		const v = video();
+		if (!v || v.samples.length === 0) return;
+		// The frame the arrows were placed on, which is the one to keep offering the click help for.
+		const clicking = arrows.length === 0 || sample === best(v);
+		const image = new Image();
+		image.src = `/image/${encodeURIComponent(v.video)}/${v.samples[sample]}`;
+		await image.decode();
+
+		view.width = image.width;
+		view.height = image.height;
+		context.drawImage(image, 0, 0);
+
+		const f = face();
+		const line = Math.max(2, image.width / 400);
+		if (f) {
+			for (const share of [0.2, 0.4, 0.6, 0.8, 1]) {
+				context.beginPath();
+				context.ellipse(f.cx, f.cy, f.semiMajor * share, f.semiMinor * share, f.rotation, 0, Math.PI * 2);
+				context.lineWidth = share === 0.2 ? line * 1.5 : line;
+				context.strokeStyle = share === 0.2 ? 'rgba(247,224,60,0.95)' : 'rgba(255,255,255,0.7)';
+				context.stroke();
+			}
+
+			arrows.forEach((arrow, i) => {
+				const point = toImage(arrow.x, arrow.y);
+				context.beginPath();
+				context.arc(point.x, point.y, line * 5, 0, Math.PI * 2);
+				context.strokeStyle = '#00e676';
+				context.lineWidth = line * 1.5;
+				context.stroke();
+				context.fillStyle = '#00e676';
+				context.font = `bold ${Math.round(image.width / 26)}px system-ui`;
+				context.fillText(String(i + 1), point.x + line * 6, point.y - line * 6);
+			});
+		}
+
+		const frameNumber = v.chosen[sample];
+		el('mode').textContent = clicking ? 'Click every arrow' : `Check frame ${sample + 1} of ${v.samples.length}`;
+		el('help').textContent =
+			clicking
+				? 'Click the point where each shaft enters the paper. The label is stored on the face, so it carries to every frame of this recording.'
+				: 'Same arrows projected onto a different viewpoint. If the rings or the markers sit wrong, mark the fit wrong so this frame is left out.';
+		el('list').innerHTML = arrows
+			.map((a, i) => `<li>${i + 1}: <span class="pill">${a.x.toFixed(3)}, ${a.y.toFixed(3)}</span></li>`)
+			.join('');
+		el('status').textContent =
+			`${v.frames} frames, fit ${(f?.support ?? 0).toFixed(2)}, in shot ${((f?.visible ?? 0) * 100).toFixed(0)}%, ` +
+			`${rejected.size} frames rejected` + (rejected.has(frameNumber) ? ' (this one)' : '');
+	}
+
+	view.onclick = (event) => {
+		if (!face()) return;
+		const box = view.getBoundingClientRect();
+		const px = ((event.clientX - box.left) / box.width) * view.width;
+		const py = ((event.clientY - box.top) / box.height) * view.height;
+		arrows.push(toFace(px, py));
+		draw();
+	};
+
+	el('undo').onclick = () => {
+		arrows.pop();
+		draw();
+	};
+	el('clear').onclick = () => {
+		arrows = [];
+		draw();
+	};
+	el('prev').onclick = () => {
+		sample = Math.max(0, sample - 1);
+		draw();
+	};
+	el('next').onclick = () => {
+		sample = Math.min(video().samples.length - 1, sample + 1);
+		draw();
+	};
+	el('keep').onclick = () => {
+		rejected.delete(video().chosen[sample]);
+		el('next').onclick();
+	};
+	el('reject').onclick = () => {
+		rejected.add(video().chosen[sample]);
+		el('next').onclick();
+	};
+
+	el('save').onclick = async () => {
+		const v = video();
+		await fetch(`/labels/${encodeURIComponent(v.video)}`, {
+			method: 'POST',
+			body: JSON.stringify({ arrows, rejected: [...rejected] })
+		});
+		v.labels = { arrows, rejected: [...rejected] };
+		el('status').textContent = `Saved ${arrows.length} arrows.`;
+	};
+
+	window.onkeydown = (event) => {
+		if (event.key === 'ArrowRight') el('next').onclick();
+		if (event.key === 'ArrowLeft') el('prev').onclick();
+		if (event.key === 'z' && (event.ctrlKey || event.metaKey)) el('undo').onclick();
+	};
+
+	if (videos.length > 0) load(0);
+</script>
