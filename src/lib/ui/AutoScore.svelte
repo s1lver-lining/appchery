@@ -295,6 +295,8 @@
 
 	function accept() {
 		onaccept(kept.map((a) => ({ x: a.x, y: a.y })));
+		// The arrows stay in the boss, so the detector is told they are scored rather than new.
+		scanner.accept();
 	}
 
 	function drop(arrow: Impact) {

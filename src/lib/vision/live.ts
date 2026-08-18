@@ -77,13 +77,10 @@ export class LiveScanner {
 		);
 	}
 
-	/** The arrows now in the boss become the new normal, once the archer has taken the end. */
-	accept(small: Frame) {
+	/** The end has been taken, so its arrows are remembered as scored rather than offered again. */
+	accept() {
 		this.arrows = [];
-		this.worker.postMessage(
-			{ type: 'accept', width: small.width, height: small.height, data: small.data.buffer },
-			[small.data.buffer]
-		);
+		this.worker.postMessage({ type: 'accept' });
 	}
 
 	reject(arrow: Impact) {

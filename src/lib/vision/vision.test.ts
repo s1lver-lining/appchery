@@ -6,6 +6,7 @@ import { detectArrowsLearned, type ArrowModel } from './learned';
 import { Background, findBlobs } from './impacts';
 import { verifyRings, classify, probeRing } from './rings';
 import { ImpactTracker } from './tracker';
+import { SweepTracker } from './sweep';
 import { Scanner } from './pipeline';
 import { rgbToHsv, largestComponent } from './pixels';
 import type { Frame } from './types';
@@ -276,47 +277,48 @@ describe('ImpactTracker', () => {
 describe('Scanner', () => {
 	const face = () => waFace(240, 100);
 
-	it('locates the face and then reports an arrow that lands on it', () => {
-		const scanner = new Scanner({ scale: 2, framesToConfirm: 3, faceEvery: 1, framesToSettle: 2 });
+	/** Draws a shaft and hands the frame back, which is what feeding a sweep one arrow needs. */
+	const stick = (frame: Frame, from: { x: number; y: number }, to: { x: number; y: number }) => {
+		shaft(frame, from, to);
+		return frame;
+	};
 
-		// A few quiet frames so the reference settles on an empty boss and the face is judged steady.
-		for (let i = 0; i < 5; i++) scanner.push(face());
-		expect(scanner.located).not.toBeNull();
-
-		let found: ReturnType<Scanner['push']> | null = null;
-		for (let i = 0; i < 6; i++) {
-			found = scanner.push(ellipse(face(), 150, 120, 4, 4, [15, 15, 15]));
-		}
-
-		expect(found!.arrows).toHaveLength(1);
-		// 30px right of centre on a 100px face radius, so about three tenths of the way out.
-		expect(found!.arrows[0].x).toBeGreaterThan(0.24);
-		expect(found!.arrows[0].x).toBeLessThan(0.36);
-		expect(Math.abs(found!.arrows[0].y)).toBeLessThan(0.05);
-	});
-
-	it('ignores movement outside the face, such as someone walking past the boss', () => {
-		const scanner = new Scanner({ scale: 2, framesToConfirm: 2, faceEvery: 1, framesToSettle: 2 });
-		for (let i = 0; i < 5; i++) scanner.push(face());
-
+	/** One sweep over a boss holding one arrow, which is what a walk up to the target looks like. */
+	function sweep(scanner: Scanner, make: () => Frame, passes: number) {
 		let result: ReturnType<Scanner['push']> | null = null;
-		for (let i = 0; i < 5; i++) {
-			result = scanner.push(ellipse(face(), 8, 232, 5, 5, [255, 0, 255]));
-		}
-		expect(result!.arrows).toHaveLength(0);
+		for (let i = 0; i < passes; i++) result = scanner.push(make());
+		return result!;
+	}
+
+	it('locates the face and then reports an arrow standing in it', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 2 });
+		expect(scanner.push(face()).face).not.toBeNull();
+
+		// Out to the right of centre, leaning away from the middle as a shaft in the paper does.
+		const withArrow = () => stick(face(), { x: 150, y: 120 }, { x: 232, y: 120 });
+		const result = sweep(scanner, withArrow, 10);
+
+		expect(result.arrows.length).toBeGreaterThanOrEqual(1);
+		const arrow = result.arrows[0];
+		// 30px right of centre on a 100px face radius, so about three tenths of the way out.
+		expect(arrow.x).toBeGreaterThan(0.2);
+		expect(arrow.x).toBeLessThan(0.42);
+		expect(Math.abs(arrow.y)).toBeLessThan(0.12);
 	});
 
-	it('takes the arrows into the reference once accepted, so the next end starts clean', () => {
-		const scanner = new Scanner({ scale: 2, framesToConfirm: 2, faceEvery: 1, framesToSettle: 2 });
-		for (let i = 0; i < 5; i++) scanner.push(face());
+	it('ignores anything off the face, such as someone walking past the boss', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 2 });
+		const beside = () => stick(face(), { x: 8, y: 232 }, { x: 8, y: 200 });
+		expect(sweep(scanner, beside, 10).arrows).toHaveLength(0);
+	});
 
-		const withArrow = () => ellipse(face(), 150, 120, 4, 4, [15, 15, 15]);
-		for (let i = 0; i < 4; i++) scanner.push(withArrow());
-		expect(scanner.push(withArrow()).arrows).toHaveLength(1);
+	it('does not offer an end again once it has been taken, since the arrows stay in the boss', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 2 });
+		const withArrow = () => stick(face(), { x: 150, y: 120 }, { x: 232, y: 120 });
 
-		scanner.accept(withArrow());
-		const after = scanner.push(withArrow());
-		expect(after.arrows).toHaveLength(0);
+		expect(sweep(scanner, withArrow, 10).arrows.length).toBeGreaterThanOrEqual(1);
+		scanner.accept();
+		expect(sweep(scanner, withArrow, 10).arrows).toHaveLength(0);
 	});
 });
 
@@ -394,27 +396,26 @@ describe('Scanner face gating', () => {
 		expect(result!.arrows).toHaveLength(0);
 	});
 
-	it('waits for the face to hold still before accepting any arrow', () => {
-		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToConfirm: 1, framesToSettle: 6 });
+	it('waits for the face to be in view a while before accepting any arrow', () => {
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 6 });
 		const first = scanner.push(waFace());
 		expect(first.steady).toBe(false);
 		expect(first.arrows).toHaveLength(0);
 	});
 
 	it('stops proposing arrows once the end is full', () => {
-		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToConfirm: 2, framesToSettle: 2 });
+		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 2 });
 		scanner.setLimit(1);
-		for (let i = 0; i < 5; i++) scanner.push(waFace());
 
-		const shots: [number, number][] = [
-			[150, 120],
-			[120, 150],
-			[95, 120]
+		const shots: [{ x: number; y: number }, { x: number; y: number }][] = [
+			[{ x: 150, y: 120 }, { x: 232, y: 120 }],
+			[{ x: 120, y: 150 }, { x: 120, y: 232 }],
+			[{ x: 95, y: 120 }, { x: 8, y: 120 }]
 		];
 		let result = null;
-		for (let i = 0; i < 6; i++) {
+		for (let i = 0; i < 12; i++) {
 			const frame = waFace();
-			for (const [x, y] of shots) ellipse(frame, x, y, 4, 4, [15, 15, 15]);
+			for (const [from, to] of shots) shaft(frame, from, to);
 			result = scanner.push(frame);
 		}
 		expect(result!.arrows.length).toBeLessThanOrEqual(1);

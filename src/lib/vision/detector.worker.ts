@@ -19,7 +19,7 @@ let scanner = new Scanner();
 let busy = false;
 
 interface FrameMessage {
-	type: 'frame' | 'accept';
+	type: 'frame';
 	width: number;
 	height: number;
 	data: ArrayBuffer;
@@ -30,6 +30,7 @@ type Message =
 	| { type: 'model'; model: ArrowModel | null }
 	| { type: 'limit'; limit: number }
 	| { type: 'reject'; x: number; y: number; face: number }
+	| { type: 'accept' }
 	| { type: 'clear' };
 
 function frameOf(message: FrameMessage): Frame {
@@ -64,7 +65,7 @@ self.onmessage = (event: MessageEvent<Message>) => {
 	}
 
 	if (message.type === 'accept') {
-		scanner.acceptReduced(frameOf(message));
+		scanner.accept();
 		return;
 	}
 

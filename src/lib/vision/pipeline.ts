@@ -2,9 +2,9 @@ import { downscale } from './pixels';
 import { detectFaces, toFaceCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings, type RingCheck } from './rings';
-import { Background, findBlobs } from './impacts';
+import { detectArrowsInStill, type StillOptions } from './still';
 import { detectArrowsLearned, detectArrowsInCrop, type ArrowModel } from './learned';
-import { ImpactTracker } from './tracker';
+import { SweepTracker, type SweepOptions } from './sweep';
 import type { Frame, FaceLocation, Impact } from './types';
 
 export interface ScanResult {
@@ -13,7 +13,7 @@ export interface ScanResult {
 	faces: FaceLocation[];
 	/** Why a candidate face was rejected, so the UI can say what to point the camera at. */
 	check: RingCheck | null;
-	/** True once the face has held still long enough for its coordinates to be trusted. */
+	/** True once the face has been held in view long enough for its coordinates to be trusted. */
 	steady: boolean;
 	/** Arrows confirmed on this frame, in normalised face coordinates. */
 	found: Impact[];
@@ -30,16 +30,18 @@ export interface ScannerOptions {
 	scale?: number;
 	/** Frames between face detections. The boss does not move, so this need not run every frame. */
 	faceEvery?: number;
-	framesToConfirm?: number;
-	threshold?: number;
-	/** Frames the face must hold still before any arrow is accepted. */
+	/** Detection passes the face must be in view for before any arrow is accepted. */
 	framesToSettle?: number;
+	/** Thresholds for the shape detector, so the harness can sweep them without a code edit. */
+	still?: StillOptions;
+	/** How much agreement across viewpoints an arrow needs. */
+	sweep?: SweepOptions;
 	/** Arrows to report at most, which is the end's remaining arrows. */
 	maxArrows?: number;
 	/**
-	 * The learned detector's weights. Given, arrows are proposed by the model instead of by differencing
-	 * against a quiet background. Everything downstream is unchanged: proposals still have to hold
-	 * across frames before they count, because a model is as capable of a confident mistake as a rule is.
+	 * The learned detector's weights. Given, arrows are proposed by the model instead of by the rules in
+	 * `still.ts`. Everything downstream is unchanged: proposals still have to agree across viewpoints
+	 * before they count, because a model is as capable of a confident mistake as a rule is.
 	 */
 	model?: ArrowModel | null;
 	/**
@@ -60,15 +62,14 @@ export interface ScannerOptions {
  * archer confirms, never a score written on its own.
  */
 export class Scanner {
-	private readonly background = new Background();
-	private readonly tracker: ImpactTracker;
+	private readonly tracker: SweepTracker;
 	private readonly scale: number;
 	private readonly faceEvery: number;
-	private readonly threshold: number;
+	private readonly still: StillOptions;
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
-	/** Frames the face has been in roughly the same place, which gates arrow detection. */
+	/** Frames the face has been in view, which gates arrow detection. */
 	private settled = 0;
 	private readonly framesToSettle: number;
 	private maxArrows: number;
@@ -78,12 +79,12 @@ export class Scanner {
 	constructor(options: ScannerOptions = {}) {
 		this.scale = options.scale ?? 4;
 		this.faceEvery = options.faceEvery ?? 15;
-		this.threshold = options.threshold ?? 28;
 		this.framesToSettle = options.framesToSettle ?? 8;
 		this.maxArrows = options.maxArrows ?? 12;
 		this.model = options.model ?? null;
 		this.crop = options.crop ?? null;
-		this.tracker = new ImpactTracker(options.framesToConfirm ?? 4);
+		this.still = options.still ?? {};
+		this.tracker = new SweepTracker(options.sweep);
 	}
 
 	get located(): FaceLocation | null {
@@ -127,15 +128,8 @@ export class Scanner {
 	track(small: Frame): FaceLocation[] {
 		if (this.faces.length === 0) return this.faces;
 
-		const followed = this.faces.map((face) => refineFace(small, face));
-		// A face that is moving is a camera being carried, and arrows must not be taken while it is.
-		const shifted = followed.some((face, i) => {
-			const before = this.faces[i];
-			return Math.hypot(face.cx - before.cx, face.cy - before.cy) > before.semiMajor * 0.02;
-		});
-		if (shifted) this.settled = 0;
-
-		this.faces = followed;
+		// A carried camera is the normal case here, so movement is not a reason to distrust the face.
+		this.faces = this.faces.map((face) => refineFace(small, face));
 		return this.faces;
 	}
 
@@ -159,7 +153,12 @@ export class Scanner {
 						Math.abs(face.semiMajor - previous.semiMajor) > previous.semiMajor * 0.08
 					);
 				});
-				this.settled = moved ? 0 : this.settled + this.faceEvery;
+				/**
+				 * Counted from the face being in view, not from it holding still. The archer walks up to
+				 * the boss and sweeps the camera over it, so a fit that moves is the normal case and
+				 * demanding stillness meant arrows were looked for on about two frames in a hundred.
+				 */
+				this.settled += this.faceEvery;
 				this.faces = ordered;
 			} else {
 				this.faces = [];
@@ -172,7 +171,6 @@ export class Scanner {
 		this.frames += 1;
 
 		const steady = this.faces.length > 0 && this.settled >= this.framesToSettle;
-		const diff = this.background.update(small, true);
 
 		if (!steady) {
 			return {
@@ -212,15 +210,14 @@ export class Scanner {
 						face: index
 					}));
 				})
-			: findBlobs(diff, small.width, small.height, {
-					threshold: this.threshold,
-					// Anything off every face is a person, a stand, or the wind in the grass.
-					accept: (cx, cy) => owner(cx, cy) >= 0
-				}).map((blob) => {
-					const index = owner(blob.cx, blob.cy);
-					const point = toFaceCoords(faces[index], blob.cx, blob.cy);
-					return { x: point.x, y: point.y, area: blob.area, face: index };
-				});
+			: faces.flatMap((face, index) =>
+					detectArrowsInStill(small, face, this.still).map((arrow) => ({
+						x: arrow.x,
+						y: arrow.y,
+						area: arrow.area,
+						face: index
+					}))
+				);
 
 		// Capped at what the end can still take, so a misdetection cannot flood the list.
 		this.tracker.setLimit(this.maxArrows);
@@ -243,14 +240,13 @@ export class Scanner {
 		this.tracker.setLimit(this.maxArrows);
 	}
 
-	/** Called once an end is taken off the sheet, so the arrows now in the boss become the new normal. */
-	accept(frame: Frame) {
-		this.acceptReduced(downscale(frame, this.scale));
-	}
-
-	acceptReduced(small: Frame) {
-		this.background.reset(small);
-		this.tracker.clear();
+	/**
+	 * Called once an end is taken off the sheet. The arrows stay standing in the boss, so they are
+	 * remembered as already scored rather than forgotten: nothing here can tell an arrow of this end
+	 * from one of the last by looking, and offering them again every end would be the whole sheet.
+	 */
+	accept() {
+		this.tracker.accept();
 	}
 
 	reject(impact: Impact) {
