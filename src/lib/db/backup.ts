@@ -1,5 +1,6 @@
 import { db, schema, schemaVersion } from './index';
 import { MIGRATIONS } from './migrations';
+import { OWNED_TABLES } from './synced';
 
 /**
  * A whole database as one JSON file. Everything lives in OPFS on a single device, so without this
@@ -120,8 +121,7 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
  */
 async function enqueueRestored(): Promise<void> {
 	const changedAt = Date.now();
-	// The sync layer's list, so a table that travels can never be restored without being enqueued.
-	const { OWNED_TABLES } = await import('$lib/sync/tables');
+	// The same list sync walks, so a table that travels cannot be restored without being enqueued.
 	for (const { name, table } of OWNED_TABLES) {
 		const ids = await db().select({ id: table.id }).from(table);
 		for (let i = 0; i < ids.length; i += 100) {

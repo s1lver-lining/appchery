@@ -1,7 +1,7 @@
 import { and, asc, eq, getTableColumns, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { db, schema } from '$lib/db';
-import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from './tables';
+import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from '$lib/db/synced';
 import { writeSyncState } from './config';
 import { adoptLocalRows } from './auth';
 

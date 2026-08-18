@@ -1,7 +1,7 @@
 import { getTableColumns, inArray } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { db, schema } from '$lib/db';
-import { OWNED_TABLES, LOCAL_ONLY_COLUMNS, type OwnedTableName } from './tables';
+import { OWNED_TABLES, LOCAL_ONLY_COLUMNS, type OwnedTableName } from '$lib/db/synced';
 import { readSyncState, writeSyncState } from './config';
 import { resolveWithDeletes, type Mergeable } from './merge';
 import { dataChanged } from '$lib/db/changed';

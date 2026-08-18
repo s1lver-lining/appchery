@@ -2,7 +2,7 @@ import { writable } from 'svelte/store';
 import { db, schema } from '$lib/db';
 import { isNull, sql } from 'drizzle-orm';
 import { supabase } from './client';
-import { OWNED_TABLES } from './tables';
+import { OWNED_TABLES } from '$lib/db/synced';
 
 // Signing in is optional and additive. The device is the source of truth; the account is a copy.
 

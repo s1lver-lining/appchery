@@ -1,4 +1,4 @@
-import { schema } from '$lib/db';
+import * as schema from './schema';
 
 /**
  * The tables that travel, parents first, named as `change_log` and the server name them. One list,
