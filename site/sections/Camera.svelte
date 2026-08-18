@@ -25,7 +25,7 @@
 	tone="surface"
 >
 	{#snippet visual()}
-		<Phone label={$t('site.camera.title')}>
+		<Phone label={$t('site.camera.title')} bar="bg-black">
 			<div class="flex h-full flex-col bg-black">
 				<header class="flex items-center justify-between px-4 py-2 text-white">
 					<h3 class="text-base font-bold">{$t('auto.title')}</h3>

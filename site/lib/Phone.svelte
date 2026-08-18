@@ -8,8 +8,15 @@
 	 */
 	let {
 		children,
-		label = ''
-	}: { children: import('svelte').Snippet; label?: string } = $props();
+		label = '',
+		bar = 'bg-bg'
+	}: {
+		children: import('svelte').Snippet;
+		label?: string;
+		/** The strip the cutout sits in. A real phone paints it the colour of whatever is under it,
+			so a screen with a coloured header has to be given that colour here too. */
+		bar?: string;
+	} = $props();
 </script>
 
 <div
@@ -18,9 +25,11 @@
 	role="img"
 	aria-label={label}
 >
-	<!-- The cutout, which is what the eye reads as a phone before it reads the corners. -->
-	<div class="absolute top-2 left-1/2 z-10 h-1.5 w-16 -translate-x-1/2 rounded-full bg-ink/70"></div>
-	<div class="h-full overflow-hidden rounded-[2rem] pt-5">
-		{@render children()}
+	<div class="flex h-full flex-col overflow-hidden rounded-[2rem]">
+		<!-- The cutout, which is what the eye reads as a phone before it reads the corners. -->
+		<div class="relative h-5 shrink-0 {bar}">
+			<div class="absolute top-1.5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-ink/70"></div>
+		</div>
+		<div class="min-h-0 flex-1">{@render children()}</div>
 	</div>
 </div>

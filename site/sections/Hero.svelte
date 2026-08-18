@@ -38,7 +38,9 @@
 		order it was done. Built from the app's own header and target faces rather than drawn to look
 		like them.
 	-->
-	<Phone label={$t('site.hero.session')}>
+	<!-- The header is brand tinted, so the bar above it takes the same tint: a pale strip over a
+		coloured header reads as a gap in the phone rather than as its top edge. -->
+	<Phone label={$t('site.hero.session')} bar="bg-brand/10">
 		<div class="flex h-full flex-col bg-bg text-[13px]">
 			<PageHeader motif="session" subtitle={$t('site.sample.when')}>
 				{#snippet lead()}
