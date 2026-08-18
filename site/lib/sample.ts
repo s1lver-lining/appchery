@@ -22,10 +22,11 @@ function group(count: number, spread: number, offset: [number, number], seed: nu
 		const x = offset[0] + Math.cos(angle) * radius;
 		const y = offset[1] + Math.sin(angle) * radius;
 		const hit = Math.hypot(x, y);
-		const zone = WA_10_RING.zones.filter((z) => z.countsAsHit).find((z) => {
-			const shape = z.shape;
-			return shape.kind === 'circle' && hit <= shape.r;
-		});
+		// Innermost first: the zones are listed outermost to innermost, and the tightest ring the
+		// arrow is inside is the one it scores.
+		const zone = [...WA_10_RING.zones]
+			.reverse()
+			.find((z) => z.countsAsHit && z.shape.kind === 'circle' && hit <= z.shape.r);
 		return {
 			ordinal: i + 1,
 			value: zone?.value ?? 0,
