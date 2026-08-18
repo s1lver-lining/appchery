@@ -143,19 +143,25 @@ export const SESSION = {
 		},
 		{ kind: 'other', icon: 'run', titleKey: 'exercises.activity.running', detail: '5.2 km · 27 min' }
 	] as SampleActivity[],
-	/** What the mass to draw weight test read, in the units and words the app's own screen uses. */
-	tuning: {
-		rows: [
-			{ labelKey: 'ratio.mass', value: '2 660 g' },
-			{ labelKey: 'ratio.drawWeight', value: '38 lb' }
-		],
-		ratio: '70',
-		verdictKey: 'ratio.verdict.good'
-	},
-	run: [
-		{ labelKey: 'running.distance', value: '5.2 km' },
-		{ labelKey: 'running.duration', value: '27:04' },
-		{ labelKey: 'running.pace', value: '5:12' },
-		{ labelKey: 'running.effort', valueKey: 'running.efforts.steady' }
-	]
+	/** What the mass to draw weight test was set up with. Editable on the screen, as in the app. */
+	tuning: { massGrams: 2660, drawWeightLb: 38 }
 };
+
+/** Ends already on the card when the scoring screen is opened, so it opens part way through a round. */
+export const SCORED_ENDS: Shot[][] = [
+	['10', '9', '9', '9', '8', '8'],
+	['X', '10', '9', '9', '9', '7'],
+	['10', '10', '9', '9', '8', '8']
+].map((labels) =>
+	labels.map((label, i) => {
+		const zone = WA_10_RING.zones.find((entry) => entry.label === label)!;
+		return {
+			ordinal: i + 1,
+			value: zone.value,
+			zoneLabel: zone.label,
+			x: null,
+			y: null,
+			source: 'manual'
+		} satisfies Shot;
+	})
+);

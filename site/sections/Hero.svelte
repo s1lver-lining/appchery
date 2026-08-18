@@ -1,13 +1,16 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
-	import MovementFigure from '$lib/ui/MovementFigure.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import OpenApp from '../lib/OpenApp.svelte';
 	import Phone from '../lib/Phone.svelte';
-	import { END_SHOTS, SAMPLE_EXERCISE, SCORE_SET, SESSION } from '../lib/sample';
+	import Running from '../screens/Running.svelte';
+	import Scoring from '../screens/Scoring.svelte';
+	import Strength from '../screens/Strength.svelte';
+	import Tuning from '../screens/Tuning.svelte';
+	import { SCORE_SET, SESSION } from '../lib/sample';
 
 	/**
 	 * The outing, working rather than pictured: the training count really counts, the total and the
@@ -52,9 +55,7 @@
 	</div>
 
 	<div>
-		<!-- The header is brand tinted, so the bar above it takes the same tint: a pale strip over a
-			coloured header reads as a gap in the phone rather than as its top edge. -->
-		<Phone label={$t('site.hero.session')} bar="bg-brand/10">
+		<Phone label={$t('site.hero.session')}>
 			<div class="flex h-full flex-col overflow-y-auto bg-bg text-[13px]">
 				{#if activity === null}
 					<PageHeader motif="session" subtitle={$t('site.sample.when')}>
@@ -186,71 +187,17 @@
 						{/snippet}
 					</PageHeader>
 
-					<div class="space-y-2.5 p-3">
-						{#if activity.kind === 'scoring'}
-							<div class="rounded-xl border border-line bg-surface p-3">
-								<TargetFace scoreSet={SCORE_SET} shots={END_SHOTS} showPerimeter showCentreDefault />
-							</div>
-							<div class="flex items-center gap-1">
-								{#each END_SHOTS as shot (shot.ordinal)}
-									<span
-										class="tabular flex-1 rounded-md bg-sunk py-1.5 text-center font-semibold"
-									>
-										{shot.zoneLabel}
-									</span>
-								{/each}
-							</div>
-							<div class="flex items-baseline justify-between rounded-xl border border-line bg-surface px-3 py-2">
-								<span class="text-[11px] text-muted">{$t('site.sample.end')}</span>
-								<span class="tabular text-xl font-black">{activity.score}</span>
-							</div>
-						{:else if activity.diagram}
-							<div class="rounded-xl border border-line bg-surface p-4">
-								<TuningDiagram name={activity.diagram} />
-							</div>
-							<dl class="grid grid-cols-2 gap-2">
-								{#each SESSION.tuning.rows as row (row.labelKey)}
-									<div class="rounded-xl border border-line bg-surface p-2.5">
-										<dt class="text-[11px] text-muted">{$t(row.labelKey)}</dt>
-										<dd class="tabular font-bold">{row.value}</dd>
-									</div>
-								{/each}
-							</dl>
-							<div class="rounded-xl border border-line bg-surface p-3">
-								<p class="tabular text-2xl leading-none font-bold text-brand-text">
-									{SESSION.tuning.ratio}
-									<span class="text-sm font-medium text-muted">{$t('ratio.unit')}</span>
-								</p>
-								<p class="mt-1.5 text-[11px] text-muted">{$t(SESSION.tuning.verdictKey)}</p>
-							</div>
-						{:else if activity.icon === 'exercise'}
-							<div class="rounded-xl border border-line bg-surface p-2">
-								<MovementFigure movement={SAMPLE_EXERCISE.movement} class="max-h-40 w-full" />
-							</div>
-							<ul class="space-y-1.5">
-								{#each [1, 2, 3] as set (set)}
-									<li
-										class="flex items-center justify-between rounded-xl border border-line bg-surface px-3 py-2"
-									>
-										<span class="font-medium">{$t('strength.setNumber', { n: set })}</span>
-										<span class="tabular text-muted">15 {$t('exercises.measure.reps')}</span>
-										<span class="text-brand-text"><Icon name="check" size={16} /></span>
-									</li>
-								{/each}
-							</ul>
-						{:else}
-							<dl class="grid grid-cols-2 gap-2">
-								{#each SESSION.run as row (row.labelKey)}
-									<div class="rounded-xl border border-line bg-surface p-3">
-										<dt class="text-[11px] text-muted">{$t(row.labelKey)}</dt>
-										<dd class="tabular text-lg font-bold">
-											{row.valueKey ? $t(row.valueKey) : row.value}
-										</dd>
-									</div>
-								{/each}
-							</dl>
-						{/if}
-					</div>
+					<!-- Each one is the app's own screen, working: the sheet takes arrows from the pad, the
+						sets tick off, the ratio moves with the figures typed into it. -->
+					{#if activity.kind === 'scoring'}
+						<Scoring />
+					{:else if activity.kind === 'tuning'}
+						<Tuning />
+					{:else if activity.icon === 'exercise'}
+						<Strength />
+					{:else}
+						<Running />
+					{/if}
 				{/if}
 			</div>
 		</Phone>
