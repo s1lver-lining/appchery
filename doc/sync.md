@@ -118,9 +118,11 @@ The client's own `updated_at` cannot serve: it is a device clock, and one phone 
 would drag the cursor forward and hide every other device's rows until the real world caught up.
 `updated_at` stays what it always was, the field last writer wins compares.
 
-The mark is read **before** a single row is fetched and written only once every table has been
-walked, so a row another device writes during the pull is picked up next time rather than stepped
-over. Rows arrive parent before child. Pulled rows do not re-enter `change_log`, or two devices would
+The cursor is kept **per table**, and each only ever moves to a row that table's walk actually read.
+The tables are walked one after another, so a row another device writes into an already walked table
+is older than anything the later walks bring back: one mark taken across all of them would step over
+that row and never come back for it. Older installs stored a single stamp, and every table starts
+from it. Rows arrive parent before child. Pulled rows do not re-enter `change_log`, or two devices would
 push each other's rows to each other for ever, with one exception: when the local copy wins the merge
 and genuinely differs from the server's, an entry is queued so the next push carries the winner up.
 Without that a row pushed and then overwritten by a device with a slow clock would leave the two
@@ -374,3 +376,12 @@ npm run browser:check # two browser devices, one archer, through the real screen
 ```
 
 The last two need a project to talk to and belong on preprod. See [deploy.md](./deploy.md).
+
+A pass over push and pull found two more:
+
+- **A refused change was marked as sent.** Push stamped `synced_at` on every log entry below the
+  chunk it had just uploaded, and one already given up on sits below it: the archer's retry button
+  cleared the refusal and found nothing left to send.
+- **The pull cursor was shared across tables.** One mark was taken across every table, so a row
+  another device wrote into a table the pull had already walked was older than the mark by the time
+  it was written, and no later pull ever asked for it. Each table carries its own cursor now.

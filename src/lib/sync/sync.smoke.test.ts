@@ -162,6 +162,7 @@ beforeEach(async () => {
 		schema.end,
 		schema.activity,
 		schema.session,
+		schema.bow,
 		schema.changeLog,
 		schema.syncState,
 		schema.socialProfile,
@@ -358,6 +359,44 @@ describe('pull', () => {
 		expect(result.applied).toBe(1);
 		const [row] = await proxy.select().from(schema.session).where(eq(schema.session.id, 'session-remote'));
 		expect(row.label).toBe('From the other phone');
+	});
+
+	/**
+	 * A row written into a table the pull has already walked, while it was still reading a later one.
+	 * Here the first pull sees only the session; the bow lands behind it and has to be fetched.
+	 */
+	it('comes back for a row written into a table it had already walked', async () => {
+		const server = fakeServer();
+		server.rowsOf('session').set('session-remote', {
+			id: 'session-remote',
+			created_at: 10,
+			updated_at: 10,
+			deleted_at: null,
+			device_id: 'device-b',
+			user_id: USER,
+			started_at: 10,
+			kind: 'practice',
+			server_updated_at: '2026-01-01T00:00:02.000Z'
+		});
+
+		await pull(server.client as never, USER);
+
+		// Bows are walked before sessions, so this one is older than anything the first pull applied.
+		server.rowsOf('bow').set('bow-late', {
+			id: 'bow-late',
+			created_at: 10,
+			updated_at: 10,
+			deleted_at: null,
+			device_id: 'device-b',
+			user_id: USER,
+			name: 'The other phone\'s bow',
+			type: 'recurve',
+			is_active: 1,
+			server_updated_at: '2026-01-01T00:00:01.000Z'
+		});
+
+		expect(await pull(server.client as never, USER)).toMatchObject({ applied: 1 });
+		expect(await proxy.select().from(schema.bow)).toHaveLength(1);
 	});
 
 	it('never applies a server row over a newer local edit', async () => {

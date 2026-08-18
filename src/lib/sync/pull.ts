@@ -10,6 +10,8 @@ import { dataChanged } from '$lib/db/changed';
 
 const PAGE = 500;
 
+const EPOCH = '1970-01-01T00:00:00Z';
+
 export interface PullResult {
 	applied: number;
 	skipped: number;
@@ -19,18 +21,16 @@ export class PullError extends Error {}
 
 export async function pull(client: SupabaseClient, userId: string): Promise<PullResult> {
 	const state = await readSyncState();
-	const start = state.lastPullCursor ?? '1970-01-01T00:00:00Z';
+	const marks = readCursors(state.lastPullCursor);
 	let applied = 0;
 	let skipped = 0;
 
-	// The cursor only ever moves to a row this pull actually applied. Anything written while it ran
-	// is newer than that, so it waits for the next one rather than being stepped over.
-	let mark = start;
-
 	// Parents before children, so an activity never lands before the session it belongs to.
 	for (const { name, table } of OWNED_TABLES) {
-		// Every table walks from the same start: one moving cursor would skip rows in the next table.
-		let cursor = start;
+		// One cursor per table. The tables are walked one after another, so a row written into an
+		// earlier one while a later one is still being read is older than anything the later walk
+		// brings back: a single mark taken across all of them would step over it and never come back.
+		let cursor = marks[name] ?? EPOCH;
 		for (;;) {
 			const { data, error } = await client
 				.from(name)
@@ -49,7 +49,8 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 			skipped += outcome.skipped;
 
 			const last = String(data[data.length - 1].server_updated_at);
-			if (last > mark) mark = last;
+			// Only ever to a row this pull actually read, so anything written behind it still waits.
+			marks[name] = last;
 			if (data.length < PAGE) break;
 
 			// A page that ends where the last one did would ask for the same rows for ever. It takes a
@@ -59,10 +60,27 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 		}
 	}
 
-	await writeSyncState({ lastSyncAt: Date.now(), lastPullCursor: mark });
+	await writeSyncState({ lastSyncAt: Date.now(), lastPullCursor: JSON.stringify(marks) });
 	if (applied > 0) dataChanged();
 
 	return { applied, skipped };
+}
+
+/** A cursor per table, or the single stamp older builds stored, which every table starts from. */
+function readCursors(stored: string | null): Record<string, string> {
+	if (!stored) return {};
+	if (!stored.startsWith('{')) return Object.fromEntries(OWNED_TABLES.map(({ name }) => [name, stored]));
+	try {
+		const parsed = JSON.parse(stored) as Record<string, unknown>;
+		return Object.fromEntries(
+			Object.entries(parsed)
+				.filter(([, value]) => typeof value === 'string')
+				.map(([name, value]) => [name, value as string])
+		);
+	} catch {
+		// Unreadable is not a licence to skip: start over rather than lose whatever it was hiding.
+		return {};
+	}
 }
 
 type OwnedTable = (typeof OWNED_TABLES)[number]['table'];
