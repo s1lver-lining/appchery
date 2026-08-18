@@ -49,7 +49,7 @@
 	const scrolledTo = new Map<string, number>();
 
 	beforeNavigate((nav) => {
-		if (scroller && nav.from) scrolledTo.set(nav.from.url.pathname, scroller.scrollTop);
+		if (scroller && nav.from?.url) scrolledTo.set(nav.from.url.pathname, scroller.scrollTop);
 	});
 
 	/**
@@ -68,10 +68,11 @@
 	}
 
 	afterNavigate(async (nav) => {
+		// A navigation can name a target it knows nothing else about, so neither url is assumed here.
+		const to = nav.to?.url?.pathname ?? null;
 		const returning =
-			nav.type === 'popstate' ||
-			(nav.from ? originOf(nav.from.url, null) === nav.to?.url.pathname : false);
-		const back = returning ? scrolledTo.get(nav.to?.url.pathname ?? '') : undefined;
+			nav.type === 'popstate' || (nav.from?.url ? originOf(nav.from.url, null) === to : false);
+		const back = returning && to ? scrolledTo.get(to) : undefined;
 		// After the page it is scrolling has been laid out, or the element is still the old height.
 		await tick();
 		if (back) await scrollBackTo(back);

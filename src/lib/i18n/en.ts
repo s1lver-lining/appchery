@@ -1226,6 +1226,45 @@ insetHint:
 			calves: 'Calves'
 		}
 	},
+	training: {
+		group: 'Training'
+	},
+	strength: {
+		title: 'Strength',
+		hint: 'Bandwork, holds and core, worked through set by set.',
+		progress: 'Done so far',
+		sets: 'sets',
+		finished: 'Finished',
+		resting: 'Rest {time}',
+		upNext: 'Next: {exercise}, set {set} of {of}',
+		addExercise: 'Add an exercise',
+		openExercise: 'Read the whole exercise',
+		worked: 'What this session worked',
+		setNumber: 'Set {n}',
+		secondsShort: 's',
+		rowSummary: '{done} of {total} sets',
+		runningElsewhere: 'Running is an activity of its own, started from the same list as this one.'
+	},
+	running: {
+		title: 'Running',
+		hint: 'A run, written down: how far, how long, and how it felt.',
+		what: 'The run',
+		distance: 'Distance',
+		km: 'km',
+		kmValue: '{km} km',
+		duration: 'Time',
+		minutesShort: 'min',
+		secondsShort: 's',
+		outOfRange: 'That is further or longer than a run the app can hold.',
+		pace: 'Pace',
+		perKm: 'per km',
+		paceWaiting: 'Enter a distance and a time and the pace works itself out.',
+		effort: 'How it felt',
+		effortHint: 'The only measure of effort you always have, and the one that tells you whether tomorrow is a rest day.',
+		efforts: { easy: 'Easy', steady: 'Steady', tempo: 'Tempo', hard: 'Hard', max: 'All out' },
+		whatItWorks: 'What it works',
+		unfinished: 'Saved as it stands. A run with only half its numbers is still a run you did.'
+	},
 	exercises: {
 		title: 'Exercises',
 		intro:

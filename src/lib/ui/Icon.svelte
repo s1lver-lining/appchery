@@ -37,6 +37,7 @@
 		| 'bulb'
 		| 'muscle'
 		| 'exercise'
+		| 'run'
 		| 'friends'
 		| 'level'
 		| 'help';
@@ -174,6 +175,13 @@
 		<!-- A dumbbell: the work done away from the shooting line. -->
 		<path d="M3 9.6v4.8M6 7.4v9.2M18 7.4v9.2M21 9.6v4.8" />
 		<path d="M6 12h12" />
+	{:else if name === 'run'}
+		<!-- A runner mid stride: the lean and the opposite arm are what make it a run and not a walk. -->
+		<circle cx="15.4" cy="4.4" r="2" />
+		<path d="M13.8 20.6 15 14.6l-3-2.6 1-5.2" />
+		<path d="M13 6.8 9.2 8.6 7.6 12" />
+		<path d="M13 11.6l3.2 2.2 1.4 4.6" />
+		<path d="M12 18.2 8.6 20.8" />
 	{:else if name === 'bulb'}
 		<!-- The lamp over the head: something you did not know the app could do. -->
 		<path d="M9.2 17.4a6 6 0 1 1 5.6 0" />

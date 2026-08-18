@@ -1234,6 +1234,45 @@ insetHint:
 			calves: 'Mollets'
 		}
 	},
+	training: {
+		group: 'Entraînement'
+	},
+	strength: {
+		title: 'Renforcement',
+		hint: 'Élastique, maintiens et gainage, série après série.',
+		progress: 'Fait pour le moment',
+		sets: 'séries',
+		finished: 'Terminé',
+		resting: 'Repos {time}',
+		upNext: 'Ensuite : {exercise}, série {set} sur {of}',
+		addExercise: 'Ajouter un exercice',
+		openExercise: 'Lire tout l\'exercice',
+		worked: 'Ce que cette séance a travaillé',
+		setNumber: 'Série {n}',
+		secondsShort: 's',
+		rowSummary: '{done} séries sur {total}',
+		runningElsewhere: "La course est une activité à part, lancée depuis la même liste que celle ci."
+	},
+	running: {
+		title: 'Course à pied',
+		hint: 'Une sortie, notée : la distance, le temps, et la sensation.',
+		what: 'La sortie',
+		distance: 'Distance',
+		km: 'km',
+		kmValue: '{km} km',
+		duration: 'Temps',
+		minutesShort: 'min',
+		secondsShort: 's',
+		outOfRange: "C'est plus loin ou plus long qu'une sortie que l'application peut retenir.",
+		pace: 'Allure',
+		perKm: 'au km',
+		paceWaiting: "Entrez une distance et un temps, l'allure se calcule toute seule.",
+		effort: 'La sensation',
+		effortHint: "La seule mesure d'effort dont on dispose toujours, et celle qui dit si demain est un jour de repos.",
+		efforts: { easy: 'Facile', steady: 'Souple', tempo: 'Tempo', hard: 'Dur', max: 'À fond' },
+		whatItWorks: 'Ce que ça travaille',
+		unfinished: "Enregistré tel quel. Une sortie à moitié notée reste une sortie que vous avez faite."
+	},
 	exercises: {
 		title: 'Exercices',
 		intro:

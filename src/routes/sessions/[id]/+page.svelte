@@ -28,6 +28,14 @@
 		END_COUNTS,
 		ARROWS_PER_END
 	} from '$lib/domain/rounds/custom';
+	import {
+		STRENGTH_KIND,
+		emptyStrengthPlan,
+		parseStrength,
+		setsDone,
+		setsPlanned
+	} from '$lib/domain/strength';
+	import { RUNNING_KIND, clock, emptyRun, parseRun } from '$lib/domain/running';
 import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { BOT_LEVELS } from '$lib/domain/bots';
@@ -84,6 +92,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		restoreActivities,
 		createScoringActivity,
 		createTuningActivity,
+		createStrengthActivity,
+		createRunningActivity,
 		createMatchActivity,
 		loadMatch,
 		listMatchNames,
@@ -92,7 +102,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		type ActivityRow,
 		type PlanSlotRow
 	} from '$lib/db/repository';
-	import Icon from '$lib/ui/Icon.svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import MatchGlyph from '$lib/ui/MatchGlyph.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
@@ -468,6 +478,21 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		goto(`/activities/${await createTuningActivity(id, key)}`);
 	}
 
+	/**
+	 * Training, which is an activity of the session like anything else and shoots nothing. Both open
+	 * empty: the exercises and the two numbers are filled in on the activity's own page, where the
+	 * work is actually done.
+	 */
+	async function startStrength() {
+		const id = await materialise();
+		goto(`/activities/${await createStrengthActivity(id, emptyStrengthPlan())}`);
+	}
+
+	async function startRunning() {
+		const id = await materialise();
+		goto(`/activities/${await createRunningActivity(id, emptyRun())}`);
+	}
+
 	/** Points a set match can be played to: six for an individual, five for a team, or anything. */
 	const SET_POINTS = Array.from({ length: 15 }, (_, i) => i + 1);
 	/** Folded away until asked for: a match can be shot without naming anybody. */
@@ -659,6 +684,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			return stage ? `${stage} · ${name}` : name;
 		}
 		if (a.kind === FREE_SCORE_KIND) return $t('freeScore.title');
+		if (a.kind === STRENGTH_KIND) return $t('strength.title');
+		if (a.kind === RUNNING_KIND) return $t('running.title');
 		// The procedure's name, not the key it is stored under: the row said "limb-alignment".
 		if (a.kind === 'tuning')
 			return a.templateKey && getTemplate(a.templateKey)
@@ -666,6 +693,22 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				: $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 		return round?.name ?? '';
+	}
+
+	/** Sets done out of sets planned: what a training row is worth reading at a glance. */
+	function strengthSummary(a: ActivityRow): string {
+		const plan = parseStrength(a.measurements);
+		return $t('strength.rowSummary', { done: setsDone(plan), total: setsPlanned(plan) });
+	}
+
+	/** The two numbers, or a nudge to enter them: a run with neither says nothing on its own. */
+	function runSummary(a: ActivityRow): string {
+		const run = parseRun(a.measurements);
+		const parts = [
+			run.distanceM === null ? null : $t('running.kmValue', { km: Math.round(run.distanceM / 10) / 100 }),
+			run.durationSeconds === null ? null : clock(run.durationSeconds)
+		].filter(Boolean);
+		return parts.length > 0 ? parts.join(' · ') : $t('running.hint');
 	}
 
 	/** The round a scored activity was shot at, for the face drawn beside its row. */
@@ -774,13 +817,23 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	);
 	const foundCustom = $derived(matchesQuery(query, [$t('round.custom'), $t('round.customHint')]));
 	const foundFree = $derived(matchesQuery(query, [$t('freeScore.title'), $t('freeScore.hint')]));
+	const foundTraining = $derived(
+		matchesQuery(query, [
+			$t('training.group'),
+			$t('strength.title'),
+			$t('strength.hint'),
+			$t('running.title'),
+			$t('running.hint')
+		])
+	);
 	const nothingFound = $derived(
 		searching &&
 			disciplines.length === 0 &&
 			foundMatchFormats.length === 0 &&
 			foundTemplates.length === 0 &&
 			!foundCustom &&
-			!foundFree
+			!foundFree &&
+			!foundTraining
 	);
 
 	/** The picture a tuning procedure earns, taken from the guide that already names them. */
@@ -1165,6 +1218,12 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 														>
 															<Icon name="target" size={18} />
 														</span>
+													{:else if a.kind === STRENGTH_KIND || a.kind === RUNNING_KIND}
+														<span
+															class="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-sunk text-muted"
+														>
+															<Icon name={a.kind === STRENGTH_KIND ? 'exercise' : 'run'} size={18} />
+														</span>
 													{/if}
 												</span>
 												<div class="min-w-0 flex-1">
@@ -1176,7 +1235,11 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 																? matchSummary(a)
 																: a.kind === FREE_SCORE_KIND
 																	? `${freeScoreLabel(parseFreeScore(a.measurements))} · ${a.arrowsShot} ${$t('score.arrow')}`
-																	: `${a.arrowsShot} ${$t('score.arrow')}`}
+																	: a.kind === STRENGTH_KIND
+																		? strengthSummary(a)
+																		: a.kind === RUNNING_KIND
+																			? runSummary(a)
+																			: `${a.arrowsShot} ${$t('score.arrow')}`}
 													</p>
 												</div>
 												{#if a.kind === 'scoring'}
@@ -1519,6 +1582,29 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							<span class="mt-0.5 block text-xs text-muted">{$t('freeScore.hint')}</span>
 						</span>
 					</a>
+				</section>
+
+				<!-- Training, which is work done for the shooting rather than shooting: no arrows, no score. -->
+				<section class:hidden={!foundTraining}>
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('training.group')}</h3>
+					<div class="grid gap-2">
+						{#each [{ kind: STRENGTH_KIND, icon: 'exercise', title: $t('strength.title'), hint: $t('strength.hint'), start: startStrength }, { kind: RUNNING_KIND, icon: 'run', title: $t('running.title'), hint: $t('running.hint'), start: startRunning }] as entry (entry.kind)}
+							<button
+								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+								onclick={entry.start}
+							>
+								<span
+									class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
+								>
+									<Icon name={entry.icon as IconName} size={20} />
+								</span>
+								<span class="min-w-0">
+									<span class="block font-medium">{entry.title}</span>
+									<span class="mt-0.5 block text-xs text-muted">{entry.hint}</span>
+								</span>
+							</button>
+						{/each}
+					</div>
 				</section>
 			</div>
 		</div>

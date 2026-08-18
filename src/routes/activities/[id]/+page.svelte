@@ -85,6 +85,10 @@
 		freeScoreAverage
 	} from '$lib/domain/freeScore';
 	import { updateFreeScore } from '$lib/db/repository';
+	import { STRENGTH_KIND } from '$lib/domain/strength';
+	import { RUNNING_KIND } from '$lib/domain/running';
+	import Strength from '$lib/pages/Strength.svelte';
+	import Running from '$lib/pages/Running.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { scrim } from '$lib/ui/statusBar';
@@ -898,6 +902,21 @@
 
 {#if activity && activity.kind === 'match'}
 	<Match {activity} onchange={refresh} oncelebrate={(awards) => (celebrations = awards)} />
+{:else if activity && (activity.kind === STRENGTH_KIND || activity.kind === RUNNING_KIND)}
+	<!-- Training rather than shooting: no score sheet, no keypad, and no arrows anywhere on it. -->
+	<div class="safe-top pt-2">
+		<header class="mx-auto w-full max-w-2xl px-4 pt-4">
+			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
+			<h1 class="text-2xl font-bold tracking-tight">
+				{$t(activity.kind === STRENGTH_KIND ? 'strength.title' : 'running.title')}
+			</h1>
+		</header>
+		{#if activity.kind === STRENGTH_KIND}
+			<Strength {activity} onchange={refresh} />
+		{:else}
+			<Running {activity} onchange={refresh} />
+		{/if}
+	</div>
 {:else if activity && activity.kind === 'tuning'}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
 		<header>
