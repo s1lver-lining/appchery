@@ -4,6 +4,8 @@
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
+	import { STRENGTH_KIND, parseStrength, setsDone, setsPlanned } from '$lib/domain/strength';
+	import { RUNNING_KIND, clock, parseRun } from '$lib/domain/running';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import EmptyState from './EmptyState.svelte';
 	import Icon from './Icon.svelte';
@@ -56,6 +58,8 @@
 	function title(shared: SharedActivity) {
 		const kind = kindOf(shared);
 		if (kind === FREE_SCORE_KIND) return $t('freeScore.title');
+		if (kind === STRENGTH_KIND) return $t('strength.title');
+		if (kind === RUNNING_KIND) return $t('running.title');
 		if (kind === 'tuning') {
 			const key = templateOf(shared);
 			return key ? $t(`tuning.template.${key}`) : $t('tuning.title');
@@ -67,6 +71,22 @@
 		const kind = kindOf(shared);
 		const arrows = Number(shared.activity.arrows_shot ?? 0);
 		if (kind === 'tuning') return $t('tuning.title');
+		// Training shot nothing, so a count of arrows would be a nonsense rather than a small number.
+		if (kind === STRENGTH_KIND) {
+			const plan = parseStrength(shared.activity.measurements as string | null);
+			return $t('strength.rowSummary', { done: setsDone(plan), total: setsPlanned(plan) });
+		}
+		if (kind === RUNNING_KIND) {
+			const run = parseRun(shared.activity.measurements as string | null);
+			return [
+				run.distanceM === null
+					? null
+					: $t('running.kmValue', { km: Math.round(run.distanceM / 10) / 100 }),
+				run.durationSeconds === null ? null : clock(run.durationSeconds)
+			]
+				.filter(Boolean)
+				.join(' · ');
+		}
 		const shots = `${arrows} ${$t('score.arrow')}`;
 		if (kind === FREE_SCORE_KIND) {
 			return `${freeScoreLabel(parseFreeScore(shared.activity.measurements as string | null))} · ${shots}`;
@@ -136,6 +156,12 @@
 				{#if round}
 					<span class="h-9 w-9">
 						<TargetFace scoreSet={getScoreSet(round.scoreSetId)} />
+					</span>
+				{:else if kind === STRENGTH_KIND || kind === RUNNING_KIND}
+					<span
+						class="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-sunk text-muted"
+					>
+						<Icon name={kind === STRENGTH_KIND ? 'exercise' : 'run'} size={18} />
 					</span>
 				{:else if kind === 'tuning'}
 					<span
