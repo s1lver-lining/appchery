@@ -4,6 +4,8 @@ import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { and, eq, inArray, isNull } from 'drizzle-orm';
 import * as schema from './schema';
 import { MIGRATIONS } from './migrations';
+import { STRENGTH_KIND, parseStrength, serialiseStrength, setsDone } from '$lib/domain/strength';
+import { RUNNING_KIND, parseRun, serialiseRun } from '$lib/domain/running';
 
 /**
  * Exercises the real SQL Drizzle generates against a real SQLite, which unit tests over the domain
@@ -149,3 +151,59 @@ describe('activities of a deleted session', () => {
 	});
 });
 
+/**
+ * The promise the whole guard rests on: an activity that shoots nothing stores what it did in the
+ * measurements column and leaves the arrow and score columns at zero, so nothing that sums them can
+ * pick it up whatever it later learns about the kind.
+ */
+describe('training activities', () => {
+	it('keeps its work in measurements and its arrows at nothing', async () => {
+		const now = Date.now();
+		await proxy.insert(schema.session).values({
+			id: 'session-training',
+			createdAt: now,
+			updatedAt: now,
+			deviceId: 'device',
+			startedAt: now,
+			kind: 'practice'
+		});
+		const plan = serialiseStrength({
+			entries: [{ exerciseKey: 'plank', restSeconds: 45, sets: [{ reps: null, holdSeconds: 45, doneAt: now }] }]
+		});
+		await proxy.insert(schema.activity).values({
+			id: 'activity-strength',
+			createdAt: now,
+			updatedAt: now,
+			deviceId: 'device',
+			sessionId: 'session-training',
+			kind: STRENGTH_KIND,
+			measurements: plan,
+			startedAt: now,
+			status: 'complete'
+		});
+		await proxy.insert(schema.activity).values({
+			id: 'activity-run',
+			createdAt: now,
+			updatedAt: now,
+			deviceId: 'device',
+			sessionId: 'session-training',
+			kind: RUNNING_KIND,
+			measurements: serialiseRun({ distanceM: 5000, durationSeconds: 1650, effort: 'steady' }),
+			startedAt: now,
+			status: 'complete'
+		});
+
+		const rows = await proxy
+			.select()
+			.from(schema.activity)
+			.where(inArray(schema.activity.id, ['activity-strength', 'activity-run']));
+		expect(rows).toHaveLength(2);
+		for (const row of rows) {
+			expect(row.arrowsShot).toBe(0);
+			expect(row.totalScore).toBe(0);
+			expect(row.roundDefinition).toBeNull();
+		}
+		expect(setsDone(parseStrength(rows.find((r) => r.id === 'activity-strength')!.measurements))).toBe(1);
+		expect(parseRun(rows.find((r) => r.id === 'activity-run')!.measurements).distanceM).toBe(5000);
+	});
+});

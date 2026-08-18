@@ -17,6 +17,8 @@ import {
 	type MatchEnd
 } from '$lib/domain/matches';
 import type { CapTargetPlan } from '$lib/import/captarget';
+import { STRENGTH_KIND, isStrengthDone, serialiseStrength, type StrengthPlan } from '$lib/domain/strength';
+import { RUNNING_KIND, isRunDone, serialiseRun, type RunRecord } from '$lib/domain/running';
 import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
 import { LIMITS, safeCount, safeText } from '$lib/import/limits';
 
@@ -276,6 +278,71 @@ export async function updateFreeScore(
 			...(patch.setup === undefined ? {} : { measurements: serialiseFreeScore(patch.setup) }),
 			// Complete the moment it holds anything: there is no last arrow to wait for.
 			status: 'complete',
+			updatedAt: Date.now()
+		})
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
+}
+
+/**
+ * Strength work and running: activities that shoot nothing.
+ *
+ * Both keep what they are in the measurements column rather than in a column of their own, the same
+ * as free scoring does. Nothing in the app reads that column without knowing which kind of activity
+ * it belongs to, so a new kind of training costs no migration and no change to what syncs.
+ *
+ * Neither ever writes arrowsShot or totalScore. They stay at zero, which is what keeps a session of
+ * bandwork out of every arrow figure the app keeps.
+ */
+export async function createStrengthActivity(sessionId: string, plan: StrengthPlan) {
+	await unplan(sessionId);
+	const base = stamp();
+	await db().insert(schema.activity).values({
+		...base,
+		sessionId,
+		kind: STRENGTH_KIND,
+		measurements: serialiseStrength(plan),
+		startedAt: base.createdAt,
+		status: 'in_progress'
+	});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+/** Complete once the last set is ticked, and back in progress if one is unticked again. */
+export async function updateStrengthPlan(activityId: string, plan: StrengthPlan) {
+	await db()
+		.update(schema.activity)
+		.set({
+			measurements: serialiseStrength(plan),
+			status: isStrengthDone(plan) ? 'complete' : 'in_progress',
+			updatedAt: Date.now()
+		})
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
+}
+
+export async function createRunningActivity(sessionId: string, run: RunRecord) {
+	await unplan(sessionId);
+	const base = stamp();
+	await db().insert(schema.activity).values({
+		...base,
+		sessionId,
+		kind: RUNNING_KIND,
+		measurements: serialiseRun(run),
+		startedAt: base.createdAt,
+		status: isRunDone(run) ? 'complete' : 'in_progress'
+	});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+export async function updateRun(activityId: string, run: RunRecord) {
+	await db()
+		.update(schema.activity)
+		.set({
+			measurements: serialiseRun(run),
+			status: isRunDone(run) ? 'complete' : 'in_progress',
 			updatedAt: Date.now()
 		})
 		.where(eq(schema.activity.id, activityId));
