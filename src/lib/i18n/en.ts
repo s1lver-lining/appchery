@@ -12,7 +12,7 @@ export const en = {
 		title: 'Share',
 		print: 'Print',
 		scan: 'Scan the code, or type the address',
-		body: 'Appchery keeps your scores, your sessions and your bow settings on your own phone. Nothing to sign up for, nothing to pay.',
+		body: 'Appchery keeps your scores, your sessions and your bow settings on your own phone. An account is optional, and nothing leaves the phone without one. Nothing to pay.',
 		free: 'Free and open source, under the AGPL.'
 	},
 	nav: {
@@ -945,7 +945,7 @@ export const en = {
 	},
 	backup: {
 		title: 'Backup',
-		hint: 'Everything is stored on this device only. Export a file you can keep somewhere else.',
+		hint: 'Your shooting is on this device, and on the sync server too once you sign in. A backup is a file of your own, that neither of them can lose.',
 		export: 'Export',
 		import: 'Import',
 		exported: 'Exported {n} rows.',

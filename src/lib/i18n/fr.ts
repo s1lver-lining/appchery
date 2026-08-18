@@ -13,7 +13,7 @@ export const fr: Dictionary = {
 		title: 'Partager',
 		print: 'Imprimer',
 		scan: 'Scannez le code, ou tapez l’adresse',
-		body: 'Appchery garde vos scores, vos séances et les réglages de vos arcs sur votre téléphone. Rien à créer, rien à payer.',
+		body: 'Appchery garde vos scores, vos séances et les réglages de vos arcs sur votre téléphone. Le compte est facultatif, et rien ne quitte le téléphone sans lui. Rien à payer.',
 		free: 'Libre et open source, sous licence AGPL.'
 	},
 	nav: {
@@ -949,7 +949,7 @@ export const fr: Dictionary = {
 	},
 	backup: {
 		title: 'Sauvegarde',
-		hint: 'Tout est stocké sur cet appareil uniquement. Exportez un fichier à conserver ailleurs.',
+		hint: 'Vos données sont sur cet appareil, et sur le serveur de synchronisation dès que vous êtes connecté. Une sauvegarde est un fichier à vous, qu’aucun des deux ne peut perdre.',
 		export: 'Exporter',
 		import: 'Importer',
 		exported: '{n} lignes exportées.',
