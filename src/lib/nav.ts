@@ -102,6 +102,29 @@ export function registerTabs(nav: TabNav) {
 	return () => pageTabs.update((current) => (current === nav ? null : current));
 }
 
+/**
+ * Where each main page was left. The pager is torn down the moment a link off a main page is
+ * opened, so its pages cannot hold this themselves: coming back mounts them afresh at the top.
+ */
+const mainScroll = new Map<string, number>();
+
+export function keepMainScroll(path: string, top: number) {
+	mainScroll.set(strip(path), top);
+}
+
+export function mainScrollOf(path: string): number {
+	return mainScroll.get(strip(path)) ?? 0;
+}
+
+/** Bumped when a page is asked for its top, so a pager page already mounted goes there too. */
+export const mainScrollReset = writable<{ path: string; at: number } | null>(null);
+
+/** A tab tap asks for the page itself, which starts at its top however far down it was left. */
+export function forgetMainScroll(path: string) {
+	mainScroll.delete(strip(path));
+	mainScrollReset.set({ path: strip(path), at: Date.now() });
+}
+
 /** Where `path` sits in the pager, or -1 when it is not one of the swipeable main pages. */
 export function mainPageIndex(path: string): number {
 	return (MAIN_PAGES as readonly string[]).indexOf(strip(path));

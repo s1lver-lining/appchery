@@ -12,6 +12,7 @@
 	import '$lib/install';
 	import {
 		askTab,
+		forgetMainScroll,
 		backGuards,
 		isMainPage,
 		originOf,
@@ -329,6 +330,8 @@
 		if (onGestureBar(event, href)) return;
 		pressed = true;
 		event.preventDefault();
+		// A tab stands for the top of its page, so the tap drops wherever that page was left.
+		forgetMainScroll(href);
 		if ($page.url.pathname !== href) {
 			goto(href);
 			return;

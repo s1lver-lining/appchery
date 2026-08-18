@@ -1,7 +1,14 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
-	import { askToLeave, MAIN_PAGES, mainPageIndex } from '$lib/nav';
+	import {
+		askToLeave,
+		keepMainScroll,
+		mainScrollOf,
+		MAIN_PAGES,
+		mainPageIndex,
+		mainScrollReset
+	} from '$lib/nav';
 	import { swipe, COMMIT_RATIO, SNAP_MS, SNAP_EASE } from './swipe';
 	import Feed from '$lib/pages/Feed.svelte';
 	import Home from '$lib/pages/Home.svelte';
@@ -52,6 +59,44 @@
 
 	/** Where a page sits on the track, in screens from the one on show. */
 	const slot = (i: number) => (i === sliding ? Math.sign(sliding - index) : i - index);
+
+	const panes = new Map<number, HTMLElement>();
+
+	/**
+	 * A page is put back where it was left, so opening a link off the home grid and coming straight
+	 * back lands on the tile that was tapped. Restoring takes a few frames because a page arriving
+	 * has not queried its own contents yet, and a browser clamps a scroll to the height it can reach.
+	 */
+	function keepScroll(node: HTMLElement, i: number) {
+		panes.set(i, node);
+		const save = () => keepMainScroll(MAIN_PAGES[i], node.scrollTop);
+		node.addEventListener('scroll', save, { passive: true });
+		restore(node, mainScrollOf(MAIN_PAGES[i]));
+		return {
+			destroy: () => {
+				node.removeEventListener('scroll', save);
+				panes.delete(i);
+			}
+		};
+	}
+
+	async function restore(node: HTMLElement, top: number) {
+		for (let attempt = 0; top > 0 && attempt < 6; attempt++) {
+			node.scrollTop = top;
+			if (Math.abs(node.scrollTop - top) < 1) return;
+			await new Promise(requestAnimationFrame);
+		}
+	}
+
+	// A page already mounted keeps its own scroll, so being asked for its top is told to it directly.
+	let lastReset = 0;
+	$effect(() => {
+		const reset = $mainScrollReset;
+		if (!reset || reset.at === lastReset) return;
+		lastReset = reset.at;
+		const at = mainPageIndex(reset.path);
+		if (at >= 0) panes.get(at)?.scrollTo({ top: 0 });
+	});
 
 	let headerHeights = $state<Record<number, number>>({});
 
@@ -171,6 +216,7 @@
 				: ''}"
 			inert={i !== index || undefined}
 			use:measure={i}
+			use:keepScroll={i}
 		>
 			<View />
 		</section>
