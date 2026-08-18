@@ -114,7 +114,8 @@ export interface SampleActivity {
 }
 
 export const SESSION = {
-	arrows: 245,
+	/** Arrows the listed activities account for. The training count is added on top, live. */
+	roundArrows: 221,
 	goal: 300,
 	trainingArrows: 24,
 	temperature: '14°',
@@ -141,5 +142,20 @@ export const SESSION = {
 			detail: '3 × 15'
 		},
 		{ kind: 'other', icon: 'run', titleKey: 'exercises.activity.running', detail: '5.2 km · 27 min' }
-	] as SampleActivity[]
+	] as SampleActivity[],
+	/** What the mass to draw weight test read, in the units and words the app's own screen uses. */
+	tuning: {
+		rows: [
+			{ labelKey: 'ratio.mass', value: '2 660 g' },
+			{ labelKey: 'ratio.drawWeight', value: '38 lb' }
+		],
+		ratio: '70',
+		verdictKey: 'ratio.verdict.good'
+	},
+	run: [
+		{ labelKey: 'running.distance', value: '5.2 km' },
+		{ labelKey: 'running.duration', value: '27:04' },
+		{ labelKey: 'running.pace', value: '5:12' },
+		{ labelKey: 'running.effort', valueKey: 'running.efforts.steady' }
+	]
 };

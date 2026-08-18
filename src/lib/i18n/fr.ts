@@ -1683,6 +1683,7 @@ insetHint:
 			title: 'Tout ce que vous avez fait sur le pas de tir, au même endroit.',
 			body: 'Marquez un tir, réglez un arc, comptez les flèches que personne ne compte, préparez le geste. Appchery garde la sortie entière sur votre appareil et fonctionne sans le moindre réseau.',
 			session: 'Une sortie telle que l’appli l’enregistre',
+			try: 'Celle ci fonctionne : comptez les flèches d’entraînement, ou ouvrez ce qui a été fait.',
 			free: 'Gratuit, libre, sans compte',
 			offline: 'Fonctionne hors ligne'
 		},
