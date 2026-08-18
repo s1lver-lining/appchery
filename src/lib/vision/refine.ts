@@ -168,10 +168,15 @@ function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 	 * different.
 	 */
 	const at = (radius: number, angle: number, colours: RingColour[]): number | null => {
-		const fx = Math.cos(angle) * radius * face.semiMajor;
-		const fy = Math.sin(angle) * radius * face.semiMinor;
-		const x = face.cx + fx * cos - fy * sin;
-		const y = face.cy + fx * sin + fy * cos;
+		const ux = Math.cos(angle) * radius;
+		const uy = Math.sin(angle) * radius;
+		const fx = ux * face.semiMajor;
+		const fy = uy * face.semiMinor;
+		// The far side of a leaning face is smaller, which is what an ellipse alone cannot express.
+		const depth = 1 + (face.perspectiveX ?? 0) * ux + (face.perspectiveY ?? 0) * uy;
+		if (Math.abs(depth) < 1e-6) return null;
+		const x = face.cx + (fx * cos - fy * sin) / depth;
+		const y = face.cy + (fx * sin + fy * cos) / depth;
 		if (x < 0 || y < 0 || x >= frame.width - 1 || y >= frame.height - 1) return null;
 
 		const x0 = Math.floor(x);
@@ -230,9 +235,32 @@ export function ringAgreement(frame: Frame, face: FaceLocation): number {
  * estimate from the gold blob is usually close, and a global search would cost far more than a video
  * frame can afford.
  */
+/**
+ * How much of the frame the face must fill before its lean is worth estimating.
+ *
+ * Perspective is only there to be measured when the camera is close enough for near and far rings to
+ * differ in scale. A face across the range is very nearly an orthographic projection, and asking for
+ * two more numbers from it does not find a lean that is not there: it finds whichever lean best
+ * absorbs the noise, and drags the centre off by more than the perspective would have. Measured on
+ * 938 annotated three spots this was the whole of a regression from 0.023 to 0.036 in centre error.
+ */
+const LEAN_NEEDS_SIZE = 0.7;
+
+/**
+ * What a lean has to earn before it is believed. A face square on to the camera has no perspective,
+ * and without this the fit will happily take a little of it in exchange for a rounding error, which
+ * costs accuracy on the easy case to gain nothing on the hard one.
+ */
+const LEAN_PENALTY = 0.02;
+
+function judge(frame: Frame, face: FaceLocation): number {
+	const lean = Math.hypot(face.perspectiveX ?? 0, face.perspectiveY ?? 0);
+	return ringAgreement(frame, face) - LEAN_PENALTY * lean;
+}
+
 function descend(frame: Frame, start: FaceLocation): FaceLocation {
 	let best = start;
-	let bestScore = ringAgreement(frame, start);
+	let bestScore = judge(frame, start);
 
 	// Steps as a share of the face radius, halving each round.
 	for (let step = 0.06; step >= 0.0075; step /= 2) {
@@ -263,9 +291,27 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 				{ ...best, semiMinor: best.semiMinor * (1 - step) }
 			];
 
+			if (best.semiMajor > frame.width * LEAN_NEEDS_SIZE) {
+				/**
+				 * How far the face leans. Two more numbers turn the fit from an ellipse into a full
+				 * projection, which is what a boss on its stand actually presents to an archer standing
+				 * close to it. Without them the fit is not merely imprecise, it is biased: the centre
+				 * settles towards the far side of the face and every arrow is read a little off centre
+				 * in the same direction.
+				 */
+				candidates.push(
+					{ ...best, perspectiveX: (best.perspectiveX ?? 0) + step / 2 },
+					{ ...best, perspectiveX: (best.perspectiveX ?? 0) - step / 2 },
+					{ ...best, perspectiveY: (best.perspectiveY ?? 0) + step / 2 },
+					{ ...best, perspectiveY: (best.perspectiveY ?? 0) - step / 2 }
+				);
+			}
+
 			for (const candidate of candidates) {
 				if (candidate.semiMinor < 4 || candidate.semiMajor < 4) continue;
-				const score = ringAgreement(frame, candidate);
+				// Past this the far edge folds through infinity, which is not a face anyone is looking at.
+				if (Math.hypot(candidate.perspectiveX ?? 0, candidate.perspectiveY ?? 0) > 0.6) continue;
+				const score = judge(frame, candidate);
 				if (score > bestScore + 1e-4) {
 					bestScore = score;
 					best = candidate;
@@ -275,7 +321,7 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 		}
 	}
 
-	return { ...best, support: bestScore };
+	return { ...best, support: ringAgreement(frame, best) };
 }
 
 /**

@@ -132,7 +132,17 @@ function fromMoments(
 	const support = expected > 0 ? Math.min(1, size / expected) : 0;
 	if (support < 0.6) return null;
 
-	return { cx, cy, semiMajor: goldMajor / share, semiMinor: goldMinor / share, rotation, support };
+	// Starts flat: how much the face leans is what the ring fit works out, not the gold blob.
+	return {
+		cx,
+		cy,
+		semiMajor: goldMajor / share,
+		semiMinor: goldMinor / share,
+		rotation,
+		support,
+		perspectiveX: 0,
+		perspectiveY: 0
+	};
 }
 
 function centroid(pixels: number[], width: number, size: number): { cx: number; cy: number } {
@@ -152,13 +162,30 @@ function centroid(pixels: number[], width: number, size: number): { cx: number; 
  * close to a steeply angled boss, where near and far rings differ in scale.
  */
 export function toFaceCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
-	const cos = Math.cos(-face.rotation);
-	const sin = Math.sin(-face.rotation);
+	const cos = Math.cos(face.rotation);
+	const sin = Math.sin(face.rotation);
+	const a = face.semiMajor * cos;
+	const b = -face.semiMinor * sin;
+	const d = face.semiMajor * sin;
+	const e = face.semiMinor * cos;
 	const dx = x - face.cx;
 	const dy = y - face.cy;
+	const g = face.perspectiveX ?? 0;
+	const h = face.perspectiveY ?? 0;
+
+	/**
+	 * The forward map divides by (1 + g·fx + h·fy), so inverting it is two linear equations rather
+	 * than a rotate and a scale. With no perspective the divisor is one and this is the old inverse.
+	 */
+	const a1 = a - dx * g;
+	const b1 = b - dx * h;
+	const a2 = d - dy * g;
+	const b2 = e - dy * h;
+	const determinant = a1 * b2 - b1 * a2;
+	if (Math.abs(determinant) < 1e-9) return { x: 0, y: 0 };
 	return {
-		x: (dx * cos - dy * sin) / face.semiMajor,
-		y: (dx * sin + dy * cos) / face.semiMinor
+		x: (dx * b2 - b1 * dy) / determinant,
+		y: (a1 * dy - dx * a2) / determinant
 	};
 }
 
@@ -168,8 +195,11 @@ export function toImageCoords(face: FaceLocation, x: number, y: number): { x: nu
 	const sin = Math.sin(face.rotation);
 	const px = x * face.semiMajor;
 	const py = y * face.semiMinor;
+	// Further from the lens is smaller, which is the one thing an ellipse cannot say.
+	const depth = 1 + (face.perspectiveX ?? 0) * x + (face.perspectiveY ?? 0) * y;
+	const scale = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
 	return {
-		x: face.cx + px * cos - py * sin,
-		y: face.cy + px * sin + py * cos
+		x: face.cx + (px * cos - py * sin) * scale,
+		y: face.cy + (px * sin + py * cos) * scale
 	};
 }

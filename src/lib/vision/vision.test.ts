@@ -521,7 +521,7 @@ function shaft(
 }
 
 describe('detectArrowsInStill', () => {
-	const face = { cx: 300, cy: 300, semiMajor: 200, semiMinor: 200, rotation: 0, support: 1 };
+	const face = { cx: 300, cy: 300, semiMajor: 200, semiMinor: 200, rotation: 0, support: 1 , perspectiveX: 0, perspectiveY: 0};
 
 	it('reads the arrow where it enters the paper, not at the nock', () => {
 		const frame = waFace(600, 200);
@@ -596,7 +596,7 @@ describe('detectArrowsInStill', () => {
 });
 
 describe('detectArrowsLearned', () => {
-	const face = { cx: 63.5, cy: 63.5, semiMajor: 128 / 2.4, semiMinor: 128 / 2.4, rotation: 0, support: 1 };
+	const face = { cx: 63.5, cy: 63.5, semiMajor: 128 / 2.4, semiMinor: 128 / 2.4, rotation: 0, support: 1 , perspectiveX: 0, perspectiveY: 0};
 
 	/**
 	 * A one layer model that fires on brightness alone, so the convolution, the peak search and the

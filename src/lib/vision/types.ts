@@ -26,6 +26,19 @@ export interface FaceLocation {
 	rotation: number;
 	/** Share of sampled pixels that supported the fit, as a rough confidence. */
 	support: number;
+	/**
+	 * How much the face leans away from the lens, along each image axis. Zero is the affine case, a
+	 * face square on to the camera.
+	 *
+	 * A boss leans back on its stand and the archer walks right up to it, which is real perspective
+	 * rather than a squashed circle: near and far rings do not share a scale. An ellipse cannot say
+	 * that, and the error does not show up as a bad looking fit. It shows up as the centre creeping
+	 * towards the far side of the face, because the centre of the projected ellipse is simply not the
+	 * projection of the circle's centre. Measured on these recordings that put the gold about a
+	 * twentieth of a face radius too high, which is half a ring at the outside of the target.
+	 */
+	perspectiveX: number;
+	perspectiveY: number;
 }
 
 export interface Blob {
