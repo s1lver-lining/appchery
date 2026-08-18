@@ -42,29 +42,37 @@ const BAND_PULL_APART: Movement = {
 	]
 };
 
+/**
+ * Seen side on, because the elbow travelling back past the ear is the whole exercise and a figure
+ * facing the reader cannot show anything travelling backwards.
+ */
 const FACE_PULL: Movement = {
-	view: 'front',
+	view: 'side',
 	prop: 'anchoredBand',
-	anchor: [100, 8],
+	anchor: [192, 38],
 	frames: [
 		{
 			key: 'start',
-			pose: pose('standing', {
-				elbowLeft: [78, 62],
-				handLeft: [88, 40],
-				elbowRight: [122, 62],
-				handRight: [112, 40]
+			pose: pose('side', {
+				shoulderLeft: [106, 64],
+				elbowLeft: [132, 58],
+				handLeft: [158, 50],
+				shoulderRight: [98, 64],
+				elbowRight: [124, 62],
+				handRight: [150, 54]
 			})
 		},
 		{
 			key: 'end',
-			pose: pose('standing', {
-				shoulderLeft: [74, 66],
-				elbowLeft: [40, 56],
-				handLeft: [74, 36],
-				shoulderRight: [126, 66],
-				elbowRight: [160, 56],
-				handRight: [126, 36]
+			pose: pose('side', {
+				// The hands finish under the chin rather than at the nose: a drawn head is a circle, and
+				// a hand brought to the face inside it is a hand that cannot be seen.
+				shoulderLeft: [108, 66],
+				elbowLeft: [66, 36],
+				handLeft: [118, 50],
+				shoulderRight: [96, 68],
+				elbowRight: [56, 46],
+				handRight: [106, 58]
 			}),
 			dwell: 1
 		}
@@ -99,10 +107,11 @@ const PRONE_YTW: Movement = {
 		{
 			key: 'hold',
 			pose: pose('prone', {
-				elbowLeft: [58, 96],
-				handLeft: [80, 78],
-				elbowRight: [58, 144],
-				handRight: [80, 162]
+				// The W: the elbow back towards the ribs and the hand forward, not the other way round.
+				elbowLeft: [88, 90],
+				handLeft: [64, 76],
+				elbowRight: [88, 150],
+				handRight: [64, 164]
 			}),
 			dwell: 1
 		}
