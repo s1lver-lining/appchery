@@ -1687,7 +1687,7 @@ insetHint:
 		stats: {
 			title: 'Numbers that answer a question',
 			body: 'How a round has gone over a season, which zones the arrows really fall in, and how much the wind costs you per arrow. Filter by bow, by distance, by kind of outing, and the whole page answers for that slice alone.',
-			note: 'Per arrow, because it is the only figure two different rounds can be compared on.'
+			note: 'Compare anything against anything: this bow against that one, indoors against out, this season against last.'
 		},
 		training: {
 			title: 'Train the muscles the shot uses',

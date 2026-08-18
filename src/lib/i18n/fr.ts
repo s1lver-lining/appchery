@@ -1702,7 +1702,7 @@ insetHint:
 		stats: {
 			title: 'Des chiffres qui répondent à une question',
 			body: 'Comment un tir évolue sur une saison, dans quelles zones les flèches tombent vraiment, et ce que le vent vous coûte par flèche. Filtrez par arc, par distance, par type de sortie, et toute la page ne répond plus que pour cette tranche.',
-			note: 'Par flèche, le seul chiffre qui permette de comparer deux tirs différents.'
+			note: 'Comparez ce que vous voulez à ce que vous voulez : cet arc contre celui là, en salle contre en extérieur, cette saison contre la précédente.'
 		},
 		training: {
 			title: 'Travaillez les muscles du geste',
