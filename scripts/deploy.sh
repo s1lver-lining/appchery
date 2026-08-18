@@ -73,7 +73,15 @@ fi
 # runs in a hurry and answers wrong. Never echoed, and .env is not in the repository.
 DB_PASS="${SUPABASE_DB_PASSWORD:-}"
 if [ -z "$DB_PASS" ] && [ -f .env ]; then
-	DB_PASS="$(grep -E "^${DB_PASS_NAME}=" .env | head -1 | cut -d= -f2- | tr -d '"'"'"'\r')"
+	# `|| true`, or a .env without this name ends the script through `set -e` with nothing said.
+	DB_PASS="$(grep -E "^${DB_PASS_NAME}=" .env | head -1 | cut -d= -f2- | tr -d '"'"'"'\r' || true)"
+fi
+
+if [ "$SKIP_DB" = 0 ] && [ -n "$DB_REF" ] && [ -z "$DB_PASS" ]; then
+	echo "$0: no password for the ${TARGET} database." >&2
+	echo "Put it in ${DB_PASS_NAME} in .env, or SUPABASE_DB_PASSWORD in the environment. Without one" >&2
+	echo "the CLI stops to ask, which hangs a deploy nobody is watching." >&2
+	exit 2
 fi
 
 if [ "$SKIP_DB" = 0 ] && [ -z "$DB_REF" ]; then
@@ -100,8 +108,15 @@ COMMIT="$(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 # confirmation names the migrations rather than hiding them behind a yes.
 PENDING=""
 if [ "$SKIP_DB" = 0 ]; then
-	PENDING="$(npx supabase db push --project-ref "$DB_REF" --password "$DB_PASS" --dry-run 2>/dev/null |
-		grep -oE '[0-9]{14}_[a-z0-9_]+\.sql' | sort -u || true)"
+	# A database that cannot be reached is not a database with nothing to apply. Swallowing the
+	# difference would ship an app against a schema that never got its migrations, which is the one
+	# failure this whole ordering exists to prevent.
+	if ! PREVIEW="$(npx supabase db push --project-ref "$DB_REF" --password "$DB_PASS" --dry-run 2>&1)"; then
+		echo "$0: could not read the ${TARGET} database, so nothing was deployed." >&2
+		echo "$PREVIEW" | tail -3 >&2
+		exit 1
+	fi
+	PENDING="$(echo "$PREVIEW" | grep -oE '[0-9]{14}_[a-z0-9_]+\.sql' | sort -u || true)"
 fi
 
 if [ "$TARGET" = prod ]; then
