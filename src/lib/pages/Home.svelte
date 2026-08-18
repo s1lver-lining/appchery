@@ -508,28 +508,29 @@
 					? ''
 					: 'min-[300px]:col-span-2'}"
 			>
-				<div class="flex items-end justify-between gap-3">
-					<p class="tabular text-[2rem] leading-none font-bold text-brand-text">
-						{weekArrows}
-						{#if weekGoal > 0}<span class="text-sm font-semibold text-muted">/ {weekGoal}</span>{/if}
-					</p>
-					<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
-					<p class="text-right text-xs text-muted">
-						{#if weekGoal > 0}
-							{#if weekDone >= 1}
-								<!-- The one week in the log that deserves an emoji is the one that was finished. -->
-								🎉 {$t('session.goalReached')}
-							{:else}
-								{$t('session.goalLeft', { n: weekGoal - weekArrows })}
-							{/if}
+				<!-- Stacked rather than set side by side: half a line is not enough for both, and the
+					total breaking away from its goal read as two different figures. -->
+				<p class="tabular text-[2rem] leading-none font-bold whitespace-nowrap text-brand-text">
+					{weekArrows}{#if weekGoal > 0}<span class="text-sm font-semibold text-muted">
+							/ {weekGoal}</span
+						>{/if}
+				</p>
+				<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
+				<p class="mt-1 truncate text-xs text-muted">
+					{#if weekGoal > 0}
+						{#if weekDone >= 1}
+							<!-- The one week in the log that deserves an emoji is the one that was finished. -->
+							🎉 {$t('session.goalReached')}
 						{:else}
-							{$t('home.weekSessions', { n: weekSessions })}
+							{$t('session.goalLeft', { n: weekGoal - weekArrows })}
 						{/if}
-					</p>
-				</div>
+					{:else}
+						{$t('home.weekSessions', { n: weekSessions })}
+					{/if}
+				</p>
 
 				{#if weekGoal > 0}
-					<div class="mt-2.5 h-2 overflow-hidden rounded-full bg-sunk">
+					<div class="mt-2 h-2 overflow-hidden rounded-full bg-sunk">
 						<div
 							class="h-full rounded-full transition-[width] duration-500 {weekDone >= 1
 								? 'bg-accent'
