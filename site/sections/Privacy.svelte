@@ -13,22 +13,31 @@
 	{#snippet visual()}
 		<!-- The claim drawn rather than restated: the phone holds the data, and the copy to the other
 			device is the only thing that ever leaves it, at the archer's asking. -->
-		<div class="mx-auto flex max-w-md items-center justify-center gap-4">
-			{#each ['home', 'friends'] as name, i (name)}
-				{#if i === 1}
-					<span
-						class="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-muted"
-					>
-						<Icon name="share" size={16} />
-						<span class="text-[11px] font-medium">{$t('site.private.sync')}</span>
-					</span>
-				{/if}
+		<div class="mx-auto flex max-w-md items-center justify-center">
+			<span
+				class="flex h-28 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-ink/70 bg-bg text-brand-text"
+			>
+				<Icon name="home" size={28} />
+			</span>
+
+			<!-- The chip sits on the line between the two devices rather than floating between them,
+				and wears the app's own flat chip rather than a second bordered card. -->
+			<span class="relative flex flex-1 items-center px-2">
+				<span class="h-px flex-1 border-t border-dashed border-line"></span>
 				<span
-					class="flex h-28 w-20 items-center justify-center rounded-2xl border-2 border-ink/70 bg-bg text-brand-text"
+					class="tabular mx-1.5 flex shrink-0 items-center gap-1 rounded bg-sunk px-1.5 py-0.5 text-[11px] font-medium text-muted"
 				>
-					<Icon name={name as 'home'} size={28} />
+					<Icon name="share" size={12} />
+					{$t('site.private.sync')}
 				</span>
-			{/each}
+				<span class="h-px flex-1 border-t border-dashed border-line"></span>
+			</span>
+
+			<span
+				class="flex h-28 w-20 shrink-0 items-center justify-center rounded-2xl border-2 border-ink/70 bg-bg text-brand-text"
+			>
+				<Icon name="friends" size={28} />
+			</span>
 		</div>
 	{/snippet}
 </Feature>
