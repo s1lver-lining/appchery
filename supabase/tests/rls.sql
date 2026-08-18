@@ -409,7 +409,63 @@ begin
 end;
 $$;
 
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+
+-- A handle change retires the old one for thirty days, so churning through them is capped by the day.
+do $$
+declare
+	i integer;
+begin
+	for i in 1..10 loop
+		begin
+			perform public.claim_handle(('churn_' || i)::citext);
+		exception when others then
+			if sqlerrm = 'too many requests' then
+				return;
+			end if;
+			raise;
+		end;
+	end loop;
+	raise exception 'handles can be claimed without limit';
+end;
+$$;
+
+-- A follow request costs the archer receiving it a line in their list, so it is capped by the hour.
+do $$
+declare
+	i integer;
+begin
+	for i in 1..70 loop
+		begin
+			perform public.request_follow('11111111-1111-1111-1111-111111111111');
+		exception when others then
+			if sqlerrm = 'too many requests' then
+				return;
+			end if;
+			raise;
+		end;
+	end loop;
+	raise exception 'follow requests can be sent without limit';
+end;
+$$;
+
 reset role;
+
+-- The table behind those limits answers only "how many recently", so it must not grow for ever.
+do $$
+declare
+	held integer;
+begin
+	perform public.spend_allowance('prune_check', 5, interval '1 minute');
+	update public.rate_limit set at = now() - interval '2 days' where action = 'prune_check';
+	perform public.spend_allowance('prune_check', 5, interval '1 minute');
+
+	select count(*) into held from public.rate_limit where action = 'prune_check';
+	if held <> 1 then
+		raise exception 'the rate limit table keeps % rows it will never read', held;
+	end if;
+end;
+$$;
 
 -- Nothing in the schema is addressable without a token, whatever the policies say.
 do $$

@@ -12,6 +12,9 @@ import { account } from './auth';
 
 export class SocialError extends Error {}
 
+/** Shared rounds held per refresh, across everybody followed. The feed shows the newest anyway. */
+const SHARED_LIMIT = 200;
+
 export interface Profile {
 	userId: string;
 	handle: string;
@@ -27,8 +30,8 @@ export interface SharedActivity {
 	ownerId: string;
 	sharedAt: number;
 	activity: Record<string, unknown>;
+	/** Subtotals only. A friend's individual arrows are nobody's business and nothing renders them. */
 	ends: Record<string, unknown>[];
-	shots: Record<string, unknown>[];
 }
 
 async function client() {
@@ -318,12 +321,16 @@ async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 	const instance = await supabase();
 	if (!instance || ownerIds.length === 0) return;
 
+	// Bounded and newest first: a friends list of a hundred archers must not turn every resume into a
+	// download of everything they have ever shared.
 	const { data: activities, error } = await instance
 		.from('activity')
 		.select('*')
 		.in('user_id', ownerIds)
 		.not('shared_at', 'is', null)
-		.is('deleted_at', null);
+		.is('deleted_at', null)
+		.order('shared_at', { ascending: false })
+		.limit(SHARED_LIMIT);
 
 	// Same again: a failed read would delete a friend's rounds and put nothing back.
 	if (error) return;
@@ -332,11 +339,8 @@ async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 	const ids = rows.map((row) => String(row.id));
 
 	const ends = ids.length
-		? ((await instance.from('round_end').select('*').in('activity_id', ids).is('deleted_at', null)).data ?? [])
-		: [];
-	const endIds = ends.map((row) => String(row.id));
-	const shots = endIds.length
-		? ((await instance.from('shot').select('*').in('end_id', endIds).is('deleted_at', null)).data ?? [])
+		? ((await instance.from('round_end').select('id, activity_id, end_no, subtotal').in('activity_id', ids)
+				.is('deleted_at', null)).data ?? [])
 		: [];
 
 	for (const ownerId of ownerIds) {
@@ -346,19 +350,13 @@ async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 	const cachedAt = Date.now();
 	for (const activity of rows) {
 		const id = String(activity.id);
-		const mine = ends.filter((end) => String(end.activity_id) === id);
-		const mineIds = new Set(mine.map((end) => String(end.id)));
 		await db()
 			.insert(schema.socialActivity)
 			.values({
 				id,
 				ownerId: String(activity.user_id),
 				sharedAt: Number(activity.shared_at ?? cachedAt),
-				payload: JSON.stringify({
-					activity,
-					ends: mine,
-					shots: shots.filter((shot) => mineIds.has(String(shot.end_id)))
-				}),
+				payload: JSON.stringify({ activity, ends: ends.filter((end) => String(end.activity_id) === id) }),
 				cachedAt
 			});
 	}
@@ -411,7 +409,7 @@ async function sharedWhere(condition: SQL | undefined, limit = 500): Promise<Sha
 		id: row.id,
 		ownerId: row.ownerId,
 		sharedAt: row.sharedAt,
-		...(JSON.parse(row.payload) as Pick<SharedActivity, 'activity' | 'ends' | 'shots'>)
+		...(JSON.parse(row.payload) as Pick<SharedActivity, 'activity' | 'ends'>)
 	}));
 }
 

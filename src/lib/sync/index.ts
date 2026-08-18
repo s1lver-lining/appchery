@@ -27,6 +27,13 @@ export const syncStatus = writable<SyncStatus>({
 });
 
 let inFlight: Promise<void> | null = null;
+let lastAttempt = 0;
+let failures = 0;
+
+/** Automatic triggers are frequent and cheap to fire: switching apps twice a minute is not two syncs. */
+const QUIET = 60_000;
+const BACKOFF = 30_000;
+const LONGEST_BACKOFF = 15 * 60_000;
 
 /** Reads the local database only, so the card is right about the state before anything is tried. */
 export async function refreshSyncStatus(phase: SyncPhase = 'idle', error: string | null = null): Promise<void> {
@@ -34,17 +41,32 @@ export async function refreshSyncStatus(phase: SyncPhase = 'idle', error: string
 	syncStatus.set({ phase, pending: await pendingCount(), lastSyncAt: state.lastSyncAt, error });
 }
 
-/** Guarded, so two triggers firing together wait on one exchange rather than uploading twice. */
-export function syncNow(): Promise<void> {
+/**
+ * Guarded, so two triggers firing together wait on one exchange rather than uploading twice.
+ *
+ * An automatic trigger also waits its turn: resume and reconnect fire far more often than there is
+ * anything to say, and a run of failures backs off rather than retrying at the same rate. The button
+ * an archer presses is never held back, because they are owed an answer.
+ */
+export function syncNow(trigger: 'manual' | 'automatic' = 'manual'): Promise<void> {
+	if (trigger === 'automatic' && Date.now() < nextAllowed()) return Promise.resolve();
+
 	inFlight ??= run().finally(() => {
 		inFlight = null;
 	});
 	return inFlight;
 }
 
+function nextAllowed(): number {
+	const wait = failures === 0 ? QUIET : Math.min(BACKOFF * 2 ** (failures - 1), LONGEST_BACKOFF);
+	return lastAttempt + wait;
+}
+
 async function run(): Promise<void> {
 	const user = get(account);
 	if (!user) return;
+
+	lastAttempt = Date.now();
 
 	// Nothing to say to an unreachable server, but a pressed button is owed an answer.
 	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
@@ -73,9 +95,10 @@ async function run(): Promise<void> {
 		const { publishCard } = await import('./card');
 		await refreshSocial().catch(() => {});
 		await publishCard().catch(() => {});
-
 		await refreshSyncStatus();
+		failures = 0;
 	} catch (error) {
+		failures += 1;
 		await refreshSyncStatus('error', error instanceof Error ? error.message : String(error));
 	}
 }

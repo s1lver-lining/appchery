@@ -33,6 +33,7 @@ export async function pendingCount(): Promise<number> {
 
 export async function push(client: SupabaseClient, userId: string): Promise<PushResult> {
 	let uploaded = 0;
+	let lastHighest = 0;
 
 	// The repository knows nothing about accounts, so rows arrive ownerless and are claimed here.
 	await adoptLocalRows(userId);
@@ -55,6 +56,10 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 		uploaded += await pushBatch(client, userId, batch);
 
 		const highest = batch[batch.length - 1].id;
+		// A chunk that leaves the queue where it found it would upload the same rows for ever.
+		if (highest <= lastHighest) break;
+		lastHighest = highest;
+
 		await db()
 			.update(schema.changeLog)
 			.set({ syncedAt: Date.now() })

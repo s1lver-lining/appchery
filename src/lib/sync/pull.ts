@@ -23,8 +23,9 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 	let applied = 0;
 	let skipped = 0;
 
-	// Read before a single row is, or the cursor would step over rows written while the pull ran.
-	const mark = await highWaterMark(client, userId);
+	// The cursor only ever moves to a row this pull actually applied. Anything written while it ran
+	// is newer than that, so it waits for the next one rather than being stepped over.
+	let mark = start;
 
 	// Parents before children, so an activity never lands before the session it belongs to.
 	for (const { name, table } of OWNED_TABLES) {
@@ -47,33 +48,21 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 			applied += outcome.applied;
 			skipped += outcome.skipped;
 
+			const last = String(data[data.length - 1].server_updated_at);
+			if (last > mark) mark = last;
 			if (data.length < PAGE) break;
-			cursor = String(data[data.length - 1].server_updated_at);
+
+			// A page that ends where the last one did would ask for the same rows for ever. It takes a
+			// clock that has stopped or rows sharing a stamp, and either way the loop has to end.
+			if (last === cursor) break;
+			cursor = last;
 		}
 	}
 
-	await writeSyncState({ lastSyncAt: Date.now(), ...(mark ? { lastPullCursor: mark } : {}) });
+	await writeSyncState({ lastSyncAt: Date.now(), lastPullCursor: mark });
 	if (applied > 0) dataChanged();
 
 	return { applied, skipped };
-}
-
-/** The newest row the server holds for this archer, which becomes the cursor once the pull finishes. */
-async function highWaterMark(client: SupabaseClient, userId: string): Promise<string | null> {
-	let latest: string | null = null;
-	for (const { name } of OWNED_TABLES) {
-		const { data, error } = await client
-			.from(name)
-			.select('server_updated_at')
-			.eq('user_id', userId)
-			.order('server_updated_at', { ascending: false })
-			.limit(1);
-		if (error) throw new PullError(`${name}: ${error.message}`);
-
-		const value = data?.[0]?.server_updated_at as string | undefined;
-		if (value && (!latest || value > latest)) latest = value;
-	}
-	return latest;
 }
 
 type OwnedTable = (typeof OWNED_TABLES)[number]['table'];

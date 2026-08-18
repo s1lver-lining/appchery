@@ -29,7 +29,7 @@ export async function startWatching(): Promise<void> {
 	const [{ syncNow }, { initAuth }] = await Promise.all([import('./index'), import('./auth')]);
 	await initAuth().catch(() => {});
 
-	const trigger = () => void syncNow();
+	const trigger = () => void syncNow('automatic');
 	const onVisible = () => {
 		if (document.visibilityState === 'visible') trigger();
 	};

@@ -435,6 +435,46 @@ describe('syncNow', () => {
 		expect(get(syncStatus).phase).not.toBe('syncing');
 	});
 
+	/**
+	 * Resume and reconnect fire far more often than there is anything to say, so an automatic trigger
+	 * waits its turn. Without this an archer switching apps is a request storm against the server.
+	 */
+	it('holds automatic triggers to one exchange a minute', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+
+		await insertSession('session-quiet');
+		await logChange('session', 'session-quiet');
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await syncNow('automatic');
+		const afterFirst = server.upserts.length;
+
+		await insertSession('session-again');
+		await logChange('session', 'session-again');
+		for (let i = 0; i < 20; i++) await syncNow('automatic');
+
+		expect(server.upserts.length).toBe(afterFirst);
+		account.set(null);
+	});
+
+	it('lets the archer press the button whenever they like', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+
+		await insertSession('session-manual');
+		await logChange('session', 'session-manual');
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await syncNow('automatic');
+		await insertSession('session-manual-2');
+		await logChange('session', 'session-manual-2');
+		await syncNow();
+
+		expect(server.upserts).toContain('session:session-manual-2');
+		account.set(null);
+	});
+
 	it('does nothing at all when nobody is signed in', async () => {
 		const server = fakeServer();
 		stub.client = server.client;
