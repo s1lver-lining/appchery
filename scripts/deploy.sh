@@ -63,10 +63,25 @@ if [ "$TARGET" = prod ]; then
 	PROJECT="$PROD_PROJECT"
 	DB_REF="${APPCHERY_SUPABASE_PROD:-}"
 	DB_PASS_NAME="PROD_DB_PASS"
+	ENV_FILE=.env.production
 else
 	PROJECT="$PREPROD_PROJECT"
 	DB_REF="${APPCHERY_SUPABASE_PREPROD:-}"
 	DB_PASS_NAME="PREPROD_DB_PASS"
+	ENV_FILE=.env.preprod
+fi
+
+# The ref is the first label of the project's own hostname, and that hostname is already in the env
+# file this target builds with. Reading it there beats keeping the same string in two places, where
+# the second one is remembered in a shell nobody has open when they need it.
+if [ -z "$DB_REF" ] && [ -f "$ENV_FILE" ]; then
+	DB_URL="$(grep -E '^PUBLIC_SUPABASE_URL=' "$ENV_FILE" | head -1 | cut -d= -f2- | tr -d '"'"'"'\r' || true)"
+	case "$DB_URL" in
+	https://*.supabase.co*)
+		DB_REF="${DB_URL#https://}"
+		DB_REF="${DB_REF%%.supabase.co*}"
+		;;
+	esac
 fi
 
 # Read from .env rather than asked for: a deploy that stops halfway to prompt is a deploy somebody
@@ -86,8 +101,10 @@ fi
 
 if [ "$SKIP_DB" = 0 ] && [ -z "$DB_REF" ]; then
 	echo "$0: no database configured for ${TARGET}." >&2
-	echo "Set APPCHERY_SUPABASE_$(echo "$TARGET" | tr '[:lower:]' '[:upper:]'), or pass --skip-db to" >&2
-	echo "deploy the app alone. Shipping an app whose columns the server lacks is the one order that breaks." >&2
+	echo "It is read from PUBLIC_SUPABASE_URL in ${ENV_FILE}, which is missing or holds no" >&2
+	echo "*.supabase.co address. Set APPCHERY_SUPABASE_$(echo "$TARGET" | tr '[:lower:]' '[:upper:]') instead for a self hosted server," >&2
+	echo "or pass --skip-db to deploy the app alone. Shipping an app whose columns the server lacks is" >&2
+	echo "the one order that breaks." >&2
 	exit 2
 fi
 
@@ -172,7 +189,6 @@ else
 fi
 
 # A bundle with no server configured is a working offline app, so this warns rather than refusing.
-ENV_FILE="$([ "$TARGET" = prod ] && echo .env.production || echo .env.preprod)"
 if [ ! -f "$ENV_FILE" ]; then
 	echo "Note: no ${ENV_FILE}, so this bundle ships without sync. See .env.example." >&2
 fi

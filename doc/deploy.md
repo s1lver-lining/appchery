@@ -29,17 +29,16 @@ The anon key is meant to ship and Row Level Security is what protects the data. 
 never belongs in these files, in the repository, or in a bundle. Without an env file the app builds
 and works with sync switched off, and `deploy.sh` says so and carries on.
 
-The project refs are not stored anywhere, so export them in the shell you deploy from, or the deploy
-stops before it does anything:
-
-```bash
-export APPCHERY_SUPABASE_PREPROD=<preprod ref>
-export APPCHERY_SUPABASE_PROD=<prod ref>
-```
+The project ref is read from `PUBLIC_SUPABASE_URL` in that target's env file, so there is nothing to
+export and nothing to keep in step. `APPCHERY_SUPABASE_PREPROD` and `APPCHERY_SUPABASE_PROD` still
+override it, which is how a self hosted server is named: its address is not `<ref>.supabase.co`.
 
 The database password comes from `SUPABASE_DB_PASSWORD`, or from `PREPROD_DB_PASS` and `PROD_DB_PASS`
 in `.env`, which is gitignored. Read rather than prompted for: a deploy that stops halfway to ask is
 one somebody answers in a hurry.
+
+A deploy builds and then uploads several megabytes, so a minute of quiet is normal. Run it without
+piping the output anywhere if you want to watch it move.
 
 ## 1. Ship the app
 
