@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import { readFileSync, existsSync } from 'node:fs';
 import { getTableColumns } from 'drizzle-orm';
 import { OWNED_TABLES, LOCAL_ONLY_COLUMNS, type OwnedTableName } from './synced';
@@ -29,8 +29,13 @@ function serverColumns(path: string): Map<string, Map<string, Column>> {
 	return tables;
 }
 
+// `runIf` skips the tests but still runs this body to collect them, so the dump is read inside
+// them rather than here: without `check-sql.sh` there is no file to read and collection would throw.
 describe.runIf(dump && existsSync(dump))('the two schemas agree', () => {
-	const server = serverColumns(dump!);
+	let server: Map<string, Map<string, Column>>;
+	beforeAll(() => {
+		server = serverColumns(dump!);
+	});
 
 	for (const { name, table } of OWNED_TABLES) {
 		const skip = new Set(LOCAL_ONLY_COLUMNS[name as OwnedTableName] ?? []);
