@@ -715,7 +715,7 @@ export const en = {
 			kinds: 'Kind',
 			wind: 'Wind',
 			reset: 'Clear filters',
-			clearOne: 'Clear',
+			clearOne: 'Clear this filter',
 			from: 'From',
 			to: 'to'
 		},
@@ -743,10 +743,10 @@ export const en = {
 			month: 'Per month'
 		},
 		slice: '{rounds} rounds · {arrows} arrows',
-		barLabel: '{arrows} arrows over {rounds} rounds',
+		barLabel: '{arrows} arrows across {rounds} rounds',
 		barRange: '{from} to {to}',
-		clearBar: 'Read the whole window again',
-		scaleHint: 'oldest to newest, faded to solid',
+		clearBar: 'Back to the whole period',
+		scaleHint: 'the more solid, the more recent',
 		byKind: 'Score by kind of session',
 		emptyRange: 'Nothing shot in this period.',
 		empty: 'Finish a round and its scores will appear here.',
