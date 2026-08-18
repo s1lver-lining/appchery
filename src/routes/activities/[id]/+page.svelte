@@ -1436,14 +1436,14 @@
 					{:else}
 						{#if currentSlot}
 							<button
-								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
+								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap disabled:opacity-40"
 								disabled={pending.length === 0}
 								onclick={undo}
 							>
 								{$t('common.undo')}
 							</button>
 							<button
-								class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-3 py-2 text-sm font-semibold text-brand-text disabled:opacity-40"
+								class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-2 py-2 text-sm whitespace-nowrap font-semibold text-brand-text disabled:opacity-40"
 								onclick={() => (autoScoring = true)}
 							>
 								<Icon name="camera" size={18} />
@@ -1452,7 +1452,7 @@
 						{/if}
 						{#if sheetRows.length > 0}
 							<button
-								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm text-muted"
+								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap text-muted"
 								onclick={undoEnd}
 							>
 								{$t('score.undoEnd')}
