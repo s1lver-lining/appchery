@@ -382,6 +382,9 @@ A pass over push and pull found two more:
 - **A refused change was marked as sent.** Push stamped `synced_at` on every log entry below the
   chunk it had just uploaded, and one already given up on sits below it: the archer's retry button
   cleared the refusal and found nothing left to send.
+- **Erasing the device left the cursors behind.** Wiping cleared every row but not `sync_state`, so
+  signing back in asked the server only for what had changed since the last exchange and the history
+  it still held never came back down. The endpoint stays: where the server is is a setting.
 - **The pull cursor was shared across tables.** One mark was taken across every table, so a row
   another device wrote into a table the pull had already walked was older than the mark by the time
   it was written, and no later pull ever asked for it. Each table carries its own cursor now.

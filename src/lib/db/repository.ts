@@ -1855,6 +1855,13 @@ export async function deleteEverything(): Promise<void> {
 		schema.changeLog
 	];
 	for (const table of tables) await db().delete(table);
+
+	// The cursors describe a history this device no longer has. Left where they are, signing back in
+	// would ask the server only for what changed since, and the record would never come home. The
+	// endpoint stays: where the server is is a setting, not data.
+	await db()
+		.update(schema.syncState)
+		.set({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
 }
 
 /** Rows an earlier import wrote for the same activities, wherever they ended up sitting. */

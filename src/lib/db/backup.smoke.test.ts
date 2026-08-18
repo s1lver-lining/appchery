@@ -35,6 +35,7 @@ vi.mock('./index', async () => {
 });
 
 const { importBackup, BACKUP_FORMAT } = await import('./backup');
+const { deleteEverything } = await import('./repository');
 
 function backupOf(tables: Record<string, unknown[]>) {
 	return {
@@ -103,5 +104,25 @@ describe('restoring a backup', () => {
 
 		const pending = await proxy.select().from(schema.changeLog).where(isNull(schema.changeLog.syncedAt));
 		expect(pending.map((row) => row.rowId)).toEqual(['session-a']);
+	});
+});
+
+describe('erasing everything', () => {
+	it('clears the cursors, so signing back in brings the record home', async () => {
+		await proxy.insert(schema.syncState).values({
+			id: 'local',
+			deviceId: 'device-old',
+			lastPullCursor: '2030-01-01',
+			lastPushCursor: '900',
+			endpoint: 'https://example.test|anon-key',
+			lastSyncAt: 5
+		});
+
+		await deleteEverything();
+
+		const [state] = await proxy.select().from(schema.syncState);
+		expect(state).toMatchObject({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
+		// Where the server is is a setting the archer typed, not history: wiping must not take it away.
+		expect(state.endpoint).toBe('https://example.test|anon-key');
 	});
 });
