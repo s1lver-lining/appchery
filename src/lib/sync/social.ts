@@ -103,9 +103,11 @@ export async function setProfilePublic(isPublic: boolean): Promise<void> {
 	const user = get(account);
 	if (!user) throw new SocialError('signedOut');
 
+	// is_public alone: updated_at is outside the grant an archer holds on their own row, and naming
+	// it here failed the whole statement. A trigger stamps it, see 20260818000008.
 	const { error } = await (await client())
 		.from('profile')
-		.update({ is_public: isPublic, updated_at: Date.now() })
+		.update({ is_public: isPublic })
 		.eq('user_id', user.id);
 	if (error) throw new SocialError(error.message);
 }

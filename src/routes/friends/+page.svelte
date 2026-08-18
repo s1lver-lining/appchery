@@ -172,16 +172,24 @@
 		<section class="mb-4">
 			<div class="rounded-xl border border-line bg-surface p-4">
 				<p class="text-sm font-semibold">@{handle}</p>
-				<label class="mt-3 flex items-center justify-between gap-3">
-					<span class="text-sm">{$t('friends.publicTitle')}</span>
-					<input
-						type="checkbox"
-						checked={isPublic}
-						disabled={busy}
-						onchange={(e) => act(() => setProfilePublic(e.currentTarget.checked))}
-					/>
-				</label>
-				<p class="mt-1 text-xs text-muted">
+				<!-- Two named choices rather than a box to tick: a profile is public or it is not, and a
+					checkbox left the archer reading the label to guess which of the two it was showing.
+					Nothing moves until the server has taken it, so what is lit is what is stored. -->
+				<div class="mt-3 flex gap-2" role="group" aria-label={$t('friends.visibility')}>
+					{#each [false, true] as wanted (wanted)}
+						{@const on = isPublic === wanted}
+						<button
+							class="flex-1 rounded-lg border py-2 text-sm
+								{on ? 'border-brand bg-brand/10 font-semibold text-brand-text' : 'border-line text-muted'}"
+							aria-pressed={on}
+							disabled={busy || on}
+							onclick={() => act(() => setProfilePublic(wanted))}
+						>
+							{wanted ? $t('friends.publicProfile') : $t('friends.privateProfile')}
+						</button>
+					{/each}
+				</div>
+				<p class="mt-2 text-xs text-muted">
 					{isPublic ? $t('friends.publicHint') : $t('friends.privateHint')}
 				</p>
 			</div>
