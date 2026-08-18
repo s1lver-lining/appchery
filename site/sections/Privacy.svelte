@@ -16,9 +16,11 @@
 		<div class="mx-auto flex max-w-md items-center justify-center gap-4">
 			{#each ['home', 'friends'] as name, i (name)}
 				{#if i === 1}
-					<span class="flex flex-col items-center text-muted">
-						<Icon name="share" size={20} />
-						<span class="text-[10px]">{$t('site.private.sync')}</span>
+					<span
+						class="flex items-center gap-1.5 rounded-full border border-line bg-surface px-3 py-1.5 text-muted"
+					>
+						<Icon name="share" size={16} />
+						<span class="text-[11px] font-medium">{$t('site.private.sync')}</span>
 					</span>
 				{/if}
 				<span

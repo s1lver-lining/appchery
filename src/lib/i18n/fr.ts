@@ -1714,8 +1714,8 @@ insetHint:
 			body: 'Les flèches de progression fédérales sont suivies depuis vos feuilles de marque, et les jalons comptent les flèches, les distances et le temps que vous avez accepté d’affronter. Un badge non obtenu dit quand même ce qu’il demande et où vous en êtes.',
 		},
 		private: {
-			title: 'La base de données, c’est votre téléphone',
-			body: 'Tout est écrit sur l’appareil d’abord. Le compte est facultatif et ne sert qu’à recopier vos sorties sur votre autre téléphone, ou à les partager avec les archers que vous choisissez. Supprimez l’appli et les données partent avec elle : il n’y en avait de copie nulle part ailleurs.',
+			title: 'Vous gardez la main sur vos données',
+			body: 'Tout est écrit sur votre appareil d’abord, et l’appli fonctionne que cela le quitte ou non. La synchronisation est gratuite et entièrement facultative : activez la et vos sorties vous suivent sur votre autre téléphone et chez les archers avec qui vous choisissez de les partager, désactivez la et elles restent là où elles ont été enregistrées.',
 			note: 'Aucune publicité, aucun pistage, rien à payer.',
 			sync: 'Synchro facultative'
 		},

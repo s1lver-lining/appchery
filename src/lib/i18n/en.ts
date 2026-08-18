@@ -1699,8 +1699,8 @@ insetHint:
 			body: 'The federal progression arrows are tracked from your scorecards, and the milestones count the arrows, the distances and the weather you were willing to stand in. An unearned one still says what it wants and how far along you are.',
 		},
 		private: {
-			title: 'The database is your phone',
-			body: 'Everything is written to the device first. An account is optional and only exists to copy your outings to your other phone, or to share them with the archers you choose. Delete the app and the data goes with it, because there was never a copy anywhere else.',
+			title: 'You control the data',
+			body: 'Everything is written to your own device first, and the app works whether or not it ever leaves. Sync is free and entirely optional: turn it on and your outings follow you to your other phone and to the archers you choose to share them with, turn it off and they stay where they were recorded.',
 			note: 'No advertising, no tracking, nothing to pay.',
 			sync: 'Optional sync'
 		},
