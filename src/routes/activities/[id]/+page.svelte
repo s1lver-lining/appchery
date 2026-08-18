@@ -1433,7 +1433,7 @@
 							{$t('common.cancel')}
 						</button>
 					{:else}
-						{#if currentSlot && !plotting}
+						{#if currentSlot}
 							<button
 								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
 								disabled={pending.length === 0}
