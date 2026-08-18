@@ -289,6 +289,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Une activité est partagée ou elle ne l’est pas, et qui la voit découle de votre profil, public ou privé. L’éteindre la reprend partout, car rien n’a jamais été copié à personne. Le lieu, la météo et l’arc ne voyagent jamais avec.'
 				},
 				{
+					lead: 'Ce que les autres voient de vous est un instantané.',
+					body: 'Votre profil affiche vos flèches, vos sorties, vos badges et votre niveau à qui peut voir vos partages. C’est votre téléphone qui calcule ces chiffres et les publie en se synchronisant : ils datent donc de votre dernière synchronisation, jamais d’une seconde plus tard.'
+				},
+				{
 					lead: 'Bloquer ne dit rien.',
 					body: 'Un archer bloqué voit votre profil exactement comme un profil privé, et peut encore demander à vous suivre. La demande ne vous parvient jamais, et il n’en est pas informé.'
 				},

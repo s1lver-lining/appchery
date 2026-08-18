@@ -90,10 +90,17 @@ async function run(): Promise<void> {
 		await pull(client, user.id);
 		if (!stillOurs()) return stop();
 
-		// The friends screen has to be legible before it is opened, and a social side that is briefly
-		// stale is worth far less than a sync that fails over it, so this never breaks the exchange.
+		/*
+		 * The social side is refreshed and the profile card republished after the record they describe
+		 * has gone up. Both are worth far less than the exchange itself, so neither can break it: a
+		 * friends list or a badge count an hour out of date costs nothing, a failed sync costs the
+		 * shooting.
+		 */
 		const { refreshSocial } = await import('./social');
 		await refreshSocial().catch(() => {});
+
+		const { publishCard } = await import('./card');
+		await publishCard().catch(() => {});
 		const state = await readSyncState();
 		syncStatus.set({
 			phase: 'idle',

@@ -924,6 +924,11 @@ export const en = {
 			pending: 'Asked',
 			approved: 'Following'
 		},
+		cardArrows: 'Arrows',
+		cardSessions: 'Outings',
+		cardBadges: 'Badges',
+		cardLevel: 'Level',
+		cardStale: 'As of their last sync.',
 		share: 'Share this activity',
 		shareHint: 'Shared activities are visible to whoever your profile allows. The place, the weather and the bow never travel with it.',
 		shared: 'Shared',

@@ -35,8 +35,10 @@ export function ownedTable(name: string) {
 
 /**
  * Columns the server has no column for, stripped on the way up rather than rejected on arrival.
- * A bow photo is a data URL that stays on the device until photo sync gets its own storage bucket
- * and its own policies, see doc/sync.md section 7.
+ *
+ * `bow.photo` is a data URL from an older build. Nothing in the app can create one any more, so this
+ * is not a feature waiting on storage: it is old data being left where it lies, on the device that
+ * holds it.
  */
 export const LOCAL_ONLY_COLUMNS: Partial<Record<OwnedTableName, string[]>> = {
 	bow: ['photo']

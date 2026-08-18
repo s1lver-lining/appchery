@@ -294,6 +294,10 @@ export const tricksEn = {
 					body: 'An activity is shared or it is not, and who sees it follows from your profile being public or private. Turning it off takes it back everywhere, because nothing was ever copied to anybody. The place, the weather and the bow never travel with it.'
 				},
 				{
+					lead: 'What others see of you is a snapshot.',
+					body: 'Your profile shows arrows, outings, badges and level to whoever may see what you share. Your own phone works those figures out and publishes them when it syncs, so they are as recent as your last sync and never a moment fresher.'
+				},
+				{
 					lead: 'Blocking says nothing.',
 					body: 'A blocked archer sees your profile exactly as a private one looks, and can still ask to follow you. The request never reaches you, and they are never told.'
 				},

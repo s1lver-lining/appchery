@@ -6,6 +6,7 @@
 	import { account } from '$lib/sync/auth';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import { readCard, type ProfileCard } from '$lib/sync/card';
 	import {
 		cachedProfile,
 		lookup,
@@ -36,6 +37,7 @@
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 	let confirmingBlock = $state(false);
+	let card = $state<ProfileCard | null>(null);
 
 	$effect(() => {
 		void load(handle);
@@ -53,6 +55,9 @@
 			// this archer follows: a public profile shows what it shares to anybody browsing it.
 			await refreshSharedFor(fresh.userId).catch(() => {});
 			shared = await sharedBy(fresh.userId);
+			// Read straight from the server and never stored: the card is somebody else's figures, and
+			// keeping a copy would make them look like something this device knows.
+			card = await readCard(fresh.userId).catch(() => null);
 		}
 	}
 
@@ -95,6 +100,20 @@
 			<p class="text-sm text-muted">
 				{profile.isPublic ? $t('friends.publicProfile') : $t('friends.privateProfile')}
 			</p>
+
+			{#if card}
+				<!-- Their own figures, as their last sync left them. Computed on their device, because
+					badges and levels are worked out from the shooting record and never on the server. -->
+				<dl class="mt-3 grid grid-cols-4 gap-2 text-center">
+					{#each [[$t('friends.cardArrows'), card.arrows], [$t('friends.cardSessions'), card.sessions], [$t('friends.cardBadges'), card.badges], [$t('friends.cardLevel'), card.level]] as [label, value] (label)}
+						<div class="rounded-lg bg-sunk p-2">
+							<dt class="text-[11px] text-muted">{label}</dt>
+							<dd class="tabular text-sm font-semibold">{value}</dd>
+						</div>
+					{/each}
+				</dl>
+				<p class="mt-1 text-[11px] text-muted">{$t('friends.cardStale')}</p>
+			{/if}
 
 			<!-- Your own profile offers neither: following yourself is refused by the server and blocking
 				yourself is a question nobody meant to ask. -->

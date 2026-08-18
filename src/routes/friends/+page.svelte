@@ -56,8 +56,20 @@
 	]);
 
 	$effect(() => {
-		void load();
+		void open();
 	});
+
+	/**
+	 * The cache paints the screen at once, and the server corrects it behind that. Without the second
+	 * half, a follow request sent while this page was shut would only appear after the next exchange,
+	 * which is a screen that looks wrong for no reason the archer can see.
+	 */
+	async function open() {
+		await load();
+		if (!$account) return;
+		await refreshSocial().catch(() => {});
+		await load();
+	}
 
 	async function load() {
 		mine = await following();

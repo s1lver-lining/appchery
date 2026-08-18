@@ -36,6 +36,7 @@
 		| 'qr'
 		| 'bulb'
 		| 'muscle'
+		| 'friends'
 		| 'level'
 		| 'help';
 
@@ -155,6 +156,12 @@
 		<rect x="3.4" y="14.2" width="6.4" height="6.4" rx="1.2" />
 		<path d="M6.6 6.6h.01M17.4 6.6h.01M6.6 17.4h.01" stroke-width="2.6" />
 		<path d="M14.2 14.2h2.6v2.6h-2.6zM18.6 14.2h2M14.2 18.6v2M18 18.6h2.6M17.4 21h.01" />
+	{:else if name === 'friends'}
+		<!-- Two archers on the line, the near one whole and the other a shoulder behind them. -->
+		<circle cx="9" cy="7.6" r="3.1" />
+		<path d="M3.4 19.6a5.6 5.6 0 0 1 11.2 0" />
+		<path d="M16.2 5.2a3.1 3.1 0 0 1 0 5.6" />
+		<path d="M17.6 14.6a5.6 5.6 0 0 1 3 5" />
 	{:else if name === 'muscle'}
 		<!-- A back seen from behind: two shoulder blades with the spine drawn down between them. -->
 		<circle cx="12" cy="4.4" r="2.4" />

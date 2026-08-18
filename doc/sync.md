@@ -23,8 +23,9 @@ the account's history. Signing out changes nothing on the device.
 bows, revisions, arrow sets, sight marks, plans and favourites. Nothing else.
 
 **What never travels.** Badges, experience, personal bests, preferences, theme, celebration state,
-and bow photos. The first five are recomputed on each device from the record itself. A photo stays on
-the phone until photo sync gets its own storage and policies.
+and bow photos. The first five are recomputed on each device from the record itself. Photos are an
+artefact of an older build that nothing can create any more, so the column is simply left where it
+is.
 
 **When it happens.** On signing in, when the app comes back to the front, when the network returns,
 and on the button in the settings account card. Never on a timer, and never mid round.
@@ -74,7 +75,8 @@ The visible cost is that a device pulling history for the first time re-celebrat
 settings data tab already has the button that resets celebration state, and the recheck already
 reconciles badges, so both are one press away.
 
-**Published, not synced.** The profile card in phase 3.1. See section 7.
+**Published, not synced.** The profile card: arrows, outings, badges and level, computed on the device
+and overwritten on the server at the end of every exchange. See section 6.
 
 ## 3. Server
 
@@ -234,11 +236,17 @@ Conditions are private by architecture.md section 6.1 and stay that way.
 
 ### The profile card
 
-Badges and statistics stay local derived state, so the server cannot compute them. Instead the
-device computes a small card and **publishes** it: a one way overwrite on each push, never read back,
-never merged, and never a source the local database trusts. It can be stale. That is acceptable for
-a display of somebody else's badge count and unacceptable for anything the app reasons about, which
-is why the two are separate systems rather than one.
+Badges and statistics stay local derived state, so the server cannot compute them. The device
+computes a small card instead, in `src/lib/sync/card.ts`, and **publishes** it: arrows shot, outings,
+badges and level, overwritten whole at the end of every exchange.
+
+One way, always. Nothing reads its own card back, and somebody else's is read straight onto the
+screen and never into the database. A figure that came back down would become something the app
+reasons about, and a stale badge count is a bug there where on a profile page it is merely yesterday's
+news. The profile page says as much: the figures are as that archer's last sync left them.
+
+It is readable by whoever may already see what that archer shares, through the same `can_view` the
+shared activities use, so a card can never show what a shared round would not.
 
 ### Offline
 
@@ -312,6 +320,12 @@ A later pass over the social screens and the orchestration found six more:
 - **Sharing a match published somebody else's name.** A match card carries the opponent and their
   arrows, and they never agreed to either. Matches are not offered for sharing.
 
+Driving the social screens in a browser found one more:
+
+- **The friends screen only ever showed what the last exchange had cached.** A follow request sent
+  while the page was shut appeared nowhere until a sync happened to run, which is a screen that looks
+  wrong for no reason the archer can see. It now paints from the cache and refreshes behind that.
+
 ## 8. Where the security rests
 
 Not a review at the end. Each of these is a task:
@@ -322,7 +336,8 @@ Not a review at the end. Each of these is a task:
 - Block tests: a blocked account's view of a public profile is byte identical to its view of a
   private one.
 - Handle enumeration: search is rate limited and returns nothing that a directory scrape could walk.
-- Storage buckets, when bow photos eventually sync, keyed by user id with their own policies.
+- Storage has no bucket, because nothing is stored: the one binary the app ever held was a bow photo
+  from an older build, which nothing can create any more.
 - No service role key in the client, ever, on any platform.
 
 ## 9. Configuration and checks

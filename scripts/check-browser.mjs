@@ -16,6 +16,10 @@ import { readFileSync, existsSync } from 'node:fs';
 
 const BASE = process.argv[2] ?? 'http://127.0.0.1:4173';
 const ACCOUNT = { email: 'appchery.browser@example.com', password: 'appchery-browser-pw' };
+/** A second archer, so the social screens have somebody to follow, be followed by, and be blocked. */
+const OTHER = { email: 'appchery.browser.b@example.com', password: 'appchery-browser-b-pw' };
+const HANDLES = { account: 'browser_check_a', other: 'browser_check_b' };
+const SHARED_NOTE = 'Shared with followers';
 const PHONE = { width: 390, height: 844 };
 
 const results = [];
@@ -29,7 +33,7 @@ function check(name, ok, detail = '') {
  * broken rather than the fixture missing. One fixed account, reused every run.
  */
 async function ensureAccount(envFile = '.env.preprod') {
-	if (!existsSync(envFile)) return;
+	if (!existsSync(envFile)) return null;
 	const env = Object.fromEntries(
 		readFileSync(envFile, 'utf8')
 			.split('\n')
@@ -38,25 +42,70 @@ async function ensureAccount(envFile = '.env.preprod') {
 	);
 	if (!env.PUBLIC_SUPABASE_URL || !env.PUBLIC_SUPABASE_ANON_KEY) return;
 
-	const client = createClient(env.PUBLIC_SUPABASE_URL, env.PUBLIC_SUPABASE_ANON_KEY, {
-		auth: { persistSession: false, autoRefreshToken: false }
-	});
-	const { data } = await client.auth.signInWithPassword(ACCOUNT);
-	if (!data?.session) {
-		const { error } = await client.auth.signUp(ACCOUNT);
-		if (error) throw new Error(`could not create the browser check account: ${error.message}`);
-		return;
+	const open = async (who) => {
+		const client = createClient(env.PUBLIC_SUPABASE_URL, env.PUBLIC_SUPABASE_ANON_KEY, {
+			auth: { persistSession: false, autoRefreshToken: false }
+		});
+		const existing = await client.auth.signInWithPassword(who);
+		if (existing.data?.session) return { client, id: existing.data.session.user.id };
+
+		const { data, error } = await client.auth.signUp(who);
+		if (error) throw new Error(`could not create ${who.email}: ${error.message}`);
+		return { client, id: data.session?.user.id ?? null };
+	};
+
+	const a = await open(ACCOUNT);
+	const b = await open(OTHER);
+	if (!a.id || !b.id) return null;
+
+	/*
+	 * Each run records outings and leaves a graph behind. Both are cleared first, so a run starts from
+	 * the same place every time rather than inheriting whatever the last one was interrupted doing.
+	 */
+	for (const who of [a, b]) {
+		for (const table of ['shot', 'round_end', 'activity', 'session']) {
+			await who.client.from(table).delete().eq('user_id', who.id);
+		}
+		await who.client.from('block').delete().eq('blocker_id', who.id);
+		await who.client.from('follow').delete().eq('follower_id', who.id);
+		await who.client.from('follow').delete().eq('followee_id', who.id);
 	}
 
-	// Each run records outings. Clearing them first keeps one account with a handful of rows rather
-	// than a project that grows a little every time somebody runs the checks.
-	const id = data.session.user.id;
-	for (const table of ['shot', 'round_end', 'activity', 'session']) {
-		await client.from(table).delete().eq('user_id', id);
-	}
+	await a.client.rpc('claim_handle', { wanted: HANDLES.account, display: 'Archer A' });
+	await b.client.rpc('claim_handle', { wanted: HANDLES.other, display: 'Archer B' });
+	await a.client.from('profile').update({ is_public: true }).eq('user_id', a.id);
+
+	/*
+	 * One shared activity, seeded rather than shot: scoring a round through the UI is a different
+	 * feature's flow, and what is under test here is what a follower can see of it.
+	 */
+	const now = Date.now();
+	const stamp = (id) => ({ id, created_at: now, updated_at: now, deleted_at: null, device_id: 'browser-check' });
+	await a.client.from('session').upsert([{ ...stamp(`bc-session-${now}`), started_at: now, kind: 'practice' }]);
+	await a.client.from('activity').upsert([
+		{
+			...stamp(`bc-activity-${now}`),
+			session_id: `bc-session-${now}`,
+			kind: 'scoring',
+			started_at: now,
+			total_score: 279,
+			arrows_shot: 36,
+			notes: SHARED_NOTE,
+			shared_at: now
+		}
+	]);
+	await a.client.from('round_end').upsert([
+		{ ...stamp(`bc-end-${now}`), activity_id: `bc-activity-${now}`, stage_index: 0, end_no: 1, subtotal: 28 }
+	]);
+	await a.client.from('profile_card').upsert(
+		{ user_id: a.id, arrows: 4200, sessions: 31, badges: 6, level: 4, updated_at: now },
+		{ onConflict: 'user_id' }
+	);
+
+	return { a, b };
 }
 
-await ensureAccount();
+const fixture = await ensureAccount();
 
 const browser = await chromium.launch();
 
@@ -100,6 +149,17 @@ async function tap(page, text) {
 		}, text);
 		await page.waitForTimeout(700);
 	}
+}
+
+/** A dialog's own button, since the page behind it usually carries the same word. */
+async function tapDialog(page, text) {
+	await page.evaluate((wanted) => {
+		const dialog = document.querySelector('[role=alertdialog], [role=dialog]');
+		const button = [...(dialog?.querySelectorAll('button') ?? [])].find((el) => el.textContent.trim() === wanted);
+		if (!button) throw new Error(`no "${wanted}" in the dialog`);
+		button.click();
+	}, text);
+	await page.waitForTimeout(1200);
 }
 
 /**
@@ -155,13 +215,13 @@ async function accountCard({ page }) {
 	if (!(await openDataTab(page))) throw new Error('the settings data tab never appeared');
 }
 
-async function signIn({ page, label }) {
-	await page.locator('input[type=email]:visible').first().fill(ACCOUNT.email);
-	await page.locator('input[type=password]:visible').first().fill(ACCOUNT.password);
+async function signIn({ page, label }, who = ACCOUNT) {
+	await page.locator('input[type=email]:visible').first().fill(who.email);
+	await page.locator('input[type=password]:visible').first().fill(who.password);
 	await tap(page, 'Sign in');
 
 	const ok = await page
-		.waitForSelector(`text=Signed in as ${ACCOUNT.email}`, { timeout: 40000 })
+		.waitForSelector(`text=Signed in as ${who.email}`, { timeout: 40000 })
 		.then(() => true)
 		.catch(() => false);
 	check(`${label} signs in through the settings card`, ok);
@@ -293,6 +353,72 @@ check('a sync attempted offline keeps what is waiting', (await waiting(a)) > 0);
 await a.context.setOffline(false);
 await sync(a);
 check('and it goes up once the network is back', (await waiting(a)) === 0);
+
+/*
+ * The social screens, with a second archer. Everything here is read through the friends pages rather
+ * than through the client, because that is where the reading bugs were: a followers list that could
+ * never be built, a public profile that showed nothing, a card nobody could see.
+ */
+if (fixture) {
+	const c = await device('device C');
+	await accountCard(c);
+	if (await signIn(c, OTHER)) {
+		await sync(c);
+
+		await c.page.goto(`${BASE}/friends`);
+		await c.page.waitForSelector('nav', { timeout: 30000 });
+		await c.page.waitForTimeout(1500);
+
+		// The first visible input on the friends page is the public profile switch, not the search box.
+		await c.page.locator('input[type=text]:visible, input:not([type]):visible').first().fill(`@${HANDLES.account}`);
+		await tap(c.page, 'Find');
+		await c.page.waitForTimeout(2500);
+		const foundThem = await c.page.getByText(`@${HANDLES.account}`).count();
+		check('a handle search finds an archer', foundThem > 0);
+
+		await tap(c.page, 'Follow');
+		await c.page.waitForTimeout(2500);
+
+		await c.page.goto(`${BASE}/friends/${HANDLES.account}`);
+		await c.page.waitForSelector('nav', { timeout: 30000 });
+		await c.page.waitForTimeout(3000);
+		const profileText = await c.page.locator('body').innerText();
+		check('a public profile shows what it has shared', profileText.includes('279'), profileText.includes('279') ? '' : 'no shared score on the page');
+		// The figures are whatever that archer's own device last published, so the check is that the
+		// card is there and readable rather than that it holds a number this script wrote.
+		check(
+			'and the profile card it published',
+			['Arrows', 'Outings', 'Badges', 'Level'].every((label) => profileText.includes(label))
+		);
+
+		// The other side of the same edge: the archer being followed can see who followed them.
+		await accountCard(a);
+		await sync(a);
+		await a.page.goto(`${BASE}/friends`);
+		await a.page.waitForSelector('nav', { timeout: 30000 });
+		await a.page.waitForTimeout(1500);
+		await tap(a.page, 'Followers');
+		await a.page.waitForTimeout(2500);
+		const followers = await a.page.locator('body').innerText();
+		check('a follower appears in the followers list', followers.includes(HANDLES.other), followers.includes(HANDLES.other) ? '' : 'follower not listed');
+
+		// Blocking, from the follower's own profile page.
+		await a.page.goto(`${BASE}/friends/${HANDLES.other}`);
+		await a.page.waitForSelector('nav', { timeout: 30000 });
+		await a.page.waitForTimeout(2500);
+		await tap(a.page, 'Block');
+		await a.page.waitForTimeout(1200);
+		await tapDialog(a.page, 'Block');
+		await a.page.waitForTimeout(3000);
+
+		await c.page.goto(`${BASE}/friends/${HANDLES.account}`);
+		await c.page.waitForSelector('nav', { timeout: 30000 });
+		await c.page.waitForTimeout(3000);
+		const blockedView = await c.page.locator('body').innerText();
+		check('a blocked archer sees a private profile', blockedView.includes('Private profile'), blockedView.slice(0, 80).replace(/\n/g, ' '));
+		check('and none of what was shared', !blockedView.includes('279'));
+	}
+}
 
 await browser.close();
 console.log(`\n${results.filter((r) => r.ok).length}/${results.length} checks passed`);

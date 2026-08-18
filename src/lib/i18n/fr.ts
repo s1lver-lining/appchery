@@ -927,6 +927,11 @@ export const fr: Dictionary = {
 			pending: 'Demandé',
 			approved: 'Suivi'
 		},
+		cardArrows: 'Flèches',
+		cardSessions: 'Sorties',
+		cardBadges: 'Badges',
+		cardLevel: 'Niveau',
+		cardStale: 'À leur dernière synchronisation.',
 		share: 'Partager cette activité',
 		shareHint: 'Les activités partagées sont visibles selon votre profil. Le lieu, la météo et l’arc ne voyagent jamais avec.',
 		shared: 'Partagée',

@@ -228,6 +228,39 @@ end;
 $$;
 delete from public.block where blocked_id = '22222222-2222-2222-2222-222222222222';
 
+-- The profile card follows the same visibility as what an archer shares, so a card cannot show what
+-- a shared activity would not.
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+insert into public.profile_card (user_id, arrows, sessions, badges, level, updated_at)
+values ('11111111-1111-1111-1111-111111111111', 4200, 30, 7, 5, 1);
+
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$
+begin
+	if (select count(*) from public.profile_card) <> 1 then
+		raise exception 'a card is not readable by somebody who may see what that archer shares';
+	end if;
+
+	update public.profile_card set arrows = 999999 where user_id = '11111111-1111-1111-1111-111111111111';
+	if found then
+		raise exception 'a card can be rewritten by somebody else';
+	end if;
+end;
+$$;
+
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+select public.block_account('22222222-2222-2222-2222-222222222222');
+set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
+do $$
+begin
+	if (select count(*) from public.profile_card) <> 0 then
+		raise exception 'a blocked account still reads the card';
+	end if;
+end;
+$$;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+delete from public.block where blocked_id = '22222222-2222-2222-2222-222222222222';
+
 -- Handles are the app's only public names, so the rules that decide who may hold one are database
 -- constraints and not client validation.
 set local request.jwt.claim.sub = '22222222-2222-2222-2222-222222222222';
