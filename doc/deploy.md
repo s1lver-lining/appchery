@@ -9,6 +9,7 @@ Pick the job you are doing.
 | Check everything before shipping | [3. The four checks](#3-the-four-checks) |
 | Set up a new environment from scratch | [4. New environment](#4-new-environment) |
 | Ship the phone apps | [5. Native](#5-native) |
+| Ship the landing page | [7. The landing page](#7-the-landing-page) |
 | Undo a bad deploy | [6. Rollback](#6-rollback) |
 
 Two environments, each with its own Supabase project and its own Pages project:
@@ -136,7 +137,8 @@ Three settings the migrations cannot carry, in the project dashboard:
   on for production. The account card handles both.
 - **Auth → SMTP**: a real provider for production. The built in sender allows a handful of messages
   an hour, so password resets fail without it.
-- **Auth → URL Configuration**: that environment's Pages hostname.
+- **Auth → URL Configuration**: that environment's hostname, `app.appchery.com` for production, plus
+  `https://app.appchery.com/**` in the redirect list or password reset mail bounces.
 
 Nothing else: every RPC is a SQL function in a migration, so there are no Edge Functions to deploy
 and no server code of ours to run.
@@ -192,3 +194,34 @@ npx wrangler pages deployment list --project-name appchery
 Promote the previous deployment from the Cloudflare dashboard. **The database does not roll back.**
 Migrations are additive and older app versions keep working against a newer schema, which is exactly
 why that rule exists.
+
+## 7. The landing page
+
+`appchery.com` is a different site from the app: one page advertising it, built from `site/` and
+served by the OVH hosting the domain came with. `app.appchery.com` is the app, on Cloudflare Pages.
+
+They are two builds on purpose. An OPFS database belongs to one origin, so an app reachable on
+`appchery.com` would hand anybody who landed there a second, empty database, and none of their
+sessions would be on the address the poster names.
+
+```bash
+npm run dev:site       # the page alone, at localhost
+npm run deploy:site    # builds and uploads it
+./scripts/deploy-site.sh --dry-run    # lists what would go, without connecting
+```
+
+Credentials live in `.env`, which is gitignored, next to the database passwords:
+
+```
+APPCHERY_FTP_HOST=ftp.clusterXXX.hosting.ovh.net
+APPCHERY_FTP_USER=<login>
+APPCHERY_FTP_PASS=<password>
+APPCHERY_FTP_DIR=/www
+```
+
+The page borrows the app's own components through the `$lib` alias in `vite.site.config.ts`, so the
+target faces, the curves and the muscle map on it are the ones the app draws rather than screenshots
+that go stale. That is also why `npm run check` type checks `site/` as well: a component whose props
+change breaks the landing page, and it should break it at the keyboard rather than in public.
+
+Nothing on the page is a real archer's data. The sample season is invented, in `site/lib/sample.ts`.
