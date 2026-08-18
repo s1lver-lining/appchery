@@ -1695,9 +1695,9 @@ insetHint:
 			spread: 'Dispersion'
 		},
 		camera: {
-			title: 'Ou laissez la caméra lire le blason',
-			body: 'Visez la cible depuis la ligne de tir et les flèches sont trouvées pour vous, chacune proposée à votre confirmation avant d’arriver sur la feuille. Rien n’est envoyé : la détection tourne sur le téléphone.',
-			note: 'Vous confirmez chaque flèche. La caméra ne marque jamais à votre insu.'
+			title: 'Laissez la caméra lire le blason',
+			body: 'Visez la cible depuis la ligne de tir et les flèches sont trouvées pour vous, chacune proposée à votre confirmation avant d’arriver sur la feuille. C’est à peu près aussi rapide que d’annoncer les scores et de les saisir, et nettement plus rapide que de placer six flèches à la main, mais cela vous donne ce que le placement donne : où chaque flèche est vraiment tombée, et le groupement qui en découle.',
+			note: 'Vous confirmez chaque flèche, et rien n’est envoyé : la détection tourne sur le téléphone.'
 		},
 		stats: {
 			title: 'Des chiffres qui répondent à une question',

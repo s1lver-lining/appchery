@@ -1680,9 +1680,9 @@ insetHint:
 			spread: 'Spread'
 		},
 		camera: {
-			title: 'Or let the camera read the face',
-			body: 'Point the phone at the target from the shooting line and the arrows are found for you, with every one offered for confirmation before it reaches the card. Nothing is uploaded: the detection runs on the phone.',
-			note: 'You confirm every arrow. The camera never scores behind your back.'
+			title: 'Let the camera read the face',
+			body: 'Point the phone at the target from the shooting line and the arrows are found for you, each one offered for confirmation before it reaches the card. It is about as quick as calling the scores out and typing them, and a good deal quicker than placing six arrows by hand, but it gives you what placing them gives you: where every arrow actually landed, and the group that comes out of it.',
+			note: 'You confirm every arrow, and nothing is uploaded: the detection runs on the phone.'
 		},
 		stats: {
 			title: 'Numbers that answer a question',

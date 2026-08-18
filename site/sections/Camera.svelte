@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { groupMetrics } from '$lib/domain/rounds/geometry';
 	import Icon from '$lib/ui/Icon.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import Feature from '../lib/Feature.svelte';
@@ -7,11 +8,18 @@
 	import { END_SHOTS, SCORE_SET } from '../lib/sample';
 
 	/**
-	 * The viewfinder as the archer holds it: a face seen from the shooting line, so at an angle and
-	 * never square on. The same drawing tilted in perspective rather than a photograph, because a
-	 * photograph of one target on one day is a promise about lighting the app cannot keep.
+	 * The camera screen as the app draws it: the face under the overlay the detector puts on it, and
+	 * the proposals along the bottom in the colours of the zones they fell in, each one there to be
+	 * dropped before any of them reach the card.
 	 */
-	const found = END_SHOTS.slice(0, 4);
+	const colourOf = (label: string) =>
+		SCORE_SET.zones.find((zone) => zone.label === label)?.color ?? 'var(--color-brand)';
+	const inkOf = (label: string) =>
+		SCORE_SET.zones.find((zone) => zone.label === label)?.strokeColor ?? 'var(--color-ink)';
+
+	const metrics = groupMetrics(END_SHOTS)!;
+	const spread = (metrics.meanRadius * 100).toFixed(1);
+	const total = END_SHOTS.reduce((sum, shot) => sum + shot.value, 0);
 </script>
 
 <Feature
@@ -21,42 +29,72 @@
 	tone="surface"
 >
 	{#snippet visual()}
-		<Phone label={$t('site.camera.title')}>
-			<div class="flex h-full flex-col bg-face-black text-face-white">
-				<div class="flex items-center gap-2 px-4 py-2 text-xs font-medium">
-					<Icon name="camera" size={16} />
-					{$t('site.sample.round')}
-				</div>
+		<div class="flex flex-wrap items-center justify-center gap-6">
+			<Phone label={$t('site.camera.title')}>
+				<div class="flex h-full flex-col bg-black">
+					<header class="flex items-center justify-between px-4 py-2 text-white">
+						<h3 class="text-base font-bold">{$t('auto.title')}</h3>
+						<Icon name="close" size={18} />
+					</header>
 
-				<div class="relative flex-1 overflow-hidden" style="perspective: 700px">
-					<div
-						class="absolute inset-x-6 top-10 opacity-95"
-						style="transform: rotateX(28deg) rotateZ(-4deg) scale(1.05)"
-					>
-						<TargetFace scoreSet={SCORE_SET} shots={found} />
-					</div>
-					<!-- The reticle, which is what tells the archer the app has the face and not the sky. -->
-					<div class="absolute inset-8 rounded-xl border-2 border-face-gold/70"></div>
-				</div>
+					<div class="relative flex-1 overflow-hidden">
+						<!-- The face fills the frame the way it does through a lens pointed at it, with the
+							detector's own ring laid over the edge it locked on to. -->
+						<div class="absolute inset-x-2 top-6">
+							<div class="relative">
+								<TargetFace scoreSet={SCORE_SET} shots={END_SHOTS} />
+								<div class="absolute inset-0 rounded-full border-2 border-brand/80"></div>
+							</div>
+						</div>
 
-				<div class="space-y-2 px-4 pb-4">
-					<div class="flex gap-1.5">
-						{#each found as shot (shot.ordinal)}
-							<span
-								class="tabular flex-1 rounded-md bg-face-white/15 py-1.5 text-center text-sm font-bold"
-							>
-								{shot.zoneLabel}
+						<span
+							class="absolute top-2 right-2 flex items-center gap-1.5 rounded-full bg-black/60 px-2 py-1"
+						>
+							<span class="block h-2 w-2 rounded-full bg-danger"></span>
+							<span class="text-[10px] font-semibold tracking-wide text-white uppercase">
+								{$t('auto.recording')}
 							</span>
-						{/each}
+						</span>
 					</div>
-					<button
-						class="flex w-full items-center justify-center gap-2 rounded-full bg-face-gold py-2.5 font-semibold text-face-black"
-					>
-						<Icon name="check" size={18} />
-						{$t('common.done')}
-					</button>
+
+					<div class="space-y-2 bg-surface px-3 pt-2.5 pb-4">
+						<div class="grid grid-cols-6 gap-1">
+							{#each END_SHOTS as shot (shot.ordinal)}
+								<span
+									class="tabular flex h-9 items-center justify-center rounded-lg text-sm font-bold"
+									style="background: {colourOf(shot.zoneLabel)}; color: {inkOf(shot.zoneLabel)}"
+								>
+									{shot.zoneLabel}
+								</span>
+							{/each}
+						</div>
+						<p class="text-center text-[10px] text-muted">{$t('auto.tapToDrop')}</p>
+						<div class="flex gap-2">
+							<span class="flex-1 rounded-lg border border-line py-2 text-center text-xs font-medium">
+								{$t('common.cancel')}
+							</span>
+							<span
+								class="flex-[2] rounded-lg bg-brand py-2 text-center text-sm font-semibold text-brand-ink"
+							>
+								{$t('auto.keep', { n: END_SHOTS.length })}
+							</span>
+						</div>
+					</div>
 				</div>
+			</Phone>
+
+			<!-- Where they land: the same end on the card, with the group worked out from it. -->
+			<div class="w-full max-w-[15rem] rounded-3xl border border-line bg-bg p-4 shadow-sm">
+				<TargetFace scoreSet={SCORE_SET} shots={END_SHOTS} showPerimeter showCentreDefault />
+				<dl class="mt-3 grid grid-cols-3 gap-1.5 text-center">
+					{#each [[$t('site.plot.arrows'), String(END_SHOTS.length)], [$t('site.plot.score'), String(total)], [$t('site.plot.spread'), `${spread}%`]] as [label, value] (label)}
+						<div class="rounded-lg bg-sunk px-1 py-1.5">
+							<dt class="text-[10px] text-muted">{label}</dt>
+							<dd class="tabular font-black">{value}</dd>
+						</div>
+					{/each}
+				</dl>
 			</div>
-		</Phone>
+		</div>
 	{/snippet}
 </Feature>

@@ -5,7 +5,6 @@
 	import Camera from './sections/Camera.svelte';
 	import Cta from './sections/Cta.svelte';
 	import Hero from './sections/Hero.svelte';
-	import Plot from './sections/Plot.svelte';
 	import Privacy from './sections/Privacy.svelte';
 	import Stats from './sections/Stats.svelte';
 	import Training from './sections/Training.svelte';
@@ -15,7 +14,6 @@
 	<Nav />
 	<main>
 		<Hero />
-		<Plot />
 		<Camera />
 		<Stats />
 		<Training />
