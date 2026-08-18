@@ -36,4 +36,15 @@ done
 echo "running policy tests"
 run supabase/tests/rls.sql -1
 
+# The two schemas are written by hand in two languages, so they are held against each other rather
+# than assumed to match. Drift shows up in front of an archer as a permission or a not null error.
+echo "comparing the client schema with the server one"
+COLUMNS=$(mktemp)
+docker exec "$CONTAINER" psql -X -A -t -U postgres -c \
+	"copy (select table_name, column_name, is_nullable, case when column_default is null then 'NO' else 'YES' end
+		from information_schema.columns where table_schema = 'public' order by table_name, column_name)
+		to stdout with csv" > "$COLUMNS"
+APPCHERY_SERVER_COLUMNS="$COLUMNS" npx vitest run src/lib/db/synced.schema.test.ts --reporter=dot
+rm -f "$COLUMNS"
+
 echo "server schema and policies pass"

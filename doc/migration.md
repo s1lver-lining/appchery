@@ -61,6 +61,10 @@ $EDITOR supabase/migrations/*_add_something.sql
 npm run db:check                           # applies every migration to a throwaway Postgres, runs the policy tests
 ```
 
+It also holds the two schemas against each other: every column push sends must exist on the server,
+and no column the server insists on may go unsent. The two are written by hand in two languages, and
+drift between them reaches an archer as a permission or a not null error.
+
 `npm run db:check` needs Docker and takes a few seconds. It uses plain `postgres:16` with
 `supabase/tests/stubs.sql` standing in for `auth.uid()` and the roles, so it proves the SQL applies
 and the policies behave. It says nothing about GoTrue or PostgREST.
