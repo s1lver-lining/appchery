@@ -44,8 +44,12 @@
 		<div class="flex h-full flex-col bg-bg text-[13px]">
 			<PageHeader motif="session" subtitle={$t('site.sample.when')}>
 				{#snippet lead()}
-					<span class="inline-flex text-muted"><Icon name="back" size={18} /></span>
-					<p class="mt-1 text-xl font-bold tracking-tight">{$t('site.sample.place')}</p>
+					<!-- The arrow and the name share a line: a title dropped under the arrow leaves the
+						header a row taller than the app's own, which is the one thing that gives it away. -->
+					<div class="flex items-center gap-2">
+						<span class="inline-flex text-muted"><Icon name="back" size={18} /></span>
+						<p class="text-xl font-bold tracking-tight">{$t('site.sample.place')}</p>
+					</div>
 				{/snippet}
 			</PageHeader>
 
