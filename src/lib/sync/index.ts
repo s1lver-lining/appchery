@@ -31,6 +31,7 @@ export const syncStatus = writable<SyncStatus>({
 });
 
 let inFlight: Promise<void> | null = null;
+let queued: Promise<void> | null = null;
 let lastAttempt = 0;
 let failures = 0;
 
@@ -61,6 +62,18 @@ export async function refreshSyncStatus(phase: SyncPhase = 'idle', error: string
  */
 export function syncNow(trigger: 'manual' | 'automatic' = 'manual'): Promise<void> {
 	if (trigger === 'automatic' && Date.now() < nextAllowed()) return Promise.resolve();
+
+	// A press that lands while an exchange is already running waits for it and then has its own.
+	// Answering with the run in progress would look right and do nothing: it read the queue before
+	// the press, so the refused changes the button is there to retry would stay refused. One queued
+	// run serves every press, because pressing three times is still asking once.
+	if (trigger === 'manual' && inFlight) {
+		queued ??= inFlight.then(() => {
+			queued = null;
+			return syncNow('manual');
+		});
+		return queued;
+	}
 
 	inFlight ??= run(trigger).finally(() => {
 		inFlight = null;

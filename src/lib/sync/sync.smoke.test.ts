@@ -571,6 +571,38 @@ describe('syncNow', () => {
 	});
 
 	/**
+	 * The button is the second chance for a change the server refused. Answered with an exchange that
+	 * had already read the queue, it would look right and leave the refusal exactly where it was.
+	 */
+	it('retries a refused change even when an exchange is already running', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await insertSession('session-poison');
+		await logChange('session', 'session-poison');
+		server.refuseEverything();
+		for (let attempt = 0; attempt < 5; attempt++) {
+			await push(server.client as never, USER).catch(() => {});
+		}
+		server.behave();
+
+		const { failedCount } = await import('./push');
+		expect(await failedCount()).toBe(1);
+
+		// Far enough ahead that the automatic trigger is past its quiet period and really does run.
+		const clock = vi.spyOn(Date, 'now').mockReturnValue(Date.now() + 3_600_000);
+		const running = syncNow('automatic');
+		const press = syncNow('manual');
+		await Promise.all([running, press]);
+		clock.mockRestore();
+
+		expect(await failedCount()).toBe(0);
+		expect(server.upserts).toContain('session:session-poison');
+		account.set(null);
+	});
+
+	/**
 	 * Signing out mid exchange must stop it. Push claims every ownerless row for the account it was
 	 * handed, so an exchange that carried on would file whatever is shot next under the archer who
 	 * just left.

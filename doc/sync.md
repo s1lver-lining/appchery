@@ -383,6 +383,9 @@ A pass over push and pull found two more:
 - **A refused change was marked as sent.** Push stamped `synced_at` on every log entry below the
   chunk it had just uploaded, and one already given up on sits below it: the archer's retry button
   cleared the refusal and found nothing left to send.
+- **The sync button did nothing when a sync was already running.** It was answered with the exchange
+  in progress, which had read the queue before the press: the refused changes the button exists to
+  retry stayed refused. A press now waits for the run in progress and then has its own.
 - **Signing in as somebody else inherited the last archer's cursor**, so the second account's pull
   asked only for rows newer than the first account's last exchange and the rest of its history never
   came down. Signing out clears the cursors.
