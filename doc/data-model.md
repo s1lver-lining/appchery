@@ -142,12 +142,29 @@ One thing done inside a session: a scored round, or a tuning procedure.
 > later must not rewrite the history of a round already shot under the old one. This is also what
 > lets custom rounds be first-class without a separate table.
 
-Kinds in use today are `scoring`, `match`, `tuning` and `training`. Strength work and running are
-coming as `strength` and `running`, and neither shoots an arrow. Every figure that counts arrows
-reads them through `shootsArrows` in `src/lib/domain/stats.ts`: `toVolume`, the badge history and
-the experience arrow rate all filter on it, and a kind it has never heard of counts as shooting
+Kinds in use are `scoring`, `match`, `tuning`, `training` (arrows shot without scoring them),
+`strength` and `running`. The last two shoot nothing. Every figure that counts arrows reads them
+through `shootsArrows` in `src/lib/domain/stats.ts`: `toVolume`, the badge history and the
+experience arrow rate all filter on it, and a kind it has never heard of counts as shooting
 nothing. Adding a kind that does shoot has to be added to that list; adding one that does not needs
 no change anywhere.
+
+### Training activities
+
+`strength` and `running` keep what they did in `measurements`, as free scoring does, so a new kind
+of training costs no migration and nothing new to sync. Both leave `total_score` and `arrows_shot`
+at zero, which is what keeps an hour of bandwork out of every arrow figure the app keeps.
+
+| Kind | `measurements` shape | Complete when |
+|---|---|---|
+| `strength` | `{ entries: [{ exerciseKey, restSeconds, sets: [{ reps, holdSeconds, doneAt }] }] }` | Every set carries a `doneAt` |
+| `running` | `{ distanceM, durationSeconds, effort }` | Both numbers are entered |
+
+A set stores the moment it was ticked rather than a flag, which is what lets the rest timer survive
+a sleeping phone and what makes a session abandoned halfway honestly half a session.
+
+Badges of the `training` family are the only rules that read these, through the `training` field the
+repository fills in on `BadgeActivity`. They pay no experience: the level is a record of shooting.
 
 ### Exercises
 
