@@ -1,10 +1,9 @@
 import { get, writable } from 'svelte/store';
 import { supabase } from './client';
 import { account } from './auth';
-import { push } from './push';
+import { push, pendingCount } from './push';
 import { pull } from './pull';
 import { readSyncState } from './config';
-import { pendingCount } from './push';
 
 // One exchange: push, then pull, see doc/sync.md § 5. Failures are silent and left for the next
 // trigger, because offline at a range is the normal case rather than something to interrupt over.
@@ -30,16 +29,12 @@ export const syncStatus = writable<SyncStatus>({
 let inFlight: Promise<void> | null = null;
 
 /** Reads the local database only, so the card is right about the state before anything is tried. */
-export async function refreshSyncStatus(): Promise<void> {
+export async function refreshSyncStatus(phase: SyncPhase = 'idle', error: string | null = null): Promise<void> {
 	const state = await readSyncState();
-	const pending = await pendingCount();
-	syncStatus.update((current) => ({ ...current, pending, lastSyncAt: state.lastSyncAt }));
+	syncStatus.set({ phase, pending: await pendingCount(), lastSyncAt: state.lastSyncAt, error });
 }
 
-/**
- * Guarded so two triggers firing together produce one exchange. The second caller waits for the
- * first rather than starting a second push, which would upload the same rows twice.
- */
+/** Guarded, so two triggers firing together wait on one exchange rather than uploading twice. */
 export function syncNow(): Promise<void> {
 	inFlight ??= run().finally(() => {
 		inFlight = null;
@@ -53,8 +48,7 @@ async function run(): Promise<void> {
 
 	// Nothing to say to an unreachable server, but a pressed button is owed an answer.
 	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
-		syncStatus.update((current) => ({ ...current, phase: 'error', error: 'offline' }));
-		return;
+		return refreshSyncStatus('error', 'offline');
 	}
 
 	const client = await supabase();
@@ -66,39 +60,22 @@ async function run(): Promise<void> {
 	// handed, so carrying on through a sign out files the next archer's shooting under the last one's.
 	const stillOurs = () => get(account)?.id === user.id;
 
-	/** Abandoning an exchange has to leave the state readable, or the button stays disabled for good. */
-	const stop = async () => {
-		syncStatus.update((current) => ({ ...current, phase: 'idle' }));
-		await refreshSyncStatus();
-	};
-
 	try {
 		await push(client, user.id);
-		if (!stillOurs()) return stop();
+		if (!stillOurs()) return refreshSyncStatus();
 
 		await pull(client, user.id);
-		if (!stillOurs()) return stop();
+		if (!stillOurs()) return refreshSyncStatus();
 
 		// Both follow the record they describe, and neither may break the exchange: a badge count an
 		// hour out of date costs nothing, a failed sync costs the shooting.
 		const { refreshSocial } = await import('./social');
-		await refreshSocial().catch(() => {});
-
 		const { publishCard } = await import('./card');
+		await refreshSocial().catch(() => {});
 		await publishCard().catch(() => {});
-		const state = await readSyncState();
-		syncStatus.set({
-			phase: 'idle',
-			pending: await pendingCount(),
-			lastSyncAt: state.lastSyncAt,
-			error: null
-		});
-	} catch (error) {
-		syncStatus.update((current) => ({
-			...current,
-			phase: 'error',
-			error: error instanceof Error ? error.message : String(error)
-		}));
+
 		await refreshSyncStatus();
+	} catch (error) {
+		await refreshSyncStatus('error', error instanceof Error ? error.message : String(error));
 	}
 }
