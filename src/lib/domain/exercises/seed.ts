@@ -31,10 +31,10 @@ const BAND_PULL_APART: Movement = {
 			key: 'open',
 			pose: pose('standing', {
 				shoulderLeft: [74, 64],
-				elbowLeft: [46, 78],
+				elbowLeft: [46, 75],
 				handLeft: [18, 86],
 				shoulderRight: [126, 64],
-				elbowRight: [154, 78],
+				elbowRight: [154, 75],
 				handRight: [182, 86]
 			}),
 			dwell: 1
@@ -71,6 +71,7 @@ const FACE_PULL: Movement = {
 	]
 };
 
+/** Y, T and W: three arm shapes on one body, which is what the exercise is. Seen from above. */
 const PRONE_YTW: Movement = {
 	view: 'prone',
 	prop: 'none',
@@ -78,23 +79,32 @@ const PRONE_YTW: Movement = {
 		{
 			key: 'start',
 			pose: pose('prone', {
-				elbowLeft: [42, 186],
-				handLeft: [14, 176],
-				elbowRight: [46, 244],
-				handRight: [18, 254]
-			})
+				elbowLeft: [40, 104],
+				handLeft: [8, 98],
+				elbowRight: [40, 136],
+				handRight: [8, 142]
+			}),
+			dwell: 1
 		},
 		{
-			key: 'top',
+			key: 'open',
 			pose: pose('prone', {
-				shoulderLeft: [70, 198],
-				elbowLeft: [44, 178],
-				handLeft: [16, 164],
-				shoulderRight: [74, 228],
-				elbowRight: [48, 252],
-				handRight: [20, 266]
+				elbowLeft: [70, 86],
+				handLeft: [68, 58],
+				elbowRight: [70, 154],
+				handRight: [68, 182]
 			}),
-			dwell: 1.2
+			dwell: 1
+		},
+		{
+			key: 'hold',
+			pose: pose('prone', {
+				elbowLeft: [58, 96],
+				handLeft: [80, 78],
+				elbowRight: [58, 144],
+				handRight: [80, 162]
+			}),
+			dwell: 1
 		}
 	]
 };
@@ -169,7 +179,7 @@ const HOLDING: Movement = {
 				handLeft: [170, 58],
 				shoulderRight: [94, 64],
 				elbowRight: [62, 56],
-				handRight: [96, 48]
+				handRight: [93, 53]
 			}),
 			dwell: 4
 		}
@@ -199,7 +209,7 @@ const REVERSALS: Movement = {
 				handLeft: [170, 58],
 				shoulderRight: [94, 64],
 				elbowRight: [62, 56],
-				handRight: [96, 48]
+				handRight: [93, 53]
 			}),
 			dwell: 2
 		},
@@ -235,70 +245,76 @@ const BOW_RAISE: Movement = {
 	]
 };
 
+/** Seen from the side, because the straight line from the heels to the head is the whole exercise. */
 const PLANK: Movement = {
-	view: 'prone',
+	view: 'side',
 	prop: 'none',
 	frames: [
 		{
-			key: 'start',
-			pose: pose('prone', {
-				head: [30, 188],
-				neck: [50, 194],
-				chest: [76, 198],
-				hip: [120, 202],
-				shoulderLeft: [72, 190],
-				elbowLeft: [60, 216],
-				handLeft: [36, 214],
-				shoulderRight: [76, 210],
-				elbowRight: [64, 234],
-				handRight: [40, 232],
-				kneeLeft: [158, 206],
-				footLeft: [190, 224],
-				kneeRight: [160, 216],
-				footRight: [192, 234]
-			}),
+			key: 'hold',
+			pose: {
+				head: [38, 116],
+				neck: [58, 122],
+				chest: [82, 130],
+				hip: [126, 148],
+				shoulderLeft: [80, 128],
+				elbowLeft: [78, 172],
+				handLeft: [52, 176],
+				shoulderRight: [84, 132],
+				elbowRight: [82, 174],
+				handRight: [56, 180],
+				kneeLeft: [162, 166],
+				footLeft: [194, 180],
+				kneeRight: [164, 170],
+				footRight: [196, 184]
+			},
 			dwell: 4
 		}
 	]
 };
 
+/** Two strides, swapped, which is the whole of a run: the lean, the knee up, the opposite arm. */
 const RUNNING: Movement = {
 	view: 'side',
 	prop: 'none',
 	frames: [
 		{
 			key: 'stride',
-			pose: pose('side', {
-				head: [100, 30],
-				chest: [106, 88],
-				shoulderLeft: [110, 64],
-				elbowLeft: [130, 90],
-				handLeft: [122, 62],
-				shoulderRight: [96, 64],
-				elbowRight: [74, 92],
-				handRight: [84, 120],
-				kneeLeft: [130, 176],
-				footLeft: [154, 206],
-				kneeRight: [80, 200],
-				footRight: [54, 232]
-			})
+			pose: {
+				head: [116, 34],
+				neck: [112, 58],
+				chest: [108, 94],
+				hip: [96, 144],
+				shoulderLeft: [116, 68],
+				elbowLeft: [136, 100],
+				handLeft: [150, 76],
+				shoulderRight: [102, 68],
+				elbowRight: [80, 98],
+				handRight: [70, 122],
+				kneeLeft: [130, 162],
+				footLeft: [156, 192],
+				kneeRight: [78, 186],
+				footRight: [50, 222]
+			}
 		},
 		{
 			key: 'stride',
-			pose: pose('side', {
-				head: [100, 30],
-				chest: [106, 88],
-				shoulderLeft: [110, 64],
-				elbowLeft: [86, 92],
-				handLeft: [96, 120],
-				shoulderRight: [96, 64],
-				elbowRight: [118, 90],
-				handRight: [110, 62],
-				kneeLeft: [76, 198],
-				footLeft: [50, 228],
-				kneeRight: [126, 178],
-				footRight: [150, 208]
-			})
+			pose: {
+				head: [116, 34],
+				neck: [112, 58],
+				chest: [108, 94],
+				hip: [96, 144],
+				shoulderLeft: [116, 68],
+				elbowLeft: [84, 98],
+				handLeft: [74, 122],
+				shoulderRight: [102, 68],
+				elbowRight: [132, 100],
+				handRight: [146, 76],
+				kneeLeft: [80, 184],
+				footLeft: [52, 220],
+				kneeRight: [128, 164],
+				footRight: [154, 194]
+			}
 		}
 	]
 };

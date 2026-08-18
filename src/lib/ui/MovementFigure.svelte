@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { BONES, FIGURE, HEAD_RADIUS, blend, type Movement, type Pose } from '$lib/domain/exercises/movement';
+	import {
+		BONES,
+		HEAD_RADIUS,
+		JOINTS,
+		blend,
+		type Movement,
+		type Pose
+	} from '$lib/domain/exercises/movement';
 
 	/**
 	 * What the archer actually does, drawn and animated. The muscle map says which muscles an
@@ -11,7 +18,11 @@
 	 * that leave it, so adding one is a few coordinates rather than a drawing, and every exercise the
 	 * app ever gains is drawn by the same code in the same proportions.
 	 */
-	let { movement, playing = true }: { movement: Movement; playing?: boolean } = $props();
+	let {
+		movement,
+		playing = true,
+		class: className = 'w-full max-h-[42vh]'
+	}: { movement: Movement; playing?: boolean; class?: string } = $props();
 
 	/** Out and back, because a movement returns the way it came: nobody rewinds through a rep. */
 	const seq = $derived(
@@ -72,6 +83,45 @@
 	/** The frame the figure is at, or the one it is on its way to: a caption names where it is going. */
 	const showing = $derived(seq[step.to]);
 
+	/** Half a bow, drawn from the hand that holds it, with the string running through the other one. */
+	const LIMB = 58;
+
+	/**
+	 * The box is cut to what the movement actually occupies, over every frame rather than the one on
+	 * show, so the figure fills the space without the drawing jumping about as it moves.
+	 */
+	const box = $derived.by(() => {
+		const points: [number, number][] = [];
+		for (const frame of movement.frames) {
+			for (const joint of JOINTS) points.push(frame.pose[joint]);
+			points.push([frame.pose.head[0] - HEAD_RADIUS, frame.pose.head[1] - HEAD_RADIUS]);
+			points.push([frame.pose.head[0] + HEAD_RADIUS, frame.pose.head[1] + HEAD_RADIUS]);
+			if (movement.prop === 'bow') {
+				points.push([frame.pose.handLeft[0] + 16, frame.pose.handLeft[1] - LIMB]);
+				points.push([frame.pose.handLeft[0] - 16, frame.pose.handLeft[1] + LIMB]);
+			}
+		}
+		if (movement.anchor) points.push(movement.anchor);
+		const pad = 12;
+		const xs = points.map((point) => point[0]);
+		const ys = points.map((point) => point[1]);
+		const left = Math.min(...xs) - pad;
+		const top = Math.min(...ys) - pad;
+		return {
+			left,
+			top,
+			width: Math.max(...xs) + pad - left,
+			height: Math.max(...ys) + pad - top,
+			floor: Math.max(...ys) + 6
+		};
+	});
+
+	/** Looking down on somebody lying on the floor, the floor is the page: a line across it says nothing. */
+	const standing = $derived(movement.view !== 'prone');
+
+	/** Seen side on, the far arm and leg are behind the body, so they are drawn as being behind it. */
+	const far = $derived((joint: string) => movement.view === 'side' && joint.endsWith('Right'));
+
 	const line = (a: [number, number], b: [number, number]) => `M${a[0]} ${a[1]} L${b[0]} ${b[1]}`;
 
 	/**
@@ -87,8 +137,6 @@
 		return `M${a[0]} ${a[1]} Q${mid[0] - (dy / span) * slack} ${mid[1] + (dx / span) * slack} ${b[0]} ${b[1]}`;
 	}
 
-	/** Half a bow, drawn from the hand that holds it, with the string running through the other one. */
-	const LIMB = 58;
 	const bow = $derived.by(() => {
 		const grip = pose.handLeft;
 		const nock = pose.handRight;
@@ -107,43 +155,55 @@
 
 <figure class="min-w-0">
 	<svg
-		viewBox="0 0 {FIGURE.width} {FIGURE.height}"
-		class="w-full"
+		viewBox="{box.left} {box.top} {box.width} {box.height}"
+		class={className}
 		role="img"
 		aria-label={$t(`exercises.frame.${showing.key}`)}
 	>
 		<!-- The ground, so a pose is read against something rather than floating. -->
-		<line
-			x1="8"
-			y1={FIGURE.ground}
-			x2={FIGURE.width - 8}
-			y2={FIGURE.ground}
-			stroke="var(--c-line)"
-			stroke-width="2"
-			stroke-dasharray="4 5"
-		/>
+		{#if standing}
+			<line
+				x1={box.left + 6}
+				y1={box.floor}
+				x2={box.left + box.width - 6}
+				y2={box.floor}
+				stroke="var(--c-line)"
+				stroke-width="2"
+				stroke-dasharray="4 5"
+			/>
+		{/if}
 
-		<!-- The figure behind whatever it holds, so a bow crosses in front of the hand gripping it. -->
-		<g stroke="var(--c-brand)" stroke-linecap="round" fill="none">
+		<!--
+			The figure behind whatever it holds, so a bow crosses in front of the hand gripping it. The
+			body is drawn in ink and the kit in gold, because the two are near enough the same colour
+			otherwise and a band lying across an arm has to be seen to be a band.
+		-->
+		<g stroke="var(--c-ink)" stroke-linecap="round" fill="none" opacity="0.82">
 			{#each BONES as bone (bone.from + bone.to)}
-				<path d={line(pose[bone.from], pose[bone.to])} stroke-width={bone.width} />
+				<path
+					d={line(pose[bone.from], pose[bone.to])}
+					stroke-width={bone.width}
+					opacity={far(bone.to) ? 0.45 : 1}
+				/>
 			{/each}
 		</g>
 		<circle
 			cx={pose.head[0]}
 			cy={pose.head[1]}
 			r={HEAD_RADIUS}
-			fill="var(--c-brand)"
+			fill="var(--c-ink)"
+			fill-opacity="0.82"
 			stroke="none"
 		/>
 
-		<g stroke="var(--c-accent)" stroke-width="3" fill="none" stroke-linecap="round">
+		<g stroke="var(--c-brand)" stroke-width="3.4" fill="none" stroke-linecap="round">
 			{#if movement.prop === 'band'}
 				<path d={band(pose.handLeft, pose.handRight, 110)} />
 			{:else if movement.prop === 'anchoredBand' && movement.anchor}
-				<path d={band(movement.anchor, pose.handLeft, 90)} />
-				<path d={band(movement.anchor, pose.handRight, 90)} />
-				<circle cx={movement.anchor[0]} cy={movement.anchor[1]} r="4" fill="var(--c-accent)" />
+				<!-- An anchored band is under tension from the first rep, so it barely sags at all. -->
+				<path d={band(movement.anchor, pose.handLeft, 26)} />
+				<path d={band(movement.anchor, pose.handRight, 26)} />
+				<circle cx={movement.anchor[0]} cy={movement.anchor[1]} r="4" fill="var(--c-brand)" />
 			{:else if movement.prop === 'bow'}
 				<path d={bow.riser} stroke-width="4" />
 				<path d={bow.string} stroke-width="1.6" />

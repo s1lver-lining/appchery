@@ -1227,6 +1227,127 @@ insetHint:
 		}
 	},
 	exercises: {
+		title: 'Exercises',
+		intro:
+			'Strength work for the shot, each one drawn with the muscles it trains and the movement to make.',
+		all: 'Everything',
+		empty: 'Nothing here with that kit.',
+		howTitle: 'How to do it',
+		worksTitle: 'What it works',
+		movementTitle: 'The movement',
+		forTitle: 'What it is for',
+		startTitle: 'Where to start',
+		startLead: 'A starting point, not a prescription. Work up from whatever you can hold with good form.',
+		sets: 'Sets',
+		reps: 'Reps',
+		hold: 'Hold',
+		rest: 'Rest',
+		distance: 'Distance',
+		seconds: '{n} s',
+		metres: '{n} m',
+		kilometres: '{n} km',
+		play: 'Play',
+		pause: 'Pause',
+		cautionTitle: 'Read this first',
+		mainly: 'Mainly',
+		also: 'Also',
+		none: 'No kit',
+		kit: {
+			none: 'Nothing at all',
+			band: 'Band',
+			bow: 'Bow',
+			outdoors: 'Outdoors'
+		},
+		measure: { reps: 'Reps', hold: 'Held', distance: 'Distance' },
+		level: { beginner: 'Any archer', intermediate: 'Some training behind you', advanced: 'Trained' },
+		activity: { strength: 'Strength', running: 'Running' },
+		item: {
+			bandPullApart: {
+				name: 'Band pull apart',
+				summary: 'The draw, without the bow. Everything that pulls the string back, worked at once.',
+				step1: 'Stand tall and hold a light band in front of you at chest height, arms straight and hands about shoulder width apart.',
+				step2: 'Pull your hands out to the sides, keeping both arms straight, until the band touches your chest.',
+				step3: 'Finish by drawing the shoulder blades together. The hands are only where the movement shows: the work is between the blades.',
+				step4: 'Let the band back in under control, taking twice as long to return as you took to open.'
+			},
+			facePull: {
+				name: 'Face pull',
+				summary: 'The draw elbow, taught to travel where an anchor is: high, back, and behind the head.',
+				step1: 'Anchor a band above head height and take one end in each hand, arms straight out towards it.',
+				step2: 'Pull the band towards your nose, leading with the elbows and letting them travel out wide and back past your ears.',
+				step3: 'Hold for a moment with the shoulder blades set down and together, then return under control.',
+				step4: 'Keep the shoulders down throughout. A shrug at the top hands the work to the muscle the shot wants quiet.'
+			},
+			proneYtw: {
+				name: 'Prone Y, T and W',
+				summary: 'Face down, with nothing to help. The three shapes cover the whole of the back of the shoulder.',
+				step1: 'Lie face down on the floor with your forehead resting down and your arms out in front of you.',
+				step2: 'Y: arms straight and out at a narrow angle, thumbs up. Lift both hands off the floor, hold for two seconds, lower.',
+				step3: 'T: arms straight out to the sides. Lift, hold, lower.',
+				step4: 'W: elbows bent and tucked in beside the ribs. Lift, squeeze the blades together, lower.',
+				step5: 'Lift with the back rather than with the neck. Your forehead stays where it started.'
+			},
+			externalRotation: {
+				name: 'External rotation',
+				summary: 'The cuff at the back of the shoulder, which holds the joint together while everything else pulls.',
+				step1: 'Stand with a light band in front of you, elbows bent to a right angle and tucked against your ribs.',
+				step2: 'Keeping the elbows against your sides, rotate both forearms outwards until the band is stretched across you.',
+				step3: 'Return slowly. The forearms move, nothing else does.',
+				step4: 'Roll a towel under each elbow if they wander forward: the elbow staying put is what makes this the cuff rather than the back.',
+				caution: 'The cuff is small and it adapts slowly. Use the lightest band that makes the last rep feel like work, and add reps before you add tension.'
+			},
+			scapularSetting: {
+				name: 'Scapular setting',
+				summary: 'Finding the muscles that hold the shot, on their own, before any load is put on them.',
+				step1: 'Stand tall with your arms hanging and your shoulders relaxed.',
+				step2: 'Slide both shoulder blades down and in towards your spine, without lifting the shoulders and without moving the arms.',
+				step3: 'Hold, breathing normally, then release slowly.',
+				step4: 'This is the position the transfer puts you in. Learning to find it here is what lets you find it at full draw.'
+			},
+			holdingSpt: {
+				name: 'Holding SPT',
+				summary: 'Full draw, held. The endurance exercise that makes the last end of a round feel like the first.',
+				step1: 'With no arrow on the string, go through your shot process on a bow or a stretch band until you reach the holding position.',
+				step2: 'Hold there in full alignment, aiming at nothing in particular, breathing normally.',
+				step3: 'Let down under control. Never release: an empty bow loosed is a broken bow.',
+				step4: 'Rest, then repeat. As the hold gets easier, lengthen it and lengthen the rest with it.',
+				step5: 'Stop the set the moment the alignment goes. A hold made with the shoulder collapsed trains the collapse.',
+				caution: 'Do this after shooting rather than before it, and never with an arrow on the string.'
+			},
+			reversals: {
+				name: 'Reversals',
+				summary: 'Draw, hold, let down, repeat. The draw itself, done far more often than a session would ask.',
+				step1: 'With no arrow on the string, draw the bow through your normal shot process to anchor and transfer.',
+				step2: 'Hold for a couple of seconds in full alignment.',
+				step3: 'Let down under control to the set up position, without dropping the bow arm.',
+				step4: 'Repeat for the set, then rest properly before the next one.',
+				step5: 'Every rep is a rep of your shot, so a sloppy one is practice too. Stop the set rather than finish it badly.',
+				caution: 'Never let the string go. A bow drawn without an arrow and released will destroy itself, and the hand holding it.'
+			},
+			bowRaise: {
+				name: 'Bow raise',
+				summary: 'Holding the bow up, and nothing else. What tires first in a long round, trained on its own.',
+				step1: 'With no arrow on the string, raise the bow to the set up position, at about the height of your own shoulders.',
+				step2: 'Hold it there with the bow arm straight and the shoulder down, breathing normally.',
+				step3: 'Lower under control and rest for a minute or two.',
+				step4: 'Stop when the shoulder starts to climb towards your ear. That is the end of the set, whatever the clock says.'
+			},
+			plank: {
+				name: 'Plank',
+				summary: 'The middle of the body, which is what the two ends of the shot are pulling against.',
+				step1: 'Lie face down, then come up onto your forearms and toes with your elbows under your shoulders.',
+				step2: 'Set a straight line from your heels to the top of your head, with the hips neither dropped nor lifted.',
+				step3: 'Hold it, breathing normally rather than bracing against held breath.',
+				step4: 'End the set when the line breaks. Time held out of shape is time spent teaching the shape.'
+			},
+			running: {
+				name: 'Running',
+				summary: 'The base under everything else. A round is four hours on your feet, and that is a fitness question.',
+				step1: 'Run at a pace you could hold a conversation at. This is endurance work, not a time trial.',
+				step2: 'Build the distance by no more than a tenth a week, and keep at least one day between runs and heavy shooting.',
+				step3: 'Its place in archery is recovery between ends and a heart rate that settles on demand, not the legs themselves.'
+			}
+		},
 		frame: {
 			start: 'Start',
 			open: 'Open',

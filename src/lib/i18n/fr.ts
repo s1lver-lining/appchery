@@ -1235,6 +1235,132 @@ insetHint:
 		}
 	},
 	exercises: {
+		title: 'Exercices',
+		intro:
+			'Le renforcement du tir, chacun accompagné des muscles qu\'il travaille et du mouvement à faire.',
+		all: 'Tout',
+		empty: 'Rien avec ce matériel.',
+		howTitle: 'Comment faire',
+		worksTitle: 'Ce qu\'il travaille',
+		movementTitle: 'Le mouvement',
+		forTitle: 'À quoi il sert',
+		startTitle: 'Par où commencer',
+		startLead:
+			'Un point de départ, pas une prescription. Progressez à partir de ce que vous tenez proprement.',
+		sets: 'Séries',
+		reps: 'Répétitions',
+		hold: 'Maintien',
+		rest: 'Repos',
+		distance: 'Distance',
+		seconds: '{n} s',
+		metres: '{n} m',
+		kilometres: '{n} km',
+		play: 'Lancer',
+		pause: 'Pause',
+		cautionTitle: 'À lire avant',
+		mainly: 'Surtout',
+		also: 'Aussi',
+		none: 'Sans matériel',
+		kit: {
+			none: 'Rien du tout',
+			band: 'Élastique',
+			bow: 'Arc',
+			outdoors: 'Dehors'
+		},
+		measure: { reps: 'Répétitions', hold: 'Maintenu', distance: 'Distance' },
+		level: {
+			beginner: 'Tout archer',
+			intermediate: 'Un peu entraîné',
+			advanced: 'Entraîné'
+		},
+		activity: { strength: 'Renforcement', running: 'Course' },
+		item: {
+			bandPullApart: {
+				name: 'Ouverture à l\'élastique',
+				summary: 'L\'armement sans l\'arc. Tout ce qui tire la corde vers l\'arrière, travaillé d\'un coup.',
+				step1: 'Debout, tenez un élastique léger devant vous à hauteur de poitrine, bras tendus et mains écartées de la largeur des épaules.',
+				step2: 'Écartez les mains sur les côtés, bras tendus, jusqu\'à ce que l\'élastique touche la poitrine.',
+				step3: 'Terminez en rapprochant les omoplates. Les mains montrent le mouvement : le travail est entre les omoplates.',
+				step4: 'Revenez en contrôlant, en mettant deux fois plus de temps au retour qu\'à l\'ouverture.'
+			},
+			facePull: {
+				name: 'Tirage au visage',
+				summary: 'Le coude d\'armement, à qui l\'on apprend le chemin de l\'ancrage : haut, en arrière, derrière la tête.',
+				step1: 'Fixez un élastique au dessus de la tête et prenez une extrémité dans chaque main, bras tendus vers lui.',
+				step2: 'Tirez vers votre nez en menant par les coudes, qui partent largement sur les côtés et passent derrière les oreilles.',
+				step3: 'Marquez un temps, omoplates basses et serrées, puis revenez en contrôlant.',
+				step4: 'Gardez les épaules basses. Une épaule qui monte confie le travail au muscle que le tir veut silencieux.'
+			},
+			proneYtw: {
+				name: 'Y, T et W au sol',
+				summary: 'À plat ventre, sans rien pour aider. Les trois formes couvrent tout l\'arrière de l\'épaule.',
+				step1: 'Allongez vous sur le ventre, front posé au sol, bras tendus devant vous.',
+				step2: 'Y : bras tendus en V étroit, pouces vers le haut. Décollez les deux mains, tenez deux secondes, reposez.',
+				step3: 'T : bras tendus sur les côtés. Décollez, tenez, reposez.',
+				step4: 'W : coudes pliés et rangés contre les côtes. Décollez, serrez les omoplates, reposez.',
+				step5: 'Le dos soulève, pas la nuque. Le front reste où il était.'
+			},
+			externalRotation: {
+				name: 'Rotation externe',
+				summary: 'La coiffe, à l\'arrière de l\'épaule, qui tient l\'articulation pendant que tout le reste tire.',
+				step1: 'Debout, élastique léger devant vous, coudes pliés à angle droit et collés aux côtes.',
+				step2: 'Coudes toujours au corps, faites pivoter les avant bras vers l\'extérieur jusqu\'à tendre l\'élastique devant vous.',
+				step3: 'Revenez lentement. Les avant bras bougent, rien d\'autre.',
+				step4: 'Glissez une serviette roulée sous chaque coude s\'ils partent en avant : c\'est le coude immobile qui fait travailler la coiffe plutôt que le dos.',
+				caution: 'La coiffe est petite et s\'adapte lentement. Prenez l\'élastique le plus léger qui rende la dernière répétition difficile, et ajoutez des répétitions avant d\'ajouter de la tension.'
+			},
+			scapularSetting: {
+				name: 'Placement des omoplates',
+				summary: 'Trouver les muscles qui tiennent le tir, seuls, avant de leur mettre la moindre charge.',
+				step1: 'Debout, bras le long du corps et épaules relâchées.',
+				step2: 'Faites glisser les deux omoplates vers le bas et vers la colonne, sans monter les épaules ni bouger les bras.',
+				step3: 'Tenez en respirant normalement, puis relâchez lentement.',
+				step4: 'C\'est la position dans laquelle le transfert vous met. La trouver ici est ce qui permet de la trouver à pleine allonge.'
+			},
+			holdingSpt: {
+				name: 'SPT de maintien',
+				summary: 'Pleine allonge, tenue. L\'exercice d\'endurance qui rend la dernière volée semblable à la première.',
+				step1: 'Sans flèche sur la corde, déroulez votre séquence de tir à l\'arc ou à l\'élastique jusqu\'à la position de maintien.',
+				step2: 'Tenez en alignement complet, sans viser quoi que ce soit de précis, en respirant normalement.',
+				step3: 'Redescendez en contrôlant. Ne décochez jamais : un arc lâché à vide est un arc cassé.',
+				step4: 'Reposez, puis recommencez. À mesure que le maintien devient facile, allongez le et allongez le repos avec lui.',
+				step5: 'Arrêtez la série dès que l\'alignement part. Un maintien épaule effondrée entraîne l\'effondrement.',
+				caution: 'À faire après le tir plutôt qu\'avant, et jamais avec une flèche sur la corde.'
+			},
+			reversals: {
+				name: 'Reversals',
+				summary: 'Armer, tenir, redescendre, recommencer. L\'armement lui même, répété bien plus qu\'une séance ne le demande.',
+				step1: 'Sans flèche sur la corde, armez l\'arc par votre séquence habituelle jusqu\'à l\'ancrage et au transfert.',
+				step2: 'Tenez deux secondes en alignement complet.',
+				step3: 'Redescendez en contrôlant jusqu\'à la position de placement, sans laisser tomber le bras d\'arc.',
+				step4: 'Enchaînez la série, puis reposez vraiment avant la suivante.',
+				step5: 'Chaque répétition est une répétition de votre tir : une mauvaise s\'apprend aussi. Arrêtez la série plutôt que de la finir mal.',
+				caution: 'Ne lâchez jamais la corde. Un arc armé sans flèche et décoché se détruit, et détruit la main qui le tient.'
+			},
+			bowRaise: {
+				name: 'Montée d\'arc',
+				summary: 'Tenir l\'arc en l\'air, rien d\'autre. Ce qui fatigue en premier sur un long tir, travaillé à part.',
+				step1: 'Sans flèche sur la corde, montez l\'arc en position de placement, à peu près à hauteur de vos épaules.',
+				step2: 'Tenez le bras d\'arc tendu et l\'épaule basse, en respirant normalement.',
+				step3: 'Redescendez en contrôlant et reposez une minute ou deux.',
+				step4: 'Arrêtez quand l\'épaule commence à monter vers l\'oreille. C\'est la fin de la série, quoi que dise le chronomètre.'
+			},
+			plank: {
+				name: 'Gainage',
+				summary: 'Le milieu du corps, contre lequel les deux extrémités du tir tirent.',
+				step1: 'À plat ventre, montez sur les avant bras et la pointe des pieds, coudes sous les épaules.',
+				step2: 'Tenez une ligne droite des talons au sommet du crâne, bassin ni creusé ni relevé.',
+				step3: 'Tenez en respirant normalement plutôt qu\'en bloquant la respiration.',
+				step4: 'Terminez la série quand la ligne casse. Du temps tenu de travers est du temps passé à apprendre le travers.'
+			},
+			running: {
+				name: 'Course à pied',
+				summary: 'La base sous tout le reste. Un concours, c\'est quatre heures debout, et cela se prépare.',
+				step1: 'Courez à une allure où vous pourriez tenir une conversation. C\'est de l\'endurance, pas un chrono.',
+				step2: 'Augmentez la distance d\'un dixième par semaine au plus, et gardez un jour entre une sortie et un gros volume de flèches.',
+				step3: 'Son intérêt en tir à l\'arc est la récupération entre les volées et un cœur qui redescend à la demande, pas les jambes.'
+			}
+		},
 		frame: {
 			start: 'Départ',
 			open: 'Ouverture',

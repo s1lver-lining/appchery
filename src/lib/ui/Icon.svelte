@@ -36,6 +36,7 @@
 		| 'qr'
 		| 'bulb'
 		| 'muscle'
+		| 'exercise'
 		| 'friends'
 		| 'level'
 		| 'help';
@@ -169,6 +170,10 @@
 		<path d="M12 8.6v11.2" />
 		<path d="M11 12.4 8.4 10.6M13 12.4l2.6-1.8" />
 		<path d="M7.6 19.8h8.8" />
+	{:else if name === 'exercise'}
+		<!-- A dumbbell: the work done away from the shooting line. -->
+		<path d="M3 9.6v4.8M6 7.4v9.2M18 7.4v9.2M21 9.6v4.8" />
+		<path d="M6 12h12" />
 	{:else if name === 'bulb'}
 		<!-- The lamp over the head: something you did not know the app could do. -->
 		<path d="M9.2 17.4a6 6 0 1 1 5.6 0" />

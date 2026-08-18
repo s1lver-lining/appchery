@@ -15,6 +15,7 @@
 		| 'stats'
 		| 'badges'
 		| 'tricks'
+		| 'exercises'
 		| 'experience'
 		| 'feed'
 		| 'settings';
@@ -178,6 +179,25 @@
 					opacity={0.14 + i * 0.06}
 				/>
 				<circle cx={face.x} cy={face.y} r="3" fill="currentColor" opacity={0.2 + i * 0.08} />
+			{/each}
+		</svg>
+	{:else if motif === 'exercises'}
+		<!-- A band stretched wider each time: the same movement, asked for a little more of. -->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-60 text-brand"
+			viewBox="0 0 140 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			{#each [0, 1, 2] as step (step)}
+				<path
+					d="M{46 - step * 14} 22C{70 - step * 4} {56 + step * 10}, {70 + step * 4} {56 + step * 10}, {94 + step * 14} 22"
+					stroke="currentColor"
+					stroke-width="3"
+					stroke-linecap="round"
+					opacity={0.3 - step * 0.07}
+				/>
 			{/each}
 		</svg>
 	{:else if motif === 'tricks'}

@@ -36,8 +36,8 @@ export type Joint = (typeof JOINTS)[number];
 export type Point = [number, number];
 export type Pose = Record<Joint, Point>;
 
-/** The drawing's own box. The ground is a line across it, so a pose is read against something. */
-export const FIGURE = { width: 200, height: 260, ground: 248 };
+// Poses are written in a 200 by 260 box, with the floor around y 246. Nothing is drawn at that size:
+// the diagram crops to what the movement occupies, so a figure lying down gets a wide box of its own.
 
 /**
  * What the figure is built out of: a bone is two joints and how thick the line between them is. The
@@ -81,7 +81,8 @@ export const BASE: Record<'standing' | 'side' | 'prone', Pose> = {
 		kneeRight: [112, 194],
 		footRight: [114, 246]
 	},
-	// Facing right, which is where a target would be: the bow arm is the far one, away from the reader.
+	// Facing right, which is where a target would be. The left limbs are the near side of the body and
+	// the right limbs the far one, which is why a side view fades them: an arm behind a chest looks it.
 	side: {
 		head: [96, 32],
 		neck: [101, 54],
@@ -98,22 +99,22 @@ export const BASE: Record<'standing' | 'side' | 'prone', Pose> = {
 		kneeRight: [98, 194],
 		footRight: [92, 246]
 	},
-	// Face down on the floor, head to the left, seen from above and slightly behind.
+	// Face down on the floor, head to the left, looked down on from above.
 	prone: {
-		head: [28, 202],
-		neck: [48, 208],
-		chest: [74, 212],
-		hip: [118, 220],
-		shoulderLeft: [70, 200],
-		elbowLeft: [50, 190],
-		handLeft: [30, 184],
-		shoulderRight: [74, 226],
-		elbowRight: [54, 236],
-		handRight: [34, 242],
-		kneeLeft: [156, 214],
-		footLeft: [188, 210],
-		kneeRight: [158, 228],
-		footRight: [190, 232]
+		head: [26, 120],
+		neck: [48, 120],
+		chest: [76, 120],
+		hip: [124, 120],
+		shoulderLeft: [72, 106],
+		elbowLeft: [52, 96],
+		handLeft: [30, 88],
+		shoulderRight: [72, 134],
+		elbowRight: [52, 144],
+		handRight: [30, 152],
+		kneeLeft: [162, 112],
+		footLeft: [192, 108],
+		kneeRight: [162, 128],
+		footRight: [192, 132]
 	}
 };
 
