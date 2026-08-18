@@ -2,8 +2,9 @@
 	import '../app.css';
 	import { App } from '@capacitor/app';
 	import { Capacitor } from '@capacitor/core';
-	import { goto, pushState } from '$app/navigation';
+	import { afterNavigate, beforeNavigate, goto, pushState } from '$app/navigation';
 	import { navigating, page } from '$app/stores';
+	import { tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import { initDb, dbInfo } from '$lib/db';
 	// Imported for its side effect: beforeinstallprompt fires early, and a listener registered only
@@ -32,6 +33,50 @@
 	import Pager from '$lib/ui/Pager.svelte';
 
 	let { children } = $props();
+
+	/**
+	 * Where each page inside the tree was left, and where it is put back when it is come back to.
+	 *
+	 * Every page outside the swipe pager shares one scrolling element, which outlives the navigation
+	 * between them: without this, opening an exercise from halfway down the library opens it halfway
+	 * down. The browser's own restoration cannot help, because it only ever knew about the window.
+	 *
+	 * Coming back is not only a history pop. The back arrow in a header is a link to wherever the
+	 * page was opened from, so a page arriving at its own origin is a return too, and is the one the
+	 * archer actually makes. Anything else is a fresh arrival, and a fresh arrival starts at the top.
+	 */
+	let scroller = $state<HTMLElement | null>(null);
+	const scrolledTo = new Map<string, number>();
+
+	beforeNavigate((nav) => {
+		if (scroller && nav.from) scrolledTo.set(nav.from.url.pathname, scroller.scrollTop);
+	});
+
+	/**
+	 * Put back over the next few frames rather than in one go. A page arriving is not its full height
+	 * yet, and a browser clamps a scroll to what the element can currently reach, so a single
+	 * assignment lands short and stays there. Each frame tries again until it takes, or until the
+	 * page has finished growing and genuinely cannot go that far.
+	 */
+	async function scrollBackTo(top: number) {
+		for (let attempt = 0; attempt < 6; attempt++) {
+			if (!scroller) return;
+			scroller.scrollTop = top;
+			if (Math.abs(scroller.scrollTop - top) < 1) return;
+			await new Promise(requestAnimationFrame);
+		}
+	}
+
+	afterNavigate(async (nav) => {
+		const returning =
+			nav.type === 'popstate' ||
+			(nav.from ? originOf(nav.from.url, null) === nav.to?.url.pathname : false);
+		const back = returning ? scrolledTo.get(nav.to?.url.pathname ?? '') : undefined;
+		// After the page it is scrolling has been laid out, or the element is still the old height.
+		await tick();
+		if (back) await scrollBackTo(back);
+		else if (scroller) scroller.scrollTop = 0;
+	});
 
 	let ready = $state(false);
 	let error = $state<string | null>(null);
@@ -356,6 +401,7 @@
 			<Pager />
 		{:else}
 			<main
+				bind:this={scroller}
 				class="flex-1 overflow-y-auto"
 				ontouchstart={(e) => {
 					// A page that drags, such as a target face, opts out so a shot is never read as a swipe.
