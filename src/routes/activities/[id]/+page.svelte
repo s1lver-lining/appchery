@@ -826,6 +826,7 @@
 
 	function countFreeArrows(delta: number) {
 		if (!activity) return;
+		buzz();
 		const id = activity.id;
 		freeArrows = Math.max(0, freeArrows + delta);
 		const next = freeArrows;
