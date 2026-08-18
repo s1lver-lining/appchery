@@ -25,7 +25,9 @@
 	tone="surface"
 >
 	{#snippet visual()}
-		<Phone label={$t('site.camera.title')} bar="bg-black">
+		<!-- The camera screen is black to the edges, and the app really does paint the phone's own bar
+		black while it is open, so the strip above the header takes the same black. -->
+	<Phone label={$t('site.camera.title')} bar="bg-black" notch="bg-white/25">
 			<div class="flex h-full flex-col bg-black">
 				<header class="flex items-center justify-between px-4 py-2 text-white">
 					<h3 class="text-base font-bold">{$t('auto.title')}</h3>

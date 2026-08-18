@@ -9,13 +9,17 @@
 	let {
 		children,
 		label = '',
-		bar = 'bg-bg'
+		bar = 'bg-bg',
+		notch = 'bg-ink/70'
 	}: {
 		children: import('svelte').Snippet;
 		label?: string;
 		/** The strip the cutout sits in. A real phone paints it the colour of whatever is under it,
 			so a screen with a coloured header has to be given that colour here too. */
 		bar?: string;
+		/** The cutout is a hole in the screen, so it is read against the screen: dark ink on a pale
+			bar, and a pale one on a screen that is black. */
+		notch?: string;
 	} = $props();
 </script>
 
@@ -28,7 +32,7 @@
 	<div class="flex h-full flex-col overflow-hidden rounded-[2rem]">
 		<!-- The cutout, which is what the eye reads as a phone before it reads the corners. -->
 		<div class="relative h-5 shrink-0 {bar}">
-			<div class="absolute top-1.5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full bg-ink/70"></div>
+			<div class="absolute top-1.5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full {notch}"></div>
 		</div>
 		<div class="min-h-0 flex-1">{@render children()}</div>
 	</div>
