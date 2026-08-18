@@ -142,6 +142,21 @@ One thing done inside a session: a scored round, or a tuning procedure.
 > later must not rewrite the history of a round already shot under the old one. This is also what
 > lets custom rounds be first-class without a separate table.
 
+Kinds in use today are `scoring`, `match`, `tuning` and `training`. Strength work and running are
+coming as `strength` and `running`, and neither shoots an arrow. Every figure that counts arrows
+reads them through `shootsArrows` in `src/lib/domain/stats.ts`: `toVolume`, the badge history and
+the experience arrow rate all filter on it, and a kind it has never heard of counts as shooting
+nothing. Adding a kind that does shoot has to be added to that list; adding one that does not needs
+no change anywhere.
+
+### Exercises
+
+Exercise definitions are **code, not rows**, the same as round definitions:
+`src/lib/domain/exercises/seed.ts` holds what each one works, the parameters a routine starts from,
+and the poses its movement diagram is drawn through. A routine will store what the archer actually
+did, so an exercise corrected in a later version fixes the instructions without rewriting the sets
+already done.
+
 ### `round_end`
 
 Named `round_end` in SQL because `end` is a reserved keyword.
