@@ -866,6 +866,7 @@ export const en = {
 		adoptedNone: 'Signed in.',
 		unclaimed: '{n} records on this device belong to no account yet.',
 		syncNow: 'Sync now',
+		syncAutomatic: 'Syncing is automatic. This button only asks for it sooner.',
 		syncing: 'Syncing…',
 		lastSync: 'Last synced {at}',
 		neverSynced: 'Not synced yet.',

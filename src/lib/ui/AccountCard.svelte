@@ -133,6 +133,8 @@
 			{#if $syncStatus.pending > 0}
 				<p class="mt-1 text-sm text-muted">{$t('account.waiting', { n: $syncStatus.pending })}</p>
 			{/if}
+			<!-- Said next to the button, because a button is the app asking to be told when to sync. -->
+			<p class="mt-1 text-sm text-muted">{$t('account.syncAutomatic')}</p>
 			<button
 				class="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
 				disabled={busy || $syncStatus.phase === 'syncing'}
