@@ -9,16 +9,12 @@
 	let {
 		children,
 		label = '',
-		bar = 'bg-bg',
 		notch = 'bg-ink/70'
 	}: {
 		children: import('svelte').Snippet;
 		label?: string;
-		/** The strip the cutout sits in. A real phone paints it the colour of whatever is under it,
-			so a screen with a coloured header has to be given that colour here too. */
-		bar?: string;
-		/** The cutout is a hole in the screen, so it is read against the screen: dark ink on a pale
-			bar, and a pale one on a screen that is black. */
+		/** The cutout is a hole in the screen, so it is read against the screen: dark ink over a page,
+			and a pale one over a screen that is black. */
 		notch?: string;
 	} = $props();
 </script>
@@ -29,11 +25,15 @@
 	role="img"
 	aria-label={label}
 >
-	<div class="flex h-full flex-col overflow-hidden rounded-[2rem]">
+	<!--
+		The screen runs the whole height of the glass and the cutout sits on top of it, rather than in
+		a strip of its own above it. That is what lets a header's tint and the geometry struck across
+		it carry on past the cutout, the way they do on the phone this is a picture of. The room the
+		cutout needs is taken inside the header itself, by `.phone [data-page-header]` in styles.css.
+	-->
+	<div class="phone relative h-full overflow-hidden rounded-[2rem]">
+		{@render children()}
 		<!-- The cutout, which is what the eye reads as a phone before it reads the corners. -->
-		<div class="relative h-5 shrink-0 {bar}">
-			<div class="absolute top-1.5 left-1/2 h-1.5 w-16 -translate-x-1/2 rounded-full {notch}"></div>
-		</div>
-		<div class="min-h-0 flex-1">{@render children()}</div>
+		<div class="absolute top-1.5 left-1/2 z-10 h-1.5 w-16 -translate-x-1/2 rounded-full {notch}"></div>
 	</div>
 </div>

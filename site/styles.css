@@ -5,3 +5,13 @@
    page and the components it borrows both have to be named for their classes to be emitted. */
 @source '.';
 @source '../src/lib';
+
+/*
+ * A page header inside a phone frame has to leave room for the cutout, and leave it inside itself:
+ * the header's own tint and the archery geometry struck across it then run up behind the cutout,
+ * which is what the app looks like under a real status bar. The app takes this room from
+ * `safe-top`, which is an env() inset and reads as zero in a desktop browser.
+ */
+.phone [data-page-header] {
+	padding-top: 1.4rem;
+}

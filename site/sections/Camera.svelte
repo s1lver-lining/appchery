@@ -26,10 +26,10 @@
 >
 	{#snippet visual()}
 		<!-- The camera screen is black to the edges, and the app really does paint the phone's own bar
-		black while it is open, so the strip above the header takes the same black. -->
-	<Phone label={$t('site.camera.title')} bar="bg-black" notch="bg-white/25">
+			black while it is open, so the cutout is read against black rather than against a page. -->
+		<Phone label={$t('site.camera.title')} notch="bg-white/25">
 			<div class="flex h-full flex-col bg-black">
-				<header class="flex items-center justify-between px-4 py-2 text-white">
+				<header class="flex items-center justify-between px-4 pt-6 pb-2 text-white">
 					<h3 class="text-base font-bold">{$t('auto.title')}</h3>
 					<Icon name="close" size={18} />
 				</header>
