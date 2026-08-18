@@ -270,6 +270,20 @@ export const tricksEn = {
 			]
 		},
 		{
+			key: 'exercises',
+			title: 'Exercises',
+			tricks: [
+				{
+					lead: 'The diagram opens where the work is.',
+					body: 'An exercise shows the side of the body it actually trains, and both sides when it trains both. The other views are still there to be tapped, close ups included, but none of them is where the page starts.'
+				},
+				{
+					lead: 'A hold is drawn shorter than it is asked for.',
+					body: 'The figure pauses at the held position for a moment whatever the exercise asks for, because a sixty second pause would look like a broken drawing rather than a long hold. The time to work to is the one under Where to start.'
+				}
+			]
+		},
+		{
 			key: 'elsewhere',
 			title: 'Elsewhere',
 			tricks: [

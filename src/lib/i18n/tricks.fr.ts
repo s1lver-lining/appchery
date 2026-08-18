@@ -265,6 +265,20 @@ export const tricksFr: TricksDictionary = {
 			]
 		},
 		{
+			key: 'exercises',
+			title: 'Exercices',
+			tricks: [
+				{
+					lead: 'Le schéma s\'ouvre là où le travail se fait.',
+					body: "Un exercice montre la face du corps qu'il travaille vraiment, et les deux quand il travaille les deux. Les autres vues restent accessibles d'un geste, gros plans compris, mais aucune n'est celle où la page commence."
+				},
+				{
+					lead: 'Un maintien est dessiné plus court qu\'il n\'est demandé.',
+					body: "La silhouette marque un temps d'arrêt sur la position tenue quel que soit le maintien demandé, parce qu'une pause de soixante secondes ressemblerait à un dessin figé plutôt qu'à un long maintien. La durée à respecter est celle indiquée sous Par où commencer."
+				}
+			]
+		},
+		{
 			key: 'elsewhere',
 			title: 'Ailleurs',
 			tricks: [
