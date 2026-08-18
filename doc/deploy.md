@@ -29,23 +29,35 @@ The anon key is meant to ship and Row Level Security is what protects the data. 
 never belongs in these files, in the repository, or in a bundle. Without an env file the app builds
 and works with sync switched off, and `deploy.sh` says so and carries on.
 
-The project refs are not stored anywhere, so export them in the shell you deploy from, or
-`db:push:*` fails with `Missing value for flag --project-ref`:
+The project refs are not stored anywhere, so export them in the shell you deploy from, or the deploy
+stops before it does anything:
 
 ```bash
 export APPCHERY_SUPABASE_PREPROD=<preprod ref>
 export APPCHERY_SUPABASE_PROD=<prod ref>
 ```
 
+The database password comes from `SUPABASE_DB_PASSWORD`, or from `PREPROD_DB_PASS` and `PROD_DB_PASS`
+in `.env`, which is gitignored. Read rather than prompted for: a deploy that stops halfway to ask is
+one somebody answers in a hurry.
+
 ## 1. Ship the app
 
-No schema change: the database is untouched and only the bundle moves.
+One command per environment. It applies whatever migrations that database has not seen, then builds
+and deploys: **database first, app second**, which is the order that cannot break.
 
 ```bash
 npm test && npm run check      # unit tests and types
 npm run deploy:preprod         # → https://appchery-preprod.pages.dev
-npm run deploy:prod            # asks for confirmation
+npm run deploy:prod            # asks for confirmation, naming the migrations it would apply
 ```
+
+A deploy that changes no migration reaches the database step and does nothing. One that does runs
+`db:check` on the way, so unverified policies never leave the machine, and `--skip-checks` is refused
+for production.
+
+`--skip-db` deploys the app alone. It is refused by default when no database is configured for the
+target, because shipping an app whose columns the server lacks is the one order that breaks.
 
 ## 2. Ship a model change
 
@@ -59,18 +71,16 @@ npx supabase migration new add_whatever      # server: supabase/migrations/
 $EDITOR src/lib/db/migrations.ts             # client: append a group, mirror it in schema.ts
 
 # 2. Prove them
-npm run db:check                             # policies still hold, RLS still forced
+npm run db:check                             # policies hold, and the two schemas still agree
 npm test                                     # client migrations still apply
 
-# 3. Preprod: database, then app
-npm run db:push:preprod
-npm run server:check                         # the deployed policies, through a real auth flow
+# 3. Preprod, then production. Each applies its own migrations before it builds.
 npm run deploy:preprod
-
-# 4. Production: database, then app
-npm run db:push:prod
+npm run server:check                         # the deployed policies, through a real auth flow
 npm run deploy:prod
 ```
+
+`npm run db:push:preprod` and `db:push:prod` still exist for pushing a migration without deploying.
 
 The rules that keep this safe are in [migration.md](./migration.md). The two that bite hardest:
 never edit a migration that has been pushed anywhere, and every new server table needs forced RLS
