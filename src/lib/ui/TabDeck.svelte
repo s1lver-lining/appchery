@@ -14,7 +14,7 @@
 		paneClass = 'space-y-4',
 		swipeable = true
 	}: {
-		tabs: { key: K; label: string }[];
+		tabs: { key: K; label: string; alert?: boolean }[];
 		value: K;
 		pane: Snippet<[K]>;
 		paneClass?: string;
@@ -90,6 +90,10 @@
 			onclick={() => select(i)}
 		>
 			{item.label}
+			<!-- A dot rather than a count: the tab says there is something to read, the screen says what. -->
+			{#if item.alert}
+				<span class="ml-1 inline-block size-1.5 rounded-full bg-danger align-middle"></span>
+			{/if}
 		</button>
 	{/each}
 </nav>

@@ -244,5 +244,10 @@ export const MIGRATIONS: string[][] = [
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_social_activity_owner ON social_activity (owner_id, shared_at);`,
 		`CREATE INDEX IF NOT EXISTS idx_social_profile_handle ON social_profile (handle);`
+	],
+	// 0003 a change the server keeps refusing, so it stops being retried and starts being reported
+	[
+		`ALTER TABLE change_log ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;`,
+		`ALTER TABLE change_log ADD COLUMN failed_at INTEGER;`
 	]
 ];

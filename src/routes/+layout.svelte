@@ -25,6 +25,7 @@
 	import { incomingFile, namedFile } from '$lib/import/incoming';
 	import { watchForUpdates } from '$lib/update';
 	import { watchSync } from '$lib/sync/watch';
+	import { syncAlertUnread, refreshSyncAlert } from '$lib/sync/alert';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import UndoBar from '$lib/ui/UndoBar.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
@@ -44,6 +45,11 @@
 	// Only once the database is open, because an exchange reads it. Returns immediately and loads
 	// nothing unless a server is configured and somebody is signed in.
 	$effect(() => (ready ? watchSync() : undefined));
+	// Read once the database is open, so a warning raised on the last run is on screen before the
+	// archer goes looking for it.
+	$effect(() => {
+		if (ready) void refreshSyncAlert();
+	});
 
 	$effect(() => {
 		// Touch the store so the theme attribute is applied before the shell first paints.
@@ -387,7 +393,13 @@
 						goto('/equipment?list=1');
 					}}
 				>
-					<Icon name={tab.icon} size={24} filled={isActive(tab.href)} />
+					<span class="relative">
+						<Icon name={tab.icon} size={24} filled={isActive(tab.href)} />
+						<!-- Settings is where the sync warning lives, so the bar says there is one to read. -->
+						{#if tab.href === '/settings' && $syncAlertUnread}
+							<span class="absolute -top-0.5 -right-1 size-2 rounded-full bg-danger"></span>
+						{/if}
+					</span>
 					<span class="text-[11px] leading-none font-medium">{$t(tab.key)}</span>
 				</a>
 			{/each}

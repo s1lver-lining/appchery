@@ -5,6 +5,7 @@
 	import { account, signIn, signUp, signOut, requestPasswordReset, AuthError, initAuth, unclaimedRowCount } from '$lib/sync/auth';
 	import { hasBuiltInServer } from '$lib/sync/config';
 	import { syncNow, syncStatus, refreshSyncStatus } from '$lib/sync';
+	import { syncAlert } from '$lib/sync/alert';
 	import { startWatching } from '$lib/sync/watch';
 	import { locale } from '$lib/i18n';
 
@@ -129,6 +130,16 @@
 			</p>
 			{#if $syncStatus.error === 'offline'}
 				<p class="mt-1 text-sm text-muted">{$t('account.error.offline')}</p>
+			{/if}
+			{#if $syncAlert}
+				<!-- Said here because the archer has to press something: nothing restarts a refused
+					change on its own, and a silent sync that stays silent is the failure nobody notices. -->
+				<p class="mt-2 rounded-lg bg-sunk p-3 text-sm text-danger">
+					{$syncAlert.failed > 0
+						? $t('account.someRefused', { n: $syncAlert.failed })
+						: $t('account.silentSince', { days: Math.floor((Date.now() - ($syncAlert.silentSince ?? 0)) / 86400000) })}
+					<span class="mt-1 block text-muted">{$t('account.pressSync')}</span>
+				</p>
 			{/if}
 			{#if $syncStatus.pending > 0}
 				<p class="mt-1 text-sm text-muted">{$t('account.waiting', { n: $syncStatus.pending })}</p>

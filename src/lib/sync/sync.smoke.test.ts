@@ -61,6 +61,8 @@ const USER = 'user-1';
 function fakeServer() {
 	const tables = new Map<string, Map<string, Record<string, unknown>>>();
 	let clock = 0;
+	let refuse = false;
+	let unreachable = false;
 	const upserts: string[] = [];
 
 	function rowsOf(name: string) {
@@ -75,6 +77,9 @@ function fakeServer() {
 				descending: false,
 				max: Infinity,
 				upsert(payload: Record<string, unknown>[]) {
+					if (refuse) return Promise.resolve({ error: { message: 'refused', code: '23514' } });
+					if (unreachable) return Promise.resolve({ error: { message: 'fetch failed' } });
+
 					for (const row of payload) {
 						upserts.push(`${name}:${row.id}`);
 						rowsOf(name).set(String(row.id), { ...row, server_updated_at: new Date(++clock * 1000).toISOString() });
@@ -116,7 +121,18 @@ function fakeServer() {
 		}
 	};
 
-	return { client, tables, upserts, rowsOf };
+	return {
+		client,
+		tables,
+		upserts,
+		rowsOf,
+		refuseEverything: () => (refuse = true),
+		beUnreachable: () => (unreachable = true),
+		behave: () => {
+			refuse = false;
+			unreachable = false;
+		}
+	};
 }
 
 function insertSession(id: string, patch: Record<string, unknown> = {}) {
@@ -213,6 +229,66 @@ describe('push', () => {
 		await push(server.client as never, USER);
 
 		expect(server.rowsOf('session').get('session-gone')).toMatchObject({ deleted_at: 500 });
+	});
+});
+
+describe('a change the server will not take', () => {
+	it('is given up on, so everything behind it can still go', async () => {
+		await insertSession('session-poison');
+		await logChange('session', 'session-poison');
+
+		const server = fakeServer();
+		server.refuseEverything();
+
+		// Five refusals, each of which would be its own exchange minutes apart.
+		for (let attempt = 0; attempt < 5; attempt++) {
+			await push(server.client as never, USER).catch(() => {});
+		}
+
+		const { failedCount, pendingCount } = await import('./push');
+		expect(await failedCount()).toBe(1);
+		expect(await pendingCount()).toBe(0);
+
+		// The queue is clear, so a row written afterwards goes up rather than queueing behind it.
+		server.behave();
+		await insertSession('session-after');
+		await logChange('session', 'session-after');
+		await push(server.client as never, USER);
+		expect(server.upserts).toContain('session:session-after');
+	});
+
+	it('is not given up on when the server was simply unreachable', async () => {
+		await insertSession('session-offline');
+		await logChange('session', 'session-offline');
+
+		const server = fakeServer();
+		server.beUnreachable();
+		for (let attempt = 0; attempt < 8; attempt++) {
+			await push(server.client as never, USER).catch(() => {});
+		}
+
+		// A server nobody could reach has refused nothing, so a fortnight offline costs no changes.
+		const { failedCount, pendingCount } = await import('./push');
+		expect(await failedCount()).toBe(0);
+		expect(await pendingCount()).toBe(1);
+	});
+
+	it('goes back in the queue when the archer presses sync', async () => {
+		await insertSession('session-retry');
+		await logChange('session', 'session-retry');
+
+		const server = fakeServer();
+		server.refuseEverything();
+		for (let attempt = 0; attempt < 5; attempt++) {
+			await push(server.client as never, USER).catch(() => {});
+		}
+
+		const { failedCount, retryFailed, pendingCount } = await import('./push');
+		expect(await failedCount()).toBe(1);
+
+		await retryFailed();
+		expect(await failedCount()).toBe(0);
+		expect(await pendingCount()).toBe(1);
 	});
 });
 

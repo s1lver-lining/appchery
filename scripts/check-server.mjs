@@ -232,6 +232,35 @@ check('an unauthenticated caller reaches nothing', (anonRows ?? []).length === 0
 const { error: anonRpc } = await anon.rpc('lookup_profile', { wanted: handleA });
 check('and cannot call the lookup function', Boolean(anonRpc), anonRpc?.message);
 
+/*
+ * Every write the app makes, in the shape it makes it. Column level grants mean a statement naming
+ * one column too many fails whole, and the client reads that as "no connection": a class of bug that
+ * only shows up against a real deployment, and only if something actually tries the statement.
+ */
+async function writes(who, other) {
+	const now = Date.now();
+	const base = (id) => ({ id, created_at: now, updated_at: now, deleted_at: null, device_id: 'write-check' });
+
+	return [
+		['a session, as push sends it', () => who.client.from('session').upsert([{ ...base(`w-session-${stamp}`), started_at: now, kind: 'practice' }])],
+		['an activity, shared', () => who.client.from('activity').upsert([{ ...base(`w-activity-${stamp}`), session_id: `w-session-${stamp}`, kind: 'scoring', started_at: now, shared_at: now }])],
+		['an end', () => who.client.from('round_end').upsert([{ ...base(`w-end-${stamp}`), activity_id: `w-activity-${stamp}`, stage_index: 0, end_no: 1, subtotal: 27 }])],
+		['a shot', () => who.client.from('shot').upsert([{ ...base(`w-shot-${stamp}`), end_id: `w-end-${stamp}`, ordinal: 1, value: 9, zone_label: '9' }])],
+		['a bow', () => who.client.from('bow').upsert([{ ...base(`w-bow-${stamp}`), name: 'A bow', type: 'recurve' }])],
+		['the profile going public', () => who.client.from('profile').update({ is_public: true }).eq('user_id', who.id)],
+		['the profile going private again', () => who.client.from('profile').update({ is_public: false }).eq('user_id', who.id)],
+		['the profile card', () => who.client.from('profile_card').upsert({ user_id: who.id, arrows: 10, sessions: 1, badges: 0, level: 1, updated_at: now }, { onConflict: 'user_id' })],
+		['approving a follower', () => who.client.from('follow').update({ status: 'approved' }).eq('follower_id', other.id).eq('followee_id', who.id)],
+		['removing a follower', () => who.client.from('follow').delete().eq('follower_id', other.id).eq('followee_id', who.id)],
+		['unblocking', () => who.client.from('block').delete().eq('blocker_id', who.id).eq('blocked_id', other.id)]
+	];
+}
+
+for (const [what, write] of await writes(a, b)) {
+	const { error } = await write();
+	check(`the client can write ${what}`, !error, error?.message);
+}
+
 await clear(a, b);
 await clear(b, a);
 

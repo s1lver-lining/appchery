@@ -285,7 +285,10 @@ export const changeLog = sqliteTable(
 		/** insert | update | delete */
 		op: text('op').notNull(),
 		changedAt: integer('changed_at').notNull(),
-		syncedAt: integer('synced_at')
+		syncedAt: integer('synced_at'),
+		/** Refusals counted, so a row the server will never take stops being asked about. */
+		attempts: integer('attempts').notNull().default(0),
+		failedAt: integer('failed_at')
 	},
 	(t) => [index('idx_change_log_pending').on(t.syncedAt)]
 );

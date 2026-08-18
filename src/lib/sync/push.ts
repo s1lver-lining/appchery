@@ -1,4 +1,4 @@
-import { and, asc, eq, getTableColumns, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { db, schema } from '$lib/db';
 import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from '$lib/db/synced';
@@ -9,6 +9,13 @@ import { adoptLocalRows } from './auth';
 // stands now: ten edits of one end collapse into one upload.
 
 const CHUNK = 200;
+
+/**
+ * Refusals a change is allowed before it stops being sent. Each one falls in a separate exchange, so
+ * this is minutes of trying, not milliseconds, and only a server that answered counts: a row nobody
+ * could reach has not been refused.
+ */
+const REFUSALS_ALLOWED = 5;
 
 export interface PushResult {
 	uploaded: number;
@@ -24,11 +31,28 @@ interface PendingEntry {
 
 /** Counted in SQLite: a bulk import leaves tens of thousands pending, and the settings screen asks often. */
 export async function pendingCount(): Promise<number> {
+	return countLog(and(isNull(schema.changeLog.syncedAt), isNull(schema.changeLog.failedAt)));
+}
+
+/** Changes the server refused often enough that the app stopped asking. */
+export async function failedCount(): Promise<number> {
+	return countLog(isNotNull(schema.changeLog.failedAt));
+}
+
+async function countLog(condition: SQL | undefined): Promise<number> {
 	const [row] = await db()
 		.select({ n: sql<number>`count(*)` })
 		.from(schema.changeLog)
-		.where(isNull(schema.changeLog.syncedAt));
+		.where(condition);
 	return Number(row?.n ?? 0);
+}
+
+/** Puts refused changes back in the queue, which is what the archer's own button asks for. */
+export async function retryFailed(): Promise<void> {
+	await db()
+		.update(schema.changeLog)
+		.set({ failedAt: null, attempts: 0 })
+		.where(isNotNull(schema.changeLog.failedAt));
 }
 
 export async function push(client: SupabaseClient, userId: string): Promise<PushResult> {
@@ -47,13 +71,20 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 				op: schema.changeLog.op
 			})
 			.from(schema.changeLog)
-			.where(isNull(schema.changeLog.syncedAt))
+			.where(and(isNull(schema.changeLog.syncedAt), isNull(schema.changeLog.failedAt)))
 			.orderBy(asc(schema.changeLog.id))
 			.limit(CHUNK)) as PendingEntry[];
 
 		if (batch.length === 0) break;
 
-		uploaded += await pushBatch(client, userId, batch);
+		try {
+			uploaded += await pushBatch(client, userId, batch);
+		} catch (error) {
+			// A server that answered and refused is telling us something a retry will not change. One
+			// that could not be reached is telling us nothing, so it costs the chunk nothing.
+			if (error instanceof PushError && error.refused) await countRefusal(batch);
+			throw error;
+		}
 
 		const highest = batch[batch.length - 1].id;
 		// A chunk that leaves the queue where it found it would upload the same rows for ever.
@@ -97,14 +128,42 @@ async function pushBatch(client: SupabaseClient, userId: string, batch: PendingE
 		if (payload.length === 0) continue;
 
 		const { error } = await client.from(name).upsert(payload, { onConflict: 'id' });
-		if (error) throw new PushError(`${name}: ${error.message}`);
+		// PostgREST reports a refusal with a code; a network that never arrived has none.
+		if (error) throw new PushError(`${name}: ${error.message}`, Boolean(error.code));
 		uploaded += payload.length;
 	}
 
 	return uploaded;
 }
 
-export class PushError extends Error {}
+export class PushError extends Error {
+	/** The server answered and said no, rather than being unreachable. */
+	readonly refused: boolean;
+
+	constructor(message: string, refused = false) {
+		super(message);
+		this.refused = refused;
+	}
+}
+
+/**
+ * A refusal against every change in the chunk, and a full stop for those that have had their share.
+ * One bad row would otherwise hold up every row behind it for as long as the archer keeps the app.
+ */
+async function countRefusal(batch: PendingEntry[]): Promise<void> {
+	const ids = batch.map((entry) => entry.id);
+	for (let i = 0; i < ids.length; i += 100) {
+		const chunk = ids.slice(i, i + 100);
+		await db()
+			.update(schema.changeLog)
+			.set({ attempts: sql`${schema.changeLog.attempts} + 1` })
+			.where(inArray(schema.changeLog.id, chunk));
+		await db()
+			.update(schema.changeLog)
+			.set({ failedAt: Date.now() })
+			.where(and(inArray(schema.changeLog.id, chunk), gte(schema.changeLog.attempts, REFUSALS_ALLOWED)));
+	}
+}
 
 /**
  * Rows as the server wants them, and only the ones this account owns: a row belonging to another

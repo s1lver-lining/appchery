@@ -52,6 +52,7 @@
 	import { appVersion, appBuild } from '$lib/build';
 	import AccountCard from '$lib/ui/AccountCard.svelte';
 	import { account } from '$lib/sync/auth';
+	import { syncAlert, syncAlertUnread, markSyncAlertSeen } from '$lib/sync/alert';
 	import { diagnoseStorage, type StorageProblem } from '$lib/db/diagnosis';
 
 	/** Named rather than read from package.json, which no bundle ships. */
@@ -81,8 +82,14 @@
 	const TABS = $derived([
 		{ key: 'app' as const, label: $t('settings.appTab') },
 		{ key: 'shooting' as const, label: $t('settings.shootingTab') },
-		{ key: 'data' as const, label: $t('settings.dataTab') }
+		{ key: 'data' as const, label: $t('settings.dataTab'), alert: $syncAlertUnread }
 	]);
+
+	// Reading it is what clears it, here and on the navigation bar, and a warning that changes after
+	// that is unread again.
+	$effect(() => {
+		if (tab === 'data') markSyncAlertSeen($syncAlert);
+	});
 	let error = $state<string | null>(null);
 	let backupNotice = $state<string | null>(null);
 	let backupError = $state<string | null>(null);

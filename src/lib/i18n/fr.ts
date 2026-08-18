@@ -868,6 +868,9 @@ export const fr: Dictionary = {
 		adopted: 'Vos {n} enregistrements existants appartiennent maintenant à ce compte.',
 		adoptedNone: 'Connecté.',
 		unclaimed: "{n} enregistrements sur cet appareil n'appartiennent encore à aucun compte.",
+		someRefused: 'Le serveur a refusé {n} changements.',
+		silentSince: 'Rien n’a été synchronisé depuis {days} jours.',
+		pressSync: 'Synchroniser les réessaie.',
 		syncNow: 'Synchroniser maintenant',
 		syncAutomatic:
 			'La synchronisation est automatique. Ce bouton ne fait que la demander plus tôt.',

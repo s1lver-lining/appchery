@@ -189,6 +189,30 @@ begin
 end;
 $$;
 
+-- What an archer may set on their own profile, and what the server keeps for itself. A statement
+-- naming one ungranted column fails whole, and the client reads that as "no connection".
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$
+declare
+	stamped bigint;
+begin
+	update public.profile set is_public = true where user_id = auth.uid();
+	update public.profile set display_name = 'Archer One' where user_id = auth.uid();
+
+	begin
+		update public.profile set updated_at = 1 where user_id = auth.uid();
+		raise exception 'a client can date its own profile';
+	exception
+		when insufficient_privilege then null;
+	end;
+
+	select updated_at into stamped from public.profile where user_id = auth.uid();
+	if stamped <= 1 then
+		raise exception 'the server did not stamp the profile it updated';
+	end if;
+end;
+$$;
+
 -- The graph is readable along its own edges, and only along them: a friends screen that cannot read
 -- the handle of somebody who follows you cannot list them at all.
 --
