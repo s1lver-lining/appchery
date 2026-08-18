@@ -883,7 +883,7 @@ export const fr: Dictionary = {
 		}
 	},
 	friends: {
-		title: 'Amis',
+		title: 'Social',
 		signedOutTitle: 'Connectez-vous pour suivre des archers',
 		signedOutBody: 'Suivre quelqu’un, et partager vos tirs, demande un compte. Tout le reste de l’app n’en demandera jamais.',
 		claimTitle: 'Choisissez un identifiant',

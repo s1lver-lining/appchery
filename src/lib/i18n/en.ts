@@ -880,7 +880,7 @@ export const en = {
 		}
 	},
 	friends: {
-		title: 'Friends',
+		title: 'Social',
 		signedOutTitle: 'Sign in to follow archers',
 		signedOutBody: 'Following somebody, and sharing what you shot, needs an account. Everything else in the app never will.',
 		claimTitle: 'Choose a handle',
