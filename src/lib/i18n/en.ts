@@ -1226,6 +1226,21 @@ insetHint:
 			calves: 'Calves'
 		}
 	},
+	exercises: {
+		frame: {
+			start: 'Start',
+			open: 'Open',
+			hold: 'Hold',
+			top: 'Top',
+			bottom: 'Bottom',
+			up: 'Up',
+			down: 'Down',
+			draw: 'Full draw',
+			letdown: 'Let down',
+			stride: 'Stride',
+			end: 'Finish'
+		}
+	},
 	experience: {
 		title: 'Experience',
 		hint: 'Every arrow, every round, every badge, every match won.',

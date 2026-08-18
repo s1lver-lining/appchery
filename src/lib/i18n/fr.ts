@@ -1234,6 +1234,21 @@ insetHint:
 			calves: 'Mollets'
 		}
 	},
+	exercises: {
+		frame: {
+			start: 'Départ',
+			open: 'Ouverture',
+			hold: 'Maintien',
+			top: 'Haut',
+			bottom: 'Bas',
+			up: 'Montée',
+			down: 'Descente',
+			draw: 'Pleine allonge',
+			letdown: 'Retour',
+			stride: 'Foulée',
+			end: 'Fin'
+		}
+	},
 	experience: {
 		title: 'Expérience',
 		hint: 'Chaque flèche, chaque volée comptée, chaque badge, chaque match gagné.',
