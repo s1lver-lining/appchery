@@ -2,7 +2,7 @@ import { BADGES, type EarnedBadge } from '$lib/domain/badges';
 import { EXERCISES } from '$lib/domain/exercises';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import type { Shot } from '$lib/domain/rounds/types';
-import type { Band, ProgressionPoint, ValueCount, VolumeBucket } from '$lib/domain/stats';
+import type { Band, ProgressionPoint, ValueCount } from '$lib/domain/stats';
 
 /**
  * An invented archer, good enough to be worth showing and human enough to be believable.
@@ -72,24 +72,9 @@ export const ZONE_COUNTS: ValueCount[] = [
 /** What the wind costs, which is the question the bands exist to answer. */
 export const WIND_BANDS: Band[] = [
 	{ key: 'calm', rounds: 21, arrows: 1512, perArrow: 9.12 },
-	{ key: 'breeze', rounds: 14, arrows: 1008, perArrow: 8.74 },
+	{ key: 'light', rounds: 14, arrows: 1008, perArrow: 8.74 },
 	{ key: 'strong', rounds: 6, arrows: 432, perArrow: 8.21 }
 ];
-
-export const VOLUME: VolumeBucket[] = [
-	[288, 0], [360, 0], [216, 144], [432, 0], [288, 216], [504, 0], [396, 288], [324, 144]
-].map(([practice, competition], i) => ({
-	at: START + i * 7 * DAY,
-	arrows: practice + competition,
-	rounds: Math.round((practice + competition) / 72),
-	perArrow: 8.6 + i * 0.06,
-	byKey: {
-		practice: { arrows: practice, rounds: Math.round(practice / 72) },
-		competition: { arrows: competition, rounds: Math.round(competition / 72) }
-	}
-}));
-
-export const VOLUME_KEYS = ['practice', 'competition'];
 
 /** Two earned and one still to come, so the locked state is on the page as well as the earned one. */
 export const SAMPLE_BADGES: EarnedBadge[] = (

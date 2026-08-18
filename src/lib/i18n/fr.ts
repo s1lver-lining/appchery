@@ -1629,7 +1629,10 @@ insetHint:
 		plot: {
 			title: 'Marquez en montrant la cible',
 			body: 'Touchez l’impact et la zone est lue sur la géométrie même qui dessine le blason : ce que vous voyez et ce qui est compté ne peuvent pas diverger. Saisissez les valeurs si c’est plus rapide, la feuille de marque additionne dans les deux cas.',
-			note: 'Groupement, dispersion et centre, calculés volée après volée.'
+			note: 'Groupement, dispersion et centre, calculés volée après volée.',
+			arrows: 'Flèches',
+			score: 'Marqué',
+			spread: 'Dispersion'
 		},
 		camera: {
 			title: 'Ou laissez la caméra lire le blason',
@@ -1654,7 +1657,8 @@ insetHint:
 		private: {
 			title: 'La base de données, c’est votre téléphone',
 			body: 'Tout est écrit sur l’appareil d’abord. Le compte est facultatif et ne sert qu’à recopier vos sorties sur votre autre téléphone, ou à les partager avec les archers que vous choisissez. Supprimez l’appli et les données partent avec elle : il n’y en avait de copie nulle part ailleurs.',
-			note: 'Aucune publicité, aucun pistage, rien à payer.'
+			note: 'Aucune publicité, aucun pistage, rien à payer.',
+			sync: 'Synchro facultative'
 		},
 		cta: {
 			title: 'Emmenez la sur le pas de tir.',
@@ -1665,19 +1669,10 @@ insetHint:
 			licence: 'Logiciel libre sous licence AGPL.',
 			language: 'Langue'
 		},
-		// Les sorties d'exemple dessinées dans les téléphones, inventées plutôt que tirées de vrais scores.
+		// La sortie d'exemple dessinée dans les téléphones, inventée plutôt que tirée de vrais scores.
 		sample: {
 			round: 'WA 720 · 70m',
 			end: 'Volée 4 sur 12',
-			session: 'Terrain du club, mardi',
-			wind: 'Vent',
-			calm: 'Calme',
-			breeze: 'Brise',
-			strong: 'Fort',
-			practice: 'Entraînement',
-			competition: 'Compétition',
-			exercise: 'Écarté à l’élastique',
-			best: 'Record',
 			average: 'Moyenne glissante'
 		}
 	}

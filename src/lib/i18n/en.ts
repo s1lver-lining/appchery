@@ -1614,7 +1614,10 @@ insetHint:
 		plot: {
 			title: 'Score by pointing at the target',
 			body: 'Tap where the arrow landed and the ring is read off the same geometry the app draws the face with, so what you see and what you score cannot disagree. Type the values instead if that is faster, and the card adds up either way.',
-			note: 'Group size, spread and centre, worked out end by end.'
+			note: 'Group size, spread and centre, worked out end by end.',
+			arrows: 'Arrows',
+			score: 'Scored',
+			spread: 'Spread'
 		},
 		camera: {
 			title: 'Or let the camera read the face',
@@ -1639,7 +1642,8 @@ insetHint:
 		private: {
 			title: 'The database is your phone',
 			body: 'Everything is written to the device first. An account is optional and only exists to copy your outings to your other phone, or to share them with the archers you choose. Delete the app and the data goes with it, because there was never a copy anywhere else.',
-			note: 'No advertising, no tracking, nothing to pay.'
+			note: 'No advertising, no tracking, nothing to pay.',
+			sync: 'Optional sync'
 		},
 		cta: {
 			title: 'Take it to the field.',
@@ -1650,19 +1654,10 @@ insetHint:
 			licence: 'Free software under the AGPL.',
 			language: 'Language'
 		},
-		// The sample outings drawn in the phone frames, which are made up rather than anybody's real scores.
+		// The sample outing drawn in the phone frames, which is made up rather than anybody's real scores.
 		sample: {
 			round: 'WA 720 · 70m',
 			end: 'End 4 of 12',
-			session: 'Club field, Tuesday',
-			wind: 'Wind',
-			calm: 'Calm',
-			breeze: 'Breeze',
-			strong: 'Strong',
-			practice: 'Practice',
-			competition: 'Competition',
-			exercise: 'Band pull apart',
-			best: 'Best',
 			average: 'Rolling average'
 		}
 	}
