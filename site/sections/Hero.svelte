@@ -23,7 +23,7 @@
 		</div>
 
 		<ul class="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm font-medium">
-			{#each [['star', 'site.hero.free'], ['cloud', 'site.hero.offline'], ['grid', 'site.hero.install']] as [icon, key] (key)}
+			{#each [['star', 'site.hero.free'], ['cloud', 'site.hero.offline']] as [icon, key] (key)}
 				<li class="flex items-center gap-2 text-muted">
 					<Icon name={icon as 'star'} size={16} />
 					{$t(key)}

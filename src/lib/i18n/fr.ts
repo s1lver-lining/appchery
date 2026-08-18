@@ -1683,8 +1683,7 @@ insetHint:
 			title: 'Chaque flèche, sur le téléphone qui l’a tirée.',
 			body: 'Marquez un tir, réglez un arc, préparez le geste. Appchery enregistre tout sur votre appareil, fonctionne sans le moindre réseau, et ne demande rien en retour.',
 			free: 'Gratuit, libre, sans compte',
-			offline: 'Fonctionne hors ligne',
-			install: 'S’installe comme une appli'
+			offline: 'Fonctionne hors ligne'
 		},
 		plot: {
 			title: 'Marquez en montrant la cible',

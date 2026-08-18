@@ -1668,8 +1668,7 @@ insetHint:
 			title: 'Every arrow, on the phone that shot it.',
 			body: 'Score a round, tune a bow, train for the shot. Appchery records it all on your own device, works with no signal at all, and asks for nothing in return.',
 			free: 'Free, open source, no account needed',
-			offline: 'Works offline',
-			install: 'Installs like an app'
+			offline: 'Works offline'
 		},
 		plot: {
 			title: 'Score by pointing at the target',
