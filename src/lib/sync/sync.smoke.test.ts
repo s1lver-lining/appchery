@@ -257,6 +257,29 @@ describe('a change the server will not take', () => {
 		expect(server.upserts).toContain('session:session-after');
 	});
 
+	it('is still owed after a later exchange succeeds', async () => {
+		await insertSession('session-poison');
+		await logChange('session', 'session-poison');
+
+		const server = fakeServer();
+		server.refuseEverything();
+		for (let attempt = 0; attempt < 5; attempt++) {
+			await push(server.client as never, USER).catch(() => {});
+		}
+
+		server.behave();
+		await insertSession('session-after');
+		await logChange('session', 'session-after');
+		await push(server.client as never, USER);
+
+		// The refused change is behind the one that just went up, and a push that stamped everything
+		// below its own high water mark would have marked it sent without ever sending it.
+		const { failedCount, retryFailed, pendingCount } = await import('./push');
+		expect(await failedCount()).toBe(1);
+		await retryFailed();
+		expect(await pendingCount()).toBe(1);
+	});
+
 	it('is not given up on when the server was simply unreachable', async () => {
 		await insertSession('session-offline');
 		await logChange('session', 'session-offline');

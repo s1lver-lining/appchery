@@ -91,10 +91,18 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 		if (highest <= lastHighest) break;
 		lastHighest = highest;
 
+		// Refused entries are left alone: they were never in this batch, and stamping them sent would
+		// silently throw away a change the archer's retry button is meant to give another chance.
 		await db()
 			.update(schema.changeLog)
 			.set({ syncedAt: Date.now() })
-			.where(and(isNull(schema.changeLog.syncedAt), lte(schema.changeLog.id, highest)));
+			.where(
+				and(
+					isNull(schema.changeLog.syncedAt),
+					isNull(schema.changeLog.failedAt),
+					lte(schema.changeLog.id, highest)
+				)
+			);
 		await writeSyncState({ lastPushCursor: String(highest) });
 
 		if (batch.length < CHUNK) break;
