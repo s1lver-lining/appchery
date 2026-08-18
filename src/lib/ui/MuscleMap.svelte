@@ -4,6 +4,7 @@
 		MUSCLES,
 		loadAt,
 		type Load,
+		type LoadMap,
 		type MuscleId,
 		type MuscleView,
 		type ShotPhase
@@ -35,14 +36,23 @@
 		view = 'back',
 		selected = [],
 		phase = null,
+		load = null,
+		class: className = 'w-full',
 		onpick
 	}: {
 		view?: MuscleView;
 		selected?: MuscleId[];
 		/** When set, every muscle is shaded by how hard this moment of the shot works it. */
 		phase?: ShotPhase | null;
+		/** Shading read from a load map instead of a phase, for whatever else works the same muscles. */
+		load?: LoadMap | null;
+		class?: string;
 		onpick?: (id: MuscleId) => void;
 	} = $props();
+
+	/** One shading rule whatever asked for it, so a phase and an exercise never read differently. */
+	const worked = $derived((id: MuscleId): 0 | Load => (load ? (load[id] ?? 0) : phase ? loadAt(phase, id) : 0));
+	const shaded = $derived(Boolean(load ?? phase));
 
 	const regions = $derived(view === 'front' ? FRONT : view === 'back' ? BACK : []);
 
@@ -67,20 +77,19 @@
 	 */
 	function fill(id: MuscleId): string {
 		if (selected.includes(id)) return 'var(--c-brand)';
-		if (!phase || loadAt(phase, id) === 0) return 'var(--c-sunk)';
+		if (!shaded || worked(id) === 0) return 'var(--c-sunk)';
 		const fault = MUSCLES.find((entry) => entry.id === id)?.role === 'fault';
 		return fault ? 'var(--c-danger)' : 'var(--c-accent)';
 	}
 
 	function opacity(id: MuscleId): number {
 		if (selected.includes(id)) return 0.9;
-		if (!phase) return 1;
-		const load: 0 | Load = loadAt(phase, id);
-		return [1, 0.3, 0.6, 1][load];
+		if (!shaded) return 1;
+		return [1, 0.3, 0.6, 1][worked(id)];
 	}
 </script>
 
-<svg viewBox="0 0 200 398" class="w-full" role="group" aria-label={$t(`muscles.view.${view}`)}>
+<svg viewBox="0 0 200 398" class={className} role="group" aria-label={$t(`muscles.view.${view}`)}>
 	<!-- One body, arms included: a shoulder is not a seam between two drawings. -->
 	<path d={BODY} fill="var(--c-surface)" stroke="var(--c-line)" stroke-width="1.4" />
 
@@ -143,7 +152,7 @@
 					d={smooth(THENAR)}
 					transform={flip}
 					fill={fill(tendonOwner)}
-					fill-opacity={phase ? opacity(tendonOwner) : 1}
+					fill-opacity={shaded ? opacity(tendonOwner) : 1}
 					stroke="var(--c-muted)"
 					stroke-opacity="0.45"
 					stroke-width="0.9"
@@ -152,7 +161,7 @@
 			{/if}
 			<g
 				stroke={fill(tendonOwner)}
-				stroke-opacity={phase ? opacity(tendonOwner) : 0.55}
+				stroke-opacity={shaded ? opacity(tendonOwner) : 0.55}
 				stroke-width="1.1"
 				fill="none"
 				stroke-linecap="round"

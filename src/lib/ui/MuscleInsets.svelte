@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { MUSCLES, loadAt, type MuscleId, type ShotPhase } from '$lib/domain/muscles';
+	import {
+		MUSCLES,
+		loadAt,
+		type Load,
+		type LoadMap,
+		type MuscleId,
+		type ShotPhase
+	} from '$lib/domain/muscles';
 	import { smooth } from './muscleMap';
 
 	/**
@@ -16,12 +23,18 @@
 	let {
 		selected = [],
 		phase = null,
+		load = null,
 		onpick
 	}: {
 		selected?: MuscleId[];
 		phase?: ShotPhase | null;
+		/** Shading read from a load map instead of a phase, the same as on the figures. */
+		load?: LoadMap | null;
 		onpick?: (id: MuscleId) => void;
 	} = $props();
+
+	const worked = $derived((id: MuscleId): 0 | Load => (load ? (load[id] ?? 0) : phase ? loadAt(phase, id) : 0));
+	const shaded = $derived(Boolean(load ?? phase));
 
 	/** The two faces of the bone: what sits on the back of it, and what sits against the ribs. */
 	const FACES = ['scapulaBack', 'scapulaFront'] as const;
@@ -64,15 +77,15 @@
 
 	function fill(id: MuscleId): string {
 		if (selected.includes(id)) return 'var(--c-brand)';
-		if (!phase || loadAt(phase, id) === 0) return 'var(--c-sunk)';
+		if (!shaded || worked(id) === 0) return 'var(--c-sunk)';
 		const fault = MUSCLES.find((entry) => entry.id === id)?.role === 'fault';
 		return fault ? 'var(--c-danger)' : 'var(--c-accent)';
 	}
 
 	function opacity(id: MuscleId): number {
 		if (selected.includes(id)) return 0.9;
-		if (!phase) return 1;
-		return [1, 0.3, 0.6, 1][loadAt(phase, id)];
+		if (!shaded) return 1;
+		return [1, 0.3, 0.6, 1][worked(id)];
 	}
 </script>
 

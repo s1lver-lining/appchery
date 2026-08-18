@@ -142,6 +142,12 @@ export type ShotPhase = (typeof SHOT_PHASES)[number];
 export type Load = 1 | 2 | 3;
 
 /**
+ * How hard a set of muscles is worked by one thing, whatever that thing is. A moment of the shot is
+ * one, an exercise is another, and a diagram shading either of them is reading the same map.
+ */
+export type LoadMap = Partial<Record<MuscleId, Load>>;
+
+/**
  * What is working when. Everything unlisted is resting, which is as much of the picture as the
  * listed muscles are: an archer whose upper trapezius lights up during the draw is being told
  * something by its absence from the phases where it should be quiet.
