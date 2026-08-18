@@ -3,6 +3,7 @@
 	import OpenApp from './OpenApp.svelte';
 	import Rings from './Rings.svelte';
 	import Language from './Language.svelte';
+	import Theme from './Theme.svelte';
 </script>
 
 <!-- The bar stays: the address of the app is the point of the page, so it is never scrolled away. -->
@@ -13,6 +14,7 @@
 	<nav class="relative mx-auto flex max-w-6xl items-center gap-3 px-4 py-3 sm:px-6">
 		<span class="text-lg font-black tracking-tight">{$t('app.name')}</span>
 		<span class="ml-auto"></span>
+		<Theme />
 		<Language />
 		<OpenApp />
 	</nav>
