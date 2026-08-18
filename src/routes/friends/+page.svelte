@@ -1,3 +1,16 @@
+<script lang="ts" module>
+	/**
+	 * The last search, kept in the module rather than in the component. Opening a profile leaves this
+	 * page and coming back mounts it again, and an archer who typed a handle by hand should not have
+	 * to type it a second time to get back to the one result they were looking at.
+	 */
+	let lastSearch = $state<{ term: string; found: Profile | null; searched: boolean }>({
+		term: '',
+		found: null,
+		searched: false
+	});
+</script>
+
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
@@ -40,9 +53,13 @@
 	let busy = $state(false);
 	let error = $state<string | null>(null);
 
-	let search = $state('');
-	let found = $state<Profile | null>(null);
-	let searched = $state(false);
+	let search = $state(lastSearch.term);
+	let found = $state<Profile | null>(lastSearch.found);
+	let searched = $state(lastSearch.searched);
+
+	$effect(() => {
+		lastSearch = { term: search, found, searched };
+	});
 
 	let mine = $state<Profile[]>([]);
 	let theirs = $state<Profile[]>([]);
@@ -209,21 +226,24 @@
 			</form>
 
 			{#if found}
-				<div class="mt-2 flex items-center justify-between rounded-xl border border-line bg-surface p-3">
+				<!-- The whole card opens the archer, not just their name: everything here is about them,
+					and the one thing that is not is the button, which is lifted over the link. -->
+				<div class="relative mt-2 flex items-center justify-between rounded-xl border border-line bg-surface p-3">
 					<a class="min-w-0" href="/friends/{found.handle}">
+						<span class="absolute inset-0" aria-hidden="true"></span>
 						<p class="truncate text-sm font-medium">{shownName(found)}</p>
 						<p class="truncate text-xs text-muted">@{found.handle}</p>
 					</a>
 					{#if found.followStatus === 'none'}
 						<button
-							class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50"
+							class="relative rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50"
 							disabled={busy}
 							onclick={() => act(() => follow(found!.userId))}
 						>
 							{found.isPublic ? $t('friends.follow') : $t('friends.askToFollow')}
 						</button>
 					{:else}
-						<span class="text-xs text-muted">{$t(`friends.status.${found.followStatus}`)}</span>
+						<span class="relative text-xs text-muted">{$t(`friends.status.${found.followStatus}`)}</span>
 					{/if}
 				</div>
 			{:else if searched}
