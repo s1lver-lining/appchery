@@ -3,6 +3,7 @@
 	import {
 		BONES,
 		HEAD_RADIUS,
+		TORSO,
 		JOINTS,
 		blend,
 		type Movement,
@@ -80,8 +81,9 @@
 			? seq[step.from].pose
 			: blend(seq[step.from].pose, seq[step.to].pose, ease((at - step.start) / step.span))
 	);
-	/** The frame the figure is at, or the one it is on its way to: a caption names where it is going. */
-	const showing = $derived(seq[step.to]);
+	/** Named for the pose it is at, and still named for it on the way to the next: the caption changes
+		when the figure arrives rather than when it sets off. */
+	const showing = $derived(seq[step.from]);
 
 	/** Half a bow, drawn from the hand that holds it, with the string running through the other one. */
 	const LIMB = 58;
@@ -179,6 +181,14 @@
 			otherwise and a band lying across an arm has to be seen to be a band.
 		-->
 		<g stroke="var(--c-ink)" stroke-linecap="round" fill="none" opacity="0.82">
+			<!-- Filled and stroked both: seen side on the triangle is nearly edge on, and the stroke is
+				 what keeps a trunk a trunk rather than a line. -->
+			<path
+				d="{TORSO.map((joint, i) => `${i === 0 ? 'M' : 'L'}${pose[joint][0]} ${pose[joint][1]}`).join('')}Z"
+				fill="var(--c-ink)"
+				stroke-width="10"
+				stroke-linejoin="round"
+			/>
 			{#each BONES as bone (bone.from + bone.to)}
 				<path
 					d={line(pose[bone.from], pose[bone.to])}
@@ -200,9 +210,10 @@
 			{#if movement.prop === 'band'}
 				<path d={band(pose.handLeft, pose.handRight, 110)} />
 			{:else if movement.prop === 'anchoredBand' && movement.anchor}
-				<!-- An anchored band is under tension from the first rep, so it barely sags at all. -->
-				<path d={band(movement.anchor, pose.handLeft, 26)} />
-				<path d={band(movement.anchor, pose.handRight, 26)} />
+				<!-- Under tension from the first rep, so it barely sags, and thin so it reads as a band
+					 rather than as a pole the archer is holding. -->
+				<path d={band(movement.anchor, pose.handLeft, 26)} stroke-width="2.2" />
+				<path d={band(movement.anchor, pose.handRight, 26)} stroke-width="2.2" />
 				<circle cx={movement.anchor[0]} cy={movement.anchor[1]} r="4" fill="var(--c-brand)" />
 			{:else if movement.prop === 'bow'}
 				<path d={bow.riser} stroke-width="4" />

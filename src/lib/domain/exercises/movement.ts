@@ -40,22 +40,27 @@ export type Pose = Record<Joint, Point>;
 // the diagram crops to what the movement occupies, so a figure lying down gets a wide box of its own.
 
 /**
- * What the figure is built out of: a bone is two joints and how thick the line between them is. The
- * trunk is drawn heavier than the limbs so the body reads as a body and not as a spider.
+ * The trunk, drawn as one filled shape from the two shoulders down to the hip rather than as sticks
+ * out to each shoulder. Drawn as sticks, a shoulder is a third segment in line with the upper arm
+ * and the forearm, and an arm appears to have three parts. A shoulder has to be a corner of the
+ * body for the two segments hanging off it to read as an arm.
+ */
+export const TORSO: Joint[] = ['shoulderLeft', 'shoulderRight', 'hip'];
+
+/**
+ * What the rest of the figure is built out of: a bone is two joints and how thick the line between
+ * them is. The neck is what the trunk carries the head on, and everything else is a limb.
  */
 export const BONES: { from: Joint; to: Joint; width: number }[] = [
 	{ from: 'neck', to: 'chest', width: 9 },
-	{ from: 'chest', to: 'hip', width: 11 },
-	{ from: 'chest', to: 'shoulderLeft', width: 7 },
-	{ from: 'chest', to: 'shoulderRight', width: 7 },
 	{ from: 'shoulderLeft', to: 'elbowLeft', width: 6 },
 	{ from: 'elbowLeft', to: 'handLeft', width: 5 },
 	{ from: 'shoulderRight', to: 'elbowRight', width: 6 },
 	{ from: 'elbowRight', to: 'handRight', width: 5 },
-	{ from: 'hip', to: 'kneeLeft', width: 8 },
-	{ from: 'kneeLeft', to: 'footLeft', width: 6 },
-	{ from: 'hip', to: 'kneeRight', width: 8 },
-	{ from: 'kneeRight', to: 'footRight', width: 6 }
+	{ from: 'hip', to: 'kneeLeft', width: 9 },
+	{ from: 'kneeLeft', to: 'footLeft', width: 7 },
+	{ from: 'hip', to: 'kneeRight', width: 9 },
+	{ from: 'kneeRight', to: 'footRight', width: 7 }
 ];
 
 export const HEAD_RADIUS = 15;
