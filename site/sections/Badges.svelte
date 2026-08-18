@@ -5,7 +5,7 @@
 	import { SAMPLE_BADGES } from '../lib/sample';
 </script>
 
-<Feature title={$t('site.badges.title')} body={$t('site.badges.body')} note={$t('site.badges.note')} flip>
+<Feature title={$t('site.badges.title')} body={$t('site.badges.body')} flip>
 	{#snippet visual()}
 		<ul class="mx-auto grid max-w-md grid-cols-2 gap-3">
 			{#each SAMPLE_BADGES as badge (badge.definition.key)}

@@ -1712,7 +1712,6 @@ insetHint:
 		badges: {
 			title: 'Quelque chose à viser',
 			body: 'Les flèches de progression fédérales sont suivies depuis vos feuilles de marque, et les jalons comptent les flèches, les distances et le temps que vous avez accepté d’affronter. Un badge non obtenu dit quand même ce qu’il demande et où vous en êtes.',
-			note: 'Une fois obtenu, acquis.'
 		},
 		private: {
 			title: 'La base de données, c’est votre téléphone',

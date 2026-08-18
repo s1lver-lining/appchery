@@ -1697,7 +1697,6 @@ insetHint:
 		badges: {
 			title: 'Something to shoot for',
 			body: 'The federal progression arrows are tracked from your scorecards, and the milestones count the arrows, the distances and the weather you were willing to stand in. An unearned one still says what it wants and how far along you are.',
-			note: 'Once earned, kept.'
 		},
 		private: {
 			title: 'The database is your phone',
