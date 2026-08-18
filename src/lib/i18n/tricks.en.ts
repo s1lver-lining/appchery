@@ -270,6 +270,24 @@ export const tricksEn = {
 			]
 		},
 		{
+			key: 'training',
+			title: 'Training',
+			tricks: [
+				{
+					lead: 'Changing a target leaves the work you already did alone.',
+					body: 'Editing the reps or the hold on an exercise mid session changes every set you have not ticked yet, and none of the ones you have. What is recorded is what you actually did, set by set, not what the session was set up to be.'
+				},
+				{
+					lead: 'The rest counts from the set, not from the screen.',
+					body: 'Tick a set and the rest starts. Lock the phone, put it in a pocket and come back: the countdown is worked out from the moment you ticked, so it is over when it should be over rather than when the page next woke up.'
+				},
+				{
+					lead: 'A run only needs the two numbers it is made of.',
+					body: 'Enter a distance and a time and the pace works itself out, so the card can never hold a pace its own numbers deny. Half a run is saved as it stands: a distance with no time is still a run you did.'
+				}
+			]
+		},
+		{
 			key: 'exercises',
 			title: 'Exercises',
 			tricks: [

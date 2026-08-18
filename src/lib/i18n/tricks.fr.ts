@@ -265,6 +265,24 @@ export const tricksFr: TricksDictionary = {
 			]
 		},
 		{
+			key: 'training',
+			title: 'Entraînement',
+			tricks: [
+				{
+					lead: 'Changer un objectif ne touche pas au travail déjà fait.',
+					body: "Modifier les répétitions ou le maintien d'un exercice en cours de séance change toutes les séries que vous n'avez pas encore cochées, et aucune de celles que vous avez faites. Ce qui est enregistré est ce que vous avez réellement fait, série par série, pas ce que la séance prévoyait."
+				},
+				{
+					lead: 'Le repos part de la série, pas de l\'écran.',
+					body: "Cochez une série et le repos démarre. Verrouillez le téléphone, mettez le dans une poche et revenez : le décompte se calcule depuis le moment où vous avez coché, donc il est fini quand il doit l'être et non quand la page s'est réveillée."
+				},
+				{
+					lead: 'Une sortie ne demande que ses deux nombres.',
+					body: "Entrez une distance et un temps, l'allure se calcule toute seule : la fiche ne peut donc pas afficher une allure que ses propres nombres démentent. Une sortie à moitié notée est enregistrée telle quelle : une distance sans temps reste une sortie que vous avez faite."
+				}
+			]
+		},
+		{
 			key: 'exercises',
 			title: 'Exercices',
 			tricks: [
