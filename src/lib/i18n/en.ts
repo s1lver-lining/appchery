@@ -355,7 +355,7 @@ export const en = {
 		plotMode: 'On the face',
 		byNumber: 'By number',
 		editing: 'Editing an arrow',
-		undoEnd: 'Undo last end',
+		undoEnd: 'Undo end',
 		group: 'Group',
 		groupCentre: 'Centre offset',
 		meanRadius: 'Mean radius',

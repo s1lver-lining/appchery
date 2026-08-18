@@ -354,7 +354,7 @@ export const fr: Dictionary = {
 		plotMode: 'Sur le blason',
 		byNumber: 'Au clavier',
 		editing: "Modification d'une flèche",
-		undoEnd: 'Annuler la dernière volée',
+		undoEnd: 'Annuler volée',
 		group: 'Groupement',
 		groupCentre: 'Décalage du centre',
 		meanRadius: 'Rayon moyen',
