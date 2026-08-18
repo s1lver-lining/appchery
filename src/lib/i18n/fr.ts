@@ -1614,5 +1614,71 @@ insetHint:
 			fftaSilverCompound: { name: 'Flèche argent Poulies' },
 			fftaGoldCompound: { name: 'Flèche or Poulies' }
 		}
+	},
+	// La page d’accueil sur appchery.com, qui est une compilation à part : voir site/ et vite.site.config.ts.
+	site: {
+		open: 'Ouvrir l’appli',
+		openLong: 'Ouvrir Appchery',
+		hero: {
+			title: 'Chaque flèche, sur le téléphone qui l’a tirée.',
+			body: 'Marquez un tir, réglez un arc, préparez le geste. Appchery enregistre tout sur votre appareil, fonctionne sans le moindre réseau, et ne demande rien en retour.',
+			free: 'Gratuit, libre, sans compte',
+			offline: 'Fonctionne hors ligne',
+			install: 'S’installe comme une appli'
+		},
+		plot: {
+			title: 'Marquez en montrant la cible',
+			body: 'Touchez l’impact et la zone est lue sur la géométrie même qui dessine le blason : ce que vous voyez et ce qui est compté ne peuvent pas diverger. Saisissez les valeurs si c’est plus rapide, la feuille de marque additionne dans les deux cas.',
+			note: 'Groupement, dispersion et centre, calculés volée après volée.'
+		},
+		camera: {
+			title: 'Ou laissez la caméra lire le blason',
+			body: 'Visez la cible depuis la ligne de tir et les flèches sont trouvées pour vous, chacune proposée à votre confirmation avant d’arriver sur la feuille. Rien n’est envoyé : la détection tourne sur le téléphone.',
+			note: 'Vous confirmez chaque flèche. La caméra ne marque jamais à votre insu.'
+		},
+		stats: {
+			title: 'Des chiffres qui répondent à une question',
+			body: 'Comment un tir évolue sur une saison, dans quelles zones les flèches tombent vraiment, et ce que le vent vous coûte par flèche. Filtrez par arc, par distance, par type de sortie, et toute la page ne répond plus que pour cette tranche.',
+			note: 'Par flèche, le seul chiffre qui permette de comparer deux tirs différents.'
+		},
+		training: {
+			title: 'Travaillez les muscles du geste',
+			body: 'Une bibliothèque d’exercices, chacun dessiné par une silhouette qui bouge et reporté sur les muscles qu’il sollicite. La carte est celle sur laquelle le geste lui même est dessiné : vous voyez ce qu’un exercice entraîne et à quel moment du tir il sert.',
+			note: 'Avec élastique, avec l’arc, ou avec rien du tout.'
+		},
+		badges: {
+			title: 'Quelque chose à viser',
+			body: 'Les flèches de progression fédérales sont suivies depuis vos feuilles de marque, et les jalons comptent les flèches, les distances et le temps que vous avez accepté d’affronter. Un badge non obtenu dit quand même ce qu’il demande et où vous en êtes.',
+			note: 'Une fois obtenu, acquis.'
+		},
+		private: {
+			title: 'La base de données, c’est votre téléphone',
+			body: 'Tout est écrit sur l’appareil d’abord. Le compte est facultatif et ne sert qu’à recopier vos sorties sur votre autre téléphone, ou à les partager avec les archers que vous choisissez. Supprimez l’appli et les données partent avec elle : il n’y en avait de copie nulle part ailleurs.',
+			note: 'Aucune publicité, aucun pistage, rien à payer.'
+		},
+		cta: {
+			title: 'Emmenez la sur le pas de tir.',
+			body: 'Elle s’ouvre dans le navigateur et s’installe sur l’écran d’accueil depuis là. Aucune inscription.'
+		},
+		footer: {
+			source: 'Code source',
+			licence: 'Logiciel libre sous licence AGPL.',
+			language: 'Langue'
+		},
+		// Les sorties d'exemple dessinées dans les téléphones, inventées plutôt que tirées de vrais scores.
+		sample: {
+			round: 'WA 720 · 70m',
+			end: 'Volée 4 sur 12',
+			session: 'Terrain du club, mardi',
+			wind: 'Vent',
+			calm: 'Calme',
+			breeze: 'Brise',
+			strong: 'Fort',
+			practice: 'Entraînement',
+			competition: 'Compétition',
+			exercise: 'Écarté à l’élastique',
+			best: 'Record',
+			average: 'Moyenne glissante'
+		}
 	}
 };

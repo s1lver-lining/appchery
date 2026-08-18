@@ -1599,5 +1599,71 @@ insetHint:
 			fftaSilverCompound: { name: 'Silver Arrow Compound' },
 			fftaGoldCompound: { name: 'Gold Arrow Compound' }
 		}
+	},
+	// The landing page on appchery.com, which is a separate build: see site/ and vite.site.config.ts.
+	site: {
+		open: 'Open the app',
+		openLong: 'Open Appchery',
+		hero: {
+			title: 'Every arrow, on the phone that shot it.',
+			body: 'Score a round, tune a bow, train for the shot. Appchery records it all on your own device, works with no signal at all, and asks for nothing in return.',
+			free: 'Free, open source, no account needed',
+			offline: 'Works offline',
+			install: 'Installs like an app'
+		},
+		plot: {
+			title: 'Score by pointing at the target',
+			body: 'Tap where the arrow landed and the ring is read off the same geometry the app draws the face with, so what you see and what you score cannot disagree. Type the values instead if that is faster, and the card adds up either way.',
+			note: 'Group size, spread and centre, worked out end by end.'
+		},
+		camera: {
+			title: 'Or let the camera read the face',
+			body: 'Point the phone at the target from the shooting line and the arrows are found for you, with every one offered for confirmation before it reaches the card. Nothing is uploaded: the detection runs on the phone.',
+			note: 'You confirm every arrow. The camera never scores behind your back.'
+		},
+		stats: {
+			title: 'Numbers that answer a question',
+			body: 'How a round has gone over a season, which zones the arrows really fall in, and how much the wind costs you per arrow. Filter by bow, by distance, by kind of outing, and the whole page answers for that slice alone.',
+			note: 'Per arrow, because it is the only figure two different rounds can be compared on.'
+		},
+		training: {
+			title: 'Train the muscles the shot uses',
+			body: 'A library of exercises, each one drawn as a figure that moves and mapped onto the muscles it works. The map is the same one the shot itself is drawn on, so you can see what an exercise trains and when in the shot it is used.',
+			note: 'Bands, bow, or nothing at all.'
+		},
+		badges: {
+			title: 'Something to shoot for',
+			body: 'The federal progression arrows are tracked from your scorecards, and the milestones count the arrows, the distances and the weather you were willing to stand in. An unearned one still says what it wants and how far along you are.',
+			note: 'Once earned, kept.'
+		},
+		private: {
+			title: 'The database is your phone',
+			body: 'Everything is written to the device first. An account is optional and only exists to copy your outings to your other phone, or to share them with the archers you choose. Delete the app and the data goes with it, because there was never a copy anywhere else.',
+			note: 'No advertising, no tracking, nothing to pay.'
+		},
+		cta: {
+			title: 'Take it to the field.',
+			body: 'It opens in the browser and installs to the home screen from there. Nothing to sign up for.'
+		},
+		footer: {
+			source: 'Source code',
+			licence: 'Free software under the AGPL.',
+			language: 'Language'
+		},
+		// The sample outings drawn in the phone frames, which are made up rather than anybody's real scores.
+		sample: {
+			round: 'WA 720 · 70m',
+			end: 'End 4 of 12',
+			session: 'Club field, Tuesday',
+			wind: 'Wind',
+			calm: 'Calm',
+			breeze: 'Breeze',
+			strong: 'Strong',
+			practice: 'Practice',
+			competition: 'Competition',
+			exercise: 'Band pull apart',
+			best: 'Best',
+			average: 'Rolling average'
+		}
 	}
 };
