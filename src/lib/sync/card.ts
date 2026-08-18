@@ -6,17 +6,9 @@ import { experience } from '$lib/domain/experience';
 import { supabase } from './client';
 import { account } from './auth';
 
-/**
- * The few figures a profile page shows about an archer: arrows shot, outings, badges, level.
- *
- * Published, not synced. Every one of these is derived from the shooting record and recomputed on
- * each device, so the server cannot work them out and is never asked to. The device computes the
- * card and overwrites its own row; nothing ever reads it back into the local database.
- *
- * That one way street is the whole design. A figure that came back down would become a fact the app
- * reasons about, and a stale fact about somebody's badge count is a bug where a stale display is
- * merely yesterday's news.
- */
+// The figures a profile page shows: arrows, outings, badges, level. Published rather than synced,
+// see doc/sync.md § 6. Nothing reads a card back into the database, and that one way street is the
+// whole design: a figure that came down would become something the app reasons about.
 
 export interface ProfileCard {
 	arrows: number;
@@ -50,11 +42,7 @@ export async function buildCard(): Promise<ProfileCard> {
 	};
 }
 
-/**
- * Overwritten whole on every exchange. There is no merge and no conflict: the row belongs to one
- * archer, every device computes the same figures from the same record, and the last one to sync is
- * as right as any other.
- */
+/** Overwritten whole: every device computes the same figures, so the last to sync is as right as any. */
 export async function publishCard(): Promise<void> {
 	const user = get(account);
 	const client = await supabase();

@@ -1,13 +1,7 @@
 import { hasBuiltInServer } from './config';
 
-/**
- * When an exchange happens: signing in, the app coming back to the front, and the network coming
- * back. Never on a timer, and never while an archer is in the middle of scoring: the change log
- * keeps what is owed, so an exchange can always wait for a natural pause.
- *
- * Nothing here is on the boot path. A device with no server configured, or nobody signed in, does
- * not load the sync module at all, let alone the client library.
- */
+// When an exchange happens: signing in, coming back to the front, regaining the network. Never on a
+// timer. A device with nobody signed in does not load the sync module at all.
 
 /** The key supabase-js writes its session under. Reading it costs nothing and answers the question. */
 function looksSignedIn(): boolean {
@@ -25,10 +19,9 @@ function looksSignedIn(): boolean {
 let listening: (() => void) | null = null;
 
 /**
- * Registers the triggers, at most once. Called by the layout for a device that was already signed
- * in, and again by the account card the moment somebody signs in: without that second call, an
- * archer who signs in today gets no resume and no reconnect trigger until they next restart the app,
- * because at boot there was no session to find.
+ * Registered at most once, by the layout for a device already signed in and by the account card the
+ * moment somebody signs in: at boot there was no session to find, so without both there are no
+ * triggers until the app is restarted.
  */
 export async function startWatching(): Promise<void> {
 	if (typeof window === 'undefined' || listening) return;

@@ -4,11 +4,7 @@ import { isNull, sql } from 'drizzle-orm';
 import { supabase } from './client';
 import { OWNED_TABLES } from './tables';
 
-/**
- * Signing in is optional, and everything here is additive: an archer who never opens this screen has
- * the same app they had before it existed. Signing out keeps the local database exactly as it is,
- * because the device is the source of truth and the account is a copy of it.
- */
+// Signing in is optional and additive. The device is the source of truth; the account is a copy.
 
 export interface Account {
 	id: string;
@@ -24,8 +20,7 @@ export async function initAuth(): Promise<void> {
 	const client = await supabase();
 	if (!client) return;
 
-	// The stored session is read locally, so this answers with no network. A refresh that needs one
-	// and cannot have one leaves the archer signed in with what is on disk, which is the honest state.
+	// Read locally, so this answers with no network and leaves the archer signed in with what is on disk.
 	const { data } = await client.auth.getSession();
 	account.set(toAccount(data.session?.user));
 
@@ -50,8 +45,7 @@ export async function signUp(email: string, password: string): Promise<'signedIn
 	const { data, error } = await (await client()).auth.signUp({ email, password });
 	if (error) throw new AuthError(error.message);
 
-	// A project with email confirmation on returns a user and no session. Saying so is the difference
-	// between an archer checking their inbox and an archer thinking the app is broken.
+	// Confirmation on means a user and no session, and an archer owed a look at their inbox.
 	if (!data.session) return 'confirm';
 	await adoptLocalRows(data.user!.id);
 	return 'signedIn';
@@ -67,12 +61,8 @@ export async function signOut(): Promise<void> {
 	const instance = await supabase();
 	if (instance) await instance.auth.signOut();
 
-	/**
-	 * The shooting record stays, because it is this device's own and signing out must never cost an
-	 * archer their history. What other people shared does not: it belongs to them, it was only ever a
-	 * cache, and leaving it behind would show one archer another archer's friends and scores on a
-	 * device they both use.
-	 */
+	// The shooting stays: it is this device's own. What other people shared goes, because a shared
+	// phone must not show one archer the friends and scores of the one before them.
 	await db().delete(schema.socialActivity);
 	await db().delete(schema.socialProfile);
 
@@ -85,49 +75,30 @@ export async function requestPasswordReset(email: string): Promise<void> {
 }
 
 /**
- * Everything shot before signing in belongs to nobody, and signing in is what an archer does to say
- * it is theirs. Each adopted row is marked pending so the first push carries a whole history up.
- *
- * `updated_at` is deliberately left alone. Adoption changes who owns a row, not what it says, and
- * touching the timestamp would let a device that has never been online outrank a genuinely newer
- * version of the same row on another device.
- *
- * Rows already carrying a different account are left exactly where they are. A device that has been
- * two archers is not a case sync tries to merge, and the alternative is one account quietly
- * swallowing another's shooting.
+ * Everything shot before signing in belongs to nobody, and signing in says it is theirs. Rows
+ * carrying another account are left alone, and `updated_at` is never touched: adoption changes who
+ * owns a row, not what it says. See doc/sync.md § 4.
  */
 export async function adoptLocalRows(userId: string): Promise<number> {
 	let adopted = 0;
 
-	/**
-	 * No transaction, for the same reason pull has none: one connection means a rollback would also
-	 * discard whatever the archer was writing at that moment. Adoption is idempotent, so a run that
-	 * stops halfway is finished by the next push rather than undone.
-	 */
-	{
-		for (const { name, table } of OWNED_TABLES) {
-			const orphans = await db()
-				.select({ id: table.id })
-				.from(table)
-				.where(isNull(table.userId));
-			if (orphans.length === 0) continue;
+	// No transaction, like pull: a rollback would discard whatever the archer was writing.
+	for (const { name, table } of OWNED_TABLES) {
+		const orphans = await db().select({ id: table.id }).from(table).where(isNull(table.userId));
+		if (orphans.length === 0) continue;
 
-			await db().update(table).set({ userId }).where(isNull(table.userId));
+		await db().update(table).set({ userId }).where(isNull(table.userId));
 
-			const changedAt = Date.now();
-			// Chunked: SQLite takes a limited number of parameters per statement, and an archer signing
-			// in after importing years of shooting adopts tens of thousands of rows at once.
-			for (let i = 0; i < orphans.length; i += 100) {
-				await db()
-					.insert(schema.changeLog)
-					.values(
-						orphans
-							.slice(i, i + 100)
-							.map(({ id }) => ({ tableName: name, rowId: id, op: 'update', changedAt, syncedAt: null }))
-					);
-			}
-			adopted += orphans.length;
+		// Chunked: signing in after importing years of shooting adopts tens of thousands of rows,
+		// well past what one statement can carry.
+		const changedAt = Date.now();
+		for (let i = 0; i < orphans.length; i += 100) {
+			const chunk = orphans.slice(i, i + 100);
+			await db()
+				.insert(schema.changeLog)
+				.values(chunk.map(({ id }) => ({ tableName: name, rowId: id, op: 'update', changedAt, syncedAt: null })));
 		}
+		adopted += orphans.length;
 	}
 
 	return adopted;

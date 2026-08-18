@@ -6,13 +6,8 @@ import { pull } from './pull';
 import { readSyncState } from './config';
 import { pendingCount } from './push';
 
-/**
- * One exchange with the server: push, then pull. See doc/sync.md section 5.
- *
- * Failures are silent and left for the next trigger. Being offline at a range is the normal case,
- * not an error worth interrupting anybody over, and the account card says when the last sync was so
- * the state is readable rather than announced.
- */
+// One exchange: push, then pull, see doc/sync.md § 5. Failures are silent and left for the next
+// trigger, because offline at a range is the normal case rather than something to interrupt over.
 
 export type SyncPhase = 'idle' | 'syncing' | 'error';
 
@@ -56,10 +51,7 @@ async function run(): Promise<void> {
 	const user = get(account);
 	if (!user) return;
 
-	/**
-	 * Nothing to say to a server that cannot be reached, but the archer pressed a button and is owed
-	 * an answer: the card reads this as "no connection" rather than sitting there saying nothing.
-	 */
+	// Nothing to say to an unreachable server, but a pressed button is owed an answer.
 	if (typeof navigator !== 'undefined' && navigator.onLine === false) {
 		syncStatus.update((current) => ({ ...current, phase: 'error', error: 'offline' }));
 		return;
@@ -70,11 +62,8 @@ async function run(): Promise<void> {
 
 	syncStatus.update((current) => ({ ...current, phase: 'syncing', error: null }));
 
-	/**
-	 * An exchange belongs to the account that started it. Signing out, or signing in as somebody else,
-	 * while one is in flight must stop it: push claims every ownerless row for the account it was
-	 * given, so carrying on would file the next archer's shooting under the last archer's name.
-	 */
+	// An exchange belongs to the account that began it: push claims ownerless rows for whoever it was
+	// handed, so carrying on through a sign out files the next archer's shooting under the last one's.
 	const stillOurs = () => get(account)?.id === user.id;
 
 	/** Abandoning an exchange has to leave the state readable, or the button stays disabled for good. */
@@ -90,12 +79,8 @@ async function run(): Promise<void> {
 		await pull(client, user.id);
 		if (!stillOurs()) return stop();
 
-		/*
-		 * The social side is refreshed and the profile card republished after the record they describe
-		 * has gone up. Both are worth far less than the exchange itself, so neither can break it: a
-		 * friends list or a badge count an hour out of date costs nothing, a failed sync costs the
-		 * shooting.
-		 */
+		// Both follow the record they describe, and neither may break the exchange: a badge count an
+		// hour out of date costs nothing, a failed sync costs the shooting.
 		const { refreshSocial } = await import('./social');
 		await refreshSocial().catch(() => {});
 

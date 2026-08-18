@@ -902,6 +902,7 @@ export const en = {
 		requests: 'Asked to follow you',
 		followsYou: 'Follows you',
 		block: 'Block',
+		unblock: 'Unblock',
 		blockTitle: 'Block this archer?',
 		blockBody: 'They stop following you, they cannot follow you again, and your profile looks private to them. They are never told.',
 		publicProfile: 'Public profile',

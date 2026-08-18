@@ -1,20 +1,14 @@
-import { eq, desc, ne, isNotNull, isNull, and } from 'drizzle-orm';
+import { eq, desc, ne, type SQL } from 'drizzle-orm';
 import { get } from 'svelte/store';
 import { db, schema } from '$lib/db';
 import { supabase } from './client';
 import { account } from './auth';
 
-/**
- * Handles, following, blocking and shared activities: everything the client asks the server about
- * other archers, in one place. See doc/sync.md section 6.
- *
- * Two rules hold throughout. Changing anything social needs a connection and says so, rather than
- * queueing something that sits unsent for days. Reading is answered from the local cache first, so
- * the friends screen is legible at a range with no signal.
- *
- * Nothing here writes to the archer's own tables. A shared activity is cached whole, apart, and read
- * only, because somebody else's arrows must never reach these averages, records or badges.
- */
+// Everything the client asks the server about other archers, see doc/sync.md § 6. Changing anything
+// needs a connection; reading is answered from the cache, so the friends screen opens with no signal.
+//
+// Nothing here writes to the archer's own tables: somebody else's arrows must never reach these
+// averages, records or badges, so what they shared is cached whole and apart.
 
 export class SocialError extends Error {}
 
@@ -44,16 +38,32 @@ async function client() {
 	return instance;
 }
 
+/** The signed in archer's id, refused the same way every other call here refuses. */
+function me(): string {
+	const user = get(account);
+	if (!user) throw new SocialError('signedOut');
+	return user.id;
+}
+
+function fail(error: { message: string } | null) {
+	if (error) throw new SocialError(error.message);
+}
+
+function patchProfile(userId: string, patch: Partial<typeof schema.socialProfile.$inferInsert>) {
+	return db().update(schema.socialProfile).set(patch).where(eq(schema.socialProfile.userId, userId));
+}
+
+function forgetShared(ownerId: string) {
+	return db().delete(schema.socialActivity).where(eq(schema.socialActivity.ownerId, ownerId));
+}
+
 /* Handles */
 
 const HANDLE_KEY = 'appchery.handle';
 
 /**
- * The archer's own handle, or null while they have never claimed one.
- *
- * Remembered locally once known, because the friends page shows the claim form when this is null.
- * Asking an archer with no signal to choose the handle they already hold, and then failing when they
- * try, is worse than showing the handle it saw last.
+ * The archer's own handle, remembered locally once known: the friends page shows the claim form when
+ * this is null, and asking somebody offline to choose the handle they already hold is worse than stale.
  */
 export async function myHandle(): Promise<string | null> {
 	const user = get(account);
@@ -73,10 +83,7 @@ export async function myHandle(): Promise<string | null> {
 	return handle;
 }
 
-/**
- * Claiming is a server function, not an insert: the reserved list, the retired list and the shape
- * are database rules, because a check the client performs is a check an archer can skip.
- */
+/** A function, not an insert: the reserved and retired lists are database rules, not client ones. */
 export async function claimHandle(handle: string, displayName?: string): Promise<void> {
 	const wanted = handle.trim().toLowerCase();
 	const { error } = await (await client()).rpc('claim_handle', {
@@ -113,10 +120,7 @@ export async function isProfilePublic(): Promise<boolean> {
 
 /* Looking somebody up */
 
-/**
- * Exact handle only, through the rate limited function rather than a select over the table, or the
- * handle list becomes a directory anybody can walk.
- */
+/** Exact handles only, and rate limited, or the handle list becomes a directory anybody can walk. */
 export async function lookup(handle: string): Promise<Profile | null> {
 	const { data, error } = await (await client()).rpc('lookup_profile', {
 		wanted: handle.trim().replace(/^@/, '').toLowerCase()
@@ -138,95 +142,68 @@ export async function lookup(handle: string): Promise<Profile | null> {
 	return profile;
 }
 
-/* The graph */
+/* The graph. Every call needs a connection, and every one keeps the cache in step with it. */
 
 export async function follow(userId: string): Promise<string> {
 	const { data, error } = await (await client()).rpc('request_follow', { target: userId });
-	if (error) throw new SocialError(error.message);
+	fail(error);
 
 	const status = String(data ?? 'pending');
-	await db().update(schema.socialProfile).set({ followStatus: status }).where(eq(schema.socialProfile.userId, userId));
+	await patchProfile(userId, { followStatus: status });
 	return status;
 }
 
 export async function unfollow(userId: string): Promise<void> {
-	const user = get(account);
-	if (!user) throw new SocialError('signedOut');
+	const { error } = await (await client()).from('follow').delete().eq('follower_id', me()).eq('followee_id', userId);
+	fail(error);
 
-	const { error } = await (await client())
-		.from('follow')
-		.delete()
-		.eq('follower_id', user.id)
-		.eq('followee_id', userId);
-	if (error) throw new SocialError(error.message);
-
-	await db().update(schema.socialProfile).set({ followStatus: 'none' }).where(eq(schema.socialProfile.userId, userId));
-	await db().delete(schema.socialActivity).where(eq(schema.socialActivity.ownerId, userId));
+	await patchProfile(userId, { followStatus: 'none' });
+	await forgetShared(userId);
 }
 
 /** Approving somebody who asked to follow a private profile. */
 export async function approve(followerId: string): Promise<void> {
-	const user = get(account);
-	if (!user) throw new SocialError('signedOut');
-
 	const { error } = await (await client())
 		.from('follow')
 		.update({ status: 'approved' })
 		.eq('follower_id', followerId)
-		.eq('followee_id', user.id);
-	if (error) throw new SocialError(error.message);
+		.eq('followee_id', me());
+	fail(error);
 
-	await db().update(schema.socialProfile).set({ followsUs: 'approved' }).where(eq(schema.socialProfile.userId, followerId));
+	await patchProfile(followerId, { followsUs: 'approved' });
 }
 
 /** Removing a follower, which is the same row as refusing one and deliberately the same button. */
 export async function removeFollower(followerId: string): Promise<void> {
-	const user = get(account);
-	if (!user) throw new SocialError('signedOut');
-
 	const { error } = await (await client())
 		.from('follow')
 		.delete()
 		.eq('follower_id', followerId)
-		.eq('followee_id', user.id);
-	if (error) throw new SocialError(error.message);
+		.eq('followee_id', me());
+	fail(error);
 
-	await db().update(schema.socialProfile).set({ followsUs: 'none' }).where(eq(schema.socialProfile.userId, followerId));
+	await patchProfile(followerId, { followsUs: 'none' });
 }
 
-/**
- * Blocking drops any follow in either direction, server side. From then on the blocked account sees
- * a private profile and nothing else: it is never told, and its requests never reach the list.
- */
+/** Drops any follow in either direction, server side. The blocked account is never told. */
 export async function block(userId: string): Promise<void> {
 	const { error } = await (await client()).rpc('block_account', { target: userId });
-	if (error) throw new SocialError(error.message);
+	fail(error);
 
-	await db().delete(schema.socialActivity).where(eq(schema.socialActivity.ownerId, userId));
-	await db()
-		.update(schema.socialProfile)
-		.set({ followStatus: 'none', followsUs: 'none' })
-		.where(eq(schema.socialProfile.userId, userId));
+	await forgetShared(userId);
+	await patchProfile(userId, { followStatus: 'none', followsUs: 'none' });
 }
 
 export async function unblock(userId: string): Promise<void> {
-	const user = get(account);
-	if (!user) throw new SocialError('signedOut');
-
-	const { error } = await (await client())
-		.from('block')
-		.delete()
-		.eq('blocker_id', user.id)
-		.eq('blocked_id', userId);
-	if (error) throw new SocialError(error.message);
+	const { error } = await (await client()).from('block').delete().eq('blocker_id', me()).eq('blocked_id', userId);
+	fail(error);
 }
 
+/** Who this archer has blocked, so the profile page can offer to undo it. */
 export async function blockedAccounts(): Promise<string[]> {
 	const user = get(account);
-	if (!user) return [];
-
 	const instance = await supabase();
-	if (!instance) return [];
+	if (!user || !instance) return [];
 
 	const { data } = await instance.from('block').select('blocked_id').eq('blocker_id', user.id);
 	return (data ?? []).map((row) => String(row.blocked_id));
@@ -234,19 +211,12 @@ export async function blockedAccounts(): Promise<string[]> {
 
 /* Sharing */
 
-/**
- * Shared or not shared. Visibility is then decided by the profile rules and the block list, so this
- * is one flag rather than a row per viewer, and unsharing revokes because nothing was ever copied.
- */
+/** One flag, not a row per viewer: visibility follows from the profile, and unsharing revokes. */
 export { setActivityShared as setShared } from '$lib/db/repository';
 
 /* Refreshing the cache */
 
-/**
- * `followsUs` is only written when the caller actually knows it. A handle lookup answers what that
- * profile is and whether we follow them, and says nothing about the other direction; writing 'none'
- * from it would drop somebody out of the followers list until the next full refresh.
- */
+/** `followsUs` is written only by callers that know it: a lookup does not, and would drop a follower. */
 async function cacheProfile(profile: Profile, knowsFollowsUs = true): Promise<void> {
 	const row = {
 		userId: profile.userId,
@@ -285,11 +255,7 @@ export async function refreshSocial(): Promise<void> {
 		.select('follower_id, followee_id, status')
 		.or(`follower_id.eq.${user.id},followee_id.eq.${user.id}`);
 
-	/**
-	 * A refresh that could not read the graph knows nothing, and must not act as though it read an
-	 * empty one. Treating a failed request as "you follow nobody" would clear every cached profile
-	 * and every shared activity below, emptying the friends screen because a request timed out.
-	 */
+	// A refresh that could not read knows nothing, and must not clear the cache as though it had.
 	if (followError) return;
 
 	const ids = new Set<string>();
@@ -307,11 +273,7 @@ export async function refreshSocial(): Promise<void> {
 		}
 	}
 
-	/**
-	 * Anybody no longer in the graph is reset, and what they shared is dropped. Without this a profile
-	 * that unfollowed, or that blocked this archer, would sit in the friends list as followed for ever:
-	 * the refresh only ever wrote the accounts it found, and never the ones it stopped finding.
-	 */
+	// Anybody no longer in the graph is reset, or somebody who unfollowed sits in the list for ever.
 	const stale = await db()
 		.select({ userId: schema.socialProfile.userId })
 		.from(schema.socialProfile);
@@ -346,20 +308,12 @@ export async function refreshSocial(): Promise<void> {
 	await refreshSharedActivities([...following.keys()]);
 }
 
-/**
- * One profile's shared activities, fetched on demand. Browsing a public profile is allowed to show
- * what it shares without following it first, and the background refresh only ever covers the accounts
- * this archer follows, so the profile page asks for its own.
- */
+/** One profile's shared rounds: browsing a public profile shows them without following it first. */
 export async function refreshSharedFor(userId: string): Promise<void> {
 	await refreshSharedActivities([userId]);
 }
 
-/**
- * Whatever those accounts still share, replacing what was cached for them. Replaced rather than
- * merged, because an activity that has been unshared has to disappear from this device too: leaving
- * a stale copy behind would make unsharing a lie.
- */
+/** Replaced rather than merged: an activity that has been unshared has to disappear here too. */
 async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 	const instance = await supabase();
 	if (!instance || ownerIds.length === 0) return;
@@ -371,8 +325,7 @@ async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 		.not('shared_at', 'is', null)
 		.is('deleted_at', null);
 
-	// Same again: what is cached is replaced wholesale below, so a failed read would delete a friend's
-	// shared rounds and put nothing back. Yesterday's copy is worth more than an empty screen.
+	// Same again: a failed read would delete a friend's rounds and put nothing back.
 	if (error) return;
 
 	const rows = activities ?? [];
@@ -414,58 +367,43 @@ async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 /* Reading the cache, which is what every screen actually renders */
 
 export async function cachedProfile(handle: string): Promise<Profile | null> {
-	const [row] = await db()
-		.select()
-		.from(schema.socialProfile)
-		.where(eq(schema.socialProfile.handle, handle.replace(/^@/, '').toLowerCase()));
+	const wanted = handle.replace(/^@/, '').toLowerCase();
+	const [row] = await db().select().from(schema.socialProfile).where(eq(schema.socialProfile.handle, wanted));
 	return row ? toProfile(row) : null;
 }
 
-export async function following(): Promise<Profile[]> {
-	const rows = await db()
-		.select()
-		.from(schema.socialProfile)
-		.where(ne(schema.socialProfile.followStatus, 'none'));
-	return rows.map(toProfile);
+export function following(): Promise<Profile[]> {
+	return profilesWhere(ne(schema.socialProfile.followStatus, 'none'));
 }
 
-export async function followers(): Promise<Profile[]> {
-	const rows = await db()
-		.select()
-		.from(schema.socialProfile)
-		.where(ne(schema.socialProfile.followsUs, 'none'));
-	return rows.map(toProfile);
+export function followers(): Promise<Profile[]> {
+	return profilesWhere(ne(schema.socialProfile.followsUs, 'none'));
 }
 
 /** People waiting on an answer, which only a private profile ever has. */
-export async function pendingRequests(): Promise<Profile[]> {
-	const rows = await db()
-		.select()
-		.from(schema.socialProfile)
-		.where(eq(schema.socialProfile.followsUs, 'pending'));
-	return rows.map(toProfile);
+export function pendingRequests(): Promise<Profile[]> {
+	return profilesWhere(eq(schema.socialProfile.followsUs, 'pending'));
 }
 
-export async function sharedBy(ownerId: string): Promise<SharedActivity[]> {
-	const rows = await db()
-		.select()
-		.from(schema.socialActivity)
-		.where(eq(schema.socialActivity.ownerId, ownerId))
-		.orderBy(desc(schema.socialActivity.sharedAt));
-
-	return rows.map((row) => ({
-		id: row.id,
-		ownerId: row.ownerId,
-		sharedAt: row.sharedAt,
-		...(JSON.parse(row.payload) as Omit<SharedActivity, 'id' | 'ownerId' | 'sharedAt'>)
-	}));
+export function sharedBy(ownerId: string): Promise<SharedActivity[]> {
+	return sharedWhere(eq(schema.socialActivity.ownerId, ownerId));
 }
 
 /** Everything anybody has shared with this archer, newest first: the feed the friends page opens on. */
-export async function sharedFeed(limit = 50): Promise<SharedActivity[]> {
+export function sharedFeed(limit = 50): Promise<SharedActivity[]> {
+	return sharedWhere(undefined, limit);
+}
+
+async function profilesWhere(condition: SQL | undefined): Promise<Profile[]> {
+	const rows = await db().select().from(schema.socialProfile).where(condition);
+	return rows.map(toProfile);
+}
+
+async function sharedWhere(condition: SQL | undefined, limit = 500): Promise<SharedActivity[]> {
 	const rows = await db()
 		.select()
 		.from(schema.socialActivity)
+		.where(condition)
 		.orderBy(desc(schema.socialActivity.sharedAt))
 		.limit(limit);
 
@@ -473,23 +411,8 @@ export async function sharedFeed(limit = 50): Promise<SharedActivity[]> {
 		id: row.id,
 		ownerId: row.ownerId,
 		sharedAt: row.sharedAt,
-		...(JSON.parse(row.payload) as Omit<SharedActivity, 'id' | 'ownerId' | 'sharedAt'>)
+		...(JSON.parse(row.payload) as Pick<SharedActivity, 'activity' | 'ends' | 'shots'>)
 	}));
-}
-
-/** The archer's own activities that are currently shared, so the sharing can be seen and undone. */
-export async function mySharedActivities() {
-	return db()
-		.select({
-			id: schema.activity.id,
-			sharedAt: schema.activity.sharedAt,
-			startedAt: schema.activity.startedAt,
-			totalScore: schema.activity.totalScore,
-			roundDefinition: schema.activity.roundDefinition
-		})
-		.from(schema.activity)
-		.where(and(isNotNull(schema.activity.sharedAt), isNull(schema.activity.deletedAt)))
-		.orderBy(desc(schema.activity.sharedAt));
 }
 
 type ProfileRow = typeof schema.socialProfile.$inferSelect;

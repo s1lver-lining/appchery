@@ -14,6 +14,8 @@
 		follow,
 		unfollow,
 		block,
+		unblock,
+		blockedAccounts,
 		sharedBy,
 		refreshSocial,
 		SocialError,
@@ -38,6 +40,9 @@
 	let error = $state<string | null>(null);
 	let confirmingBlock = $state(false);
 	let card = $state<ProfileCard | null>(null);
+	// A block the archer cannot undo is a mistake they have to live with, and the profile itself never
+	// says one is in place: it looks private, by design, so this is the only place that can ask.
+	let blocked = $state(false);
 
 	$effect(() => {
 		void load(handle);
@@ -58,6 +63,7 @@
 			// Read straight from the server and never stored: the card is somebody else's figures, and
 			// keeping a copy would make them look like something this device knows.
 			card = await readCard(fresh.userId).catch(() => null);
+			blocked = (await blockedAccounts().catch((): string[] => [])).includes(fresh.userId);
 		}
 	}
 
@@ -136,13 +142,15 @@
 						{profile.followStatus === 'pending' ? $t('friends.cancelRequest') : $t('friends.unfollow')}
 					</button>
 				{/if}
-				<button
-					class="rounded-lg border border-line px-4 py-2 text-sm text-danger disabled:opacity-50"
-					disabled={busy}
-					onclick={() => (confirmingBlock = true)}
-				>
-					{$t('friends.block')}
-				</button>
+				{#if !blocked}
+					<button
+						class="rounded-lg border border-line px-4 py-2 text-sm text-danger disabled:opacity-50"
+						disabled={busy}
+						onclick={() => (confirmingBlock = true)}
+					>
+						{$t('friends.block')}
+					</button>
+				{/if}
 			</div>
 			{/if}
 		</section>

@@ -1,15 +1,8 @@
 import { schema } from '$lib/db';
 
 /**
- * The tables that travel, in the order rows must be written: parents before the rows that reference
- * them, so a pull that applies a session and its activities in one pass never lands a child first.
- * The same order run backwards is the order a delete has to take.
- *
- * The name is the SQL table name, because that is what `change_log.table_name` holds and what the
- * server calls the table too. One list, so a table cannot be synced by push and forgotten by pull.
- *
- * badge, change_log and sync_state are absent on purpose: badges are recomputed per device, and the
- * log and the cursors are local bookkeeping. See doc/sync.md section 2.
+ * The tables that travel, parents first, named as `change_log` and the server name them. One list,
+ * so a table cannot be synced by push and forgotten by pull. What is missing is doc/sync.md § 2.
  */
 export const OWNED_TABLES = [
 	{ name: 'bow', table: schema.bow },
@@ -33,13 +26,7 @@ export function ownedTable(name: string) {
 	return BY_NAME.get(name) ?? null;
 }
 
-/**
- * Columns the server has no column for, stripped on the way up rather than rejected on arrival.
- *
- * `bow.photo` is a data URL from an older build. Nothing in the app can create one any more, so this
- * is not a feature waiting on storage: it is old data being left where it lies, on the device that
- * holds it.
- */
+/** Stripped on the way up. A bow photo is an artefact of an older build, left where it lies. */
 export const LOCAL_ONLY_COLUMNS: Partial<Record<OwnedTableName, string[]>> = {
 	bow: ['photo']
 };

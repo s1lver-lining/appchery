@@ -8,11 +8,7 @@
 	import { startWatching } from '$lib/sync/watch';
 	import { locale } from '$lib/i18n';
 
-	/**
-	 * The whole of sync as an archer meets it: an optional account, and a promise that signing out
-	 * takes nothing away. Everything here is loaded on demand, so a device that never signs in never
-	 * pays for the client library.
-	 */
+	// Sync as an archer meets it: an optional account, and signing out taking nothing away.
 
 	let mode = $state<'signIn' | 'signUp'>('signIn');
 	let email = $state('');
@@ -36,10 +32,7 @@
 		await refresh();
 	});
 
-	/**
-	 * Read from the local database, never from the server. This card is looked at precisely when
-	 * somebody suspects they have no signal, so it has to answer without one.
-	 */
+	/** Read locally: this card is looked at precisely when somebody suspects they have no signal. */
 	async function refresh() {
 		unclaimed = await unclaimedRowCount();
 		await refreshSyncStatus();
@@ -53,11 +46,7 @@
 				})
 	);
 
-	/**
-	 * Supabase reports a wrong password and an unknown address with the same message, and repeating
-	 * it verbatim would leak whichever it stops doing that for. Three outcomes, none of which says
-	 * whether the address exists.
-	 */
+	/** Three outcomes, none of which says whether the address exists. */
 	function explain(e: unknown): string {
 		if (!(e instanceof AuthError)) return $t('account.error.unknown');
 		if (e.message === 'noServer') return $t('account.noServer');

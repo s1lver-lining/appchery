@@ -2,15 +2,8 @@ import { db, schema } from '$lib/db';
 import { deviceId } from '$lib/db/repository';
 import { eq } from 'drizzle-orm';
 
-/**
- * Where the server is, if there is one at all.
- *
- * Baked in at build time, and overridable per install from the `sync_state` row so somebody running
- * their own Supabase points the app at it without rebuilding. That is the whole reason the endpoint
- * column has been sitting in the schema since phase 1.
- *
- * A build with nothing configured is not a broken build. It is the offline app, which is the app.
- */
+// Where the server is, if there is one at all. Baked in at build time, overridable per install so a
+// self hoster needs no rebuild. Nothing configured is not a broken build: it is the offline app.
 
 const BUILT_IN = {
 	url: import.meta.env.PUBLIC_SUPABASE_URL as string | undefined,
@@ -55,20 +48,13 @@ export async function writeSyncState(patch: Partial<SyncStateRow>): Promise<void
 	await db().update(schema.syncState).set(patch).where(eq(schema.syncState.id, SYNC_STATE_ID));
 }
 
-/**
- * The endpoint override is stored as `url|anonKey`, because a self-hosted server needs both and one
- * column is a smaller change than two. Anything malformed is treated as no override at all: a typo
- * in a self-hosting setting must not take the built-in server away from an archer who never touched it.
- */
+/** Stored as `url|anonKey`. Anything malformed is no override at all, so a typo cannot take the
+ * built-in server away from an archer who never touched the setting. */
 export function parseEndpoint(endpoint: string | null): SyncConfig | null {
 	if (!endpoint) return null;
 	const [url, anonKey] = endpoint.split('|');
 	if (!url || !anonKey) return null;
 	return { url: url.trim(), anonKey: anonKey.trim() };
-}
-
-export function formatEndpoint(config: SyncConfig): string {
-	return `${config.url}|${config.anonKey}`;
 }
 
 export async function syncConfig(): Promise<SyncConfig | null> {

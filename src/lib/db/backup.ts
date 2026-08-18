@@ -23,10 +23,14 @@ const TABLES = [
 	['plan', schema.plan],
 	['planSlot', schema.planSlot],
 	['sightMark', schema.sightMark],
-	['badge', schema.badge],
-	['syncState', schema.syncState],
-	['changeLog', schema.changeLog]
+	['badge', schema.badge]
 ] as const;
+
+/**
+ * Wiped by a restore and never written to a file. The log and the cursors describe a sync that
+ * happened on another device, and the social cache is other archers' rows on their way out anyway.
+ */
+const NOT_BACKED_UP = [schema.changeLog, schema.syncState, schema.socialActivity, schema.socialProfile];
 
 export interface Backup {
 	format: typeof BACKUP_FORMAT;
@@ -88,13 +92,9 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
 	for (const [, table] of [...TABLES].reverse()) {
 		await db().delete(table);
 	}
+	for (const table of NOT_BACKED_UP) await db().delete(table);
 
 	for (const [name, table] of TABLES) {
-		// The file's own log and cursors describe a sync that happened on another device at another
-		// time. Restoring them would tell this device that rows it has never sent are already up, so
-		// they are dropped here and rebuilt below as a history waiting to be pushed.
-		if (name === 'changeLog' || name === 'syncState') continue;
-
 		const list = backup.tables[name];
 		if (!Array.isArray(list) || list.length === 0) continue;
 		restored += 1;
@@ -115,12 +115,8 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
 }
 
 /**
- * Every restored row, marked as waiting to be pushed. A restore is the one moment a device's whole
- * history appears at once without a single mutation behind it, and a sync that trusted the empty log
- * would decide there was nothing to send and quietly leave the account holding the older copy.
- *
- * Rows already carrying a tombstone are enqueued too: a delete that reached the file has to reach the
- * server as well, or the next pull brings the deleted session back.
+ * Every restored row, marked as waiting to be pushed: a restore is a whole history appearing with no
+ * mutation behind it. Tombstones included, or the next pull brings a deleted session back.
  */
 async function enqueueRestored(): Promise<void> {
 	const changedAt = Date.now();

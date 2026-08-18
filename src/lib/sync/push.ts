@@ -1,22 +1,12 @@
-import { getTableColumns } from 'drizzle-orm';
-import { and, asc, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, inArray, isNull, lte, sql } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { db, schema } from '$lib/db';
 import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from './tables';
 import { writeSyncState } from './config';
 import { adoptLocalRows } from './auth';
 
-/**
- * Sending local changes up, see doc/sync.md section 4.
- *
- * The change log holds no payload, only which row changed, so push reads the row as it stands now.
- * Ten edits of one end during a round collapse into one upload, and a row edited while an earlier
- * push was in flight is simply sent in its current state rather than in the state it had when the
- * log entry was written.
- *
- * Chunked and resumable: a chunk that fails leaves every entry after it pending, so a bulk import of
- * thousands of rows survives a connection that drops halfway.
- */
+// Sending local changes up, see doc/sync.md § 4. The log holds no payload, so a row is read as it
+// stands now: ten edits of one end collapse into one upload.
 
 const CHUNK = 200;
 
@@ -32,9 +22,8 @@ interface PendingEntry {
 	op: string;
 }
 
+/** Counted in SQLite: a bulk import leaves tens of thousands pending, and the settings screen asks often. */
 export async function pendingCount(): Promise<number> {
-	// Counted in SQLite rather than by reading the rows: a bulk import leaves tens of thousands of
-	// entries pending, and this is read every time the settings screen opens.
 	const [row] = await db()
 		.select({ n: sql<number>`count(*)` })
 		.from(schema.changeLog)
@@ -45,11 +34,7 @@ export async function pendingCount(): Promise<number> {
 export async function push(client: SupabaseClient, userId: string): Promise<PushResult> {
 	let uploaded = 0;
 
-	/**
-	 * Rows written while signed in still arrive with no owner: `src/lib/db/repository.ts` knows
-	 * nothing about accounts, and that is worth keeping. The local database is the source of truth
-	 * and has one archer; ownership is a fact about syncing, so sync is where it gets stamped.
-	 */
+	// The repository knows nothing about accounts, so rows arrive ownerless and are claimed here.
 	await adoptLocalRows(userId);
 
 	for (;;) {
@@ -117,9 +102,8 @@ async function pushBatch(client: SupabaseClient, userId: string, batch: PendingE
 export class PushError extends Error {}
 
 /**
- * Rows as the server wants them: snake_case column names, local-only columns dropped, and only the
- * rows this account actually owns. A row belonging to nobody has not been adopted yet, and a row
- * belonging to somebody else was shot by a different archer on this device: neither is ours to send.
+ * Rows as the server wants them, and only the ones this account owns: a row belonging to another
+ * archer on a shared device is not ours to send.
  */
 async function readRows(name: string, ids: string[], userId: string): Promise<Record<string, unknown>[]> {
 	const entry = ownedTable(name);

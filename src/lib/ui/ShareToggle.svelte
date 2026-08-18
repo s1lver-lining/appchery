@@ -4,21 +4,13 @@
 	import { account } from '$lib/sync/auth';
 	import { setActivityShared } from '$lib/db/repository';
 
-	/**
-	 * Shared or not shared, on one activity. Who can then see it is decided by the profile and the
-	 * block list, so there is nothing to choose here beyond the flag itself.
-	 *
-	 * Absent entirely for an archer with no account: sharing is the one part of the app that cannot
-	 * work alone, and an inert button would only ask a question the app cannot answer.
-	 */
+	// Who can see it follows from the profile, so there is nothing to choose here but the flag.
+	// Absent without an account: sharing is the one thing the app cannot do alone.
 
 	let { activityId, sharedAt, isMatch = false, onchange }: {
 		activityId: string;
 		sharedAt: number | null;
-		/**
-		 * A match carries somebody else's name and somebody else's arrows, and they never agreed to
-		 * either being published. Until sharing can ask them, a match is not offered for sharing.
-		 */
+		/** A match carries an opponent who never agreed to being published, so it is never offered. */
 		isMatch?: boolean;
 		onchange?: (sharedAt: number | null) => void;
 	} = $props();

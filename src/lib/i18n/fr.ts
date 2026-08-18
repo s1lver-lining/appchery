@@ -905,6 +905,7 @@ export const fr: Dictionary = {
 		requests: 'Demandes reçues',
 		followsYou: 'Vous suit',
 		block: 'Bloquer',
+		unblock: 'Débloquer',
 		blockTitle: 'Bloquer cet archer ?',
 		blockBody: 'Il cesse de vous suivre, ne peut plus vous suivre, et votre profil lui apparaît comme privé. Il n’en est jamais informé.',
 		publicProfile: 'Profil public',
