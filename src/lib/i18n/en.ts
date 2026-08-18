@@ -1666,7 +1666,7 @@ insetHint:
 		openLong: 'Open Appchery',
 		hero: {
 			title: 'Everything you did on the shooting line, in one place.',
-			body: 'Score a round, tune a bow, count the arrows nobody counts, train for the shot. Appchery keeps the whole outing on your own device, works with no signal at all, and asks for nothing in return.',
+			body: 'Score a round, tune a bow, count the arrows nobody counts, train for the shot. Appchery keeps the whole outing on your own device and works with no signal at all.',
 			session: 'An outing as the app records it',
 			free: 'Free, open source, no account needed',
 			offline: 'Works offline'
