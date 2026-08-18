@@ -591,6 +591,12 @@ export const fr: Dictionary = {
 		clicker: 'Clicker',
 		plunger: 'Berger'
 	},
+	feed: {
+		subtitle: 'Ce que les archers que vous suivez ont choisi de partager.',
+		hintTitle: 'Nouveaux tirs partagés',
+		hintBody: 'Glissez vers la gauche, ou touchez ici, pour lire le fil.',
+		hintNever: 'Ne plus le proposer'
+	},
 	home: {
 		title: 'Appchery',
 		greeting: 'Prêt à tirer',
@@ -1067,6 +1073,9 @@ export const fr: Dictionary = {
 			'Méthode de lecture des flèches. Classique par règles de forme et de couleur, apprise par un petit modèle entraîné. Les deux fonctionnent sur cet appareil.',
 		detectorClassical: 'Classique',
 		detectorLearned: 'Apprise',
+		feedHintTitle: 'Proposer le fil sur la page d’accueil',
+		feedHintHint:
+			'Quand un archer que vous suivez partage un tir que vous n’avez pas lu, l’accueil le signale. Le fil reste à un glissement vers la gauche de l’accueil dans tous les cas.',
 		newButtonTitle: 'Bouton de séance complet',
 		newButtonHint:
 			'Termine la liste des séances par le bouton large et son menu. Désactivé, un bouton rond se place dans le coin et ouvre les mêmes choix.',

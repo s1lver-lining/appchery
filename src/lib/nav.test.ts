@@ -5,6 +5,7 @@ describe('parentPath', () => {
 	it('has no parent for the pages in the tab bar', () => {
 		expect(parentPath('/')).toBeNull();
 		expect(parentPath('/sessions')).toBeNull();
+		expect(parentPath('/feed')).toBeNull();
 		expect(parentPath('/settings/')).toBeNull();
 	});
 
@@ -75,9 +76,10 @@ describe('runBackGuards', () => {
 
 describe('mainPageIndex', () => {
 	it('places a page in the tab bar order', () => {
-		expect(mainPageIndex('/')).toBe(0);
-		expect(mainPageIndex('/stats')).toBe(3);
-		expect(mainPageIndex('/settings/')).toBe(4);
+		expect(mainPageIndex('/feed')).toBe(0);
+		expect(mainPageIndex('/')).toBe(1);
+		expect(mainPageIndex('/stats')).toBe(4);
+		expect(mainPageIndex('/settings/')).toBe(5);
 	});
 
 	it('rejects a page that is not in the tab bar', () => {

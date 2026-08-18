@@ -1,7 +1,11 @@
 import { get, writable } from 'svelte/store';
 
-/** The pages reachable from the tab bar. They are the roots of the navigation tree. */
-export const MAIN_PAGES = ['/', '/sessions', '/equipment', '/stats', '/settings'] as const;
+/**
+ * The pages the swipe pager holds, in the order they sit on its track. They are the roots of the
+ * navigation tree. The feed opens the track without a tab of its own: it is reached by swiping left
+ * off home, which is what the home page's own offer of it teaches.
+ */
+export const MAIN_PAGES = ['/feed', '/', '/sessions', '/equipment', '/stats', '/settings'] as const;
 
 const strip = (path: string) => (path.length > 1 ? path.replace(/\/+$/, '') : path);
 

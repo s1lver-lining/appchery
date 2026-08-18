@@ -589,6 +589,12 @@ export const en = {
 		clicker: 'Clicker',
 		plunger: 'Plunger'
 	},
+	feed: {
+		subtitle: 'What the archers you follow chose to share.',
+		hintTitle: 'New shared activities',
+		hintBody: 'Swipe left, or tap here, to read the feed.',
+		hintNever: 'Stop offering this'
+	},
 	home: {
 		title: 'Appchery',
 		greeting: 'Ready to shoot',
@@ -1064,6 +1070,9 @@ export const en = {
 			'Which method reads the arrows. Classical uses shape and colour rules; learned uses a small trained model. Both run on this device.',
 		detectorClassical: 'Classical',
 		detectorLearned: 'Learned',
+		feedHintTitle: 'Offer the feed on the home page',
+		feedHintHint:
+			'When archers you follow share something you have not read, home says so. The feed itself stays one swipe left of home either way.',
 		newButtonTitle: 'Full new session button',
 		newButtonHint:
 			'Ends the sessions list with the wide button and its menu. Off, a round plus button sits in the corner and opens the same choices.',

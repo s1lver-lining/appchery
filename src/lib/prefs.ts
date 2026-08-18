@@ -159,6 +159,26 @@ export const celebratedBests = storedList('appchery.celebratedBests');
 export const celebratedLevel = storedNumber('appchery.celebratedLevel', 0);
 
 /**
+ * The newest thing in the shared feed this archer has actually read, by the moment it was shared.
+ * Anything shared after it is unread, which is the whole of what the home page has to know to
+ * offer the feed: the feed itself is other people's data, and nothing about it is worth storing.
+ */
+export const feedSeenAt = storedNumber('appchery.feedSeenAt', 0);
+
+/**
+ * The newest shared activity the home page has already offered and been waved off. Set rather than
+ * cleared, so the offer comes back on its own once somebody shares something newer than the refusal.
+ */
+export const feedHintHiddenAt = storedNumber('appchery.feedHintHiddenAt', 0);
+
+/**
+ * Whether the home page may offer the shared feed at all. On by default: a feed one swipe to the
+ * left with no tab of its own is a page an archer would otherwise never learn was there. Turning it
+ * off is the "never again" answer to the offer, and the feed stays where it is either way.
+ */
+export const homeFeedHint = flag('appchery.homeFeedHint', true);
+
+/**
  * Whether the badges page lists badges with their rules rather than showing the grid of icons. The
  * grid is the default: a wall of badges is the point of them, and the detail is one tap away.
  */

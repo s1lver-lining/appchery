@@ -3,6 +3,7 @@
 	import { page } from '$app/stores';
 	import { askToLeave, MAIN_PAGES, mainPageIndex } from '$lib/nav';
 	import { swipe, COMMIT_RATIO, SNAP_MS, SNAP_EASE } from './swipe';
+	import Feed from '$lib/pages/Feed.svelte';
 	import Home from '$lib/pages/Home.svelte';
 	import Sessions from '$lib/pages/Sessions.svelte';
 	import Equipment from '$lib/pages/Equipment.svelte';
@@ -11,13 +12,16 @@
 
 	/**
 	 * The main pages ride on one track so a swipe drags the next page into view rather than
-	 * replacing this one. Only the current page and its neighbours are mounted: five live pages
-	 * means five sets of queries on boot, and nobody sees the far ones anyway.
+	 * replacing this one. Only the current page and its neighbours are mounted: six live pages
+	 * means six sets of queries on boot, and nobody sees the far ones anyway.
 	 */
-	const VIEWS = [Home, Sessions, Equipment, Stats, Settings];
+	const VIEWS = [Feed, Home, Sessions, Equipment, Stats, Settings];
 
 	let width = $state(1);
-	let index = $state(Math.max(0, mainPageIndex($page.url.pathname)));
+	/** Home, not the first slot: the feed opens the track, and nothing should ever land there blind. */
+	const HOME = MAIN_PAGES.indexOf('/');
+	const opened = mainPageIndex($page.url.pathname);
+	let index = $state(opened < 0 ? HOME : opened);
 	let offset = $state(0);
 	let duration = $state(0);
 	let settling = $state(false);

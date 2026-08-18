@@ -17,6 +17,7 @@
 		haptics,
 		arrowDriftWarning,
 		fullNewSessionButton,
+		homeFeedHint,
 		competitionColour,
 		COMPETITION_COLOURS,
 		noAnimations,
@@ -350,6 +351,18 @@
 								checked={$fullNewSessionButton}
 								label={$t('settings.newButtonTitle')}
 								onchange={(v) => fullNewSessionButton.set(v)}
+							/>
+						</div>
+
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.feedHintTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.feedHintHint')}</p>
+							</div>
+							<Toggle
+								checked={$homeFeedHint}
+								label={$t('settings.feedHintTitle')}
+								onchange={(v) => homeFeedHint.set(v)}
 							/>
 						</div>
 

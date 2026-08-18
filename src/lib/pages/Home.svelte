@@ -40,6 +40,9 @@
 		dismissedBest,
 		homeStatPrimary,
 		homeStatSecondary,
+		feedSeenAt,
+		feedHintHiddenAt,
+		homeFeedHint,
 		formatTime,
 		dateFormats
 	} from '$lib/prefs';
@@ -47,8 +50,7 @@
 	import { defaultNameKey, hasHappened } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
 	import AppGrid from '$lib/ui/AppGrid.svelte';
-	import FriendFeed from '$lib/ui/FriendFeed.svelte';
-	import { sharedFeed, following, followers, type Profile, type SharedActivity } from '$lib/sync/social';
+	import { sharedFeed, type SharedActivity } from '$lib/sync/social';
 	import { withOrigin } from '$lib/nav';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
@@ -70,10 +72,10 @@
 	let planningAt = $state<number | null>(null);
 	let planningKind = $state<'planned' | 'competition'>('planned');
 	let feed = $state<SharedActivity[]>([]);
-	let friends = $state<Profile[]>([]);
 
-	/** Whoever the device knows of, so a shared activity can name the archer who shared it. */
-	const knownFriends = $derived(new Map(friends.map((profile) => [profile.userId, profile])));
+	/** Shared since the feed was last read: the whole of what the offer below the header counts. */
+	const unread = $derived(feed.filter((shared) => shared.sharedAt > $feedSeenAt).length);
+	const newestShared = $derived(feed.reduce((top, shared) => Math.max(top, shared.sharedAt), 0));
 
 	function schedule(kind: 'planned' | 'competition') {
 		planningKind = kind;
@@ -133,7 +135,6 @@
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 		/* Read from the cache only: the home page never waits on the network to paint. */
 		feed = await sharedFeed();
-		friends = [...(await following()), ...(await followers())];
 	}
 	$effect(() => {
 		void $dataVersion;
@@ -461,6 +462,45 @@
 		</div>
 	{/if}
 
+	{#if unread > 0 && $homeFeedHint && newestShared > $feedHintHiddenAt}
+		<!-- The feed has no tab of its own, so this is the one thing that says it is there. It points
+			the way it lies: left of home, one swipe, which is what the archer has to learn once. -->
+		<div
+			class="flex items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-l from-brand/12 to-surface p-3 shadow-sm"
+		>
+			<a href="/feed" class="flex min-w-0 flex-1 items-center gap-3">
+				<span
+					class="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
+				>
+					<Icon name="friends" size={22} />
+					<!-- The count on the icon rather than in the sentence: it is a badge, and reads as one. -->
+					<span
+						class="tabular absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold text-brand-ink"
+					>
+						{unread}
+					</span>
+				</span>
+				<div class="min-w-0 flex-1">
+					<p class="truncate font-semibold">{$t('feed.hintTitle')}</p>
+					<p class="truncate text-xs text-muted">{$t('feed.hintBody')}</p>
+				</div>
+				<!-- Pointing left, at the page it opens: the arrow is the direction, not a decoration. -->
+				<span class="shrink-0 text-brand-text"><Icon name="back" size={20} /></span>
+			</a>
+			<button
+				class="-mr-1 shrink-0 self-start rounded-lg p-1 text-muted"
+				aria-label={$t('common.close')}
+				onclick={() => feedHintHiddenAt.set(newestShared)}
+			>
+				<Icon name="close" size={16} />
+			</button>
+		</div>
+		<!-- Right under the offer it refuses, because that is the only place it means anything. -->
+		<button class="-mt-3 w-full px-1 text-right text-xs text-muted" onclick={() => homeFeedHint.set(false)}>
+			{$t('feed.hintNever')}
+		</button>
+	{/if}
+
 	<!-- What is coming and what the week has come to, side by side: the two things worth a tap before
 		anything else, and neither of them fills a line on its own. -->
 	<!-- The level shares the line rather than taking one of its own: it is a standing, not an event. -->
@@ -608,21 +648,12 @@
 		{/if}
 	</section>
 
-	<!-- Where a page that has been read out ends: everywhere else to go. -->
+	<!-- Last on the page, where a page that has been read out ends: everywhere else to go. -->
 	<section>
 		{@render heading($t('home.elsewhere'))}
 		<AppGrid from="/" />
 	</section>
 
-	{#if feed.length > 0}
-		<!-- Last, because it is other people's shooting: it is worth seeing, never worth leading with. -->
-		<section>
-			{@render heading($t('friends.feedTab'), { href: '/friends', label: $t('home.seeAll') })}
-			<div class="space-y-2">
-				<FriendFeed {feed} known={knownFriends} empty={false} />
-			</div>
-		</section>
-	{/if}
 </div>
 
 <!-- The one action this page exists for, kept where the thumb lands, with the rest behind the arrow. -->

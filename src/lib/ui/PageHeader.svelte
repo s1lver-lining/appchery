@@ -16,6 +16,7 @@
 		| 'badges'
 		| 'tricks'
 		| 'experience'
+		| 'feed'
 		| 'settings';
 
 	let {
@@ -153,6 +154,31 @@
 					/>
 				{/each}
 			</g>
+		</svg>
+	{:else if motif === 'feed'}
+		<!-- Targets at a distance from each other, each with an arrow in it: other people's shooting. -->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 140 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			{#each [
+				{ x: 40, y: 62, r: 20 },
+				{ x: 86, y: 34, r: 26 },
+				{ x: 124, y: 74, r: 16 }
+			] as face, i (face.x)}
+				<circle
+					cx={face.x}
+					cy={face.y}
+					r={face.r}
+					stroke="currentColor"
+					stroke-width="3"
+					opacity={0.14 + i * 0.06}
+				/>
+				<circle cx={face.x} cy={face.y} r="3" fill="currentColor" opacity={0.2 + i * 0.08} />
+			{/each}
 		</svg>
 	{:else if motif === 'tricks'}
 		<!-- Arrows fanned out of a quiver: a page of what was in there all along. -->
