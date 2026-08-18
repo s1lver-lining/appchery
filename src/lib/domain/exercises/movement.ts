@@ -1,0 +1,181 @@
+/**
+ * A body movement, as the few numbers a drawing of it needs.
+ *
+ * The muscle map says which muscles an exercise works and the shot figure says when a muscle works
+ * during the shot. Neither says what the archer actually does, and a paragraph of instructions is a
+ * poor answer: an exercise is a shape the body passes through, so it is drawn as one.
+ *
+ * The model is deliberately a skeleton rather than a body. A movement is written as a base posture
+ * plus the handful of joints that leave it, which is what makes adding one a few lines rather than a
+ * drawing: everything else, the limbs, the proportions and the animation between frames, follows.
+ */
+
+/**
+ * The joints a stick figure needs and no more. Left and right are the archer's own, so on a figure
+ * seen from the front the left hand is drawn on the reader's left, as if looking in a mirror at the
+ * archer's back. On a side view they are the near and the far limb of the same body.
+ */
+export const JOINTS = [
+	'head',
+	'neck',
+	'chest',
+	'hip',
+	'shoulderLeft',
+	'elbowLeft',
+	'handLeft',
+	'shoulderRight',
+	'elbowRight',
+	'handRight',
+	'kneeLeft',
+	'footLeft',
+	'kneeRight',
+	'footRight'
+] as const;
+
+export type Joint = (typeof JOINTS)[number];
+export type Point = [number, number];
+export type Pose = Record<Joint, Point>;
+
+/** The drawing's own box. The ground is a line across it, so a pose is read against something. */
+export const FIGURE = { width: 200, height: 260, ground: 248 };
+
+/**
+ * What the figure is built out of: a bone is two joints and how thick the line between them is. The
+ * trunk is drawn heavier than the limbs so the body reads as a body and not as a spider.
+ */
+export const BONES: { from: Joint; to: Joint; width: number }[] = [
+	{ from: 'neck', to: 'chest', width: 9 },
+	{ from: 'chest', to: 'hip', width: 11 },
+	{ from: 'chest', to: 'shoulderLeft', width: 7 },
+	{ from: 'chest', to: 'shoulderRight', width: 7 },
+	{ from: 'shoulderLeft', to: 'elbowLeft', width: 6 },
+	{ from: 'elbowLeft', to: 'handLeft', width: 5 },
+	{ from: 'shoulderRight', to: 'elbowRight', width: 6 },
+	{ from: 'elbowRight', to: 'handRight', width: 5 },
+	{ from: 'hip', to: 'kneeLeft', width: 8 },
+	{ from: 'kneeLeft', to: 'footLeft', width: 6 },
+	{ from: 'hip', to: 'kneeRight', width: 8 },
+	{ from: 'kneeRight', to: 'footRight', width: 6 }
+];
+
+export const HEAD_RADIUS = 15;
+
+/** Which way the archer is turned. It changes nothing in the model: it names what a pose means. */
+export type MovementView = 'front' | 'back' | 'side' | 'prone';
+
+/** The postures a movement starts from, so a frame only has to say how it differs from one. */
+export const BASE: Record<'standing' | 'side' | 'prone', Pose> = {
+	standing: {
+		head: [100, 32],
+		neck: [100, 54],
+		chest: [100, 90],
+		hip: [100, 142],
+		shoulderLeft: [76, 64],
+		elbowLeft: [68, 104],
+		handLeft: [64, 142],
+		shoulderRight: [124, 64],
+		elbowRight: [132, 104],
+		handRight: [136, 142],
+		kneeLeft: [88, 194],
+		footLeft: [86, 246],
+		kneeRight: [112, 194],
+		footRight: [114, 246]
+	},
+	// Facing right, which is where a target would be: the bow arm is the far one, away from the reader.
+	side: {
+		head: [96, 32],
+		neck: [101, 54],
+		chest: [104, 90],
+		hip: [100, 142],
+		shoulderLeft: [106, 64],
+		elbowLeft: [108, 104],
+		handLeft: [110, 142],
+		shoulderRight: [98, 64],
+		elbowRight: [96, 104],
+		handRight: [94, 142],
+		kneeLeft: [102, 194],
+		footLeft: [108, 246],
+		kneeRight: [98, 194],
+		footRight: [92, 246]
+	},
+	// Face down on the floor, head to the left, seen from above and slightly behind.
+	prone: {
+		head: [28, 202],
+		neck: [48, 208],
+		chest: [74, 212],
+		hip: [118, 220],
+		shoulderLeft: [70, 200],
+		elbowLeft: [50, 190],
+		handLeft: [30, 184],
+		shoulderRight: [74, 226],
+		elbowRight: [54, 236],
+		handRight: [34, 242],
+		kneeLeft: [156, 214],
+		footLeft: [188, 210],
+		kneeRight: [158, 228],
+		footRight: [190, 232]
+	}
+};
+
+/** A posture with some joints moved. Everything unnamed stays where the base put it. */
+export function pose(base: keyof typeof BASE, moved: Partial<Pose> = {}): Pose {
+	return { ...BASE[base], ...moved };
+}
+
+/**
+ * What the frame is a picture of. A closed list rather than free text, because every movement in the
+ * app has to name its moments in the same words and every word has to be translated.
+ */
+export const FRAME_KEYS = [
+	'start',
+	'open',
+	'hold',
+	'top',
+	'bottom',
+	'up',
+	'down',
+	'draw',
+	'letdown',
+	'stride',
+	'end'
+] as const;
+
+export type FrameKey = (typeof FRAME_KEYS)[number];
+
+/** What the hands are holding, drawn between them or at them. */
+export type Prop = 'band' | 'bow' | 'dumbbells' | 'anchoredBand' | 'none';
+
+export interface Frame {
+	key: FrameKey;
+	pose: Pose;
+	/** Seconds the figure rests on this frame, for the moment of a movement that is the exercise. */
+	dwell?: number;
+}
+
+export interface Movement {
+	view: MovementView;
+	prop: Prop;
+	/**
+	 * The poses passed through, in order. The animation runs them out and back rather than looping
+	 * round, because a movement returns the way it came: nobody rewinds through a rep.
+	 */
+	frames: Frame[];
+	/**
+	 * Where an anchored band is tied, in the figure's box. Null for anything the archer holds at
+	 * both ends.
+	 */
+	anchor?: Point;
+}
+
+/** Halfway between two poses, which is all an animation between frames needs. */
+export function blend(from: Pose, to: Pose, ratio: number): Pose {
+	const at = Math.min(1, Math.max(0, ratio));
+	const out = {} as Pose;
+	for (const joint of JOINTS) {
+		out[joint] = [
+			from[joint][0] + (to[joint][0] - from[joint][0]) * at,
+			from[joint][1] + (to[joint][1] - from[joint][1]) * at
+		];
+	}
+	return out;
+}
