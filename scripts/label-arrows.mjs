@@ -63,11 +63,22 @@ async function prepare() {
 		const track = new FaceTrack();
 		const geometry = [];
 
+		/**
+		 * Decoded straight to detection scale. Nothing here needs the full picture: the fit runs on a
+		 * quarter sized frame anyway, and reducing it in a loop over every pixel cost far more than the
+		 * fit it was feeding, as well as pushing sixteen times the bytes through the pipe.
+		 */
+		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
+
 		process.stderr.write(`${name}\n`);
+		const began = Date.now();
 		let index = 0;
-		for await (const frame of decode(file, width, height)) {
-			const full = { width, height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) };
-			const face = track.push(reduce(full, SCALE));
+		for await (const frame of decode(file, small.width, small.height, small)) {
+			const face = track.push({
+				width: small.width,
+				height: small.height,
+				data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
+			});
 			const placed = face
 				? {
 						cx: face.cx * SCALE,
@@ -81,7 +92,9 @@ async function prepare() {
 			if (placed) placed.visible = visibility(placed, width, height);
 			geometry.push(placed);
 			index += 1;
-			if (index % 100 === 0) process.stderr.write(`\r  ${index} frames`);
+			if (index % 100 === 0) {
+				process.stderr.write(`\r  ${index} frames (${(index / ((Date.now() - began) / 1000)).toFixed(0)}/s)`);
+			}
 		}
 		process.stderr.write(`\r  ${index} frames, face on ${geometry.filter(Boolean).length}\n`);
 
@@ -330,9 +343,10 @@ async function load() {
 	return module;
 }
 
-async function* decode(file, width, height) {
+async function* decode(file, width, height, scaleTo = null) {
 	const child = spawn('ffmpeg', [
 		'-v', 'error', '-i', resolve(file),
+		...(scaleTo ? ['-vf', `scale=${scaleTo.width}:${scaleTo.height}:flags=area`] : []),
 		'-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'
 	], { stdio: ['ignore', 'pipe', 'inherit'] });
 
@@ -349,34 +363,6 @@ async function* decode(file, width, height) {
 	} finally {
 		child.kill('SIGKILL');
 	}
-}
-
-function reduce(frame, factor) {
-	const width = Math.floor(frame.width / factor);
-	const height = Math.floor(frame.height / factor);
-	const data = new Uint8ClampedArray(width * height * 4);
-	for (let y = 0; y < height; y++) {
-		for (let x = 0; x < width; x++) {
-			let r = 0;
-			let g = 0;
-			let b = 0;
-			for (let j = 0; j < factor; j++) {
-				for (let i = 0; i < factor; i++) {
-					const p = ((y * factor + j) * frame.width + (x * factor + i)) * 4;
-					r += frame.data[p];
-					g += frame.data[p + 1];
-					b += frame.data[p + 2];
-				}
-			}
-			const count = factor * factor;
-			const at = (y * width + x) * 4;
-			data[at] = r / count;
-			data[at + 1] = g / count;
-			data[at + 2] = b / count;
-			data[at + 3] = 255;
-		}
-	}
-	return { width, height, data };
 }
 
 async function probe(file) {
