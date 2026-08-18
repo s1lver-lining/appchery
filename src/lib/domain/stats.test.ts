@@ -16,6 +16,7 @@ import {
 	roundKey,
 	volumeSeries,
 	pickGrain,
+	shootsArrows,
 	toVolume,
 	volumeRoundKey,
 	VOLUME_KINDS,
@@ -651,3 +652,46 @@ describe('volumeRoundKey', () => {
 		expect(volumeRoundKey(activity({ id: 'a' }))).toBe(roundKey(activity({ id: 'a' })));
 	});
 });
+
+/**
+ * Strength work and running are activities of a session like anything else, and neither sends an
+ * arrow anywhere. Every figure that counts arrows reads them through here, so this is where they
+ * have to be kept out: a routine that recorded reps as arrows would corrupt the whole history.
+ */
+describe('activities that shoot nothing', () => {
+	const strength = (extra: Partial<ActivityLike> = {}): ActivityLike => ({
+		...activity({ id: 'strength', arrowsShot: 0, totalScore: 0, roundDefinitionId: null, round: null }),
+		kind: 'strength',
+		...extra
+	});
+
+	it('names the kinds that put arrows downrange', () => {
+		expect(shootsArrows('scoring')).toBe(true);
+		expect(shootsArrows('training')).toBe(true);
+		expect(shootsArrows('strength')).toBe(false);
+		expect(shootsArrows('running')).toBe(false);
+	});
+
+	it('treats a kind nobody thought about as shooting nothing', () => {
+		expect(shootsArrows('whatever-comes-next')).toBe(false);
+	});
+
+	it('keeps them out of the volume even if something wrote arrows onto them', () => {
+		const volume = toVolume([...kindsShooting(), strength({ arrowsShot: 30 })]);
+		expect(volume.map((entry) => entry.id)).not.toContain('strength');
+		expect(overview(volume).arrows).toBe(142);
+	});
+
+	it('keeps a figure they carry out of the scores', () => {
+		// A run stores its distance somewhere, and whatever column it lands in is not a score.
+		const volume = toVolume([strength({ kind: 'running', totalScore: 5000, arrowsShot: 0 })]);
+		expect(volume).toEqual([]);
+	});
+});
+
+const kindsShooting = (): ActivityLike[] => [
+	{ ...activity({ id: 'round', arrowsShot: 72, totalScore: 600 }), kind: 'scoring' },
+	{ ...activity({ id: 'match', arrowsShot: 12, totalScore: 0 }), kind: 'match' },
+	{ ...activity({ id: 'tuning', arrowsShot: 18, totalScore: 0 }), kind: 'tuning' },
+	{ ...activity({ id: 'free', arrowsShot: 40, totalScore: 0 }), kind: 'training' }
+];

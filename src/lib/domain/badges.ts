@@ -2,6 +2,7 @@ import {
 	isComplete,
 	isPersonalBest,
 	roundKey,
+	shootsArrows,
 	windBand,
 	STRONG_WIND_KMH,
 	type ScoredActivity
@@ -47,7 +48,7 @@ export interface BadgeEnd {
 }
 
 export interface BadgeActivity extends ScoredActivity {
-	/** scoring | tuning */
+	/** scoring | tuning | match | freeScore | training | strength | running */
 	kind: string;
 	/** practice | competition | qualification | planned */
 	sessionKind: string;
@@ -140,7 +141,9 @@ function prepare(input: BadgeInput): History {
 	const scoring = byDate.filter((a) => a.kind === 'scoring');
 	return {
 		...input,
-		shooting: byDate.filter((a) => a.arrowsShot > 0),
+		// Every badge counts from here, so the one place a badge can learn about arrows is the one
+		// place that has to know an hour of bandwork shot none of them.
+		shooting: byDate.filter((a) => shootsArrows(a.kind) && a.arrowsShot > 0),
 		scoring,
 		finished: scoring.filter(isComplete),
 		won: byDate.filter((a) => a.match?.won === true)

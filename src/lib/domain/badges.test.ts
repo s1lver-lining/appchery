@@ -84,6 +84,13 @@ describe('volume', () => {
 		const half = activity({ id: 'h', arrowsShot: 36, totalScore: 300 });
 		expect(badge([half], 'thousandArrows').progress?.current).toBe(36);
 	});
+
+	// Bandwork and running belong to a session like a round does, and neither loosed anything.
+	it('counts nothing from an activity that shoots no arrows', () => {
+		const gym = activity({ id: 'g', kind: 'strength', arrowsShot: 40, totalScore: 0 });
+		expect(badge([gym], 'thousandArrows').progress?.current).toBe(0);
+		expect(badge([gym], 'thousandArrows').earnedAt).toBe(null);
+	});
 });
 
 describe('habit', () => {

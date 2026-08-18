@@ -1,4 +1,4 @@
-import { isComplete, type ScoredActivity } from './stats';
+import { isComplete, shootsArrows, type ScoredActivity } from './stats';
 import { maxScore } from './rounds/geometry';
 import { getScoreSet, WA_10_RING } from './rounds/seed';
 import type { RoundDefinition, RoundStage } from './rounds/types';
@@ -18,7 +18,7 @@ import type { BotLevel } from './bots';
  */
 
 export interface XpActivity extends ScoredActivity {
-	/** scoring | match | tuning | freeScore | training */
+	/** scoring | match | tuning | freeScore | training | strength | running */
 	kind: string;
 	/**
 	 * How a match the archer shot themselves ended. Null everywhere else, and on a card kept for
@@ -196,7 +196,8 @@ export function experience(input: XpInput): Experience {
 	};
 
 	for (const activity of input.activities) {
-		const arrows = finite(activity.arrowsShot);
+		// Only what was shot pays by the arrow: a set of reps carries no arrows and must earn none.
+		const arrows = shootsArrows(activity.kind) ? finite(activity.arrowsShot) : 0;
 		if (arrows > 0) {
 			sources.arrows.xp += arrows * XP_PER_ARROW;
 			sources.arrows.count += arrows;

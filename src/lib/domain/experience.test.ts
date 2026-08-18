@@ -224,3 +224,22 @@ describe('experience', () => {
 		expect(result.nextLevelAt).toBe(xpForLevel(result.level + 1));
 	});
 });
+
+describe('activities that shoot nothing', () => {
+	it('pays nothing for a set of reps', () => {
+		const earned = experience({
+			activities: [activity({ id: 'strength', kind: 'strength', arrowsShot: 0 })],
+			badges: []
+		});
+		expect(earned.total).toBe(0);
+	});
+
+	it('pays nothing even for arrows written onto one by mistake', () => {
+		const earned = experience({
+			activities: [activity({ id: 'run', kind: 'running', arrowsShot: 40 })],
+			badges: []
+		});
+		expect(earned.sources.arrows.count).toBe(0);
+		expect(earned.total).toBe(0);
+	});
+});

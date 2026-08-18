@@ -21,6 +21,20 @@ export interface ActivityLike extends ScoredActivity {
 }
 
 /**
+ * The kinds of activity that put arrows downrange. Strength work and running are activities of a
+ * session too, and neither shoots anything: an hour of bandwork must never turn up as arrows, as a
+ * score, or as a round average, because a volume that counted it would be a lie about the shooting.
+ *
+ * An unknown kind counts as shooting nothing, so a kind added without being thought about here
+ * stays out of the figures rather than quietly joining them.
+ */
+export const SHOOTING_KINDS = ['scoring', 'match', 'tuning', 'freeScore', 'training'] as const;
+
+export function shootsArrows(kind: string): boolean {
+	return (SHOOTING_KINDS as readonly string[]).includes(kind);
+}
+
+/**
  * Every arrow the app knows about, whatever produced it: a scored round, a match, a tuning procedure
  * or the free arrows counter. Volume is a count of arrows, so leaving any of them out makes one
  * figure disagree with another over the same afternoon.
@@ -30,7 +44,7 @@ export interface ActivityLike extends ScoredActivity {
  */
 export function toVolume(activities: ActivityLike[]): ActivityLike[] {
 	return activities
-		.filter((activity) => activity.arrowsShot > 0)
+		.filter((activity) => activity.arrowsShot > 0 && shootsArrows(activity.kind))
 		.map((activity) =>
 			activity.kind === 'scoring'
 				? activity

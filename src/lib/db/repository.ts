@@ -5,6 +5,7 @@ import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geomet
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
 import type { XpActivity, XpInput } from '$lib/domain/experience';
 import { weekArrowGoalOn, onlyActive } from '$lib/domain/plans';
+import { shootsArrows } from '$lib/domain/stats';
 import {
 	parseConfig,
 	tally,
@@ -1079,7 +1080,9 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 	 * left empty says nothing about the bow, so it is not one of its outings.
 	 */
 	const used = new Set(
-		done.filter((a) => a.arrowsShot > 0 || a.kind !== 'training').map((a) => a.sessionId)
+		done
+			.filter((a) => shootsArrows(a.kind) && (a.arrowsShot > 0 || a.kind !== 'training'))
+			.map((a) => a.sessionId)
 	);
 
 	// A best score is only comparable between rounds that were shot to the end.
@@ -1092,7 +1095,9 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 		sessions: outings.length,
 		activities: activities.length,
 		// Every arrow the bow sent, training included: wear is wear, whether or not it was scored.
-		arrowsShot: done.reduce((sum, a) => sum + a.arrowsShot, 0),
+		arrowsShot: done
+			.filter((a) => shootsArrows(a.kind))
+			.reduce((sum, a) => sum + a.arrowsShot, 0),
 		bestScore: finished.length > 0 ? Math.max(...finished.map((a) => a.totalScore)) : null,
 		lastUsedAt: outings.length > 0 ? Math.max(...outings.map((s) => s.startedAt)) : null
 	};
