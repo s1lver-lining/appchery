@@ -106,8 +106,8 @@ export const BASE: Record<'standing' | 'side' | 'prone', Pose> = {
 	},
 	// Face down on the floor, head to the left, looked down on from above.
 	prone: {
-		head: [26, 120],
-		neck: [48, 120],
+		head: [46, 120],
+		neck: [62, 120],
 		chest: [76, 120],
 		hip: [124, 120],
 		shoulderLeft: [72, 106],

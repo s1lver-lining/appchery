@@ -87,10 +87,10 @@ const PRONE_YTW: Movement = {
 		{
 			key: 'start',
 			pose: pose('prone', {
-				elbowLeft: [40, 104],
-				handLeft: [8, 98],
-				elbowRight: [40, 136],
-				handRight: [8, 142]
+				elbowLeft: [46, 104],
+				handLeft: [16, 98],
+				elbowRight: [46, 136],
+				handRight: [16, 142]
 			}),
 			dwell: 1
 		},
@@ -107,11 +107,12 @@ const PRONE_YTW: Movement = {
 		{
 			key: 'hold',
 			pose: pose('prone', {
-				// The W: the elbow back towards the ribs and the hand forward, not the other way round.
-				elbowLeft: [88, 90],
-				handLeft: [64, 76],
-				elbowRight: [88, 150],
-				handRight: [64, 164]
+				// The W: the elbow out and back, the hand forward until it is level with the head. That
+				// is what makes the letter, and what puts the work between the shoulder blades.
+				elbowLeft: [80, 84],
+				handLeft: [58, 68],
+				elbowRight: [80, 156],
+				handRight: [58, 172]
 			}),
 			dwell: 1
 		}
