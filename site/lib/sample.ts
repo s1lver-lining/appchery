@@ -1,5 +1,6 @@
 import { BADGES, type EarnedBadge } from '$lib/domain/badges';
 import type { IconName } from '$lib/ui/Icon.svelte';
+import type { DiagramName } from '$lib/domain/tuning/guide';
 import { EXERCISES } from '$lib/domain/exercises';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import type { Shot } from '$lib/domain/rounds/types';
@@ -100,8 +101,10 @@ export const SAMPLE_EXERCISE = EXERCISES.find((entry) => entry.key === 'bandPull
  * rounds.
  */
 export interface SampleActivity {
-	kind: 'scoring' | 'other';
+	kind: 'scoring' | 'tuning' | 'other';
 	icon: IconName;
+	/** The tuning drawing the app puts on the row, which names the test better than a wrench does. */
+	diagram?: DiagramName;
 	/** A dictionary key where the app already has the words, so the list speaks both languages. */
 	titleKey?: string;
 	title?: string;
@@ -125,8 +128,9 @@ export const SESSION = {
 			score: 648
 		},
 		{
-			kind: 'other',
+			kind: 'tuning',
 			icon: 'wrench',
+			diagram: 'bowStrength',
 			titleKey: 'tuning.template.weight-ratio',
 			detailKey: 'tuning.title'
 		},
@@ -137,5 +141,5 @@ export const SESSION = {
 			detail: '3 × 15'
 		},
 		{ kind: 'other', icon: 'run', titleKey: 'exercises.activity.running', detail: '5.2 km · 27 min' }
-	] satisfies SampleActivity[]
+	] as SampleActivity[]
 };

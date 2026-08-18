@@ -3,6 +3,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
+	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import OpenApp from '../lib/OpenApp.svelte';
 	import Phone from '../lib/Phone.svelte';
 	import { SESSION, SCORE_SET } from '../lib/sample';
@@ -102,6 +103,15 @@
 							<span class="h-8 w-8 shrink-0">
 								{#if activity.kind === 'scoring'}
 									<TargetFace scoreSet={SCORE_SET} />
+								{:else if activity.diagram}
+									<!-- The drawing of the test itself, in the dark tile the session list gives it. -->
+									<span
+										class="flex h-8 w-8 items-center justify-center overflow-hidden rounded-lg border"
+										style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
+											border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line))"
+									>
+										<TuningDiagram name={activity.diagram} tone="inverted" />
+									</span>
 								{:else}
 									<span
 										class="flex h-8 w-8 items-center justify-center rounded-lg border border-line bg-sunk text-muted"
