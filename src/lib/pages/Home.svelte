@@ -507,20 +507,26 @@
 		anything else, and neither of them fills a line on its own. -->
 	<!-- The level shares the line rather than taking one of its own: it is a standing, not an event. -->
 	<section>
-		<div class="mb-2 flex items-baseline justify-between px-1">
-			<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
-				{next ? $t('home.upNext') : $t('home.thisWeek')}
-			</h2>
-			{#if earned}
-				<a
-					class="flex items-center gap-1 text-xs font-medium text-brand-text"
-					href={withOrigin('/experience', '/')}
-				>
-					{$t('experience.levelShort', { level: earned.level })}
-					<span class="rotate-180"><Icon name="back" size={14} /></span>
-				</a>
-			{/if}
-		</div>
+		<!-- The week names itself on its own card now, so this line is left to the outing and the level.
+			Both can be absent, and an empty line still takes its margin. -->
+		{#if next || earned}
+			<div class="mb-2 flex items-baseline justify-between px-1">
+				{#if next}
+					<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+						{$t('home.upNext')}
+					</h2>
+				{/if}
+				{#if earned}
+					<a
+						class="ml-auto flex items-center gap-1 text-xs font-medium text-brand-text"
+						href={withOrigin('/experience', '/')}
+					>
+						{$t('experience.levelShort', { level: earned.level })}
+						<span class="rotate-180"><Icon name="back" size={14} /></span>
+					</a>
+				{/if}
+			</div>
+		{/if}
 
 		<!-- Under three hundred pixels two columns stop being readable, so they become one. -->
 		<div class="grid grid-cols-1 gap-2 min-[300px]:grid-cols-2">
@@ -556,12 +562,16 @@
 					? ''
 					: 'min-[300px]:col-span-2'}"
 			>
-				<!-- Stacked rather than set side by side: half a line is not enough for both, and the
-					total breaking away from its goal read as two different figures. -->
-				<p class="tabular text-[2rem] leading-none font-bold whitespace-nowrap text-brand-text">
-					{weekArrows}{#if weekGoal > 0}<span class="text-sm font-semibold text-muted">
-							/ {weekGoal}</span
-						>{/if}
+				<!-- What the figure counts and what it is aimed at, stacked beside it at half its size so
+					the two of them stand the height of the number rather than pushing it onto two lines.
+					The card carries the words because the section heading above belongs to the outing
+					when there is one, and a figure this large with nothing naming it is a riddle. -->
+				<p class="tabular flex items-center gap-1.5 text-[2rem] leading-none font-bold text-brand-text">
+					<span>{weekArrows}</span>
+					<span class="flex min-w-0 flex-col gap-0.5 text-[1rem] leading-none font-semibold text-muted">
+						<span class="truncate">{$t('home.thisWeek')}</span>
+						{#if weekGoal > 0}<span class="whitespace-nowrap">/ {weekGoal}</span>{/if}
+					</span>
 				</p>
 				<!-- Without a plan there is no target to fall short of, so the week says what it holds.
 					What is left to shoot is dropped when the card shares its line: the figure already reads
