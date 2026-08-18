@@ -12,6 +12,12 @@ cd "$(dirname "$0")/.."
 PROD_PROJECT="${APPCHERY_PAGES_PROD:-appchery}"
 PREPROD_PROJECT="${APPCHERY_PAGES_PREPROD:-appchery-preprod}"
 
+# Production answers on its own domain, which is the address on the poster and the one Supabase
+# redirects to. The *.pages.dev hostname still resolves, but it is a second origin with its own OPFS
+# database, so nothing should send anybody there.
+PROD_URL="${APPCHERY_URL_PROD:-https://app.appchery.com}"
+PREPROD_URL="${APPCHERY_URL_PREPROD:-https://${PREPROD_PROJECT}.pages.dev}"
+
 TARGET=""
 DRY_RUN=0
 SKIP_DB=0
@@ -20,8 +26,8 @@ SKIP_CHECKS=0
 usage() {
 	echo "Usage: $0 <preprod|prod> [--dry-run]"
 	echo
-	echo "  preprod    Deploy to ${PREPROD_PROJECT} → https://${PREPROD_PROJECT}.pages.dev"
-	echo "  prod       Deploy to ${PROD_PROJECT} → https://${PROD_PROJECT}.pages.dev"
+	echo "  preprod    Deploy to ${PREPROD_PROJECT} → ${PREPROD_URL}"
+	echo "  prod       Deploy to ${PROD_PROJECT} → ${PROD_URL}"
 	echo "             Asks for confirmation."
 	echo "  --dry-run  Report the migrations and the build that would go out, without sending either."
 	echo "  --skip-db  Deploy the app alone, for a change that touches no migration."
@@ -61,11 +67,13 @@ fi
 
 if [ "$TARGET" = prod ]; then
 	PROJECT="$PROD_PROJECT"
+	URL="$PROD_URL"
 	DB_REF="${APPCHERY_SUPABASE_PROD:-}"
 	DB_PASS_NAME="PROD_DB_PASS"
 	ENV_FILE=.env.production
 else
 	PROJECT="$PREPROD_PROJECT"
+	URL="$PREPROD_URL"
 	DB_REF="${APPCHERY_SUPABASE_PREPROD:-}"
 	DB_PASS_NAME="PREPROD_DB_PASS"
 	ENV_FILE=.env.preprod
@@ -204,7 +212,7 @@ fi
 
 if [ "$DRY_RUN" = 1 ]; then
 	echo
-	echo "Dry run: would deploy build/ to ${PROJECT}, serving https://${PROJECT}.pages.dev"
+	echo "Dry run: would deploy build/ to ${PROJECT}, serving ${URL}"
 	du -sh build
 	exit 0
 fi
@@ -223,4 +231,4 @@ npx wrangler pages deploy build \
 	--commit-dirty="$([ -n "$DIRTY" ] && echo true || echo false)"
 
 echo
-echo "Deployed to https://${PROJECT}.pages.dev"
+echo "Deployed to ${URL}"

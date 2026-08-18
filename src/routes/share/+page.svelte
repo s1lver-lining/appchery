@@ -11,7 +11,7 @@
 	 * address written out for somebody who would rather type it. It is the first page a new archer
 	 * ever sees, so it says what the app is before it says where it is.
 	 */
-	const PROD_URL = 'https://appchery.pages.dev';
+	const PROD_URL = 'https://app.appchery.com';
 
 	const from = $derived(originOf($page.url, '/settings'));
 	$effect(() => setPageUp(from));

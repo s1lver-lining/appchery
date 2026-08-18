@@ -15,8 +15,14 @@ Two environments, each with its own Supabase project and its own Pages project:
 
 | | Web | Database | Env file |
 |---|---|---|---|
-| preprod | `appchery-preprod`, branch `preprod` | ref in `APPCHERY_SUPABASE_PREPROD` | `.env.preprod` |
-| prod | `appchery`, branch `main` | ref in `APPCHERY_SUPABASE_PROD` | `.env.production` |
+| preprod | `appchery-preprod`, branch `preprod`, at `appchery-preprod.pages.dev` | ref in `APPCHERY_SUPABASE_PREPROD` | `.env.preprod` |
+| prod | `appchery`, branch `main`, at `app.appchery.com` | ref in `APPCHERY_SUPABASE_PROD` | `.env.production` |
+
+Production answers on `app.appchery.com`, a custom domain on the `appchery` Pages project. The old
+`appchery.pages.dev` hostname keeps resolving, and that matters: an OPFS database belongs to one
+origin, so anybody who used the app there still has their data there and not on the new address. The
+poster, the QR code and the Supabase Site URL all name the custom domain, so it is the only one
+newcomers ever meet. `APPCHERY_URL_PROD` overrides it for a fork.
 
 Both env files are gitignored and hold two public values, copied from `.env.example`:
 
@@ -48,7 +54,7 @@ and deploys: **database first, app second**, which is the order that cannot brea
 ```bash
 npm test && npm run check      # unit tests and types
 npm run deploy:preprod         # → https://appchery-preprod.pages.dev
-npm run deploy:prod            # asks for confirmation, naming the migrations it would apply
+npm run deploy:prod            # → https://app.appchery.com, asks for confirmation, naming the migrations it would apply
 ```
 
 A deploy that changes no migration reaches the database step and does nothing. One that does runs
