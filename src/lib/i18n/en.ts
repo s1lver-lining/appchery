@@ -1306,7 +1306,8 @@ insetHint:
 			},
 			holdingSpt: {
 				name: 'Holding SPT',
-				summary: 'Full draw, held. The endurance exercise that makes the last end of a round feel like the first.',
+				summary:
+					'Full draw, held. SPT is specific physical training: work that trains the shot by doing the shot, and this is the one that makes the last end of a round feel like the first.',
 				step1: 'With no arrow on the string, go through your shot process on a bow or a stretch band until you reach the holding position.',
 				step2: 'Hold there in full alignment, aiming at nothing in particular, breathing normally.',
 				step3: 'Let down under control. Never release: an empty bow loosed is a broken bow.',

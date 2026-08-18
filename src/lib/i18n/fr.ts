@@ -1319,7 +1319,8 @@ insetHint:
 			},
 			holdingSpt: {
 				name: 'SPT de maintien',
-				summary: 'Pleine allonge, tenue. L\'exercice d\'endurance qui rend la dernière volée semblable à la première.',
+				summary:
+					"Pleine allonge, tenue. SPT veut dire entraînement physique spécifique : un travail qui entraîne le tir en faisant le tir, et celui ci est celui qui rend la dernière volée semblable à la première.",
 				step1: 'Sans flèche sur la corde, déroulez votre séquence de tir à l\'arc ou à l\'élastique jusqu\'à la position de maintien.',
 				step2: 'Tenez en alignement complet, sans viser quoi que ce soit de précis, en respirant normalement.',
 				step3: 'Redescendez en contrôlant. Ne décochez jamais : un arc lâché à vide est un arc cassé.',
