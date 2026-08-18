@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
-	import { Scanner, toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
+	import { toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
+	import { LiveScanner } from '$lib/vision/live';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
@@ -53,7 +54,12 @@
 	let found = $state<Impact[]>([]);
 	let pending = $state(0);
 
-	let scanner = new Scanner();
+	// Detection lives in a worker, so a slow pass costs the overlay nothing and the video never stalls.
+	const scanner = new LiveScanner(() => {
+		found = scanner.arrows;
+		steady = scanner.steady;
+		pending = scanner.pending;
+	});
 
 	/**
 	 * The learned detector's weights, fetched only when it is the one chosen. About a megabyte of
@@ -65,7 +71,7 @@
 		import('$lib/vision/arrow-model.json')
 			.then((module) => {
 				if (cancelled) return;
-				scanner = new Scanner({ model: (module.default ?? module) as never, crop });
+				scanner.setModel((module.default ?? module) as never);
 				scanner.setLimit(remaining);
 			})
 			.catch(() => {
@@ -174,6 +180,7 @@
 
 	function stop() {
 		cancelAnimationFrame(raf);
+		scanner.stop();
 		if (recorder && recorder.state !== 'inactive') recorder.stop();
 		recorder = null;
 		recording = false;
@@ -190,43 +197,6 @@
 	 */
 	const DETECT_EVERY_MS = 300;
 	let lastDetection = 0;
-
-	const cropCanvas = document.createElement('canvas');
-
-	/**
-	 * Cuts a rectified square of one face out of the video at full resolution.
-	 *
-	 * The model was trained on crops taken from photographs, not from the reduced frame detection runs
-	 * on, and the difference is visible: a shaft two pixels wide in the reduced frame is most of what
-	 * there is to see. A canvas transform does the rotation, the scaling and the crop in one go on the
-	 * GPU, and only the finished square is ever read back, so the whole thing costs a 128 by 128 read.
-	 */
-	function crop(face: FaceLocation, size: number, span: number) {
-		if (!video) return null;
-		cropCanvas.width = size;
-		cropCanvas.height = size;
-		const context = cropCanvas.getContext('2d', { willReadFrequently: true });
-		if (!context) return null;
-
-		// Nearest neighbour, because that is how the training crops were sampled. Left smooth, the model
-		// is shown a cleaner picture than it learnt on, which is a difference it cannot know about.
-		context.imageSmoothingEnabled = false;
-
-		// The face is measured on the reduced frame, so its geometry scales back up to video pixels.
-		const factor = scanner.scaleFactor;
-		const step = (2 * span) / size;
-
-		context.save();
-		context.translate(size / 2, size / 2);
-		context.scale(1 / (face.semiMajor * factor * step), 1 / (face.semiMinor * factor * step));
-		context.rotate(-face.rotation);
-		context.translate(-face.cx * factor, -face.cy * factor);
-		context.drawImage(video, 0, 0);
-		context.restore();
-
-		const pixels = context.getImageData(0, 0, size, size);
-		return { width: size, height: size, data: pixels.data };
-	}
 
 	/** The frame reduced for detection, scaled by the canvas rather than by a loop over every pixel. */
 	function reduce(): { width: number; height: number; data: Uint8ClampedArray } | null {
@@ -252,15 +222,15 @@
 		const small = reduce();
 		if (!small) return;
 
+		/**
+		 * The face is followed here and the search is handed away. Nothing on this path waits for a
+		 * detection, so the overlay keeps the camera's own rate whatever the detector is costing.
+		 */
+		faces = scanner.follow(small);
 		if (now - lastDetection >= DETECT_EVERY_MS) {
 			lastDetection = now;
-			const result = scanner.pushReduced(small);
-			faces = result.faces;
-			steady = result.steady;
-			found = result.arrows;
-			pending = result.pending.length;
-		} else {
-			faces = scanner.track(small);
+			// Offered last, because the frame's buffer is given away rather than copied.
+			scanner.offer(small);
 		}
 
 		draw(faces, found, overlay, video.videoWidth, video.videoHeight);
