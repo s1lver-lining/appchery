@@ -1812,14 +1812,22 @@ function sessionNote(planned: CapTargetPlan['sessions'][number], existing: strin
 	return parts.length > 0 ? parts.join('\n\n') : null;
 }
 
-/** Every session an import wrote, taken away in one go so a bad import can be undone wholesale. */
+/**
+ * Every session an import wrote, taken away in one go so a bad import can be undone wholesale.
+ *
+ * Soft deleted rather than cleared, unlike the re-import path below. This is an archer deleting
+ * outings, and a hard delete leaves the server holding rows the device no longer has: the next pull
+ * would bring every one of them back, which is the opposite of what the button says it does.
+ */
 export async function deleteImportedSessions(): Promise<number> {
 	const sessions = await db()
 		.select({ id: schema.session.id })
 		.from(schema.session)
 		.where(like(schema.session.id, `${IMPORT_PREFIX}%`));
+	if (sessions.length === 0) return 0;
 
-	for (const session of sessions) await clearImportedSession(session.id);
+	const ids = sessions.map((row) => row.id);
+	for (let i = 0; i < ids.length; i += 100) await deleteSessions(ids.slice(i, i + 100));
 	return sessions.length;
 }
 

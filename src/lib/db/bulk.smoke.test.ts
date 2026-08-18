@@ -40,7 +40,7 @@ vi.stubGlobal('localStorage', {
 	setItem: (key: string, value: string) => void store.set(key, value)
 });
 
-const { deleteSessions, restoreSessions, setSessionsBow } = await import('./repository');
+const { deleteSessions, restoreSessions, setSessionsBow, deleteImportedSessions } = await import('./repository');
 
 beforeAll(() => {
 	for (const group of MIGRATIONS) for (const statement of group) sqlite.exec(statement);
@@ -118,5 +118,36 @@ describe('changing the bow of a selection', () => {
 		expect(live.bowId).toBe('bow-1');
 		expect(live.bowType).toBeNull();
 		expect(await logged('update')).toEqual(['live-1']);
+	});
+});
+
+/**
+ * Removing what an import wrote is an archer deleting outings, so it has to leave tombstones behind.
+ * A hard delete would leave the server holding rows this device no longer has, and the next pull
+ * would bring every one of them back.
+ */
+describe('removing imported sessions', () => {
+	it('tombstones them and tells the change log', async () => {
+		const now = Date.now();
+		await proxy.insert(schema.session).values({
+			id: 'imported:session:42',
+			createdAt: now,
+			updatedAt: now,
+			deviceId: 'd',
+			startedAt: now,
+			kind: 'practice'
+		});
+		await proxy.delete(schema.changeLog);
+
+		expect(await deleteImportedSessions()).toBe(1);
+
+		const [row] = await proxy
+			.select()
+			.from(schema.session)
+			.where(eq(schema.session.id, 'imported:session:42'));
+		expect(row.deletedAt).not.toBeNull();
+
+		const logged = await proxy.select().from(schema.changeLog);
+		expect(logged.map((entry) => entry.op)).toContain('delete');
 	});
 });

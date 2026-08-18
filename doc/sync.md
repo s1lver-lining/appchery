@@ -320,6 +320,18 @@ A later pass over the social screens and the orchestration found six more:
 - **Sharing a match published somebody else's name.** A match card carries the opponent and their
   arrows, and they never agreed to either. Matches are not offered for sharing.
 
+A last pass over the whole phase found four more:
+
+- **Removing imported sessions resurrected them.** The button hard deleted the rows, leaving the
+  server holding what the device no longer had, so the next pull brought every one of them back. It
+  tombstones them now, like any other deletion an archer makes.
+- **A failed read emptied the friends screen.** The refresh replaces what it cached, and neither the
+  graph query nor the shared activity query checked for an error: a request that timed out was read
+  as "you follow nobody", and the cache was cleared to match. Both bail instead.
+- **A first sign in registered no triggers.** The watcher looks for a stored session at boot, so an
+  archer who signed in during that run got no resume and no reconnect exchange until they restarted
+  the app. Signing in now registers them.
+
 Driving the social screens in a browser found one more:
 
 - **The friends screen only ever showed what the last exchange had cached.** A follow request sent

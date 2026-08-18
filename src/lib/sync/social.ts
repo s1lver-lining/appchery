@@ -280,10 +280,17 @@ export async function refreshSocial(): Promise<void> {
 	const instance = await supabase();
 	if (!user || !instance) return;
 
-	const { data: follows } = await instance
+	const { data: follows, error: followError } = await instance
 		.from('follow')
 		.select('follower_id, followee_id, status')
 		.or(`follower_id.eq.${user.id},followee_id.eq.${user.id}`);
+
+	/**
+	 * A refresh that could not read the graph knows nothing, and must not act as though it read an
+	 * empty one. Treating a failed request as "you follow nobody" would clear every cached profile
+	 * and every shared activity below, emptying the friends screen because a request timed out.
+	 */
+	if (followError) return;
 
 	const ids = new Set<string>();
 	const following = new Map<string, string>();
@@ -357,12 +364,16 @@ async function refreshSharedActivities(ownerIds: string[]): Promise<void> {
 	const instance = await supabase();
 	if (!instance || ownerIds.length === 0) return;
 
-	const { data: activities } = await instance
+	const { data: activities, error } = await instance
 		.from('activity')
 		.select('*')
 		.in('user_id', ownerIds)
 		.not('shared_at', 'is', null)
 		.is('deleted_at', null);
+
+	// Same again: what is cached is replaced wholesale below, so a failed read would delete a friend's
+	// shared rounds and put nothing back. Yesterday's copy is worth more than an empty screen.
+	if (error) return;
 
 	const rows = activities ?? [];
 	const ids = rows.map((row) => String(row.id));

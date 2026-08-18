@@ -5,6 +5,7 @@
 	import { account, signIn, signUp, signOut, requestPasswordReset, AuthError, initAuth, unclaimedRowCount } from '$lib/sync/auth';
 	import { hasBuiltInServer } from '$lib/sync/config';
 	import { syncNow, syncStatus, refreshSyncStatus } from '$lib/sync';
+	import { startWatching } from '$lib/sync/watch';
 	import { locale } from '$lib/i18n';
 
 	/**
@@ -80,8 +81,12 @@
 			}
 			password = '';
 			await refresh();
-			// The point of signing in is the exchange, so it starts here rather than on the next resume.
-			if ($account) void sync();
+			if ($account) {
+				// The point of signing in is the exchange, so it starts here rather than on the next
+				// resume, and the resume trigger is registered now: at boot there was no session to find.
+				void startWatching();
+				void sync();
+			}
 		} catch (e) {
 			error = explain(e);
 		}

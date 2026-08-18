@@ -22,37 +22,47 @@ function looksSignedIn(): boolean {
 	return false;
 }
 
+let listening: (() => void) | null = null;
+
+/**
+ * Registers the triggers, at most once. Called by the layout for a device that was already signed
+ * in, and again by the account card the moment somebody signs in: without that second call, an
+ * archer who signs in today gets no resume and no reconnect trigger until they next restart the app,
+ * because at boot there was no session to find.
+ */
+export async function startWatching(): Promise<void> {
+	if (typeof window === 'undefined' || listening) return;
+
+	const [{ syncNow }, { initAuth }] = await Promise.all([import('./index'), import('./auth')]);
+	await initAuth().catch(() => {});
+
+	const trigger = () => void syncNow();
+	const onVisible = () => {
+		if (document.visibilityState === 'visible') trigger();
+	};
+
+	document.addEventListener('visibilitychange', onVisible);
+	window.addEventListener('online', trigger);
+	listening = () => {
+		document.removeEventListener('visibilitychange', onVisible);
+		window.removeEventListener('online', trigger);
+		listening = null;
+	};
+
+	trigger();
+}
+
 /** Called once by the layout. Returns the teardown, as an effect expects. */
 export function watchSync(): () => void {
 	if (typeof window === 'undefined' || !hasBuiltInServer() || !looksSignedIn()) return () => {};
 
-	let stop = () => {};
 	let cancelled = false;
-
-	void (async () => {
-		const [{ syncNow }, { initAuth }] = await Promise.all([import('./index'), import('./auth')]);
-		if (cancelled) return;
-
-		await initAuth().catch(() => {});
-		if (cancelled) return;
-
-		const trigger = () => void syncNow();
-		const onVisible = () => {
-			if (document.visibilityState === 'visible') trigger();
-		};
-
-		document.addEventListener('visibilitychange', onVisible);
-		window.addEventListener('online', trigger);
-		stop = () => {
-			document.removeEventListener('visibilitychange', onVisible);
-			window.removeEventListener('online', trigger);
-		};
-
-		trigger();
-	})();
+	void startWatching().then(() => {
+		if (cancelled) listening?.();
+	});
 
 	return () => {
 		cancelled = true;
-		stop();
+		listening?.();
 	};
 }
