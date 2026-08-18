@@ -1308,27 +1308,27 @@ insetHint:
 				name: 'Holding SPT',
 				summary:
 					'Full draw, held. SPT is specific physical training: work that trains the shot by doing the shot, and this is the one that makes the last end of a round feel like the first.',
-				step1: 'With no arrow on the string, go through your shot process on a bow or a stretch band until you reach the holding position.',
-				step2: 'Hold there in full alignment, aiming at nothing in particular, breathing normally.',
-				step3: 'Let down under control. Never release: an empty bow loosed is a broken bow.',
-				step4: 'Rest, then repeat. As the hold gets easier, lengthen it and lengthen the rest with it.',
+				step1: 'Nock an arrow and stand facing a target butt, so that a string slipping off tired fingers only costs you a shot. Where you cannot shoot into a butt, do it with nothing on the string at all.',
+				step2: 'Go through your shot process on a bow or a stretch band until you reach the holding position.',
+				step3: 'Hold there in full alignment, aiming at nothing in particular, breathing normally.',
+				step4: 'Let down under control rather than releasing, then rest and repeat. As the hold gets easier, lengthen it and lengthen the rest with it.',
 				step5: 'Stop the set the moment the alignment goes. A hold made with the shoulder collapsed trains the collapse.',
-				caution: 'Do this after shooting rather than before it, and never with an arrow on the string.'
+				caution: 'A bow loosed with nothing on the string destroys itself, and often the hand holding it. So the safest way to hold is with an arrow nocked and a butt in front of you: if the string does go, an arrow goes where an arrow is meant to go. With no butt to shoot into, hold with an empty string and let down deliberately every time. Either way, do this after shooting rather than before it.'
 			},
 			reversals: {
 				name: 'Reversals',
 				summary: 'Draw, hold, let down, repeat. The draw itself, done far more often than a session would ask.',
-				step1: 'With no arrow on the string, draw the bow through your normal shot process to anchor and transfer.',
-				step2: 'Hold for a couple of seconds in full alignment.',
-				step3: 'Let down under control to the set up position, without dropping the bow arm.',
-				step4: 'Repeat for the set, then rest properly before the next one.',
-				step5: 'Every rep is a rep of your shot, so a sloppy one is practice too. Stop the set rather than finish it badly.',
-				caution: 'Never let the string go. A bow drawn without an arrow and released will destroy itself, and the hand holding it.'
+				step1: 'Nock an arrow and face a target butt, so that a slip at the end of a hard set costs you an arrow and nothing else. Where you cannot shoot into a butt, draw with nothing on the string.',
+				step2: 'Draw the bow through your normal shot process to anchor and transfer.',
+				step3: 'Hold for a couple of seconds in full alignment.',
+				step4: 'Let down under control to the set up position, without dropping the bow arm.',
+				step5: 'Repeat for the set, then rest properly before the next one. Every rep is a rep of your shot, so stop the set rather than finish it badly.',
+				caution: 'A bow drawn and released with nothing on the string will destroy itself, and the hand holding it. An arrow nocked in front of a butt is the safest way to do these, because tired fingers let go: with an empty string there is nothing to catch that mistake, so every let down has to be deliberate.'
 			},
 			bowRaise: {
 				name: 'Bow raise',
 				summary: 'Holding the bow up, and nothing else. What tires first in a long round, trained on its own.',
-				step1: 'With no arrow on the string, raise the bow to the set up position, at about the height of your own shoulders.',
+				step1: 'Nock an arrow and face a target butt where you can, then raise the bow to the set up position, at about the height of your own shoulders.',
 				step2: 'Hold it there with the bow arm straight and the shoulder down, breathing normally.',
 				step3: 'Lower under control and rest for a minute or two.',
 				step4: 'Stop when the shoulder starts to climb towards your ear. That is the end of the set, whatever the clock says.'

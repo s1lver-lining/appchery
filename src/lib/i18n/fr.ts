@@ -1321,27 +1321,27 @@ insetHint:
 				name: 'SPT de maintien',
 				summary:
 					"Pleine allonge, tenue. SPT veut dire entraînement physique spécifique : un travail qui entraîne le tir en faisant le tir, et celui ci est celui qui rend la dernière volée semblable à la première.",
-				step1: 'Sans flèche sur la corde, déroulez votre séquence de tir à l\'arc ou à l\'élastique jusqu\'à la position de maintien.',
-				step2: 'Tenez en alignement complet, sans viser quoi que ce soit de précis, en respirant normalement.',
-				step3: 'Redescendez en contrôlant. Ne décochez jamais : un arc lâché à vide est un arc cassé.',
-				step4: 'Reposez, puis recommencez. À mesure que le maintien devient facile, allongez le et allongez le repos avec lui.',
-				step5: 'Arrêtez la série dès que l\'alignement part. Un maintien épaule effondrée entraîne l\'effondrement.',
-				caution: 'À faire après le tir plutôt qu\'avant, et jamais avec une flèche sur la corde.'
+				step1: "Encochez une flèche et placez vous face à une cible, pour qu'une corde qui échappe à des doigts fatigués ne coûte qu'un tir. Sans cible où tirer, faites le sans rien sur la corde.",
+				step2: "Déroulez votre séquence de tir à l'arc ou à l'élastique jusqu'à la position de maintien.",
+				step3: 'Tenez en alignement complet, sans viser quoi que ce soit de précis, en respirant normalement.',
+				step4: 'Redescendez en contrôlant plutôt que de décocher, puis reposez et recommencez. À mesure que le maintien devient facile, allongez le et allongez le repos avec lui.',
+				step5: "Arrêtez la série dès que l'alignement part. Un maintien épaule effondrée entraîne l'effondrement.",
+				caution: "Un arc lâché à vide se détruit, et souvent avec la main qui le tient. Le plus sûr est donc de tenir avec une flèche encochée et une cible devant soi : si la corde part, la flèche part là où une flèche doit partir. Sans cible où tirer, tenez corde nue et redescendez délibérément à chaque fois. Dans tous les cas, à faire après le tir plutôt qu'avant."
 			},
 			reversals: {
 				name: 'Reversals',
 				summary: 'Armer, tenir, redescendre, recommencer. L\'armement lui même, répété bien plus qu\'une séance ne le demande.',
-				step1: 'Sans flèche sur la corde, armez l\'arc par votre séquence habituelle jusqu\'à l\'ancrage et au transfert.',
-				step2: 'Tenez deux secondes en alignement complet.',
-				step3: 'Redescendez en contrôlant jusqu\'à la position de placement, sans laisser tomber le bras d\'arc.',
-				step4: 'Enchaînez la série, puis reposez vraiment avant la suivante.',
-				step5: 'Chaque répétition est une répétition de votre tir : une mauvaise s\'apprend aussi. Arrêtez la série plutôt que de la finir mal.',
-				caution: 'Ne lâchez jamais la corde. Un arc armé sans flèche et décoché se détruit, et détruit la main qui le tient.'
+				step1: "Encochez une flèche et placez vous face à une cible, pour qu'un lâcher accidentel en fin de série coûte une flèche et rien d'autre. Sans cible où tirer, armez sans rien sur la corde.",
+				step2: "Armez l'arc par votre séquence habituelle jusqu'à l'ancrage et au transfert.",
+				step3: 'Tenez deux secondes en alignement complet.',
+				step4: "Redescendez en contrôlant jusqu'à la position de placement, sans laisser tomber le bras d'arc.",
+				step5: 'Enchaînez la série, puis reposez vraiment avant la suivante. Chaque répétition est une répétition de votre tir : arrêtez la série plutôt que de la finir mal.',
+				caution: "Un arc armé et décoché sans rien sur la corde se détruit, et détruit la main qui le tient. Une flèche encochée devant une cible est la façon la plus sûre de faire ces séries, parce que des doigts fatigués lâchent : corde nue, rien ne rattrape cette erreur, et chaque descente doit être délibérée."
 			},
 			bowRaise: {
 				name: 'Montée d\'arc',
 				summary: 'Tenir l\'arc en l\'air, rien d\'autre. Ce qui fatigue en premier sur un long tir, travaillé à part.',
-				step1: 'Sans flèche sur la corde, montez l\'arc en position de placement, à peu près à hauteur de vos épaules.',
+				step1: "Encochez une flèche et placez vous face à une cible si vous le pouvez, puis montez l'arc en position de placement, à peu près à hauteur de vos épaules.",
 				step2: 'Tenez le bras d\'arc tendu et l\'épaule basse, en respirant normalement.',
 				step3: 'Redescendez en contrôlant et reposez une minute ou deux.',
 				step4: 'Arrêtez quand l\'épaule commence à monter vers l\'oreille. C\'est la fin de la série, quoi que dise le chronomètre.'

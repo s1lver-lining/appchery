@@ -146,7 +146,16 @@
 			[grip[0] - 6, grip[1] - LIMB],
 			[grip[0] - 6, grip[1] + LIMB]
 		];
+		// The arrow lies from the nock on the string to a little past the grip, which is where a rest
+		// puts it. Drawn because the instructions ask for one on the string: a diagram showing a bare
+		// string beside a step saying nock an arrow contradicts the step.
+		const reach = Math.hypot(grip[0] - nock[0], grip[1] - nock[1]) || 1;
+		const point: [number, number] = [
+			nock[0] + ((grip[0] - nock[0]) / reach) * (reach + 16),
+			nock[1] + ((grip[1] - nock[1]) / reach) * (reach + 16)
+		];
 		return {
+			arrow: `M${nock[0]} ${nock[1]} L${point[0]} ${point[1]}`,
 			riser:
 				`M${tips[0][0]} ${tips[0][1]} Q${grip[0] + 14} ${grip[1] - LIMB * 0.5} ${grip[0] + 8} ${grip[1]}` +
 				` Q${grip[0] + 14} ${grip[1] + LIMB * 0.5} ${tips[1][0]} ${tips[1][1]}`,
@@ -218,6 +227,7 @@
 			{:else if movement.prop === 'bow'}
 				<path d={bow.riser} stroke-width="4" />
 				<path d={bow.string} stroke-width="1.6" />
+				<path d={bow.arrow} stroke-width="2" />
 			{:else if movement.prop === 'dumbbells'}
 				{#each [pose.handLeft, pose.handRight] as hand (hand)}
 					<path d={line([hand[0] - 9, hand[1]], [hand[0] + 9, hand[1]])} stroke-width="7" />
