@@ -40,7 +40,6 @@
 	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Icon from '$lib/ui/Icon.svelte';
-	import AppGrid from '$lib/ui/AppGrid.svelte';
 	import {
 		fullscreenSupported,
 		isFullscreen,
@@ -226,8 +225,6 @@
 	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4" swipeable={false}>
 		{#snippet pane(key)}
 			{#if key === 'app'}
-				<AppGrid from="/settings" />
-
 				<!-- What this build is, for a bug report: the release, the commit count behind it, and
 					the licence the whole thing is under. -->
 				<section>

@@ -3,10 +3,7 @@
 	import { withOrigin } from '$lib/nav';
 	import Icon, { type IconName } from './Icon.svelte';
 
-	/**
-	 * Pages that live nowhere else in the tab bar. The same grid sits at the foot of the home page
-	 * and in the settings, so wherever an archer goes looking for one of them, they are all there.
-	 */
+	/** Pages that live nowhere else in the tab bar, gathered in the one place they are all reachable. */
 	let { from }: { from: string } = $props();
 
 	const SHORTCUTS = $derived<{ href: string; icon: IconName; label: string }[]>([

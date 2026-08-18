@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { page } from '$app/stores';
-	import { t, locale } from '$lib/i18n';
+	import { t } from '$lib/i18n';
 	import { originOf, setPageUp } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
+	import FriendFeed from '$lib/ui/FriendFeed.svelte';
 	import { account } from '$lib/sync/auth';
 	import {
 		myHandle,
@@ -134,18 +135,6 @@
 		return profile.displayName || `@${profile.handle}`;
 	}
 
-	function shownDate(at: number) {
-		return new Date(at).toLocaleDateString($locale, { dateStyle: 'medium' });
-	}
-
-	function roundName(activity: SharedActivity) {
-		try {
-			const definition = JSON.parse(String(activity.activity.round_definition ?? 'null'));
-			return definition?.name ?? $t('friends.anActivity');
-		} catch {
-			return $t('friends.anActivity');
-		}
-	}
 </script>
 
 <PageHeader motif="sessions" title={$t('friends.title')} />
@@ -269,25 +258,7 @@
 		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-2 pt-4" swipeable={false}>
 			{#snippet pane(key)}
 				{#if key === 'feed'}
-					{#if feed.length === 0}
-						<EmptyState title={$t('friends.emptyFeedTitle')} body={$t('friends.emptyFeedBody')} />
-					{:else}
-						{#each feed as shared (shared.id)}
-							{@const sharer = known.get(shared.ownerId)}
-							<a
-								class="block rounded-xl border border-line bg-surface p-3"
-								href={sharer ? `/friends/${sharer.handle}` : '/friends'}
-							>
-								<p class="text-sm font-medium">
-									{roundName(shared)}{sharer ? ` · ${shownName(sharer)}` : ''}
-								</p>
-								<p class="tabular mt-0.5 text-xs text-muted">
-									{shownDate(Number(shared.activity.started_at ?? shared.sharedAt))}
-									· {shared.activity.total_score}
-								</p>
-							</a>
-						{/each}
-					{/if}
+					<FriendFeed {feed} {known} />
 				{:else if key === 'following'}
 					{#if mine.length === 0}
 						<EmptyState title={$t('friends.emptyFollowingTitle')} body={$t('friends.emptyFollowingBody')} />

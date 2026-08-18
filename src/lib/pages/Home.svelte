@@ -47,6 +47,8 @@
 	import { defaultNameKey, hasHappened } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
 	import AppGrid from '$lib/ui/AppGrid.svelte';
+	import FriendFeed from '$lib/ui/FriendFeed.svelte';
+	import { sharedFeed, following, followers, type Profile, type SharedActivity } from '$lib/sync/social';
 	import { withOrigin } from '$lib/nav';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
@@ -67,6 +69,11 @@
 	let plans = $state<Awaited<ReturnType<typeof listPlans>>>([]);
 	let planningAt = $state<number | null>(null);
 	let planningKind = $state<'planned' | 'competition'>('planned');
+	let feed = $state<SharedActivity[]>([]);
+	let friends = $state<Profile[]>([]);
+
+	/** Whoever the device knows of, so a shared activity can name the archer who shared it. */
+	const knownFriends = $derived(new Map(friends.map((profile) => [profile.userId, profile])));
 
 	function schedule(kind: 'planned' | 'competition') {
 		planningKind = kind;
@@ -124,6 +131,9 @@
 		noteLevel(earned.level);
 		volume = toVolume(all);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
+		/* Read from the cache only: the home page never waits on the network to paint. */
+		feed = await sharedFeed();
+		friends = [...(await following()), ...(await followers())];
 	}
 	$effect(() => {
 		void $dataVersion;
@@ -451,100 +461,105 @@
 		</div>
 	{/if}
 
-	{#if next || unfinished || earned}
-		<!-- What is coming and what was left half done: the two things worth a tap before anything else. -->
-		<!-- The level shares the line rather than taking one of its own: it is a standing, not an event. -->
-		<section>
-			<div class="mb-2 flex items-baseline justify-between px-1">
-				<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
-					{next || unfinished ? $t('home.upNext') : ''}
-				</h2>
-				{#if earned}
-					<a class="flex items-center gap-1 text-xs font-medium text-brand-text" href={withOrigin('/experience', '/')}>
-						{$t('experience.levelShort', { level: earned.level })}
-						<span class="rotate-180"><Icon name="back" size={14} /></span>
-					</a>
-				{/if}
-			</div>
-			<div class="space-y-2">
-				{#if next}
-					<button
-						class="flex w-full items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3 text-left shadow-sm"
-						onclick={openNext}
-					>
-						<span
-							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
-						>
-							<Icon name="target" size={22} />
-						</span>
-						<div class="min-w-0 flex-1">
-							<p class="truncate font-semibold">{whenLabel(next.at)}</p>
-							<p class="truncate text-xs text-muted">
-								{next.occurrence?.label ?? next.session?.label ?? $t('home.next')}
-							</p>
-						</div>
-						<span class="shrink-0 rotate-180 text-brand-text"><Icon name="back" size={20} /></span>
-					</button>
-				{/if}
-
-				{#if unfinished}
-					<!-- Only while the outing is still warm: after that it is history, not something to resume. -->
-					<a
-						href="/activities/{unfinished.id}"
-						class="flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
-					>
-						<span
-							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk text-muted"
-						>
-							<Icon name="sight" size={22} />
-						</span>
-						<div class="min-w-0 flex-1">
-							<p class="truncate font-semibold">{roundName(unfinished)}</p>
-							<p class="truncate text-xs text-muted">{$t('home.resume')}</p>
-						</div>
-						<p class="tabular shrink-0 text-sm text-muted">
-							{$t('round.arrows', { n: unfinished.arrowsShot })}
-						</p>
-					</a>
-				{/if}
-			</div>
-		</section>
-	{/if}
-
+	<!-- What is coming and what the week has come to, side by side: the two things worth a tap before
+		anything else, and neither of them fills a line on its own. -->
+	<!-- The level shares the line rather than taking one of its own: it is a standing, not an event. -->
 	<section>
-		{@render heading($t('home.thisWeek'), { href: '/stats', label: $t('home.seeStats') })}
-		<div class="rounded-2xl border border-line bg-surface p-3.5">
-			<div class="flex items-end justify-between gap-3">
-				<p class="tabular text-[2rem] leading-none font-bold text-brand-text">
-					{weekArrows}
-					{#if weekGoal > 0}<span class="text-sm font-semibold text-muted">/ {weekGoal}</span>{/if}
-				</p>
-				<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
-				<p class="text-right text-xs text-muted">
-					{#if weekGoal > 0}
-						{#if weekDone >= 1}
-							<!-- The one week in the log that deserves an emoji is the one that was finished. -->
-							🎉 {$t('session.goalReached')}
-						{:else}
-							{$t('session.goalLeft', { n: weekGoal - weekArrows })}
-						{/if}
-					{:else}
-						{$t('home.weekSessions', { n: weekSessions })}
-					{/if}
-				</p>
-			</div>
-
-			{#if weekGoal > 0}
-				<div class="mt-2.5 h-2 overflow-hidden rounded-full bg-sunk">
-					<div
-						class="h-full rounded-full transition-[width] duration-500 {weekDone >= 1
-							? 'bg-accent'
-							: 'bg-brand'}"
-						style="width: {Math.max(weekDone * 100, weekArrows > 0 ? 4 : 0)}%"
-					></div>
-				</div>
+		<div class="mb-2 flex items-baseline justify-between px-1">
+			<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+				{next ? $t('home.upNext') : $t('home.thisWeek')}
+			</h2>
+			{#if earned}
+				<a
+					class="flex items-center gap-1 text-xs font-medium text-brand-text"
+					href={withOrigin('/experience', '/')}
+				>
+					{$t('experience.levelShort', { level: earned.level })}
+					<span class="rotate-180"><Icon name="back" size={14} /></span>
+				</a>
 			{/if}
 		</div>
+
+		<!-- Under three hundred pixels two columns stop being readable, so they become one. -->
+		<div class="grid grid-cols-1 gap-2 min-[300px]:grid-cols-2">
+			{#if next}
+				<button
+					class="flex w-full items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3 text-left shadow-sm"
+					onclick={openNext}
+				>
+					<span
+						class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
+					>
+						<Icon name="target" size={22} />
+					</span>
+					<div class="min-w-0 flex-1">
+						<p class="truncate font-semibold">{whenLabel(next.at)}</p>
+						<p class="truncate text-xs text-muted">
+							{next.occurrence?.label ?? next.session?.label ?? $t('home.next')}
+						</p>
+					</div>
+				</button>
+			{/if}
+
+			<!-- The week's own heading is gone when it shares the line, so the card carries the link. -->
+			<a
+				href="/stats"
+				class="block rounded-2xl border border-line bg-surface p-3.5 {next
+					? ''
+					: 'min-[300px]:col-span-2'}"
+			>
+				<div class="flex items-end justify-between gap-3">
+					<p class="tabular text-[2rem] leading-none font-bold text-brand-text">
+						{weekArrows}
+						{#if weekGoal > 0}<span class="text-sm font-semibold text-muted">/ {weekGoal}</span>{/if}
+					</p>
+					<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
+					<p class="text-right text-xs text-muted">
+						{#if weekGoal > 0}
+							{#if weekDone >= 1}
+								<!-- The one week in the log that deserves an emoji is the one that was finished. -->
+								🎉 {$t('session.goalReached')}
+							{:else}
+								{$t('session.goalLeft', { n: weekGoal - weekArrows })}
+							{/if}
+						{:else}
+							{$t('home.weekSessions', { n: weekSessions })}
+						{/if}
+					</p>
+				</div>
+
+				{#if weekGoal > 0}
+					<div class="mt-2.5 h-2 overflow-hidden rounded-full bg-sunk">
+						<div
+							class="h-full rounded-full transition-[width] duration-500 {weekDone >= 1
+								? 'bg-accent'
+								: 'bg-brand'}"
+							style="width: {Math.max(weekDone * 100, weekArrows > 0 ? 4 : 0)}%"
+						></div>
+					</div>
+				{/if}
+			</a>
+		</div>
+
+		{#if unfinished}
+			<!-- Its own line, whatever else is up there: a half shot round is the one thing here that is
+				waiting on the archer. Only while the outing is still warm: after that it is history. -->
+			<a
+				href="/activities/{unfinished.id}"
+				class="mt-2 flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
+			>
+				<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk text-muted">
+					<Icon name="sight" size={22} />
+				</span>
+				<div class="min-w-0 flex-1">
+					<p class="truncate font-semibold">{roundName(unfinished)}</p>
+					<p class="truncate text-xs text-muted">{$t('home.resume')}</p>
+				</div>
+				<p class="tabular shrink-0 text-sm text-muted">
+					{$t('round.arrows', { n: unfinished.arrowsShot })}
+				</p>
+			</a>
+		{/if}
 	</section>
 
 	<section>
@@ -592,11 +607,21 @@
 		{/if}
 	</section>
 
-	<!-- Last on the page, where a page that has been read out ends: everywhere else to go. -->
+	<!-- Where a page that has been read out ends: everywhere else to go. -->
 	<section>
 		{@render heading($t('home.elsewhere'))}
 		<AppGrid from="/" />
 	</section>
+
+	{#if feed.length > 0}
+		<!-- Last, because it is other people's shooting: it is worth seeing, never worth leading with. -->
+		<section>
+			{@render heading($t('friends.feedTab'), { href: '/friends', label: $t('home.seeAll') })}
+			<div class="space-y-2">
+				<FriendFeed {feed} known={knownFriends} empty={false} />
+			</div>
+		</section>
+	{/if}
 </div>
 
 <!-- The one action this page exists for, kept where the thumb lands, with the rest behind the arrow. -->
