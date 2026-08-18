@@ -168,18 +168,20 @@
 		])
 	);
 
-	/** Today and tomorrow are said by name; anything further out is read off the weekday. */
-	const whenLabel = $derived((at: number) => {
+	/**
+	 * Today and tomorrow are said by name; anything further out is read off the weekday. The day and
+	 * the clock are kept apart rather than joined into one string, because half a line is not always
+	 * enough for both and a day that has to break mid word tells the archer nothing.
+	 */
+	const dayLabel = $derived((at: number) => {
 		const days = Math.round((startOfDay(at) - startOfDay(Date.now())) / 86_400_000);
-		const day =
-			days === 0
-				? $t('common.today')
-				: days === 1
-					? $t('common.tomorrow')
-					: days < 7
-						? $dateFormats.weekdayShort(at)
-						: $dateFormats.shortDate(at);
-		return `${day}, ${$formatTime(at)}`;
+		return days === 0
+			? $t('common.today')
+			: days === 1
+				? $t('common.tomorrow')
+				: days < 7
+					? $dateFormats.weekdayShort(at)
+					: $dateFormats.shortDate(at);
 	});
 
 	/**
@@ -527,13 +529,19 @@
 					class="flex w-full items-center gap-3 rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3 text-left shadow-sm"
 					onclick={openNext}
 				>
+					<!-- The badge is the first thing to go on a narrow screen: it decorates a card whose
+						words are the whole of what it says, and half a line is not wide enough for both. -->
 					<span
-						class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text"
+						class="hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-brand/15 text-brand-text min-[480px]:flex"
 					>
 						<Icon name="target" size={22} />
 					</span>
 					<div class="min-w-0 flex-1">
-						<p class="truncate font-semibold">{whenLabel(next.at)}</p>
+						<!-- Wrapped rather than cut: the clock drops under the day when they will not both fit. -->
+						<p class="flex flex-wrap gap-x-1.5 font-semibold">
+							<span>{dayLabel(next.at)}</span>
+							<span>{$formatTime(next.at)}</span>
+						</p>
 						<p class="truncate text-xs text-muted">
 							{next.occurrence?.label ?? next.session?.label ?? $t('home.next')}
 						</p>
@@ -555,19 +563,24 @@
 							/ {weekGoal}</span
 						>{/if}
 				</p>
-				<!-- Without a plan there is no target to fall short of, so the week says what it holds. -->
-				<p class="mt-1 truncate text-xs text-muted">
-					{#if weekGoal > 0}
-						{#if weekDone >= 1}
-							<!-- The one week in the log that deserves an emoji is the one that was finished. -->
-							🎉 {$t('session.goalReached')}
+				<!-- Without a plan there is no target to fall short of, so the week says what it holds.
+					What is left to shoot is dropped when the card shares its line: the figure already reads
+					"120 / 300" and the bar under it says the same thing a third time, for a line of height
+					this page has better uses for. A finished week keeps its say, being said once. -->
+				{#if !(next && weekGoal > 0 && weekDone < 1)}
+					<p class="mt-1 truncate text-xs text-muted">
+						{#if weekGoal > 0}
+							{#if weekDone >= 1}
+								<!-- The one week in the log that deserves an emoji is the one that was finished. -->
+								🎉 {$t('session.goalReached')}
+							{:else}
+								{$t('session.goalLeft', { n: weekGoal - weekArrows })}
+							{/if}
 						{:else}
-							{$t('session.goalLeft', { n: weekGoal - weekArrows })}
+							{$t('home.weekSessions', { n: weekSessions })}
 						{/if}
-					{:else}
-						{$t('home.weekSessions', { n: weekSessions })}
-					{/if}
-				</p>
+					</p>
+				{/if}
 
 				{#if weekGoal > 0}
 					<div class="mt-2 h-2 overflow-hidden rounded-full bg-sunk">
