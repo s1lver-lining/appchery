@@ -268,8 +268,34 @@ This is what makes an indoor three spot work, where the end is one arrow on each
 
 Turning recording on in settings keeps each camera scoring session as a video on the device, with a
 sidecar of how the phone was held, one sample per frame (`motion.ts`). Nothing reads the motion yet.
-It is captured because it cannot be added afterwards, and because gravity fixes which way up the phone
-is without drift, which is the one thing about the face the fit cannot see when it is nearly round.
+It is captured because it cannot be added afterwards.
+
+### What the motion sensors are for
+
+Three things the pictures alone are bad at, in the order they would be worth doing.
+
+**Which way round the face is.** The rings are circles, so nothing in the picture says where zero
+degrees on the face is; `alignFace` only holds the angle steady from one frame to the next, and what
+it holds it at is whatever the first fit happened to choose. Gravity says which way up the phone is,
+exactly and without drift, and a target face is hung the same way up all day. Between them that is a
+real angular origin rather than an arbitrary one, which would let arrows found in one end be recognised
+in the next, and would survive the face being lost and found again — which today restarts the angle
+from scratch.
+
+**Holding the fit through a bad frame.** The turn rate says how the camera moved between two frames
+before any pixel is read. Handed that, the follow could start its descent from where the face must
+have gone rather than from where it was, which is both faster and steadier, and could tell a face that
+has genuinely left the frame from one hidden for a moment by an archer walking past — today the second
+looks like the first and the fit is thrown away.
+
+**Steadying the overlay.** `steady.ts` guesses how fast the drawn points are travelling from the fits
+themselves, which is a noisy estimate of exactly the quantity the gyroscope measures directly. Feeding
+it the measured rate instead would let the smoothing be stronger without costing lag, because the part
+it has to guess is the part that limits it.
+
+What none of them give is position. Acceleration integrated twice drifts to metres within seconds, so
+how far the archer has walked is not recoverable this way and the pictures remain the only source of
+where the boss is.
 
 Nothing is uploaded. The files go to the app's documents directory and out through the system share
 sheet.
