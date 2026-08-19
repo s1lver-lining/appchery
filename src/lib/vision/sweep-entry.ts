@@ -42,9 +42,17 @@ export class Sweep {
 			sweep?: Record<string, number>;
 			still?: Record<string, number>;
 			arrows?: number;
+			/** The learned detector's weights, when it is the one being measured. */
+			model?: unknown;
+			combine?: boolean;
 		} = {}
 	) {
-		this.scanner = new Scanner({ sweep: options.sweep, still: options.still });
+		this.scanner = new Scanner({
+			sweep: options.sweep,
+			still: options.still,
+			model: (options.model ?? null) as never,
+			combine: options.combine
+		});
 		// The end's remaining arrows, exactly as the app sets it: only six are ever going to be offered.
 		if (options.arrows) this.scanner.setLimit(options.arrows);
 	}

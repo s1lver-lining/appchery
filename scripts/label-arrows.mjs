@@ -17,7 +17,7 @@
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readFile, writeFile, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
+import { readFile, writeFile, appendFile, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename, extname } from 'node:path';
@@ -26,6 +26,22 @@ const ROOT = new URL('..', import.meta.url).pathname;
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
 const WORK = join(ROOT, 'test/datasets/labelling');
 const SCALE = 4;
+
+/** How much the frame the crops are cut from is reduced first. */
+const CROP_SOURCE = 2;
+
+/** The crop the model works in: gold centred, radius normalised, a little past the face edge. */
+const CROP_SIZE = 128;
+const CROP_SPAN = 1.2;
+
+/** The four anchors the archer dragged, as a projection. Mirrors the labelling page exactly. */
+const ANCHOR = 0.8;
+const ANCHORS = [
+	[ANCHOR, 0],
+	[0, ANCHOR],
+	[-ANCHOR, 0],
+	[0, -ANCHOR]
+];
 
 /** Frames labelled per recording, spread evenly so each is a genuinely different viewpoint. */
 const SAMPLES = 15;
@@ -247,78 +263,144 @@ async function page() {
  * the clicked face coordinates. Frames the archer rejected in the check pass are left out.
  */
 async function exportSet() {
-	const { FaceTrack } = await load();
+	const { FaceTrack, toFace } = await load();
 	const out = join(ROOT, 'test/datasets/prepared-videos');
-	await mkdir(join(out, 'images'), { recursive: true });
+	await mkdir(out, { recursive: true });
+	/**
+	 * One flat file of raw crops rather than thousands of jpegs. Encoding each through its own process
+	 * cost more than everything else here put together, and a block of bytes is easier for the training
+	 * script to read than a directory is.
+	 */
+	const blob = join(out, 'crops.raw');
+	await writeFile(blob, Buffer.alloc(0));
+	const every = Number(argument('--every')) || 4;
 	const labels = [];
 
 	for (const name of await recordings()) {
 		const folder = join(WORK, name);
-		if (!existsSync(join(folder, 'labels.json'))) {
-			console.log(`  ${name}: not labelled, skipped`);
-			continue;
-		}
-		const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
+		if (!existsSync(join(folder, 'labels.json'))) continue;
 		const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
-		const rejected = new Set(label.rejected ?? []);
+		const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 		const { width, height } = meta;
+		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
+		const at = meta.chosen[label.arrowFrame ?? 0];
 
 		/**
-		 * Every frame is fitted here rather than in `prepare`, which only ever needed enough frames to
-		 * choose two dozen good ones. Nobody waits on this: it runs once, after the clicking is done.
+		 * The impacts start in the frame the archer drew them in and have to reach the one the detector
+		 * works in, which is a different frame for the same face: a target is rotationally symmetric, so
+		 * nothing forces the two to agree about which way round it sits. Going through the picture on the
+		 * one frame that has both is what ties them together.
 		 */
+		const truth = label.empty ? null : homographyOf(label.frames[String(label.arrowFrame)].handles);
+		if (!label.empty && !truth) {
+			console.log(`  ${name.slice(-24)}: no hand fit to anchor the arrows to, skipped`);
+			continue;
+		}
+
 		const track = new FaceTrack();
-		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
-		const kept = [];
+		let canonical = null;
 		let index = 0;
+		let written = 0;
+		const frames = [];
+
 		for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {
 			const face = track.push({
 				width: small.width,
 				height: small.height,
 				data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
 			});
-			// A label propagated through a poor fit is a wrong label, so those frames are left out.
 			const placed = face ? scaleUp(face, width, height) : null;
-			const near = nearestRejection(rejected, index, meta.stride ?? 1);
-			if (placed && !near && quality(placed) >= (label.minQuality ?? 0.7)) kept.push({ index, face: placed });
+			if (placed && index === at && truth) {
+				canonical = label.arrows.map((arrow) => {
+					const point = project(truth, arrow.x, arrow.y);
+					return toFace(placed, point.x, point.y);
+				});
+			}
+			// Only well fitted frames, and only every few: neighbours are the same picture twice.
+			if (placed && index % every === 0 && quality(placed) >= 0.7) frames.push({ index, face: placed });
 			index += 1;
 		}
 
-		// A second pass at full resolution, because the crops the model trains on come from that.
-		const wanted = new Map(kept.map((k) => [k.index, k.face]));
-		let at = 0;
-		let written = 0;
+		if (!label.empty && !canonical) {
+			console.log(`  ${name.slice(-24)}: the labelled frame was not fitted, skipped`);
+			continue;
+		}
+
+		const wanted = new Map(frames.map((f) => [f.index, f.face]));
+		let atFrame = 0;
 		for await (const frame of decode(join(VIDEOS, name), width, height)) {
-			const face = wanted.get(at);
-			const here = at;
-			at += 1;
+			const face = wanted.get(atFrame);
+			const here = atFrame;
+			atFrame += 1;
 			if (!face) continue;
-			const file = `${name.replace(/\.[^.]+$/, '')}-${String(here).padStart(6, '0')}.jpg`;
-			await writeCrop(
-				{ width, height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) },
-				face,
-				join(out, 'images', file)
+			await appendFile(
+				blob,
+				cropBytes(
+					{ width, height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) },
+					face
+				)
 			);
-			labels.push({ image: file, video: name, frame: here, impacts: label.arrows });
+			labels.push({ video: name, frame: here, impacts: canonical ?? [] });
 			written += 1;
 		}
-		console.log(`  ${name}: ${written} frames, ${label.arrows.length} arrows each`);
+		console.log(`  ${name.slice(-24)}: ${written} crops, ${(canonical ?? []).length} arrows each`);
 	}
 
-	await writeFile(join(out, 'labels.json'), JSON.stringify(labels, null, 1));
-	console.log(`\n${labels.length} labelled frames into ${out}`);
+	await writeFile(
+		join(out, 'labels.json'),
+		JSON.stringify({ size: CROP_SIZE, span: CROP_SPAN, examples: labels }, null, 1)
+	);
+	console.log(`\n${labels.length} crops into ${out}`);
 }
 
-/** A rejected sample stands for the stretch of frames around it, since that is what it was chosen from. */
-function nearestRejection(rejected, index, stride) {
-	for (const frame of rejected) {
-		if (Math.abs(frame - index) <= stride) return true;
+function homographyOf(points) {
+	if (!points) return null;
+	const rows = [];
+	for (let i = 0; i < 4; i++) {
+		const [u, v] = ANCHORS[i];
+		const [x, y] = points[i];
+		rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
+		rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
 	}
-	return false;
+	const h = solveEight(rows);
+	return h && [
+		[h[0], h[1], h[2]],
+		[h[3], h[4], h[5]],
+		[h[6], h[7], 1]
+	];
 }
 
-/** A rectified square of the face, the space the model works in, written as a jpeg through ffmpeg. */
-async function writeCrop(frame, face, into, size = 128, span = 1.2) {
+function solveEight(rows) {
+	const n = 8;
+	for (let col = 0; col < n; col++) {
+		let pivot = col;
+		for (let r = col + 1; r < n; r++) {
+			if (Math.abs(rows[r][col]) > Math.abs(rows[pivot][col])) pivot = r;
+		}
+		if (Math.abs(rows[pivot][col]) < 1e-12) return null;
+		[rows[col], rows[pivot]] = [rows[pivot], rows[col]];
+		for (let r = 0; r < n; r++) {
+			if (r === col) continue;
+			const factor = rows[r][col] / rows[col][col];
+			for (let c = col; c <= n; c++) rows[r][c] -= factor * rows[col][c];
+		}
+	}
+	return rows.map((row, i) => row[n] / row[i]);
+}
+
+function project(h, x, y) {
+	const w = h[2][0] * x + h[2][1] * y + h[2][2];
+	return {
+		x: (h[0][0] * x + h[0][1] * y + h[0][2]) / w,
+		y: (h[1][0] * x + h[1][1] * y + h[1][2]) / w
+	};
+}
+
+/**
+ * A rectified square of the face as raw bytes. Nearest neighbour, because that is how the training
+ * crops have always been sampled and the model must be shown the picture it learnt on.
+ */
+function cropBytes(frame, face, size = CROP_SIZE, span = CROP_SPAN) {
 	const data = Buffer.alloc(size * size * 3);
 	const cos = Math.cos(face.rotation);
 	const sin = Math.sin(face.rotation);
@@ -329,8 +411,10 @@ async function writeCrop(frame, face, into, size = 128, span = 1.2) {
 			const fy = ((j + 0.5) / size) * 2 * span - span;
 			const px = fx * face.semiMajor;
 			const py = fy * face.semiMinor;
-			const x = Math.round(face.cx + px * cos - py * sin);
-			const y = Math.round(face.cy + px * sin + py * cos);
+			const depth = 1 + (face.perspectiveX ?? 0) * fx + (face.perspectiveY ?? 0) * fy;
+			const k = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
+			const x = Math.round(face.cx + (px * cos - py * sin) * k);
+			const y = Math.round(face.cy + (px * sin + py * cos) * k);
 			const at = (j * size + i) * 3;
 			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
 			const p = (y * frame.width + x) * 4;
@@ -340,10 +424,7 @@ async function writeCrop(frame, face, into, size = 128, span = 1.2) {
 		}
 	}
 
-	await pipeTo('ffmpeg', [
-		'-v', 'error', '-y', '-f', 'rawvideo', '-pix_fmt', 'rgb24',
-		'-s', `${size}x${size}`, '-i', '-', '-q:v', '2', into
-	], data);
+	return data;
 }
 
 async function load() {

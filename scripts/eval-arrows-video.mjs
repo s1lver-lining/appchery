@@ -40,8 +40,13 @@ const option = (name, fallback) => {
 const only = option('video', null);
 /** Seconds of the recording to use, since an archer will not sweep for a minute. */
 const seconds = Number(option('seconds', 0));
+/** Milliseconds between detection passes, which is how many looks a sweep gets. */
+const everyMs = Number(option('every', 300));
 /** Threshold overrides, so a sweep of them needs no code edit. */
 const tune = JSON.parse(option('tune', '{}'));
+/** Weights for the learned detector, measured through the same harness as the written one. */
+const modelPath = option('model', null);
+const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 
 const { Sweep, toFaceCoords } = await load();
 
@@ -71,7 +76,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	const first = seconds > 0 ? Math.max(0, at - span) : 0;
 	const limit = seconds > 0 ? at + span : Infinity;
 	// Counted from the first frame fed in, which is what the sweep sees.
-	const sweep = new Sweep(300, 30, at - first, { ...tune, arrows: label.arrows.length });
+	const sweep = new Sweep(everyMs, 30, at - first, { ...tune, arrows: label.arrows.length, model });
 
 	let index = 0;
 	for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {
@@ -145,6 +150,7 @@ for (const name of (await readdir(WORK)).sort()) {
 const sorted = errors.sort((a, b) => a - b);
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
 console.log(rows.join('\n'));
+console.log(`\ndetector            ${model ? 'learned' : 'classical'}`);
 console.log(`\narrows found        ${found}/${wanted} (${((found / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`spurious arrows     ${spurious} (${(spurious / Math.max(rows.length, 1)).toFixed(1)} per recording)`);

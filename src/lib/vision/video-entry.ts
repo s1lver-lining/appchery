@@ -176,3 +176,5 @@ export class FaceTrack {
 		return found[0] ?? null;
 	}
 }
+
+export { toFaceCoords as toFace } from './face';

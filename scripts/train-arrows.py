@@ -25,6 +25,7 @@ from PIL import Image
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREPARED = os.path.join(ROOT, "test/datasets/prepared")
+RECORDINGS = os.path.join(ROOT, "test/datasets/prepared-videos")
 OUT = os.path.join(ROOT, "src/lib/vision/arrow-model.json")
 
 SIZE = 128
@@ -78,6 +79,36 @@ def load(folder):
         cover = (rgba[:, :, 3] > 0).astype(np.float32)
         points = np.array([[p["x"], p["y"]] for p in item["points"]], dtype=np.float32).reshape(-1, 2)
         examples.append((image, points, cover))
+    return meta, examples
+
+
+def load_recordings(folder):
+    """The crops cut from recorded sessions, which is the only data from the domain that matters.
+
+    Kept as one flat block of bytes rather than thousands of files, and tagged with the recording each
+    came from. That tag is what the split runs on: two crops from one sweep are the same six arrows on
+    the same boss seconds apart, so splitting them at random would put nearly every test crop's twin in
+    the training set and report a number that means nothing.
+    """
+    path = os.path.join(folder, "labels.json")
+    if not os.path.exists(path):
+        return None, []
+    meta = json.load(open(path))
+    size = meta["size"]
+    blob = np.fromfile(os.path.join(folder, "crops.raw"), dtype=np.uint8)
+    stride = size * size * 3
+    count = min(len(blob) // stride, len(meta["examples"]))
+    blob = blob[: count * stride].reshape(count, size, size, 3)
+
+    examples = []
+    for i in range(count):
+        item = meta["examples"][i]
+        image = blob[i].astype(np.float32) / 255.0
+        # The whole crop is real picture here: these come from video frames, not from photographs
+        # whose corners fell outside the shot.
+        cover = np.ones((size, size), dtype=np.float32)
+        points = np.array([[p["x"], p["y"]] for p in item["impacts"]], dtype=np.float32).reshape(-1, 2)
+        examples.append((image, points, cover, item["video"]))
     return meta, examples
 
 
@@ -265,20 +296,38 @@ def main():
     meta, examples = load(PREPARED)
     span = meta["span"]
 
-    # A second set from somewhere else entirely, if it has been prepared. Only ever added to training:
-    # accuracy is always reported against the hand placed keypoints of the first.
-    extra = []
-    if args.extra and os.path.exists(os.path.join(args.extra, "labels.json")):
-        _, extra = load(args.extra)
-        print(f"extra {len(extra)} crops from {os.path.relpath(args.extra, ROOT)}")
-
-    # Split by photograph, held fixed by seed, so the same test set can be given to either detector.
+    # Split the photographs by picture, held fixed by seed, so either detector can be given the same set.
     order = list(range(len(examples)))
     random.Random(1234).shuffle(order)
     cut = int(len(order) * 0.8)
-    train = [examples[i] for i in order[:cut]] + extra
-    test = [examples[i] for i in order[cut:]]
-    print(f"train {len(train)} crops, test {len(test)} crops")
+    still_train = [examples[i] for i in order[:cut]]
+    still_test = [examples[i] for i in order[cut:]]
+
+    """
+    The recordings are split by recording, never by crop.
+
+    Fourteen sweeps is fourteen arrangements of arrows, however many frames each one lasts. Two crops
+    from one sweep are the same six arrows on the same boss a fraction of a second apart, so a random
+    split would put a near twin of almost every test crop into training and report a number that says
+    only that the model can memorise. Whole recordings held out is the only honest question: here is a
+    boss you have never seen, in light you have never seen, with arrows you have never seen.
+    """
+    _, sessions = load_recordings(RECORDINGS)
+    videos = sorted({item[3] for item in sessions})
+    holdout = set(videos[:: max(1, len(videos) // 4)][:4])
+    video_train = [(i, p, c) for i, p, c, v in sessions if v not in holdout]
+    video_test = [(i, p, c) for i, p, c, v in sessions if v in holdout]
+
+    """
+    Weighted up so the recordings are not drowned. The photographs outnumber them and are a different
+    problem: one still, taken square on, indoors, on one phone. Training on the pooled set as it comes
+    produces a model that is excellent at that and has barely met a boss at sunset.
+    """
+    repeats = max(1, len(still_train) // max(1, len(video_train)))
+    train = still_train + video_train * repeats
+    print(f"photographs  {len(still_train)} train, {len(still_test)} test")
+    print(f"recordings   {len(video_train)} train, {len(video_test)} test ({len(holdout)} held out)")
+    print(f"             recordings repeated {repeats}x, {len(train)} crops per epoch")
 
     model = Net()
     total = sum(p.numel() for p in model.parameters())
@@ -328,21 +377,34 @@ def main():
             running += loss.item()
             steps += 1
 
-        if (epoch + 1) % 20 == 0 or epoch == args.epochs - 1:
-            scored = evaluate(model, test, span, args.threshold)
-            print(
+        if (epoch + 1) % 10 == 0 or epoch == args.epochs - 1:
+            stills = evaluate(model, still_test, span, args.threshold)
+            clips = evaluate(model, video_test, span, args.threshold) if video_test else None
+            line = (
                 f"epoch {epoch + 1:3d}  loss {running / max(steps, 1):.3f}  "
-                f"recall {scored['recall'] * 100:.1f}%  precision {scored['precision'] * 100:.1f}%"
+                f"photos {stills['recall'] * 100:.0f}/{stills['precision'] * 100:.0f}"
             )
+            if clips:
+                line += f"  clips {clips['recall'] * 100:.0f}/{clips['precision'] * 100:.0f}"
+            print(line + "   (recall/precision)")
 
-    print("\nheld out test set, the same photographs either detector may be measured on:")
-    for threshold in (0.2, 0.3, 0.4, 0.5):
-        scored = evaluate(model, test, span, threshold)
-        print(
-            f"  threshold {threshold}:  reported {scored['reported']:4d}  "
-            f"recall {scored['recall'] * 100:5.1f}%  precision {scored['precision'] * 100:5.1f}%  "
-            f"offset {scored['offset'] * 100:.1f}%"
-        )
+    """
+    Reported apart, always. A single number over the pooled set hides which of the two problems was
+    solved, and they are different problems: one photograph of a boss across a hall, and a sweep past a
+    boss at arm's length at sunset. A model that is good at the first and hopeless at the second would
+    look respectable pooled, and would be no use to an archer.
+    """
+    for name, data in (("photographs, held out", still_test), ("recordings, held out", video_test)):
+        if not data:
+            continue
+        print(f"\n{name}:")
+        for threshold in (0.2, 0.3, 0.4, 0.5):
+            scored = evaluate(model, data, span, threshold)
+            print(
+                f"  threshold {threshold}:  reported {scored['reported']:4d}  "
+                f"recall {scored['recall'] * 100:5.1f}%  precision {scored['precision'] * 100:5.1f}%  "
+                f"offset {scored['offset'] * 100:.1f}%"
+            )
 
     weights = export(model, span, args.threshold, args.out)
     print(f"\nexported {weights} weights to {os.path.relpath(args.out, ROOT)}")

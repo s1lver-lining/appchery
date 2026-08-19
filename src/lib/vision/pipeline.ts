@@ -53,6 +53,11 @@ export interface ScannerOptions {
 	 * and the rotation on the GPU, so this costs the caller almost nothing.
 	 */
 	crop?: ((face: FaceLocation, size: number, span: number) => Frame | null) | null;
+	/**
+	 * Run both detectors and pool what they propose. They fail on different arrows, so the union sees
+	 * more than either, and the agreement across viewpoints is what keeps the extra noise out.
+	 */
+	combine?: boolean;
 }
 
 /**
@@ -76,6 +81,7 @@ export class Scanner {
 	private readonly framesToSettle: number;
 	private maxArrows: number;
 	private model: ArrowModel | null;
+	private readonly combine: boolean;
 	private readonly crop: ScannerOptions['crop'];
 
 	constructor(options: ScannerOptions = {}) {
@@ -85,6 +91,7 @@ export class Scanner {
 		this.maxArrows = options.maxArrows ?? 12;
 		this.model = options.model ?? null;
 		this.crop = options.crop ?? null;
+		this.combine = options.combine ?? false;
 		this.still = options.still ?? {};
 		this.tracker = new SweepTracker(options.sweep);
 	}
@@ -199,7 +206,18 @@ export class Scanner {
 			return -1;
 		};
 
-		const detections = this.model
+		const shapes = (!this.model || this.combine)
+			? faces.flatMap((face, index) =>
+					detectArrowsInStill(small, face, this.still).map((arrow) => ({
+						x: arrow.x,
+						y: arrow.y,
+						area: arrow.area,
+						face: index
+					}))
+				)
+			: [];
+
+		const learned = this.model
 			? faces.flatMap((face, index) => {
 					const model = this.model as ArrowModel;
 					const crop = this.crop?.(face, model.size, model.span) ?? null;
@@ -214,14 +232,9 @@ export class Scanner {
 						face: index
 					}));
 				})
-			: faces.flatMap((face, index) =>
-					detectArrowsInStill(small, face, this.still).map((arrow) => ({
-						x: arrow.x,
-						y: arrow.y,
-						area: arrow.area,
-						face: index
-					}))
-				);
+			: [];
+
+		const detections = [...shapes, ...learned];
 
 		// Capped at what the end can still take, so a misdetection cannot flood the list.
 		this.tracker.setLimit(this.maxArrows);
