@@ -109,6 +109,23 @@ found fall from 67% to 46% and false marks rise by half. The fill, elongation an
 each worth a point or two. The width comparison is worth three points and only earns them with the
 bearing test gone.
 
+**The physics is there and is not yet usable.** An arrow comes out of the paper and a crease does not,
+which is the one property they do not share. The face already says where the camera is, so this is
+checkable without a lens calibration or a motion sensor: a point at height h above the face images at
+`H(x, y, 1) + h·v`, where `v` is where the plane's normal vanishes, so read back through the fit into
+face coordinates the tail of a standing shaft lies on the line from its impact towards one single
+point — where the camera stands, in the face's own coordinates — and that point is shared by every
+arrow in the frame. Arrows near a boss do not lean in parallel, as an earlier version of this assumed;
+their lines meet. Fitting that meeting place from the marks themselves, with the disagreeing ones
+weighted down, and rejecting marks that lean elsewhere removes about five wrong marks for every two
+real ones. Better than any appearance test managed, and still not enough to be worth turning on.
+
+Two things stand in its way. The premise is only approximate — an arrow is not normal to the face, so
+the line through impact and tail passes near the meeting place rather than through it, and the exact
+version of the constraint needs several frames rather than one. And the tail the detector reports is
+the end of a dark run, not the nock, which scatters the measured lean far more than the geometry does.
+The second is the one to fix first, and fixing it needs labelled nocks to measure against.
+
 Three further ideas were built, measured and removed, which is worth as much as the ones that stayed:
 
 - **Weighing a place's votes by how strong a ridge it showed.** Exactly neutral as a ranking, and as a
