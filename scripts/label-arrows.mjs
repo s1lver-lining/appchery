@@ -70,6 +70,15 @@ const SAMPLES = 15;
  */
 const STRIDE = 8;
 
+/**
+ * How often the face is followed while looking for the frames to label.
+ *
+ * Not about picking frames but about keeping one orientation across the recording: the fit is turned
+ * back onto the previous one each time, which only works over a small turn. Every fourth frame is an
+ * eighth of a second of camera movement, well inside what that can bridge.
+ */
+const GAUGE_STRIDE = 4;
+
 const command = process.argv[2] ?? 'prepare';
 const only = argument('--video');
 
@@ -119,15 +128,26 @@ async function prepare() {
 		let at = 0;
 		const wanted = new Set(chosen);
 		const track = new FaceTrack();
+		let held = null;
 		for await (const frame of decode(file, small.width, small.height, small)) {
-			if (wanted.has(at)) {
-				const face = track.push({
+			/**
+			 * The tracker is fed along the way, not only at the frames being kept.
+			 *
+			 * It holds one idea of which way round the face is by turning each fit back onto the last one,
+			 * and it can only do that over a small turn — which is all a frame or two of a carried camera
+			 * amounts to, and nothing like the two seconds between the frames worth labelling. Fed only
+			 * those, it lost the thread every few frames and the seeds came back turned a quarter or a half
+			 * from each other. In the tool that looks like the arrows rotating about the gold and swapping
+			 * numbers, which is exactly what it looked like.
+			 */
+			if (at % GAUGE_STRIDE === 0 || wanted.has(at)) {
+				held = track.push({
 					width: small.width,
 					height: small.height,
 					data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
 				});
-				seeds.push(face ? scaleUp(face, width, height) : null);
 			}
+			if (wanted.has(at)) seeds.push(held ? scaleUp(held, width, height) : null);
 			at += 1;
 			if (seeds.length === chosen.length) break;
 		}
