@@ -78,8 +78,9 @@ worked: asking for four views instead of five costs six points of arrows and hal
 marks, and measuring viewpoint spread directly from the fit — so a fast sweep could confirm sooner and
 a still phone could not confirm at all — made no difference on any real recording while breaking the
 one case where the archer stands still. What is done instead is to show what the first couple of
-seconds turned up, marked unsure, so the wait is visible rather than blank; those marks are never
-counted and are gone the moment anything is confirmed. A false positive, once confirmed, is never
+seconds turned up, marked unsure, so the wait is visible rather than blank: everything the very first
+pass proposes, from about eight tenths of a second in, which is as soon as there is a face to read them
+against. They are never counted, never scored, and gone the moment anything is confirmed. A false positive, once confirmed, is never
 reconsidered — taking arrows back on later evidence was built and measured and cost a fifth of the real
 arrows to remove a third of the false ones, because a real arrow genuinely stops being proposed once
 the archer has swung past it, so it is not in the code. And an arrow the sweep never agreed on is only
@@ -107,6 +108,17 @@ Ablating each remaining test one at a time: the ridge test is the one that matte
 found fall from 67% to 46% and false marks rise by half. The fill, elongation and radial lean tests are
 each worth a point or two. The width comparison is worth three points and only earns them with the
 bearing test gone.
+
+Three further ideas were built, measured and removed, which is worth as much as the ones that stayed:
+
+- **Weighing a place's votes by how strong a ridge it showed.** Exactly neutral as a ranking, and as a
+  gate it trades arrows for wrong marks about one for one at every setting. Real shafts and the things
+  mistaken for them have overlapping ridge scores, so there is no separation there to take.
+- **Reading the impact at half a pixel rather than a whole one**, on the theory that a quarter scale
+  frame quantises the impact by about a tenth of a ring. It did not improve placement at all, which
+  says the error is in what counts as the end of the ridge rather than in how finely it is measured.
+- **Sampling that walk between pixels instead of at the nearest one.** Worth four points uncounted and
+  minus three counted, and no better placed. Not a clear enough win to keep.
 
 Two ways out of that were tried against the recordings and neither worked. Taking arrows back when the
 rest of the sweep stops agreeing with them cost a fifth of the real arrows to remove a third of the
