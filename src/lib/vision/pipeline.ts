@@ -155,7 +155,24 @@ export class Scanner {
 
 			if (verified.length > 0) {
 				// Nearest first, so face 0 stays face 0 between detections and the tracker's indices hold.
-				const ordered = this.faces.length > 0 ? matchOrder(this.faces, verified) : verified;
+				const fresh = this.faces.length > 0 ? matchOrder(this.faces, verified) : verified;
+
+				/**
+				 * A face already being followed keeps the geometry it has. The search and the follow are
+				 * two estimates of the same thing and they never agree exactly, so adopting the search's
+				 * answer every time made the overlay jump a few times a second: the tilt alone moved by
+				 * thirty degrees at the worst twentieth, which on a face that is not quite round throws
+				 * the whole ellipse. The followed fit is the better of the two anyway, being refined from
+				 * the last frame rather than from a blob, so the search is left to do the one job the
+				 * follow cannot: noticing a face that was not there before.
+				 */
+				const ordered = fresh.map((face, i) => {
+					const followed = this.faces[i];
+					if (!followed) return face;
+					const moved = Math.hypot(face.cx - followed.cx, face.cy - followed.cy);
+					const sameFace = moved < followed.semiMajor * 0.35 && face.support <= followed.support + 0.05;
+					return sameFace ? followed : face;
+				});
 				const moved = this.faces.length !== ordered.length || ordered.some((face, i) => {
 					const previous = this.faces[i];
 					return (

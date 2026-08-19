@@ -271,12 +271,21 @@ function judge(frame: Frame, face: FaceLocation): number {
 	return ringAgreement(frame, face);
 }
 
-function descend(frame: Frame, start: FaceLocation, lean = false, from = 0.06): FaceLocation {
+/** The finest the fit will move when following, as a share of the face radius. */
+const FOLLOW_STEP = 0.0015;
+
+function descend(
+	frame: Frame,
+	start: FaceLocation,
+	lean = false,
+	from = 0.06,
+	floor = 0.0075
+): FaceLocation {
 	let best = start;
 	let bestScore = judge(frame, start);
 
 	// Steps as a share of the face radius, halving each round.
-	for (let step = from; step >= 0.0075; step /= 2) {
+	for (let step = from; step >= floor; step /= 2) {
 		let improved = true;
 		while (improved) {
 			improved = false;
@@ -303,6 +312,20 @@ function descend(frame: Frame, start: FaceLocation, lean = false, from = 0.06): 
 				{ ...best, semiMinor: best.semiMinor * (1 + step) },
 				{ ...best, semiMinor: best.semiMinor * (1 - step) }
 			];
+
+			/**
+			 * Which way the ellipse lies. Left out of this list the tilt only ever came from the gold
+			 * blob's moments, so it held one value for hundreds of frames and then jumped by tens of
+			 * degrees when the search next ran, which threw the whole overlay as the archer turned the
+			 * phone. A face near enough to circular is left alone: its tilt means nothing, and letting
+			 * it wander costs accuracy where the answer does not matter.
+			 */
+			if (best.semiMajor > best.semiMinor * 1.02 || best.semiMinor > best.semiMajor * 1.02) {
+				candidates.push(
+					{ ...best, rotation: best.rotation + step },
+					{ ...best, rotation: best.rotation - step }
+				);
+			}
 
 			if (lean) {
 				/**
@@ -359,7 +382,14 @@ function fit(frame: Frame, start: FaceLocation, thorough: boolean): FaceLocation
 	 * it was acquired and the camera has moved a frame's worth since, so polishing every number together
 	 * from where they already are is both quicker and better than starting the hunt again.
 	 */
-	if (!thorough) return descend(frame, start, true, 0.03);
+	/**
+	 * Following costs a finer step than searching does. A camera panning slowly moves the face less
+	 * than a pixel between frames, and a step floor of a pixel cannot express that, so the fit sat
+	 * still for several frames and then jumped: measured on a real sweep it did not move at all in
+	 * half the frames and moved 3% of the radius in the worst twentieth. That is the overlay stepping
+	 * rather than following. It starts from last frame's answer, so the finer steps cost few rounds.
+	 */
+	if (!thorough) return descend(frame, start, true, 0.02, FOLLOW_STEP);
 
 	const flat = descend(frame, { ...start, perspectiveX: 0, perspectiveY: 0 }, false);
 	/**
