@@ -50,13 +50,18 @@
 	<div class="row"><button id="noarrows">This video has no arrows</button></div>
 	<div class="row"><button id="undo">Undo arrow</button><button id="clear">Clear arrows</button></div>
 	<div class="row"><button id="anchor">Move arrows to this frame</button></div>
+	<div class="row">
+		<button id="out">Zoom &minus;</button><button id="in">Zoom &plus;</button><button id="wide">Fit</button>
+	</div>
+	<div class="row"><button id="hide">Hide the nock lines</button></div>
 	<div class="row"><button id="clearNocks">Clear this frame's nocks</button></div>
 
 	<div class="row"><button id="save" class="primary">Save video</button></div>
 	<p class="dim" id="status"></p>
 	<p class="dim">
 		<kbd>&larr;</kbd><kbd>&rarr;</kbd> frame &middot; <kbd>F</kbd> fit &middot; <kbd>A</kbd> arrows &middot;
-		<kbd>N</kbd> nocks &middot; <kbd>M</kbd> not arrows &middot; <kbd>S</kbd> save
+		<kbd>N</kbd> nocks &middot; <kbd>M</kbd> not arrows &middot; <kbd>H</kbd> hide lines &middot;
+		wheel to zoom &middot; <kbd>S</kbd> save
 	</p>
 </aside>
 
@@ -80,6 +85,19 @@
 	let current = 0;
 	let frame = 0;
 	let mode = 'fit';
+	/**
+	 * A closer look, and where it is pointed, in the picture's own pixels.
+	 *
+	 * A shaft is a few pixels across on a face the width of a phone screen, and once six of them have
+	 * lines drawn to their nocks there is more ink than target. Everything else here is a judgement about
+	 * where something is to within a pixel or two, which is not a judgement that can be made at a
+	 * thousandth of the screen.
+	 */
+	let closer = 1;
+	let lookX = 0;
+	let lookY = 0;
+	/** Whether to draw the line from each impact to its nock, which is the thing that clutters a face. */
+	let showNocks = true;
 	/** Which arrow the next nock belongs to. Chosen, never guessed: see the click handler. */
 	let nocking = 0;
 	let dragging = -1;
@@ -292,7 +310,8 @@
 		context.setTransform(1, 0, 0, 1, 0, 0);
 		context.fillStyle = '#0b0c0e';
 		context.fillRect(0, 0, view.width, view.height);
-		context.setTransform(zoom, 0, 0, zoom, pad * zoom, pad * zoom);
+		const k = zoom * closer;
+		context.setTransform(k, 0, 0, k, (pad - lookX) * k, (pad - lookY) * k);
 		context.drawImage(image, 0, 0);
 
 		const s = state();
@@ -336,7 +355,7 @@
 			});
 
 			// The nocks placed on this frame, drawn as the shaft each one implies.
-			(v.nocks[frame] ?? []).forEach((nock) => {
+			(showNocks ? v.nocks[frame] ?? [] : []).forEach((nock) => {
 				const arrow = v.arrows[nock.arrow];
 				if (!arrow) return;
 				const p = project(h, arrow.x, arrow.y);
@@ -397,6 +416,8 @@
 						: 'Click anything that looks like a shaft and is not one: a crease, a fold, a printed line, the rim, a shadow. Click one again to remove it.';
 		const fitted = v.work.filter((w) => w.touched && !w.skip).length;
 		el('anchor').className = v.arrowFrame === frame ? 'on' : '';
+		el('hide').className = showNocks ? '' : 'on';
+		el('hide').textContent = showNocks ? 'Hide the nock lines' : 'Show the nock lines';
 		const nocked = Object.values(v.nocks).filter((list) => list.length > 0).length;
 		const anchored = v.arrowFrame === null || v.arrowFrame === undefined ? '' : ` (placed on frame ${v.arrowFrame + 1})`;
 		el('status').textContent =
@@ -412,11 +433,31 @@
 
 	function at(event) {
 		const box = view.getBoundingClientRect();
+		const k = zoom * closer;
 		return {
-			x: ((event.clientX - box.left) / box.width) * view.width / zoom - pad,
-			y: ((event.clientY - box.top) / box.height) * view.height / zoom - pad
+			x: ((event.clientX - box.left) / box.width) * view.width / k - pad + lookX,
+			y: ((event.clientY - box.top) / box.height) * view.height / k - pad + lookY
 		};
 	}
+
+	/** Zooms about the point under the pointer, so what you were looking at stays where it was. */
+	function lookCloser(step, event) {
+		const before = event ? at(event) : { x: lookX + image.width / (2 * closer), y: lookY + image.height / (2 * closer) };
+		closer = Math.min(8, Math.max(1, closer * step));
+		const after = event ? at(event) : { x: lookX + image.width / (2 * closer), y: lookY + image.height / (2 * closer) };
+		lookX += before.x - after.x;
+		lookY += before.y - after.y;
+		if (closer === 1) {
+			lookX = 0;
+			lookY = 0;
+		}
+		draw();
+	}
+
+	view.onwheel = (event) => {
+		event.preventDefault();
+		lookCloser(event.deltaY < 0 ? 1.15 : 1 / 1.15, event);
+	};
 
 	view.onpointerdown = (event) => {
 		const p = at(event);
@@ -577,6 +618,18 @@
 		v.arrowFrame = frame;
 		draw();
 	};
+	el('in').onclick = () => lookCloser(1.4, null);
+	el('out').onclick = () => lookCloser(1 / 1.4, null);
+	el('wide').onclick = () => {
+		closer = 1;
+		lookX = 0;
+		lookY = 0;
+		draw();
+	};
+	el('hide').onclick = () => {
+		showNocks = !showNocks;
+		draw();
+	};
 	el('clearNocks').onclick = () => {
 		video().nocks[frame] = [];
 		draw();
@@ -661,6 +714,10 @@
 		if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
 		if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
 		if (event.key.toLowerCase() === 'm') el('markMode').onclick();
+		if (event.key.toLowerCase() === 'h') el('hide').onclick();
+		if (event.key === '+' || event.key === '=') el('in').onclick();
+		if (event.key === '-') el('out').onclick();
+		if (event.key === '0') el('wide').onclick();
 		if (mode === 'nocks' && /^[1-9]$/.test(event.key)) {
 			const which = Number(event.key) - 1;
 			if (video().arrows[which]) {
