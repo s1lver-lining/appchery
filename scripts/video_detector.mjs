@@ -60,7 +60,11 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 		'-v', 'error', '-i', resolve(input),
 		'-fps_mode', 'passthrough',
 		'-f', 'rawvideo', '-pix_fmt', 'rgba', '-'
-	], { stdio: ['ignore', 'pipe', 'inherit'] });
+	], { stdio: ['ignore', 'pipe', 'pipe'] });
+	// Held rather than passed on: the replay stops reading when it has the frames it wanted, and ffmpeg
+	// then complains at length about a pipe nobody is holding, which is our doing and not a fault.
+	let complaint = '';
+	decoderNoise(decoder, (chunk) => (complaint += chunk));
 
 	const encoder = target
 		? spawn('ffmpeg', [
@@ -148,6 +152,11 @@ async function* frames(stream, size) {
 			held = held.subarray(size);
 		}
 	}
+}
+
+/** Keeps the decoder's complaints out of the report without throwing them away. */
+function decoderNoise(child, take) {
+	child.stderr.on('data', take);
 }
 
 function write(stream, buffer) {

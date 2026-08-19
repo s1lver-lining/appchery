@@ -179,6 +179,16 @@ function quality(face) {
 /** The fit measured on the reduced frame, put back into the video's own pixels. */
 function scaleUp(face, width, height) {
 	const placed = {
+		/**
+		 * The four points themselves, which is what the tool actually wants.
+		 *
+		 * The rest of this describes the fit as a centre, two axes, an angle and a lean, and rebuilding
+		 * handles from those was throwing away the very thing the fit is good at. A face seen from off to
+		 * one side is a projection, with eight numbers in it; squeezed back through seven summary ones the
+		 * far side of the boss comes back the same size as the near side, and the handles land a ring or
+		 * two out on exactly the frames where the archer most wants them right.
+		 */
+		handles: face.anchors?.map(([x, y]) => [x * SCALE, y * SCALE]) ?? null,
 		cx: face.cx * SCALE,
 		cy: face.cy * SCALE,
 		semiMajor: face.semiMajor * SCALE,
@@ -465,14 +475,26 @@ async function* decode(file, width, height, scaleTo = null, stride = 1) {
 	if (stride > 1) filters.push(`select='not(mod(n\\,${stride}))'`);
 	if (scaleTo) filters.push(`scale=${scaleTo.width}:${scaleTo.height}:flags=area`);
 
+	/**
+	 * Its complaints are held rather than passed on, because most of them are ours.
+	 *
+	 * Every caller here stops reading as soon as it has the frames it asked for, which leaves ffmpeg
+	 * writing into a pipe nobody is holding: it says the connection was reset, several times, in red.
+	 * That is the expected end of a deliberate early stop and not a fault, but printed among real output
+	 * it reads as one. So it is kept and only shown when the decoder failed on its own account.
+	 */
 	const child = spawn('ffmpeg', [
 		'-v', 'error', '-i', resolve(file),
 		...(filters.length ? ['-vf', filters.join(',')] : []),
 		'-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'
-	], { stdio: ['ignore', 'pipe', 'inherit'] });
+	], { stdio: ['ignore', 'pipe', 'pipe'] });
+
+	let complaint = '';
+	child.stderr.on('data', (chunk) => (complaint += chunk));
 
 	const size = width * height * 4;
 	let held = Buffer.alloc(0);
+	let stopped = false;
 	try {
 		for await (const chunk of child.stdout) {
 			held = held.length === 0 ? chunk : Buffer.concat([held, chunk]);
@@ -482,8 +504,11 @@ async function* decode(file, width, height, scaleTo = null, stride = 1) {
 			}
 		}
 	} finally {
+		stopped = true;
 		child.kill('SIGKILL');
 	}
+
+	if (!stopped && complaint) process.stderr.write(complaint);
 }
 
 async function probe(file) {

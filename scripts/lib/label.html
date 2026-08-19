@@ -156,6 +156,9 @@
 			const r = Math.min(width, height) * 0.35;
 			return ANCHORS.map(([u, v]) => [width / 2 + (u / ANCHOR) * r, height / 2 + (v / ANCHOR) * r]);
 		}
+		// The fit's own four points when it kept them, which is every seed made since it learnt to.
+		if (seed.handles?.length === 4) return seed.handles.map(([x, y]) => [x, y]);
+
 		const cos = Math.cos(seed.rotation);
 		const sin = Math.sin(seed.rotation);
 		return ANCHORS.map(([u, v]) => {
