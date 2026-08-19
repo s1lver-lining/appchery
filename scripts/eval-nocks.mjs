@@ -45,6 +45,7 @@ const residuals = [];
 const rows = [];
 let frames = 0;
 let skipped = 0;
+let automatic = 0;
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
@@ -61,6 +62,13 @@ for (const name of (await readdir(WORK)).sort()) {
 			skipped += 1;
 			continue;
 		}
+		/**
+		 * Counted, because a nock read back through a fit that is itself wrong lands in the wrong place,
+		 * and the residual then measures the fit rather than the arrow. The seeds in the workspace were
+		 * made by whichever version of the face detector was current when `prepare` last ran, which is not
+		 * this one. A frame whose fit was never touched by hand is evidence about the wrong thing.
+		 */
+		if (!fit.touched) automatic += 1;
 		const h = homography(fit.handles);
 		const back = h && invert(h);
 		if (!back) {
@@ -107,6 +115,10 @@ residuals.sort((a, b) => a - b);
 const at = (share) => residuals[Math.floor((residuals.length - 1) * share)] * 57.3;
 console.log(rows.join('\n'));
 console.log(`\nframes measured     ${frames}${skipped > 0 ? ` (${skipped} skipped for want of a hand fit)` : ''}`);
+if (automatic > 0) {
+	console.log(`  of those, ${automatic} used an automatic fit rather than one placed by hand.`);
+	console.log('  Those inflate the number below: fit them by hand, or read this as an upper bound.');
+}
 console.log(`nocks               ${residuals.length}`);
 console.log(`lean off the meeting point   ${at(0.5).toFixed(1)}° median, ${at(0.9).toFixed(1)}° at p90`);
 console.log(
