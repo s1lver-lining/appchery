@@ -10,9 +10,7 @@ import {
 import { refineFace, ringAgreement } from './refine';
 import { detectArrowsInStill } from './still';
 import { detectArrowsLearned, type ArrowModel } from './learned';
-import { Background, findBlobs } from './impacts';
 import { verifyRings, classify, probeRing } from './rings';
-import { ImpactTracker } from './tracker';
 import { SweepTracker } from './sweep';
 import { Scanner } from './pipeline';
 import { rgbToHsv, largestComponent } from './pixels';
@@ -115,7 +113,8 @@ describe('detectFace', () => {
 	});
 
 	it('fits an ellipse, so a camera off to one side still reads the face', () => {
-		const face = detectFace(ellipse(blank(200, 200), 100, 100, 30, 18, GOLD));
+		// The gold on its own, with no rings around it to refine against: this is the seed being tested.
+		const face = detectFace(ellipse(blank(200, 200), 100, 100, 30, 18, GOLD), { refine: false });
 		expect(face).not.toBeNull();
 		expect(face!.semiMajor / face!.semiMinor).toBeCloseTo(30 / 18, 1);
 	});
@@ -148,144 +147,6 @@ describe('face coordinates', () => {
 		expect(toFaceCoords(face, 100, 100).x).toBeCloseTo(0, 6);
 		const edge = toFaceCoords(face, 100 + face.semiMajor, 100);
 		expect(Math.hypot(edge.x, edge.y)).toBeCloseTo(1, 6);
-	});
-});
-
-describe('Background', () => {
-	it('reports nothing on a scene that has not changed', () => {
-		const background = new Background();
-		background.update(blank(40, 40));
-		const diff = background.update(blank(40, 40));
-		expect(Math.max(...diff)).toBe(0);
-	});
-
-	it('lights up exactly where something new appeared', () => {
-		const background = new Background();
-		background.update(blank(40, 40));
-		const withArrow = ellipse(blank(40, 40), 20, 20, 3, 3, [10, 10, 10]);
-		const diff = background.update(withArrow);
-		expect(diff[20 * 40 + 20]).toBeGreaterThan(80);
-		expect(diff[0]).toBe(0);
-	});
-});
-
-describe('findBlobs', () => {
-	it('groups changed pixels and returns their centres, largest first', () => {
-		const width = 40;
-		const diff = new Uint8ClampedArray(width * 40);
-		for (let y = 10; y < 14; y++) for (let x = 10; x < 14; x++) diff[y * width + x] = 200;
-		for (let y = 30; y < 32; y++) for (let x = 30; x < 35; x++) diff[y * width + x] = 200;
-
-		const blobs = findBlobs(diff, width, 40, { minArea: 4 });
-		expect(blobs).toHaveLength(2);
-		expect(blobs[0].area).toBe(16);
-		expect(blobs[0].cx).toBeCloseTo(11.5, 1);
-	});
-
-	it('drops what the caller will not accept, which is how off face noise is ignored', () => {
-		const width = 40;
-		const diff = new Uint8ClampedArray(width * 40);
-		for (let y = 2; y < 6; y++) for (let x = 2; x < 6; x++) diff[y * width + x] = 200;
-		expect(findBlobs(diff, width, 40, { accept: (cx) => cx > 20 })).toHaveLength(0);
-	});
-});
-
-describe('ImpactTracker', () => {
-	it('treats a frame that lights up everywhere as the camera moving, not as arrows', () => {
-		const tracker = new ImpactTracker(2, 0.035, 3);
-		const jolt = [
-			{ x: 0.1, y: 0.1, area: 20, face: 0 },
-			{ x: -0.3, y: 0.2, area: 20, face: 0 },
-			{ x: 0.4, y: -0.4, area: 20, face: 0 },
-			{ x: -0.6, y: -0.1, area: 20, face: 0 }
-		];
-
-		tracker.push(jolt);
-		tracker.push(jolt);
-		tracker.push(jolt);
-		expect(tracker.arrows).toHaveLength(0);
-	});
-
-	it('retires an arrow that stops showing up while it is still on probation', () => {
-		const tracker = new ImpactTracker(2, 0.035, 3, 45, 4);
-		const arrow = { x: 0.2, y: 0.2, area: 12, face: 0 };
-
-		tracker.push([arrow]);
-		tracker.push([arrow]);
-		expect(tracker.arrows).toHaveLength(1);
-
-		// A real arrow keeps differing from the background for seconds; this one vanishes at once.
-		for (let i = 0; i < 6; i++) tracker.push([]);
-		expect(tracker.arrows).toHaveLength(0);
-	});
-
-	it('keeps an arrow that held its place long enough to be believed', () => {
-		const tracker = new ImpactTracker(2, 0.035, 3, 10, 4);
-		const arrow = { x: 0.2, y: 0.2, area: 12, face: 0 };
-
-		for (let i = 0; i < 14; i++) tracker.push([arrow]);
-		// Past probation the background has absorbed it, so it is no longer expected to be seen.
-		for (let i = 0; i < 30; i++) tracker.push([]);
-		expect(tracker.arrows).toHaveLength(1);
-	});
-
-	it('confirms an arrow only once it has held still across frames', () => {
-		const tracker = new ImpactTracker(3);
-		const arrow = { x: 0.2, y: -0.1, area: 12, face: 0 };
-
-		expect(tracker.push([arrow])).toHaveLength(0);
-		expect(tracker.push([arrow])).toHaveLength(0);
-		expect(tracker.push([arrow])).toHaveLength(1);
-		expect(tracker.arrows).toHaveLength(1);
-	});
-
-	it('never reports the same arrow twice, however long it stays on the face', () => {
-		const tracker = new ImpactTracker(2);
-		const arrow = { x: 0, y: 0, area: 12, face: 0 };
-		tracker.push([arrow]);
-		tracker.push([arrow]);
-		expect(tracker.arrows).toHaveLength(1);
-
-		for (let i = 0; i < 10; i++) tracker.push([arrow]);
-		expect(tracker.arrows).toHaveLength(1);
-	});
-
-	it('lets a one frame flicker decay instead of promoting it', () => {
-		const tracker = new ImpactTracker(3);
-		tracker.push([{ x: 0.5, y: 0.5, area: 9, face: 0 }]);
-		tracker.push([]);
-		tracker.push([]);
-		expect(tracker.arrows).toHaveLength(0);
-		expect(tracker.pending).toHaveLength(0);
-	});
-
-	it('keeps arrows on different faces apart, since each face has its own origin', () => {
-		// A three spot end puts one arrow in each gold, and all three are at the same coordinates.
-		const tracker = new ImpactTracker(2);
-		tracker.push([
-			{ x: 0, y: 0, area: 10, face: 0 },
-			{ x: 0, y: 0, area: 10, face: 1 }
-		]);
-		tracker.push([
-			{ x: 0, y: 0, area: 10, face: 0 },
-			{ x: 0, y: 0, area: 10, face: 1 }
-		]);
-		expect(tracker.arrows).toHaveLength(2);
-		expect(tracker.arrows.map((a) => a.face).sort()).toEqual([0, 1]);
-	});
-
-	it('treats a nearby detection as the same arrow, not a second one', () => {
-		const tracker = new ImpactTracker(2);
-		tracker.push([{ x: 0.3, y: 0.3, area: 10, face: 0 }]);
-		tracker.push([{ x: 0.31, y: 0.302, area: 10, face: 0 }]);
-		expect(tracker.arrows).toHaveLength(1);
-	});
-
-	it('forgets an arrow the archer rejected', () => {
-		const tracker = new ImpactTracker(1);
-		const [arrow] = tracker.push([{ x: 0, y: 0, area: 8, face: 0 }]);
-		tracker.forget(arrow);
-		expect(tracker.arrows).toHaveLength(0);
 	});
 });
 

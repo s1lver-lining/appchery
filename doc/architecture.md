@@ -104,7 +104,7 @@ src/lib/
     stats.ts     personal bests, averages, trends
   i18n/          reference dictionary and locales
   sync/          change log, push/pull, conflict resolution      <- see sync.md
-  vision/        gold detection, ellipse fit, impact tracking     <- see camera-scoring.md
+  vision/        face fit, arrow proposals, viewpoint agreement   <- see camera-scoring.md
   ui/            components
 routes/
   sessions/[id]/  activities/[id]/  equipment/[id]/  stats/  settings/
@@ -186,8 +186,11 @@ outside a browser.
 > [scoring-verification.md](./scoring-verification.md) for the checklist that must be completed
 > before a flag is removed. **Deferred:** the app focuses on target archery for now.
 
-Camera scoring is implemented with classical computer vision rather than a learned model, because
-the target face is a specified object with published geometry and no training set exists. See
+Camera scoring finds the face with classical computer vision, because a target face is a specified
+object with published geometry and needs no training set. The arrows are proposed by shape and
+confirmed by agreeing with themselves across the viewpoints of a sweep. A learned detector exists
+beside the written one and is not the default: it is worse on the recordings measured so far, and
+what limits it is the number of ends recorded rather than the method. See
 [camera-scoring.md](./camera-scoring.md).
 
 ### 5.2 Bow configuration is versioned
