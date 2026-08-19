@@ -85,6 +85,16 @@ export const showArrowNumbers = flag('appchery.showArrowNumbers', false);
 export const recordCameraVideo = flag('appchery.recordCameraVideo', false);
 
 /**
+ * Whether a recorded session also keeps how the phone was held, sampled once a frame.
+ *
+ * Separate from the recording itself, and separately switchable, because the sensors behind it are the
+ * part most likely to misbehave: they need a permission on some devices, are absent on others, and a
+ * browser that has them may still deliver nothing at all. Turned off, none of it runs — no permission
+ * is asked for and no listener is attached — so a device that dislikes them is simply never asked.
+ */
+export const recordMotion = flag('appchery.recordMotion', true);
+
+/**
  * Which arrow detector the camera uses: the hand written one or the learned one. Classical is the
  * default because it is the one that has been measured on more than one dataset. Both stay available,
  * because a detector that is better on average can still be worse on a particular boss.

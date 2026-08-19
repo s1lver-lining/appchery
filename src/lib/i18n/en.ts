@@ -1068,6 +1068,11 @@ export const en = {
 		recordTitle: 'Record scoring video',
 		recordHint:
 			'Keeps a video of each camera scoring session on this device, to help improve detection. Nothing is uploaded.',
+		motionTitle: 'Also record how the phone moved',
+		motionHint:
+			'Saves the tilt and turn of the phone alongside the video, to help improve detection later. Turn it off if the camera page misbehaves on this device.',
+		motionNone:
+			'This device reported no motion while recording, so no motion file was saved. Phones report it; most laptops do not.',
 		recordPath:
 			'Videos are saved on this device, one per end, named after the activity and end they belong to. Copy them off with a cable or the file manager.',
 		detectorTitle: 'Arrow detector',

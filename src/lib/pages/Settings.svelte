@@ -14,6 +14,7 @@
 		recordCameraVideo,
 		arrowDetector,
 	smoothOverlay,
+	recordMotion,
 		plotTapMs,
 		haptics,
 		arrowDriftWarning,
@@ -558,6 +559,19 @@
 							onchange={(v) => recordCameraVideo.set(v)}
 						/>
 					</div>
+					{#if $recordCameraVideo}
+						<div class="mt-4 flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.motionTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.motionHint')}</p>
+							</div>
+							<Toggle
+								checked={$recordMotion}
+								label={$t('settings.motionTitle')}
+								onchange={(v) => recordMotion.set(v)}
+							/>
+						</div>
+					{/if}
 					{#if $recordCameraVideo}
 						<!-- Where to go looking, since nothing here hands the files over one at a time. -->
 						<p class="mt-3 rounded-lg bg-sunk p-3 text-sm text-muted">

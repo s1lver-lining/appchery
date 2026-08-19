@@ -8,7 +8,7 @@ import { SteadyFace } from '$lib/vision/steady';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
-	import { recordCameraVideo, arrowDetector, smoothOverlay } from '$lib/prefs';
+	import { recordCameraVideo, arrowDetector, smoothOverlay, recordMotion } from '$lib/prefs';
 	import { storeRecording, storeMotion } from '$lib/files';
 	import { closeOnBack } from './dismiss.svelte';
 	import { overrideStatusBar } from '$lib/theme';
@@ -55,6 +55,8 @@ import { SteadyFace } from '$lib/vision/steady';
 	let steady = $state(false);
 	let found = $state<Impact[]>([]);
 	let pending = $state(0);
+	/** Something worth telling the archer that is not about the arrows, such as a file not written. */
+	let notice = $state('');
 
 	// Detection lives in a worker, so a slow pass costs the overlay nothing and the video never stalls.
 	const scanner = new LiveScanner(() => {
@@ -176,9 +178,12 @@ import { SteadyFace } from '$lib/vision/steady';
 		};
 		recorder.onstop = () => save(new Blob(chunks, { type: recorder?.mimeType ?? 'video/webm' }));
 		recorder.start(1000);
-		void allowMotion().then((allowed) => {
-			if (allowed && recording) motion.start();
-		});
+		// Only asked for when it is wanted: on some devices the permission itself is the trouble.
+		if ($recordMotion) {
+			void allowMotion().then((allowed) => {
+				if (allowed && recording) motion.start();
+			});
+		}
 		recording = true;
 	}
 
@@ -186,7 +191,13 @@ import { SteadyFace } from '$lib/vision/steady';
 		// Reported straight away: the end keeps the name whether or not the write itself succeeds.
 		onrecorded(videoName);
 		void storeRecording(video, videoName);
+		/**
+		 * Said out loud when there is nothing to save. A file that never appears looks the same as a file
+		 * that was lost, and the difference matters: a laptop reports no motion at all, while a phone
+		 * that reports none has usually refused the permission.
+		 */
 		if (motion.any) void storeMotion(motion.toJSON(), videoName);
+		else if ($recordMotion) notice = $t('settings.motionNone');
 	}
 
 	function stop() {
@@ -468,7 +479,9 @@ import { SteadyFace } from '$lib/vision/steady';
 
 		<!-- Fixed height as well, so the hint and the warning swapping does not move anything either. -->
 		<p class="flex h-4 items-center justify-center text-center text-[11px]">
-			{#if found.length > remaining}
+			{#if notice}
+				<span class="text-muted">{notice}</span>
+			{:else if found.length > remaining}
 				<span class="text-danger">{$t('auto.tooMany', { n: remaining })}</span>
 			{:else if found.length > 0}
 				<span class="text-muted">{$t('auto.tapToDrop')}</span>

@@ -118,6 +118,16 @@ export function recordingsPath(): string {
 export async function storeMotion(motion: string, filename: string): Promise<void> {
 	const name = `${filename.replace(/\.[^.]+$/, '')}.motion.json`;
 	if (!Capacitor.isNativePlatform()) {
+		/**
+		 * Held back a moment, because in a browser this is a download and the video is another one.
+		 *
+		 * A page that starts a second download while the first is still going is asking to be blocked:
+		 * Chrome allows one without asking and silently drops the rest until the archer permits several
+		 * for the site. The video is the one that gets through, and the motion file disappears with no
+		 * error anywhere, which is exactly what it looked like. A pause is not a guarantee, but it is
+		 * what turns two simultaneous downloads back into two ordinary ones.
+		 */
+		await new Promise((done) => setTimeout(done, 1500));
 		const url = URL.createObjectURL(new Blob([motion], { type: 'application/json' }));
 		const link = document.createElement('a');
 		link.href = url;

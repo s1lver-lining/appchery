@@ -1071,6 +1071,11 @@ export const fr: Dictionary = {
 		recordTitle: 'Enregistrer la vidéo du marquage',
 		recordHint:
 			"Enregistre sur cet appareil une vidéo de chaque marquage à la caméra, pour améliorer la détection. Rien n'est envoyé.",
+		motionTitle: 'Enregistrer aussi les mouvements du téléphone',
+		motionHint:
+			"Enregistre l'inclinaison et la rotation du téléphone à côté de la vidéo, pour améliorer la détection plus tard. À désactiver si la page caméra se comporte mal sur cet appareil.",
+		motionNone:
+			"Cet appareil n'a signalé aucun mouvement pendant l'enregistrement, aucun fichier n'a donc été créé. Les téléphones le signalent, la plupart des ordinateurs non.",
 		recordPath:
 			"Les vidéos sont enregistrées sur cet appareil, une par volée, nommées d'après l'activité et la volée correspondantes. Récupérez-les par câble ou avec le gestionnaire de fichiers.",
 		detectorTitle: 'Détecteur de flèches',
