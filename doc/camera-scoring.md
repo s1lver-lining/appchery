@@ -6,6 +6,18 @@ The code lives in `src/lib/vision/`, is pure TypeScript over plain pixel buffers
 dependency on the DOM, on a model file, or on a network. `src/lib/ui/AutoScore.svelte` is the only
 part that touches a camera.
 
+## How the archer uses it
+
+The camera is carried. The archer shoots the end, walks up to the boss, and sweeps the phone across
+it for a few seconds before scoring. Everything below follows from that, and an earlier version of
+this document described a different thing: a phone on a tripod watching arrows land.
+
+That difference is not cosmetic. A tripod gives the single strongest signal there is, a quiet frame
+of the boss before the arrows arrived, and the first version of the arrow stage was built entirely on
+it. On a walk up there is no such frame: the arrows are already in the paper when recording starts,
+so nothing is ever new, and that detector reported exactly zero arrows on fifteen real sessions. What
+replaces it is agreement across viewpoints, described under "Deciding it is an arrow" below.
+
 ## Why there is no neural network
 
 A learned detector needs labelled examples: thousands of photographs of arrows in bosses, across
@@ -111,6 +123,28 @@ to move the expected white onto the real white. And the three spot layout needs 
 sides of the spot edge, at 0.48 and 0.54: with only one band outside it, a fit a seventh too large
 still scored perfectly, because every sample it took still landed in the right colour.
 
+**A boss leans back.** An archer walking up to the target is close enough that near and far rings do
+not share a scale, which an ellipse cannot express. The error this causes is not a fit that looks
+wrong: it is the centre creeping towards the far side of the face, because the centre of a projected
+ellipse is simply not the projection of the circle's centre. Measured against faces fitted by hand,
+that put the gold about a twentieth of a face radius too high, consistently, on every recording.
+
+So the fit carries two more numbers for how far the face leans, which makes it a full projection
+rather than an affine one. Two things had to be true before that helped:
+
+- **The lean cannot be walked to one number at a time.** Tilting a face about a fixed centre moves
+  every ring at once and always scores worse, so a coordinate descent puts the lean straight back.
+  The lean and the centre are the same error seen twice and have to move together. Trying a handful
+  of fixed leans and letting the centre settle under each one crosses that valley; walking downhill
+  never leaves it.
+- **The ring check has to look through the lean too.** It did not, and sampled a flat circle instead,
+  so the better the fit described a leaning boss the worse it did on the check meant to confirm it.
+  That alone was rejecting good faces and cost recall on the annotated set.
+
+The search is skipped when a flat face already explains the paper, which is nearly always true of a
+three spot across a hall. Face size looks like the way to decide and is not, because a distant three
+spot fills as much of the frame as a boss up close.
+
 The result is a `FaceLocation`, and with it a pair of transforms between image pixels and normalised
 face coordinates. Those normalised coordinates are the *same space the scoring rules already use*,
 so a detected point is scored by the very same `scoreAt` that scores a tap.
@@ -182,6 +216,16 @@ look like new arrows.
 Promotion is also **capped at the end's remaining arrows**. The cap is applied inside the tracker,
 during promotion, not after: checking it beforehand still let a single frame confirm several arrows
 at once.
+
+### One look is not two
+
+Evidence is gathered per place on the face, not per frame, and the passes it is gathered from have to
+be genuinely different views of the boss. Sampling faster does not help and actively hurts: at twice
+the rate, arrows found fell from 46% to 25% and false ones doubled. Two passes a third of a second
+apart are the same picture twice, so a shadow that reads as an arrow reads as one in both and gathers
+votes exactly as fast as a real shaft does, while the extra passes dilute the share of them each
+candidate has to reach. Three times a second is roughly the rate at which a carried camera actually
+presents a new view of the boss.
 
 ### Between ends
 
@@ -332,42 +376,55 @@ cameras, club lighting):
 For scale, the same harness measured **55%** recall before this work began, and 96.2% before the fit
 was taught to use ring boundaries.
 
-### Finding the arrows in a still
+### Finding the face on a recording
 
-`scripts/eval-arrows.mjs`, against the 60cm set: 479 photographs carrying 1640 arrows, each labelled
-with a keypoint and the value the archer wrote down. These are ordinary club photographs of a boss
-that has been shot at for months, so the paper is covered in old holes.
+`scripts/eval-faces.mjs`, against 27 faces fitted by hand across the fifteen recordings. The archer
+drags four anchors onto the black to white edge, which is the strongest circle on a WA face, and four
+points fix a projection exactly. Only what those labels actually assert is measured: that each of
+those four points sits at r = 0.8. Whole coordinate frames are not compared, because a target face is
+rotationally symmetric and the handles are not 90 degrees apart on the face anyway.
 
-| measure | result |
-| ------- | ------ |
-| face found | 95.2% |
-| arrows found | **37.2%** |
-| candidates that were arrows | 41.9% |
-| value agreed, of those matched | 79.2% |
-| impact error | 2.8% of the face radius (median) |
+| measure | before | after |
+| ------- | ------ | ----- |
+| faces found | 27/27 | 27/27 |
+| ring radius error, median | 1.2% of face radius | **1.2%** |
+| ring radius error, p90 | 6.2% | **1.7%** |
+| off centre, p90 | 8.8% | **2.6%** |
 
-**This is not good enough to score with, and it is not presented as if it were.** Roughly one arrow in
-three is found *and* given the right value; the tool reports candidates, and the app asks before
-recording anything. The face stage is not the problem: at 93% it is doing its job, and the loss is
-almost entirely in the arrow stage.
+The median was never the problem; the tail was. What fixed it is described under "A boss leans back"
+above. On the 2048 annotated three spots the same change took recall from 98.5% to 99.0% with false
+faces unchanged at 0.01 per image.
 
-The honest reason is that a single photograph is a much harder problem than the video path. Being new
-is by far the strongest signal an arrow gives, and a still does not have it. What is left is shape,
-and shape is ambiguous on a boss where every old hole is a dark mark and every shaft is partly hidden
-behind another. The remaining errors are mostly arrows lost against the black ring, where a dark shaft
-on dark paper has almost no contrast to find.
+### Finding the arrows on a recording
 
-For scale, the first version of this stage scored 18.5% recall on the same measure, and its impacts
-were placed by colour anomaly, which put its best candidates on the numbers printed on the face.
+`scripts/eval-arrows-video.mjs`, against 84 impacts placed by hand across fourteen recordings. This is
+the question the archer asks: they swept the camera over the boss for three seconds either side of a
+moment, and there were six arrows in the paper.
 
-Where the last rounds of work went is itself informative: they traded recall for precision rather than
-adding either, which is what a hand written rule set looks like when it runs out of road. `bridge` is
-the knob that sets that trade.
+| detector | arrows found | ever proposed | false proposals |
+| -------- | ------------ | ------------- | --------------- |
+| differencing, as first built | **0%** | 0% | 0 |
+| shape, per frame agreement | 35% | 71% | 1.3 per end |
+| shape, viewpoint agreement | 46% | 71% | 1.9 per end |
+| learned, viewpoint agreement | 36% | 74% | 3.9 per end |
+| both proposing together | **52%** | **87%** | 2.9 per end |
 
-There is now a second detector, learned rather than written, which roughly doubles this end to end and
-can be chosen in settings. Both are kept, and both are measured through the same harness on the same
-photographs: see [detector-comparison.md](detector-comparison.md) for the numbers and
-[arrow-detection-ml.md](arrow-detection-ml.md) for the plan they came from.
+"Ever proposed" is the ceiling: an arrow no pass ever proposed cannot be confirmed by any amount of
+agreement. Reporting it separately is what showed that the tracker, not the detector, was throwing
+away half of what was found, and tuning the tracker to that was worth eleven points on its own.
+
+**This is not good enough to score with, and it is not presented as if it were.** Half the arrows are
+found, and of the six proposals an end is offered, two or three are wrong. The archer confirms every
+one, so a wrong proposal costs a tap; but an archer who has to place half the end by hand is not being
+helped very much.
+
+The learned detector does not beat the written one, and the reason is the dataset rather than the
+idea. Fourteen recordings is fourteen arrangements of arrows, however many frames each one lasts, and
+no amount of rotating and flipping a crop makes a fifteenth. Held out by recording, which is the only
+honest split, it reaches 39% recall per frame. It is worth keeping because its mistakes are not the
+same mistakes: pooling both detectors' proposals lifts the ceiling from 71% to 87%, which is the
+largest single gain measured here and the one thing that clearly needs more data rather than more
+cleverness.
 
 ## Testing it
 
