@@ -88,3 +88,17 @@ describe('saving a match end', () => {
 		expect(inserts.filter((row) => row.tableName === 'round_end')).toHaveLength(1);
 	});
 });
+
+describe('clearing a typed total', () => {
+	it('empties the end rather than scoring our side nothing', async () => {
+		const { setMatchEndTotal, loadMatch } = await import('./repository');
+		await proxy
+			.update(schema.activity)
+			.set({ matchConfig: JSON.stringify({ format: 'individual', system: 'set' }) })
+			.where(eq(schema.activity.id, 'm'));
+		await setMatchEndTotal('m', 1, 'us', 27);
+		await setMatchEndTotal('m', 1, 'them', 26);
+		await setMatchEndTotal('m', 1, 'us', null);
+		expect((await loadMatch('m')).ends).toHaveLength(0);
+	});
+});
