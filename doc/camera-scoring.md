@@ -28,29 +28,37 @@ lost the arrow.
 | | off centre | 0.9% median, 1.5% at p90 |
 | | found, on 2048 annotated three spots | 98.3% |
 | | false faces | 0.01 per image |
-| | overlay tremble, drawn steadied | 0.08% of radius, from 0.31% |
-| | cost | 2.6x realtime on a laptop core |
-| **Arrows** | found, of 84 impacts placed by hand | **38%** |
-| | ever proposed, the ceiling | 79% |
-| | false proposals | 3.4 per end |
-| | impact error | **2.1%** of face radius median |
+| | overlay tremble, drawn steadied | 0.10% of radius, from 0.24%, never more than 0.1 ring behind |
+| | cost | 2.8x realtime on a laptop core |
+| **Arrows** | found, of 84 impacts placed by hand | **51%** |
+| | ever proposed, the ceiling | 85% |
+| | false proposals | 2.1 per end |
+| | impact error | **2.0%** of face radius median |
 
 A ring is a tenth of the radius, so the face is placed to within a fifteenth of a ring, and it keeps
 up with the camera with room to spare on a slow phone. That part is solved.
 
-What is left of it is not error but movement. The fit is measured afresh every frame, so it lands a
+One thing the rings cannot say is which way round the face is, because a target face is the same face
+turned through any angle. The fit takes that freedom and wanders with it, which leaves the geometry
+and the drawn rings right — rings being circles — while everything measured in face coordinates turns
+slowly underneath the paper. That showed as arrows drifting round a circle centred on the gold a few
+seconds into a sweep. `alignFace` in `face.ts` fixes the angle to the previous frame's before the fit
+is used, which cannot say what the true angle is and does not need to. It was worth thirteen points of
+arrows found on its own.
+
+What is left of the face fit is not error but movement. The fit is measured afresh every frame, so it lands a
 fraction of a pixel differently each time, and the eye sees a line move far more readily than it sees
 where a line is. `steady.ts` damps that in the drawing alone, by how fast the fit is actually
 travelling, so a sweep is followed outright and a held phone draws a held overlay. Nothing measured
 or reported goes through it.
 
-The arrows are not solved. Between two and three arrows of a six arrow end come back, and rather more
-proposals than that are wrong. The archer confirms every one, so a wrong proposal costs a tap rather
-than a wrong score, and the ones that are right are placed to within a fifth of a ring. It is a help,
-not a scorer.
+The arrows are not solved. About three arrows of a six arrow end come back, along with a couple of
+proposals that are wrong. The archer confirms every one, so a wrong proposal costs a tap rather than a
+wrong score, and the ones that are right are placed to within a fifth of a ring. It is a help, not a
+scorer.
 
 The ceiling matters as much as the number found: an arrow that no pass ever proposed cannot be
-confirmed by any amount of agreement, and a fifth of them are never proposed at all. That is the
+confirmed by any amount of agreement, and about one in seven is never proposed at all. That is the
 detector failing to see a shaft, not the tracker discarding one.
 
 **The objective is every arrow found, with proposals an archer can accept almost without thinking.**
