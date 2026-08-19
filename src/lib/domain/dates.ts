@@ -55,7 +55,7 @@ export interface WeekGroup<T> {
 	items: T[];
 }
 
-/** Groups newest week first, matching a list read from the top. */
+/** Groups oldest week first, the way a calendar reads: the list is scrolled to today, not to its top. */
 export function groupByWeek<T>(items: T[], at: (item: T) => number): WeekGroup<T>[] {
 	const buckets = new Map<number, T[]>();
 	for (const item of items) {
@@ -65,7 +65,6 @@ export function groupByWeek<T>(items: T[], at: (item: T) => number): WeekGroup<T
 		else buckets.set(key, [item]);
 	}
 
-	// Oldest first, the way a calendar reads: the list is scrolled to today, not to its top.
 	return [...buckets.entries()]
 		.sort((a, b) => a[0] - b[0])
 		.map(([start, list]) => ({
