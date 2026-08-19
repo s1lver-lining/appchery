@@ -236,29 +236,25 @@ export function ringAgreement(frame: Frame, face: FaceLocation): number {
  * frame can afford.
  */
 /**
- * How much of the frame the face must fill before its lean is worth estimating.
+ * How much better the ring agreement must get before a lean is believed.
  *
  * Perspective is only there to be measured when the camera is close enough for near and far rings to
  * differ in scale. A face across the range is very nearly an orthographic projection, and asking for
  * two more numbers from it does not find a lean that is not there: it finds whichever lean best
- * absorbs the noise, and drags the centre off by more than the perspective would have. Measured on
- * 938 annotated three spots this was the whole of a regression from 0.023 to 0.036 in centre error.
+ * absorbs the noise, and drags the centre off by more than any real perspective would have.
+ *
+ * Face size looks like the way to tell those apart and is not: measured against faces fitted by hand,
+ * a size threshold loose enough to help an archer walking up to a boss was also loose enough to hurt
+ * a three spot across a hall. So the fit is done twice, flat and leaning, and the lean is kept only
+ * when it pays for itself. Noise buys very little agreement; a boss genuinely leaning back buys a lot.
  */
-const LEAN_NEEDS_SIZE = 0.7;
-
-/**
- * What a lean has to earn before it is believed. A face square on to the camera has no perspective,
- * and without this the fit will happily take a little of it in exchange for a rounding error, which
- * costs accuracy on the easy case to gain nothing on the hard one.
- */
-const LEAN_PENALTY = 0.02;
+const LEAN_MUST_EARN = 0.03;
 
 function judge(frame: Frame, face: FaceLocation): number {
-	const lean = Math.hypot(face.perspectiveX ?? 0, face.perspectiveY ?? 0);
-	return ringAgreement(frame, face) - LEAN_PENALTY * lean;
+	return ringAgreement(frame, face);
 }
 
-function descend(frame: Frame, start: FaceLocation): FaceLocation {
+function descend(frame: Frame, start: FaceLocation, lean = false): FaceLocation {
 	let best = start;
 	let bestScore = judge(frame, start);
 
@@ -291,7 +287,7 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 				{ ...best, semiMinor: best.semiMinor * (1 - step) }
 			];
 
-			if (best.semiMajor > frame.width * LEAN_NEEDS_SIZE) {
+			if (lean) {
 				/**
 				 * How far the face leans. Two more numbers turn the fit from an ellipse into a full
 				 * projection, which is what a boss on its stand actually presents to an archer standing
@@ -321,7 +317,16 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
 		}
 	}
 
-	return { ...best, support: ringAgreement(frame, best) };
+	return { ...best, support: bestScore };
+}
+
+/**
+ * The fit, flat first and then allowed to lean. Returns whichever the paper actually supports.
+ */
+function fit(frame: Frame, start: FaceLocation): FaceLocation {
+	const flat = descend(frame, { ...start, perspectiveX: 0, perspectiveY: 0 }, false);
+	const leaning = descend(frame, flat, true);
+	return leaning.support > flat.support + LEAN_MUST_EARN ? leaning : flat;
 }
 
 /**
@@ -334,11 +339,11 @@ function descend(frame: Frame, start: FaceLocation): FaceLocation {
  * and keeping the better fit costs one extra descent and rescues the case entirely.
  */
 export function refineFace(frame: Frame, start: FaceLocation): FaceLocation {
-	const fitted = descend(frame, start);
+	const fitted = fit(frame, start);
 	const lopsided = Math.abs(start.semiMajor - start.semiMinor) / Math.max(start.semiMajor, 1);
 	if (lopsided < 0.08) return fitted;
 
 	const radius = Math.sqrt(start.semiMajor * start.semiMinor);
-	const round = descend(frame, { ...start, semiMajor: radius, semiMinor: radius, rotation: 0 });
+	const round = fit(frame, { ...start, semiMajor: radius, semiMinor: radius, rotation: 0 });
 	return round.support > fitted.support ? round : fitted;
 }
