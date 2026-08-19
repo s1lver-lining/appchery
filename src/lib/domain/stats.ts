@@ -447,12 +447,13 @@ export interface ProgressionPoint {
 
 /** The history of one round, chronological, with the running average and the best marked. */
 export function progression(history: ScoredActivity[], window = 5): ProgressionPoint[] {
-	let best = -Infinity;
+	let best: number | null = null;
 	return history.map((activity, i) => {
 		const slice = history.slice(Math.max(0, i - window + 1), i + 1);
 		const rolling = slice.reduce((sum, a) => sum + a.totalScore, 0) / slice.length;
-		const isBest = activity.totalScore > best;
-		if (isBest) best = activity.totalScore;
+		// The first round improved on nothing, so it is no record here either, see isPersonalBest.
+		const isBest = best !== null && activity.totalScore > best;
+		if (best === null || activity.totalScore > best) best = activity.totalScore;
 		return {
 			at: activity.startedAt,
 			score: activity.totalScore,

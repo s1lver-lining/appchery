@@ -358,7 +358,8 @@ describe('progression', () => {
 			activity({ id: 'b', startedAt: 2, totalScore: 480 }),
 			activity({ id: 'c', startedAt: 3, totalScore: 520 })
 		]);
-		expect(points.map((p) => p.isBest)).toEqual([true, false, true]);
+		// The first round is not one of them: it beat nothing, the same rule isPersonalBest applies.
+		expect(points.map((p) => p.isBest)).toEqual([false, false, true]);
 	});
 
 	it('averages over the window that ends at each round', () => {
