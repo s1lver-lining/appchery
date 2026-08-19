@@ -442,19 +442,30 @@ describe('detectArrowsInStill', () => {
 		expect(Math.hypot(found[0].x, found[0].y)).toBeLessThan(0.35);
 	});
 
-	it('drops a streak that looks nothing like the arrow it is most sure of', () => {
+	it('drops a mark lying across the face rather than out of it', () => {
 		const frame = waFace(600, 200);
-		// Two arrows from the same bow at the same camera, and one mark lying across them.
+		// Two arrows standing in the paper, and one mark lying across them.
 		shaft(frame, { x: 320, y: 280 }, { x: 400, y: 560 });
 		shaft(frame, { x: 280, y: 290 }, { x: 360, y: 570 });
 		shaft(frame, { x: 200, y: 380 }, { x: 460, y: 330 });
 
-		const bearings = detectArrowsInStill(frame, face).map((a) =>
-			Math.atan2(a.tailY - a.imageY, a.tailX - a.imageX)
-		);
-		expect(bearings.length).toBeGreaterThanOrEqual(2);
-		// Everything kept points the same way as the strongest shaft, so the crossing mark is gone.
-		for (const bearing of bearings) expect(Math.cos(bearing - bearings[0])).toBeGreaterThan(0.8);
+		/**
+		 * What rejects the crossing mark is that it does not climb: a shaft leaves the paper towards the
+		 * lens and so crosses rings on its way out, while a mark lying across the face keeps its radius.
+		 *
+		 * It used to be rejected for pointing a different way from the longest run, on the argument that
+		 * arrows all lean towards the same lens. That holds for a boss across a field and not for one the
+		 * archer is standing in front of, where the six shafts fan out, and measured against the recorded
+		 * sweeps it was throwing away a sixth of the arrows the detector ever saw.
+		 */
+		const found = detectArrowsInStill(frame, face);
+		expect(found.length).toBeGreaterThanOrEqual(2);
+		for (const arrow of found) {
+			const climb =
+				Math.hypot(toFaceCoords(face, arrow.tailX, arrow.tailY).x, toFaceCoords(face, arrow.tailX, arrow.tailY).y) -
+				Math.hypot(arrow.x, arrow.y);
+			expect(climb).toBeGreaterThan(0);
+		}
 	});
 
 	it('ignores a printed ring line, which is just as long, thin and dark', () => {

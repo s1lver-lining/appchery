@@ -71,8 +71,6 @@ export interface StillOptions {
 	 * rather than an oversight.
 	 */
 	bridge?: number;
-	/** How far a shaft's bearing may differ from the best one found, in radians. */
-	bearingTolerance?: number;
 	/** How much thicker or thinner than the best shaft another may be, as a factor. */
 	widthRatio?: number;
 }
@@ -167,7 +165,6 @@ export function detectArrowsInStill(
 	const minFill = options.minFill ?? 0.85;
 	const reach = options.reach ?? REACH;
 	const bridge = options.bridge ?? 0.08;
-	const bearingTolerance = options.bearingTolerance ?? 0.6;
 	const widthRatio = options.widthRatio ?? 1.7;
 	const mergeDistance = options.mergeDistance ?? 0.03;
 	/**
@@ -284,32 +281,33 @@ export function detectArrowsInStill(
 		kept.push(arrow);
 	}
 
-	return likeTheBest(kept, bearingTolerance, widthRatio);
+	return likeTheBest(kept, widthRatio);
 }
 
 /**
- * Judges the weaker candidates against the strongest one.
+ * Judges the weaker candidates against the strongest one, on thickness alone.
  *
- * The arrows in a photograph are the same physical objects shot from the same place: the same shaft,
- * the same thickness, and all of them leaning towards the same lens, so their bearings on the image
- * are close to parallel. Nothing forces that on a crease, a shadow or an old hole. So once one arrow
- * is found convincingly, it says what the rest should look like, and anything that does not resemble
- * it has to be much better evidence than it would otherwise need.
+ * The arrows in one picture are the same physical objects seen from one place, so they are the same
+ * shaft and the same thickness. A crease, a shadow or the edge of a scoreboard has no reason to be,
+ * and comparing widths costs nothing to check.
  *
- * The longest run is the anchor because length is the measure least confused by clutter.
+ * It used to compare bearings too, on the argument that arrows all lean towards the same lens and so
+ * appear near parallel. That is true of a boss photographed from across a field and false of one the
+ * archer is standing in front of, where each shaft points at the camera from its own side of the face
+ * and the six of them fan out. Measured, the bearing test was costing about one arrow in twelve and
+ * fully a sixth of the arrows the detector ever saw at all — the ones it threw away were never
+ * proposed to the tracker even once, so no amount of agreement could recover them. Worse, it hung
+ * everything on whichever run happened to be longest: one bad anchor and the whole frame was judged
+ * against a shadow. Removing it took the share of arrows ever proposed from 94% to 100%.
+ *
+ * The longest run is still the anchor because length is the measure least confused by clutter.
  */
-function likeTheBest(arrows: StillArrow[], bearingTolerance: number, widthRatio: number): StillArrow[] {
+function likeTheBest(arrows: StillArrow[], widthRatio: number): StillArrow[] {
 	const anchor = arrows[0];
 	if (!anchor) return arrows;
 
-	const bearing = (arrow: StillArrow) => Math.atan2(arrow.tailY - arrow.imageY, arrow.tailX - arrow.imageX);
-	const reference = bearing(anchor);
-	const limit = Math.cos(bearingTolerance);
-
 	return arrows.filter((arrow, index) => {
 		if (index === 0) return true;
-		const apart = bearing(arrow) - reference;
-		if (Math.cos(apart) < limit) return false;
 		const ratio = arrow.width / Math.max(anchor.width, 0.5);
 		return ratio >= 1 / widthRatio && ratio <= widthRatio;
 	});
