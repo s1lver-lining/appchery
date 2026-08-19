@@ -25,7 +25,7 @@
  * A small residual means the model holds and the work belongs in finding the real nock. A large one
  * means the model is wrong and this whole line should be dropped.
  */
-import { readFile, writeFile, readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -50,15 +50,12 @@ const only = process.argv.includes('--video') ? process.argv[process.argv.indexO
  * separately, the evidence stays with the ones clicked by hand, and nothing is touched unless the best
  * matching beats every other by a wide margin — which is a fact about the numbers, not about the model.
  */
-const repairing = process.argv.includes('--repair');
 
 const residuals = [];
 const rows = [];
 let frames = 0;
 let skipped = 0;
 let automatic = 0;
-let byHand = 0;
-let fromRepair = 0;
 const repaired = [];
 
 for (const name of (await readdir(WORK)).sort()) {
@@ -69,9 +66,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	if (!label.arrows?.length || !label.nocks) continue;
 	const metaFile = join(WORK, name, 'frames.json');
 	const meta = existsSync(metaFile) ? JSON.parse(await readFile(metaFile, 'utf8')) : null;
-	let changed = false;
 
-	const mended = { ...(label.mended ?? {}) };
 	for (const [index, placed] of Object.entries(label.nocks)) {
 		// Three lines is the fewest that can disagree about where they meet; two always agree exactly.
 		if (!placed || placed.length < 3) continue;
@@ -88,8 +83,6 @@ for (const name of (await readdir(WORK)).sort()) {
 		 * this one. A frame whose fit was never touched by hand is evidence about the wrong thing.
 		 */
 		if (!fit.touched) automatic += 1;
-		if (label.mended?.[index]) fromRepair += placed.length;
-		else byHand += placed.length;
 		const h = homography(fit.handles);
 		const back = h && invert(h);
 		if (!back) {
@@ -122,38 +115,23 @@ for (const name of (await readdir(WORK)).sort()) {
 		/**
 		 * The same frame again, under every way of matching the nocks to the impacts.
 		 *
-		 * Told apart from a wrong model, a wrong pairing looks identical: both give lines that meet
-		 * nowhere. The difference is that a wrong pairing has a right one hiding behind it, and there are
-		 * only a few hundred to try. If some other matching brings the residual down to a few degrees then
-		 * the geometry is sound and the labels were simply written down against the wrong arrows.
+		 * A wrong pairing and a wrong model look identical from one number: both give lines that meet
+		 * nowhere. The difference is that a wrong pairing has a right one hiding behind it, and for six
+		 * arrows there are only a few hundred to try. What comes back is a lower bound on the truth, and
+		 * the number to read when the labels may name the wrong arrows.
+		 *
+		 * It is not a way to repair them. Measured, the best matching beats the next by a fraction of a
+		 * degree, because a nock swapped between two arrows whose lines both pass near the meeting place
+		 * still passes near it. The geometry says whether a set of marks is standing in the paper; it does
+		 * not say which nock belongs to which shaft. The detector never faces the question at all: it
+		 * reads a shaft's two ends off one dark run.
 		 */
 		if (placed.length <= 7) {
 			const best = bestPairing(placed, label.arrows, back);
-			if (best !== null) {
-				repaired.push(best.worst);
-				/**
-				 * Only when one matching is far and away the best. Two arrows standing close together can
-				 * be swapped for almost nothing, and a guess there would be worse than leaving it alone.
-				 */
-				if (repairing && best.margin > 3 * Math.max(best.worst, 0.02) && best.worst < 0.2) {
-					placed.forEach((nock, i) => (nock.arrow = best.order[i]));
-					label.nocks[index] = placed;
-					mended[index] = true;
-					changed = true;
-				}
-			}
+			if (best !== null) repaired.push(best.worst);
 		}
-		rows.push(
-			`${name.slice(-24)} frame ${String(index).padStart(3)}  ${lines.length} nocks  ` +
-				`meets at ${meeting.x.toFixed(2)}, ${meeting.y.toFixed(2)}  ` +
-				`worst ${(Math.max(...lines.map((l) => away(l, meeting.x, meeting.y))) * 57.3).toFixed(1)}°`
-		);
 	}
-	if (changed) {
-		await writeFile(`${file}.before-repair`, JSON.stringify(label, null, 1));
-		await writeFile(file, JSON.stringify({ ...label, mended }, null, 1));
-		console.log(`repaired ${Object.keys(mended).length} frames of ${name.slice(-24)}`);
-	}
+
 }
 
 if (residuals.length === 0) {
@@ -170,7 +148,7 @@ if (automatic > 0) {
 	console.log(`  of those, ${automatic} used an automatic fit rather than one placed by hand.`);
 	console.log('  Those inflate the number below: fit them by hand, or read this as an upper bound.');
 }
-console.log(`nocks               ${residuals.length}  (${byHand} as clicked, ${fromRepair} repaired)`);
+console.log(`nocks               ${residuals.length}`);
 console.log(`lean off the meeting point   ${at(0.5).toFixed(1)}° median, ${at(0.9).toFixed(1)}° at p90`);
 if (repaired.length > 0) {
 	repaired.sort((a, b) => a - b);
@@ -178,8 +156,8 @@ if (repaired.length > 0) {
 	console.log(
 		`under the best matching of nocks to arrows   ${best(0.5).toFixed(1)}° median, ${best(0.9).toFixed(1)}° at p90`
 	);
-	console.log('  (worst nock on each frame. A large gap between the two lines above means the labels');
-	console.log('   were written against the wrong arrows, not that the geometry is wrong.)');
+	console.log('  (worst nock on each frame, and a lower bound on the truth: read this one when the');
+	console.log('   labels may name the wrong arrows.)');
 }
 
 console.log(
@@ -200,8 +178,6 @@ function bestPairing(placed, arrows, back) {
 	if (points.length > usable.length) return null;
 
 	let best = null;
-	let second = null;
-	let order0 = null;
 	for (const order of permutations(usable, points.length)) {
 		const lines = [];
 		for (let i = 0; i < points.length; i++) {
@@ -216,16 +192,10 @@ function bestPairing(placed, arrows, back) {
 		const meeting = meet(lines);
 		if (!meeting) continue;
 		const worst = Math.max(...lines.map((line) => away(line, meeting.x, meeting.y)));
-		if (best === null || worst < best) {
-			second = best;
-			best = worst;
-			order0 = order;
-		} else if (second === null || worst < second) {
-			second = worst;
-		}
+		if (best === null || worst < best) best = worst;
 	}
 	if (best === null) return null;
-	return { worst: best, margin: (second ?? Infinity) - best, order: order0 };
+	return { worst: best };
 }
 
 /** Every way of choosing `take` of the arrows in order, which for six arrows is a few hundred. */
