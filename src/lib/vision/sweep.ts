@@ -38,6 +38,8 @@ export interface SweepOptions {
 	apartDistance?: number;
 	/** Passes before an end that is short of arrows starts offering its best guesses. */
 	guessAfter?: number;
+	/** Passes during which places with barely any support are still worth showing, to show it working. */
+	earlyPasses?: number;
 	/** Passes that must have proposed a place before it is worth offering as a guess. */
 	guessVotes?: number;
 }
@@ -71,6 +73,7 @@ export class SweepTracker {
 	private readonly apartDistance: number;
 	private readonly guessAfter: number;
 	private readonly guessVotes: number;
+	private readonly earlyPasses: number;
 
 	constructor(options: SweepOptions = {}) {
 		/**
@@ -122,6 +125,11 @@ export class SweepTracker {
 		 * that flattered it.
 		 */
 		this.guessVotes = options.guessVotes ?? this.minVotes - 1;
+		/**
+		 * About two seconds at three passes a second, which is how long the archer would otherwise be
+		 * looking at an empty overlay while the evidence is gathered.
+		 */
+		this.earlyPasses = options.earlyPasses ?? 6;
 	}
 
 	setLimit(limit: number) {
@@ -173,6 +181,27 @@ export class SweepTracker {
 	/** Candidates with some support behind them, drawn faintly so the archer sees it working. */
 	get pending(): Impact[] {
 		return this.candidates.filter((c) => c.votes > 1);
+	}
+
+	/**
+	 * Places worth showing before there is enough evidence to believe any of them, for the first couple
+	 * of seconds only.
+	 *
+	 * Agreement across five viewpoints takes a second and a half to gather and there is no honest way to
+	 * shorten it. What there is no need for is an empty screen while it happens: the detector has seen
+	 * something from the first pass, and showing it says the thing is working and roughly where it is
+	 * looking. These are marked unsure, they are never counted, never scored, and they stop being
+	 * offered the moment the sweep has had long enough to judge properly — by which time each has either
+	 * earned its place or been replaced by one that did.
+	 */
+	get early(): Impact[] {
+		if (this.passes > this.earlyPasses || this.confirmed.length > 0) return [];
+		const room = Number.isFinite(this.limit) ? this.limit : 6;
+		return this.candidates
+			.filter((c) => c.votes > 1)
+			.sort((a, b) => b.votes - a.votes)
+			.slice(0, room)
+			.map((c) => ({ ...c, unsure: true }));
 	}
 
 	/** Feeds one pass of proposals and returns whatever that pass was enough to confirm. */

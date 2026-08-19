@@ -21,6 +21,11 @@ export interface ScanResult {
 	arrows: Impact[];
 	/** Detections still gathering evidence, drawn faintly so the archer sees it working. */
 	pending: Impact[];
+	/**
+	 * Places the first couple of seconds turned up, before anything can be believed. Shown so the archer
+	 * is not looking at an empty overlay while the evidence gathers, and never scored.
+	 */
+	early: Impact[];
 	/** Proposals this frame produced, before the tracker judged them. Diagnostic, not used for scoring. */
 	detections: number;
 	/** Those same proposals, so a harness can tell what was never seen from what was seen and dropped. */
@@ -116,8 +121,13 @@ export class Scanner {
 		return this.settled;
 	}
 
+	/**
+	 * What the archer should see marked. The tracker's own arrows, and for the first couple of seconds
+	 * whatever it has turned up so far, so the overlay is not blank while the evidence gathers.
+	 */
 	get arrows(): Impact[] {
-		return this.tracker.arrows;
+		const arrows = this.tracker.arrows;
+		return arrows.length > 0 ? arrows : this.tracker.early;
 	}
 
 	get pending(): Impact[] {
@@ -238,6 +248,7 @@ export class Scanner {
 				found: [],
 				arrows: this.tracker.arrows,
 				pending: this.tracker.pending,
+				early: this.tracker.early,
 				detections: 0,
 				proposed: []
 			};
@@ -294,6 +305,7 @@ export class Scanner {
 			found,
 			arrows: this.tracker.arrows,
 			pending: this.tracker.pending,
+			early: this.tracker.early,
 			detections: detections.length,
 			proposed: detections
 		};
