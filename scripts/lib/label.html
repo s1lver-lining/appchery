@@ -49,6 +49,7 @@
 	<div class="row"><button id="noface">No face here</button></div>
 	<div class="row"><button id="noarrows">This video has no arrows</button></div>
 	<div class="row"><button id="undo">Undo arrow</button><button id="clear">Clear arrows</button></div>
+	<div class="row"><button id="anchor">Move arrows to this frame</button></div>
 	<div class="row"><button id="clearNocks">Clear this frame's nocks</button></div>
 
 	<div class="row"><button id="save" class="primary">Save video</button></div>
@@ -79,6 +80,8 @@
 	let current = 0;
 	let frame = 0;
 	let mode = 'fit';
+	/** Which arrow the next nock belongs to. Chosen, never guessed: see the click handler. */
+	let nocking = 0;
 	let dragging = -1;
 	let image = new Image();
 	/** Room around the picture, so a handle can be dragged off a face that runs past the edge. */
@@ -177,14 +180,25 @@
 		if (!v.work) {
 			v.work = v.chosen.map((_, i) => {
 				const saved = v.labels?.frames?.[i];
+				// Older labels predate this flag, and every fit in them was placed by hand.
+				const touched = saved ? (saved.touched ?? !saved.skip) : false;
+				/**
+				 * A saved fit is only preferred over a fresh one when somebody actually placed it.
+				 *
+				 * Saving writes every frame, including the ones never looked at, so a recording saved once
+				 * came back with an automatic fit stored on all fifteen frames. Those then beat the seed for
+				 * ever after, and the seed is the thing that improves: the detector has been rewritten
+				 * several times since some of these were written, and the old answer was being preserved
+				 * out of nothing more than the order the two were checked in.
+				 */
 				return {
-					handles: saved?.handles ?? seedHandles(v.seeds[i], v.width, v.height),
+					handles: (touched && saved?.handles) || seedHandles(v.seeds[i], v.width, v.height),
 					skip: saved?.skip ?? false,
-					// Older labels predate this flag, and every fit in them was placed by hand.
-					touched: saved ? (saved.touched ?? !saved.skip) : false
+					touched
 				};
 			});
 			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
+			v.arrowFrame = v.labels?.arrowFrame ?? null;
 			v.empty = v.labels?.empty ?? false;
 			/**
 			 * Nocks are kept per frame and in the picture's own pixels, unlike everything else here.
@@ -251,14 +265,17 @@
 			context.fill();
 
 			// The arrows, projected through this frame's own fit: they check the fit as much as label it.
+			const nockedHere = v.nocks?.[frame] ?? [];
 			v.arrows.forEach((arrow, i) => {
 				const p = project(h, arrow.x, arrow.y);
+				const chosen = mode === 'nocks' && i === nocking;
+				const done = nockedHere.some((nock) => nock.arrow === i);
 				context.beginPath();
-				context.arc(p.x, p.y, line * 5, 0, Math.PI * 2);
-				context.strokeStyle = '#00e676';
-				context.lineWidth = line * 1.5;
+				context.arc(p.x, p.y, line * (chosen ? 8 : 5), 0, Math.PI * 2);
+				context.strokeStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.45)' : '#00e676';
+				context.lineWidth = line * (chosen ? 2.5 : 1.5);
 				context.stroke();
-				context.fillStyle = '#00e676';
+				context.fillStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.55)' : '#00e676';
 				context.font = `bold ${Math.round(image.width / 30)}px system-ui`;
 				context.fillText(String(i + 1), p.x + line * 6, p.y - line * 6);
 			});
@@ -317,19 +334,24 @@
 			mode === 'fit'
 				? 'Drag the four handles onto the black to white edge, in any order round the circle. The gold circle landing on the gold is the check. One good fit per recording is enough.'
 				: mode === 'arrows'
-					? 'Click where each shaft enters the paper. Click an existing marker to remove it. One frame with a good fit is enough: the arrows belong to the whole recording.'
+					? 'Click where each shaft enters the paper. Click an existing marker to remove it. The arrows belong to the whole recording, so place them on a frame whose fit you have checked: a click is read through this frame\'s fit, and moving an arrow on a badly fitted frame moves it wrongly on every other one.' +
+						(state().touched ? '' : ' THIS FRAME\'S FIT IS NOT CHECKED.')
 					: mode === 'nocks'
-						? nextNock < 0
-							? 'Every arrow on this frame has its nock. Move to a frame taken from somewhere else and do it again: five or six frames per recording, as far apart as the sweep goes.'
-							: `Click the nock of arrow ${nextNock + 1} — the far end of the shaft, away from the paper. This frame only, and only worth doing on a frame whose fit is good.`
+						? `Placing the nock of arrow ${nocking + 1}, ringed in amber. Click its nock — the far end of the shaft, away from the paper. Click another arrow, or press its number, to switch to that one. Click a nock to take it back.` +
+							(nextNock < 0 ? ' Every arrow here has one: move to a frame shot from somewhere else.' : '')
 						: 'Click anything that looks like a shaft and is not one: a crease, a fold, a printed line, the rim, a shadow. Click one again to remove it.';
 		const fitted = v.work.filter((w) => w.touched && !w.skip).length;
+		el('anchor').className = v.arrowFrame === frame ? 'on' : '';
 		const nocked = Object.values(v.nocks).filter((list) => list.length > 0).length;
+		const anchored = v.arrowFrame === null || v.arrowFrame === undefined ? '' : ` (placed on frame ${v.arrowFrame + 1})`;
 		el('status').textContent =
-			`${v.arrows.length} arrows, ${nocked} frames with nocks, ${v.marks.length} not-arrows, ` +
+			`${v.arrows.length} arrows${anchored}, ${nocked} frames with nocks, ${v.marks.length} not-arrows, ` +
 			`${fitted} of ${v.work.length} faces fitted by hand` +
 			(v.empty ? ', marked as having no arrows' : '') +
-			(fitted === 0 ? '. Fit one face before placing arrows.' : '');
+			(fitted === 0 ? '. Fit one face before placing arrows.' : '') +
+			(mode === 'arrows' && v.arrows.length > 0 && v.arrowFrame !== frame
+				? `. These arrows were placed on frame ${(v.arrowFrame ?? 0) + 1}: correcting one here reads it through this frame's fit instead, which moves it relative to the rest. Correct them on frame ${(v.arrowFrame ?? 0) + 1}, or move them all here on purpose.`
+				: '');
 	}
 
 	function at(event) {
@@ -373,11 +395,38 @@
 		if (mode === 'nocks') {
 			const here = (v.nocks[frame] ??= []);
 			const grab = Math.max(10, image.width / 50);
-			const hit = here.findIndex((nock) => Math.hypot(nock.x - p.x, nock.y - p.y) < grab);
-			if (hit >= 0) here.splice(hit, 1);
-			else {
-				const which = waiting();
-				if (which >= 0) here.push({ arrow: which, x: p.x, y: p.y });
+
+			const onNock = here.findIndex((nock) => Math.hypot(nock.x - p.x, nock.y - p.y) < grab);
+			if (onNock >= 0) {
+				nocking = here[onNock].arrow;
+				here.splice(onNock, 1);
+				draw();
+				return;
+			}
+
+			/**
+			 * Clicking an arrow chooses it; clicking anywhere else puts that arrow's nock there.
+			 *
+			 * The first version of this simply gave each nock to the lowest numbered arrow that did not
+			 * have one yet, which is only right if the archer happens to click the six shafts in the order
+			 * the impacts were labelled in. Nobody does: you click the shaft you can see clearly, and every
+			 * nock after the first goes onto the wrong arrow with nothing on screen to say so.
+			 */
+			const onArrow = v.arrows.findIndex((arrow) => {
+				const q = project(h, arrow.x, arrow.y);
+				return Math.hypot(q.x - p.x, q.y - p.y) < Math.max(14, image.width / 40);
+			});
+			if (onArrow >= 0) {
+				nocking = onArrow;
+				draw();
+				return;
+			}
+
+			if (v.arrows[nocking]) {
+				here.push({ arrow: nocking, x: p.x, y: p.y });
+				// On to the next one still wanting a nock, so six clicks in a row does the frame.
+				const next = waiting();
+				if (next >= 0) nocking = next;
 			}
 			draw();
 			return;
@@ -407,7 +456,17 @@
 		else {
 			const f = project(inverse, p.x, p.y);
 			v.arrows.push({ x: f.x, y: f.y });
-			v.arrowFrame = frame;
+			/**
+			 * The frame the arrows belong to, set by the first one and then left alone.
+			 *
+			 * It used to be set by the most recent click, which made correcting one arrow on a later frame
+			 * quietly re-anchor all six: the coordinates of the other five still described where they were
+			 * seen from the first frame, but everything downstream now read them through this one's fit.
+			 * The two fits never agree exactly, so five arrows moved because one was corrected.
+			 */
+			if (v.arrowFrame === null || v.arrowFrame === undefined || v.arrows.length === 1) {
+				v.arrowFrame = frame;
+			}
 		}
 		draw();
 	};
@@ -442,10 +501,24 @@
 	};
 	el('nockMode').onclick = () => {
 		mode = 'nocks';
+		const next = waiting();
+		nocking = next >= 0 ? next : 0;
 		draw();
 	};
 	el('markMode').onclick = () => {
 		mode = 'marks';
+		draw();
+	};
+	/**
+	 * Re-reads the arrows against this frame instead of the one they were placed on.
+	 *
+	 * Only ever on purpose. The arrows are one set of coordinates read through one frame's fit, and which
+	 * frame that is decides where every one of them lands; changing it is a decision about the whole
+	 * recording, not a side effect of correcting one of them.
+	 */
+	el('anchor').onclick = () => {
+		const v = video();
+		v.arrowFrame = frame;
 		draw();
 	};
 	el('clearNocks').onclick = () => {
@@ -505,16 +578,23 @@
 			marks: v.marks,
 			empty: v.empty,
 			arrowFrame: v.arrowFrame ?? null,
+			// Only the frames somebody placed or dismissed. An untouched fit is not a label, it is a guess,
+			// and storing it means a better guess can never replace it.
 			frames: Object.fromEntries(
-				v.work.map((w, i) => [i, { handles: w.handles, skip: w.skip, touched: w.touched }])
+				v.work
+					.map((w, i) => [i, w])
+					.filter(([, w]) => w.touched || w.skip)
+					.map(([i, w]) => [i, { handles: w.handles, skip: w.skip, touched: w.touched }])
 			)
 		};
 		await fetch(`/labels/${encodeURIComponent(v.video)}`, { method: 'POST', body: JSON.stringify(body) });
 		v.labels = body;
 		const frames = Object.values(v.nocks).filter((list) => list.length > 0).length;
+		// Said in full because the button saves the recording, not the frame, and one press is enough.
 		el('status').textContent =
-			`Saved ${v.arrows.length} arrows, nocks on ${frames} frames, ${v.marks.length} not-arrows, ` +
-			`${v.work.filter((w) => !w.skip).length} fits.`;
+			`Saved the whole recording: ${v.arrows.length} arrows, nocks on ${frames} frames, ` +
+			`${v.marks.length} not-arrows, ${v.work.filter((w) => w.touched || w.skip).length} fits placed by hand. ` +
+			'One save covers every frame; there is no need to press it again on each.';
 	};
 
 	window.onkeydown = (event) => {
@@ -525,6 +605,13 @@
 		if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
 		if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
 		if (event.key.toLowerCase() === 'm') el('markMode').onclick();
+		if (mode === 'nocks' && /^[1-9]$/.test(event.key)) {
+			const which = Number(event.key) - 1;
+			if (video().arrows[which]) {
+				nocking = which;
+				draw();
+			}
+		}
 		if (event.key.toLowerCase() === 's') el('save').onclick();
 	};
 	window.onresize = () => show();

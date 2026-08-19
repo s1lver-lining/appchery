@@ -576,10 +576,23 @@ async function todo() {
 		nockFrames += frames.length;
 		nocks += here;
 		marks += (label.marks ?? []).length;
+		/**
+		 * Whether the frame the arrows were read through was ever fitted by hand.
+		 *
+		 * The arrows are one set of coordinates read through one frame's fit, so that fit decides where
+		 * every one of them lands. Anchored to a frame nobody checked, all six can be out together while
+		 * each looks perfectly placed on the frame it was clicked on.
+		 */
+		const anchor = label.arrowFrame;
+		const anchorFit = anchor === null || anchor === undefined ? null : label.frames?.[anchor];
+		const shaky = (label.arrows?.length ?? 0) > 0 && !anchorFit?.touched;
+
 		rows.push(
-			`${name.slice(-24)}  ${String(label.arrows?.length ?? 0).padStart(2)} arrows  ` +
+			`${name.slice(-24)}  ${String(label.arrows?.length ?? 0).padStart(2)} arrows` +
+				` on frame ${String((anchor ?? 0) + 1).padStart(2)}  ` +
 				`${String(frames.length).padStart(2)} frames nocked (${here} nocks)  ` +
 				`${String((label.marks ?? []).length).padStart(2)} not-arrows` +
+				(shaky ? '   <- arrows read through a fit nobody checked' : '') +
 				(frames.length === 0 ? '   <- no nocks yet' : '')
 		);
 	}

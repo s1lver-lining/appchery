@@ -46,6 +46,7 @@ const rows = [];
 let frames = 0;
 let skipped = 0;
 let automatic = 0;
+const repaired = [];
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
@@ -97,6 +98,19 @@ for (const name of (await readdir(WORK)).sort()) {
 		if (!meeting) continue;
 		frames += 1;
 		for (const line of lines) residuals.push(away(line, meeting.x, meeting.y));
+
+		/**
+		 * The same frame again, under every way of matching the nocks to the impacts.
+		 *
+		 * Told apart from a wrong model, a wrong pairing looks identical: both give lines that meet
+		 * nowhere. The difference is that a wrong pairing has a right one hiding behind it, and there are
+		 * only a few hundred to try. If some other matching brings the residual down to a few degrees then
+		 * the geometry is sound and the labels were simply written down against the wrong arrows.
+		 */
+		if (placed.length <= 7) {
+			const best = bestPairing(placed, label.arrows, back);
+			if (best !== null) repaired.push(best);
+		}
 		rows.push(
 			`${name.slice(-24)} frame ${String(index).padStart(3)}  ${lines.length} nocks  ` +
 				`meets at ${meeting.x.toFixed(2)}, ${meeting.y.toFixed(2)}  ` +
@@ -121,10 +135,58 @@ if (automatic > 0) {
 }
 console.log(`nocks               ${residuals.length}`);
 console.log(`lean off the meeting point   ${at(0.5).toFixed(1)}° median, ${at(0.9).toFixed(1)}° at p90`);
+if (repaired.length > 0) {
+	repaired.sort((a, b) => a - b);
+	const best = (share) => repaired[Math.floor((repaired.length - 1) * share)] * 57.3;
+	console.log(
+		`under the best matching of nocks to arrows   ${best(0.5).toFixed(1)}° median, ${best(0.9).toFixed(1)}° at p90`
+	);
+	console.log('  (worst nock on each frame. A large gap between the two lines above means the labels');
+	console.log('   were written against the wrong arrows, not that the geometry is wrong.)');
+}
+
 console.log(
 	'\nUnder about 10° the model holds and the work belongs in finding the real nock.' +
 		'\nOver about 25° the arrows do not agree on a meeting point and the idea should be dropped.'
 );
+
+/** The worst lean under whichever matching of nocks to impacts agrees best, or null if none works. */
+function bestPairing(placed, arrows, back) {
+	const points = placed.map((nock) => project(back, nock.x, nock.y));
+	const usable = arrows.map((arrow, i) => i).filter((i) => arrows[i]);
+	if (points.length > usable.length) return null;
+
+	let best = null;
+	for (const order of permutations(usable, points.length)) {
+		const lines = [];
+		for (let i = 0; i < points.length; i++) {
+			const arrow = arrows[order[i]];
+			const dx = points[i].x - arrow.x;
+			const dy = points[i].y - arrow.y;
+			const span = Math.hypot(dx, dy);
+			if (span < 1e-6) continue;
+			lines.push({ ax: arrow.x, ay: arrow.y, ux: dx / span, uy: dy / span });
+		}
+		if (lines.length < 3) continue;
+		const meeting = meet(lines);
+		if (!meeting) continue;
+		const worst = Math.max(...lines.map((line) => away(line, meeting.x, meeting.y)));
+		if (best === null || worst < best) best = worst;
+	}
+	return best;
+}
+
+/** Every way of choosing `take` of the arrows in order, which for six arrows is a few hundred. */
+function* permutations(pool, take) {
+	if (take === 0) {
+		yield [];
+		return;
+	}
+	for (let i = 0; i < pool.length; i++) {
+		const rest = [...pool.slice(0, i), ...pool.slice(i + 1)];
+		for (const tail of permutations(rest, take - 1)) yield [pool[i], ...tail];
+	}
+}
 
 /** How far a mark's lean is from pointing at the meeting place, as an angle, either way along it. */
 function away(line, ex, ey) {
@@ -205,5 +267,6 @@ function solve(rows) {
 			for (let k = col; k <= n; k++) rows[r][k] -= factor * rows[col][k];
 		}
 	}
-	return rows.map((row, i) => row[n] / row[i][i]);
+	// After the elimination each row holds only its own pivot, so the answer is the pair on the diagonal.
+	return rows.map((row, i) => row[n] / row[i]);
 }
