@@ -143,13 +143,6 @@ const PALETTES: Record<'dark' | 'light', Palette> = {
 	}
 };
 
-let INK = PALETTES.dark.ink;
-let MUTED = PALETTES.dark.muted;
-let GOLD = PALETTES.dark.gold;
-let BRONZE = PALETTES.dark.bronze;
-let LINE = PALETTES.dark.line;
-let RIBBON_INK = PALETTES.dark.ribbonInk;
-
 const FONT = "system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif";
 
 export type WeatherGlyph = 'sun' | 'cloud' | 'rain' | 'snow' | 'fog' | 'storm';
@@ -164,9 +157,9 @@ const WEATHER: Record<WeatherGlyph, string> = {
 	storm: '<path d="M7.4 14.4a4.2 4.2 0 0 1-.4-8.4 5.4 5.4 0 0 1 10.3 1.4 3.5 3.5 0 0 1-.6 7z" /><path d="M13 16.4l-2.6 3.6h3l-2 2.4" />'
 };
 
-function weatherMark(glyph: WeatherGlyph, x: number, y: number, size: number): string {
+function weatherMark(palette: Palette, glyph: WeatherGlyph, x: number, y: number, size: number): string {
 	const scale = size / 24;
-	return `<g transform="translate(${x} ${y}) scale(${scale})" fill="none" stroke="${GOLD}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${WEATHER[glyph]}</g>`;
+	return `<g transform="translate(${x} ${y}) scale(${scale})" fill="none" stroke="${palette.gold}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${WEATHER[glyph]}</g>`;
 }
 
 /** Text goes into markup, so anything the archer typed is escaped before it gets there. */
@@ -213,23 +206,24 @@ function wrap(text: string, perLine: number): string[] {
 }
 
 function text(
+	palette: Palette,
 	value: string,
 	x: number,
 	y: number,
 	options: { size: number; weight?: number | string; fill?: string; anchor?: string; spacing?: number }
 ): string {
-	const { size, weight = 400, fill = INK, anchor = 'start', spacing = 0 } = options;
+	const { size, weight = 400, fill = palette.ink, anchor = 'start', spacing = 0 } = options;
 	return `<text x="${x}" y="${y}" font-family="${FONT}" font-size="${size}" font-weight="${weight}" fill="${fill}" text-anchor="${anchor}"${spacing ? ` letter-spacing="${spacing}"` : ''}>${esc(value)}</text>`;
 }
 
 /** One figure and its caption, the unit the middle band of the card is built from. */
-function stat(value: string, label: string, x: number, y: number): string {
+function stat(palette: Palette, value: string, label: string, x: number, y: number): string {
 	return (
-		text(value, x, y, { size: 52, weight: 700, anchor: 'middle' }) +
-		text(label.toUpperCase(), x, y + 40, {
+		text(palette, value, x, y, { size: 52, weight: 700, anchor: 'middle' }) +
+		text(palette, label.toUpperCase(), x, y + 40, {
 			size: 24,
 			weight: 600,
-			fill: MUTED,
+			fill: palette.muted,
 			anchor: 'middle',
 			spacing: 2
 		})
@@ -240,13 +234,13 @@ function stat(value: string, label: string, x: number, y: number): string {
  * The rings the app is built around, struck from off the corner. They carry the card: without them
  * it is a poster of numbers, and with them it is unmistakably about archery.
  */
-function rings(isBest: boolean): string {
+function rings(palette: Palette, isBest: boolean): string {
 	const cx = 1180;
 	const cy = 1180;
 	return [44, 34, 24, 14]
 		.map(
 			(r, i) =>
-				`<circle cx="${cx}" cy="${cy}" r="${r * 12}" fill="none" stroke="${isBest ? GOLD : BRONZE}" stroke-width="26" opacity="${0.07 + i * 0.025}" />`
+				`<circle cx="${cx}" cy="${cy}" r="${r * 12}" fill="none" stroke="${isBest ? palette.gold : palette.bronze}" stroke-width="26" opacity="${0.07 + i * 0.025}" />`
 		)
 		.join('');
 }
@@ -257,6 +251,7 @@ function rings(isBest: boolean): string {
  * a twenty end round both come out as one page rather than one page and a spill.
  */
 function sheet(
+	palette: Palette,
 	rows: CardData['sheet'],
 	labels: CardData['labels'],
 	from: number,
@@ -289,22 +284,22 @@ function sheet(
 	top = headTop;
 	// The two column heads are names on a match card, and a name is as long as somebody made it.
 	const head =
-		text(labels.end.toUpperCase(), left, top, { size: headSize, weight: 700, fill: MUTED, spacing: 2 }) +
-		text(fit(labels.endTotal.toUpperCase(), column - gutter, headSize, 2), right - column, top, {
+		text(palette, labels.end.toUpperCase(), left, top, { size: headSize, weight: 700, fill: palette.muted, spacing: 2 }) +
+		text(palette, fit(labels.endTotal.toUpperCase(), column - gutter, headSize, 2), right - column, top, {
 			size: headSize,
 			weight: 700,
-			fill: MUTED,
+			fill: palette.muted,
 			anchor: 'end',
 			spacing: 2
 		}) +
-		text(fit(labels.runningTotal.toUpperCase(), column - gutter, headSize, 2), right, top, {
+		text(palette, fit(labels.runningTotal.toUpperCase(), column - gutter, headSize, 2), right, top, {
 			size: headSize,
 			weight: 700,
-			fill: MUTED,
+			fill: palette.muted,
 			anchor: 'end',
 			spacing: 2
 		}) +
-		`<line x1="${left}" y1="${top + 16}" x2="${right}" y2="${top + 16}" stroke="${LINE}" stroke-width="2" />`;
+		`<line x1="${left}" y1="${top + 16}" x2="${right}" y2="${top + 16}" stroke="${palette.line}" stroke-width="2" />`;
 
 	const body = rows
 		.map((row, i) => {
@@ -314,10 +309,10 @@ function sheet(
 			const arrows = row.arrows
 				.map((label, j) =>
 					// The golds carry the colour, so a good end is visible before a number is read.
-					text(label, arrowsLeft + j * pitch, ourY, {
+					text(palette, label, arrowsLeft + j * pitch, ourY, {
 						size,
 						weight: label === 'X' || label === '10' ? 700 : 500,
-						fill: label === 'X' || label === '10' ? GOLD : INK,
+						fill: label === 'X' || label === '10' ? palette.gold : palette.ink,
 						anchor: 'middle'
 					})
 				)
@@ -327,10 +322,10 @@ function sheet(
 				twoLines && row.opponentArrows
 					? row.opponentArrows
 							.map((label, j) =>
-								text(label, arrowsLeft + j * pitch, y + rowHeight * 0.16, {
+								text(palette, label, arrowsLeft + j * pitch, y + rowHeight * 0.16, {
 									size: size * 0.8,
 									weight: 500,
-									fill: MUTED,
+									fill: palette.muted,
 									anchor: 'middle'
 								})
 							)
@@ -338,57 +333,49 @@ function sheet(
 					: '';
 
 			return (
-				text(String(i + 1), left, y, { size: size * 0.8, weight: 600, fill: MUTED }) +
+				text(palette, String(i + 1), left, y, { size: size * 0.8, weight: 600, fill: palette.muted }) +
 				arrows +
 				theirs +
-				text(String(row.subtotal), right - column, y, { size, weight: 700, anchor: 'end' }) +
+				text(palette, String(row.subtotal), right - column, y, { size, weight: 700, anchor: 'end' }) +
 				// Blank rather than a nought: the other side of a match may simply not have been entered yet.
-				text(row.running === null ? '' : String(row.running), right, y, {
+				text(palette, row.running === null ? '' : String(row.running), right, y, {
 					size,
 					weight: 600,
-					fill: MUTED,
+					fill: palette.muted,
 					anchor: 'end'
 				}) +
 				(i < rows.length - 1
-					? `<line x1="${left}" y1="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" stroke="${LINE}" stroke-width="1" opacity="0.7" />`
+					? `<line x1="${left}" y1="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" stroke="${palette.line}" stroke-width="1" opacity="0.7" />`
 					: '')
 			);
 		})
 		.join('');
 
 	// The totals column sits on its own band, behind the figures rather than over them.
-	const band = `<rect x="${right - column - 40}" y="${top + 20}" width="${column + 40}" height="${(headRoom + rowHeight * rows.length - 16).toFixed(1)}" fill="${isBest ? GOLD : BRONZE}" opacity="0.05" />`;
+	const band = `<rect x="${right - column - 40}" y="${top + 20}" width="${column + 40}" height="${(headRoom + rowHeight * rows.length - 16).toFixed(1)}" fill="${isBest ? palette.gold : palette.bronze}" opacity="0.05" />`;
 	return `<g>${band}${head}${body}</g>`;
 }
 
 /** The ribbon a record wears. Nothing else on the card changes shape, only its colour and this. */
-function ribbon(label: string): string {
+function ribbon(palette: Palette, label: string): string {
 	const caption = label.toUpperCase();
 	// Sized from the text rather than measured: the card is built as a string, with nothing to ask.
 	const width = 128 + caption.length * 19;
 	return `
 	<g>
-		<rect x="80" y="168" width="${width}" height="66" rx="33" fill="${GOLD}" />
+		<rect x="80" y="168" width="${width}" height="66" rx="33" fill="${palette.gold}" />
 		<g transform="translate(120 201)">
-			<path d="M-9 -17 l4 8 M9 -17 l-4 8" stroke="${RIBBON_INK}" stroke-width="3.4" stroke-linecap="round" fill="none" />
-			<circle cx="0" cy="5" r="12" fill="none" stroke="${RIBBON_INK}" stroke-width="3.4" />
-			<circle cx="0" cy="5" r="4" fill="${RIBBON_INK}" />
+			<path d="M-9 -17 l4 8 M9 -17 l-4 8" stroke="${palette.ribbonInk}" stroke-width="3.4" stroke-linecap="round" fill="none" />
+			<circle cx="0" cy="5" r="12" fill="none" stroke="${palette.ribbonInk}" stroke-width="3.4" />
+			<circle cx="0" cy="5" r="4" fill="${palette.ribbonInk}" />
 		</g>
-		${text(caption, 152, 212, { size: 30, weight: 800, fill: RIBBON_INK, spacing: 3 })}
+		${text(palette, caption, 152, 212, { size: 30, weight: 800, fill: palette.ribbonInk, spacing: 3 })}
 	</g>`;
 }
 
 export function scorecardSvg(data: CardData): string {
 	const options = data.options;
 	const palette = PALETTES[options.theme];
-	// Set once for the helpers below, which draw the card a piece at a time in whichever ground it wears.
-	INK = palette.ink;
-	MUTED = palette.muted;
-	GOLD = palette.gold;
-	BRONZE = palette.bronze;
-	LINE = palette.line;
-	RIBBON_INK = palette.ribbonInk;
-
 	const best = data.isBest;
 	const versus = data.opponentScore !== null && data.opponentScore !== undefined;
 	const headline = versus ? `${data.score} – ${data.opponentScore}` : String(data.score);
@@ -428,8 +415,8 @@ export function scorecardSvg(data: CardData): string {
 			<stop offset="1" stop-color="${palette.bottom}" />
 		</linearGradient>
 		<linearGradient id="score" x1="0" y1="0" x2="0" y2="1">
-			<stop offset="0" stop-color="${best ? (options.theme === 'dark' ? '#ffe6ac' : '#d99b20') : INK}" />
-			<stop offset="1" stop-color="${best ? GOLD : MUTED}" />
+			<stop offset="0" stop-color="${best ? (options.theme === 'dark' ? '#ffe6ac' : '#d99b20') : palette.ink}" />
+			<stop offset="1" stop-color="${best ? palette.gold : palette.muted}" />
 		</linearGradient>
 		<clipPath id="frame">
 			<rect x="0" y="0" width="${CARD_WIDTH}" height="${CARD_HEIGHT}" />
@@ -437,47 +424,47 @@ export function scorecardSvg(data: CardData): string {
 	</defs>
 
 	<rect width="${CARD_WIDTH}" height="${CARD_HEIGHT}" fill="url(#ground)" />
-	<g clip-path="url(#frame)">${rings(best)}</g>
-	<rect x="18" y="18" width="${CARD_WIDTH - 36}" height="${CARD_HEIGHT - 36}" rx="34" fill="none" stroke="${best ? GOLD : LINE}" stroke-width="${best ? 4 : 3}" opacity="${best ? 0.7 : 1}" />
+	<g clip-path="url(#frame)">${rings(palette, best)}</g>
+	<rect x="18" y="18" width="${CARD_WIDTH - 36}" height="${CARD_HEIGHT - 36}" rx="34" fill="none" stroke="${best ? palette.gold : palette.line}" stroke-width="${best ? 4 : 3}" opacity="${best ? 0.7 : 1}" />
 
 	<!-- The outing's own name takes the top line when it has one, and the app name steps aside. -->
 	${
 		title === 'APPCHERY'
-			? text(title, 80, 112, { size: 30, weight: 800, fill: GOLD, spacing: 8 })
-			: text(title, 80, 112, { size: 30, weight: 700, fill: GOLD })
+			? text(palette, title, 80, 112, { size: 30, weight: 800, fill: palette.gold, spacing: 8 })
+			: text(palette, title, 80, 112, { size: 30, weight: 700, fill: palette.gold })
 	}
-	${options.date ? text(data.date, 1000, 112, { size: 28, fill: MUTED, anchor: 'end' }) : ''}
-	<line x1="80" y1="146" x2="1000" y2="146" stroke="${LINE}" stroke-width="2" />
+	${options.date ? text(palette, data.date, 1000, 112, { size: 28, fill: palette.muted, anchor: 'end' }) : ''}
+	<line x1="80" y1="146" x2="1000" y2="146" stroke="${palette.line}" stroke-width="2" />
 
-	${best ? ribbon(data.labels.personalBest) : ''}
-	${nameLines.map((line, i) => text(line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
+	${best ? ribbon(palette, data.labels.personalBest) : ''}
+	${nameLines.map((line, i) => text(palette, line, 80, nameTop + i * 62, { size: 52, weight: 700 })).join('')}
 
 	<!-- A match is a scoreline, so it is written as one: the two figures belong side by side. -->
-	${text(headline, 74, statTop + 172, { size: headlineSize, weight: 800, fill: 'url(#score)' })}
+	${text(palette, headline, 74, statTop + 172, { size: headlineSize, weight: 800, fill: 'url(#score)' })}
 	${
 		data.max
-			? text(`/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: MUTED, anchor: 'end' })
+			? text(palette, `/ ${data.max}`, 1000, statTop + 172, { size: 52, weight: 600, fill: palette.muted, anchor: 'end' })
 			: ''
 	}
-	${text(data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: MUTED, spacing: 5 })}
+	${text(palette, data.labels.points.toUpperCase(), 80, statTop + 212, { size: 26, weight: 700, fill: palette.muted, spacing: 5 })}
 
 	<!-- The sky sits well above the ceiling score, on its own two lines, rather than beside a number. -->
-	${sky && options.weatherIcon ? weatherMark(sky.icon, 900, statTop - 52, 100) : ''}
-	${reading ? text(reading, 1000, statTop + 74, { size: 30, weight: 600, fill: MUTED, anchor: 'end' }) : ''}
+	${sky && options.weatherIcon ? weatherMark(palette, sky.icon, 900, statTop - 52, 100) : ''}
+	${reading ? text(palette, reading, 1000, statTop + 74, { size: 30, weight: 600, fill: palette.muted, anchor: 'end' }) : ''}
 
 	${
 		options.recap
-			? stat(String(data.arrows), data.labels.arrows, 195, statTop + 300) +
-				stat(String(data.tens), data.labels.tens, 425, statTop + 300) +
-				stat(String(data.xs), data.labels.xs, 655, statTop + 300) +
-				stat(average.toFixed(2), data.labels.average, 885, statTop + 300)
+			? stat(palette, String(data.arrows), data.labels.arrows, 195, statTop + 300) +
+				stat(palette, String(data.tens), data.labels.tens, 425, statTop + 300) +
+				stat(palette, String(data.xs), data.labels.xs, 655, statTop + 300) +
+				stat(palette, average.toFixed(2), data.labels.average, 885, statTop + 300)
 			: ''
 	}
 
-	${options.sheet ? sheet(data.sheet, data.labels, sheetTop, 1220, best, options.opponentArrows) : ''}
+	${options.sheet ? sheet(palette, data.sheet, data.labels, sheetTop, 1220, best, options.opponentArrows) : ''}
 
-	${subtitle ? text(subtitle, 80, 1290, { size: 28, fill: MUTED }) : ''}
-	${text(data.labels.tagline, 1000, 1290, { size: 28, weight: 600, fill: GOLD, anchor: 'end' })}
+	${subtitle ? text(palette, subtitle, 80, 1290, { size: 28, fill: palette.muted }) : ''}
+	${text(palette, data.labels.tagline, 1000, 1290, { size: 28, weight: 600, fill: palette.gold, anchor: 'end' })}
 </svg>`;
 }
 

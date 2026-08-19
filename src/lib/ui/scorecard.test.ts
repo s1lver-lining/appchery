@@ -91,3 +91,11 @@ describe('an end the other side has not entered', () => {
 		expect(svg).not.toContain('>0</text>');
 	});
 });
+
+describe('the two grounds', () => {
+	it('draws each theme from its own palette rather than from what was drawn last', () => {
+		const dark = card({ options: { ...DEFAULT_CARD_OPTIONS, theme: 'dark' } });
+		card({ options: { ...DEFAULT_CARD_OPTIONS, theme: 'light' } });
+		expect(card({ options: { ...DEFAULT_CARD_OPTIONS, theme: 'dark' } })).toBe(dark);
+	});
+});
