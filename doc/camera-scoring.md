@@ -109,7 +109,7 @@ found fall from 67% to 46% and false marks rise by half. The fill, elongation an
 each worth a point or two. The width comparison is worth three points and only earns them with the
 bearing test gone.
 
-**The physics is there and is not yet usable.** An arrow comes out of the paper and a crease does not,
+**The physics is in, and pays a little.** An arrow comes out of the paper and a crease does not,
 which is the one property they do not share. The face already says where the camera is, so this is
 checkable without a lens calibration or a motion sensor: a point at height h above the face images at
 `H(x, y, 1) + h·v`, where `v` is where the plane's normal vanishes, so read back through the fit into
@@ -120,11 +120,22 @@ their lines meet. Fitting that meeting place from the marks themselves, with the
 weighted down, and rejecting marks that lean elsewhere removes about five wrong marks for every two
 real ones. Better than any appearance test managed, and still not enough to be worth turning on.
 
-Two things stand in its way. The premise is only approximate — an arrow is not normal to the face, so
-the line through impact and tail passes near the meeting place rather than through it, and the exact
-version of the constraint needs several frames rather than one. And the tail the detector reports is
-the end of a dark run, not the nock, which scatters the measured lean far more than the geometry does.
-The second is the one to fix first, and fixing it needs labelled nocks to measure against.
+Measured against nocks placed by hand, the model holds to about 4° on frames whose face was fitted by
+hand — well inside what it needs. What was blocking it was not the geometry but the measurement: the
+detector was reporting the end of a dark run as the far end of the shaft, and the search box stops just
+past the printing, so 78 of 83 hand placed nocks lay outside it — three face radii out typically, seven
+at the worst. The reported shaft was a quarter of the real one, and the bearing of a quarter length
+segment is a third of a right angle out.
+
+`followOut` now tracks the shaft outwards past the face, looking a pixel or two either side of where it
+expects at each step and re-reading the bearing over everything walked so far. That takes the reported
+far end from 0.28 to 0.87 of the hand measured shaft and its bearing from 33° out to **1° out, 5° at
+p90**. The tracked end is kept separately from the run's own end, because deciding whether two readings
+are the same shaft wants the evidence inside the box and deciding how an arrow leans wants all of it.
+
+With that, the meeting place test earns its keep, though not by much: it removes about eight wrong marks
+for every two real ones, which on a sweep with no arrow count is 2.8 wrong marks an end down to 2.4, at
+a cost of two or three arrows found. Turning `standTolerance` up past π switches it off.
 
 Three further ideas were built, measured and removed, which is worth as much as the ones that stayed:
 
