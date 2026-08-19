@@ -23,7 +23,16 @@ const MAX_RADIAL_BINS = 288;
 const SECTORS = 12;
 
 /** Default for how far past the face the search runs, in face radii. */
-const REACH = 1.0;
+/**
+ * How far out from the face's centre the paper is modelled and dark runs are traced, in face radii.
+ *
+ * Past the printed face, because an arrow in the backing paper is still an arrow of the end. Stopping
+ * at the edge of the printing meant the detector could not see one there at all: not a low score for
+ * it, no proposal of any kind, and the end then came up short and had its gap filled with something
+ * worse. Reaching past it lifted the share of arrows ever proposed from 85% to 94%, which is most of
+ * what was left of that ceiling.
+ */
+const REACH = 1.3;
 
 export interface StillOptions {
 	/** How much darker than the surrounding paper a pixel must be to count as part of a shaft. */
@@ -46,6 +55,8 @@ export interface StillOptions {
 	reach?: number;
 	/** How far off a kept shaft's line another run may sit before it counts as a separate arrow. */
 	mergeDistance?: number;
+	/** How far out an impact may be read, in face radii. */
+	maxRadius?: number;
 	/**
 	 * Gap a run may bridge, as a share of the face radius.
 	 *
@@ -159,6 +170,16 @@ export function detectArrowsInStill(
 	const bearingTolerance = options.bearingTolerance ?? 0.6;
 	const widthRatio = options.widthRatio ?? 1.7;
 	const mergeDistance = options.mergeDistance ?? 0.03;
+	/**
+	 * How far out an impact may be read, in face radii.
+	 *
+	 * Not the same as how far out a run may be traced, and the difference is the point. A shaft in the
+	 * backing paper has to be followed out to its nock to be recognised as a shaft at all, so the tracing
+	 * reaches well past the printing; but the further out an impact is read, the more of what is read is
+	 * the boss rim, the pins holding the face on and the shadow the rim throws. So runs are followed far
+	 * and impacts are only believed near.
+	 */
+	const maxRadius = options.maxRadius ?? 1.1;
 
 	const radius = (face.semiMajor + face.semiMinor) / 2;
 	// One bin per pixel of face radius at most, so every bin holds a ring of real paper to take a median of.
@@ -209,7 +230,7 @@ export function detectArrowsInStill(
 		const point = toFaceCoords(face, entry.x, entry.y);
 		const tail = inner ? { x: segment.bx, y: segment.by } : { x: segment.ax, y: segment.ay };
 		const far = toFaceCoords(face, tail.x, tail.y);
-		if (Math.hypot(point.x, point.y) >= 1) continue;
+		if (Math.hypot(point.x, point.y) >= maxRadius) continue;
 
 		/**
 		 * The printed ring lines are long thin dark streaks too, and they were most of what the shape
