@@ -24,6 +24,10 @@
  *
  * A small residual means the model holds and the work belongs in finding the real nock. A large one
  * means the model is wrong and this whole line should be dropped.
+ *
+ * With `--tails` it asks the follow-up question instead: how close is the far end of the dark run the
+ * detector reports to the nock a person placed? That is the gap the model has to survive, and it is the
+ * thing to improve if it does not.
  */
 import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';

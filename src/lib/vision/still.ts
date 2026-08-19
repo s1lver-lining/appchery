@@ -34,6 +34,22 @@ const SECTORS = 12;
  */
 const REACH = 1.3;
 
+/**
+ * How far past the face a shaft is followed once one has been found, in face radii.
+ *
+ * The paper is modelled and searched only as far as the printing plus a little, because that is where
+ * an arrow can land and where the colours mean anything. But an arrow does not stop where it lands: it
+ * stands out of the boss towards the archer, and on a face filled by a phone screen the nock projects a
+ * long way outside the target. Measured against nocks placed by hand, seventy eight of eighty three lay
+ * beyond the search box, at three face radii typically and seven at the worst.
+ *
+ * That cost more than a truncated drawing. What the detector reported as the far end of a shaft was the
+ * point where its own box stopped, a quarter of the way along, and the direction of a quarter length
+ * segment carries several times the angular error of the whole. Everything that reasons about how an
+ * arrow leans was being fed that.
+ */
+const FOLLOW_OUT = 6;
+
 export interface StillOptions {
 	/** How much darker than the surrounding paper a pixel must be to count as part of a shaft. */
 	darkness?: number;
@@ -55,6 +71,8 @@ export interface StillOptions {
 	reach?: number;
 	/** How far off a kept shaft's line another run may sit before it counts as a separate arrow. */
 	mergeDistance?: number;
+	/** How far a shaft may lean from where the camera says a standing shaft must, in radians. */
+	standTolerance?: number;
 	/** How far out an impact may be read, in face radii. */
 	maxRadius?: number;
 	/**
@@ -89,6 +107,18 @@ export interface StillArrow {
 	length: number;
 	/** Thickness of the shaft in pixels, which every arrow in one picture shares. */
 	width: number;
+	/**
+	 * The far end again, followed out past the face for as long as the picture keeps showing a shaft.
+	 *
+	 * Kept apart from `tailX`/`tailY` because the two answer different questions. The run's own end is
+	 * where the evidence inside the search box stopped, and that is the right thing to ask when deciding
+	 * whether two readings are the same shaft. This one is where the arrow actually appears to reach,
+	 * which is the right thing to ask about how it leans, and the only one accurate enough to be worth
+	 * asking: measured against nocks placed by hand, the run's own end gives a bearing a third of a right
+	 * angle out, and this one gives it to a degree.
+	 */
+	leanX: number;
+	leanY: number;
 }
 
 /**
@@ -167,6 +197,8 @@ export function detectArrowsInStill(
 	const bridge = options.bridge ?? 0.08;
 	const widthRatio = options.widthRatio ?? 1.7;
 	const mergeDistance = options.mergeDistance ?? 0.03;
+	/** How far a shaft may lean from where a shaft standing in the paper has to, in radians. */
+	const standTolerance = options.standTolerance ?? 0.35;
 	/**
 	 * How far out an impact may be read, in face radii.
 	 *
@@ -238,6 +270,8 @@ export function detectArrowsInStill(
 		const climb = Math.hypot(far.x, far.y) - Math.hypot(point.x, point.y);
 		if (span <= 0 || climb < radialLean * span) continue;
 
+		const reach = followOut(frame, segment, inner, entry, maxWidth * radius, radius * FOLLOW_OUT);
+
 		found.push({
 			x: point.x,
 			y: point.y,
@@ -245,6 +279,8 @@ export function detectArrowsInStill(
 			imageY: entry.y,
 			tailX: tail.x,
 			tailY: tail.y,
+			leanX: reach.x,
+			leanY: reach.y,
 			area: segment.length * segment.width,
 			length: segment.length,
 			width: segment.width
@@ -281,7 +317,7 @@ export function detectArrowsInStill(
 		kept.push(arrow);
 	}
 
-	return likeTheBest(kept, widthRatio);
+	return standingTogether(likeTheBest(kept, widthRatio), face, standTolerance);
 }
 
 /**
@@ -621,4 +657,176 @@ function walk(
 		length: best.to - best.from,
 		width: Math.max(1, widths[Math.floor(widths.length / 2)])
 	};
+}
+
+/**
+ * Follows a shaft outwards from the impact, past everything the search box covers.
+ *
+ * Only ever an extension of a run already found, never a way to find one: outside the boss there is no
+ * paper to compare against and no telling what the background will do, so nothing here may propose an
+ * arrow. What it may do is keep walking one, which is safe because it only continues while the picture
+ * goes on showing the same thing — a dark line with lighter surroundings on both sides.
+ *
+ * It tracks rather than extrapolates, and that is the whole point of it. Walking on in the direction the
+ * short run happened to have only moves the far end further along a line that was already off; the
+ * direction is what is wanted and the direction is what a short run is worst at. So at every step the
+ * shaft is looked for a pixel or two either side of where it was expected, and the bearing is re-read
+ * from the whole length walked so far, which is what turns a quarter of a shaft into all of it.
+ */
+function followOut(
+	frame: Frame,
+	segment: Segment,
+	innerIsFrom: boolean,
+	entry: { x: number; y: number },
+	maxWidth: number,
+	limit: number
+): { x: number; y: number } {
+	const originX = segment.rho * segment.cos;
+	const originY = segment.rho * segment.sin;
+	const nock = innerIsFrom ? segment.to : segment.from;
+	const head = innerIsFrom ? segment.from : segment.to;
+	const outward = nock > head ? 1 : -1;
+
+	let x = originX - segment.sin * nock;
+	let y = originY + segment.cos * nock;
+	let ux = -segment.sin * outward;
+	let uy = segment.cos * outward;
+	let last = { x, y };
+	let missed = 0;
+	const flank = maxWidth / 2 + 2;
+
+	for (let step = 1; step <= limit; step++) {
+		// A pixel on, and up to two either side of it, because a shaft is not exactly where it was.
+		const px = -uy;
+		const py = ux;
+		let bestScore = 0;
+		let bestX = x + ux;
+		let bestY = y + uy;
+
+		for (let off = -2; off <= 2; off += 0.5) {
+			const cx = x + ux + px * off;
+			const cy = y + uy + py * off;
+			const centre = sample(frame, cx, cy);
+			if (centre < 0) continue;
+			const left = sample(frame, cx - px * flank, cy - py * flank);
+			const right = sample(frame, cx + px * flank, cy + py * flank);
+			if (left < 0 || right < 0) continue;
+			// How much of a ridge it is: dark here and lighter on both sides, by the weaker of the two.
+			const ridge = Math.min(left - centre, right - centre);
+			if (ridge > bestScore) {
+				bestScore = ridge;
+				bestX = cx;
+				bestY = cy;
+			}
+		}
+
+		x = bestX;
+		y = bestY;
+		if (bestScore > 8) {
+			last = { x, y };
+			missed = 0;
+			// The bearing re-read over everything walked, which is a far longer baseline than one step.
+			const dx = x - entry.x;
+			const dy = y - entry.y;
+			const span = Math.hypot(dx, dy);
+			if (span > 1e-6) {
+				ux = dx / span;
+				uy = dy / span;
+			}
+		} else if (++missed > 6) {
+			// A few pixels of doubt is a ring line or a shadow crossing it; more than that is the end.
+			break;
+		}
+	}
+
+	return last;
+}
+
+/**
+ * Keeps the marks that lean the way a thing standing in the paper has to lean from where the camera is.
+ *
+ * This is the one property an arrow has and a crease, a printed line, a tear or a rim shadow does not:
+ * it comes out of the paper. Everything else the detector measures — dark, thin, straight, unbroken,
+ * lighter on both sides — a fold in the face has too.
+ *
+ * What makes it checkable without knowing anything about the camera is that the face already says where
+ * the camera is. A point at height h above the face images at `H(x, y, 1) + h·v`, where H is the fit and
+ * v is where the plane's normal vanishes; read back through the fit into face coordinates, the far end
+ * of a standing shaft therefore lies on the line from its own impact towards one single point, and that
+ * point is the same for every arrow in the picture. It is where the camera is standing, written in the
+ * face's own coordinates.
+ *
+ * So the arrows in one frame do not lean in random directions, and they do not lean in parallel either:
+ * their lines meet. Parallel is the far field, true of a boss photographed from across a field and false
+ * of one the archer is standing in front of, where the six shafts fan out.
+ *
+ * The meeting place is fitted from the marks themselves rather than derived from the fit, which needs no
+ * lens calibration and no motion sensor. It is a two by two least squares with the outliers weighted
+ * down, so the very marks being judged cannot define the answer.
+ */
+function standingTogether(arrows: StillArrow[], face: FaceLocation, tolerance: number): StillArrow[] {
+	// Three lines is the fewest that can disagree; a meeting place fitted to two is no evidence at all.
+	if (arrows.length < 4 || tolerance >= Math.PI) return arrows;
+
+	const lines = arrows.map((arrow) => {
+		const lean = toFaceCoords(face, arrow.leanX, arrow.leanY);
+		const dx = lean.x - arrow.x;
+		const dy = lean.y - arrow.y;
+		const span = Math.hypot(dx, dy);
+		return { ax: arrow.x, ay: arrow.y, ux: dx / span, uy: dy / span, span };
+	});
+
+	let ex = 0;
+	let ey = 0;
+	const weights = lines.map(() => 1);
+
+	// Reweighted least squares: fit, see which disagree, believe them less, fit again.
+	for (let round = 0; round < 4; round++) {
+		let a = 0;
+		let b = 0;
+		let c = 0;
+		let px = 0;
+		let py = 0;
+		for (let i = 0; i < lines.length; i++) {
+			const line = lines[i];
+			if (!(line.span > 0)) continue;
+			// The direction across the line, which is what the meeting place must not be off along.
+			const nx = -line.uy;
+			const ny = line.ux;
+			const d = nx * line.ax + ny * line.ay;
+			const w = weights[i];
+			a += w * nx * nx;
+			b += w * nx * ny;
+			c += w * ny * ny;
+			px += w * nx * d;
+			py += w * ny * d;
+		}
+		const determinant = a * c - b * b;
+		// Every line pointing the same way, so they meet nowhere in particular and this says nothing.
+		if (Math.abs(determinant) < 1e-9) return arrows;
+		ex = (c * px - b * py) / determinant;
+		ey = (a * py - b * px) / determinant;
+
+		for (let i = 0; i < lines.length; i++) {
+			weights[i] = 1 / (1 + (leansAway(lines[i], ex, ey) / tolerance) ** 2);
+		}
+	}
+
+	const kept = arrows.filter((_, i) => leansAway(lines[i], ex, ey) <= tolerance);
+	// If most of the picture disagrees, the meeting place was fitted to disagreement and means nothing.
+	return kept.length >= 3 ? kept : arrows;
+}
+
+/** How far a mark's lean is from pointing at the meeting place, as an angle, either way along it. */
+function leansAway(
+	line: { ax: number; ay: number; ux: number; uy: number; span: number },
+	ex: number,
+	ey: number
+): number {
+	const tx = ex - line.ax;
+	const ty = ey - line.ay;
+	const reach = Math.hypot(tx, ty);
+	if (reach < 1e-6 || !(line.span > 0)) return 0;
+	// Undirected: which end of a shaft the run stopped at is not something to judge an arrow by.
+	return Math.acos(Math.min(1, Math.abs((line.ux * tx + line.uy * ty) / reach)));
 }
