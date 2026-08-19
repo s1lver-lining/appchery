@@ -53,8 +53,13 @@ where a line is. `steady.ts` damps that in the drawing alone, by how fast the fi
 travelling, so a sweep is followed outright and a held phone draws a held overlay. Nothing measured
 or reported goes through it.
 
-The arrows are not solved. About three arrows of a six arrow end come back, along with a couple of
-proposals that are wrong. The archer confirms every one, so a wrong proposal costs a tap rather than a
+The arrows are not solved, and the two rows above are the reason to be careful about which number gets
+quoted. Told how many arrows to expect, the tracker stops at that many and about three of a six arrow
+end come back with a couple of wrong marks beside them. Not told, it goes on confirming everything
+that clears the bar, and there are five or six wrong marks an end. The proposer is producing that much
+junk in both cases; the count merely hides it. Measuring only the first case is what let the false
+positive rate go unnoticed while it was being reported as improving, which is why the harness now
+measures both and `--uncounted` exists. The archer confirms every one, so a wrong proposal costs a tap rather than a
 wrong score, and the ones that are right are placed to within a fifth of a ring. It is a help, not a
 scorer.
 
@@ -71,8 +76,23 @@ the archer has swung past it, so it is not in the code. And an arrow the sweep n
 shown when the end's arrow count is known.
 
 **The objective is every arrow found, with proposals an archer can accept almost without thinking.**
-The gap to it is data rather than method: fourteen recorded sweeps is fourteen arrangements of
-arrows, and that is what currently limits both detectors.
+
+The binding constraint is the proposer, not the tracker. 85% of arrows are proposed at some point, so
+the tracker is throwing away real arrows; but it is throwing them away because it is also being handed
+several times as many places that are not arrows and cannot tell which is which. Tightening its
+thresholds does not separate them — sweeping `minRidge`, `minFill`, `radialLean` and `minElongation`
+moved the false rate from 6.3 to 5.4 an end and cost arrows doing it. The junk passes every shape test
+there is because it genuinely looks like a shaft in one frame.
+
+Two ways out of that were tried against the recordings and neither worked. Taking arrows back when the
+rest of the sweep stops agreeing with them cost a fifth of the real arrows to remove a third of the
+false ones, because a real arrow stops being proposed once the archer has swung past it. Telling a
+standing shaft from a flat mark by whether its bearing swings with the viewpoint — which ought to work,
+since only one of the two is standing in the paper — found bearings scattering by 90 degrees and more
+on marks that never moved, so there was nothing to measure against.
+
+What is left is the proposer itself, and more recorded ends to work on: fourteen sweeps is fourteen
+arrangements of arrows, and that is what limits both detectors.
 
 ## Finding the face
 
