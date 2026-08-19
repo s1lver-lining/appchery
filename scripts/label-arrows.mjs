@@ -11,6 +11,23 @@
  *   node scripts/label-arrows.mjs prepare     # find the face on every frame, pick frames to label
  *   node scripts/label-arrows.mjs serve       # click the arrows, then check the propagation
  *   node scripts/label-arrows.mjs export      # write the training set
+ *   node scripts/label-arrows.mjs todo        # what is labelled so far and what is missing
+ *
+ * Three kinds of label, and they are not alike.
+ *
+ * **Arrows** are where a shaft enters the paper. One click labels the whole recording, because the
+ * point does not move: it is on the paper, and the face fit gives a frame in which the camera walking
+ * around changes nothing.
+ *
+ * **Nocks** are the far end of the shaft, and they have to be clicked again on every frame they are
+ * wanted on, because the whole point of them is that they *do* move. A shaft stands out of the paper,
+ * so where its nock appears depends on where the camera is standing, and that is the one thing about
+ * an arrow that nothing lying flat on the paper can imitate. Five or six frames a recording, taken
+ * from as far apart as the sweep goes, is what makes that measurable.
+ *
+ * **Not-arrows** are the creases, folds, printed lines and rim shadows that the detector keeps taking
+ * for shafts. Flat on the paper, so like the arrows one click does the whole recording. A handful in
+ * total is enough to test a rule against, which is not something aggregate scores can do.
  *
  * The workspace is kept outside the repository: it holds decoded frames and is large.
  */
@@ -59,8 +76,9 @@ const only = argument('--video');
 if (command === 'prepare') await prepare();
 else if (command === 'serve') await serve();
 else if (command === 'export') await exportSet();
+else if (command === 'todo') await todo();
 else {
-	console.error('usage: label-arrows.mjs [prepare|serve|export] [--video <name>]');
+	console.error('usage: label-arrows.mjs [prepare|serve|export|todo] [--video <name>]');
 	process.exit(2);
 }
 
@@ -508,4 +526,40 @@ function capture(command, args) {
 		child.on('error', bad);
 		child.on('close', () => good(out));
 	});
+}
+
+/**
+ * Says what is labelled and what is not, per recording.
+ *
+ * Worth having because the three kinds of label are wanted in very different amounts — one arrow set
+ * per recording, nocks on a handful of frames, a few not-arrows in total — and there is no way to see
+ * that from the tool itself without opening every video in turn.
+ */
+async function todo() {
+	const rows = [];
+	let nockFrames = 0;
+	let nocks = 0;
+	let marks = 0;
+
+	for (const name of (await readdir(WORK)).sort()) {
+		if (only && !name.includes(only)) continue;
+		const file = join(WORK, name, 'labels.json');
+		if (!existsSync(file)) continue;
+		const label = JSON.parse(await readFile(file, 'utf8'));
+		const frames = Object.entries(label.nocks ?? {}).filter(([, list]) => list.length > 0);
+		const here = frames.reduce((total, [, list]) => total + list.length, 0);
+		nockFrames += frames.length;
+		nocks += here;
+		marks += (label.marks ?? []).length;
+		rows.push(
+			`${name.slice(-24)}  ${String(label.arrows?.length ?? 0).padStart(2)} arrows  ` +
+				`${String(frames.length).padStart(2)} frames nocked (${here} nocks)  ` +
+				`${String((label.marks ?? []).length).padStart(2)} not-arrows` +
+				(frames.length === 0 ? '   <- no nocks yet' : '')
+		);
+	}
+
+	console.log(rows.join('\n'));
+	console.log(`\n${nockFrames} frames carry nocks, ${nocks} nocks in all, ${marks} not-arrows.`);
+	console.log('Wanted: five or six nocked frames a recording, taken from as far apart as the sweep goes.');
 }
