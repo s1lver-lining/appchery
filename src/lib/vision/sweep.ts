@@ -204,8 +204,9 @@ export class SweepTracker {
 	get early(): Impact[] {
 		if (this.passes > this.earlyPasses || this.confirmed.length > 0) return [];
 		const room = Number.isFinite(this.limit) ? this.limit : 6;
-		return this.candidates
-			.filter((c) => c.votes > 1)
+		// Everything, including places seen only once. Asking for two looks meant the overlay stayed empty
+		// for the first two thirds of the wait it exists to fill.
+		return [...this.candidates]
 			.sort((a, b) => b.votes - a.votes)
 			.slice(0, room)
 			.map((c) => ({ ...c, unsure: true }));
