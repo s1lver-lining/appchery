@@ -148,6 +148,10 @@ export const tricksEn = {
 				{
 					lead: 'Free arrows still count.',
 					body: 'The training counter on the session page records arrows shot without scoring them. They count towards volume, weekly goals and session goals, and never reach a score.'
+				},
+				{
+					lead: 'Emptying your total clears the whole end.',
+					body: 'On a match card your side is what holds an end together, so rubbing out your total takes the end with it, your opponent’s number included. A total left at nought would otherwise be read as an end you shot and lost. Enter the end again to put it back.'
 				}
 			]
 		},

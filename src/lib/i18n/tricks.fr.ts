@@ -143,6 +143,10 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: 'Les flèches libres comptent aussi.',
 					body: 'Le compteur d’entraînement de la page de séance enregistre les flèches tirées sans être comptées. Elles comptent dans le volume, les objectifs hebdomadaires et ceux de la séance, et n’atteignent jamais un score.'
+				},
+				{
+					lead: 'Effacer votre total efface la volée entière.',
+					body: 'Sur une carte de match, c’est votre côté qui tient la volée : effacer votre total emporte donc la volée avec lui, le score de votre adversaire compris. Un total laissé à zéro serait sinon lu comme une volée tirée et perdue. Saisissez la volée à nouveau pour la rétablir.'
 				}
 			]
 		},
