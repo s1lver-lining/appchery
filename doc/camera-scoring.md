@@ -28,17 +28,22 @@ lost the arrow.
 | | off centre | 0.9% median, 1.4% at p90 |
 | | found, on 2048 annotated three spots | 98.3% |
 | | false faces | 0.01 per image |
-| **Arrows** | found, of 84 impacts placed by hand | **46%** |
-| | ever proposed, the ceiling | 71% |
-| | false proposals | 1.9 per end |
-| | impact error | 2.7% of face radius median |
+| **Arrows** | found, of 84 impacts placed by hand | **42%** |
+| | ever proposed, the ceiling | 65% |
+| | false proposals | 2.1 per end |
+| | impact error | **1.7%** of face radius median |
 
 A ring is a tenth of the radius, so the face is placed to within a fifteenth of a ring. That part is
 solved.
 
-The arrows are not. Roughly half of an end comes back, and two or three of the six proposals an end
-is offered are wrong. The archer confirms every one, so a wrong proposal costs a tap rather than a
-wrong score, and half an end found is still half an end not typed. It is a help, not a scorer.
+The arrows are not. Between two and three arrows of a six arrow end come back, and about two of the
+six proposals offered are wrong. The archer confirms every one, so a wrong proposal costs a tap rather
+than a wrong score, and the ones that are right are placed to within a fifth of a ring. It is a help,
+not a scorer.
+
+The ceiling matters as much as the number found: an arrow that no pass ever proposed cannot be
+confirmed by any amount of agreement, and a third of them are never proposed at all. That is the
+detector failing to see a shaft, not the tracker discarding one.
 
 **The objective is every arrow found, with proposals an archer can accept almost without thinking.**
 The gap to it is data rather than method: fourteen recorded sweeps is fourteen arrangements of
@@ -192,7 +197,7 @@ same picture, so agreeing with the previous frame proves very little, while agre
 taken from two steps to the left proves a great deal.
 
 **One look is not two.** Sampling faster does not help and actively hurts: at twice the rate, arrows
-found fell from 46% to 25% and false ones doubled. Two passes a third of a second apart are the same
+found nearly halved and false ones doubled. Two passes a third of a second apart are the same
 picture twice, so a shadow that reads as an arrow reads as one in both and gathers votes exactly as
 fast as a real shaft does, while the extra passes dilute the share of them each candidate must reach.
 Three times a second is roughly the rate at which a carried camera presents a genuinely new view.
