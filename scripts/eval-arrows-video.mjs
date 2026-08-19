@@ -215,7 +215,8 @@ console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / M
 console.log(`spurious arrows     ${spurious} (${(spurious / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(`double marks        ${doubles} (${(doubles / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(
-	`impact error        ${sorted.length ? pct(sorted[Math.floor(sorted.length / 2)]) : '--'} of face radius median`
+	`impact error        ${sorted.length ? pct(sorted[Math.floor(sorted.length / 2)]) : '--'} median, ` +
+		`${sorted.length ? pct(sorted[Math.floor((sorted.length - 1) * 0.9)]) : '--'} at p90, of face radius`
 );
 
 if (args.includes('--why')) {

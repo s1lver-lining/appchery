@@ -25,7 +25,7 @@
  * A small residual means the model holds and the work belongs in finding the real nock. A large one
  * means the model is wrong and this whole line should be dropped.
  */
-import { readFile, readdir } from 'node:fs/promises';
+import { readFile, writeFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
@@ -40,12 +40,25 @@ const ANCHORS = [
 ];
 
 const only = process.argv.includes('--video') ? process.argv[process.argv.indexOf('--video') + 1] : null;
+/**
+ * Writes back the matching of nocks to arrows that the geometry says was meant, where it is not in
+ * doubt.
+ *
+ * Worth doing because re-clicking seventy nocks to fix a bookkeeping error is a poor use of an evening,
+ * and worth being careful about because the geometry is the thing under test: a frame repaired this way
+ * cannot then be evidence that the geometry works. So repaired frames are marked as such and counted
+ * separately, the evidence stays with the ones clicked by hand, and nothing is touched unless the best
+ * matching beats every other by a wide margin — which is a fact about the numbers, not about the model.
+ */
+const repairing = process.argv.includes('--repair');
 
 const residuals = [];
 const rows = [];
 let frames = 0;
 let skipped = 0;
 let automatic = 0;
+let byHand = 0;
+let fromRepair = 0;
 const repaired = [];
 
 for (const name of (await readdir(WORK)).sort()) {
@@ -54,11 +67,16 @@ for (const name of (await readdir(WORK)).sort()) {
 	if (!existsSync(file)) continue;
 	const label = JSON.parse(await readFile(file, 'utf8'));
 	if (!label.arrows?.length || !label.nocks) continue;
+	const metaFile = join(WORK, name, 'frames.json');
+	const meta = existsSync(metaFile) ? JSON.parse(await readFile(metaFile, 'utf8')) : null;
+	let changed = false;
 
+	const mended = { ...(label.mended ?? {}) };
 	for (const [index, placed] of Object.entries(label.nocks)) {
 		// Three lines is the fewest that can disagree about where they meet; two always agree exactly.
 		if (!placed || placed.length < 3) continue;
-		const fit = label.frames?.[index];
+		// A hand fit if there is one, otherwise the detector's own, which is what the tool started from.
+		const fit = label.frames?.[index] ?? { handles: seedHandles(meta?.seeds?.[index]), touched: false };
 		if (!fit?.handles || fit.skip) {
 			skipped += 1;
 			continue;
@@ -70,6 +88,8 @@ for (const name of (await readdir(WORK)).sort()) {
 		 * this one. A frame whose fit was never touched by hand is evidence about the wrong thing.
 		 */
 		if (!fit.touched) automatic += 1;
+		if (label.mended?.[index]) fromRepair += placed.length;
+		else byHand += placed.length;
 		const h = homography(fit.handles);
 		const back = h && invert(h);
 		if (!back) {
@@ -109,13 +129,30 @@ for (const name of (await readdir(WORK)).sort()) {
 		 */
 		if (placed.length <= 7) {
 			const best = bestPairing(placed, label.arrows, back);
-			if (best !== null) repaired.push(best);
+			if (best !== null) {
+				repaired.push(best.worst);
+				/**
+				 * Only when one matching is far and away the best. Two arrows standing close together can
+				 * be swapped for almost nothing, and a guess there would be worse than leaving it alone.
+				 */
+				if (repairing && best.margin > 3 * Math.max(best.worst, 0.02) && best.worst < 0.2) {
+					placed.forEach((nock, i) => (nock.arrow = best.order[i]));
+					label.nocks[index] = placed;
+					mended[index] = true;
+					changed = true;
+				}
+			}
 		}
 		rows.push(
 			`${name.slice(-24)} frame ${String(index).padStart(3)}  ${lines.length} nocks  ` +
 				`meets at ${meeting.x.toFixed(2)}, ${meeting.y.toFixed(2)}  ` +
 				`worst ${(Math.max(...lines.map((l) => away(l, meeting.x, meeting.y))) * 57.3).toFixed(1)}°`
 		);
+	}
+	if (changed) {
+		await writeFile(`${file}.before-repair`, JSON.stringify(label, null, 1));
+		await writeFile(file, JSON.stringify({ ...label, mended }, null, 1));
+		console.log(`repaired ${Object.keys(mended).length} frames of ${name.slice(-24)}`);
 	}
 }
 
@@ -133,7 +170,7 @@ if (automatic > 0) {
 	console.log(`  of those, ${automatic} used an automatic fit rather than one placed by hand.`);
 	console.log('  Those inflate the number below: fit them by hand, or read this as an upper bound.');
 }
-console.log(`nocks               ${residuals.length}`);
+console.log(`nocks               ${residuals.length}  (${byHand} as clicked, ${fromRepair} repaired)`);
 console.log(`lean off the meeting point   ${at(0.5).toFixed(1)}° median, ${at(0.9).toFixed(1)}° at p90`);
 if (repaired.length > 0) {
 	repaired.sort((a, b) => a - b);
@@ -150,13 +187,21 @@ console.log(
 		'\nOver about 25° the arrows do not agree on a meeting point and the idea should be dropped.'
 );
 
-/** The worst lean under whichever matching of nocks to impacts agrees best, or null if none works. */
+/** Handles from a stored automatic fit, which the tool describes as a projection of the face. */
+function seedHandles(seed) {
+	if (!seed?.handles) return null;
+	return seed.handles;
+}
+
+/** The best matching of nocks to impacts, how good it is, and how far clear of the next best. */
 function bestPairing(placed, arrows, back) {
 	const points = placed.map((nock) => project(back, nock.x, nock.y));
 	const usable = arrows.map((arrow, i) => i).filter((i) => arrows[i]);
 	if (points.length > usable.length) return null;
 
 	let best = null;
+	let second = null;
+	let order0 = null;
 	for (const order of permutations(usable, points.length)) {
 		const lines = [];
 		for (let i = 0; i < points.length; i++) {
@@ -171,9 +216,16 @@ function bestPairing(placed, arrows, back) {
 		const meeting = meet(lines);
 		if (!meeting) continue;
 		const worst = Math.max(...lines.map((line) => away(line, meeting.x, meeting.y)));
-		if (best === null || worst < best) best = worst;
+		if (best === null || worst < best) {
+			second = best;
+			best = worst;
+			order0 = order;
+		} else if (second === null || worst < second) {
+			second = worst;
+		}
 	}
-	return best;
+	if (best === null) return null;
+	return { worst: best, margin: (second ?? Infinity) - best, order: order0 };
 }
 
 /** Every way of choosing `take` of the arrows in order, which for six arrows is a few hundred. */

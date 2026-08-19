@@ -5,7 +5,7 @@
 // This drives the real `Scanner` the same way `AutoScore.svelte` does, at the same detection rate,
 // so what the overlay shows is what an archer would have seen through the phone.
 import { Scanner } from './pipeline';
-import { detectFaces, toImageCoords, scaleFace } from './face';
+import { alignFace, detectFaces, toImageCoords, scaleFace } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';
 import { SteadyFace } from './steady';
@@ -212,7 +212,16 @@ export class FaceTrack {
 	/** The face on this frame, refit from the last one where possible and searched for when not. */
 	push(small: Frame): FaceLocation | null {
 		if (this.faces.length > 0) {
-			const followed = this.faces.map((face) => refineFace(small, face));
+			/**
+			 * Turned back onto the angle the last one came in at, every time.
+			 *
+			 * A target face is the same face turned through any angle, so a fit is free to describe it with
+			 * its four points anywhere round the circle. For the labelling tool that freedom is not
+			 * harmless: an impact clicked on one frame is a face coordinate, and if the next frame's fit has
+			 * quietly turned a quarter, the same coordinate points at a different arrow. It shows up as the
+			 * arrows appearing to rotate around the boss between frames, and as the numbering changing.
+			 */
+			const followed = this.faces.map((face) => alignFace(face, refineFace(small, face)));
 			// A fit that has fallen off the target is worse than no fit, so it is dropped and searched again.
 			if (followed[0] && verifyRings(small, followed[0]).ok) {
 				this.faces = followed;
@@ -221,8 +230,10 @@ export class FaceTrack {
 		}
 
 		const found = detectFaces(small).filter((face) => verifyRings(small, face).ok);
-		this.faces = found;
-		return found[0] ?? null;
+		// A fresh search knows nothing of how the last one was turned, so it is put back onto it.
+		const held = this.faces[0];
+		this.faces = held ? found.map((face) => alignFace(held, face)) : found;
+		return this.faces[0] ?? null;
 	}
 }
 

@@ -173,10 +173,54 @@
 		});
 	}
 
+	/**
+	 * Puts a frame's four handles into the same order round the circle as its automatic fit.
+	 *
+	 * The four may be dragged in any rotational order, which is fine for describing where the face is —
+	 * it is the same face turned through any angle — and not fine at all for what is built on top. An
+	 * impact is stored as a face coordinate, so it means whatever this frame's first handle decided it
+	 * means; drag the handles a quarter turn round on the next frame and every arrow appears to have
+	 * rotated about the gold, and the numbering with it. The automatic fits hold one orientation through
+	 * a recording, so matching each hand fit to its own frame's automatic one puts them all on the same
+	 * one, without asking the archer to think about it.
+	 */
+	function inSeedOrder(handles, seed) {
+		const order = seed?.handles;
+		if (!order || order.length !== 4 || handles.length !== 4) return { handles, turns: 0 };
+
+		let bestTurn = 0;
+		let bestCost = Infinity;
+		for (let turn = 0; turn < 4; turn++) {
+			let cost = 0;
+			for (let i = 0; i < 4; i++) {
+				const h = handles[(i + turn) % 4];
+				cost += (h[0] - order[i][0]) ** 2 + (h[1] - order[i][1]) ** 2;
+			}
+			if (cost < bestCost) {
+				bestCost = cost;
+				bestTurn = turn;
+			}
+		}
+		if (bestTurn === 0) return { handles, turns: 0 };
+		return { handles: handles.map((_, i) => handles[(i + bestTurn) % 4]), turns: bestTurn };
+	}
+
+	/** A quarter turn of the face's own coordinates, for when its handles are put back in order. */
+	function turnPoint(point, turns) {
+		let { x, y } = point;
+		for (let i = 0; i < turns; i++) {
+			const was = x;
+			x = -y;
+			y = was;
+		}
+		return { x, y };
+	}
+
 	function load(index) {
 		current = index;
 		frame = 0;
 		const v = video();
+		const turned = [];
 		if (!v.work) {
 			v.work = v.chosen.map((_, i) => {
 				const saved = v.labels?.frames?.[i];
@@ -191,11 +235,10 @@
 				 * several times since some of these were written, and the old answer was being preserved
 				 * out of nothing more than the order the two were checked in.
 				 */
-				return {
-					handles: (touched && saved?.handles) || seedHandles(v.seeds[i], v.width, v.height),
-					skip: saved?.skip ?? false,
-					touched
-				};
+				const placed = (touched && saved?.handles) || seedHandles(v.seeds[i], v.width, v.height);
+				const put = touched && saved?.handles ? inSeedOrder(placed, v.seeds[i]) : { handles: placed, turns: 0 };
+				if (put.turns) turned.push([i, put.turns]);
+				return { handles: put.handles, skip: saved?.skip ?? false, touched };
 			});
 			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
 			v.arrowFrame = v.labels?.arrowFrame ?? null;
@@ -211,6 +254,18 @@
 			v.nocks = v.labels?.nocks ? { ...v.labels.nocks } : {};
 			// Things that look like shafts and are not. Flat on the paper, so face coordinates do for them.
 			v.marks = v.labels?.marks ? [...v.labels.marks] : [];
+
+			/**
+			 * The impacts move with the frame they were read through. Putting that frame's handles back in
+			 * order turns its coordinates, so anything expressed in them has to turn the same way or it
+			 * would be left describing a different arrow.
+			 */
+			const anchorTurn = turned.find(([i]) => i === (v.arrowFrame ?? 0))?.[1] ?? 0;
+			if (anchorTurn) {
+				v.arrows = v.arrows.map((arrow) => turnPoint(arrow, anchorTurn));
+				v.marks = v.marks.map((mark) => turnPoint(mark, anchorTurn));
+			}
+			v.turned = turned.length;
 		}
 		el('pick').value = String(index);
 		show();
@@ -349,6 +404,7 @@
 			`${fitted} of ${v.work.length} faces fitted by hand` +
 			(v.empty ? ', marked as having no arrows' : '') +
 			(fitted === 0 ? '. Fit one face before placing arrows.' : '') +
+			(v.turned ? `. ${v.turned} fits were turned onto a common orientation: save to keep that.` : '') +
 			(mode === 'arrows' && v.arrows.length > 0 && v.arrowFrame !== frame
 				? `. These arrows were placed on frame ${(v.arrowFrame ?? 0) + 1}: correcting one here reads it through this frame's fit instead, which moves it relative to the rest. Correct them on frame ${(v.arrowFrame ?? 0) + 1}, or move them all here on purpose.`
 				: '');
