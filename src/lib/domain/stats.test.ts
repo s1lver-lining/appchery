@@ -10,6 +10,7 @@ import {
 	dailyVolume,
 	consistency,
 	progression,
+	withinRange,
 	distribution,
 	windBand,
 	bandBy,
@@ -696,3 +697,21 @@ const kindsShooting = (): ActivityLike[] => [
 	{ ...activity({ id: 'tuning', arrowsShot: 18, totalScore: 0 }), kind: 'tuning' },
 	{ ...activity({ id: 'free', arrowsShot: 40, totalScore: 0 }), kind: 'training' }
 ];
+
+describe('withinRange', () => {
+	const on = (iso: string) => new Date(iso).getTime();
+
+	it('reaches a whole month back from a day the month before does not have', () => {
+		// From 31 March the month before ends on the 28th, not on the 3rd of March.
+		const now = on('2026-03-31T12:00');
+		expect(withinRange('month', on('2026-02-28T13:00'), now)).toBe(true);
+		expect(withinRange('month', on('2026-03-02T12:00'), now)).toBe(true);
+		expect(withinRange('month', on('2026-02-27T12:00'), now)).toBe(false);
+	});
+
+	it('reaches a whole year back from the 29th of February', () => {
+		const now = on('2024-02-29T12:00');
+		expect(withinRange('year', on('2023-03-01T12:00'), now)).toBe(true);
+		expect(withinRange('year', on('2023-02-27T12:00'), now)).toBe(false);
+	});
+});

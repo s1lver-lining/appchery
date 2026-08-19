@@ -86,8 +86,11 @@ export type StatsRange = 'all' | 'year' | 'month';
 export function withinRange(range: StatsRange, at: number, now = Date.now()): boolean {
 	if (range === 'all') return true;
 	const from = new Date(now);
+	const day = from.getDate();
 	if (range === 'year') from.setFullYear(from.getFullYear() - 1);
 	else from.setMonth(from.getMonth() - 1);
+	// A day the shorter month does not have rolls into the next one, which would cut the window short.
+	if (from.getDate() !== day) from.setDate(0);
 	return at >= from.getTime();
 }
 
