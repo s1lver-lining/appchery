@@ -12,33 +12,38 @@ export interface Frame {
 }
 
 /**
- * Where the face sits in the image, as an ellipse. An ellipse rather than a circle because a camera
- * on a tripod beside the shooting line never looks at the boss square on.
+ * Where the face sits in the image, as four points on it.
+ *
+ * The four are the ends of two perpendicular diameters of the ring between the black and the white,
+ * which ten equal rings put at 0.8 of the radius. Four point correspondences are exactly what a
+ * projection takes, so this says everything about how the face is seen: where it is, how big, which
+ * way round, how foreshortened by standing off to one side, and how much nearer the bottom of the
+ * boss is than the top.
+ *
+ * An ellipse cannot say the last of those, and describing the rest as a centre, two axes and an angle
+ * has a worse problem: at a face seen square on the axes are equal and the angle means nothing, so a
+ * pixel of noise sends it anywhere. Four points have no such case. They move smoothly wherever the
+ * camera goes, which is what lets the overlay follow the boss rather than step after it.
  */
 export interface FaceLocation {
-	/** Centre in image pixels. */
+	/** The four points, in image pixels, in the order right, bottom, left, top of the face. */
+	anchors: [number, number][];
+	/** Face coordinates to image pixels, row major, the bottom right entry fixed at one. */
+	transform: number[];
+	/** The way back, so a point in the picture can be given a score. */
+	inverse: number[];
+	/** Centre in image pixels, which is the transform applied to the origin. */
 	cx: number;
 	cy: number;
-	/** Semi axes of the *whole face*, in image pixels. */
+	/**
+	 * The ellipse the face looks most like from here, for the parts of the pipeline that want one
+	 * number for its size. Read off the transform rather than fitted, and never the thing being fitted.
+	 */
 	semiMajor: number;
 	semiMinor: number;
-	/** Rotation of the major axis, radians, clockwise from the image x axis. */
 	rotation: number;
 	/** Share of sampled pixels that supported the fit, as a rough confidence. */
 	support: number;
-	/**
-	 * How much the face leans away from the lens, along each image axis. Zero is the affine case, a
-	 * face square on to the camera.
-	 *
-	 * A boss leans back on its stand and the archer walks right up to it, which is real perspective
-	 * rather than a squashed circle: near and far rings do not share a scale. An ellipse cannot say
-	 * that, and the error does not show up as a bad looking fit. It shows up as the centre creeping
-	 * towards the far side of the face, because the centre of the projected ellipse is simply not the
-	 * projection of the circle's centre. Measured on these recordings that put the gold about a
-	 * twentieth of a face radius too high, which is half a ring at the outside of the target.
-	 */
-	perspectiveX: number;
-	perspectiveY: number;
 }
 
 export interface Blob {

@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { detectFace, detectFaces, toFaceCoords, toImageCoords } from './face';
+import {
+	detectFace,
+	detectFaces,
+	faceFromAnchors,
+	faceFromEllipse,
+	toFaceCoords,
+	toImageCoords
+} from './face';
 import { refineFace, ringAgreement } from './refine';
 import { detectArrowsInStill } from './still';
 import { detectArrowsLearned, type ArrowModel } from './learned';
@@ -9,7 +16,7 @@ import { ImpactTracker } from './tracker';
 import { SweepTracker } from './sweep';
 import { Scanner } from './pipeline';
 import { rgbToHsv, largestComponent } from './pixels';
-import type { Frame } from './types';
+import type { Frame, FaceLocation } from './types';
 
 function blank(width: number, height: number, grey = 120): Frame {
 	const data = new Uint8ClampedArray(width * height * 4);
@@ -66,6 +73,14 @@ function waFace(size = 240, radius = 100, squash = 1): Frame {
 		ellipse(frame, size / 2, size / 2, radius * share, radius * share * squash, colour);
 	}
 	return frame;
+}
+
+/** The same face, slid across the picture. */
+function shifted(face: FaceLocation, dx: number, dy: number): FaceLocation {
+	return faceFromAnchors(
+		face.anchors.map(([x, y]) => [x + dx, y + dy] as [number, number]),
+		face.support
+	)!;
 }
 
 describe('rgbToHsv', () => {
@@ -471,7 +486,8 @@ describe('refineFace', () => {
 		const frame = waFace(240, 100);
 		const truth = detectFaces(frame, { refine: false })[0];
 		expect(ringAgreement(frame, truth)).toBeGreaterThan(
-			ringAgreement(frame, { ...truth, cx: truth.cx + 30 })
+			// Moved by its anchors, since those are the face now and the centre is read off them.
+			ringAgreement(frame, shifted(truth, 30, 0))
 		);
 	});
 
@@ -521,7 +537,7 @@ function shaft(
 }
 
 describe('detectArrowsInStill', () => {
-	const face = { cx: 300, cy: 300, semiMajor: 200, semiMinor: 200, rotation: 0, support: 1 , perspectiveX: 0, perspectiveY: 0};
+	const face = faceFromEllipse(300, 300, 200, 200, 0, 1 )!;
 
 	it('reads the arrow where it enters the paper, not at the nock', () => {
 		const frame = waFace(600, 200);
@@ -596,7 +612,7 @@ describe('detectArrowsInStill', () => {
 });
 
 describe('detectArrowsLearned', () => {
-	const face = { cx: 63.5, cy: 63.5, semiMajor: 128 / 2.4, semiMinor: 128 / 2.4, rotation: 0, support: 1 , perspectiveX: 0, perspectiveY: 0};
+	const face = faceFromEllipse(63.5, 63.5, 128 / 2.4, 128 / 2.4, 0, 1 )!;
 
 	/**
 	 * A one layer model that fires on brightness alone, so the convolution, the peak search and the

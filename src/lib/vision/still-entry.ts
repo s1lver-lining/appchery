@@ -1,7 +1,7 @@
 // Entry point for scripts/arrow_detector.sh, bundled and run inside a browser so it can decode and
 // re-encode images. Not imported by the app.
 import { downscale } from "./pixels";
-import { detectFaces, toFaceCoords } from "./face";
+import { detectFaces, scaleFace, toFaceCoords } from "./face";
 import { verifyRings } from "./rings";
 import { detectArrowsInStill, type StillOptions } from "./still";
 import { detectArrowsLearned, type ArrowModel } from "./learned";
@@ -41,13 +41,7 @@ export function locate(frame: Frame, scale = 2): FaceLocation | null {
   const small = downscale(frame, scale);
   const face = detectFaces(small).filter((f) => verifyRings(small, f).ok)[0];
   if (!face) return null;
-  return {
-    ...face,
-    cx: face.cx * scale,
-    cy: face.cy * scale,
-    semiMajor: face.semiMajor * scale,
-    semiMinor: face.semiMinor * scale,
-  };
+  return scaleFace(face, scale);
 }
 
 /** Image pixels to face coordinates, exported so a data preparation step agrees with the app. */
@@ -80,13 +74,7 @@ export function analyseLearned(
        * the training crops were. Sampling the reduced frame instead gives the model a blurrier
        * picture than anything it was trained on, which is a difference it has no way to know about.
        */
-      const full = {
-        ...face,
-        cx: face.cx * scale,
-        cy: face.cy * scale,
-        semiMajor: face.semiMajor * scale,
-        semiMinor: face.semiMinor * scale,
-      };
+      const full = scaleFace(face, scale);
       return {
         cx: full.cx,
         cy: full.cy,

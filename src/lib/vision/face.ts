@@ -132,17 +132,8 @@ function fromMoments(
 	const support = expected > 0 ? Math.min(1, size / expected) : 0;
 	if (support < 0.6) return null;
 
-	// Starts flat: how much the face leans is what the ring fit works out, not the gold blob.
-	return {
-		cx,
-		cy,
-		semiMajor: goldMajor / share,
-		semiMinor: goldMinor / share,
-		rotation,
-		support,
-		perspectiveX: 0,
-		perspectiveY: 0
-	};
+	// Only ever a place for the fit to start: the gold says where and roughly how big, nothing more.
+	return faceFromEllipse(cx, cy, goldMajor / share, goldMinor / share, rotation, support);
 }
 
 function centroid(pixels: number[], width: number, size: number): { cx: number; cy: number } {
@@ -161,53 +152,174 @@ function centroid(pixels: number[], width: number, size: number): { cx: number; 
  * affine rectification, not a full homography: it handles a camera off to one side, but not one
  * close to a steeply angled boss, where near and far rings differ in scale.
  */
-export function toFaceCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
-	const { a, b, d, e } = linearPart(face);
-	const dx = x - face.cx;
-	const dy = y - face.cy;
-	const g = face.perspectiveX ?? 0;
-	const h = face.perspectiveY ?? 0;
+/** Where the four anchors sit on the face: the ends of two diameters of the black to white ring. */
+export const ANCHOR_RADIUS = 0.8;
+const ANCHOR_POINTS: [number, number][] = [
+	[ANCHOR_RADIUS, 0],
+	[0, ANCHOR_RADIUS],
+	[-ANCHOR_RADIUS, 0],
+	[0, -ANCHOR_RADIUS]
+];
 
-	/**
-	 * The forward map divides by (1 + g·fx + h·fy), so inverting it is two linear equations rather
-	 * than a rotate and a scale. With no perspective the divisor is one and this is the old inverse.
-	 */
-	const a1 = a - dx * g;
-	const b1 = b - dx * h;
-	const a2 = d - dy * g;
-	const b2 = e - dy * h;
-	const determinant = a1 * b2 - b1 * a2;
-	if (Math.abs(determinant) < 1e-9) return { x: 0, y: 0 };
-	return {
-		x: (dx * b2 - b1 * dy) / determinant,
-		y: (a1 * dy - dx * a2) / determinant
-	};
-}
+/**
+ * Builds a face from four points on it, solving the eight numbers a projection takes.
+ *
+ * Solved once here rather than per sample, because the fit reads several hundred pixels through this
+ * for every candidate it tries and re-solving inside that loop would cost more than everything else
+ * the detector does put together.
+ */
+export function faceFromAnchors(anchors: [number, number][], support = 0): FaceLocation | null {
+	const rows: number[][] = [];
+	for (let i = 0; i < 4; i++) {
+		const [u, v] = ANCHOR_POINTS[i];
+		const [x, y] = anchors[i];
+		rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
+		rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
+	}
+	const solved = solveEight(rows);
+	if (!solved) return null;
 
-/** The inverse, used to draw the detected rings back over the video. */
-export function toImageCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
-	const { a, b, d, e } = linearPart(face);
-	// Further from the lens is smaller, which is the one thing an ellipse cannot say.
-	const depth = 1 + (face.perspectiveX ?? 0) * x + (face.perspectiveY ?? 0) * y;
-	const scale = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
+	const transform = [...solved, 1];
+	const inverse = invert3(transform);
+	if (!inverse) return null;
+
+	const centre = apply(transform, 0, 0);
+	const shape = ellipseOf(transform, centre);
 	return {
-		x: face.cx + (a * x + b * y) * scale,
-		y: face.cy + (d * x + e * y) * scale
+		anchors: anchors.map((p) => [p[0], p[1]] as [number, number]),
+		transform,
+		inverse,
+		cx: centre.x,
+		cy: centre.y,
+		...shape,
+		support
 	};
 }
 
 /**
- * The two by two that takes face coordinates to image ones before the lean divides them. Written out
- * once because the fit, the forward map and the inverse must agree exactly or a point makes a round
- * trip and comes back somewhere else.
+ * The same face measured against a frame `factor` times larger. Rebuilt from the anchors rather than
+ * multiplied field by field: the transform is the face, and scaling the numbers read off it while
+ * leaving it alone leaves the two describing different things.
  */
-export function linearPart(face: FaceLocation): { a: number; b: number; d: number; e: number } {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
+export function scaleFace(face: FaceLocation, factor: number): FaceLocation {
+	if (factor === 1) return face;
+	return (
+		faceFromAnchors(
+			face.anchors.map(([x, y]) => [x * factor, y * factor] as [number, number]),
+			face.support
+		) ?? face
+	);
+}
+
+/** The same face with one anchor moved, which is the only move the fit ever makes. */
+export function moveAnchor(
+	face: FaceLocation,
+	index: number,
+	dx: number,
+	dy: number
+): FaceLocation | null {
+	const anchors = face.anchors.map((p) => [p[0], p[1]] as [number, number]);
+	anchors[index] = [anchors[index][0] + dx, anchors[index][1] + dy];
+	return faceFromAnchors(anchors, face.support);
+}
+
+/** A circle on the image, as four anchors. What the gold blob gives before any fitting happens. */
+export function faceFromEllipse(
+	cx: number,
+	cy: number,
+	semiMajor: number,
+	semiMinor: number,
+	rotation: number,
+	support = 0
+): FaceLocation | null {
+	const cos = Math.cos(rotation);
+	const sin = Math.sin(rotation);
+	const anchors = ANCHOR_POINTS.map(([u, v]) => {
+		const px = u * semiMajor;
+		const py = v * semiMinor;
+		return [cx + px * cos - py * sin, cy + px * sin + py * cos] as [number, number];
+	});
+	return faceFromAnchors(anchors, support);
+}
+
+function apply(h: number[], x: number, y: number): { x: number; y: number } {
+	const w = h[6] * x + h[7] * y + h[8];
+	return { x: (h[0] * x + h[1] * y + h[2]) / w, y: (h[3] * x + h[4] * y + h[5]) / w };
+}
+
+/**
+ * The ellipse the face resembles near its centre, from how the projection stretches the plane there.
+ * Only ever a summary: the parts of the pipeline that ask for a radius are drawing or sizing a search
+ * window, and none of them is scoring an arrow.
+ */
+function ellipseOf(h: number[], centre: { x: number; y: number }) {
+	const w = h[8];
+	// The projection's derivative at the origin, which is the linear part of what it does to the face.
+	const a = (h[0] - centre.x * h[6]) / w;
+	const b = (h[1] - centre.x * h[7]) / w;
+	const c = (h[3] - centre.y * h[6]) / w;
+	const d = (h[4] - centre.y * h[7]) / w;
+
+	// Singular values of that two by two give the axes, and its rotation gives the tilt.
+	const e = (a + d) / 2;
+	const f = (a - d) / 2;
+	const g = (c + b) / 2;
+	const i = (c - b) / 2;
+	const bigger = Math.hypot(e, i);
+	const smaller = Math.hypot(f, g);
 	return {
-		a: face.semiMajor * cos,
-		b: -face.semiMinor * sin,
-		d: face.semiMajor * sin,
-		e: face.semiMinor * cos
+		semiMajor: bigger + smaller,
+		semiMinor: Math.max(1e-6, Math.abs(bigger - smaller)),
+		rotation: Math.atan2(i, e) - Math.atan2(g, f)
 	};
 }
+
+function invert3(h: number[]): number[] | null {
+	const [a, b, c, d, e, f, g, i, j] = h;
+	const A = e * j - f * i;
+	const B = f * g - d * j;
+	const C = d * i - e * g;
+	const det = a * A + b * B + c * C;
+	if (Math.abs(det) < 1e-12) return null;
+	return [
+		A / det,
+		(c * i - b * j) / det,
+		(b * f - c * e) / det,
+		B / det,
+		(a * j - c * g) / det,
+		(c * d - a * f) / det,
+		C / det,
+		(b * g - a * i) / det,
+		(a * e - b * d) / det
+	];
+}
+
+/** Gaussian elimination with partial pivoting, on the eight by eight the four anchors produce. */
+function solveEight(rows: number[][]): number[] | null {
+	const n = 8;
+	for (let col = 0; col < n; col++) {
+		let pivot = col;
+		for (let r = col + 1; r < n; r++) {
+			if (Math.abs(rows[r][col]) > Math.abs(rows[pivot][col])) pivot = r;
+		}
+		if (Math.abs(rows[pivot][col]) < 1e-12) return null;
+		[rows[col], rows[pivot]] = [rows[pivot], rows[col]];
+		for (let r = 0; r < n; r++) {
+			if (r === col) continue;
+			const factor = rows[r][col] / rows[col][col];
+			for (let c = col; c <= n; c++) rows[r][c] -= factor * rows[col][c];
+		}
+	}
+	return rows.map((row, k) => row[n] / row[k]);
+}
+
+/** Image pixels to face coordinates, the space the scoring rules already work in. */
+export function toFaceCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
+	return apply(face.inverse, x, y);
+}
+
+/** The inverse, used to draw the detected rings back over the video. */
+export function toImageCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
+	return apply(face.transform, x, y);
+}
+

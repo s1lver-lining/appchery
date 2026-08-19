@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { linearPart } from './face';
+import { faceFromAnchors, faceFromEllipse, moveAnchor, toImageCoords } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -158,7 +158,6 @@ function best(r: number, g: number, b: number, colours: RingColour[]): number {
 }
 
 function score(frame: Frame, face: FaceLocation, layout: Layout): number {
-	const { a: m00, b: m01, d: m10, e: m11 } = linearPart(face);
 	let hits = 0;
 	let total = 0;
 
@@ -168,14 +167,9 @@ function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 	 * different.
 	 */
 	const at = (radius: number, angle: number, colours: RingColour[]): number | null => {
-		const ux = Math.cos(angle) * radius;
-		const uy = Math.sin(angle) * radius;
-		// The far side of a leaning face is smaller, which is what an ellipse alone cannot express.
-		const depth = 1 + (face.perspectiveX ?? 0) * ux + (face.perspectiveY ?? 0) * uy;
-		if (Math.abs(depth) < 1e-6) return null;
-		const x = face.cx + (m00 * ux + m01 * uy) / depth;
-		const y = face.cy + (m10 * ux + m11 * uy) / depth;
-		if (x < 0 || y < 0 || x >= frame.width - 1 || y >= frame.height - 1) return null;
+		const point = toImageCoords(face, Math.cos(angle) * radius, Math.sin(angle) * radius);
+		const { x, y } = point;
+		if (!(x >= 0) || !(y >= 0) || x >= frame.width - 1 || y >= frame.height - 1) return null;
 
 		const x0 = Math.floor(x);
 		const y0 = Math.floor(y);
@@ -228,195 +222,105 @@ export function ringAgreement(frame: Frame, face: FaceLocation): number {
 	return Math.max(score(frame, face, FULL_FACE), score(frame, face, THREE_SPOT));
 }
 
-/**
- * Coordinate descent over centre, axes and tilt, with a shrinking step. Deliberately local: the
- * estimate from the gold blob is usually close, and a global search would cost far more than a video
- * frame can afford.
- */
-/**
- * How much better the ring agreement must get before a lean is believed.
- *
- * Perspective is only there to be measured when the camera is close enough for near and far rings to
- * differ in scale. A face across the range is very nearly an orthographic projection, and asking for
- * two more numbers from it does not find a lean that is not there: it finds whichever lean best
- * absorbs the noise, and drags the centre off by more than any real perspective would have.
- *
- * Face size looks like the way to tell those apart and is not: measured against faces fitted by hand,
- * a size threshold loose enough to help an archer walking up to a boss was also loose enough to hurt
- * a three spot across a hall. So the fit is done twice, flat and leaning, and the lean is kept only
- * when it pays for itself. Noise buys very little agreement; a boss genuinely leaning back buys a lot.
- */
-const LEAN_MUST_EARN = 0.01;
-
-/**
- * How well the flat fit must already explain the paper for the lean search to be skipped.
- *
- * Face size is the obvious way to decide and does not work: a three spot across a hall fills as much
- * of the frame as a boss up close. What does separate them is how well a face with no lean in it
- * explains what is there. A three spot photographed square on is explained almost perfectly, and
- * searching for a lean it does not have finds one fitted to noise. A boss leaning back cannot be
- * explained flat at all, and that shortfall is the signal worth spending eight extra fits on.
- */
-const LEAN_WORTH_TRYING = 0.9;
-
-/**
- * How much of the frame the face must fill as well. Neither test is enough alone: a three spot across
- * a hall can fill the frame, and a face can fit poorly for reasons that have nothing to do with lean.
- * Perspective needs the camera close, so a small face with a mediocre fit has some other problem and
- * eight more fits will not find it.
- */
-const LEAN_NEEDS_SIZE = 0.25;
-
-function judge(frame: Frame, face: FaceLocation): number {
-	return ringAgreement(frame, face);
-}
-
-/** The finest the fit will move when following, as a share of the face radius. */
+/** The coarsest and finest a step gets when following a face already found, in face radii. */
+const FOLLOW_START = 0.012;
 const FOLLOW_STEP = 0.0015;
 
-function descend(
-	frame: Frame,
-	start: FaceLocation,
-	lean = false,
-	from = 0.06,
-	floor = 0.0075
-): FaceLocation {
-	let best = start;
-	let bestScore = judge(frame, start);
+/**
+ * Fits by moving the four points that describe the face, one at a time, with a shrinking step.
+ *
+ * The four move in the picture, where nothing about them is ambiguous. Describing the same face as a
+ * centre, two axes, an angle and a lean has a case it cannot handle: seen square on the axes are equal
+ * and the angle means nothing at all, so a pixel of noise sends it anywhere and the overlay lurches as
+ * the archer turns the phone. It also cannot be walked downhill one number at a time, because a lean
+ * and a centre are the same error twice and moving either alone always scores worse.
+ *
+ * A point has neither problem. Every one of the eight numbers moves the face somewhere it can be, the
+ * eight together reach every view of it there is, and a small move is always a small change.
+ */
+/**
+ * Ways to move all four points at once: where the face is, how big, which way round, how squashed.
+ *
+ * Tried before the points are moved singly, and that order is what keeps the fit honest. Four free
+ * points can describe shapes no target face ever makes, and a greedy walk that is allowed to warp one
+ * corner at a time will happily find one that scores well by accident. Moving them together can only
+ * ever produce a face that could really be seen, so the fit is nearly right before it is allowed any
+ * freedom to be strange, and the freedom is then only used for the little that is left: the far side
+ * of a leaning boss being smaller than the near side.
+ */
+function together(face: FaceLocation, step: number): (FaceLocation | null)[] {
+	const delta = step * face.semiMajor;
+	const { cx, cy, anchors } = face;
+	const shape = (move: (x: number, y: number) => [number, number]) =>
+		faceFromAnchors(
+			anchors.map(([x, y]) => move(x - cx, y - cy)).map(([x, y]) => [x + cx, y + cy] as [number, number]),
+			face.support
+		);
 
-	// Steps as a share of the face radius, halving each round.
+	const cos = Math.cos(step);
+	const sin = Math.sin(step);
+	return [
+		shifted(face, delta, 0),
+		shifted(face, -delta, 0),
+		shifted(face, 0, delta),
+		shifted(face, 0, -delta),
+		shape((x, y) => [x * (1 + step), y * (1 + step)]),
+		shape((x, y) => [x * (1 - step), y * (1 - step)]),
+		shape((x, y) => [x * (1 + step), y]),
+		shape((x, y) => [x * (1 - step), y]),
+		shape((x, y) => [x, y * (1 + step)]),
+		shape((x, y) => [x, y * (1 - step)]),
+		shape((x, y) => [x * cos - y * sin, x * sin + y * cos]),
+		shape((x, y) => [x * cos + y * sin, -x * sin + y * cos])
+	];
+}
+
+function shifted(face: FaceLocation, dx: number, dy: number): FaceLocation | null {
+	return faceFromAnchors(
+		face.anchors.map(([x, y]) => [x + dx, y + dy] as [number, number]),
+		face.support
+	);
+}
+
+function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06): FaceLocation {
+	let bestFace = start;
+	let bestScore = ringAgreement(frame, start);
+
+	const take = (candidates: (FaceLocation | null)[]) => {
+		let improved = false;
+		for (const candidate of candidates) {
+			if (!candidate || candidate.semiMajor < 4 || candidate.semiMinor < 4) continue;
+			const scored = ringAgreement(frame, candidate);
+			if (scored > bestScore + 1e-4) {
+				bestScore = scored;
+				bestFace = candidate;
+				improved = true;
+			}
+		}
+		return improved;
+	};
+
 	for (let step = from; step >= floor; step /= 2) {
+		while (take(together(bestFace, step)));
+
+		// Then each point on its own, which is the only way the last of the perspective can be found.
 		let improved = true;
 		while (improved) {
 			improved = false;
-			const delta = step * best.semiMajor;
-
-			const candidates: FaceLocation[] = [
-				{ ...best, cx: best.cx + delta },
-				{ ...best, cx: best.cx - delta },
-				{ ...best, cy: best.cy + delta },
-				{ ...best, cy: best.cy - delta },
-				// Scale both axes together, then each alone, so a tilted face can still square up.
-				{
-					...best,
-					semiMajor: best.semiMajor * (1 + step),
-					semiMinor: best.semiMinor * (1 + step)
-				},
-				{
-					...best,
-					semiMajor: best.semiMajor * (1 - step),
-					semiMinor: best.semiMinor * (1 - step)
-				},
-				{ ...best, semiMajor: best.semiMajor * (1 + step) },
-				{ ...best, semiMajor: best.semiMajor * (1 - step) },
-				{ ...best, semiMinor: best.semiMinor * (1 + step) },
-				{ ...best, semiMinor: best.semiMinor * (1 - step) }
-			];
-
-			/**
-			 * Which way the ellipse lies. Left out of this list the tilt only ever came from the gold
-			 * blob's moments, so it held one value for hundreds of frames and then jumped by tens of
-			 * degrees when the search next ran, which threw the whole overlay as the archer turned the
-			 * phone. A face near enough to circular is left alone: its tilt means nothing, and letting
-			 * it wander costs accuracy where the answer does not matter.
-			 */
-			if (best.semiMajor > best.semiMinor * 1.02 || best.semiMinor > best.semiMajor * 1.02) {
-				candidates.push(
-					{ ...best, rotation: best.rotation + step },
-					{ ...best, rotation: best.rotation - step }
-				);
-			}
-
-			if (lean) {
-				/**
-				 * How far the face leans. Two more numbers turn the fit from an ellipse into a full
-				 * projection, which is what a boss on its stand actually presents to an archer standing
-				 * close to it. Without them the fit is not merely imprecise, it is biased: the centre
-				 * settles towards the far side of the face and every arrow is read a little off centre
-				 * in the same direction.
-				 */
-				candidates.push(
-					{ ...best, perspectiveX: (best.perspectiveX ?? 0) + step / 2 },
-					{ ...best, perspectiveX: (best.perspectiveX ?? 0) - step / 2 },
-					{ ...best, perspectiveY: (best.perspectiveY ?? 0) + step / 2 },
-					{ ...best, perspectiveY: (best.perspectiveY ?? 0) - step / 2 },
-				);
-			}
-
-			for (const candidate of candidates) {
-				if (candidate.semiMinor < 4 || candidate.semiMajor < 4) continue;
-				/**
-				 * A lean this far is not a boss on a stand, and letting it go further opens a hole in the
-				 * fit: a strong lean shrinks the far side, so a face half again too big can still land its
-				 * samples on the right colours. That reads as a confident fit at the wrong scale.
-				 */
-				if (Math.hypot(candidate.perspectiveX ?? 0, candidate.perspectiveY ?? 0) > 0.35) continue;
-				const score = judge(frame, candidate);
-				if (score > bestScore + 1e-4) {
-					bestScore = score;
-					best = candidate;
-					improved = true;
-				}
+			const delta = step * bestFace.semiMajor;
+			for (let corner = 0; corner < 4; corner++) {
+				improved =
+					take([
+						moveAnchor(bestFace, corner, delta, 0),
+						moveAnchor(bestFace, corner, -delta, 0),
+						moveAnchor(bestFace, corner, 0, delta),
+						moveAnchor(bestFace, corner, 0, -delta)
+					]) || improved;
 			}
 		}
 	}
 
-	return { ...best, support: bestScore };
-}
-
-/** Leans to try before fitting anything else, as a share of the face radius per radius of offset. */
-const LEAN_STARTS = [-0.24, -0.12, 0, 0.12, 0.24];
-
-/**
- * The fit, tried from several leans and kept at whichever the paper actually supports.
- *
- * Walking downhill one number at a time cannot find the lean, because the lean and the centre are the
- * same error seen twice: tilting the face about a fixed centre moves every ring at once and always
- * scores worse, so the descent puts the lean back and stays where it was. Both have to move together
- * or neither can. Starting from a handful of fixed leans and letting the centre settle under each one
- * walks across that valley instead of along it, and costs a few hundred pixel reads.
- */
-function fit(frame: Frame, start: FaceLocation, thorough: boolean): FaceLocation {
-	/**
-	 * Following a face already found needs none of this. The lean it is carrying was searched for when
-	 * it was acquired and the camera has moved a frame's worth since, so polishing every number together
-	 * from where they already are is both quicker and better than starting the hunt again.
-	 */
-	/**
-	 * Following costs a finer step than searching does. A camera panning slowly moves the face less
-	 * than a pixel between frames, and a step floor of a pixel cannot express that, so the fit sat
-	 * still for several frames and then jumped: measured on a real sweep it did not move at all in
-	 * half the frames and moved 3% of the radius in the worst twentieth. That is the overlay stepping
-	 * rather than following. It starts from last frame's answer, so the finer steps cost few rounds.
-	 */
-	if (!thorough) return descend(frame, start, true, 0.02, FOLLOW_STEP);
-
-	const flat = descend(frame, { ...start, perspectiveX: 0, perspectiveY: 0 }, false);
-	/**
-	 * Skipped when a flat face already explains the paper. Searching for a lean that is not there costs
-	 * eight extra fits and buys one fitted to noise, which on 938 annotated three spots multiplied the
-	 * false faces by six and made the centre worse.
-	 */
-	if (flat.support > LEAN_WORTH_TRYING || flat.semiMajor < frame.width * LEAN_NEEDS_SIZE) return flat;
-	let best = flat;
-
-	for (const perspectiveX of LEAN_STARTS) {
-		for (const perspectiveY of LEAN_STARTS) {
-			if (perspectiveX === 0 && perspectiveY === 0) continue;
-			/**
-			 * Centre and size only: the lean is being proposed, not searched, so it is held still here.
-			 * The steps start fine because the flat fit is already close, and the probe only has to say
-			 * whether this lean suits the paper better, not find the whole face again.
-			 */
-			const settled = descend(frame, { ...flat, perspectiveX, perspectiveY }, false, 0.03);
-			if (settled.support > best.support) best = settled;
-		}
-	}
-
-	if (best === flat) return flat;
-	// Now that both are roughly right they can be polished together without falling back down the valley.
-	const polished = descend(frame, best, true);
-	return polished.support > flat.support + LEAN_MUST_EARN ? polished : flat;
+	return { ...bestFace, support: bestScore };
 }
 
 /**
@@ -427,13 +331,27 @@ function fit(frame: Frame, start: FaceLocation, thorough: boolean): FaceLocation
  * and rotated along the shaft. Local descent cannot walk back from an error like that, but it does
  * not have to, because a face photographed anywhere near square on is close to a circle. Trying both
  * and keeping the better fit costs one extra descent and rescues the case entirely.
+ *
+ * Following a face already found needs neither, and needs a finer step: a camera panning slowly moves
+ * the face less than a pixel between frames, and a floor of a pixel cannot express that, so the fit
+ * sat still and then jumped. It starts from last frame's answer, so the finer steps cost few rounds.
  */
 export function refineFace(frame: Frame, start: FaceLocation, thorough = true): FaceLocation {
-	const fitted = fit(frame, start, thorough);
-	const lopsided = Math.abs(start.semiMajor - start.semiMinor) / Math.max(start.semiMajor, 1);
-	if (!thorough || lopsided < 0.08) return fitted;
+	// Starting fine as well as ending fine: a frame's worth of camera movement is small, and the coarse
+	// rounds a search needs are pure cost when the answer is already almost right.
+	if (!thorough) return descend(frame, start, FOLLOW_STEP, FOLLOW_START);
 
+	const fitted = descend(frame, start);
+
+	/**
+	 * Also from a circle of the same area, always rather than only when the gold looks lopsided. The
+	 * blob's moments are the better start when the gold is whole; when an arrow splits it they give an
+	 * ellipse stretched along the shaft, and four points let a bad start settle somewhere worse than an
+	 * ellipse ever could. One extra fit costs little beside a whole detection pass.
+	 */
 	const radius = Math.sqrt(start.semiMajor * start.semiMinor);
-	const round = fit(frame, { ...start, semiMajor: radius, semiMinor: radius, rotation: 0 }, true);
-	return round.support > fitted.support ? round : fitted;
+	const round = faceFromEllipse(start.cx, start.cy, radius, radius, 0, start.support);
+	if (!round) return fitted;
+	const second = descend(frame, round);
+	return second.support > fitted.support ? second : fitted;
 }

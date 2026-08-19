@@ -159,35 +159,11 @@ function project(h, x, y) {
 	};
 }
 
-/** Image pixels back into the detector's face frame, the inverse of its own projection. */
+/** Image pixels back into the detector's face frame, using the transform the fit actually carries. */
 function toFace(face, x, y) {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-	const a = face.semiMajor * cos;
-	const b = -face.semiMinor * sin;
-	const d = face.semiMajor * sin;
-	const e = face.semiMinor * cos;
-	const dx = x - face.cx;
-	const dy = y - face.cy;
-	const g = face.perspectiveX ?? 0;
-	const h = face.perspectiveY ?? 0;
-	const a1 = a - dx * g;
-	const b1 = b - dx * h;
-	const a2 = d - dy * g;
-	const b2 = e - dy * h;
-	const det = a1 * b2 - b1 * a2;
-	if (Math.abs(det) < 1e-9) return { x: 0, y: 0 };
-	return { x: (dx * b2 - b1 * dy) / det, y: (a1 * dy - dx * a2) / det };
-}
-
-function toImage(face, x, y) {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-	const px = x * face.semiMajor;
-	const py = y * face.semiMinor;
-	const depth = 1 + (face.perspectiveX ?? 0) * x + (face.perspectiveY ?? 0) * y;
-	const k = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
-	return { x: face.cx + (px * cos - py * sin) * k, y: face.cy + (px * sin + py * cos) * k };
+	const h = face.inverse;
+	const w = h[6] * x + h[7] * y + h[8];
+	return { x: (h[0] * x + h[1] * y + h[2]) / w, y: (h[3] * x + h[4] * y + h[5]) / w };
 }
 
 async function load() {

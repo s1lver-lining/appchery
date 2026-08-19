@@ -72,13 +72,18 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 
 	const states = [];
 	const started = Date.now();
+	/** Time inside the detector alone. Drawing the overlay and encoding it are this tool's costs, not
+	 * the phone's, and counting them made the detector look slower than it is. */
+	let detectorMs = 0;
 	let index = 0;
 
 	try {
 		for await (const frame of frames(decoder.stdout, width * height * 4)) {
 			if (limit && index >= limit) break;
 			const full = { width, height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) };
+			const before = performance.now();
 			const state = replay.push(full, reduce(full, replay.scaleFactor), (index / fps) * 1000);
+			detectorMs += performance.now() - before;
 			states.push(summarise(state));
 
 			if (encoder) {
@@ -95,6 +100,7 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 	}
 
 	if (!json) process.stderr.write(`\r  ${index} frames                    \n`);
+	const dropped = replay.dropped;
 
 	if (encoder) {
 		encoder.stdin.end();
@@ -104,7 +110,7 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 		});
 	}
 
-	report(input, states, fps, Boolean(model), json, (Date.now() - started) / 1000, index);
+	report(input, states, fps, Boolean(model), json, (Date.now() - started) / 1000, index, dropped, detectorMs / 1000);
 
 	if (target) {
 		console.log(`\n  overlay written to ${target}`);
@@ -249,7 +255,7 @@ function defaultOutput(input) {
 	return basename(input).replace(/\.[^.]+$/, '') + '-overlay.mp4';
 }
 
-function report(input, states, fps, learned, json, seconds, count) {
+function report(input, states, fps, learned, json, seconds, count, dropped = 0, detectorSeconds = 0) {
 	const detections = states.filter((s) => s.detected);
 	const cost = detections.map((s) => s.cost).sort((a, b) => a - b);
 
@@ -271,6 +277,8 @@ function report(input, states, fps, learned, json, seconds, count) {
 		framesWithFace: states.filter((s) => s.faces > 0).length,
 		framesSteady: states.filter((s) => s.steady).length,
 		detectionPasses: detections.length,
+		/** Passes the detector was too busy to take. On a phone these are frames it never sees. */
+		passesDropped: dropped,
 		proposals: detections.reduce((total, s) => total + s.detections, 0),
 		arrowsConfirmed: Math.max(0, ...states.map((s) => s.arrows)),
 		jitterMedian: Number((at(0.5) * 100).toFixed(2)),
@@ -278,7 +286,10 @@ function report(input, states, fps, learned, json, seconds, count) {
 		medianDetectMs: cost.length ? Number(cost[Math.floor(cost.length / 2)].toFixed(1)) : 0,
 		worstDetectMs: cost.length ? Number(cost[cost.length - 1].toFixed(1)) : 0,
 		/** Above 1 the replay kept up with the recording, which is the bar for running live at all. */
-		realtime: Number((count / fps / Math.max(seconds, 0.001)).toFixed(2))
+		/** The detector alone against the clock. Above 1 it keeps up with the camera on this machine. */
+		realtime: Number((count / fps / Math.max(detectorSeconds, 0.001)).toFixed(2)),
+		/** The whole tool, which also decodes, draws and encodes. Not a number about the app. */
+		toolRealtime: Number((count / fps / Math.max(seconds, 0.001)).toFixed(2))
 	};
 
 	if (json) {
@@ -290,11 +301,18 @@ function report(input, states, fps, learned, json, seconds, count) {
 	console.log(`${summary.video}  ${count} frames at ${fps}fps  [${summary.detector}]`);
 	console.log(`  face found        ${summary.framesWithFace} frames (${share(summary.framesWithFace)})`);
 	console.log(`  steady enough     ${summary.framesSteady} frames (${share(summary.framesSteady)})`);
-	console.log(`  proposals         ${summary.proposals} over ${summary.detectionPasses} detection passes`);
+	console.log(
+		`  proposals         ${summary.proposals} over ${summary.detectionPasses} detection passes` +
+			(dropped > 0 ? `, ${dropped} dropped because the detector was busy` : '')
+	);
 	console.log(`  arrows confirmed  ${summary.arrowsConfirmed}`);
 	console.log(`  fit jitter        ${summary.jitterMedian}% of radius median, ${summary.jitterP99}% at p99`);
 	console.log(`  detection cost    ${summary.medianDetectMs}ms median, ${summary.worstDetectMs}ms worst`);
-	console.log(`  replay speed      ${summary.realtime}x realtime (${seconds.toFixed(0)}s for ${(count / fps).toFixed(0)}s of video)`);
+	console.log(
+		`  detector speed    ${summary.realtime}x realtime ` +
+			`(${detectorSeconds.toFixed(0)}s of detection for ${(count / fps).toFixed(0)}s of video)`
+	);
+	if (!json) console.log(`  tool speed        ${summary.toolRealtime}x, including drawing and encoding`);
 
 	if (summary.framesSteady === 0 && summary.framesWithFace > 0) {
 		console.log('\n  The face was found but was never trusted, so no arrow was ever looked for.');

@@ -1,7 +1,7 @@
 // Entry point for scripts/eval-arrows-video.mjs, which replays a recording and asks what it found.
 // Not imported by the app.
 import { Scanner } from './pipeline';
-import { toFaceCoords } from './face';
+import { toFaceCoords, scaleFace } from './face';
 import type { Frame, FaceLocation, Impact } from './types';
 
 export interface SweepResult {
@@ -79,13 +79,7 @@ export class Sweep {
 		if (face) this.withFace += 1;
 		if (this.frames === this.labelled && face) {
 			const factor = this.scanner.scaleFactor;
-			this.at = {
-				...face,
-				cx: face.cx * factor,
-				cy: face.cy * factor,
-				semiMajor: face.semiMajor * factor,
-				semiMinor: face.semiMinor * factor
-			};
+			this.at = scaleFace(face, factor);
 		}
 		this.frames += 1;
 	}

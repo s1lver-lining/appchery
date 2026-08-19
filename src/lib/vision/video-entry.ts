@@ -5,7 +5,7 @@
 // This drives the real `Scanner` the same way `AutoScore.svelte` does, at the same detection rate,
 // so what the overlay shows is what an archer would have seen through the phone.
 import { Scanner } from './pipeline';
-import { detectFaces, toImageCoords } from './face';
+import { detectFaces, toImageCoords, scaleFace } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';
 import { scoreAt, decimalScore } from '../domain/rounds/geometry';
@@ -46,6 +46,9 @@ export class Replay {
 	}
 
 	private readonly detectEveryMs: number;
+	/** Video time the detector is busy until, so a slow pass costs passes rather than frames. */
+	private busyUntil = -Infinity;
+	private skipped = 0;
 
 	/**
 	 * The rectified square the learned detector is fed, cut from the full frame rather than the
@@ -96,14 +99,30 @@ export class Replay {
 		this.full = full;
 		const started = performance.now();
 
-		if (nowMs - this.last >= this.detectEveryMs) {
+		/**
+		 * Detection is offered on a clock and dropped when the detector is still working, which is what
+		 * the app does: the pass runs in a worker and a frame offered while it is busy is thrown away
+		 * rather than queued. Modelling that is the difference between measuring the detector and
+		 * measuring the archer's experience of it. A pass costing more than the interval does not slow
+		 * the video down, it simply happens less often, and a replay that instead ran every pass
+		 * whatever it cost reported a frame rate no phone would ever show.
+		 */
+		if (nowMs - this.last >= this.detectEveryMs && nowMs >= this.busyUntil) {
 			this.last = nowMs;
+			const before = performance.now();
 			const result = this.scanner.pushReduced(small);
+			this.busyUntil = nowMs + (performance.now() - before);
 			return this.state(result.faces, result.steady, result.detections, result.arrows, result.pending, started, true);
 		}
+		if (nowMs - this.last >= this.detectEveryMs) this.skipped += 1;
 
 		const faces = this.scanner.track(small);
 		return this.state(faces, false, 0, this.scanner.arrows, this.scanner.pending, started, false);
+	}
+
+	/** Passes the detector was too busy to take, which is what a slow detector actually costs. */
+	get dropped(): number {
+		return this.skipped;
 	}
 
 	private state(
@@ -125,13 +144,7 @@ export class Replay {
 
 		return {
 			// Reported in the video's own pixels, so the caller draws without knowing the detection scale.
-			faces: faces.map((face) => ({
-				...face,
-				cx: face.cx * factor,
-				cy: face.cy * factor,
-				semiMajor: face.semiMajor * factor,
-				semiMinor: face.semiMinor * factor
-			})),
+			faces: faces.map((face) => (scaleFace(face, factor))),
 			steady,
 			settled: this.scanner.settleCount,
 			detections,
