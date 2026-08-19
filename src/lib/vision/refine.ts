@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { faceFromAnchors, faceFromEllipse, moveAnchor } from './face';
+import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -531,7 +531,9 @@ export function refineFace(frame: Frame, start: FaceLocation, thorough = true): 
 	// between two frames, so the three scorings it takes to decide are pure cost every frame.
 	if (!thorough) {
 		const known = start.spot === undefined ? undefined : start.spot ? THREE_SPOT : FULL_FACE;
-		return descend(frame, start, FOLLOW_STEP, FOLLOW_START, known);
+		// Turned back onto the angle it came in at, because which way round a face is described is a free
+		// choice the descent would otherwise make differently every frame.
+		return alignFace(start, descend(frame, start, FOLLOW_STEP, FOLLOW_START, known));
 	}
 
 	const fitted = descend(frame, start);
@@ -547,73 +549,4 @@ export function refineFace(frame: Frame, start: FaceLocation, thorough = true): 
 	if (!round) return fitted;
 	const second = descend(frame, round);
 	return second.support > fitted.support ? second : fitted;
-}
-
-/**
- * Where each drawn ring would sit if it were free to slide in or out on its own, in face radii.
- *
- * For drawing only, and deliberately not part of the fit. The fit is one projection for the whole
- * face, which is the honest description of a flat face seen by a camera and the only thing arrow
- * positions can be measured against. But a printed face is not perfectly flat, paper is not perfectly
- * concentric and a lens is not perfectly rectilinear, so the last fraction of a ring is error the one
- * projection cannot absorb, and it is the outer rings that show it. Letting each drawn ring find its
- * own boundary takes that last bit out of the overlay without letting it anywhere near the geometry.
- */
-export function ringOffsets(frame: Frame, face: FaceLocation, radii: number[]): number[] {
-	const layout = pickLayout(frame, face);
-	const band = Math.max(EDGE_BAND, 1.2 / Math.max(face.semiMajor, 1));
-
-	return radii.map((radius) => {
-		// The printed boundary this drawn ring is meant to be, if there is one. The outermost drawn ring
-		// is the edge of the paper, where there is no colour change to hunt for.
-		const edge = layout.steps.find((step) => Math.abs(step.radius - radius) < 0.06);
-		if (!edge) return 0;
-
-		let found = 0;
-		let most = -Infinity;
-		// A fifth of a ring either way. Wider and a ring can be captured by its neighbour's boundary,
-		// which would put the overlay confidently on the wrong line.
-		for (let offset = -0.02; offset <= 0.0201; offset += 0.002) {
-			const scored = boundary(frame, face, edge, radius + offset, band);
-			if (scored > most) {
-				most = scored;
-				found = offset;
-			}
-		}
-		return found;
-	});
-}
-
-/** How strongly one boundary's colour change shows itself at a given radius. */
-function boundary(
-	frame: Frame,
-	face: FaceLocation,
-	edge: Layout['steps'][number],
-	radius: number,
-	band: number
-): number {
-	const h = face.transform;
-	const dr = edge.to[0] - edge.from[0];
-	const dg = edge.to[1] - edge.from[1];
-	const db = edge.to[2] - edge.from[2];
-	const size = Math.hypot(dr, dg, db);
-	const near = radius - band;
-	const far = radius + band;
-	let hits = 0;
-	let total = 0;
-
-	for (let i = 0; i < ANGLES; i++) {
-		const cos = COS[i];
-		const sin = SIN[i];
-		if (!readFace(frame, h, cos * near, sin * near)) continue;
-		const ir = red;
-		const ig = green;
-		const ib = blue;
-		if (!readFace(frame, h, cos * far, sin * far)) continue;
-		total += 1;
-		const along = ((red - ir) * dr + (green - ig) * dg + (blue - ib) * db) / size;
-		hits += Math.min(1, Math.max(0, along / size));
-	}
-
-	return total === 0 ? 0 : hits / total;
 }

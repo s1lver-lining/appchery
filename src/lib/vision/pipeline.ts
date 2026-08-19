@@ -1,5 +1,5 @@
 import { downscale } from './pixels';
-import { detectFaces, toFaceCoords } from './face';
+import { alignFace, detectFaces, toFaceCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
@@ -171,7 +171,10 @@ export class Scanner {
 					if (!followed) return face;
 					const moved = Math.hypot(face.cx - followed.cx, face.cy - followed.cy);
 					const sameFace = moved < followed.semiMajor * 0.35 && face.support <= followed.support + 0.05;
-					return sameFace ? followed : face;
+					// A search knows nothing of which way round the last fit was describing the face, and a
+					// face has no way round of its own, so a fresh answer is turned onto the old origin
+					// before it is adopted. Otherwise every arrow already found jumps at that moment.
+					return sameFace ? followed : alignFace(followed, face);
 				});
 				const moved = this.faces.length !== ordered.length || ordered.some((face, i) => {
 					const previous = this.faces[i];

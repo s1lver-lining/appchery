@@ -323,3 +323,60 @@ export function toImageCoords(face: FaceLocation, x: number, y: number): { x: nu
 	return apply(face.transform, x, y);
 }
 
+
+/**
+ * Re-expresses a face with the same angular origin as the one before it.
+ *
+ * A target face is the same face turned through any angle. The rings say nothing about which way round
+ * it is, so the fit is free to describe the same picture with its four points anywhere on the circle,
+ * and the descent takes that freedom: it costs nothing to score, so it wanders with the noise. The
+ * geometry stays right and the drawn rings stay right, because rings are circles. What goes wrong is
+ * everything measured in face coordinates, which is to say the arrows. They sit still on the paper and
+ * drift round the face, which is exactly what a slowly turning frame of reference looks like.
+ *
+ * Nothing can say what the true angle is, but nothing needs to. What is needed is that it be the same
+ * angle from one frame to the next, so the fit is turned back onto the previous frame's origin before
+ * it is used. Reading the same points through the new projection at a turned-back angle describes the
+ * identical face, so this changes nothing about where the geometry says the boss is; it only stops the
+ * coordinates written on it from rotating underneath the arrows.
+ */
+export function alignFace(previous: FaceLocation, fitted: FaceLocation): FaceLocation {
+	/** As far as a frame's worth of drift could conceivably reach. Beyond it this is a different face. */
+	const REACH = Math.PI / 12;
+
+	const cost = (turn: number) => {
+		let total = 0;
+		for (let i = 0; i < ANCHOR_POINTS.length; i++) {
+			const angle = (i * Math.PI) / 2 + turn;
+			const point = apply(fitted.transform, Math.cos(angle) * ANCHOR_RADIUS, Math.sin(angle) * ANCHOR_RADIUS);
+			const [x, y] = previous.anchors[i];
+			total += (point.x - x) * (point.x - x) + (point.y - y) * (point.y - y);
+		}
+		return total;
+	};
+
+	// Coarse then fine, which is enough: the cost has one minimum anywhere near the answer, and a tenth
+	// of a degree is far below what a drawn line or an arrow's place can show.
+	let turn = 0;
+	for (let step = REACH / 4; step > 0.0005; step /= 3) {
+		let improved = true;
+		while (improved) {
+			improved = false;
+			for (const way of [step, -step]) {
+				if (Math.abs(turn + way) > REACH) continue;
+				if (cost(turn + way) < cost(turn) - 1e-9) {
+					turn += way;
+					improved = true;
+				}
+			}
+		}
+	}
+	if (turn === 0) return fitted;
+
+	const turned = ANCHOR_POINTS.map((_, i) => {
+		const angle = (i * Math.PI) / 2 + turn;
+		const point = apply(fitted.transform, Math.cos(angle) * ANCHOR_RADIUS, Math.sin(angle) * ANCHOR_RADIUS);
+		return [point.x, point.y] as [number, number];
+	});
+	return { ...(faceFromAnchors(turned, fitted.support) ?? fitted), spot: fitted.spot };
+}

@@ -60,7 +60,8 @@ export class LiveScanner {
 
 	/** Follows the faces already found. Cheap enough for every frame, which is the whole point. */
 	follow(small: Frame): FaceLocation[] {
-		if (this.faces.length > 0) this.faces = this.faces.map((face) => refineFace(small, face));
+		// The cheap follow, not the search: this runs on every frame and the overlay waits on it.
+		if (this.faces.length > 0) this.faces = this.faces.map((face) => refineFace(small, face, false));
 		return this.faces;
 	}
 
