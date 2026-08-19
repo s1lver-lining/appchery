@@ -36,6 +36,8 @@ export interface SweepOptions {
 	patience?: number;
 	/** Passes before an end that is short of arrows starts offering its best guesses. */
 	guessAfter?: number;
+	/** Passes that must have proposed a place before it is worth offering as a guess. */
+	guessVotes?: number;
 }
 
 export class SweepTracker {
@@ -55,6 +57,7 @@ export class SweepTracker {
 	private readonly mergeDistance: number;
 	private readonly patience: number;
 	private readonly guessAfter: number;
+	private readonly guessVotes: number;
 
 	constructor(options: SweepOptions = {}) {
 		/**
@@ -73,6 +76,13 @@ export class SweepTracker {
 		this.mergeDistance = options.mergeDistance ?? 0.035;
 		this.patience = options.patience ?? 25;
 		this.guessAfter = options.guessAfter ?? 8;
+		/**
+		 * Nearly the bar a confirmed arrow has to clear. Offering anything seen twice was tried and gave
+		 * back four arrows for half a wrong mark an end; one short of the real bar gives back three for a
+		 * tenth of one, because most of what is seen two or three times is seen from the one viewpoint
+		 * that flattered it.
+		 */
+		this.guessVotes = options.guessVotes ?? this.minVotes - 1;
 	}
 
 	setLimit(limit: number) {
@@ -96,14 +106,15 @@ export class SweepTracker {
 	 * The best places left, once there has been time to look and the end is known to be short.
 	 *
 	 * Ordered by support, so what is offered is the strongest evidence that fell short rather than
-	 * whatever happened to be lying about. Anything proposed only once is left out: one look at one
-	 * viewpoint is what a shadow gives, and the whole design rests on not believing it.
+	 * whatever happened to be lying about, and it has to have nearly the support a confirmed arrow
+	 * needs. A place seen once or twice is what one flattering viewpoint gives, and the whole design
+	 * rests on not believing that.
 	 */
 	private guesses(): Impact[] {
 		const missing = this.limit - this.confirmed.length;
 		if (!Number.isFinite(missing) || missing <= 0 || this.passes < this.guessAfter) return [];
 		return this.candidates
-			.filter((c) => c.votes > 1)
+			.filter((c) => c.votes >= this.guessVotes)
 			.sort((a, b) => b.votes - a.votes)
 			.slice(0, missing)
 			.map((c) => ({ ...c, unsure: true }));
