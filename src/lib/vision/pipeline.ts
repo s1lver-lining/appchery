@@ -129,7 +129,8 @@ export class Scanner {
 		if (this.faces.length === 0) return this.faces;
 
 		// A carried camera is the normal case here, so movement is not a reason to distrust the face.
-		this.faces = this.faces.map((face) => refineFace(small, face));
+		// Followed rather than searched for again: this runs on every frame and the overlay waits on it.
+		this.faces = this.faces.map((face) => refineFace(small, face, false));
 		return this.faces;
 	}
 

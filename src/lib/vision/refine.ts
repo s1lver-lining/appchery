@@ -353,7 +353,14 @@ const LEAN_STARTS = [-0.24, -0.12, 0, 0.12, 0.24];
  * or neither can. Starting from a handful of fixed leans and letting the centre settle under each one
  * walks across that valley instead of along it, and costs a few hundred pixel reads.
  */
-function fit(frame: Frame, start: FaceLocation): FaceLocation {
+function fit(frame: Frame, start: FaceLocation, thorough: boolean): FaceLocation {
+	/**
+	 * Following a face already found needs none of this. The lean it is carrying was searched for when
+	 * it was acquired and the camera has moved a frame's worth since, so polishing every number together
+	 * from where they already are is both quicker and better than starting the hunt again.
+	 */
+	if (!thorough) return descend(frame, start, true, 0.03);
+
 	const flat = descend(frame, { ...start, perspectiveX: 0, perspectiveY: 0 }, false);
 	/**
 	 * Skipped when a flat face already explains the paper. Searching for a lean that is not there costs
@@ -391,12 +398,12 @@ function fit(frame: Frame, start: FaceLocation): FaceLocation {
  * not have to, because a face photographed anywhere near square on is close to a circle. Trying both
  * and keeping the better fit costs one extra descent and rescues the case entirely.
  */
-export function refineFace(frame: Frame, start: FaceLocation): FaceLocation {
-	const fitted = fit(frame, start);
+export function refineFace(frame: Frame, start: FaceLocation, thorough = true): FaceLocation {
+	const fitted = fit(frame, start, thorough);
 	const lopsided = Math.abs(start.semiMajor - start.semiMinor) / Math.max(start.semiMajor, 1);
-	if (lopsided < 0.08) return fitted;
+	if (!thorough || lopsided < 0.08) return fitted;
 
 	const radius = Math.sqrt(start.semiMajor * start.semiMinor);
-	const round = fit(frame, { ...start, semiMajor: radius, semiMinor: radius, rotation: 0 });
+	const round = fit(frame, { ...start, semiMajor: radius, semiMinor: radius, rotation: 0 }, true);
 	return round.support > fitted.support ? round : fitted;
 }
