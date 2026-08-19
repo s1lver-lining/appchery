@@ -34,6 +34,8 @@ export interface SweepOptions {
 	mergeDistance?: number;
 	/** Passes a candidate may go unproposed before it is forgotten. */
 	patience?: number;
+	/** How far apart two marks must be, in face radii, to be offered as two arrows rather than one. */
+	apartDistance?: number;
 	/** Passes before an end that is short of arrows starts offering its best guesses. */
 	guessAfter?: number;
 	/** Passes that must have proposed a place before it is worth offering as a guess. */
@@ -66,6 +68,7 @@ export class SweepTracker {
 	private readonly minAgreement: number;
 	private readonly mergeDistance: number;
 	private readonly patience: number;
+	private readonly apartDistance: number;
 	private readonly guessAfter: number;
 	private readonly guessVotes: number;
 
@@ -98,6 +101,18 @@ export class SweepTracker {
 		 * that close have merged into one detection long before the tracker sees them.
 		 */
 		this.mergeDistance = options.mergeDistance ?? 0.05;
+		/**
+		 * Wider than the distance at which two readings are merged, and used only when deciding whether a
+		 * place is worth offering as a second arrow.
+		 *
+		 * The two questions are not the same. Merging asks whether two readings are the same arrow and has
+		 * to be cautious, because merging two real arrows loses one for good. Offering asks whether to put
+		 * a second mark on what may be one shaft, and there the caution runs the other way: the readings
+		 * that cause it are by definition the ones that just failed to merge, and a second mark on an
+		 * arrow already found is worse than no mark, because it is both a wrong mark and a place that a
+		 * genuinely missing arrow could have had.
+		 */
+		this.apartDistance = options.apartDistance ?? this.mergeDistance * 2;
 		this.patience = options.patience ?? 25;
 		this.guessAfter = options.guessAfter ?? 8;
 		/**
@@ -142,11 +157,17 @@ export class SweepTracker {
 	private guesses(): Impact[] {
 		const missing = (this.expected ?? 0) - this.confirmed.length;
 		if (this.expected === null || missing <= 0 || this.passes < this.guessAfter) return [];
-		return this.candidates
-			.filter((c) => c.votes >= this.guessVotes)
-			.sort((a, b) => b.votes - a.votes)
-			.slice(0, missing)
-			.map((c) => ({ ...c, unsure: true }));
+		const offered: Impact[] = [];
+		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
+			if (offered.length >= missing) break;
+			if (candidate.votes < this.guessVotes) continue;
+			// Not a second mark on a shaft already marked, nor on one already scored in an earlier end.
+			if (this.apart(this.confirmed, candidate)) continue;
+			if (this.apart(this.taken, candidate)) continue;
+			if (this.apart(offered, candidate)) continue;
+			offered.push({ ...candidate, unsure: true });
+		}
+		return offered;
 	}
 
 	/** Candidates with some support behind them, drawn faintly so the archer sees it working. */
@@ -194,7 +215,13 @@ export class SweepTracker {
 			.slice(0, Math.max(0, this.limit - this.confirmed.length));
 
 		this.confirmed.push(...ready);
-		this.candidates = this.candidates.filter((c) => !ready.includes(c));
+		/**
+		 * The rest of the readings of the arrows just confirmed go with them. One shaft answers from more
+		 * than one place along its length, and the readings that were too far apart to merge are still
+		 * sitting there with a vote or two each. Left alone they are exactly what gets offered when the
+		 * end turns out to be short, so a missing arrow is replaced by a second mark on one already found.
+		 */
+		this.candidates = this.candidates.filter((c) => !ready.includes(c) && !this.apart(ready, c));
 		return ready;
 	}
 
@@ -202,6 +229,15 @@ export class SweepTracker {
 	private agreement(candidate: SweepCandidate): number {
 		const chances = this.passes - candidate.first + 1;
 		return chances <= 0 ? 0 : candidate.votes / chances;
+	}
+
+	/** Whether some place in the list is close enough that this would be a second mark on it. */
+	private apart(list: Impact[], point: { x: number; y: number; face: number }): boolean {
+		return list.some(
+			(item) =>
+				item.face === point.face &&
+				Math.hypot(item.x - point.x, item.y - point.y) < this.apartDistance
+		);
 	}
 
 	private nearest(list: Impact[], point: { x: number; y: number; face: number }): Impact | undefined {
