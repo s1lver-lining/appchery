@@ -1,4 +1,5 @@
 import type { RingColour } from './rings';
+import { linearPart } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -157,8 +158,7 @@ function best(r: number, g: number, b: number, colours: RingColour[]): number {
 }
 
 function score(frame: Frame, face: FaceLocation, layout: Layout): number {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
+	const { a: m00, b: m01, d: m10, e: m11 } = linearPart(face);
 	let hits = 0;
 	let total = 0;
 
@@ -170,13 +170,11 @@ function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 	const at = (radius: number, angle: number, colours: RingColour[]): number | null => {
 		const ux = Math.cos(angle) * radius;
 		const uy = Math.sin(angle) * radius;
-		const fx = ux * face.semiMajor;
-		const fy = uy * face.semiMinor;
 		// The far side of a leaning face is smaller, which is what an ellipse alone cannot express.
 		const depth = 1 + (face.perspectiveX ?? 0) * ux + (face.perspectiveY ?? 0) * uy;
 		if (Math.abs(depth) < 1e-6) return null;
-		const x = face.cx + (fx * cos - fy * sin) / depth;
-		const y = face.cy + (fx * sin + fy * cos) / depth;
+		const x = face.cx + (m00 * ux + m01 * uy) / depth;
+		const y = face.cy + (m10 * ux + m11 * uy) / depth;
 		if (x < 0 || y < 0 || x >= frame.width - 1 || y >= frame.height - 1) return null;
 
 		const x0 = Math.floor(x);
@@ -248,18 +246,37 @@ export function ringAgreement(frame: Frame, face: FaceLocation): number {
  * a three spot across a hall. So the fit is done twice, flat and leaning, and the lean is kept only
  * when it pays for itself. Noise buys very little agreement; a boss genuinely leaning back buys a lot.
  */
-const LEAN_MUST_EARN = 0.03;
+const LEAN_MUST_EARN = 0.01;
+
+/**
+ * How well the flat fit must already explain the paper for the lean search to be skipped.
+ *
+ * Face size is the obvious way to decide and does not work: a three spot across a hall fills as much
+ * of the frame as a boss up close. What does separate them is how well a face with no lean in it
+ * explains what is there. A three spot photographed square on is explained almost perfectly, and
+ * searching for a lean it does not have finds one fitted to noise. A boss leaning back cannot be
+ * explained flat at all, and that shortfall is the signal worth spending eight extra fits on.
+ */
+const LEAN_WORTH_TRYING = 0.9;
+
+/**
+ * How much of the frame the face must fill as well. Neither test is enough alone: a three spot across
+ * a hall can fill the frame, and a face can fit poorly for reasons that have nothing to do with lean.
+ * Perspective needs the camera close, so a small face with a mediocre fit has some other problem and
+ * eight more fits will not find it.
+ */
+const LEAN_NEEDS_SIZE = 0.25;
 
 function judge(frame: Frame, face: FaceLocation): number {
 	return ringAgreement(frame, face);
 }
 
-function descend(frame: Frame, start: FaceLocation, lean = false): FaceLocation {
+function descend(frame: Frame, start: FaceLocation, lean = false, from = 0.06): FaceLocation {
 	let best = start;
 	let bestScore = judge(frame, start);
 
 	// Steps as a share of the face radius, halving each round.
-	for (let step = 0.06; step >= 0.0075; step /= 2) {
+	for (let step = from; step >= 0.0075; step /= 2) {
 		let improved = true;
 		while (improved) {
 			improved = false;
@@ -299,14 +316,18 @@ function descend(frame: Frame, start: FaceLocation, lean = false): FaceLocation 
 					{ ...best, perspectiveX: (best.perspectiveX ?? 0) + step / 2 },
 					{ ...best, perspectiveX: (best.perspectiveX ?? 0) - step / 2 },
 					{ ...best, perspectiveY: (best.perspectiveY ?? 0) + step / 2 },
-					{ ...best, perspectiveY: (best.perspectiveY ?? 0) - step / 2 }
+					{ ...best, perspectiveY: (best.perspectiveY ?? 0) - step / 2 },
 				);
 			}
 
 			for (const candidate of candidates) {
 				if (candidate.semiMinor < 4 || candidate.semiMajor < 4) continue;
-				// Past this the far edge folds through infinity, which is not a face anyone is looking at.
-				if (Math.hypot(candidate.perspectiveX ?? 0, candidate.perspectiveY ?? 0) > 0.6) continue;
+				/**
+				 * A lean this far is not a boss on a stand, and letting it go further opens a hole in the
+				 * fit: a strong lean shrinks the far side, so a face half again too big can still land its
+				 * samples on the right colours. That reads as a confident fit at the wrong scale.
+				 */
+				if (Math.hypot(candidate.perspectiveX ?? 0, candidate.perspectiveY ?? 0) > 0.35) continue;
 				const score = judge(frame, candidate);
 				if (score > bestScore + 1e-4) {
 					bestScore = score;
@@ -320,13 +341,45 @@ function descend(frame: Frame, start: FaceLocation, lean = false): FaceLocation 
 	return { ...best, support: bestScore };
 }
 
+/** Leans to try before fitting anything else, as a share of the face radius per radius of offset. */
+const LEAN_STARTS = [-0.24, -0.12, 0, 0.12, 0.24];
+
 /**
- * The fit, flat first and then allowed to lean. Returns whichever the paper actually supports.
+ * The fit, tried from several leans and kept at whichever the paper actually supports.
+ *
+ * Walking downhill one number at a time cannot find the lean, because the lean and the centre are the
+ * same error seen twice: tilting the face about a fixed centre moves every ring at once and always
+ * scores worse, so the descent puts the lean back and stays where it was. Both have to move together
+ * or neither can. Starting from a handful of fixed leans and letting the centre settle under each one
+ * walks across that valley instead of along it, and costs a few hundred pixel reads.
  */
 function fit(frame: Frame, start: FaceLocation): FaceLocation {
 	const flat = descend(frame, { ...start, perspectiveX: 0, perspectiveY: 0 }, false);
-	const leaning = descend(frame, flat, true);
-	return leaning.support > flat.support + LEAN_MUST_EARN ? leaning : flat;
+	/**
+	 * Skipped when a flat face already explains the paper. Searching for a lean that is not there costs
+	 * eight extra fits and buys one fitted to noise, which on 938 annotated three spots multiplied the
+	 * false faces by six and made the centre worse.
+	 */
+	if (flat.support > LEAN_WORTH_TRYING || flat.semiMajor < frame.width * LEAN_NEEDS_SIZE) return flat;
+	let best = flat;
+
+	for (const perspectiveX of LEAN_STARTS) {
+		for (const perspectiveY of LEAN_STARTS) {
+			if (perspectiveX === 0 && perspectiveY === 0) continue;
+			/**
+			 * Centre and size only: the lean is being proposed, not searched, so it is held still here.
+			 * The steps start fine because the flat fit is already close, and the probe only has to say
+			 * whether this lean suits the paper better, not find the whole face again.
+			 */
+			const settled = descend(frame, { ...flat, perspectiveX, perspectiveY }, false, 0.03);
+			if (settled.support > best.support) best = settled;
+		}
+	}
+
+	if (best === flat) return flat;
+	// Now that both are roughly right they can be polished together without falling back down the valley.
+	const polished = descend(frame, best, true);
+	return polished.support > flat.support + LEAN_MUST_EARN ? polished : flat;
 }
 
 /**

@@ -33,7 +33,7 @@ const ANCHORS = [
 
 const { locate } = await load();
 const errors = [];
-const centres = [];
+const lopsided = [];
 const missed = [];
 let frames = 0;
 
@@ -59,30 +59,37 @@ for (const name of (await readdir(WORK)).sort()) {
 		}
 
 		/**
-		 * Radius, not position. A target face is rotationally symmetric, so two rectifications that
-		 * disagree only about which way round the face is are both right and score every arrow the
-		 * same. What decides a score is how far out from the centre a point lands, and a ring is a
-		 * tenth of the radius wide, so this is reported in those units.
+		 * What the labels actually assert, and nothing more: these four points lie on the edge between
+		 * the black and the white, which ten equal rings put at 0.8 of the radius. So the detector is
+		 * asked what radius it thinks each of them is at.
+		 *
+		 * Comparing whole coordinate frames instead reads in two things the labels never claimed. A
+		 * target face is rotationally symmetric, so which way round the frame sits is free. And the
+		 * handles are not 90 degrees apart on the face: a person places them at the top, bottom and
+		 * sides of the ellipse they can see, which under perspective are different points entirely.
+		 * Measuring the ring itself is blind to both.
 		 */
 		let sum = 0;
 		let worst = 0;
 		let count = 0;
-		for (const r of [0.2, 0.5, 0.8]) {
-			for (let i = 0; i < 12; i++) {
-				const a = (i / 12) * Math.PI * 2;
-				const point = project(truth, Math.cos(a) * r, Math.sin(a) * r);
-				const seen = toFace(found, point.x, point.y);
-				const off = Math.abs(Math.hypot(seen.x, seen.y) - r);
-				sum += off;
-				worst = Math.max(worst, off);
-				count += 1;
-			}
+		for (const [hx, hy] of entry.handles) {
+			const seen = toFace(found, hx, hy);
+			const off = Math.abs(Math.hypot(seen.x, seen.y) - ANCHOR);
+			sum += off;
+			worst = Math.max(worst, off);
+			count += 1;
 		}
 
-		// Where the detector thinks the middle of the face is, which is the bias the videos showed.
-		const middle = project(truth, 0, 0);
-		const asFace = toFace(found, middle.x, middle.y);
-		centres.push(Math.hypot(asFace.x, asFace.y));
+		/**
+		 * Whether the ring is merely the wrong size or is off to one side. Opposite handles landing at
+		 * radii that differ is the signature of a displaced centre, which is the error that biases every
+		 * arrow the same way, and it is invisible to an average over the four.
+		 */
+		const radii = entry.handles.map(([hx, hy]) => {
+			const seen = toFace(found, hx, hy);
+			return Math.hypot(seen.x, seen.y);
+		});
+		lopsided.push((Math.max(...radii) - Math.min(...radii)) / 2);
 
 		errors.push({ mean: sum / count, worst, video: name.slice(-24), frame: index });
 	}
@@ -99,14 +106,14 @@ const pct = (v) => `${(v * 100).toFixed(1)}%`;
 
 console.log(`hand fitted faces   ${frames}`);
 console.log(`found by detector   ${errors.length} (${((errors.length / frames) * 100).toFixed(0)}%)`);
-const middles = [...centres].sort((a, b) => a - b);
-const mid = (share) => middles[Math.min(middles.length - 1, Math.floor(middles.length * share))] ?? 0;
-console.log(`radius error        ${pct(at(0.5))} of face radius median, ${pct(at(0.9))} at p90`);
+const skew = [...lopsided].sort((a, b) => a - b);
+const sk = (share) => skew[Math.min(skew.length - 1, Math.floor(skew.length * share))] ?? 0;
+console.log(`ring radius error   ${pct(at(0.5))} of face radius median, ${pct(at(0.9))} at p90`);
 console.log(`                    a ring is 10% of the radius, so that is ${(at(0.5) * 10).toFixed(2)} rings median`);
-console.log(`centre off by       ${pct(mid(0.5))} median, ${pct(mid(0.9))} at p90`);
+console.log(`off centre by       ${pct(sk(0.5))} median, ${pct(sk(0.9))} at p90`);
 if (missed.length > 0) console.log(`\nnot found:\n  ${missed.join('\n  ')}`);
 
-const worstFew = [...errors].sort((a, b) => b.mean - a.mean).slice(0, 5);
+const worstFew = [...errors].sort((a, b) => b.mean - a.mean).slice(0, 10);
 console.log('\nworst frames:');
 for (const e of worstFew) console.log(`  ${e.video} frame ${e.frame}  ${pct(e.mean)}`);
 

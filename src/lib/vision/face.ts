@@ -162,12 +162,7 @@ function centroid(pixels: number[], width: number, size: number): { cx: number; 
  * close to a steeply angled boss, where near and far rings differ in scale.
  */
 export function toFaceCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-	const a = face.semiMajor * cos;
-	const b = -face.semiMinor * sin;
-	const d = face.semiMajor * sin;
-	const e = face.semiMinor * cos;
+	const { a, b, d, e } = linearPart(face);
 	const dx = x - face.cx;
 	const dy = y - face.cy;
 	const g = face.perspectiveX ?? 0;
@@ -191,15 +186,28 @@ export function toFaceCoords(face: FaceLocation, x: number, y: number): { x: num
 
 /** The inverse, used to draw the detected rings back over the video. */
 export function toImageCoords(face: FaceLocation, x: number, y: number): { x: number; y: number } {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-	const px = x * face.semiMajor;
-	const py = y * face.semiMinor;
+	const { a, b, d, e } = linearPart(face);
 	// Further from the lens is smaller, which is the one thing an ellipse cannot say.
 	const depth = 1 + (face.perspectiveX ?? 0) * x + (face.perspectiveY ?? 0) * y;
 	const scale = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
 	return {
-		x: face.cx + (px * cos - py * sin) * scale,
-		y: face.cy + (px * sin + py * cos) * scale
+		x: face.cx + (a * x + b * y) * scale,
+		y: face.cy + (d * x + e * y) * scale
+	};
+}
+
+/**
+ * The two by two that takes face coordinates to image ones before the lean divides them. Written out
+ * once because the fit, the forward map and the inverse must agree exactly or a point makes a round
+ * trip and comes back somewhere else.
+ */
+export function linearPart(face: FaceLocation): { a: number; b: number; d: number; e: number } {
+	const cos = Math.cos(face.rotation);
+	const sin = Math.sin(face.rotation);
+	return {
+		a: face.semiMajor * cos,
+		b: -face.semiMinor * sin,
+		d: face.semiMajor * sin,
+		e: face.semiMinor * cos
 	};
 }

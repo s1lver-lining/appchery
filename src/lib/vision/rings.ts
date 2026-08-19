@@ -1,4 +1,5 @@
 import { rgbToHsv } from './pixels';
+import { toImageCoords } from './face';
 import type { Frame, FaceLocation } from './types';
 
 /**
@@ -48,15 +49,16 @@ export function probeRing(
 	const counts = new Map<RingColour, number>();
 	let samples = 0;
 
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-
 	for (let i = 0; i < steps; i++) {
 		const angle = (i / steps) * Math.PI * 2;
-		const fx = Math.cos(angle) * radius * face.semiMajor;
-		const fy = Math.sin(angle) * radius * face.semiMinor;
-		const x = Math.round(face.cx + fx * cos - fy * sin);
-		const y = Math.round(face.cy + fx * sin + fy * cos);
+		/**
+		 * Through the face's own projection, lean included. Sampling this circle as though the face were
+		 * flat probes the wrong pixels on one that is not, so the better the fit describes a leaning
+		 * boss the worse it does on the check that is supposed to confirm it.
+		 */
+		const point = toImageCoords(face, Math.cos(angle) * radius, Math.sin(angle) * radius);
+		const x = Math.round(point.x);
+		const y = Math.round(point.y);
 		if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
 
 		const p = (y * frame.width + x) * 4;
