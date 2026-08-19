@@ -51,6 +51,16 @@ export class SweepTracker {
 	private taken: Impact[] = [];
 	private passes = 0;
 	private limit = Number.POSITIVE_INFINITY;
+	/**
+	 * How many arrows the end is known to hold, as opposed to how many will be accepted at most.
+	 *
+	 * Not the same thing, and conflating them was a bug worth the telling. The scanner carries a safety
+	 * cap so that a misdetecting frame cannot flood the sheet, and that cap is a number; asked whether
+	 * the end was short of arrows, a tracker that only knew the cap answered yes on every sweep and
+	 * filled the difference with guesses. An end is only short of arrows when somebody has actually
+	 * said how many there are.
+	 */
+	private expected: number | null = null;
 
 	private readonly minVotes: number;
 	private readonly minAgreement: number;
@@ -89,6 +99,11 @@ export class SweepTracker {
 		this.limit = Math.max(0, limit);
 	}
 
+	/** Says how many arrows the end really holds, or that nobody knows. */
+	expect(count: number | null) {
+		this.expected = count === null ? null : Math.max(0, count);
+	}
+
 	/**
 	 * What the archer is shown: the arrows that cleared the bar, and, when the end is known to hold more
 	 * than that, the best places left over to make up the number.
@@ -111,8 +126,8 @@ export class SweepTracker {
 	 * rests on not believing that.
 	 */
 	private guesses(): Impact[] {
-		const missing = this.limit - this.confirmed.length;
-		if (!Number.isFinite(missing) || missing <= 0 || this.passes < this.guessAfter) return [];
+		const missing = (this.expected ?? 0) - this.confirmed.length;
+		if (this.expected === null || missing <= 0 || this.passes < this.guessAfter) return [];
 		return this.candidates
 			.filter((c) => c.votes >= this.guessVotes)
 			.sort((a, b) => b.votes - a.votes)

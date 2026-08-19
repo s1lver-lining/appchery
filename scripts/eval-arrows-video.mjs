@@ -64,6 +64,7 @@ let spurious = 0;
 let proposedEver = 0;
 const errors = [];
 const rows = [];
+const wrong = [];
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
@@ -149,6 +150,23 @@ for (const name of (await readdir(WORK)).sort()) {
 	found += hit;
 	wanted += targets.length;
 	spurious += result.arrows.length - taken.size;
+
+	/**
+	 * What the wrong marks actually are, rather than how many. Every threshold in the proposer has been
+	 * swept against the totals without anyone looking at the things being rejected, which is how a whole
+	 * class of them can survive every sweep: if they sit in the same part of the shape space as real
+	 * arrows, no threshold separates them and only their placing gives them away.
+	 */
+	result.arrows.forEach((arrow, i) => {
+		wrong.push({
+			video: name.slice(-24),
+			right: taken.has(i),
+			radius: Math.hypot(arrow.x, arrow.y),
+			area: arrow.area,
+			votes: arrow.votes ?? arrow.seen ?? 0,
+			unsure: Boolean(arrow.unsure)
+		});
+	});
 	rows.push(
 		`${name.slice(-24)}  ${hit}/${targets.length} found, ${everProposed}/${targets.length} ever proposed, ` +
 			`${result.arrows.length - taken.size} spurious`
@@ -166,8 +184,36 @@ console.log(
 	`impact error        ${sorted.length ? pct(sorted[Math.floor(sorted.length / 2)]) : '--'} of face radius median`
 );
 
+if (args.includes('--why')) {
+	const bucket = (list, label, of) => {
+		const values = list.map(of).sort((a, b) => a - b);
+		if (values.length === 0) return `${label} --`;
+		const at = (share) => values[Math.floor((values.length - 1) * share)];
+		return `${label} p10 ${at(0.1).toFixed(2)}  median ${at(0.5).toFixed(2)}  p90 ${at(0.9).toFixed(2)}`;
+	};
+	const right = wrong.filter((w) => w.right);
+	const bad = wrong.filter((w) => !w.right);
+	console.log(`\nwhat the marks look like        ${right.length} right, ${bad.length} wrong`);
+	for (const [label, list] of [['right ', right], ['wrong ', bad]]) {
+		console.log(`  ${bucket(list, `${label}radius`, (w) => w.radius)}`);
+		console.log(`  ${bucket(list, `${label}votes `, (w) => w.votes)}`);
+		console.log(`  ${bucket(list, `${label}area  `, (w) => w.area)}`);
+		console.log(`  ${label}guessed  ${list.filter((w) => w.unsure).length}`);
+	}
+	// Where round the face they sit, which is what would show a rim or a shadow rather than a shaft.
+	const ring = (list) => {
+		const bins = new Array(10).fill(0);
+		for (const w of list) bins[Math.min(9, Math.floor(w.radius * 10))] += 1;
+		return bins.join(' ');
+	};
+	console.log(`\n  by ring, centre outwards (10 bins)`);
+	console.log(`    right  ${ring(right)}`);
+	console.log(`    wrong  ${ring(bad)}`);
+}
+
 function homography(points) {
 	const rows = [];
+const wrong = [];
 	for (let i = 0; i < 4; i++) {
 		const [u, v] = ANCHORS[i];
 		const [x, y] = points[i];

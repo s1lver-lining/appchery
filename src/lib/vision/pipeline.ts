@@ -272,10 +272,17 @@ export class Scanner {
 		};
 	}
 
-	/** The end's remaining arrows, so detection stops rather than piling up proposals. */
+	/**
+	 * The end's remaining arrows, so detection stops rather than piling up proposals.
+	 *
+	 * Being told this is also what licenses the tracker to fill a short end with its best guesses, which
+	 * is why it is passed on as a count and not only as a cap. The cap the scanner starts with is a
+	 * safety limit, not a statement about the end, and must not be mistaken for one.
+	 */
 	setLimit(limit: number) {
 		this.maxArrows = Math.max(0, limit);
 		this.tracker.setLimit(this.maxArrows);
+		this.tracker.expect(this.maxArrows);
 	}
 
 	/**
