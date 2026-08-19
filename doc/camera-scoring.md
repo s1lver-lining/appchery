@@ -30,9 +30,10 @@ lost the arrow.
 | | false faces | 0.01 per image |
 | | overlay tremble, drawn steadied | 0.10% of radius, from 0.24%, never more than 0.1 ring behind |
 | | cost | 2.8x realtime on a laptop core |
-| **Arrows** | found, of 84 impacts placed by hand | **51%** |
+| **Arrows** | found, of 84 impacts placed by hand | **55%** |
 | | ever proposed, the ceiling | 85% |
-| | false proposals | 2.1 per end |
+| | of those, agreed on rather than guessed | 51% |
+| | false proposals | 2.6 per end, of which 2.1 agreed on |
 | | impact error | **2.0%** of face radius median |
 
 A ring is a tenth of the radius, so the face is placed to within a fifteenth of a ring, and it keeps
@@ -60,6 +61,14 @@ scorer.
 The ceiling matters as much as the number found: an arrow that no pass ever proposed cannot be
 confirmed by any amount of agreement, and about one in seven is never proposed at all. That is the
 detector failing to see a shaft, not the tracker discarding one.
+
+Three things are known to be wrong with it and are not fixed. Nothing is confirmed for the first
+second or so, because four passes at three a second is what agreement across viewpoints costs and
+there is no shortcut that is not just believing one look. A false positive, once confirmed, is never
+reconsidered — taking arrows back on later evidence was built and measured and cost a fifth of the real
+arrows to remove a third of the false ones, because a real arrow genuinely stops being proposed once
+the archer has swung past it, so it is not in the code. And an arrow the sweep never agreed on is only
+shown when the end's arrow count is known.
 
 **The objective is every arrow found, with proposals an archer can accept almost without thinking.**
 The gap to it is data rather than method: fourteen recorded sweeps is fourteen arrangements of
@@ -220,6 +229,18 @@ Three times a second is roughly the rate at which a carried camera presents a ge
 
 Promotion is capped at the end's remaining arrows, inside the tracker rather than after it. Sorted by
 evidence, so the best supported candidate takes the last free slot.
+
+**The count is a hint, and optional.** Given it, the tracker also works the other way: once the sweep
+has had a few seconds and the end is still short, the best places that fell short of the bar are
+offered to make the number up, marked unsure and drawn dashed. That is worth doing because of what it
+replaces — an arrow the detector missed is one the archer places by hand, so the choice is between a
+mark that may be wrong and no mark at all, and a wrong one costs a tap to drop. Measured, it turns 51%
+of arrows found into 55%, for half a wrong proposal more per end.
+
+It stays optional because the count is not always known: brace height tuning shoots ends of no fixed
+length, and a team may put two archers' arrows into one boss. Without a count nothing is capped and
+nothing is guessed, because an end has no number to be short of. `-a/--arrows` passes one to the
+replay tool; the app knows it from the round.
 
 ### Between ends
 
