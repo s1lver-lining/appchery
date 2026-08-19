@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import { startOfWeek, endOfWeek, isoWeek, groupByWeek, monthGrid, timeOfDay } from './dates';
 
 const at = (iso: string) => new Date(iso).getTime();
@@ -9,6 +9,29 @@ describe('startOfWeek', () => {
 		expect(new Date(startOfWeek(at('2026-08-09T12:00'))).getDate()).toBe(3);
 		expect(new Date(startOfWeek(at('2026-08-03T00:30'))).getDate()).toBe(3);
 		expect(new Date(endOfWeek(at('2026-08-03T00:30'))).getDate()).toBe(9);
+	});
+});
+
+describe('startOfWeek across a clock change', () => {
+	const zone = process.env.TZ;
+	// Santiago turns its clocks at midnight, so a week start counted in fixed days lands at 01:00.
+	beforeAll(() => (process.env.TZ = 'America/Santiago'));
+	afterAll(() => (process.env.TZ = zone));
+
+	it('starts the week at midnight whatever the clocks did that night', () => {
+		// The Sunday is the day that counts back over the change, so it is the day that used to slip.
+		const start = new Date(startOfWeek(at('2016-05-15T12:00')));
+		expect(start.getDay()).toBe(1);
+		expect(start.getHours()).toBe(0);
+	});
+
+	it('puts every day of that week in one bucket', () => {
+		const starts = new Set(
+			['09', '10', '11', '12', '13', '14', '15'].map((day) =>
+				startOfWeek(at(`2016-05-${day}T12:00`))
+			)
+		);
+		expect(starts.size).toBe(1);
 	});
 });
 

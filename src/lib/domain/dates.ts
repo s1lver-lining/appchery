@@ -28,11 +28,14 @@ export function startOfWeek(at: number): number {
 	const date = new Date(startOfDay(at));
 	// getDay is Sunday based, so Sunday counts back six days rather than none.
 	const offset = (date.getDay() + 6) % 7;
-	return date.getTime() - offset * DAY;
+	// Stepped through the Date constructor: a zone that turns its clocks at midnight would otherwise
+	// leave the week starting an hour off, and split one week of shooting across two buckets.
+	return new Date(date.getFullYear(), date.getMonth(), date.getDate() - offset).getTime();
 }
 
 export function endOfWeek(at: number): number {
-	return startOfWeek(at) + 6 * DAY;
+	const start = new Date(startOfWeek(at));
+	return new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6).getTime();
 }
 
 /** ISO 8601: week 1 is the one holding the first Thursday of the year. */
@@ -67,7 +70,7 @@ export function groupByWeek<T>(items: T[], at: (item: T) => number): WeekGroup<T
 		.sort((a, b) => a[0] - b[0])
 		.map(([start, list]) => ({
 			start,
-			end: start + 6 * DAY,
+			end: endOfWeek(start),
 			week: isoWeek(start),
 			items: [...list].sort((a, b) => at(a) - at(b))
 		}));
