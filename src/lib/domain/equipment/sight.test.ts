@@ -82,3 +82,18 @@ describe('interpolateHeight', () => {
 		expect(interpolateHeight(marks, 400, 'm')).toBeNull();
 	});
 });
+
+describe('the straight line fallback', () => {
+	// Both fits decline here: nothing carries that far, and two marks share a distance so no parabola
+	// fits either. Contrived, but it is the one path that reaches the line through the nearest pair.
+	const marks = [
+		{ distance: 1250, unit: 'm', height: '10', interpolated: 0 },
+		{ distance: 1250, unit: 'm', height: '20', interpolated: 0 },
+		{ distance: 1300, unit: 'm', height: '30', interpolated: 0 }
+	];
+
+	it('reads a distance past the top mark off the two marks nearest it', () => {
+		// Rising marks, so a longer distance is a higher one: off the bottom pair it came back as 10.
+		expect(interpolateHeight(marks, 1320, 'm')!).toBeGreaterThan(30);
+	});
+});

@@ -163,7 +163,8 @@ const round = (value: number) => Math.round(value * 100) / 100;
  */
 function linear(proven: ProvenMark[], distance: number): number {
 	const above = proven.findIndex((mark) => mark.distance > distance);
-	const upper = above <= 0 ? 1 : above;
+	// Past every mark there is none above, so the pair is the last two rather than the first two.
+	const upper = above < 0 ? proven.length - 1 : Math.max(above, 1);
 	const a = proven[upper - 1];
 	const b = proven[upper] ?? proven[proven.length - 1];
 	if (a.distance === b.distance) return a.height;
