@@ -738,29 +738,23 @@ export async function saveMatchEnd(
 	endNo: number,
 	input: { ours: number | null; theirs: number | null; shootOff?: boolean; winner?: 'us' | 'them' | null }
 ) {
-	const existing = (await listEnds(activityId)).find((row) => row.endNo === endNo);
-	const patch = {
-		subtotal: input.ours ?? 0,
-		opponentSubtotal: input.theirs,
-		isShootOff: input.shootOff ? 1 : 0,
-		winner: input.winner ?? null
-	};
-
-	if (existing) {
+	// Serialised like the other match writers, or two writes racing for a new end each find it
+	// missing and each insert one.
+	await transaction(async () => {
+		const end = await ensureMatchEnd(activityId, endNo, input.shootOff);
 		await db()
 			.update(schema.end)
-			.set({ ...patch, updatedAt: Date.now() })
-			.where(eq(schema.end.id, existing.id));
-		await log('round_end', existing.id, 'update');
-	} else {
-		const base = stamp();
-		await db()
-			.insert(schema.end)
-			.values({ ...base, activityId, stageIndex: 0, endNo, ...patch });
-		await log('round_end', base.id, 'insert');
-	}
-
-	await refreshMatchTotals(activityId);
+			.set({
+				subtotal: input.ours ?? 0,
+				opponentSubtotal: input.theirs,
+				isShootOff: input.shootOff ? 1 : 0,
+				winner: input.winner ?? null,
+				updatedAt: Date.now()
+			})
+			.where(eq(schema.end.id, end.id));
+		await log('round_end', end.id, 'update');
+		await refreshMatchTotals(activityId);
+	});
 }
 
 /** The row an end is written to, created on first use: entering anything is what starts an end. */
