@@ -3,11 +3,12 @@
 	import { t } from '$lib/i18n';
 	import { toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
 	import { LiveScanner } from '$lib/vision/live';
+import { SteadyFace } from '$lib/vision/steady';
 	import { MotionLog, allowMotion } from '$lib/vision/motion';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
-	import { recordCameraVideo, arrowDetector } from '$lib/prefs';
+	import { recordCameraVideo, arrowDetector, smoothOverlay } from '$lib/prefs';
 	import { storeRecording, storeMotion } from '$lib/files';
 	import { closeOnBack } from './dismiss.svelte';
 	import { overrideStatusBar } from '$lib/theme';
@@ -209,6 +210,12 @@
 	const DETECT_EVERY_MS = 300;
 	let lastDetection = 0;
 
+	/** One smoother per face, made on demand, so a three spot's three faces are steadied separately. */
+	const steadying: SteadyFace[] = [];
+	function smoother(index: number): SteadyFace {
+		return (steadying[index] ??= new SteadyFace());
+	}
+
 	/** The frame reduced for detection, scaled by the canvas rather than by a loop over every pixel. */
 	function reduce(): { width: number; height: number; data: Uint8ClampedArray } | null {
 		if (!video) return null;
@@ -241,13 +248,18 @@
 		 * detection, so the overlay keeps the camera's own rate whatever the detector is costing.
 		 */
 		faces = scanner.follow(small);
+		/**
+		 * What is drawn, which is not quite what was fitted. Everything read off the picture is read off
+		 * `faces`; this only stops the lines trembling between frames.
+		 */
+		const shown = $smoothOverlay ? faces.map((face, i) => smoother(i).show(face)) : faces;
 		if (now - lastDetection >= DETECT_EVERY_MS) {
 			lastDetection = now;
 			// Offered last, because the frame's buffer is given away rather than copied.
 			scanner.offer(small);
 		}
 
-		draw(faces, found, overlay, video.videoWidth, video.videoHeight);
+		draw(shown, found, overlay, video.videoWidth, video.videoHeight);
 	}
 
 	/** The overlay is drawn in the small image's pixels, so every coordinate scales back up. */

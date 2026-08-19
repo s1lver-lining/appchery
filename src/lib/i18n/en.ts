@@ -1075,6 +1075,9 @@ export const en = {
 			'Which method reads the arrows. Classical uses shape and colour rules; learned uses a small trained model. Both run on this device.',
 		detectorClassical: 'Classical',
 		detectorLearned: 'Learned',
+		smoothTitle: 'Steady the overlay',
+		smoothHint:
+			'Smooths the lines drawn over the target so they stop trembling. Only the drawing changes; the arrows are read the same way either way.',
 		feedHintTitle: 'Offer the feed on the home page',
 		feedHintHint:
 			'When archers you follow share something you have not read, home says so. The feed itself stays one swipe left of home either way.',

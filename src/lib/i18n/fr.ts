@@ -1078,6 +1078,9 @@ export const fr: Dictionary = {
 			'Méthode de lecture des flèches. Classique par règles de forme et de couleur, apprise par un petit modèle entraîné. Les deux fonctionnent sur cet appareil.',
 		detectorClassical: 'Classique',
 		detectorLearned: 'Apprise',
+		smoothTitle: "Stabiliser l'incrustation",
+		smoothHint:
+			"Lisse les lignes tracées sur le blason pour qu'elles cessent de trembler. Seul l'affichage change : les flèches sont lues de la même façon.",
 		feedHintTitle: 'Proposer le fil sur la page d’accueil',
 		feedHintHint:
 			'Quand un archer que vous suivez partage un tir que vous n’avez pas lu, l’accueil le signale. Le fil reste à un glissement vers la gauche de l’accueil dans tous les cas.',

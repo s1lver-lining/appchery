@@ -13,6 +13,7 @@
 		use24Hour,
 		recordCameraVideo,
 		arrowDetector,
+	smoothOverlay,
 		plotTapMs,
 		haptics,
 		arrowDriftWarning,
@@ -532,6 +533,18 @@
 								</button>
 							{/each}
 						</div>
+					</div>
+
+					<div class="mb-4 flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<p class="font-medium">{$t('settings.smoothTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.smoothHint')}</p>
+						</div>
+						<Toggle
+							checked={$smoothOverlay}
+							label={$t('settings.smoothTitle')}
+							onchange={(v) => smoothOverlay.set(v)}
+						/>
 					</div>
 
 					<div class="flex items-start justify-between gap-4">

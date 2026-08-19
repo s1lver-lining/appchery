@@ -92,6 +92,16 @@ export const recordCameraVideo = flag('appchery.recordCameraVideo', false);
 export const arrowDetector = storedString('appchery.arrowDetector');
 
 /**
+ * Whether the camera overlay smooths the lines it draws.
+ *
+ * On by default. The fit is measured from the picture afresh every frame, so it lands a fraction of a
+ * pixel differently each time, and a line that moves is far easier to see than a line that is slightly
+ * misplaced. Smoothing halves that at a cost of never more than a tenth of a ring of lag. It changes
+ * only what is drawn: the arrows and the scores are read from the fit itself either way.
+ */
+export const smoothOverlay = flag('appchery.smoothOverlay', true);
+
+/**
  * The round cards left open on the stats page. A view preference rather than user data, so it stays
  * on the device that was scrolled rather than following the archer around.
  */
