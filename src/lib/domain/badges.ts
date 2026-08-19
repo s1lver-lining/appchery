@@ -216,7 +216,11 @@ function weeks(history: History): { start: number; arrows: number; last: number 
 	return [...buckets.values()].sort((a, b) => a.start - b.start);
 }
 
-const WEEK = 7 * 86_400_000;
+/** The week after this one, stepped as a calendar week: a week the clocks changed in is not 168 hours. */
+function weekAfter(start: number): number {
+	const date = new Date(start);
+	return new Date(date.getFullYear(), date.getMonth(), date.getDate() + 7).getTime();
+}
 
 /** A week that met the plan. A week no plan asked anything of is not one that was met. */
 function onPlanWeek(history: History) {
@@ -239,7 +243,7 @@ function weekRuns(
 	let previous: number | null = null;
 	for (const week of weeks(history)) {
 		if (!rule(week)) run = 0;
-		else run = previous !== null && week.start - previous === WEEK ? run + 1 : 1;
+		else run = previous !== null && week.start === weekAfter(previous) ? run + 1 : 1;
 		previous = week.start;
 		if (run > 0) runs.push({ run, last: week.last });
 	}

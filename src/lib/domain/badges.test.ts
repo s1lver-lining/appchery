@@ -109,6 +109,20 @@ describe('habit', () => {
 		expect(badge(weekly(8), 'everyWeek').earnedAt).toBe(MONDAY + 7 * WEEK);
 	});
 
+	it('holds the streak together through a week the clocks changed in', () => {
+		const zone = process.env.TZ;
+		process.env.TZ = 'Europe/Paris';
+		try {
+			// Eight Mondays from mid February 2026, so the run crosses the change on 29 March.
+			const across = Array.from({ length: 8 }, (_, i) =>
+				activity({ id: `w${i}`, startedAt: new Date(2026, 1, 16, 12).getTime() + i * WEEK })
+			);
+			expect(badge(across, 'everyWeek').earnedAt).not.toBeNull();
+		} finally {
+			process.env.TZ = zone;
+		}
+	});
+
 	it('breaks the streak on a week nobody shot in', () => {
 		const skipped = [0, 1, 2, 3, 5, 6, 7, 8].map((i) =>
 			activity({ id: `w${i}`, startedAt: MONDAY + i * WEEK })
