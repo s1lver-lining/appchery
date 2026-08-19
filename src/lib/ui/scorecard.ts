@@ -261,7 +261,6 @@ function sheet(
 	/** Draws the other side's arrows under ours, which costs every row a second line. */
 	withOpponent = false
 ): string {
-	let top = from;
 	if (rows.length === 0) return '';
 	const left = 80;
 	const right = 1000;
@@ -282,7 +281,7 @@ function sheet(
 	const arrowsLeft = left + 78;
 	const pitch = Math.min(70, (right - column * 2 - 40 - arrowsLeft) / Math.max(widest, 1));
 
-	top = headTop;
+	const top = headTop;
 	// The two column heads are names on a match card, and a name is as long as somebody made it.
 	const head =
 		text(palette, labels.end.toUpperCase(), left, top, { size: headSize, weight: 700, fill: palette.muted, spacing: 2 }) +
