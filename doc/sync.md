@@ -99,7 +99,11 @@ Local only use never reads the column.
 
 Read `change_log` where `synced_at` is null, ordered by id. Chunk it, dedupe to the latest operation
 per table and row, read those rows from SQLite, upsert one call per table, then stamp `synced_at` on
-the consumed log ids and advance `last_push_cursor`. A tombstone is an ordinary upsert of a row with
+the log ids whose row actually reached the server and advance `last_push_cursor`. Only those: a row
+carrying another account is not this archer's to send, and stamping it sent would throw the other
+archer's change away the moment they sign back in on the same phone. The walk is by log id rather
+than by what is still pending, so an entry that cannot be sent is stepped over for this run instead
+of holding every entry behind it. A tombstone is an ordinary upsert of a row with
 `deleted_at` set. A failed chunk leaves everything after it pending, so a retry resumes rather than
 restarts, which is what makes a bulk import of thousands of rows survivable.
 

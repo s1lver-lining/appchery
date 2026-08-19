@@ -314,6 +314,20 @@ describe('a change the server will not take', () => {
 		expect(await failedCount()).toBe(0);
 		expect(await pendingCount()).toBe(1);
 	});
+	it('leaves a change pending when the row belongs to another account', async () => {
+		const server = fakeServer();
+		await insertSession('session-theirs', { userId: 'user-2' });
+		await logChange('session', 'session-theirs');
+		await insertSession('session-ours');
+		await logChange('session', 'session-ours');
+
+		await push(server.client as never, USER);
+
+		// Only ours went up, and theirs is still queued for the archer who owns it.
+		expect(server.upserts).toEqual(['session:session-ours']);
+		const pending = await proxy.select().from(schema.changeLog).where(isNull(schema.changeLog.syncedAt));
+		expect(pending.map((row) => row.rowId)).toEqual(['session-theirs']);
+	});
 });
 
 describe('pull', () => {

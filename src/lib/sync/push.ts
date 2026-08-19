@@ -1,4 +1,4 @@
-import { and, asc, eq, getTableColumns, gte, inArray, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm';
+import { and, asc, eq, getTableColumns, gt, gte, inArray, isNotNull, isNull, sql, type SQL } from 'drizzle-orm';
 import type { SupabaseClient } from '@supabase/supabase-js';
 import { db, schema } from '$lib/db';
 import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from '$lib/db/synced';
@@ -57,7 +57,9 @@ export async function retryFailed(): Promise<void> {
 
 export async function push(client: SupabaseClient, userId: string): Promise<PushResult> {
 	let uploaded = 0;
-	let lastHighest = 0;
+	// Walked by id rather than by what is left pending, so an entry this account cannot send is
+	// stepped over for this run instead of holding every entry behind it.
+	let cursor = 0;
 
 	// The repository knows nothing about accounts, so rows arrive ownerless and are claimed here.
 	await adoptLocalRows(userId);
@@ -71,39 +73,44 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 				op: schema.changeLog.op
 			})
 			.from(schema.changeLog)
-			.where(and(isNull(schema.changeLog.syncedAt), isNull(schema.changeLog.failedAt)))
+			.where(
+				and(
+					isNull(schema.changeLog.syncedAt),
+					isNull(schema.changeLog.failedAt),
+					gt(schema.changeLog.id, cursor)
+				)
+			)
 			.orderBy(asc(schema.changeLog.id))
 			.limit(CHUNK)) as PendingEntry[];
 
 		if (batch.length === 0) break;
 
+		let sent: Set<string>;
 		try {
-			uploaded += await pushBatch(client, userId, batch);
+			sent = await pushBatch(client, userId, batch);
 		} catch (error) {
 			// A server that answered and refused is telling us something a retry will not change. One
 			// that could not be reached is telling us nothing, so it costs the chunk nothing.
 			if (error instanceof PushError && error.refused) await countRefusal(batch);
 			throw error;
 		}
+		uploaded += sent.size;
+
+		// Only what actually went up. A row belonging to another archer on a shared device was never
+		// ours to send, and stamping it sent would throw away their change the moment they sign in.
+		const done = batch
+			.filter((entry) => sent.has(`${entry.tableName}:${entry.rowId}`))
+			.map((entry) => entry.id);
+		for (let i = 0; i < done.length; i += 100) {
+			await db()
+				.update(schema.changeLog)
+				.set({ syncedAt: Date.now() })
+				.where(inArray(schema.changeLog.id, done.slice(i, i + 100)));
+		}
 
 		const highest = batch[batch.length - 1].id;
-		// A chunk that leaves the queue where it found it would upload the same rows for ever.
-		if (highest <= lastHighest) break;
-		lastHighest = highest;
-
-		// Refused entries are left alone: they were never in this batch, and stamping them sent would
-		// silently throw away a change the archer's retry button is meant to give another chance.
-		await db()
-			.update(schema.changeLog)
-			.set({ syncedAt: Date.now() })
-			.where(
-				and(
-					isNull(schema.changeLog.syncedAt),
-					isNull(schema.changeLog.failedAt),
-					lte(schema.changeLog.id, highest)
-				)
-			);
 		await writeSyncState({ lastPushCursor: String(highest) });
+		cursor = highest;
 
 		if (batch.length < CHUNK) break;
 	}
@@ -112,7 +119,12 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 	return { uploaded, pending: await pendingCount() };
 }
 
-async function pushBatch(client: SupabaseClient, userId: string, batch: PendingEntry[]): Promise<number> {
+/** The rows that reached the server, keyed as the log names them, so only those are stamped sent. */
+async function pushBatch(
+	client: SupabaseClient,
+	userId: string,
+	batch: PendingEntry[]
+): Promise<Set<string>> {
 	// Latest entry per row, so a row inserted and then edited five times is read once and sent once.
 	const wanted = new Map<string, PendingEntry>();
 	for (const entry of batch) wanted.set(`${entry.tableName}:${entry.rowId}`, entry);
@@ -125,7 +137,7 @@ async function pushBatch(client: SupabaseClient, userId: string, batch: PendingE
 		byTable.set(entry.tableName, ids);
 	}
 
-	let uploaded = 0;
+	const sent = new Set<string>();
 
 	// Parents before children, so a chunk carrying both lands them in an order the server can hold.
 	for (const { name } of OWNED_TABLES) {
@@ -138,10 +150,10 @@ async function pushBatch(client: SupabaseClient, userId: string, batch: PendingE
 		const { error } = await client.from(name).upsert(payload, { onConflict: 'id' });
 		// PostgREST reports a refusal with a code; a network that never arrived has none.
 		if (error) throw new PushError(`${name}: ${error.message}`, Boolean(error.code));
-		uploaded += payload.length;
+		for (const row of payload) sent.add(`${name}:${String(row.id)}`);
 	}
 
-	return uploaded;
+	return sent;
 }
 
 export class PushError extends Error {
