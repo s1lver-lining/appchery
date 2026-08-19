@@ -89,7 +89,15 @@ export class SweepTracker {
 		 */
 		this.minVotes = options.minVotes ?? 5;
 		this.minAgreement = options.minAgreement ?? 0.4;
-		this.mergeDistance = options.mergeDistance ?? 0.035;
+		/**
+		 * Half a ring. One arrow answers from more than one place along its own shaft: the detector reads
+		 * the impact where the dark run stops being a ridge, and which point that is moves a little with
+		 * the viewpoint, the light and whether a ring line crossed it. At a third of a ring those readings
+		 * were landing either side of the line and becoming two arrows, which is what put two marks on one
+		 * shaft. Widening it costs nothing measurable in telling two real arrows apart, because two arrows
+		 * that close have merged into one detection long before the tracker sees them.
+		 */
+		this.mergeDistance = options.mergeDistance ?? 0.05;
 		this.patience = options.patience ?? 25;
 		this.guessAfter = options.guessAfter ?? 8;
 		/**
