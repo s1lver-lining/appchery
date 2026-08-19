@@ -48,6 +48,12 @@ export class Replay {
 	private readonly detectEveryMs: number;
 	/** Video time the detector is busy until, so a slow pass costs passes rather than frames. */
 	private busyUntil = -Infinity;
+	/**
+	 * Whether the face was trusted when the detector last said. Only a detection pass knows, and
+	 * reporting it as untrusted on every frame in between made the overlay blink between its two
+	 * colours at the detection rate, which reads as the fit flickering when nothing has moved at all.
+	 */
+	private trusted = false;
 	private skipped = 0;
 
 	/**
@@ -112,12 +118,13 @@ export class Replay {
 			const before = performance.now();
 			const result = this.scanner.pushReduced(small);
 			this.busyUntil = nowMs + (performance.now() - before);
+			this.trusted = result.steady;
 			return this.state(result.faces, result.steady, result.detections, result.arrows, result.pending, started, true);
 		}
 		if (nowMs - this.last >= this.detectEveryMs) this.skipped += 1;
 
 		const faces = this.scanner.track(small);
-		return this.state(faces, false, 0, this.scanner.arrows, this.scanner.pending, started, false);
+		return this.state(faces, this.trusted, 0, this.scanner.arrows, this.scanner.pending, started, false);
 	}
 
 	/** Passes the detector was too busy to take, which is what a slow detector actually costs. */

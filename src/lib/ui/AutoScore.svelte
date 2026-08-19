@@ -254,17 +254,22 @@
 
 		// Every face is outlined, so a three spot shows all three being watched.
 		for (const face of located) {
+			/**
+			 * Drawn through the face's own projection rather than as an ellipse. A boss seen from
+			 * anywhere but square on is a projection, and the ellipse matching it near the middle does
+			 * not match it at the edge: the gold sits perfectly while the outer ring lands a couple of
+			 * rings inside where it belongs.
+			 */
 			const ring = (share: number) => {
 				context.beginPath();
-				context.ellipse(
-					face.cx * scale,
-					face.cy * scale,
-					face.semiMajor * share * scale,
-					face.semiMinor * share * scale,
-					face.rotation,
-					0,
-					Math.PI * 2
-				);
+				for (let i = 0; i <= 128; i++) {
+					const angle = (i / 128) * Math.PI * 2;
+					const point = toImageCoords(face, Math.cos(angle) * share, Math.sin(angle) * share);
+					const x = point.x * scale;
+					const y = point.y * scale;
+					i === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
+				}
+				context.closePath();
 				context.stroke();
 			};
 

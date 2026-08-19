@@ -214,13 +214,116 @@ function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 }
 
 /**
- * Share of sampled points whose colour matches the ring the geometry puts them in, under whichever
- * face layout fits better. Samples off the frame are not counted either way, so a face running off
- * the edge is judged on what is visible.
+ * The colours a ring boundary shows on either side of it, and how far apart to read them.
+ *
+ * Narrow on purpose. Asking whether the colour is right on each side of a boundary is a question with
+ * a flat answer: the fit can sit a good fraction of a ring out and every sample still lands well
+ * inside the correct colour, so there is nothing telling it which way to move. Reading the change
+ * across a band barely wider than the printed line asks a sharper question instead, one that is only
+ * answered well when the boundary is where the geometry says it is.
+ */
+const EDGE_BAND = 0.012;
+
+const FULL_EDGES: { radius: number; from: [number, number, number]; to: [number, number, number] }[] = [
+	{ radius: 0.2, from: [252, 209, 42], to: [232, 69, 60] },
+	{ radius: 0.4, from: [232, 69, 60], to: [58, 160, 216] },
+	{ radius: 0.6, from: [58, 160, 216], to: [35, 40, 44] },
+	{ radius: 0.8, from: [35, 40, 44], to: [244, 241, 234] }
+];
+
+const SPOT_EDGES = FULL_EDGES.slice(0, 2).concat([
+	{ radius: 0.5, from: [58, 160, 216], to: [244, 241, 234] }
+]);
+
+/** Colour at a point, bilinearly, or null where the picture does not reach. */
+function sample(frame: Frame, x: number, y: number): [number, number, number] | null {
+	if (!(x >= 0) || !(y >= 0) || x >= frame.width - 1 || y >= frame.height - 1) return null;
+	const x0 = Math.floor(x);
+	const y0 = Math.floor(y);
+	const ax = x - x0;
+	const ay = y - y0;
+	let r = 0;
+	let g = 0;
+	let b = 0;
+	for (let j = 0; j <= 1; j++) {
+		for (let i = 0; i <= 1; i++) {
+			const weight = (i ? ax : 1 - ax) * (j ? ay : 1 - ay);
+			const p = ((y0 + j) * frame.width + (x0 + i)) * 4;
+			r += frame.data[p] * weight;
+			g += frame.data[p + 1] * weight;
+			b += frame.data[p + 2] * weight;
+		}
+	}
+	return [r, g, b];
+}
+
+/**
+ * How well the geometry's ring boundaries sit on the real ones.
+ *
+ * Each boundary is read just inside and just outside, and what is measured is the colour *change*
+ * across it, in the direction the printed face changes there. Gold gives way to red, red to blue, blue
+ * to black, black to white, and each of those is a particular move in colour that nothing else on a
+ * boss makes in the same place. An arrow crossing the ring, a torn edge or a patch of shade moves the
+ * colour some other way and simply scores nothing, rather than scoring against.
+ */
+function edges(
+	frame: Frame,
+	face: FaceLocation,
+	boundaries: typeof FULL_EDGES
+): number {
+	let hits = 0;
+	let total = 0;
+
+	/**
+	 * Never narrower than a pixel or so. The band is set as a share of the face so it stays a fraction
+	 * of a ring whatever the size, but on a face across a hall that fraction is less than a pixel, both
+	 * reads land on the same pixel and the change measures nothing at all.
+	 */
+	const band = Math.max(EDGE_BAND, 1.2 / Math.max(face.semiMajor, 1));
+
+	for (const edge of boundaries) {
+		const dx = edge.to[0] - edge.from[0];
+		const dy = edge.to[1] - edge.from[1];
+		const dz = edge.to[2] - edge.from[2];
+		const size = Math.hypot(dx, dy, dz);
+		if (size < 1e-6) continue;
+
+		for (let i = 0; i < ANGLES; i++) {
+			const angle = (i / ANGLES) * Math.PI * 2;
+			const cos = Math.cos(angle);
+			const sin = Math.sin(angle);
+			const inner = toImageCoords(face, cos * (edge.radius - band), sin * (edge.radius - band));
+			const outer = toImageCoords(face, cos * (edge.radius + band), sin * (edge.radius + band));
+			const a = sample(frame, inner.x, inner.y);
+			const b = sample(frame, outer.x, outer.y);
+			if (!a || !b) continue;
+
+			total += 1;
+			// How much of the change across the band is the change this boundary should show.
+			const along = ((b[0] - a[0]) * dx + (b[1] - a[1]) * dy + (b[2] - a[2]) * dz) / size;
+			hits += Math.min(1, Math.max(0, along / size));
+		}
+	}
+
+	return total === 0 ? 0 : hits / total;
+}
+
+/**
+ * How well a geometry explains the face, from both the colours it predicts and the boundaries it puts
+ * them between.
+ *
+ * The colours alone say what is a target face and what is a yellow bag, but they say it over a broad
+ * range of geometries that are all nearly right. The boundaries alone are sharp enough to say exactly
+ * which of those is right, and are blind to whether the thing is a face at all. Neither is enough.
  */
 export function ringAgreement(frame: Frame, face: FaceLocation): number {
-	return Math.max(score(frame, face, FULL_FACE), score(frame, face, THREE_SPOT));
+	const full = score(frame, face, FULL_FACE) + EDGE_WEIGHT_TOTAL * edges(frame, face, FULL_EDGES);
+	const spot = score(frame, face, THREE_SPOT) + EDGE_WEIGHT_TOTAL * edges(frame, face, SPOT_EDGES);
+	return Math.max(full, spot) / (1 + EDGE_WEIGHT_TOTAL);
 }
+
+/** How much the boundaries count against the colours. */
+const EDGE_WEIGHT_TOTAL = 1.0;
 
 /** The coarsest and finest a step gets when following a face already found, in face radii. */
 const FOLLOW_START = 0.012;

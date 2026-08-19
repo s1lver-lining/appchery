@@ -115,6 +115,25 @@ export class Canvas {
 		}
 	}
 
+	/**
+	 * A circle of the face drawn through whatever projection the face carries.
+	 *
+	 * Not an ellipse. A face seen from anywhere but square on is a projection, and the ellipse that
+	 * matches it near the middle does not match it at the edge: drawn that way the gold sits perfectly
+	 * and the outermost ring lands a couple of rings in from where it belongs, which looks like a fit
+	 * that cannot hold its scale and is really just the wrong curve.
+	 */
+	ring(place, radius, colour, thickness = 1, alpha = 1) {
+		let previous = null;
+		const steps = 128;
+		for (let i = 0; i <= steps; i++) {
+			const angle = (i / steps) * Math.PI * 2;
+			const point = place(Math.cos(angle) * radius, Math.sin(angle) * radius);
+			if (previous) this.line(previous.x, previous.y, point.x, point.y, colour, thickness, alpha);
+			previous = point;
+		}
+	}
+
 	circle(cx, cy, radius, colour, thickness = 1, alpha = 1) {
 		this.ellipse(cx, cy, radius, radius, 0, colour, thickness, alpha);
 	}

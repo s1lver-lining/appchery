@@ -200,6 +200,12 @@ function summarise(state) {
 	};
 }
 
+/** A point in face coordinates, put back into the picture through the face's own projection. */
+function project(h, x, y) {
+	const w = h[6] * x + h[7] * y + h[8];
+	return { x: (h[0] * x + h[1] * y + h[2]) / w, y: (h[3] * x + h[4] * y + h[5]) / w };
+}
+
 function paint(frame, state, width) {
 	const canvas = new Canvas(frame.data, frame.width, frame.height);
 	const line = Math.max(1.5, width / 500);
@@ -207,9 +213,9 @@ function paint(frame, state, width) {
 	for (const face of state.faces) {
 		for (const share of [0.2, 0.4, 0.6, 0.8, 1.0]) {
 			// Green once the face is trusted enough to take arrows from, magenta while it is not.
-			canvas.ellipse(
-				face.cx, face.cy,
-				face.semiMajor * share, face.semiMinor * share, face.rotation,
+			canvas.ring(
+				(x, y) => project(face.transform, x, y),
+				share,
 				state.steady ? GREEN : MAGENTA,
 				share === 0.2 ? line * 1.5 : line,
 				0.85
