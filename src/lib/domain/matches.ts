@@ -275,7 +275,7 @@ export function arrowsShot(config: MatchConfig, ends: MatchEnd[]): number {
 	if (!config.forSelf) return 0;
 	const result = tally(config, ends);
 	const shot = result.endsPlayed * config.arrowsPerEnd;
-	const decider = result.ends.some((row) => row.end.shootOff) ? 1 : 0;
+	const decider = result.ends.some((row) => row.end.shootOff) ? shootOffArrows(config) : 0;
 	return shot + decider;
 }
 
@@ -288,23 +288,41 @@ export function matchScore(config: MatchConfig, ends: MatchEnd[]): number {
 	return config.system === 'set' ? result.ourPoints : result.ourTotal;
 }
 
+/** One arrow each: three archers shoot a team shoot-off, two a mixed team, one an individual. */
+export function shootOffArrows(config: MatchConfig): number {
+	if (config.format === 'team') return 3;
+	if (config.format === 'mixedTeam') return 2;
+	return 1;
+}
+
 /** How far from the centre an arrow landed, which is what separates two shoot-off arrows of equal value. */
 export function distanceFromCentre(shot: { x: number | null; y: number | null }): number | null {
 	return shot.x === null || shot.y === null ? null : Math.hypot(shot.x, shot.y);
 }
 
+interface ShootOffArrow {
+	value: number;
+	x: number | null;
+	y: number | null;
+}
+
 /**
- * Who won a shoot-off, read off the arrows themselves. Values first, then the plot: two tens are
- * separated by the closer one, which is exactly what the judge does with a tape measure.
+ * Who won a shoot-off, read off the arrows themselves. Totals first, then the plot: level teams are
+ * separated by whoever put one arrow closest, which is exactly what the judge does with a tape.
  */
-export function shootOffWinner(
-	ours: { value: number; x: number | null; y: number | null } | null,
-	theirs: { value: number; x: number | null; y: number | null } | null
-): Side | null {
-	if (!ours || !theirs) return null;
-	if (ours.value !== theirs.value) return ours.value > theirs.value ? 'us' : 'them';
-	const here = distanceFromCentre(ours);
-	const there = distanceFromCentre(theirs);
+export function shootOffWinner(ours: ShootOffArrow[], theirs: ShootOffArrow[]): Side | null {
+	if (ours.length === 0 || theirs.length === 0) return null;
+	const total = (arrows: ShootOffArrow[]) => arrows.reduce((sum, arrow) => sum + arrow.value, 0);
+	if (total(ours) !== total(theirs)) return total(ours) > total(theirs) ? 'us' : 'them';
+
+	const closest = (arrows: ShootOffArrow[]) => {
+		const distances = arrows
+			.map(distanceFromCentre)
+			.filter((distance): distance is number => distance !== null);
+		return distances.length === 0 ? null : Math.min(...distances);
+	};
+	const here = closest(ours);
+	const there = closest(theirs);
 	if (here === null || there === null || here === there) return null;
 	return here < there ? 'us' : 'them';
 }

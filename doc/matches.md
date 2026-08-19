@@ -18,7 +18,7 @@ rules, read and written through `parseConfig` in `src/lib/domain/matches.ts`:
 | `maxEnds` | Ends shot before a level match goes to a shoot-off. |
 | `setPointsToWin` | Ignored under the cumulative system. |
 | `forSelf` | False while the card is kept for somebody else. |
-| `shootOff` | Whether a level match may be taken to a single arrow. Off makes a draw legal. |
+| `shootOff` | Whether a level match may be taken to a shoot-off. Off makes a draw legal. |
 | `scoreSetId` | The face plotted arrows are drawn on, since no round says which one. |
 | `opponent`, `ourName`, `teammates` | Free text. Nobody is stored as a person anywhere. |
 
@@ -39,7 +39,8 @@ This is why the fast path and the plotted path cannot disagree: the arrows win.
 
 ## What counts
 
-- **Volume.** `arrowsShot` on the activity is `endsPlayed × arrowsPerEnd`, plus one for a shoot-off,
+- **Volume.** `arrowsShot` on the activity is `endsPlayed × arrowsPerEnd`, plus one arrow per archer
+  for a shoot-off, which is three for a team and two for a mixed team,
   and **zero** when `forSelf` is false. The opponent's arrows never count for anybody: they are on
   the card to work out who won.
 - **Score.** `totalScore` holds our set points under the set system and our arrow total under the
@@ -58,9 +59,12 @@ that cannot change the result. Everything is recomputed from the stored ends on 
 what makes an end editable after the match is over: correct end two and the rest of the match, the
 winner, the arrows counted and the badges all follow.
 
+A shoot-off is one arrow per archer, so a team shoots three and a mixed team two. The higher total
+takes it; level totals go to whoever put one arrow closest to the centre.
+
 An equal shoot-off is **not** decided by the app. Two tens are separated by a judge with a tape
-measure, so the card asks who won and records the answer. When both shoot-off arrows are plotted the
-app reads the distance from the centre and answers the question itself.
+measure, so the card asks who won and records the answer. When both sides' shoot-off arrows are
+plotted the app reads the distance from the centre and answers the question itself.
 
 ## The bracket
 

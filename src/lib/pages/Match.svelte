@@ -10,6 +10,7 @@
 		tally,
 		nextEndNo,
 		shootOffWinner,
+		shootOffArrows,
 		MATCH_STAGES,
 		type MatchConfig,
 		type MatchStage,
@@ -217,7 +218,8 @@
 		)
 	);
 
-	const slotsFor = (shootOff: boolean) => (shootOff ? 1 : (config?.arrowsPerEnd ?? 3));
+	const slotsFor = (shootOff: boolean) =>
+		!config ? (shootOff ? 1 : 3) : shootOff ? shootOffArrows(config) : config.arrowsPerEnd;
 
 	/**
 	 * How wide the block of arrows is drawn. Ends split the way they are shot: six as two threes,
@@ -443,8 +445,8 @@
 	async function decideFromPlot() {
 		const row = rows.find((entry) => entry.shootOff);
 		if (!row) return;
-		const arrow = (side: Side) => row.shots.find((shot) => shot.side === side) ?? null;
-		const winner = shootOffWinner(arrow('us'), arrow('them'));
+		const arrows = (side: Side) => row.shots.filter((shot) => shot.side === side);
+		const winner = shootOffWinner(arrows('us'), arrows('them'));
 		if (!winner || row.winner === winner) return;
 		await saveMatchEnd(activity.id, row.endNo, {
 			ours: row.ours,
@@ -459,9 +461,9 @@
 	const shootOffTied = $derived(() => {
 		const row = rows.find((entry) => entry.shootOff);
 		if (!row || row.theirs === null) return false;
-		const ours = row.shots.find((shot) => shot.side === 'us');
-		const theirs = row.shots.find((shot) => shot.side === 'them');
-		if (ours && theirs && shootOffWinner(ours, theirs)) return false;
+		const ours = row.shots.filter((shot) => shot.side === 'us');
+		const theirs = row.shots.filter((shot) => shot.side === 'them');
+		if (shootOffWinner(ours, theirs)) return false;
 		return row.ours === row.theirs;
 	});
 

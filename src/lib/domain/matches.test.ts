@@ -10,6 +10,7 @@ import {
 	wonFromBehind,
 	stageRank,
 	gatherNames,
+	shootOffWinner,
 	type MatchEnd
 } from './matches';
 
@@ -232,5 +233,34 @@ describe('gatherNames', () => {
 	it('says a name once, however many cards it is on', () => {
 		const names = gatherNames([card('Ana', 'Bo'), card('Ana', 'Bo', ['Ana'])]);
 		expect(names.everyone).toEqual(['Bo', 'Ana']);
+	});
+});
+
+describe('a shoot-off of more than one arrow', () => {
+	const level = ends([27, 27], [28, 28], [26, 26], [29, 29]);
+	const plot = (value: number, x: number, y: number) => ({ value, x, y });
+
+	it('counts one arrow per archer, so a team shoot-off is three', () => {
+		// Teams shoot four ends, an individual five, so each needs its own regulation drawn out.
+		const teams = [...level, { endNo: 5, ours: 27, theirs: 26, shootOff: true }];
+		expect(arrowsShot(newMatch('team'), teams)).toBe(4 * 6 + 3);
+		expect(arrowsShot(newMatch('mixedTeam'), teams)).toBe(4 * 4 + 2);
+
+		const solo = [...ends([27, 27], [28, 28], [26, 26], [29, 29], [27, 27]),
+			{ endNo: 6, ours: 10, theirs: 9, shootOff: true }];
+		expect(arrowsShot(newMatch('individual'), solo)).toBe(5 * 3 + 1);
+	});
+
+	it('gives it to the higher total rather than to the first arrow', () => {
+		// Their first arrow beats ours, and their team still loses the shoot-off.
+		const ours = [plot(9, 0, 0.1), plot(10, 0, 0.05), plot(10, 0, 0.05)];
+		const theirs = [plot(10, 0, 0.01), plot(9, 0, 0.2), plot(9, 0, 0.2)];
+		expect(shootOffWinner(ours, theirs)).toBe('us');
+	});
+
+	it('separates level totals on whoever put one arrow closest', () => {
+		const ours = [plot(10, 0, 0.2), plot(9, 0, 0.5)];
+		const theirs = [plot(10, 0, 0.05), plot(9, 0, 0.5)];
+		expect(shootOffWinner(ours, theirs)).toBe('them');
 	});
 });
