@@ -3,11 +3,12 @@
 	import { t } from '$lib/i18n';
 	import { toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
 	import { LiveScanner } from '$lib/vision/live';
+	import { MotionLog, allowMotion } from '$lib/vision/motion';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
 	import { recordCameraVideo, arrowDetector } from '$lib/prefs';
-	import { storeRecording } from '$lib/files';
+	import { storeRecording, storeMotion } from '$lib/files';
 	import { closeOnBack } from './dismiss.svelte';
 	import { overrideStatusBar } from '$lib/theme';
 	import { lockScroll } from './scrollLock';
@@ -92,6 +93,11 @@
 	 */
 	let recorder: MediaRecorder | null = null;
 	let recording = $state(false);
+	/**
+	 * How the phone was held, one sample a frame, saved beside the video. Nothing reads it yet: it is
+	 * captured because a recording made without it can never have it added afterwards.
+	 */
+	const motion = new MotionLog();
 
 	/** Highest first, as a scoresheet reads, so the pills are checked in a predictable order. */
 	const ranked = $derived(
@@ -169,6 +175,9 @@
 		};
 		recorder.onstop = () => save(new Blob(chunks, { type: recorder?.mimeType ?? 'video/webm' }));
 		recorder.start(1000);
+		void allowMotion().then((allowed) => {
+			if (allowed && recording) motion.start();
+		});
 		recording = true;
 	}
 
@@ -176,11 +185,13 @@
 		// Reported straight away: the end keeps the name whether or not the write itself succeeds.
 		onrecorded(videoName);
 		void storeRecording(video, videoName);
+		if (motion.any) void storeMotion(motion.toJSON(), videoName);
 	}
 
 	function stop() {
 		cancelAnimationFrame(raf);
 		scanner.stop();
+		motion.stop();
 		if (recorder && recorder.state !== 'inactive') recorder.stop();
 		recorder = null;
 		recording = false;
@@ -218,6 +229,9 @@
 	function tick(now: number) {
 		raf = requestAnimationFrame(tick);
 		if (!video || video.readyState < 2 || !overlay) return;
+
+		// One sample a frame, so a sample can be paired with the frame it was taken during.
+		if (recording) motion.sample(now);
 
 		const small = reduce();
 		if (!small) return;

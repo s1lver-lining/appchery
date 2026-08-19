@@ -111,6 +111,32 @@ export function recordingsPath(): string {
  * is the wrong shape for this anyway: recordings pile up over a session and get collected afterwards,
  * rather than being sent one at a time.
  */
+/**
+ * Saves how the phone was held, beside the video it belongs to and named after it. Written only when
+ * the device actually had the sensors, so nothing empty is left next to a recording.
+ */
+export async function storeMotion(motion: string, filename: string): Promise<void> {
+	const name = `${filename.replace(/\.[^.]+$/, '')}.motion.json`;
+	if (!Capacitor.isNativePlatform()) {
+		const url = URL.createObjectURL(new Blob([motion], { type: 'application/json' }));
+		const link = document.createElement('a');
+		link.href = url;
+		link.download = name;
+		link.click();
+		setTimeout(() => URL.revokeObjectURL(url), 10000);
+		return;
+	}
+
+	const { Filesystem, Directory, Encoding } = await import('@capacitor/filesystem');
+	await Filesystem.writeFile({
+		path: `${RECORDINGS_FOLDER}/${name}`,
+		data: motion,
+		directory: Directory.Documents,
+		encoding: Encoding.UTF8,
+		recursive: true
+	});
+}
+
 export async function storeRecording(video: Blob, filename: string): Promise<string> {
 	if (!Capacitor.isNativePlatform()) {
 		const url = URL.createObjectURL(video);
