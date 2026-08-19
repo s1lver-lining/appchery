@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { faceFromAnchors, faceFromEllipse, moveAnchor, toImageCoords } from './face';
+import { faceFromAnchors, faceFromEllipse, moveAnchor } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -20,21 +20,24 @@ import type { Frame, FaceLocation } from './types';
  * radius wide, so a fit can be out by nearly half a ring and still land every sample in the right
  * colour, and the error is free to grow with radius: the gold sits perfectly while the blue and the
  * black creep outwards. What actually fixes a circle in place is its edges, so every ring boundary is
- * also checked, by sampling just inside and just outside it and asking for both colours at once.
+ * also read, both for the colours on either side of it and for the colour change across it.
  */
 
 /**
- * Sample radii and the colour a face shows there. Mid ring, never on a boundary.
+ * One printed layout: the colours it shows, where it changes between them, and how.
  *
- * Two layouts, scored separately. A full face runs all ten rings out to the white; a three spot is
+ * Two of them, scored separately. A full face runs all ten rings out to the white; a three spot is
  * printed only down to the 6 ring, so everything past r = 0.5 is backing paper. Scoring a three spot
  * against the full layout dragged the fit inward by about 9%, trying to move the expected white
  * onto the real white, so the fit takes whichever layout agrees better.
  */
 interface Layout {
+	/** Sample radii and the colour a face shows there. Mid ring, never on a boundary. */
 	bands: { radius: number; colours: RingColour[] }[];
 	/** Ring boundaries, by the radius the change happens at and the colour on each side of it. */
 	edges: { radius: number; inner: RingColour[]; outer: RingColour[] }[];
+	/** The same boundaries again, by the move in colour crossing them makes. */
+	steps: { radius: number; from: [number, number, number]; to: [number, number, number] }[];
 }
 
 const FULL_BANDS: { radius: number; colours: RingColour[] }[] = [
@@ -72,6 +75,23 @@ const SPOT_BANDS: { radius: number; colours: RingColour[] }[] = [
  */
 const EDGE_OFFSET = 0.035;
 
+/**
+ * The move in colour each boundary makes, in RGB.
+ *
+ * Gold gives way to red, red to blue, blue to black, black to white, and each of those is a
+ * particular direction that nothing else on a boss makes in the same place.
+ */
+const FULL_STEPS: Layout['steps'] = [
+	{ radius: 0.2, from: [252, 209, 42], to: [232, 69, 60] },
+	{ radius: 0.4, from: [232, 69, 60], to: [58, 160, 216] },
+	{ radius: 0.6, from: [58, 160, 216], to: [35, 40, 44] },
+	{ radius: 0.8, from: [35, 40, 44], to: [244, 241, 234] }
+];
+
+const SPOT_STEPS: Layout['steps'] = FULL_STEPS.slice(0, 2).concat([
+	{ radius: 0.5, from: [58, 160, 216], to: [244, 241, 234] }
+]);
+
 const FULL_FACE: Layout = {
 	bands: FULL_BANDS,
 	edges: [
@@ -79,7 +99,8 @@ const FULL_FACE: Layout = {
 		{ radius: 0.4, inner: ['red'], outer: ['blue'] },
 		{ radius: 0.6, inner: ['blue'], outer: ['dark'] },
 		{ radius: 0.8, inner: ['dark'], outer: ['light'] }
-	]
+	],
+	steps: FULL_STEPS
 };
 
 const THREE_SPOT: Layout = {
@@ -88,10 +109,27 @@ const THREE_SPOT: Layout = {
 		{ radius: 0.2, inner: ['gold'], outer: ['red'] },
 		{ radius: 0.4, inner: ['red'], outer: ['blue'] },
 		{ radius: 0.5, inner: ['blue'], outer: ['light', 'grey'] }
-	]
+	],
+	steps: SPOT_STEPS
 };
 
+const LAYOUTS = [FULL_FACE, THREE_SPOT];
+
 const ANGLES = 24;
+
+/**
+ * How many of the directions to actually read when following a face rather than searching for one.
+ *
+ * Every other one. All of them are needed to decide whether a thing is a target face at all, where a
+ * few arrows and a shadow have to be outvoted. Following asks a much easier question: the face was
+ * accepted a moment ago and the fit is already nearly right, so half the readings point the same way
+ * the other half would, and following is where nearly all the time goes.
+ */
+const FOLLOW_STRIDE = 2;
+
+/** The sampling directions, worked out once. Recomputing them per sample was a tenth of the fit. */
+const COS = Array.from({ length: ANGLES }, (_, i) => Math.cos((i / ANGLES) * Math.PI * 2));
+const SIN = Array.from({ length: ANGLES }, (_, i) => Math.sin((i / ANGLES) * Math.PI * 2));
 
 /**
  * Boundaries count for more than interiors because they are what actually locate the face. Scored
@@ -126,9 +164,8 @@ function inHue(h: number, low: number, high: number): number {
 	return 1 - ramp(away, half, HUE_SOFT);
 }
 
-/** How much a pixel looks like one target colour, from 0 to 1, with no hard decision anywhere. */
-function affinity(r: number, g: number, b: number, colour: RingColour): number {
-	const { h, s, v } = rgbToHsv(r, g, b);
+/** How much a colour, already in HSV, looks like one ring colour, from 0 to 1. */
+function affinity(h: number, s: number, v: number, colour: RingColour): number {
 	const bright = ramp(v, 70, VALUE_SOFT);
 	const colourful = ramp(s, 0.22, SATURATION_SOFT);
 
@@ -150,60 +187,78 @@ function affinity(r: number, g: number, b: number, colour: RingColour): number {
 	}
 }
 
+/**
+ * Colour at a point in the picture, bilinearly, left in `red`/`green`/`blue`.
+ *
+ * Returning a triple would be the obvious shape, but this is called some hundreds of thousands of
+ * times a second and every one of those would be an object the collector has to take back.
+ */
+let red = 0;
+let green = 0;
+let blue = 0;
+
+function sample(frame: Frame, x: number, y: number): boolean {
+	if (!(x >= 0) || !(y >= 0) || x >= frame.width - 1 || y >= frame.height - 1) return false;
+	const x0 = Math.floor(x);
+	const y0 = Math.floor(y);
+	const ax = x - x0;
+	const ay = y - y0;
+	const data = frame.data;
+	const top = (y0 * frame.width + x0) * 4;
+	const bottom = top + frame.width * 4;
+	const w00 = (1 - ax) * (1 - ay);
+	const w10 = ax * (1 - ay);
+	const w01 = (1 - ax) * ay;
+	const w11 = ax * ay;
+	red = data[top] * w00 + data[top + 4] * w10 + data[bottom] * w01 + data[bottom + 4] * w11;
+	green = data[top + 1] * w00 + data[top + 5] * w10 + data[bottom + 1] * w01 + data[bottom + 5] * w11;
+	blue = data[top + 2] * w00 + data[top + 6] * w10 + data[bottom + 2] * w01 + data[bottom + 6] * w11;
+	return true;
+}
+
+/**
+ * Reads a point of the face straight through the projection.
+ *
+ * The same thing `toImageCoords` does, written out because it is the innermost line of the whole
+ * detector and the point it returns would otherwise be allocated and discarded a million times a
+ * frame.
+ */
+function readFace(frame: Frame, h: number[], x: number, y: number): boolean {
+	const w = h[6] * x + h[7] * y + 1;
+	return sample(frame, (h[0] * x + h[1] * y + h[2]) / w, (h[3] * x + h[4] * y + h[5]) / w);
+}
+
 /** The best match among the colours a ring is allowed to show. */
-function best(r: number, g: number, b: number, colours: RingColour[]): number {
+function best(colours: RingColour[]): number {
+	const { h, s, v } = rgbToHsv(red, green, blue);
 	let most = 0;
-	for (const colour of colours) most = Math.max(most, affinity(r, g, b, colour));
+	for (const colour of colours) most = Math.max(most, affinity(h, s, v, colour));
 	return most;
 }
 
-function score(frame: Frame, face: FaceLocation, layout: Layout): number {
+/** How well the colours the geometry predicts are the colours that are there. */
+function colours(frame: Frame, face: FaceLocation, layout: Layout, stride: number): number {
+	const h = face.transform;
 	let hits = 0;
 	let total = 0;
 
-	/**
-	 * Bilinear, because rounding a sample to the nearest pixel quantises the fit exactly the way
-	 * counting colours does: the geometry can slide most of a pixel before any sample reads anything
-	 * different.
-	 */
-	const at = (radius: number, angle: number, colours: RingColour[]): number | null => {
-		const point = toImageCoords(face, Math.cos(angle) * radius, Math.sin(angle) * radius);
-		const { x, y } = point;
-		if (!(x >= 0) || !(y >= 0) || x >= frame.width - 1 || y >= frame.height - 1) return null;
-
-		const x0 = Math.floor(x);
-		const y0 = Math.floor(y);
-		const ax = x - x0;
-		const ay = y - y0;
-		let r = 0;
-		let g = 0;
-		let b = 0;
-		for (let j = 0; j <= 1; j++) {
-			for (let i = 0; i <= 1; i++) {
-				const weight = (i ? ax : 1 - ax) * (j ? ay : 1 - ay);
-				const p = ((y0 + j) * frame.width + (x0 + i)) * 4;
-				r += frame.data[p] * weight;
-				g += frame.data[p + 1] * weight;
-				b += frame.data[p + 2] * weight;
-			}
-		}
-		return best(r, g, b, colours);
-	};
-
-	for (let i = 0; i < ANGLES; i++) {
-		const angle = (i / ANGLES) * Math.PI * 2;
+	for (let i = 0; i < ANGLES; i += stride) {
+		const cos = COS[i];
+		const sin = SIN[i];
 
 		for (const band of layout.bands) {
-			const match = at(band.radius, angle, band.colours);
-			if (match === null) continue;
+			if (!readFace(frame, h, cos * band.radius, sin * band.radius)) continue;
 			total += 1;
-			hits += match;
+			hits += best(band.colours);
 		}
 
 		for (const edge of layout.edges) {
-			const inside = at(edge.radius - EDGE_OFFSET, angle, edge.inner);
-			const outside = at(edge.radius + EDGE_OFFSET, angle, edge.outer);
-			if (inside === null || outside === null) continue;
+			const near = edge.radius - EDGE_OFFSET;
+			const far = edge.radius + EDGE_OFFSET;
+			if (!readFace(frame, h, cos * near, sin * near)) continue;
+			const inside = best(edge.inner);
+			if (!readFace(frame, h, cos * far, sin * far)) continue;
+			const outside = best(edge.outer);
 			total += EDGE_WEIGHT;
 			// Both sides at once: either alone is satisfied by a fit that has slid a whole ring over.
 			hits += EDGE_WEIGHT * inside * outside;
@@ -214,7 +269,7 @@ function score(frame: Frame, face: FaceLocation, layout: Layout): number {
 }
 
 /**
- * The colours a ring boundary shows on either side of it, and how far apart to read them.
+ * How narrow a band to read the colour change across.
  *
  * Narrow on purpose. Asking whether the colour is right on each side of a boundary is a question with
  * a flat answer: the fit can sit a good fraction of a ring out and every sample still lands well
@@ -224,53 +279,16 @@ function score(frame: Frame, face: FaceLocation, layout: Layout): number {
  */
 const EDGE_BAND = 0.012;
 
-const FULL_EDGES: { radius: number; from: [number, number, number]; to: [number, number, number] }[] = [
-	{ radius: 0.2, from: [252, 209, 42], to: [232, 69, 60] },
-	{ radius: 0.4, from: [232, 69, 60], to: [58, 160, 216] },
-	{ radius: 0.6, from: [58, 160, 216], to: [35, 40, 44] },
-	{ radius: 0.8, from: [35, 40, 44], to: [244, 241, 234] }
-];
-
-const SPOT_EDGES = FULL_EDGES.slice(0, 2).concat([
-	{ radius: 0.5, from: [58, 160, 216], to: [244, 241, 234] }
-]);
-
-/** Colour at a point, bilinearly, or null where the picture does not reach. */
-function sample(frame: Frame, x: number, y: number): [number, number, number] | null {
-	if (!(x >= 0) || !(y >= 0) || x >= frame.width - 1 || y >= frame.height - 1) return null;
-	const x0 = Math.floor(x);
-	const y0 = Math.floor(y);
-	const ax = x - x0;
-	const ay = y - y0;
-	let r = 0;
-	let g = 0;
-	let b = 0;
-	for (let j = 0; j <= 1; j++) {
-		for (let i = 0; i <= 1; i++) {
-			const weight = (i ? ax : 1 - ax) * (j ? ay : 1 - ay);
-			const p = ((y0 + j) * frame.width + (x0 + i)) * 4;
-			r += frame.data[p] * weight;
-			g += frame.data[p + 1] * weight;
-			b += frame.data[p + 2] * weight;
-		}
-	}
-	return [r, g, b];
-}
-
 /**
  * How well the geometry's ring boundaries sit on the real ones.
  *
  * Each boundary is read just inside and just outside, and what is measured is the colour *change*
- * across it, in the direction the printed face changes there. Gold gives way to red, red to blue, blue
- * to black, black to white, and each of those is a particular move in colour that nothing else on a
- * boss makes in the same place. An arrow crossing the ring, a torn edge or a patch of shade moves the
- * colour some other way and simply scores nothing, rather than scoring against.
+ * across it, in the direction the printed face changes there. An arrow crossing the ring, a torn edge
+ * or a patch of shade moves the colour some other way and simply scores nothing, rather than scoring
+ * against.
  */
-function edges(
-	frame: Frame,
-	face: FaceLocation,
-	boundaries: typeof FULL_EDGES
-): number {
+function steps(frame: Frame, face: FaceLocation, layout: Layout, stride: number): number {
+	const h = face.transform;
 	let hits = 0;
 	let total = 0;
 
@@ -281,26 +299,27 @@ function edges(
 	 */
 	const band = Math.max(EDGE_BAND, 1.2 / Math.max(face.semiMajor, 1));
 
-	for (const edge of boundaries) {
-		const dx = edge.to[0] - edge.from[0];
-		const dy = edge.to[1] - edge.from[1];
-		const dz = edge.to[2] - edge.from[2];
-		const size = Math.hypot(dx, dy, dz);
+	for (const edge of layout.steps) {
+		const dr = edge.to[0] - edge.from[0];
+		const dg = edge.to[1] - edge.from[1];
+		const db = edge.to[2] - edge.from[2];
+		const size = Math.hypot(dr, dg, db);
 		if (size < 1e-6) continue;
+		const near = edge.radius - band;
+		const far = edge.radius + band;
 
-		for (let i = 0; i < ANGLES; i++) {
-			const angle = (i / ANGLES) * Math.PI * 2;
-			const cos = Math.cos(angle);
-			const sin = Math.sin(angle);
-			const inner = toImageCoords(face, cos * (edge.radius - band), sin * (edge.radius - band));
-			const outer = toImageCoords(face, cos * (edge.radius + band), sin * (edge.radius + band));
-			const a = sample(frame, inner.x, inner.y);
-			const b = sample(frame, outer.x, outer.y);
-			if (!a || !b) continue;
+		for (let i = 0; i < ANGLES; i += stride) {
+			const cos = COS[i];
+			const sin = SIN[i];
+			if (!readFace(frame, h, cos * near, sin * near)) continue;
+			const ir = red;
+			const ig = green;
+			const ib = blue;
+			if (!readFace(frame, h, cos * far, sin * far)) continue;
 
 			total += 1;
 			// How much of the change across the band is the change this boundary should show.
-			const along = ((b[0] - a[0]) * dx + (b[1] - a[1]) * dy + (b[2] - a[2]) * dz) / size;
+			const along = ((red - ir) * dr + (green - ig) * dg + (blue - ib) * db) / size;
 			hits += Math.min(1, Math.max(0, along / size));
 		}
 	}
@@ -308,22 +327,48 @@ function edges(
 	return total === 0 ? 0 : hits / total;
 }
 
+/** How much the boundaries count against the colours. */
+const STEP_WEIGHT = 1.0;
+
 /**
- * How well a geometry explains the face, from both the colours it predicts and the boundaries it puts
- * them between.
+ * How well one printed layout explains the face, from both the colours it predicts and the changes it
+ * puts between them.
  *
  * The colours alone say what is a target face and what is a yellow bag, but they say it over a broad
- * range of geometries that are all nearly right. The boundaries alone are sharp enough to say exactly
+ * range of geometries that are all nearly right. The changes alone are sharp enough to say exactly
  * which of those is right, and are blind to whether the thing is a face at all. Neither is enough.
  */
-export function ringAgreement(frame: Frame, face: FaceLocation): number {
-	const full = score(frame, face, FULL_FACE) + EDGE_WEIGHT_TOTAL * edges(frame, face, FULL_EDGES);
-	const spot = score(frame, face, THREE_SPOT) + EDGE_WEIGHT_TOTAL * edges(frame, face, SPOT_EDGES);
-	return Math.max(full, spot) / (1 + EDGE_WEIGHT_TOTAL);
+function agreement(frame: Frame, face: FaceLocation, layout: Layout, stride = 1): number {
+	return (
+		(colours(frame, face, layout, stride) + STEP_WEIGHT * steps(frame, face, layout, stride)) /
+		(1 + STEP_WEIGHT)
+	);
 }
 
-/** How much the boundaries count against the colours. */
-const EDGE_WEIGHT_TOTAL = 1.0;
+/** How well a geometry explains the face, under whichever of the printed layouts suits it better. */
+export function ringAgreement(frame: Frame, face: FaceLocation): number {
+	return Math.max(agreement(frame, face, FULL_FACE), agreement(frame, face, THREE_SPOT));
+}
+
+/**
+ * Which layout a face is printed in, decided once before the descent rather than at every step.
+ *
+ * A boss does not turn from a full face into a three spot while the fit is settling onto it, so
+ * scoring both layouts at every one of the descent's few hundred steps was doing the same work twice
+ * to reach the same answer. Deciding it up front halves the cost of a detection pass.
+ */
+function pickLayout(frame: Frame, face: FaceLocation): Layout {
+	let chosen = LAYOUTS[0];
+	let most = -Infinity;
+	for (const layout of LAYOUTS) {
+		const scored = agreement(frame, face, layout);
+		if (scored > most) {
+			most = scored;
+			chosen = layout;
+		}
+	}
+	return chosen;
+}
 
 /** The coarsest and finest a step gets when following a face already found, in face radii. */
 const FOLLOW_START = 0.012;
@@ -385,15 +430,24 @@ function shifted(face: FaceLocation, dx: number, dy: number): FaceLocation | nul
 	);
 }
 
-function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06): FaceLocation {
+function walk(
+	frame: Frame,
+	start: FaceLocation,
+	floor: number,
+	from: number,
+	layout: Layout,
+	lateSingles: boolean,
+	stride: number
+): FaceLocation {
 	let bestFace = start;
-	let bestScore = ringAgreement(frame, start);
+	let bestScore = agreement(frame, start, layout, stride);
+	const spot = layout === THREE_SPOT;
 
 	const take = (candidates: (FaceLocation | null)[]) => {
 		let improved = false;
 		for (const candidate of candidates) {
 			if (!candidate || candidate.semiMajor < 4 || candidate.semiMinor < 4) continue;
-			const scored = ringAgreement(frame, candidate);
+			const scored = agreement(frame, candidate, layout, stride);
 			if (scored > bestScore + 1e-4) {
 				bestScore = scored;
 				bestFace = candidate;
@@ -406,8 +460,15 @@ function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06)
 	for (let step = from; step >= floor; step /= 2) {
 		while (take(together(bestFace, step)));
 
-		// Then each point on its own, which is the only way the last of the perspective can be found.
-		let improved = true;
+		/**
+		 * Then each point on its own, which is the only way the last of the perspective can be found.
+		 *
+		 * A search needs this at every step, because a seed can be the wrong shape as well as in the
+		 * wrong place. Following does not: last frame's answer already has the right shape, so the
+		 * coarse single point moves only ever warp the face into something no camera makes, and every
+		 * one of them has to be scored to be rejected. That was most of the cost of following.
+		 */
+		let improved = !lateSingles || step <= floor * 1.5;
 		while (improved) {
 			improved = false;
 			const delta = step * bestFace.semiMajor;
@@ -423,7 +484,31 @@ function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06)
 		}
 	}
 
-	return { ...bestFace, support: bestScore };
+	return { ...bestFace, support: bestScore, spot };
+}
+
+/**
+ * Walks downhill under one layout, and only reconsiders the layout once it has arrived.
+ *
+ * Which layout is showing cannot be read reliably off the seed, where the geometry is still a ring or
+ * two out and a three spot can score as a full face. It can be read off the finished fit. So the
+ * descent commits to the better of the two at the start and, if the fit it reaches disagrees, runs
+ * again from there under the other one. That is the accuracy of scoring both at every step, at close
+ * to the cost of scoring one, because the second walk starts from an answer and almost never happens.
+ */
+function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06, known?: Layout): FaceLocation {
+	const layout = known ?? pickLayout(frame, start);
+	const following = known !== undefined;
+	const stride = following ? FOLLOW_STRIDE : 1;
+	const fitted = walk(frame, start, floor, from, layout, following, stride);
+
+	if (known) return fitted;
+
+	const other = layout === FULL_FACE ? THREE_SPOT : FULL_FACE;
+	if (agreement(frame, fitted, other) <= fitted.support) return fitted;
+
+	const again = walk(frame, fitted, floor, from, other, following, stride);
+	return again.support > fitted.support ? again : fitted;
 }
 
 /**
@@ -442,7 +527,12 @@ function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06)
 export function refineFace(frame: Frame, start: FaceLocation, thorough = true): FaceLocation {
 	// Starting fine as well as ending fine: a frame's worth of camera movement is small, and the coarse
 	// rounds a search needs are pure cost when the answer is already almost right.
-	if (!thorough) return descend(frame, start, FOLLOW_STEP, FOLLOW_START);
+	// Following, the layout is not in question: a boss does not turn from a full face into a three spot
+	// between two frames, so the three scorings it takes to decide are pure cost every frame.
+	if (!thorough) {
+		const known = start.spot === undefined ? undefined : start.spot ? THREE_SPOT : FULL_FACE;
+		return descend(frame, start, FOLLOW_STEP, FOLLOW_START, known);
+	}
 
 	const fitted = descend(frame, start);
 
@@ -457,4 +547,73 @@ export function refineFace(frame: Frame, start: FaceLocation, thorough = true): 
 	if (!round) return fitted;
 	const second = descend(frame, round);
 	return second.support > fitted.support ? second : fitted;
+}
+
+/**
+ * Where each drawn ring would sit if it were free to slide in or out on its own, in face radii.
+ *
+ * For drawing only, and deliberately not part of the fit. The fit is one projection for the whole
+ * face, which is the honest description of a flat face seen by a camera and the only thing arrow
+ * positions can be measured against. But a printed face is not perfectly flat, paper is not perfectly
+ * concentric and a lens is not perfectly rectilinear, so the last fraction of a ring is error the one
+ * projection cannot absorb, and it is the outer rings that show it. Letting each drawn ring find its
+ * own boundary takes that last bit out of the overlay without letting it anywhere near the geometry.
+ */
+export function ringOffsets(frame: Frame, face: FaceLocation, radii: number[]): number[] {
+	const layout = pickLayout(frame, face);
+	const band = Math.max(EDGE_BAND, 1.2 / Math.max(face.semiMajor, 1));
+
+	return radii.map((radius) => {
+		// The printed boundary this drawn ring is meant to be, if there is one. The outermost drawn ring
+		// is the edge of the paper, where there is no colour change to hunt for.
+		const edge = layout.steps.find((step) => Math.abs(step.radius - radius) < 0.06);
+		if (!edge) return 0;
+
+		let found = 0;
+		let most = -Infinity;
+		// A fifth of a ring either way. Wider and a ring can be captured by its neighbour's boundary,
+		// which would put the overlay confidently on the wrong line.
+		for (let offset = -0.02; offset <= 0.0201; offset += 0.002) {
+			const scored = boundary(frame, face, edge, radius + offset, band);
+			if (scored > most) {
+				most = scored;
+				found = offset;
+			}
+		}
+		return found;
+	});
+}
+
+/** How strongly one boundary's colour change shows itself at a given radius. */
+function boundary(
+	frame: Frame,
+	face: FaceLocation,
+	edge: Layout['steps'][number],
+	radius: number,
+	band: number
+): number {
+	const h = face.transform;
+	const dr = edge.to[0] - edge.from[0];
+	const dg = edge.to[1] - edge.from[1];
+	const db = edge.to[2] - edge.from[2];
+	const size = Math.hypot(dr, dg, db);
+	const near = radius - band;
+	const far = radius + band;
+	let hits = 0;
+	let total = 0;
+
+	for (let i = 0; i < ANGLES; i++) {
+		const cos = COS[i];
+		const sin = SIN[i];
+		if (!readFace(frame, h, cos * near, sin * near)) continue;
+		const ir = red;
+		const ig = green;
+		const ib = blue;
+		if (!readFace(frame, h, cos * far, sin * far)) continue;
+		total += 1;
+		const along = ((red - ir) * dr + (green - ig) * dg + (blue - ib) * db) / size;
+		hits += Math.min(1, Math.max(0, along / size));
+	}
+
+	return total === 0 ? 0 : hits / total;
 }

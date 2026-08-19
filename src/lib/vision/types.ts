@@ -44,6 +44,12 @@ export interface FaceLocation {
 	rotation: number;
 	/** Share of sampled pixels that supported the fit, as a rough confidence. */
 	support: number;
+	/**
+	 * Which printed layout it was fitted against: a three spot rather than a full face. Kept so that
+	 * following it between frames does not have to decide again, which it cannot change its mind about
+	 * anyway.
+	 */
+	spot?: boolean;
 }
 
 export interface Blob {
