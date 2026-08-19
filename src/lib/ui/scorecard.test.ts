@@ -99,3 +99,10 @@ describe('the two grounds', () => {
 		expect(card({ options: { ...DEFAULT_CARD_OPTIONS, theme: 'dark' } })).toBe(dark);
 	});
 });
+
+describe('what the archer typed', () => {
+	it('escapes every character that means something in markup', () => {
+		const svg = card({ place: `Ba<r> & "O'Neill"` });
+		expect(svg).toContain('Ba&lt;r&gt; &amp; &quot;O&#39;Neill&quot;');
+	});
+});
