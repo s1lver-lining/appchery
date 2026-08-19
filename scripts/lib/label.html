@@ -167,10 +167,15 @@
 		frame = 0;
 		const v = video();
 		if (!v.work) {
-			v.work = v.chosen.map((_, i) => ({
-				handles: v.labels?.frames?.[i]?.handles ?? seedHandles(v.seeds[i], v.width, v.height),
-				skip: v.labels?.frames?.[i]?.skip ?? false
-			}));
+			v.work = v.chosen.map((_, i) => {
+				const saved = v.labels?.frames?.[i];
+				return {
+					handles: saved?.handles ?? seedHandles(v.seeds[i], v.width, v.height),
+					skip: saved?.skip ?? false,
+					// Older labels predate this flag, and every fit in them was placed by hand.
+					touched: saved ? (saved.touched ?? !saved.skip) : false
+				};
+			});
 			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
 			v.empty = v.labels?.empty ?? false;
 		}
@@ -259,11 +264,13 @@
 		el('noarrows').className = v.empty ? 'on' : '';
 		el('help').textContent =
 			mode === 'fit'
-				? 'Drag the four yellow handles onto the black to white edge. The gold circle landing on the gold is the check that it is right.'
-				: 'Click where each shaft enters the paper. Click an existing marker to remove it. Arrows are shared by every frame of this video.';
+				? 'Drag the four handles onto the black to white edge, in any order round the circle. The gold circle landing on the gold is the check. One good fit per recording is enough.'
+				: 'Click where each shaft enters the paper. Click an existing marker to remove it. One frame with a good fit is enough: the arrows belong to the whole recording.';
+		const fitted = v.work.filter((w) => w.touched && !w.skip).length;
 		el('status').textContent =
-			`${v.arrows.length} arrows, ${v.work.filter((w) => !w.skip).length} of ${v.work.length} frames fitted` +
-			(v.empty ? ', marked as having no arrows' : '');
+			`${v.arrows.length} arrows, ${fitted} of ${v.work.length} faces fitted by hand` +
+			(v.empty ? ', marked as having no arrows' : '') +
+			(fitted === 0 ? '. Fit one face before placing arrows.' : '');
 	}
 
 	function at(event) {
@@ -313,6 +320,7 @@
 		else {
 			const f = project(inverse, p.x, p.y);
 			v.arrows.push({ x: f.x, y: f.y });
+			v.arrowFrame = frame;
 		}
 		draw();
 	};
@@ -325,6 +333,8 @@
 	};
 
 	view.onpointerup = () => {
+		// A fit only becomes ground truth once it has been moved: the seed is a guess, not a label.
+		if (dragging >= 0) state().touched = true;
 		dragging = -1;
 		draw();
 	};
@@ -349,12 +359,15 @@
 		const v = video();
 		state().handles = seedHandles(v.seeds[frame], v.width, v.height);
 		state().skip = false;
+		state().touched = false;
 		draw();
 	};
 	el('copy').onclick = () => {
 		if (frame === 0) return;
-		state().handles = video().work[frame - 1].handles.map((p) => [...p]);
+		const from = video().work[frame - 1];
+		state().handles = from.handles.map((p) => [...p]);
 		state().skip = false;
+		state().touched = from.touched;
 		draw();
 	};
 	el('noface').onclick = () => {
@@ -380,7 +393,10 @@
 		const body = {
 			arrows: v.arrows,
 			empty: v.empty,
-			frames: Object.fromEntries(v.work.map((w, i) => [i, { handles: w.handles, skip: w.skip }]))
+			arrowFrame: v.arrowFrame ?? null,
+			frames: Object.fromEntries(
+				v.work.map((w, i) => [i, { handles: w.handles, skip: w.skip, touched: w.touched }])
+			)
 		};
 		await fetch(`/labels/${encodeURIComponent(v.video)}`, { method: 'POST', body: JSON.stringify(body) });
 		v.labels = body;
