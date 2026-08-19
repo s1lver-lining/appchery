@@ -715,3 +715,18 @@ describe('withinRange', () => {
 		expect(withinRange('year', on('2023-02-27T12:00'), now)).toBe(false);
 	});
 });
+
+describe('bandBy with a given order', () => {
+	it('puts a band the order does not name last', () => {
+		const bands = bandBy(
+			[
+				activity({ id: 'a', totalScore: 100, arrowsShot: 10 }),
+				activity({ id: 'b', totalScore: 100, arrowsShot: 10 }),
+				activity({ id: 'c', totalScore: 100, arrowsShot: 10 })
+			],
+			(a) => ({ a: 'cold', b: 'mild', c: 'tropical' })[a.id] ?? null,
+			['cold', 'cool', 'mild', 'hot']
+		);
+		expect(bands.map((band) => band.key)).toEqual(['cold', 'mild', 'tropical']);
+	});
+});

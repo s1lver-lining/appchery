@@ -630,7 +630,9 @@ export function bandBy<T>(
 		perArrow: band.perArrow / band.arrows
 	}));
 	if (!order) return result.sort((a, b) => b.arrows - a.arrows);
-	return result.sort((a, b) => order.indexOf(a.key) - order.indexOf(b.key));
+	// A key the order does not name goes last rather than ahead of every band it was meant to follow.
+	const rank = (key: string) => (order.indexOf(key) < 0 ? order.length : order.indexOf(key));
+	return result.sort((a, b) => rank(a.key) - rank(b.key));
 }
 
 export const WIND_BAND_KEYS = WIND_BANDS.map((band) => band.key);
