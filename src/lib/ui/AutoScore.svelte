@@ -314,9 +314,13 @@ import { SteadyFace } from '$lib/vision/steady';
 			if (!face) return;
 			const point = toImageCoords(face, arrow.x, arrow.y);
 			context.strokeStyle = index < remaining ? '#3ddc84' : 'rgba(255,255,255,0.4)';
+			// Dashed for one offered to make the end's number up rather than one the sweep agreed on, so
+			// the archer knows which marks to look at twice.
+			context.setLineDash(arrow.unsure ? [width / 120, width / 120] : []);
 			context.beginPath();
 			context.arc(point.x * scale, point.y * scale, width / 60, 0, Math.PI * 2);
 			context.stroke();
+			context.setLineDash([]);
 		});
 	}
 
@@ -446,7 +450,7 @@ import { SteadyFace } from '$lib/vision/steady';
 					{#each ranked as arrow, i (i)}
 						<button
 							class="tabular flex h-10 items-center justify-center rounded-lg text-base font-bold
-								{i < remaining ? '' : 'opacity-40'}"
+								{i < remaining ? '' : 'opacity-40'} {arrow.unsure ? 'border border-dashed border-white/60' : ''}"
 							style={pillStyle(arrow)}
 							aria-label={$t('auto.drop')}
 							onclick={() => drop(arrow)}

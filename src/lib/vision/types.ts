@@ -75,4 +75,10 @@ export interface Impact {
 	held?: number;
 	/** Consecutive frames it has gone unseen, which is what retires one that was never really there. */
 	missed?: number;
+	/**
+	 * Offered without the agreement a confirmed arrow needs, because the end is known to hold more
+	 * arrows than were confirmed and this was the best place left. Shown differently, and there for the
+	 * archer to keep or drop rather than to place by hand.
+	 */
+	unsure?: boolean;
 }

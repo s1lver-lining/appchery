@@ -12,6 +12,17 @@
 #   ./scripts/arrow_detector.sh session.webm --json          # just the numbers, no video written
 #   ./scripts/arrow_detector.sh session.webm --limit 300     # only the first 300 frames
 #   ./scripts/arrow_detector.sh session.webm --pretty        # steady the drawn overlay
+#   ./scripts/arrow_detector.sh session.webm -a 6            # tell it the end holds six arrows
+#
+# -a, --arrows is a hint, not a filter. Told how many arrows are in the paper, the tracker stops
+# confirming past that number, and once it has had a few seconds to look it fills any places it is
+# still short by with the best evidence that fell short of the bar, marked as unsure. That is worth
+# doing because of what it replaces: an arrow the detector missed is one the archer places by hand, so
+# the choice is between a mark that may be wrong and no mark at all, and a wrong one costs a tap.
+#
+# It stays optional because the count is not always known. Brace height tuning shoots ends of no fixed
+# length, and a team may put arrows from two archers into one boss. Without it nothing is capped and
+# nothing is guessed: an end has no number to be short of.
 #
 # --pretty smooths the lines the overlay draws, and nothing else. The fit is measured from the picture
 # afresh every frame, so it lands a fraction of a pixel differently each time, and a line that moves is
@@ -36,7 +47,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-	echo "usage: $(basename "$0") <image|video> [--ml] [-o out] [--json] [--watch] [--pretty] [--scale 2] [--threshold 0.4]" >&2
+	echo "usage: $(basename "$0") <image|video> [--ml] [-o out] [--json] [--watch] [--pretty] [-a 6] [--scale 2] [--threshold 0.4]" >&2
 	exit 2
 fi
 

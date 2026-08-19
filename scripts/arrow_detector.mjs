@@ -15,7 +15,7 @@ import { extname, resolve, join } from 'node:path';
 const args = process.argv.slice(2);
 
 /** Flags that take a value, so the value is never mistaken for the file name. */
-const TAKES_VALUE = new Set(['-o', '--output', '--scale', '--tune', '--threshold', '--limit', '--every', '--arrows']);
+const TAKES_VALUE = new Set(['-o', '--output', '--scale', '--tune', '--threshold', '--limit', '--every', '--arrows', '-a']);
 
 const flags = new Map();
 const loose = [];
@@ -81,7 +81,7 @@ if (VIDEO.has(extname(input).toLowerCase())) {
 		json,
 		limit: Number(flags.get('--limit')) || 0,
 		everyMs: Number(flags.get('--every')) || 0,
-		arrows: Number(flags.get('--arrows')) || 0,
+		arrows: Number(flags.get('--arrows') ?? flags.get('-a')) || 0,
 		pretty: flags.has('--pretty')
 	});
 	process.exit(0);

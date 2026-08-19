@@ -34,11 +34,13 @@ export interface SweepOptions {
 	mergeDistance?: number;
 	/** Passes a candidate may go unproposed before it is forgotten. */
 	patience?: number;
+	/** Passes before an end that is short of arrows starts offering its best guesses. */
+	guessAfter?: number;
 }
 
 export class SweepTracker {
 	private candidates: SweepCandidate[] = [];
-	private confirmed: Impact[] = [];
+	private confirmed: SweepCandidate[] = [];
 	/**
 	 * Arrows the archer has already taken off the sheet. They are still standing in the boss and will
 	 * go on being detected for the rest of the session, so their places are remembered and anything
@@ -52,6 +54,7 @@ export class SweepTracker {
 	private readonly minAgreement: number;
 	private readonly mergeDistance: number;
 	private readonly patience: number;
+	private readonly guessAfter: number;
 
 	constructor(options: SweepOptions = {}) {
 		/**
@@ -69,14 +72,41 @@ export class SweepTracker {
 		this.minAgreement = options.minAgreement ?? 0.3;
 		this.mergeDistance = options.mergeDistance ?? 0.035;
 		this.patience = options.patience ?? 25;
+		this.guessAfter = options.guessAfter ?? 8;
 	}
 
 	setLimit(limit: number) {
 		this.limit = Math.max(0, limit);
 	}
 
+	/**
+	 * What the archer is shown: the arrows that cleared the bar, and, when the end is known to hold more
+	 * than that, the best places left over to make up the number.
+	 *
+	 * A guess is worth offering because of what it replaces. Nothing is not free: an arrow the detector
+	 * missed is one the archer places by hand, so the choice is between a mark that may be wrong and no
+	 * mark at all, and a wrong mark costs one tap to drop. Without a count to work to there is no such
+	 * thing as a missing arrow, so this only ever offers guesses when it has been told how many to find.
+	 */
 	get arrows(): Impact[] {
-		return this.confirmed;
+		return [...this.confirmed, ...this.guesses()];
+	}
+
+	/**
+	 * The best places left, once there has been time to look and the end is known to be short.
+	 *
+	 * Ordered by support, so what is offered is the strongest evidence that fell short rather than
+	 * whatever happened to be lying about. Anything proposed only once is left out: one look at one
+	 * viewpoint is what a shadow gives, and the whole design rests on not believing it.
+	 */
+	private guesses(): Impact[] {
+		const missing = this.limit - this.confirmed.length;
+		if (!Number.isFinite(missing) || missing <= 0 || this.passes < this.guessAfter) return [];
+		return this.candidates
+			.filter((c) => c.votes > 1)
+			.sort((a, b) => b.votes - a.votes)
+			.slice(0, missing)
+			.map((c) => ({ ...c, unsure: true }));
 	}
 
 	/** Candidates with some support behind them, drawn faintly so the archer sees it working. */
@@ -89,8 +119,11 @@ export class SweepTracker {
 		this.passes += 1;
 
 		for (const proposal of proposals) {
-			// Already scored, or already offered and kept: either way not a new arrow.
-			if (this.nearest(this.taken, proposal) || this.nearest(this.confirmed, proposal)) continue;
+			// Already scored: not a new arrow, and not evidence about anything either.
+			if (this.nearest(this.taken, proposal)) continue;
+
+			// Already offered and kept: not a new arrow.
+			if (this.nearest(this.confirmed, proposal)) continue;
 
 			const candidate = this.nearest(this.candidates, proposal) as SweepCandidate | undefined;
 			if (candidate) {
@@ -148,7 +181,8 @@ export class SweepTracker {
 
 	/** Drops one the archer rejected, so it is not offered again. */
 	forget(impact: Impact) {
-		this.confirmed = this.confirmed.filter((i) => i !== impact);
+		this.confirmed = this.confirmed.filter((i) => i.x !== impact.x || i.y !== impact.y);
+		this.candidates = this.candidates.filter((c) => c.x !== impact.x || c.y !== impact.y);
 		this.taken.push(impact);
 	}
 
@@ -157,7 +191,7 @@ export class SweepTracker {
 	 * scored rather than forgotten, which is what stops the next end proposing them all over again.
 	 */
 	accept() {
-		this.taken.push(...this.confirmed);
+		this.taken.push(...this.arrows);
 		this.confirmed = [];
 		this.candidates = [];
 	}
