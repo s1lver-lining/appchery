@@ -27,8 +27,15 @@ const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
 const WORK = join(ROOT, 'test/datasets/labelling');
 const SCALE = 4;
 
-/** Frames offered for labelling and for checking the propagation, spread across the recording. */
-const SAMPLES = 24;
+/** Frames labelled per recording, spread evenly so each is a genuinely different viewpoint. */
+const SAMPLES = 15;
+
+/**
+ * Frames looked at when choosing those. Labelling needs two dozen good frames, not every frame, and
+ * fitting the face is the slow part: at one in eight this is a few seconds a recording rather than a
+ * few minutes. Every frame does get fitted eventually, but in `export`, which nobody waits for.
+ */
+const STRIDE = 8;
 
 const command = process.argv[2] ?? 'prepare';
 const only = argument('--video');
@@ -59,70 +66,58 @@ async function prepare() {
 
 	for (const name of await recordings()) {
 		const file = join(VIDEOS, name);
-		const { width, height, fps } = await probe(file);
-		const track = new FaceTrack();
-		const geometry = [];
+		const { width, height } = await probe(file);
+		const total = await countFrames(file);
+		const step = Math.max(1, Math.floor(total / SAMPLES));
+		const chosen = [];
+		for (let i = 0; i < SAMPLES && i * step < total; i++) chosen.push(i * step);
 
-		/**
-		 * Decoded straight to detection scale. Nothing here needs the full picture: the fit runs on a
-		 * quarter sized frame anyway, and reducing it in a loop over every pixel cost far more than the
-		 * fit it was feeding, as well as pushing sixteen times the bytes through the pipe.
-		 */
-		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
-
-		process.stderr.write(`${name}\n`);
-		const began = Date.now();
-		let index = 0;
-		for await (const frame of decode(file, small.width, small.height, small)) {
-			const face = track.push({
-				width: small.width,
-				height: small.height,
-				data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
-			});
-			const placed = face
-				? {
-						cx: face.cx * SCALE,
-						cy: face.cy * SCALE,
-						semiMajor: face.semiMajor * SCALE,
-						semiMinor: face.semiMinor * SCALE,
-						rotation: face.rotation,
-						support: face.support
-					}
-				: null;
-			if (placed) placed.visible = visibility(placed, width, height);
-			geometry.push(placed);
-			index += 1;
-			if (index % 100 === 0) {
-				process.stderr.write(`\r  ${index} frames (${(index / ((Date.now() - began) / 1000)).toFixed(0)}/s)`);
-			}
-		}
-		process.stderr.write(`\r  ${index} frames, face on ${geometry.filter(Boolean).length}\n`);
-
-		/**
-		 * The frames to show, best fit first but spread over the whole recording: a run of neighbouring
-		 * frames is the same viewpoint, and checking a propagation against one viewpoint checks nothing.
-		 */
-		const chosen = spread(geometry, SAMPLES);
 		await mkdir(join(WORK, name), { recursive: true });
 		await extract(file, chosen, join(WORK, name));
+
+		/**
+		 * The automatic fit, kept only as somewhere for the handles to start. It is often wrong, which
+		 * is the whole reason this tool exists, but it is nearly always closer than a default circle and
+		 * that is several seconds of dragging saved on every frame.
+		 */
+		const seeds = [];
+		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
+		let at = 0;
+		const wanted = new Set(chosen);
+		const track = new FaceTrack();
+		for await (const frame of decode(file, small.width, small.height, small)) {
+			if (wanted.has(at)) {
+				const face = track.push({
+					width: small.width,
+					height: small.height,
+					data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
+				});
+				seeds.push(face ? scaleUp(face, width, height) : null);
+			}
+			at += 1;
+			if (seeds.length === chosen.length) break;
+		}
+
 		await writeFile(
 			join(WORK, name, 'frames.json'),
-			JSON.stringify({ video: name, width, height, fps, frames: index, geometry, chosen }, null, 1)
+			JSON.stringify({ video: name, width, height, frames: total, chosen, seeds }, null, 1)
 		);
+		console.log(`  ${name.slice(-24)}: ${chosen.length} frames of ${total}`);
 	}
 
-	console.log(`\nPrepared ${(await recordings()).length} recordings into ${WORK}`);
+	console.log(`\nPrepared into ${WORK}`);
 	console.log('Now run: node scripts/label-arrows.mjs serve');
 }
 
-/**
- * Share of the face that is actually in the picture.
- *
- * Ring agreement alone is no guide to a frame worth labelling, because samples falling off the edge
- * are skipped rather than counted against the fit: a face with a corner of its gold in shot scores
- * almost perfectly on that corner. Those are the worst frames to click on and they were being offered
- * first.
- */
+async function countFrames(file) {
+	const out = await capture('ffprobe', [
+		'-v', 'error', '-select_streams', 'v:0', '-count_frames',
+		'-show_entries', 'stream=nb_read_frames', '-of', 'csv=p=0', resolve(file)
+	]);
+	return Number(out.trim()) || 0;
+}
+
+/** Share of the face that is actually in the picture, since a fit on a sliver tells you nothing. */
 function visibility(face, width, height) {
 	const cos = Math.cos(face.rotation);
 	const sin = Math.sin(face.rotation);
@@ -142,27 +137,25 @@ function visibility(face, width, height) {
 	return total === 0 ? 0 : inside / total;
 }
 
-/** How good a frame is to label on: fitted well, and with the face actually in the picture. */
+/** How good a frame is: fitted well, and with the face actually in the picture. */
 function quality(face) {
 	return face ? face.support * (face.visible ?? 1) : 0;
 }
 
-/** Picks well fitted frames spread across the recording, so the checks cover different viewpoints. */
-function spread(geometry, count) {
-	const usable = geometry
-		.map((face, index) => ({ index, score: quality(face) }))
-		.filter((f) => f.score > 0);
-	if (usable.length === 0) return [];
-
-	const buckets = Math.min(count, usable.length);
-	const size = usable.length / buckets;
-	const chosen = [];
-	for (let i = 0; i < buckets; i++) {
-		const slice = usable.slice(Math.floor(i * size), Math.max(Math.floor((i + 1) * size), Math.floor(i * size) + 1));
-		// The best frame of each stretch, so a click lands on rings that are actually right.
-		chosen.push(slice.reduce((best, f) => (f.score > best.score ? f : best)).index);
-	}
-	return chosen;
+/** The fit measured on the reduced frame, put back into the video's own pixels. */
+function scaleUp(face, width, height) {
+	const placed = {
+		cx: face.cx * SCALE,
+		cy: face.cy * SCALE,
+		semiMajor: face.semiMajor * SCALE,
+		semiMinor: face.semiMinor * SCALE,
+		rotation: face.rotation,
+		support: face.support,
+		perspectiveX: face.perspectiveX ?? 0,
+		perspectiveY: face.perspectiveY ?? 0
+	};
+	placed.visible = visibility(placed, width, height);
+	return placed;
 }
 
 async function extract(file, indices, into) {
@@ -194,18 +187,13 @@ async function serve() {
 
 			if (url.pathname === '/manifest') {
 				const videos = [];
-				for (const name of await readdir(WORK)) {
+				for (const name of (await readdir(WORK)).sort()) {
 					const meta = join(WORK, name, 'frames.json');
 					if (!existsSync(meta)) continue;
 					const data = JSON.parse(await readFile(meta, 'utf8'));
 					const labels = join(WORK, name, 'labels.json');
 					videos.push({
-						video: name,
-						width: data.width,
-						height: data.height,
-						frames: data.frames,
-						chosen: data.chosen,
-						geometry: data.chosen.map((i) => data.geometry[i]),
+						...data,
 						samples: (await readdir(join(WORK, name))).filter((f) => f.startsWith('sample-')).sort(),
 						labels: existsSync(labels) ? JSON.parse(await readFile(labels, 'utf8')) : null
 					});
@@ -259,6 +247,7 @@ async function page() {
  * the clicked face coordinates. Frames the archer rejected in the check pass are left out.
  */
 async function exportSet() {
+	const { FaceTrack } = await load();
 	const out = join(ROOT, 'test/datasets/prepared-videos');
 	await mkdir(join(out, 'images'), { recursive: true });
 	const labels = [];
@@ -272,24 +261,45 @@ async function exportSet() {
 		const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 		const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
 		const rejected = new Set(label.rejected ?? []);
+		const { width, height } = meta;
 
-		let written = 0;
+		/**
+		 * Every frame is fitted here rather than in `prepare`, which only ever needed enough frames to
+		 * choose two dozen good ones. Nobody waits on this: it runs once, after the clicking is done.
+		 */
+		const track = new FaceTrack();
+		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
+		const kept = [];
 		let index = 0;
-		for await (const frame of decode(join(VIDEOS, name), meta.width, meta.height)) {
-			const face = meta.geometry[index];
-			const at = index;
+		for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {
+			const face = track.push({
+				width: small.width,
+				height: small.height,
+				data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
+			});
+			// A label propagated through a poor fit is a wrong label, so those frames are left out.
+			const placed = face ? scaleUp(face, width, height) : null;
+			const near = nearestRejection(rejected, index, meta.stride ?? 1);
+			if (placed && !near && quality(placed) >= (label.minQuality ?? 0.7)) kept.push({ index, face: placed });
 			index += 1;
-			if (!face || rejected.has(at)) continue;
-			// Only well fitted frames: a label propagated through a poor fit is a wrong label.
-			if (quality(face) < (label.minQuality ?? 0.7)) continue;
+		}
 
-			const file = `${name.replace(/\.[^.]+$/, '')}-${String(at).padStart(6, '0')}.jpg`;
+		// A second pass at full resolution, because the crops the model trains on come from that.
+		const wanted = new Map(kept.map((k) => [k.index, k.face]));
+		let at = 0;
+		let written = 0;
+		for await (const frame of decode(join(VIDEOS, name), width, height)) {
+			const face = wanted.get(at);
+			const here = at;
+			at += 1;
+			if (!face) continue;
+			const file = `${name.replace(/\.[^.]+$/, '')}-${String(here).padStart(6, '0')}.jpg`;
 			await writeCrop(
-				{ width: meta.width, height: meta.height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) },
+				{ width, height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) },
 				face,
 				join(out, 'images', file)
 			);
-			labels.push({ image: file, video: name, frame: at, impacts: label.arrows });
+			labels.push({ image: file, video: name, frame: here, impacts: label.arrows });
 			written += 1;
 		}
 		console.log(`  ${name}: ${written} frames, ${label.arrows.length} arrows each`);
@@ -297,6 +307,14 @@ async function exportSet() {
 
 	await writeFile(join(out, 'labels.json'), JSON.stringify(labels, null, 1));
 	console.log(`\n${labels.length} labelled frames into ${out}`);
+}
+
+/** A rejected sample stands for the stretch of frames around it, since that is what it was chosen from. */
+function nearestRejection(rejected, index, stride) {
+	for (const frame of rejected) {
+		if (Math.abs(frame - index) <= stride) return true;
+	}
+	return false;
 }
 
 /** A rectified square of the face, the space the model works in, written as a jpeg through ffmpeg. */
@@ -343,10 +361,14 @@ async function load() {
 	return module;
 }
 
-async function* decode(file, width, height, scaleTo = null) {
+async function* decode(file, width, height, scaleTo = null, stride = 1) {
+	const filters = [];
+	if (stride > 1) filters.push(`select='not(mod(n\\,${stride}))'`);
+	if (scaleTo) filters.push(`scale=${scaleTo.width}:${scaleTo.height}:flags=area`);
+
 	const child = spawn('ffmpeg', [
 		'-v', 'error', '-i', resolve(file),
-		...(scaleTo ? ['-vf', `scale=${scaleTo.width}:${scaleTo.height}:flags=area`] : []),
+		...(filters.length ? ['-vf', filters.join(',')] : []),
 		'-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-'
 	], { stdio: ['ignore', 'pipe', 'inherit'] });
 

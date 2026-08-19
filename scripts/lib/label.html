@@ -1,224 +1,401 @@
 <!doctype html>
 <meta charset="utf-8" />
-<title>Appchery arrow labelling</title>
+<title>Appchery labelling</title>
 <style>
-	:root { color-scheme: dark; --ink: #e8e8e8; --dim: #9aa0a6; --good: #00e676; --warn: #ffc107; }
+	:root { color-scheme: dark; --ink: #e9e9ea; --dim: #969ba3; --good: #00e676; --warn: #ffc107; }
 	* { box-sizing: border-box; }
-	body { margin: 0; font: 14px system-ui, sans-serif; background: #16181c; color: var(--ink); display: grid; grid-template-columns: 1fr 300px; height: 100vh; }
-	main { overflow: auto; display: grid; place-items: center; padding: 12px; }
-	aside { border-left: 1px solid #2a2e35; padding: 16px; overflow: auto; display: flex; flex-direction: column; gap: 14px; }
-	canvas { max-width: 100%; max-height: calc(100vh - 24px); cursor: crosshair; border-radius: 6px; }
-	h1 { font-size: 15px; margin: 0; }
-	.dim { color: var(--dim); font-size: 12px; line-height: 1.5; }
-	button { font: inherit; padding: 7px 10px; border-radius: 6px; border: 1px solid #3a3f47; background: #22262c; color: var(--ink); cursor: pointer; }
-	button:hover { background: #2b3038; }
-	button.primary { background: #14532d; border-color: #166534; }
-	button.bad { background: #4c1d24; border-color: #7f1d1d; }
-	.row { display: flex; gap: 8px; flex-wrap: wrap; }
-	ol { margin: 0; padding-left: 20px; }
-	li { margin: 3px 0; }
-	.pill { display: inline-block; padding: 1px 7px; border-radius: 99px; background: #22262c; font-size: 12px; }
-	select { width: 100%; padding: 6px; background: #22262c; color: var(--ink); border: 1px solid #3a3f47; border-radius: 6px; }
-	.mode { font-weight: 600; }
+	body { margin: 0; font: 14px system-ui, sans-serif; background: #131519; color: var(--ink); display: grid; grid-template-columns: 1fr 290px; height: 100vh; }
+	main { overflow: hidden; display: grid; place-items: center; }
+	canvas { touch-action: none; cursor: crosshair; }
+	aside { border-left: 1px solid #282c33; padding: 14px; overflow: auto; display: flex; flex-direction: column; gap: 12px; }
+	h1 { font-size: 14px; margin: 0; letter-spacing: .02em; }
+	.dim { color: var(--dim); font-size: 12px; line-height: 1.5; margin: 0; }
+	button { font: inherit; padding: 7px 9px; border-radius: 6px; border: 1px solid #383d45; background: #1e2228; color: var(--ink); cursor: pointer; }
+	button:hover { background: #262b32; }
+	button.on { background: #14532d; border-color: #1d7a41; }
+	button.primary { background: #14532d; border-color: #1d7a41; }
+	.row { display: flex; gap: 6px; }
+	.row > * { flex: 1; }
+	select { width: 100%; padding: 6px; background: #1e2228; color: var(--ink); border: 1px solid #383d45; border-radius: 6px; }
+	.count { font-variant-numeric: tabular-nums; }
+	kbd { background: #1e2228; border: 1px solid #383d45; border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 11px; }
 </style>
 
 <main><canvas id="view"></canvas></main>
 <aside>
-	<h1>Arrow labelling</h1>
+	<h1>Appchery labelling</h1>
 	<select id="pick"></select>
-	<div class="mode" id="mode"></div>
+
+	<div class="row">
+		<button id="fitMode">Fit face</button>
+		<button id="arrowMode">Arrows</button>
+	</div>
 	<p class="dim" id="help"></p>
+
 	<div class="row">
-		<button id="undo">Undo click</button>
-		<button id="clear">Clear all</button>
+		<button id="prev">&larr;</button>
+		<span class="count" id="where" style="text-align:center;align-self:center"></span>
+		<button id="next">&rarr;</button>
 	</div>
+
 	<div class="row">
-		<button id="prev">&larr; Frame</button>
-		<button id="next">Frame &rarr;</button>
+		<button id="reset">Auto fit</button>
+		<button id="copy">Copy last</button>
 	</div>
-	<div class="row">
-		<button id="keep" class="primary">Frame is good</button>
-		<button id="reject" class="bad">Fit is wrong</button>
-	</div>
-	<div>
-		<div class="dim">Arrows on the face</div>
-		<ol id="list"></ol>
-	</div>
-	<div class="row"><button id="save" class="primary">Save this video</button></div>
+	<div class="row"><button id="noface">No face here</button></div>
+	<div class="row"><button id="noarrows">This video has no arrows</button></div>
+	<div class="row"><button id="undo">Undo arrow</button><button id="clear">Clear arrows</button></div>
+
+	<div class="row"><button id="save" class="primary">Save video</button></div>
 	<p class="dim" id="status"></p>
+	<p class="dim">
+		<kbd>&larr;</kbd><kbd>&rarr;</kbd> frame &middot; <kbd>F</kbd> fit &middot; <kbd>A</kbd> arrows &middot;
+		<kbd>S</kbd> save
+	</p>
 </aside>
 
 <script type="module">
 	const view = document.getElementById('view');
 	const context = view.getContext('2d');
-	let videos = [];
-	let current = 0;
-	let sample = 0;
-	let arrows = [];
-	let rejected = new Set();
-
 	const el = (id) => document.getElementById(id);
 
-	videos = await (await fetch('/manifest')).json();
-	if (videos.length === 0) {
-		el('status').textContent = 'Nothing prepared. Run: node scripts/label-arrows.mjs prepare';
-	}
+	/** Handles sit on the black to white boundary: ten equal rings, so that edge is at 0.8. */
+	const ANCHOR = 0.8;
+	/** Where the four handles live on the face, in face coordinates. */
+	const ANCHORS = [
+		[ANCHOR, 0],
+		[0, ANCHOR],
+		[-ANCHOR, 0],
+		[0, -ANCHOR]
+	];
+	const NAMES = ['right', 'bottom', 'left', 'top'];
+
+	let videos = await (await fetch('/manifest')).json();
+	let current = 0;
+	let frame = 0;
+	let mode = 'fit';
+	let dragging = -1;
+	let image = new Image();
+	/** Room around the picture, so a handle can be dragged off a face that runs past the edge. */
+	let pad = 0;
+	let zoom = 1;
 
 	el('pick').innerHTML = videos
-		.map((v, i) => `<option value="${i}">${v.video.slice(-28)}${v.labels ? ' (labelled)' : ''}</option>`)
+		.map((v, i) => `<option value="${i}">${v.video.slice(-26)}${v.labels ? ' ✓' : ''}</option>`)
 		.join('');
 	el('pick').onchange = () => load(Number(el('pick').value));
 
-	function video() {
-		return videos[current];
-	}
-
-	/** The best of the offered frames to click on: fitted well, and with the face actually in shot. */
-	function best(v) {
-		const scores = v.geometry.map((f) => (f ? f.support * (f.visible ?? 1) : 0));
-		return scores.indexOf(Math.max(...scores));
-	}
+	const video = () => videos[current];
+	const state = () => video().work[frame];
 
 	/**
-	 * The face fit for the frame on screen. Everything is stored in face coordinates, so this is what
-	 * turns a click into a label and a label back into a place on any other frame.
+	 * A homography from the four handles. Four point correspondences give exactly the eight numbers a
+	 * projection needs, which is what lets a leaning boss be described properly rather than squashed
+	 * into an ellipse that cannot express it.
 	 */
-	function face() {
-		return video().geometry[sample];
+	function homography(points) {
+		const rows = [];
+		for (let i = 0; i < 4; i++) {
+			const [u, v] = ANCHORS[i];
+			const [x, y] = points[i];
+			rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
+			rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
+		}
+		const h = solve(rows);
+		return h && [
+			[h[0], h[1], h[2]],
+			[h[3], h[4], h[5]],
+			[h[6], h[7], 1]
+		];
 	}
 
-	function toFace(px, py) {
-		const f = face();
-		const dx = px - f.cx;
-		const dy = py - f.cy;
-		const cos = Math.cos(-f.rotation);
-		const sin = Math.sin(-f.rotation);
-		return { x: (dx * cos - dy * sin) / f.semiMajor, y: (dx * sin + dy * cos) / f.semiMinor };
+	/** Gaussian elimination with partial pivoting on the eight by eight the four handles produce. */
+	function solve(rows) {
+		const n = 8;
+		for (let col = 0; col < n; col++) {
+			let pivot = col;
+			for (let r = col + 1; r < n; r++) {
+				if (Math.abs(rows[r][col]) > Math.abs(rows[pivot][col])) pivot = r;
+			}
+			if (Math.abs(rows[pivot][col]) < 1e-12) return null;
+			[rows[col], rows[pivot]] = [rows[pivot], rows[col]];
+			for (let r = 0; r < n; r++) {
+				if (r === col) continue;
+				const factor = rows[r][col] / rows[col][col];
+				for (let c = col; c <= n; c++) rows[r][c] -= factor * rows[col][c];
+			}
+		}
+		return rows.map((row, i) => row[n] / row[i]);
 	}
 
-	function toImage(x, y) {
-		const f = face();
-		const px = x * f.semiMajor;
-		const py = y * f.semiMinor;
-		const cos = Math.cos(f.rotation);
-		const sin = Math.sin(f.rotation);
-		return { x: f.cx + px * cos - py * sin, y: f.cy + px * sin + py * cos };
+	function project(h, x, y) {
+		const w = h[2][0] * x + h[2][1] * y + h[2][2];
+		return { x: (h[0][0] * x + h[0][1] * y + h[0][2]) / w, y: (h[1][0] * x + h[1][1] * y + h[1][2]) / w };
+	}
+
+	function invert(h) {
+		const [[a, b, c], [d, e, f], [g, i, j]] = h;
+		const A = e * j - f * i, B = f * g - d * j, C = d * i - e * g;
+		const det = a * A + b * B + c * C;
+		if (Math.abs(det) < 1e-12) return null;
+		return [
+			[A / det, (c * i - b * j) / det, (b * f - c * e) / det],
+			[B / det, (a * j - c * g) / det, (c * d - a * f) / det],
+			[C / det, (b * g - a * i) / det, (a * e - b * d) / det]
+		];
+	}
+
+	/** The handles the automatic fit implies, which is only ever a place to start dragging from. */
+	function seedHandles(seed, width, height) {
+		if (!seed) {
+			const r = Math.min(width, height) * 0.35;
+			return ANCHORS.map(([u, v]) => [width / 2 + (u / ANCHOR) * r, height / 2 + (v / ANCHOR) * r]);
+		}
+		const cos = Math.cos(seed.rotation);
+		const sin = Math.sin(seed.rotation);
+		return ANCHORS.map(([u, v]) => {
+			const px = u * seed.semiMajor;
+			const py = v * seed.semiMinor;
+			const depth = 1 + (seed.perspectiveX ?? 0) * u + (seed.perspectiveY ?? 0) * v;
+			const k = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
+			return [seed.cx + (px * cos - py * sin) * k, seed.cy + (px * sin + py * cos) * k];
+		});
 	}
 
 	function load(index) {
 		current = index;
-		/**
-		 * Opens on the best fitted frame of the recording, wherever it falls. A click is stored in face
-		 * coordinates, so it is only as good as the rings it was placed against: labelling on a mediocre
-		 * fit puts every propagated copy of that label in the wrong place.
-		 */
-		sample = best(videos[index]);
-		arrows = video().labels?.arrows ? [...video().labels.arrows] : [];
-		rejected = new Set(video().labels?.rejected ?? []);
+		frame = 0;
+		const v = video();
+		if (!v.work) {
+			v.work = v.chosen.map((_, i) => ({
+				handles: v.labels?.frames?.[i]?.handles ?? seedHandles(v.seeds[i], v.width, v.height),
+				skip: v.labels?.frames?.[i]?.skip ?? false
+			}));
+			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
+			v.empty = v.labels?.empty ?? false;
+		}
 		el('pick').value = String(index);
+		show();
+	}
+
+	async function show() {
+		const v = video();
+		image = new Image();
+		image.src = `/image/${encodeURIComponent(v.video)}/${v.samples[frame]}`;
+		await image.decode();
+		pad = Math.round(Math.max(image.width, image.height) * 0.22);
+		// Fitted on both axes separately, or a portrait recording leaves half the window empty.
+		zoom = Math.min(
+			(window.innerWidth - 310) / (image.width + pad * 2),
+			(window.innerHeight - 16) / (image.height + pad * 2)
+		);
+		view.width = (image.width + pad * 2) * zoom;
+		view.height = (image.height + pad * 2) * zoom;
 		draw();
 	}
 
-	async function draw() {
+	function draw() {
 		const v = video();
-		if (!v || v.samples.length === 0) return;
-		// The frame the arrows were placed on, which is the one to keep offering the click help for.
-		const clicking = arrows.length === 0 || sample === best(v);
-		const image = new Image();
-		image.src = `/image/${encodeURIComponent(v.video)}/${v.samples[sample]}`;
-		await image.decode();
-
-		view.width = image.width;
-		view.height = image.height;
+		context.setTransform(1, 0, 0, 1, 0, 0);
+		context.fillStyle = '#0b0c0e';
+		context.fillRect(0, 0, view.width, view.height);
+		context.setTransform(zoom, 0, 0, zoom, pad * zoom, pad * zoom);
 		context.drawImage(image, 0, 0);
 
-		const f = face();
-		const line = Math.max(2, image.width / 400);
-		if (f) {
-			for (const share of [0.2, 0.4, 0.6, 0.8, 1]) {
+		const s = state();
+		const line = Math.max(1.5, image.width / 500) ;
+		const h = s.skip ? null : homography(s.handles);
+
+		if (h) {
+			// Every ring, so the fit is judged against the printed face rather than against one circle.
+			for (const r of [0.2, 0.4, 0.6, 0.8, 1.0]) {
 				context.beginPath();
-				context.ellipse(f.cx, f.cy, f.semiMajor * share, f.semiMinor * share, f.rotation, 0, Math.PI * 2);
-				context.lineWidth = share === 0.2 ? line * 1.5 : line;
-				context.strokeStyle = share === 0.2 ? 'rgba(247,224,60,0.95)' : 'rgba(255,255,255,0.7)';
+				for (let i = 0; i <= 96; i++) {
+					const a = (i / 96) * Math.PI * 2;
+					const p = project(h, Math.cos(a) * r, Math.sin(a) * r);
+					i === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y);
+				}
+				context.lineWidth = r === 0.8 ? line * 2 : line;
+				context.strokeStyle = r === 0.2 ? 'rgba(247,224,60,0.95)' : r === 0.8 ? 'rgba(0,230,118,0.9)' : 'rgba(255,255,255,0.65)';
 				context.stroke();
 			}
 
-			arrows.forEach((arrow, i) => {
-				const point = toImage(arrow.x, arrow.y);
+			const centre = project(h, 0, 0);
+			context.fillStyle = '#ff2079';
+			context.beginPath();
+			context.arc(centre.x, centre.y, line * 2, 0, Math.PI * 2);
+			context.fill();
+
+			// The arrows, projected through this frame's own fit: they check the fit as much as label it.
+			v.arrows.forEach((arrow, i) => {
+				const p = project(h, arrow.x, arrow.y);
 				context.beginPath();
-				context.arc(point.x, point.y, line * 5, 0, Math.PI * 2);
+				context.arc(p.x, p.y, line * 5, 0, Math.PI * 2);
 				context.strokeStyle = '#00e676';
 				context.lineWidth = line * 1.5;
 				context.stroke();
 				context.fillStyle = '#00e676';
-				context.font = `bold ${Math.round(image.width / 26)}px system-ui`;
-				context.fillText(String(i + 1), point.x + line * 6, point.y - line * 6);
+				context.font = `bold ${Math.round(image.width / 30)}px system-ui`;
+				context.fillText(String(i + 1), p.x + line * 6, p.y - line * 6);
 			});
+
+			if (mode === 'fit') {
+				s.handles.forEach((p, i) => {
+					context.beginPath();
+					context.arc(p[0], p[1], line * 6, 0, Math.PI * 2);
+					context.fillStyle = dragging === i ? '#ffc107' : 'rgba(255,193,7,0.55)';
+					context.fill();
+					context.strokeStyle = '#000';
+					context.lineWidth = line;
+					context.stroke();
+				});
+			}
 		}
 
-		const frameNumber = v.chosen[sample];
-		el('mode').textContent = clicking ? 'Click every arrow' : `Check frame ${sample + 1} of ${v.samples.length}`;
+		el('where').textContent = `${frame + 1} / ${v.samples.length}`;
+		el('fitMode').className = mode === 'fit' ? 'on' : '';
+		el('arrowMode').className = mode === 'arrows' ? 'on' : '';
+		el('noface').className = s.skip ? 'on' : '';
+		el('noarrows').className = v.empty ? 'on' : '';
 		el('help').textContent =
-			clicking
-				? 'Click the point where each shaft enters the paper. The label is stored on the face, so it carries to every frame of this recording.'
-				: 'Same arrows projected onto a different viewpoint. If the rings or the markers sit wrong, mark the fit wrong so this frame is left out.';
-		el('list').innerHTML = arrows
-			.map((a, i) => `<li>${i + 1}: <span class="pill">${a.x.toFixed(3)}, ${a.y.toFixed(3)}</span></li>`)
-			.join('');
+			mode === 'fit'
+				? 'Drag the four yellow handles onto the black to white edge. The gold circle landing on the gold is the check that it is right.'
+				: 'Click where each shaft enters the paper. Click an existing marker to remove it. Arrows are shared by every frame of this video.';
 		el('status').textContent =
-			`${v.frames} frames, fit ${(f?.support ?? 0).toFixed(2)}, in shot ${((f?.visible ?? 0) * 100).toFixed(0)}%, ` +
-			`${rejected.size} frames rejected` + (rejected.has(frameNumber) ? ' (this one)' : '');
+			`${v.arrows.length} arrows, ${v.work.filter((w) => !w.skip).length} of ${v.work.length} frames fitted` +
+			(v.empty ? ', marked as having no arrows' : '');
 	}
 
-	view.onclick = (event) => {
-		if (!face()) return;
+	function at(event) {
 		const box = view.getBoundingClientRect();
-		const px = ((event.clientX - box.left) / box.width) * view.width;
-		const py = ((event.clientY - box.top) / box.height) * view.height;
-		arrows.push(toFace(px, py));
+		return {
+			x: ((event.clientX - box.left) / box.width) * view.width / zoom - pad,
+			y: ((event.clientY - box.top) / box.height) * view.height / zoom - pad
+		};
+	}
+
+	view.onpointerdown = (event) => {
+		const p = at(event);
+		const s = state();
+		if (s.skip) return;
+
+		if (mode === 'fit') {
+			const grab = Math.max(12, image.width / 45);
+			let best = -1;
+			let near = grab;
+			s.handles.forEach((handle, i) => {
+				const d = Math.hypot(handle[0] - p.x, handle[1] - p.y);
+				if (d < near) {
+					near = d;
+					best = i;
+				}
+			});
+			if (best >= 0) {
+				dragging = best;
+				view.setPointerCapture(event.pointerId);
+				draw();
+			}
+			return;
+		}
+
+		const v = video();
+		const h = homography(s.handles);
+		if (!h) return;
+		const inverse = invert(h);
+		if (!inverse) return;
+
+		// Clicking a marker removes it, which is quicker than an undo that only pops the last one.
+		const hit = v.arrows.findIndex((arrow) => {
+			const q = project(h, arrow.x, arrow.y);
+			return Math.hypot(q.x - p.x, q.y - p.y) < Math.max(10, image.width / 50);
+		});
+		if (hit >= 0) v.arrows.splice(hit, 1);
+		else {
+			const f = project(inverse, p.x, p.y);
+			v.arrows.push({ x: f.x, y: f.y });
+		}
 		draw();
 	};
 
-	el('undo').onclick = () => {
-		arrows.pop();
+	view.onpointermove = (event) => {
+		if (dragging < 0) return;
+		const p = at(event);
+		state().handles[dragging] = [p.x, p.y];
 		draw();
 	};
-	el('clear').onclick = () => {
-		arrows = [];
+
+	view.onpointerup = () => {
+		dragging = -1;
+		draw();
+	};
+
+	el('fitMode').onclick = () => {
+		mode = 'fit';
+		draw();
+	};
+	el('arrowMode').onclick = () => {
+		mode = 'arrows';
 		draw();
 	};
 	el('prev').onclick = () => {
-		sample = Math.max(0, sample - 1);
-		draw();
+		frame = Math.max(0, frame - 1);
+		show();
 	};
 	el('next').onclick = () => {
-		sample = Math.min(video().samples.length - 1, sample + 1);
+		frame = Math.min(video().samples.length - 1, frame + 1);
+		show();
+	};
+	el('reset').onclick = () => {
+		const v = video();
+		state().handles = seedHandles(v.seeds[frame], v.width, v.height);
+		state().skip = false;
 		draw();
 	};
-	el('keep').onclick = () => {
-		rejected.delete(video().chosen[sample]);
-		el('next').onclick();
+	el('copy').onclick = () => {
+		if (frame === 0) return;
+		state().handles = video().work[frame - 1].handles.map((p) => [...p]);
+		state().skip = false;
+		draw();
 	};
-	el('reject').onclick = () => {
-		rejected.add(video().chosen[sample]);
-		el('next').onclick();
+	el('noface').onclick = () => {
+		state().skip = !state().skip;
+		draw();
+	};
+	el('noarrows').onclick = () => {
+		video().empty = !video().empty;
+		if (video().empty) video().arrows = [];
+		draw();
+	};
+	el('undo').onclick = () => {
+		video().arrows.pop();
+		draw();
+	};
+	el('clear').onclick = () => {
+		video().arrows = [];
+		draw();
 	};
 
 	el('save').onclick = async () => {
 		const v = video();
-		await fetch(`/labels/${encodeURIComponent(v.video)}`, {
-			method: 'POST',
-			body: JSON.stringify({ arrows, rejected: [...rejected] })
-		});
-		v.labels = { arrows, rejected: [...rejected] };
-		el('status').textContent = `Saved ${arrows.length} arrows.`;
+		const body = {
+			arrows: v.arrows,
+			empty: v.empty,
+			frames: Object.fromEntries(v.work.map((w, i) => [i, { handles: w.handles, skip: w.skip }]))
+		};
+		await fetch(`/labels/${encodeURIComponent(v.video)}`, { method: 'POST', body: JSON.stringify(body) });
+		v.labels = body;
+		el('status').textContent = `Saved ${v.arrows.length} arrows and ${v.work.filter((w) => !w.skip).length} fits.`;
 	};
 
 	window.onkeydown = (event) => {
+		if (event.target.tagName === 'SELECT') return;
 		if (event.key === 'ArrowRight') el('next').onclick();
 		if (event.key === 'ArrowLeft') el('prev').onclick();
-		if (event.key === 'z' && (event.ctrlKey || event.metaKey)) el('undo').onclick();
+		if (event.key.toLowerCase() === 'f') el('fitMode').onclick();
+		if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
+		if (event.key.toLowerCase() === 's') el('save').onclick();
 	};
+	window.onresize = () => show();
 
 	if (videos.length > 0) load(0);
 </script>
