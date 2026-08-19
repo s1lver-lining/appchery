@@ -53,13 +53,18 @@ where a line is. `steady.ts` damps that in the drawing alone, by how fast the fi
 travelling, so a sweep is followed outright and a held phone draws a held overlay. Nothing measured
 or reported goes through it.
 
-The arrows are not solved, and the two rows above are the reason to be careful about which number gets
-quoted. Told how many arrows to expect, the tracker stops at that many and about three of a six arrow
-end come back with a couple of wrong marks beside them. Not told, it goes on confirming everything
-that clears the bar, and there are five or six wrong marks an end. The proposer is producing that much
-junk in both cases; the count merely hides it. Measuring only the first case is what let the false
-positive rate go unnoticed while it was being reported as improving, which is why the harness now
-measures both and `--uncounted` exists. The archer confirms every one, so a wrong proposal costs a tap rather than a
+The arrows are not solved. About three of a six arrow end come back, with a couple of wrong marks
+beside them.
+
+Both rows are measured because only measuring the first one hid a fault for several rounds of work.
+Told how many arrows to expect, the tracker stops at that many, and a cap discards whatever was ranked
+below the last real arrow before anybody counts it — so the false positive rate looked like it was
+improving while it was not. `--uncounted` measures the other case, and the two are quoted together for
+that reason.
+
+A wrong mark and a missing one are not equally bad, and the bar is set accordingly. A wrong one has to
+be noticed and dropped, and one noticed late is a wrong score. A missing one is placed by hand, which
+is what the archer would have done for all six anyway. The archer confirms every one, so a wrong proposal costs a tap rather than a
 wrong score, and the ones that are right are placed to within a fifth of a ring. It is a help, not a
 scorer.
 
@@ -68,8 +73,8 @@ confirmed by any amount of agreement, and about one in seven is never proposed a
 detector failing to see a shaft, not the tracker discarding one.
 
 Three things are known to be wrong with it and are not fixed. Nothing is confirmed for the first
-second or so, because four passes at three a second is what agreement across viewpoints costs and
-there is no shortcut that is not just believing one look. A false positive, once confirmed, is never
+second and a half, because five passes at three a second is what agreement across five genuinely
+different views costs and there is no shortcut that is not just believing one look. A false positive, once confirmed, is never
 reconsidered — taking arrows back on later evidence was built and measured and cost a fifth of the real
 arrows to remove a third of the false ones, because a real arrow genuinely stops being proposed once
 the archer has swung past it, so it is not in the code. And an arrow the sweep never agreed on is only
