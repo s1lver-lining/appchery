@@ -23,6 +23,8 @@ export interface ScanResult {
 	pending: Impact[];
 	/** Proposals this frame produced, before the tracker judged them. Diagnostic, not used for scoring. */
 	detections: number;
+	/** Those same proposals, so a harness can tell what was never seen from what was seen and dropped. */
+	proposed: { x: number; y: number; face: number }[];
 }
 
 export interface ScannerOptions {
@@ -182,7 +184,8 @@ export class Scanner {
 				found: [],
 				arrows: this.tracker.arrows,
 				pending: this.tracker.pending,
-				detections: 0
+				detections: 0,
+				proposed: []
 			};
 		}
 
@@ -231,7 +234,8 @@ export class Scanner {
 			found,
 			arrows: this.tracker.arrows,
 			pending: this.tracker.pending,
-			detections: detections.length
+			detections: detections.length,
+			proposed: detections
 		};
 	}
 

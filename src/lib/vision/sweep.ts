@@ -54,8 +54,13 @@ export class SweepTracker {
 	private readonly patience: number;
 
 	constructor(options: SweepOptions = {}) {
-		this.minVotes = options.minVotes ?? 4;
-		this.minAgreement = options.minAgreement ?? 0.3;
+		/**
+		 * Chosen against 84 impacts placed by hand across fourteen recordings. Asking for more agreement
+		 * than this throws away arrows the detector did propose; asking for less lets noise take the
+		 * end's last free slot, which costs a real arrow rather than merely adding a wrong one.
+		 */
+		this.minVotes = options.minVotes ?? 3;
+		this.minAgreement = options.minAgreement ?? 0.2;
 		this.mergeDistance = options.mergeDistance ?? 0.035;
 		this.patience = options.patience ?? 25;
 	}
