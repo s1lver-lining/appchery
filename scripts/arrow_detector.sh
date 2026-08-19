@@ -11,7 +11,14 @@
 #   ./scripts/arrow_detector.sh session.webm --watch         # and plays it
 #   ./scripts/arrow_detector.sh session.webm --json          # just the numbers, no video written
 #   ./scripts/arrow_detector.sh session.webm --limit 300     # only the first 300 frames
-#   ./scripts/arrow_detector.sh session.webm --pretty        # let each drawn ring find its own edge
+#   ./scripts/arrow_detector.sh session.webm --pretty        # steady the drawn overlay
+#
+# --pretty smooths the lines the overlay draws, and nothing else. The fit is measured from the picture
+# afresh every frame, so it lands a fraction of a pixel differently each time, and a line that moves is
+# far easier to see than a line that is slightly misplaced. What is smoothed is how far each frame's
+# fit misses a prediction of it, so a sweep is followed with no lag while the wobble on top of it is
+# averaged out, and the drawn lines are never let further than a tenth of a ring from the fit. Nothing
+# measured, scored or reported goes through it, so the numbers are the same either way.
 #
 # Any format the browser can decode works: png, jpg, webp, gif, bmp, avif. A video is anything ffmpeg
 # decodes, and is replayed through the live scanner rather than analysed frame by frame: the
@@ -29,7 +36,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-	echo "usage: $(basename "$0") <image|video> [--ml] [-o out] [--json] [--watch] [--scale 2] [--threshold 0.4]" >&2
+	echo "usage: $(basename "$0") <image|video> [--ml] [-o out] [--json] [--watch] [--pretty] [--scale 2] [--threshold 0.4]" >&2
 	exit 2
 fi
 

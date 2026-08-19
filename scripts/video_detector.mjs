@@ -197,7 +197,8 @@ function summarise(state) {
 		arrows: state.arrows.length,
 		pending: state.pending.length,
 		cost: state.cost,
-		detected: state.detected
+		detected: state.detected,
+		lag: state.lag
 	};
 }
 
@@ -293,6 +294,10 @@ function report(input, states, fps, learned, json, seconds, count, dropped = 0, 
 	trembles.sort((x, y) => x - y);
 	const tremble = trembles.length ? trembles[Math.floor(trembles.length / 2)] : 0;
 
+	// What the steadying costs: how far behind the fit the drawn lines are running.
+	const lags = states.map((s) => s.lag ?? 0).sort((a, b) => a - b);
+	const lag = (share) => (lags.length ? lags[Math.floor((lags.length - 1) * share)] : 0);
+
 	const summary = {
 		video: basename(input),
 		detector: learned ? 'learned' : 'classical',
@@ -309,6 +314,9 @@ function report(input, states, fps, learned, json, seconds, count, dropped = 0, 
 		jitterP99: Number((at(0.99) * 100).toFixed(2)),
 		/** The wobble alone, with the archer's own sweep taken out. This is what reads as flicker. */
 		trembleMedian: Number((tremble * 100).toFixed(3)),
+		/** How far the drawn lines run behind the fit. A ring is 10%, so this has to stay well under it. */
+		lagMedian: Number((lag(0.5) * 100).toFixed(2)),
+		lagP90: Number((lag(0.9) * 100).toFixed(2)),
 		medianDetectMs: cost.length ? Number(cost[Math.floor(cost.length / 2)].toFixed(1)) : 0,
 		worstDetectMs: cost.length ? Number(cost[cost.length - 1].toFixed(1)) : 0,
 		/** Above 1 the replay kept up with the recording, which is the bar for running live at all. */
@@ -334,6 +342,7 @@ function report(input, states, fps, learned, json, seconds, count, dropped = 0, 
 	console.log(`  arrows confirmed  ${summary.arrowsConfirmed}`);
 	console.log(`  fit jitter        ${summary.jitterMedian}% of radius median, ${summary.jitterP99}% at p99`);
 	console.log(`  overlay tremble   ${summary.trembleMedian}% of radius median`);
+	console.log(`  overlay lag       ${summary.lagMedian}% of radius median, ${summary.lagP90}% at p90`);
 	console.log(`  detection cost    ${summary.medianDetectMs}ms median, ${summary.worstDetectMs}ms worst`);
 	console.log(
 		`  detector speed    ${summary.realtime}x realtime ` +

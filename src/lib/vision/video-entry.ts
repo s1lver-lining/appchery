@@ -24,6 +24,12 @@ export interface FrameState {
 	cost: number;
 	/** True on frames where the full search ran, rather than the cheap follow between detections. */
 	detected: boolean;
+	/**
+	 * How far the drawn overlay is from the fit it was drawn for, in face radii. Zero unless the lines
+	 * are being steadied, and the price that steadying is paid for: lines that lag behind the boss as
+	 * the archer sweeps are worse than lines that tremble.
+	 */
+	lag: number;
 }
 
 /** The rings the overlay draws, as fractions of the face radius. */
@@ -150,6 +156,20 @@ export class Replay {
 		detected: boolean
 	): FrameState {
 		const factor = this.scanner.scaleFactor;
+		const drawn = faces.map((face, i) =>
+			this.pretty && this.steady[i] ? this.steady[i].show(face) : face
+		);
+		// Measured at the four points rather than the centre, because a fit that lags in scale or in
+		// rotation moves the outer ring while leaving the centre exactly where it was.
+		const lags = drawn.map((shown, i) => {
+			let worst = 0;
+			for (let a = 0; a < shown.anchors.length; a++) {
+				const [x, y] = shown.anchors[a];
+				const [fx, fy] = faces[i].anchors[a];
+				worst = Math.max(worst, Math.hypot(x - fx, y - fy));
+			}
+			return worst / Math.max(faces[i].semiMajor, 1);
+		});
 		const place = (impact: Impact) => {
 			const face = faces[impact.face] ?? faces[0];
 			if (!face) return { imageX: 0, imageY: 0 };
@@ -159,10 +179,7 @@ export class Replay {
 
 		return {
 			// Reported in the video's own pixels, so the caller draws without knowing the detection scale.
-			// Steadied last of all, after everything that is measured has been measured from the fit.
-			faces: faces.map((face, i) =>
-				scaleFace(this.pretty && this.steady[i] ? this.steady[i].show(face) : face, factor)
-			),
+			faces: drawn.map((face) => scaleFace(face, factor)),
 			steady,
 			settled: this.scanner.settleCount,
 			detections,
@@ -175,7 +192,8 @@ export class Replay {
 			})),
 			pending: pending.map((candidate) => ({ ...place(candidate), seen: candidate.seen })),
 			cost: performance.now() - started,
-			detected
+			detected,
+			lag: Math.max(0, ...lags)
 		};
 	}
 }
