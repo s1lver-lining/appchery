@@ -15,6 +15,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
+	import { screenLock } from '$lib/ui/wakeLock';
 
 	/**
 	 * The shooting clock. It runs the way a line is run: two blasts to come up, one to start, thirty
@@ -76,21 +77,11 @@
 	 * The screen is the clock, so it must not go dark while an end is being shot. Released the moment
 	 * the clock stops, because holding the screen awake through a whole session flattens a phone.
 	 */
-	let lock: WakeLockSentinel | null = null;
+	const lock = screenLock(() => navigator.wakeLock?.request('screen'));
 	$effect(() => {
-		if (!running) {
-			void lock?.release();
-			lock = null;
-			return;
-		}
-		navigator.wakeLock
-			?.request('screen')
-			.then((sentinel) => (lock = sentinel))
-			.catch(() => undefined);
-		return () => {
-			void lock?.release();
-			lock = null;
-		};
+		if (!running) return;
+		lock.acquire();
+		return () => lock.release();
 	});
 
 	/** An emptied field falls back to what the rules say rather than to a clock of zero seconds. */
