@@ -151,6 +151,13 @@ export class SweepTracker {
 	 * thing as a missing arrow, so this only ever offers guesses when it has been told how many to find.
 	 */
 	get arrows(): Impact[] {
+		const offered = [...this.confirmed, ...this.guesses()];
+		// Nothing believed yet, so show what there is. These go away the moment anything is confirmed.
+		return offered.length > 0 ? offered : this.early;
+	}
+
+	/** What an accepted end actually scores, which never includes the first seconds' provisional marks. */
+	private get settledArrows(): Impact[] {
 		return [...this.confirmed, ...this.guesses()];
 	}
 
@@ -237,11 +244,23 @@ export class SweepTracker {
 		// A place nothing has proposed for a long while was a trick of one viewpoint, not an arrow.
 		this.candidates = this.candidates.filter((c) => this.passes - c.last <= this.patience);
 
-		const ready = this.candidates
-			.filter((c) => c.votes >= this.minVotes && this.agreement(c) >= this.minAgreement)
-			// Best supported first, so the strongest evidence takes the last free slot in the end.
-			.sort((a, b) => b.votes - a.votes)
-			.slice(0, Math.max(0, this.limit - this.confirmed.length));
+		/**
+		 * Best supported first, so the strongest evidence takes the last free slot in the end, and never
+		 * two marks on one shaft.
+		 *
+		 * A proposal landing near an arrow already confirmed is turned away when it arrives, but one that
+		 * had already started gathering votes before that arrow was confirmed goes on gathering them, and
+		 * can clear the bar in its own right a few passes later. It is then a second mark on a shaft
+		 * already marked: the commonest wrong mark there is, and the one that reads worst, because the
+		 * archer has to work out which of two marks a hand's breadth apart is the real one.
+		 */
+		const ready: SweepCandidate[] = [];
+		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
+			if (this.confirmed.length + ready.length >= this.limit) break;
+			if (candidate.votes < this.minVotes || this.agreement(candidate) < this.minAgreement) continue;
+			if (this.apart(this.confirmed, candidate) || this.apart(ready, candidate)) continue;
+			ready.push(candidate);
+		}
 
 		this.confirmed.push(...ready);
 		/**
@@ -296,7 +315,7 @@ export class SweepTracker {
 	 * scored rather than forgotten, which is what stops the next end proposing them all over again.
 	 */
 	accept() {
-		this.taken.push(...this.arrows);
+		this.taken.push(...this.settledArrows);
 		this.confirmed = [];
 		this.candidates = [];
 	}

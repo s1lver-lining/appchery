@@ -121,13 +121,9 @@ export class Scanner {
 		return this.settled;
 	}
 
-	/**
-	 * What the archer should see marked. The tracker's own arrows, and for the first couple of seconds
-	 * whatever it has turned up so far, so the overlay is not blank while the evidence gathers.
-	 */
+	/** What the archer should see marked, which in the first seconds is more than has been believed. */
 	get arrows(): Impact[] {
-		const arrows = this.tracker.arrows;
-		return arrows.length > 0 ? arrows : this.tracker.early;
+		return this.tracker.arrows;
 	}
 
 	get pending(): Impact[] {

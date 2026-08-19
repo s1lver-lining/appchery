@@ -65,6 +65,7 @@ let proposedEver = 0;
 const errors = [];
 const rows = [];
 const wrong = [];
+let doubles = 0;
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
@@ -132,7 +133,23 @@ for (const name of (await readdir(WORK)).sort()) {
 	for (const target of targets) {
 		let best = -1;
 		let near = MATCH;
-		result.arrows.forEach((arrow, i) => {
+		/**
+	 * Wrong marks that sit on top of a right one: a second reading of a shaft already marked.
+	 *
+	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
+	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
+	 * that matched. Counted apart from the other wrong marks because the two want different work — this
+	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
+	 */
+	result.arrows.forEach((arrow, i) => {
+		if (taken.has(i)) return;
+		const onTopOfOne = result.arrows.some(
+			(other, j) => taken.has(j) && Math.hypot(arrow.x - other.x, arrow.y - other.y) < 0.12
+		);
+		if (onTopOfOne) doubles += 1;
+	});
+
+	result.arrows.forEach((arrow, i) => {
 			if (taken.has(i)) return;
 			const d = Math.hypot(arrow.x - target.x, arrow.y - target.y);
 			if (d < near) {
@@ -157,6 +174,22 @@ for (const name of (await readdir(WORK)).sort()) {
 	 * class of them can survive every sweep: if they sit in the same part of the shape space as real
 	 * arrows, no threshold separates them and only their placing gives them away.
 	 */
+	/**
+	 * Wrong marks that sit on top of a right one: a second reading of a shaft already marked.
+	 *
+	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
+	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
+	 * that matched. Counted apart from the other wrong marks because the two want different work — this
+	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
+	 */
+	result.arrows.forEach((arrow, i) => {
+		if (taken.has(i)) return;
+		const onTopOfOne = result.arrows.some(
+			(other, j) => taken.has(j) && Math.hypot(arrow.x - other.x, arrow.y - other.y) < 0.12
+		);
+		if (onTopOfOne) doubles += 1;
+	});
+
 	result.arrows.forEach((arrow, i) => {
 		wrong.push({
 			video: name.slice(-24),
@@ -180,6 +213,7 @@ console.log(`\ndetector            ${model ? 'learned' : 'classical'}`);
 console.log(`\narrows found        ${found}/${wanted} (${((found / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`spurious arrows     ${spurious} (${(spurious / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
+console.log(`double marks        ${doubles} (${(doubles / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(
 	`impact error        ${sorted.length ? pct(sorted[Math.floor(sorted.length / 2)]) : '--'} of face radius median`
 );
@@ -214,6 +248,7 @@ if (args.includes('--why')) {
 function homography(points) {
 	const rows = [];
 const wrong = [];
+let doubles = 0;
 	for (let i = 0; i < 4; i++) {
 		const [u, v] = ANCHORS[i];
 		const [x, y] = points[i];
