@@ -74,7 +74,11 @@ detector failing to see a shaft, not the tracker discarding one.
 
 Three things are known to be wrong with it and are not fixed. Nothing is confirmed for the first
 second and a half, because five passes at three a second is what agreement across five genuinely
-different views costs and there is no shortcut that is not just believing one look. A false positive, once confirmed, is never
+different views costs. Two ways round it were tried and neither worked: asking for four views instead
+of five costs six points of arrows and half again as many wrong marks, and measuring viewpoint spread
+directly from the fit — so that a fast sweep could confirm sooner and a still phone could not confirm
+at all — turned out to make no difference on any real recording, while breaking the one case where the
+archer stands still. A false positive, once confirmed, is never
 reconsidered — taking arrows back on later evidence was built and measured and cost a fifth of the real
 arrows to remove a third of the false ones, because a real arrow genuinely stops being proposed once
 the archer has swung past it, so it is not in the code. And an arrow the sweep never agreed on is only
