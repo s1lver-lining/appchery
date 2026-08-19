@@ -34,6 +34,8 @@ export interface ScannerOptions {
 	faceEvery?: number;
 	/** Detection passes the face must be in view for before any arrow is accepted. */
 	framesToSettle?: number;
+	/** Detection passes with no face before the arrows found so far are forgotten. */
+	forgetAfter?: number;
 	/** Thresholds for the shape detector, so the harness can sweep them without a code edit. */
 	still?: StillOptions;
 	/** How much agreement across viewpoints an arrow needs. */
@@ -78,6 +80,10 @@ export class Scanner {
 	private check: RingCheck | null = null;
 	/** Frames the face has been in view, which gates arrow detection. */
 	private settled = 0;
+	/** Detection passes in a row that found no face, which is what tells a blink from a walk away. */
+	private missed = 0;
+	/** How many of those it takes before the arrows gathered so far are given up on. */
+	private readonly forgetAfter: number;
 	private readonly framesToSettle: number;
 	private maxArrows: number;
 	private model: ArrowModel | null;
@@ -88,6 +94,7 @@ export class Scanner {
 		this.scale = options.scale ?? 4;
 		this.faceEvery = options.faceEvery ?? 15;
 		this.framesToSettle = options.framesToSettle ?? 8;
+		this.forgetAfter = options.forgetAfter ?? 8;
 		this.maxArrows = options.maxArrows ?? 12;
 		this.model = options.model ?? null;
 		this.crop = options.crop ?? null;
@@ -190,10 +197,30 @@ export class Scanner {
 				 */
 				this.settled += this.faceEvery;
 				this.faces = ordered;
+				this.missed = 0;
+			} else if (this.faces.length > 0 && this.recover(small)) {
+				/**
+				 * The search found nothing but the face being followed still checks out, so it is kept.
+				 *
+				 * The two do different jobs and fail at different things. The search starts from a gold blob
+				 * and has to find it afresh in a frame that may be blurred by the archer's own stride, half
+				 * shadowed, or momentarily crossed by a hand; the follow starts from last frame's answer and
+				 * only has to move it a little. Throwing away a fit the rings still agree with because the
+				 * blob finder had a bad frame is what put a fifth of a second hole in the middle of a sweep.
+				 */
+				this.settled += this.faceEvery;
+				this.missed = 0;
 			} else {
 				this.faces = [];
 				this.settled = 0;
-				this.tracker.clear();
+				/**
+				 * The arrows are not forgotten with the face, not at once. A boss that vanishes for a pass or
+				 * two has almost always been crossed by something rather than left behind, and everything
+				 * gathered over the sweep so far is a heavy price for a blink. What forgets them is the face
+				 * staying gone, which is what walking to the next target looks like.
+				 */
+				this.missed += 1;
+				if (this.missed >= this.forgetAfter) this.tracker.clear();
 			}
 		} else if (this.faces.length > 0) {
 			this.settled += 1;
@@ -270,6 +297,24 @@ export class Scanner {
 			detections: detections.length,
 			proposed: detections
 		};
+	}
+
+	/**
+	 * Tries to keep the face the search just failed to find, by fitting it again from where it was.
+	 *
+	 * Verified first as it stands, and if that fails, refitted properly rather than merely followed. A
+	 * frame that defeats the search is usually one where the face moved further than a follow's small
+	 * steps reach — the archer's stride, a stumble, a quick turn — and the fit is then left trailing
+	 * somewhere that no longer checks out. Starting a full descent from roughly the right place still
+	 * finds it, where starting from a gold blob that the same frame has smeared does not.
+	 */
+	private recover(small: Frame): boolean {
+		if (verifyRings(small, this.faces[0]).ok) return true;
+
+		const refitted = this.faces.map((face) => refineFace(small, face));
+		if (!refitted[0] || !verifyRings(small, refitted[0]).ok) return false;
+		this.faces = refitted.map((face, i) => alignFace(this.faces[i], face));
+		return true;
 	}
 
 	/**
