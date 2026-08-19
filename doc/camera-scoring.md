@@ -72,13 +72,14 @@ The ceiling matters as much as the number found: an arrow that no pass ever prop
 confirmed by any amount of agreement, and about one in seven is never proposed at all. That is the
 detector failing to see a shaft, not the tracker discarding one.
 
-Three things are known to be wrong with it and are not fixed. Nothing is confirmed for the first
-second and a half, because five passes at three a second is what agreement across five genuinely
-different views costs. Two ways round it were tried and neither worked: asking for four views instead
-of five costs six points of arrows and half again as many wrong marks, and measuring viewpoint spread
-directly from the fit — so that a fast sweep could confirm sooner and a still phone could not confirm
-at all — turned out to make no difference on any real recording, while breaking the one case where the
-archer stands still. A false positive, once confirmed, is never
+Nothing is confirmed for the first second and a half, because five passes at three a second is what
+agreement across five genuinely different views costs. Two ways round it were tried and neither
+worked: asking for four views instead of five costs six points of arrows and half again as many wrong
+marks, and measuring viewpoint spread directly from the fit — so a fast sweep could confirm sooner and
+a still phone could not confirm at all — made no difference on any real recording while breaking the
+one case where the archer stands still. What is done instead is to show what the first couple of
+seconds turned up, marked unsure, so the wait is visible rather than blank; those marks are never
+counted and are gone the moment anything is confirmed. A false positive, once confirmed, is never
 reconsidered — taking arrows back on later evidence was built and measured and cost a fifth of the real
 arrows to remove a third of the false ones, because a real arrow genuinely stops being proposed once
 the archer has swung past it, so it is not in the code. And an arrow the sweep never agreed on is only
@@ -86,12 +87,26 @@ shown when the end's arrow count is known.
 
 **The objective is every arrow found, with proposals an archer can accept almost without thinking.**
 
-The binding constraint is the proposer, not the tracker. 85% of arrows are proposed at some point, so
-the tracker is throwing away real arrows; but it is throwing them away because it is also being handed
-several times as many places that are not arrows and cannot tell which is which. Tightening its
-thresholds does not separate them — sweeping `minRidge`, `minFill`, `radialLean` and `minElongation`
-moved the false rate from 6.3 to 5.4 an end and cost arrows doing it. The junk passes every shape test
-there is because it genuinely looks like a shaft in one frame.
+The binding constraint is now the tracker alone. Every one of the 84 labelled arrows is proposed at
+some point, so nothing is invisible to the detector any more; what is lost is lost in the ranking,
+where a real arrow is outvoted by something that is not one.
+
+Two of the three things that lifted the ceiling to 100% were features doing harm rather than thresholds
+set wrong, which is worth remembering before reaching for a threshold again:
+
+- **The detector never looked outside the printed face.** An arrow in the backing paper is a miss, and
+  a miss is still an arrow of the end. Tracing runs out to 1.3 radii while only believing impacts
+  inside 1.1 took the ceiling from 85% to 94%.
+- **Arrows were judged by whether they pointed the same way as the longest streak in the frame.** The
+  argument was that shafts all lean towards the same lens, which is true of a boss across a field and
+  false of one the archer is standing in front of, where the six fan out. It cost a sixth of everything
+  the detector saw, and hung the whole frame on whichever run happened to be longest — one bad anchor
+  and real arrows were judged against a shadow. Removing it took the ceiling from 94% to 100%.
+
+Ablating each remaining test one at a time: the ridge test is the one that matters — without it, arrows
+found fall from 67% to 46% and false marks rise by half. The fill, elongation and radial lean tests are
+each worth a point or two. The width comparison is worth three points and only earns them with the
+bearing test gone.
 
 Two ways out of that were tried against the recordings and neither worked. Taking arrows back when the
 rest of the sweep stops agreeing with them cost a fifth of the real arrows to remove a third of the
