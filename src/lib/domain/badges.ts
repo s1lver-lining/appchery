@@ -309,17 +309,21 @@ function dayRuns(history: History): { run: number; at: number }[] {
 
 /** Runs of consecutive calendar months shot, counted the same way as the days. */
 function monthRuns(history: History): { run: number; at: number }[] {
-	const months = [
-		...new Set(history.shooting.map((a) => new Date(a.startedAt).getFullYear() * 12 + new Date(a.startedAt).getMonth()))
-	].sort((a, b) => a - b);
+	const last = new Map<number, number>();
+	for (const a of history.shooting) {
+		const at = new Date(a.startedAt);
+		const month = at.getFullYear() * 12 + at.getMonth();
+		last.set(month, Math.max(last.get(month) ?? 0, a.startedAt));
+	}
 
 	const runs: { run: number; at: number }[] = [];
 	let run = 0;
 	let previous: number | null = null;
-	for (const month of months) {
+	for (const month of [...last.keys()].sort((a, b) => a - b)) {
 		run = previous !== null && month === previous + 1 ? run + 1 : 1;
 		previous = month;
-		runs.push({ run, at: new Date(Math.floor(month / 12), month % 12, 1).getTime() });
+		// Dated by the shooting that carried the run, or a badge predates the arrows that earned it.
+		runs.push({ run, at: last.get(month)! });
 	}
 	return runs;
 }

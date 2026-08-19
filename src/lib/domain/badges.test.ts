@@ -339,7 +339,8 @@ describe('streaks of days and months', () => {
 				activity({ id: `m${i}`, startedAt: new Date(2024, i, 10).getTime() })
 			);
 		expect(badge(months(11), 'fourSeasons').earnedAt).toBeNull();
-		expect(badge(months(12), 'fourSeasons').earnedAt).toBe(new Date(2024, 11, 1).getTime());
+		// Dated by the outing that completed the year, not by the first of the month it fell in.
+		expect(badge(months(12), 'fourSeasons').earnedAt).toBe(new Date(2024, 11, 10).getTime());
 
 		const gap = months(13).filter((_, i) => i !== 4);
 		expect(badge(gap, 'fourSeasons').earnedAt).toBeNull();
@@ -560,5 +561,16 @@ describe('training badges', () => {
 
 	it('does not count a training session as a day shot', () => {
 		expect(badge([strength('s', 6), run('r', 5000)], 'sevenDays').earnedAt).toBeNull();
+	});
+});
+
+describe('a run of months', () => {
+	it('dates the badge by the shooting that carried it, not by the first of the month', () => {
+		// One outing a month for a year, each late in its month.
+		const monthly = Array.from({ length: 12 }, (_, i) =>
+			activity({ id: `m${i}`, startedAt: new Date(2025, i, 20, 15).getTime() })
+		);
+		const earned = badge(monthly, 'fourSeasons').earnedAt;
+		expect(earned).toBe(new Date(2025, 11, 20, 15).getTime());
 	});
 });
