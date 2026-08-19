@@ -38,7 +38,7 @@ const CODECS = {
 	'.mp4': ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
 };
 
-export async function replayVideo({ input, output, watch, model, json, limit, everyMs, arrows }) {
+export async function replayVideo({ input, output, watch, model, json, limit, everyMs, arrows, pretty }) {
 	const { width, height, fps } = await probe(input);
 	const target = json ? null : resolve(output ?? defaultOutput(input));
 
@@ -46,8 +46,9 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 		throw new Error(`Cannot write ${extname(target)}. Use one of ${Object.keys(CODECS).join(', ')}.`);
 	}
 
-	const { Replay } = await load();
-	const replay = new Replay(everyMs || DETECT_EVERY_MS, model ?? null);
+	const { Replay, DRAWN_RINGS } = await load();
+	paint.rings = DRAWN_RINGS;
+	const replay = new Replay(everyMs || DETECT_EVERY_MS, model ?? null, Boolean(pretty));
 	if (arrows) replay.setLimit(arrows);
 
 	/**
@@ -207,11 +208,12 @@ function project(h, x, y) {
 }
 
 function paint(frame, state, width) {
+	const DRAWN_RINGS = paint.rings;
 	const canvas = new Canvas(frame.data, frame.width, frame.height);
 	const line = Math.max(1.5, width / 500);
 
 	for (const face of state.faces) {
-		for (const share of [0.2, 0.4, 0.6, 0.8, 1.0]) {
+		for (const share of DRAWN_RINGS) {
 			// Green once the face is trusted enough to take arrows from, magenta while it is not.
 			canvas.ring(
 				(x, y) => project(face.transform, x, y),
@@ -275,6 +277,22 @@ function report(input, states, fps, learned, json, seconds, count, dropped = 0, 
 	jumps.sort((a, b) => a - b);
 	const at = (share) => (jumps.length ? jumps[Math.floor(jumps.length * share)] : 0);
 
+	/**
+	 * How much the fit changes direction between frames, rather than how far it moves.
+	 *
+	 * Movement is mostly the archer sweeping the phone, which the overlay is supposed to follow, so a
+	 * measure of movement says almost nothing about whether the lines look steady. A sweep is smooth,
+	 * so it barely shows here; a fit that wobbles a little either way every frame shows fully.
+	 */
+	const trembles = [];
+	for (let i = 2; i < states.length; i++) {
+		const [a, b, c] = [states[i - 2], states[i - 1], states[i]];
+		if (a.cx === null || b.cx === null || c.cx === null || !c.radius) continue;
+		trembles.push(Math.hypot(c.cx - 2 * b.cx + a.cx, c.cy - 2 * b.cy + a.cy) / c.radius);
+	}
+	trembles.sort((x, y) => x - y);
+	const tremble = trembles.length ? trembles[Math.floor(trembles.length / 2)] : 0;
+
 	const summary = {
 		video: basename(input),
 		detector: learned ? 'learned' : 'classical',
@@ -289,6 +307,8 @@ function report(input, states, fps, learned, json, seconds, count, dropped = 0, 
 		arrowsConfirmed: Math.max(0, ...states.map((s) => s.arrows)),
 		jitterMedian: Number((at(0.5) * 100).toFixed(2)),
 		jitterP99: Number((at(0.99) * 100).toFixed(2)),
+		/** The wobble alone, with the archer's own sweep taken out. This is what reads as flicker. */
+		trembleMedian: Number((tremble * 100).toFixed(3)),
 		medianDetectMs: cost.length ? Number(cost[Math.floor(cost.length / 2)].toFixed(1)) : 0,
 		worstDetectMs: cost.length ? Number(cost[cost.length - 1].toFixed(1)) : 0,
 		/** Above 1 the replay kept up with the recording, which is the bar for running live at all. */
@@ -313,6 +333,7 @@ function report(input, states, fps, learned, json, seconds, count, dropped = 0, 
 	);
 	console.log(`  arrows confirmed  ${summary.arrowsConfirmed}`);
 	console.log(`  fit jitter        ${summary.jitterMedian}% of radius median, ${summary.jitterP99}% at p99`);
+	console.log(`  overlay tremble   ${summary.trembleMedian}% of radius median`);
 	console.log(`  detection cost    ${summary.medianDetectMs}ms median, ${summary.worstDetectMs}ms worst`);
 	console.log(
 		`  detector speed    ${summary.realtime}x realtime ` +

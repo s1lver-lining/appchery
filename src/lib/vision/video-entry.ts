@@ -8,6 +8,7 @@ import { Scanner } from './pipeline';
 import { detectFaces, toImageCoords, scaleFace } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';
+import { SteadyFace } from './steady';
 import { scoreAt, decimalScore } from '../domain/rounds/geometry';
 import { WA_10_RING } from '../domain/rounds/seed';
 import type { Frame, FaceLocation, Impact } from './types';
@@ -25,6 +26,9 @@ export interface FrameState {
 	detected: boolean;
 }
 
+/** The rings the overlay draws, as fractions of the face radius. */
+export const DRAWN_RINGS = [0.2, 0.4, 0.6, 0.8, 1.0];
+
 /**
  * One replay of one video. Holds the scanner across frames, because every signal the live path uses
  * (the background reference, the settle counter, the tracker's evidence) is built up over time and a
@@ -37,8 +41,9 @@ export class Replay {
 	/** The frame the crop is cut from, kept only for the length of one push. */
 	private full: Frame | null = null;
 
-	constructor(detectEveryMs: number, model: unknown | null) {
+	constructor(detectEveryMs: number, model: unknown | null, pretty = false) {
 		this.detectEveryMs = detectEveryMs;
+		this.pretty = pretty;
 		this.scanner = new Scanner({
 			model: (model ?? null) as never,
 			crop: model ? (face, size, span) => this.cut(face, size, span) : null
@@ -46,6 +51,9 @@ export class Replay {
 	}
 
 	private readonly detectEveryMs: number;
+	/** Whether to steady the drawn lines. Drawing only, and never what anything is measured from. */
+	private readonly pretty: boolean;
+	private readonly steady = [new SteadyFace(), new SteadyFace(), new SteadyFace()];
 	/** Video time the detector is busy until, so a slow pass costs passes rather than frames. */
 	private busyUntil = -Infinity;
 	/**
@@ -151,7 +159,10 @@ export class Replay {
 
 		return {
 			// Reported in the video's own pixels, so the caller draws without knowing the detection scale.
-			faces: faces.map((face) => (scaleFace(face, factor))),
+			// Steadied last of all, after everything that is measured has been measured from the fit.
+			faces: faces.map((face, i) =>
+				scaleFace(this.pretty && this.steady[i] ? this.steady[i].show(face) : face, factor)
+			),
 			steady,
 			settled: this.scanner.settleCount,
 			detections,

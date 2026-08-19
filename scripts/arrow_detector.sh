@@ -11,6 +11,7 @@
 #   ./scripts/arrow_detector.sh session.webm --watch         # and plays it
 #   ./scripts/arrow_detector.sh session.webm --json          # just the numbers, no video written
 #   ./scripts/arrow_detector.sh session.webm --limit 300     # only the first 300 frames
+#   ./scripts/arrow_detector.sh session.webm --pretty        # let each drawn ring find its own edge
 #
 # Any format the browser can decode works: png, jpg, webp, gif, bmp, avif. A video is anything ffmpeg
 # decodes, and is replayed through the live scanner rather than analysed frame by frame: the
