@@ -539,7 +539,7 @@
 			arrows: shownArrows(row.endNo, 'us').map((shot) => shot.zoneLabel),
 			opponentArrows: shownArrows(row.endNo, 'them').map((shot) => shot.zoneLabel),
 			subtotal: row.ours,
-			running: row.theirs ?? 0
+			running: row.theirs
 		})),
 		date: $dateFormats.date(activity.startedAt),
 		place: session?.location ?? null,

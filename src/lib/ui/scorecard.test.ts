@@ -84,3 +84,10 @@ describe('the match card', () => {
 		expect(on.split('>8<').length).toBeGreaterThan(off.split('>8<').length);
 	});
 });
+
+describe('an end the other side has not entered', () => {
+	it('leaves the column blank rather than saying they shot nothing', () => {
+		const svg = card({ sheet: [{ arrows: ['10', '9', '9'], subtotal: 28, running: null }] });
+		expect(svg).not.toContain('>0</text>');
+	});
+});

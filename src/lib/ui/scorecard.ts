@@ -30,7 +30,7 @@ export interface CardData {
 	 * The sheet itself, in the order it was shot: the card is a scoresheet before it is a poster.
 	 * `opponentArrows` is only ever filled on a match, and only drawn when the option asks for it.
 	 */
-	sheet: { arrows: string[]; subtotal: number; running: number; opponentArrows?: string[] }[];
+	sheet: { arrows: string[]; subtotal: number; running: number | null; opponentArrows?: string[] }[];
 	date: string;
 	place: string | null;
 	bow: string | null;
@@ -342,7 +342,13 @@ function sheet(
 				arrows +
 				theirs +
 				text(String(row.subtotal), right - column, y, { size, weight: 700, anchor: 'end' }) +
-				text(String(row.running), right, y, { size, weight: 600, fill: MUTED, anchor: 'end' }) +
+				// Blank rather than a nought: the other side of a match may simply not have been entered yet.
+				text(row.running === null ? '' : String(row.running), right, y, {
+					size,
+					weight: 600,
+					fill: MUTED,
+					anchor: 'end'
+				}) +
 				(i < rows.length - 1
 					? `<line x1="${left}" y1="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" x2="${right}" y2="${(y + rowHeight * (twoLines ? 0.36 : 0.3)).toFixed(1)}" stroke="${LINE}" stroke-width="1" opacity="0.7" />`
 					: '')
