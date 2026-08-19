@@ -58,9 +58,15 @@ export class SweepTracker {
 		 * Chosen against 84 impacts placed by hand across fourteen recordings. Asking for more agreement
 		 * than this throws away arrows the detector did propose; asking for less lets noise take the
 		 * end's last free slot, which costs a real arrow rather than merely adding a wrong one.
+		 *
+		 * More is asked than used to be, and it now costs nothing. While the face's idea of which way
+		 * round it was drifted through a sweep, a real arrow's votes were spread over an arc of places
+		 * rather than piling up on one, so a real arrow could barely clear a low bar and raising it threw
+		 * out arrows rather than noise. With the frame held still the votes land together, and the bar
+		 * can be set where it only stops the things that do not agree with themselves.
 		 */
-		this.minVotes = options.minVotes ?? 3;
-		this.minAgreement = options.minAgreement ?? 0.2;
+		this.minVotes = options.minVotes ?? 4;
+		this.minAgreement = options.minAgreement ?? 0.3;
 		this.mergeDistance = options.mergeDistance ?? 0.035;
 		this.patience = options.patience ?? 25;
 	}
