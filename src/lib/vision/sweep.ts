@@ -75,14 +75,20 @@ export class SweepTracker {
 		 * than this throws away arrows the detector did propose; asking for less lets noise take the
 		 * end's last free slot, which costs a real arrow rather than merely adding a wrong one.
 		 *
-		 * More is asked than used to be, and it now costs nothing. While the face's idea of which way
-		 * round it was drifted through a sweep, a real arrow's votes were spread over an arc of places
+		 * More is asked than used to be, and most of it now costs nothing. While the face's idea of which
+		 * way round it was drifted through a sweep, a real arrow's votes were spread over an arc of places
 		 * rather than piling up on one, so a real arrow could barely clear a low bar and raising it threw
-		 * out arrows rather than noise. With the frame held still the votes land together, and the bar
-		 * can be set where it only stops the things that do not agree with themselves.
+		 * out arrows rather than noise. With the frame held still the votes land together, and the bar can
+		 * be set where it mostly stops the things that do not agree with themselves.
+		 *
+		 * Set where it is because a wrong mark and a missing one are not equally bad in practice. A wrong
+		 * one has to be noticed and dropped, and one that is noticed late is a wrong score; a missing one
+		 * is placed by hand, which is what the archer would have done for all six anyway. The cost of this
+		 * setting is that nothing is confirmed for about a second and a half, which is what waiting for
+		 * five genuinely different views of the boss takes.
 		 */
-		this.minVotes = options.minVotes ?? 4;
-		this.minAgreement = options.minAgreement ?? 0.3;
+		this.minVotes = options.minVotes ?? 5;
+		this.minAgreement = options.minAgreement ?? 0.4;
 		this.mergeDistance = options.mergeDistance ?? 0.035;
 		this.patience = options.patience ?? 25;
 		this.guessAfter = options.guessAfter ?? 8;
