@@ -42,6 +42,14 @@ const only = option('video', null);
 const seconds = Number(option('seconds', 0));
 /** Milliseconds between detection passes, which is how many looks a sweep gets. */
 const everyMs = Number(option('every', 300));
+/**
+ * Whether to tell the tracker how many arrows the end holds, as the app does when the round says so.
+ *
+ * On by default because that is the common case, but the other case is the one that shows what the
+ * proposer is really doing: with no number to work to, nothing is capped, and every place that clears
+ * the bar is offered. Measuring only the capped case hid a rise in false positives behind the cap.
+ */
+const counted = !args.includes('--uncounted');
 /** Threshold overrides, so a sweep of them needs no code edit. */
 const tune = JSON.parse(option('tune', '{}'));
 /** Weights for the learned detector, measured through the same harness as the written one. */
@@ -76,7 +84,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	const first = seconds > 0 ? Math.max(0, at - span) : 0;
 	const limit = seconds > 0 ? at + span : Infinity;
 	// Counted from the first frame fed in, which is what the sweep sees.
-	const sweep = new Sweep(everyMs, 30, at - first, { ...tune, arrows: label.arrows.length, model });
+	const sweep = new Sweep(everyMs, 30, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
 
 	let index = 0;
 	for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {
