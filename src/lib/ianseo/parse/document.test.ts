@@ -183,6 +183,72 @@ describe('parseDocument, on an elimination bracket', () => {
 	});
 });
 
+describe('parseDocument, on a bracket with a bye in it', () => {
+	const document = load('IBBW') as BracketDocument;
+	const [first] = document.rounds;
+
+	it('draws the bye as a match with one archer in it', () => {
+		const bye = first.matches[0];
+		expect(bye.entries[0].name).toBe('Bananingsih Ghabamad Falidi');
+		expect(bye.entries[0].score).toBe('Bye');
+		expect(bye.entries[1].name).toBe('');
+	});
+
+	it('gives the bye no set scores, because nobody shot it', () => {
+		expect(first.matches[0].sets).toEqual([]);
+	});
+
+	it('leaves every match after the bye holding its own arrows', () => {
+		const second = first.matches[1];
+		expect(second.entries.map((entry) => entry.name)).toEqual([
+			'Risuto Butisan Tuna',
+			'Kasuzul Piwiwati Nasusyah'
+		]);
+		expect(second.sets).toEqual([
+			['21', '18', '8', '13', '16'],
+			['14', '15', '17', '15', '18']
+		]);
+	});
+
+	/**
+	 * The arrows and the result are two different readings of the same match, so they have to agree.
+	 * This is the assertion that catches one archer's sets being handed to another: a bracket with a
+	 * bye in it has fewer sets than matches, and everything after the bye slid up by one.
+	 */
+	it('gives every match the arrows that add up to the result beside it', () => {
+		const played = document.rounds
+			.flatMap((round) => round.matches)
+			.filter((match) => match.sets.length === 2 && match.entries.length === 2);
+		expect(played.length).toBeGreaterThan(10);
+
+		for (const match of played) {
+			const [ours, theirs] = match.sets;
+			let won = 0;
+			for (let set = 0; set < Math.min(ours.length, theirs.length); set++) {
+				if (Number(ours[set]) > Number(theirs[set])) won++;
+				else if (Number(ours[set]) < Number(theirs[set])) won--;
+			}
+			const scores = match.entries.map((entry) => Number(entry.score));
+			const named = match.entries.map((entry) => entry.name).join(' v ');
+			if (won === 0) {
+				// Level on sets is a shoot-off, which separates the two of them by a single point.
+				expect(Math.abs(scores[0] - scores[1]), named).toBe(1);
+			} else {
+				// Otherwise whoever took more sets is whoever the bracket says took the match.
+				expect(Math.sign(won), named).toBe(Math.sign(scores[0] - scores[1]));
+			}
+		}
+	});
+
+	it('never gives two matches the same set scores', () => {
+		const shot = document.rounds
+			.flatMap((round) => round.matches)
+			.filter((match) => match.sets.length > 0)
+			.map((match) => JSON.stringify(match.sets));
+		expect(new Set(shot).size).toBe(shot.length);
+	});
+});
+
 describe('parseDocument, on a page with no table at all', () => {
 	it('says so rather than returning an empty document', () => {
 		expect(parseDocument('<html><body>Not found</body></html>')).toBe(null);

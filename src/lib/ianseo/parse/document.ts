@@ -131,16 +131,21 @@ function blocks(html: string): { name: 'thead' | 'tbody'; html: string }[] {
  * An elimination bracket, which ianseo draws as a grid: an athlete is a run of cells side by side,
  * and the round they are in is the column that run starts at. Read by column rather than by the
  * spans in the header row, whose widths do not add up to the width of the grid below them.
+ *
+ * The set scores of a match are drawn as a little table of their own, in a row of its own just below
+ * the two athletes it belongs to. They are matched to a match by where they sit rather than by
+ * counting: a draw with byes in it has fewer sets than matches, and counting hands one archer's
+ * arrows to another.
  */
 function parseBracket(html: string): BracketDocument {
 	const all = rows(html);
 	const title = all.length > 0 ? (headingOf(all[0].html) ?? '') : '';
 
 	const titles: string[] = [];
-	const byColumn = new Map<number, BracketEntry[]>();
-	const setsByColumn = new Map<number, string[][][]>();
+	const entries = new Map<number, { row: number; entry: BracketEntry }[]>();
+	const tables: { row: number; column: number; sets: string[][] }[] = [];
 
-	for (const row of all.slice(1)) {
+	all.slice(1).forEach((row, at) => {
 		const values = cells(row.html);
 		if (values.length > 0 && values.every((cell) => cell.header || text(cell.html) === '')) {
 			for (const cell of values) {
@@ -149,10 +154,10 @@ function parseBracket(html: string): BracketDocument {
 			}
 		}
 
-		values.forEach((cell, at) => {
+		values.forEach((cell, column) => {
 			for (const nested of cell.nested) {
-				const scores = rows(nested).map((line) => cells(line.html).map((score) => text(score.html)));
-				if (scores.length > 0) setsByColumn.set(at, [...(setsByColumn.get(at) ?? []), scores]);
+				const sets = rows(nested).map((line) => cells(line.html).map((score) => text(score.html)));
+				if (sets.length > 0) tables.push({ row: at, column, sets });
 			}
 		});
 
@@ -164,28 +169,35 @@ function parseBracket(html: string): BracketDocument {
 			}
 			const start = index;
 			while (index < values.length && hasClass(values[index].attrs, 'data-cell')) index++;
-			byColumn.set(start, [...(byColumn.get(start) ?? []), entryOf(values.slice(start, index))]);
+			entries.set(start, [
+				...(entries.get(start) ?? []),
+				{ row: at, entry: entryOf(values.slice(start, index)) }
+			]);
 		}
-	}
+	});
 
-	const columns = [...byColumn.keys()].sort((a, b) => a - b);
-	// A match's set scores are drawn between its two athletes, which puts them under its own round
-	// for every round but the first, whose scores sit inside the width the full names take up.
-	const sets = new Map<number, string[][][]>();
-	for (const [at, tables] of [...setsByColumn].sort((a, b) => a[0] - b[0])) {
-		const round = columns.filter((column) => column <= at).at(-1);
+	const columns = [...entries.keys()].sort((a, b) => a - b);
+	/** Where each match starts on the grid, which is how its own set scores are recognised below it. */
+	const rounds = columns.map((column, index) => ({
+		title: titles[index] ?? '',
+		matches: pair(entries.get(column) ?? [])
+	}));
+
+	// A match's own set scores are the ones drawn below it and above the match after it. The first
+	// round's sit inside the width its full names take up, which is why the column is only a floor.
+	for (const table of tables) {
+		const round = columns.filter((column) => column <= table.column).at(-1);
 		if (round === undefined) continue;
-		sets.set(round, [...(sets.get(round) ?? []), ...tables]);
+		const matches = rounds[columns.indexOf(round)].matches;
+		const mine = matches.filter((match) => match.startRow <= table.row).at(-1);
+		if (mine && mine.sets.length === 0) mine.sets = table.sets;
 	}
 
-	return {
-		kind: 'bracket',
-		title,
-		rounds: columns.map((column, round) => ({
-			title: titles[round] ?? '',
-			matches: pair(byColumn.get(column) ?? [], sets.get(column) ?? [])
-		}))
-	};
+	const shown: BracketRound[] = rounds.map((round) => ({
+		title: round.title,
+		matches: round.matches.map((match) => ({ entries: match.entries, sets: match.sets }))
+	}));
+	return { kind: 'bracket', title, rounds: shown };
 }
 
 /** Six cells where the bracket names an athlete in full, two where it only carries them forward. */
@@ -207,12 +219,12 @@ function entryOf(run: Cell[]): BracketEntry {
 }
 
 /** Two entries to a match, in the order the grid stacks them, dropping the slots nobody reached. */
-function pair(entries: BracketEntry[], sets: string[][][]): BracketMatch[] {
-	const matches: BracketMatch[] = [];
+function pair(entries: { row: number; entry: BracketEntry }[]): (BracketMatch & { startRow: number })[] {
+	const matches: (BracketMatch & { startRow: number })[] = [];
 	for (let index = 0; index < entries.length; index += 2) {
 		const both = entries.slice(index, index + 2);
-		if (both.some((entry) => entry.name.length > 0)) {
-			matches.push({ entries: both, sets: sets[index / 2] ?? [] });
+		if (both.some((one) => one.entry.name.length > 0)) {
+			matches.push({ entries: both.map((one) => one.entry), sets: [], startRow: both[0].row });
 		}
 	}
 	return matches;
