@@ -31,9 +31,9 @@ const fixture = (name) => readFileSync(`test/ianseo/${name}.html`, 'utf8');
 
 /** ianseo, as it was on the day the fixtures were taken. */
 function serveIanseo(context, state = {}) {
-	return context.route('**/ianseo-api/**', (route) => {
+	return context.route('**/competitions-api/ianseo/**', (route) => {
 		const url = new URL(route.request().url());
-		const path = url.pathname.replace('/ianseo-api', '');
+		const path = url.pathname.replace('/competitions-api/ianseo', '');
 		let body = null;
 
 		if (path === '/TourList.php') {
@@ -139,8 +139,8 @@ async function checkOffline(browser) {
 	await page.waitForSelector('a[href*="/ianseo/"]');
 	const before = await page.locator('a[href*="/ianseo/"]').count();
 
-	await context.unroute('**/ianseo-api/**');
-	await context.route('**/ianseo-api/**', (route) => route.abort());
+	await context.unroute('**/competitions-api/ianseo/**');
+	await context.route('**/competitions-api/ianseo/**', (route) => route.abort());
 	await page.getByRole('button', { name: /Refresh/i }).click();
 	// The refresh has to have been tried and failed before the page can say so.
 	await page
@@ -162,7 +162,7 @@ async function checkOffline(browser) {
 
 	// A device that has never read anything has nothing to fall back on, and says that instead.
 	const cold = await browser.newContext({ viewport: { width: 390, height: 844 } });
-	await cold.route('**/ianseo-api/**', (route) => route.abort());
+	await cold.route('**/competitions-api/ianseo/**', (route) => route.abort());
 	const empty = await cold.newPage();
 	await empty.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
 	// Waited for rather than slept on: the page has a database to open before it can fail to read.

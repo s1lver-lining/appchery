@@ -1,5 +1,5 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
-import { IANSEO_ORIGIN, PROXY_PREFIX } from './proxy';
+import { IANSEO_ORIGIN, PROXY_PREFIX } from '$lib/competitions/proxy';
 
 /**
  * ianseo publishes pages, not an interface, and it sends no header that would let a browser read
@@ -11,7 +11,7 @@ import { IANSEO_ORIGIN, PROXY_PREFIX } from './proxy';
  */
 
 export const IANSEO = IANSEO_ORIGIN;
-export const PROXY = PROXY_PREFIX;
+export const PROXY = `${PROXY_PREFIX}/ianseo`;
 
 export class IanseoError extends Error {
 	constructor(

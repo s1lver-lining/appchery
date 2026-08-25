@@ -1,7 +1,7 @@
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
 import { SHARE_CACHE, SHARE_KEY } from '$lib/import/incoming';
-import { PROXY_PREFIX } from '$lib/ianseo/proxy';
+import { PROXY_PREFIX } from '$lib/competitions/proxy';
 
 /**
  * Precaches the whole app on install, because a scoring app that needs the network at the range is
@@ -70,8 +70,8 @@ worker.addEventListener('fetch', (event) => {
 	const url = new URL(request.url);
 	if (url.origin !== location.origin) return;
 
-	// The proxy in front of ianseo answers with somebody else's results, which change while they are
-	// being read. Cached here they would freeze, and the app would go on dating them as fresh.
+	// The proxy in front of the competition sources answers with somebody else's results, which change
+	// while they are being read. Cached here they would freeze, and the app would date them as fresh.
 	if (url.pathname.startsWith(PROXY_PREFIX)) return;
 
 	event.respondWith(

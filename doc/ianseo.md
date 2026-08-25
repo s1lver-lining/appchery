@@ -119,10 +119,47 @@ drops on a narrow screen, and the app folds away exactly those, giving them back
 opened. The brackets are drawn a round at a time: the wall chart ianseo prints is unreadable on a
 phone at any zoom, and what is wanted from it is who beat whom.
 
-## 7. What is not built
+## 7. Distance
+
+Neither source publishes coordinates: ianseo prints a town, the FFTA prints a town and a postcode.
+Towns are turned into points through Open-Meteo's geocoder, which needs no key and no account, the
+same service the app already asks for the weather, and every answer is kept in `competition_place`
+for good because towns do not move. A town that cannot be found is remembered as not found, or it
+would be asked about again on every refresh.
+
+Nothing is looked up until the archer turns a distance filter on, and only a town name ever leaves
+the device: their own position is read by the browser, kept in local storage, and sent nowhere.
+
+A competition whose town has not been located yet is **kept** in the list rather than hidden. The
+list narrows as the answers arrive, which is the honest behaviour for a filter waiting on knowledge
+it has not got yet.
+
+## 8. The FFTA, and why it is not wired up
+
+The French federation runs the half of French archery ianseo never sees: club, departmental and
+regional shoots, published at `www.ffta.fr/competitions` with a town, a discipline, the organising
+club, and links to the results and the announcement as PDFs.
+
+`src/lib/ffta/` reads all of that, and is tested against saved pages in `test/ffta/`. It is not
+wired into any screen, because the app cannot legitimately fetch those pages:
+
+- `www.ffta.fr` sits behind a Cloudflare JavaScript challenge. A browser passes it; anything else
+  gets "Just a moment…" and a 403, including `fetch` from Node and, in all likelihood, from a
+  Cloudflare Pages function. Their robots.txt permits the path, but the challenge is a deliberate
+  technical control over automated access, and getting around it is not something this app does.
+- `extranet.ffta.fr`, which holds the calendar and the results, is behind a login and is marked
+  `NoIndex, NoFollow`.
+
+The results PDFs themselves are public and fetch cleanly, so a link to one always works.
+
+What would unblock it is permission rather than cleverness: an interface the federation offers, or
+an agreement to let a named client through. The parsers are ready for the day there is one.
+
+## 9. What is not built
 
 - **No push.** A followed competition is compared against the list when the list is read. Notifying a
   closed app would need a scheduled poller, a subscription table and store credentials on both
   platforms, and none of that exists in this repo.
-- **No region filter.** ianseo rows carry a country and a town and nothing between them.
+- **No region filter.** ianseo rows carry a country and a town and nothing between them, so distance
+  from where the archer is standing does the work a region would.
 - **No writing.** The app never sends a score to ianseo. It is a reader.

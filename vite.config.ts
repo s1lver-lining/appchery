@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
-import { targetOf } from './src/lib/ianseo/proxy.ts';
+import { targetOf } from './src/lib/competitions/proxy.ts';
 
 /**
  * SQLite's OPFS backend requires the page to be cross-origin isolated.
@@ -40,9 +40,9 @@ function crossOriginIsolation(): Plugin {
 }
 
 /**
- * The same pass through to ianseo the deployed site gets from `functions/ianseo-api`, for a site
- * being served from here instead. Without it the ianseo pages work on a phone and nowhere else,
- * which is the half of the app a browser is used to develop.
+ * The same pass through the deployed site gets from `functions/competitions-api`, for a site being
+ * served from here instead. Without it the competition pages work on a phone and nowhere else, which
+ * is the half of the app a browser is used to develop.
  */
 function ianseoProxy(): Plugin {
 	const middleware = async (
@@ -55,16 +55,18 @@ function ianseoProxy(): Plugin {
 		next: () => void
 	) => {
 		const url = new URL(request.url ?? '/', 'http://localhost');
-		if (!url.pathname.startsWith('/ianseo-api')) return next();
+		if (!url.pathname.startsWith('/competitions-api')) return next();
 
 		const target = targetOf(url);
 		if (!target || request.method !== 'GET') {
 			response.statusCode = 404;
-			return response.end('Not an ianseo page this app reads');
+			return response.end('Not a page this app reads');
 		}
 
 		try {
-			const answer = await fetch(target, { headers: { 'User-Agent': 'Appchery (development)' } });
+			const answer = await fetch(target, {
+				headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Appchery/1.0; +https://appchery.com)' }
+			});
 			response.statusCode = answer.status;
 			response.setHeader('Content-Type', answer.headers.get('Content-Type') ?? 'text/html');
 			response.end(await answer.text());
