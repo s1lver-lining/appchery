@@ -68,6 +68,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import {
 		captureConditions,
+		conditionsPatch,
 		formatTemperature,
 		formatWind,
 		weatherIcon,
@@ -430,12 +431,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		fetching = true;
 		try {
 			const conditions = await captureConditions($autoWeather, $autoPlaceName);
-			await updateSession(id, {
-				latitude: conditions.latitude,
-				longitude: conditions.longitude,
-				location: conditions.place,
-				weather: conditions.weather ? JSON.stringify(conditions.weather) : null
-			});
+			await updateSession(id, conditionsPatch(conditions));
 			// Being offline at a range is normal, so a failed lookup says so rather than showing nothing.
 			if (!$autoWeather) notice = $t('session.weatherOff');
 			else if (!conditions.weather) notice = $t('session.weatherFailed');

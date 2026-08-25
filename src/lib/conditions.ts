@@ -83,6 +83,28 @@ export async function fetchWeather(
 	}
 }
 
+/**
+ * What a reading of the conditions should change about a session, which is only ever what it found.
+ *
+ * A lookup that came back with nothing must never erase what is already recorded: the place is typed
+ * in by hand as often as it is fetched, naming a club no geocoder guesses, and the weather may have
+ * been read at a moment there was a signal. Writing the nulls back put an archer's own words in the
+ * bin whenever they pressed the button again out of range, or simply had place names switched off.
+ */
+export function conditionsPatch(conditions: Conditions): {
+	latitude: number;
+	longitude: number;
+	location?: string;
+	weather?: string;
+} {
+	return {
+		latitude: conditions.latitude,
+		longitude: conditions.longitude,
+		...(conditions.place ? { location: conditions.place } : {}),
+		...(conditions.weather ? { weather: JSON.stringify(conditions.weather) } : {})
+	};
+}
+
 export async function captureConditions(
 	withWeather = true,
 	withPlaceName = false

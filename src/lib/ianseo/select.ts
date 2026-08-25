@@ -1,4 +1,4 @@
-import { distanceKm, type Point } from '$lib/competitions/distance';
+import type { Point } from '$lib/competitions/distance';
 import type { Tournament } from './types';
 
 /**
@@ -38,21 +38,6 @@ export const EMPTY_FILTER: Filter = {
 	radiusKm: null,
 	here: null
 };
-
-/**
- * How far away a competition is, or null while nobody knows yet. A town is looked up in the
- * background, so this answers "not yet" far more often than it answers "nowhere".
- */
-export function distanceOf(
-	tournament: Tournament,
-	places: Map<string, Point | null>,
-	here: Point | null,
-	keyOf: (tournament: Tournament) => string
-): number | null {
-	if (!here) return null;
-	const point = places.get(keyOf(tournament));
-	return point ? distanceKm(here, point) : null;
-}
 
 const DAY = 86400_000;
 

@@ -90,10 +90,13 @@ async function ask(town: Town): Promise<Point | null> {
 	let results: { latitude: number; longitude: number; country?: string; postcodes?: string[] }[];
 	try {
 		const response = await fetch(`${ENDPOINT}?${query}`);
-		if (!response.ok) return null;
+		// A refusal is not an answer. Remembering a rate limited or broken reply as "no such town"
+		// would put that town beyond reach for good, and one busy minute would do it to a hundred.
+		if (!response.ok) throw new PlaceUnavailable(String(response.status));
 		results = (await response.json())?.results ?? [];
-	} catch {
+	} catch (error) {
 		// Offline, which is the normal case at a range. Nothing is remembered, so it is asked again later.
+		if (error instanceof PlaceUnavailable) throw error;
 		throw new PlaceUnavailable();
 	}
 	return pick(results, town);
@@ -101,6 +104,8 @@ async function ask(town: Town): Promise<Point | null> {
 
 /** Thrown rather than remembered: a town nobody could ask about is not a town that does not exist. */
 export class PlaceUnavailable extends Error {}
+
+
 
 /**
  * A postcode settles it where there is one, then the country, and a bare name only where the source

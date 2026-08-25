@@ -34,6 +34,12 @@
 	const from = $derived(originOf($page.url, '/'));
 	$effect(() => setPageUp(from));
 
+	/**
+	 * The one clock the page reads. Filtering by one reading of it and grouping by another put a
+	 * competition in a section its own filter disagreed with, which is what a page left open across
+	 * midnight did. Taken again whenever the list is read, which is the moment any of it can change.
+	 */
+	let now = $state(Date.now());
 	let list = $state<Tournament[]>([]);
 	let cachedAt = $state<number | null>(null);
 	let stale = $state(false);
@@ -59,6 +65,7 @@
 	async function read(refresh = false) {
 		loading = true;
 		failed = false;
+		now = Date.now();
 		try {
 			const loaded = await loadTournaments({ refresh });
 			list = loaded.value;
@@ -136,8 +143,7 @@
 		radiusKm: $ianseoRadiusKm > 0 ? $ianseoRadiusKm : null,
 		here
 	});
-	const shown = $derived(filterTournaments(list, filter, Date.now(), distances));
-	const now = Date.now();
+	const shown = $derived(filterTournaments(list, filter, now, distances));
 
 	/** The competitions followed, in the order the list already puts them: what is on now, first. */
 	const followed = $derived(
@@ -172,28 +178,37 @@
 		void fillPlaces(shown.slice(0, 120).map(townOf));
 	});
 
+	/** A breath between lookups: this is somebody else's free service, asked for a hundred towns at once. */
+	const GAP_MS = 120;
+
 	let filling = false;
 	async function fillPlaces(towns: { name: string; country: string | null }[]) {
 		if (filling) return;
 		filling = true;
 		try {
-			const wanted = towns.filter((town) => town.name && !places.has(keyOf(town)));
-			if (wanted.length === 0) return;
+			// By town rather than by competition: a Sunday with four shoots in one town is one lookup.
+			const wanted = new Map<string, { name: string; country: string | null }>();
+			for (const town of towns) {
+				if (town.name && !places.has(keyOf(town))) wanted.set(keyOf(town), town);
+			}
+			if (wanted.size === 0) return;
 
-			const known = await knownPlaces(wanted.map(keyOf));
+			const known = await knownPlaces([...wanted.keys()]);
 			if (known.size > 0) places = new Map([...places, ...known]);
 
-			const missing = wanted.filter((town) => !known.has(keyOf(town)));
+			const missing = [...wanted].filter(([key]) => !known.has(key));
 			locating = missing.length;
-			for (const town of missing) {
+			const found = new Map(places);
+			for (const [key, town] of missing) {
 				try {
-					const found = await locate(town);
-					places = new Map(places).set(found.key, found.point);
+					found.set(key, (await locate(town)).point);
+					places = new Map(found);
 				} catch (error) {
 					// No network: the towns left are asked about again next time rather than remembered wrong.
 					if (error instanceof PlaceUnavailable) break;
 				}
 				locating--;
+				await new Promise((wake) => setTimeout(wake, GAP_MS));
 			}
 		} finally {
 			locating = 0;

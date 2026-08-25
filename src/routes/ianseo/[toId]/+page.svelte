@@ -43,31 +43,41 @@
 	const followed = $derived(pinned.some((one) => one.id === id));
 	const people = $derived(pinned.filter((one) => one.toId === toId && one.kind !== 'competition'));
 
+	/** Which competition the screen is asking about, so a slow read of one never lands on another. */
+	let request = 0;
+
 	$effect(() => {
 		void open(toId);
 	});
 
 	async function open(id: string) {
 		if (!id) return;
+		const mine = ++request;
 		competition = null;
 		tournament = null;
-		pinned = await favourites();
+
+		const known = await favourites();
 		// The list is only read from what is already on the device: this page must not wait on it.
 		const list = await readCache<Tournament[]>(TOURNAMENT_LIST);
+		if (mine !== request) return;
+
+		pinned = known;
 		tournament = list?.value.find((row) => row.toId === id) ?? null;
-		await read(false);
+		await read(false, mine);
 	}
 
-	async function read(refresh: boolean) {
+	async function read(refresh: boolean, mine = ++request) {
 		loading = true;
 		failed = false;
 		try {
 			const loaded = await loadCompetition(toId, { refresh });
+			if (mine !== request) return;
 			competition = loaded.value;
 			cachedAt = loaded.cachedAt;
 			stale = loaded.stale;
 			await seen();
 		} catch {
+			if (mine !== request) return;
 			failed = true;
 		}
 		loading = false;

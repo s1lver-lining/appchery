@@ -48,26 +48,40 @@
 		)
 	);
 
+	/**
+	 * Which document the screen is asking about. A slow read of one document finishing after the
+	 * archer has opened another would otherwise put the first one's rows under the second one's name.
+	 */
+	let request = 0;
+
 	$effect(() => {
 		void open(toId, name);
 	});
 
 	async function open(toId: string, name: string) {
 		if (!toId || !name) return;
+		const mine = ++request;
 		document = null;
 		entry = null;
-		pinned = await favourites();
+
+		const known = await favourites();
+		if (mine !== request) return;
+		pinned = known;
+
+		let found: Competition | null = null;
 		try {
-			competition = (await loadCompetition(toId)).value;
+			found = (await loadCompetition(toId)).value;
 		} catch {
-			competition = null;
+			found = null;
 		}
-		entry =
-			competition?.documents.find((one) => one.path.split('/').pop() === `${name}.php`) ?? null;
-		await read(false);
+		if (mine !== request) return;
+
+		competition = found;
+		entry = found?.documents.find((one) => one.path.split('/').pop() === `${name}.php`) ?? null;
+		await read(false, mine);
 	}
 
-	async function read(refresh: boolean) {
+	async function read(refresh: boolean, mine = ++request) {
 		if (!entry) {
 			loading = false;
 			error = 'missing';
@@ -77,10 +91,12 @@
 		error = null;
 		try {
 			const loaded = await loadResultDocument(entry.path, { refresh });
+			if (mine !== request) return;
 			document = loaded.value;
 			cachedAt = loaded.cachedAt;
 			stale = loaded.stale;
 		} catch (thrown) {
+			if (mine !== request) return;
 			error = thrown instanceof IanseoError && thrown.kind === 'missing' ? 'missing' : 'offline';
 		}
 		loading = false;

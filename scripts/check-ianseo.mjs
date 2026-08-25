@@ -295,6 +295,58 @@ async function checkDistance(browser) {
 	await context.close();
 }
 
+/**
+ * Opening one document while another is still being read. SvelteKit keeps the same component for two
+ * documents of the same competition, so the slow read lands in a screen that has moved on: without a
+ * guard it painted the first document's rows under the second one's name.
+ */
+async function checkStaleRead(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	// The first document answers slowly, the second at once, so the wrong one would arrive last.
+	await context.route('**/competitions-api/ianseo/TourData/**/IQRM.php', async (route) => {
+		await new Promise((wake) => setTimeout(wake, 2500));
+		route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body: fixture('IQRM') });
+	});
+
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo/26053/IC`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('table tbody tr');
+
+	/**
+	 * Moved between the two documents the way the app moves: a link, followed by the router, which
+	 * changes the address without rebuilding the screen. Loading the address afresh would rebuild it
+	 * and throw the slow read away with it, which is the one case that was never in danger.
+	 */
+	const hop = async (to) => {
+		await page.evaluate((href) => {
+			const link = document.createElement('a');
+			link.href = href;
+			link.id = 'hop';
+			link.textContent = 'hop';
+			// Given a size and put on top, because a link with neither is not a link anybody can click.
+			link.setAttribute('style', 'position:fixed;top:0;left:0;z-index:9999;padding:8px;background:#fff');
+			document.body.append(link);
+		}, to);
+		await page.locator('#hop').click();
+		await page.evaluate(() => document.querySelector('#hop')?.remove());
+	};
+
+	await hop('/ianseo/26053/IQRM');
+	await page.waitForTimeout(300);
+	await hop('/ianseo/26053/IC');
+	await page.waitForSelector('table tbody tr');
+	await page.waitForTimeout(3500);
+
+	const heading = await page.locator('h1').first().innerText();
+	check('a slow read never lands on the document that replaced it', /Class & Division/i.test(heading), heading);
+	check(
+		'and the rows on screen are the ones its own title names',
+		(await page.getByText('Recurve - Men [After 60 Arrows]').count()) > 0
+	);
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -380,6 +432,7 @@ async function run() {
 	await checkOffline(browser);
 	await checkFrench(browser);
 	await checkDistance(browser);
+	await checkStaleRead(browser);
 
 	await browser.close();
 
