@@ -3,6 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
+import { targetOf } from './src/lib/ianseo/proxy';
 
 /**
  * SQLite's OPFS backend requires the page to be cross-origin isolated.
@@ -39,6 +40,52 @@ function crossOriginIsolation(): Plugin {
 }
 
 /**
+ * The same pass through to ianseo the deployed site gets from `functions/ianseo-api`, for a site
+ * being served from here instead. Without it the ianseo pages work on a phone and nowhere else,
+ * which is the half of the app a browser is used to develop.
+ */
+function ianseoProxy(): Plugin {
+	const middleware = async (
+		request: { url?: string; method?: string },
+		response: {
+			statusCode: number;
+			setHeader(key: string, value: string): void;
+			end(body?: string): void;
+		},
+		next: () => void
+	) => {
+		const url = new URL(request.url ?? '/', 'http://localhost');
+		if (!url.pathname.startsWith('/ianseo-api')) return next();
+
+		const target = targetOf(url);
+		if (!target || request.method !== 'GET') {
+			response.statusCode = 404;
+			return response.end('Not an ianseo page this app reads');
+		}
+
+		try {
+			const answer = await fetch(target, { headers: { 'User-Agent': 'Appchery (development)' } });
+			response.statusCode = answer.status;
+			response.setHeader('Content-Type', answer.headers.get('Content-Type') ?? 'text/html');
+			response.end(await answer.text());
+		} catch (error) {
+			response.statusCode = 502;
+			response.end(String(error));
+		}
+	};
+
+	return {
+		name: 'appchery-ianseo-proxy',
+		configureServer(server) {
+			server.middlewares.use(middleware);
+		},
+		configurePreviewServer(server) {
+			server.middlewares.use(middleware);
+		}
+	};
+}
+
+/**
  * Cross-origin isolation only takes effect in a secure context, and `localhost` is the only
  * insecure origin browsers exempt. A phone opening the LAN address over plain HTTP therefore gets
  * no OPFS and an in-memory database, so `dev.sh --ssl` and `run.sh --ssl` set this to serve a
@@ -48,7 +95,7 @@ function crossOriginIsolation(): Plugin {
 const ssl = process.env.APPCHERY_SSL === '1';
 
 export default defineConfig({
-	plugins: [crossOriginIsolation(), ...(ssl ? [basicSsl()] : []), tailwindcss(), sveltekit()],
+	plugins: [crossOriginIsolation(), ianseoProxy(), ...(ssl ? [basicSsl()] : []), tailwindcss(), sveltekit()],
 	// PUBLIC_ alongside Vite's own prefix, so the sync server can be baked in without SvelteKit's
 	// $env/static/public, which fails the build when a variable is absent. Absent is the normal case
 	// here: a build with no server configured is a working offline app, not a broken one.

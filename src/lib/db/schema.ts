@@ -340,3 +340,33 @@ export const syncState = sqliteTable('sync_state', {
 	/** Read on a screen that has to work with no signal, so it is stored rather than asked for. */
 	lastSyncAt: integer('last_sync_at')
 });
+
+/**
+ * A competition, a country, or somebody inside a competition that the archer follows on ianseo.
+ *
+ * Local to the device: it is a reading list rather than a record of shooting, and nothing here is
+ * worth the risk of pushing somebody else's name to a server the app keeps the archer's own arrows on.
+ */
+export const ianseoFavourite = sqliteTable(
+	'ianseo_favourite',
+	{
+		id: text('id').primaryKey(),
+		/** competition | country | archer | club */
+		kind: text('kind').notNull(),
+		/** The competition an archer or a club is followed inside: nothing is ever searched for globally. */
+		toId: text('to_id'),
+		label: text('label').notNull(),
+		detail: text('detail'),
+		addedAt: integer('added_at').notNull(),
+		/** The newest publication the archer has already looked at, which is what makes a result new. */
+		seenAt: integer('seen_at')
+	},
+	(t) => [index('idx_ianseo_favourite_kind').on(t.kind, t.addedAt)]
+);
+
+/** ianseo as it was last read, so a followed competition opens at a range with no signal. */
+export const ianseoCache = sqliteTable('ianseo_cache', {
+	path: text('path').primaryKey(),
+	payload: text('payload').notNull(),
+	cachedAt: integer('cached_at').notNull()
+});

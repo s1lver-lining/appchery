@@ -249,5 +249,29 @@ export const MIGRATIONS: string[][] = [
 	[
 		`ALTER TABLE change_log ADD COLUMN attempts INTEGER NOT NULL DEFAULT 0;`,
 		`ALTER TABLE change_log ADD COLUMN failed_at INTEGER;`
+	],
+	// 0004 the competitions followed on ianseo, and the pages read back from it
+	[
+		// What the archer follows. Local to the device and never pushed: it says what they are
+		// watching, not what they shot, and it is rebuilt from ianseo in a moment on a new phone.
+		`CREATE TABLE IF NOT EXISTS ianseo_favourite (
+			id TEXT PRIMARY KEY NOT NULL,
+			/** competition | country | archer | club */
+			kind TEXT NOT NULL,
+			/** The competition an archer or a club is followed inside, so nothing is searched for globally. */
+			to_id TEXT,
+			label TEXT NOT NULL,
+			detail TEXT,
+			added_at INTEGER NOT NULL,
+			/** The newest publication the archer has already looked at, which is what makes one new. */
+			seen_at INTEGER
+		);`,
+		// ianseo as it was last read, so a followed competition opens at a range with no signal.
+		`CREATE TABLE IF NOT EXISTS ianseo_cache (
+			path TEXT PRIMARY KEY NOT NULL,
+			payload TEXT NOT NULL,
+			cached_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_ianseo_favourite_kind ON ianseo_favourite (kind, added_at);`
 	]
 ];
