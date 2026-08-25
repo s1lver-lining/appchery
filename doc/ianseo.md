@@ -40,6 +40,10 @@ Two paths to the same HTML, chosen in `src/lib/ianseo/fetch.ts`:
   Cloudflare Pages function, `functions/ianseo-api/[[path]].ts`; in development it is a middleware in
   `vite.config.ts`. Both are a few lines around one `fetch`.
 
+`wrangler pages deploy build` picks the function up from `functions/` in the repository root, which
+is where wrangler looks regardless of the directory being uploaded. `npx wrangler pages functions
+build` compiles it without deploying, which is the cheap way to check it still does.
+
 The proxy passes the page through untouched rather than parsing it. That is deliberate: one set of
 parsers runs everywhere, so a page ianseo changes breaks in one place rather than differently on each
 platform, and a parser fixed for the web is fixed for the phone in the same commit.
