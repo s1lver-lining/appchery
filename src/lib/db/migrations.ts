@@ -275,5 +275,33 @@ export const MIGRATIONS: string[][] = [
 			cached_at INTEGER NOT NULL
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_ianseo_favourite_kind ON ianseo_favourite (kind, added_at);`
+	],
+	// 0005 the ianseo tables as 0004 should have created them, for the databases that ran it before it
+	// said so. Dropped and made again rather than altered: a column added twice is an error, so an
+	// ALTER would fix one half of the databases at version 4 and break the other. Nothing is lost that
+	// cannot be read again, which is the whole of what these two tables are for.
+	[
+		`DROP TABLE IF EXISTS ianseo_favourite;`,
+		`DROP TABLE IF EXISTS ianseo_cache;`,
+		`CREATE TABLE ianseo_favourite (
+			id TEXT PRIMARY KEY NOT NULL,
+			/** competition | country | archer | club */
+			kind TEXT NOT NULL,
+			/** The competition an archer or a club is followed inside, so nothing is searched for globally. */
+			to_id TEXT,
+			label TEXT NOT NULL,
+			detail TEXT,
+			added_at INTEGER NOT NULL,
+			/** When ianseo last rebuilt it, as the tournament list last said. */
+			published_at INTEGER,
+			/** The newest publication the archer has already looked at, which is what makes one new. */
+			seen_at INTEGER
+		);`,
+		`CREATE TABLE ianseo_cache (
+			path TEXT PRIMARY KEY NOT NULL,
+			payload TEXT NOT NULL,
+			cached_at INTEGER NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_ianseo_favourite_kind ON ianseo_favourite (kind, added_at);`
 	]
 ];
