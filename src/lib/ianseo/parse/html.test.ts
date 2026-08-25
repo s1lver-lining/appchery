@@ -14,6 +14,11 @@ describe('decode', () => {
 		expect(decode('&#39;&#x2019;')).toBe("'’");
 	});
 
+	it('reads the accented letters organisers type, in the case they typed them', () => {
+		expect(decode("rue de l&eacute;glise")).toBe("rue de l'église".replace("'", ''));
+		expect(decode('&Eacute;quipe &agrave; M&uuml;nchen')).toBe('Équipe à München');
+	});
+
 	it('leaves an ampersand that is not an entity alone', () => {
 		expect(decode('Class & Division')).toBe('Class & Division');
 	});

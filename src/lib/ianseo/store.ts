@@ -13,8 +13,15 @@ export type Favourite = {
 	label: string;
 	detail: string | null;
 	addedAt: number;
+	/** The newest thing ianseo has published for it, as the app last read the competition. */
+	publishedAt: number | null;
 	seenAt: number | null;
 };
+
+/** Something has been published since the archer last looked, which is the whole of what a badge says. */
+export function isNew(favourite: Favourite): boolean {
+	return favourite.publishedAt !== null && favourite.publishedAt > (favourite.seenAt ?? 0);
+}
 
 /**
  * One row per thing followed, addressed by what it is rather than by a fresh identifier: following
@@ -37,12 +44,13 @@ export async function favourites(): Promise<Favourite[]> {
 		label: row.label,
 		detail: row.detail,
 		addedAt: row.addedAt,
+		publishedAt: row.publishedAt,
 		seenAt: row.seenAt
 	}));
 }
 
 export async function addFavourite(
-	favourite: Omit<Favourite, 'addedAt' | 'seenAt'> & { seenAt?: number | null }
+	favourite: Omit<Favourite, 'addedAt' | 'publishedAt' | 'seenAt'> & { seenAt?: number | null }
 ): Promise<void> {
 	await db()
 		.insert(schema.ianseoFavourite)
@@ -53,6 +61,7 @@ export async function addFavourite(
 			label: favourite.label,
 			detail: favourite.detail,
 			addedAt: Date.now(),
+			publishedAt: null,
 			seenAt: favourite.seenAt ?? null
 		})
 		.onConflictDoUpdate({
@@ -69,6 +78,18 @@ export async function removeFavourite(id: string): Promise<void> {
 export async function removeCompetition(toId: string): Promise<void> {
 	await db().delete(schema.ianseoFavourite).where(eq(schema.ianseoFavourite.toId, toId));
 	await removeFavourite(favouriteId('competition', toId));
+}
+
+/**
+ * What ianseo has published for a followed competition, noted as the app reads it. A competition
+ * nobody follows is not recorded: this exists to light a badge, and nothing lights it for the rest.
+ */
+export async function notePublished(toId: string, at: number | null): Promise<void> {
+	if (at === null) return;
+	await db()
+		.update(schema.ianseoFavourite)
+		.set({ publishedAt: at })
+		.where(eq(schema.ianseoFavourite.id, favouriteId('competition', toId)));
 }
 
 /** The archer has read this much of the competition, so anything published after it is new to them. */

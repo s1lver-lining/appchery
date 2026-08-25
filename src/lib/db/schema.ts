@@ -358,6 +358,8 @@ export const ianseoFavourite = sqliteTable(
 		label: text('label').notNull(),
 		detail: text('detail'),
 		addedAt: integer('added_at').notNull(),
+		/** The newest thing ianseo has published for it, as the app last read the competition. */
+		publishedAt: integer('published_at'),
 		/** The newest publication the archer has already looked at, which is what makes a result new. */
 		seenAt: integer('seen_at')
 	},

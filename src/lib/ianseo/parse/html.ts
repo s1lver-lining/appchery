@@ -4,25 +4,51 @@
  * neither is a place to depend on DOMParser being the same thing.
  */
 
+/**
+ * The names the Latin 1 characters are written under, in code order from 160. ianseo publishes what
+ * organisers type, so a French club road is `rue de l&eacute;glise` and a German one is full of
+ * `&uuml;`: without these the app prints the entity at the archer instead of the letter.
+ */
+const LATIN1 =
+	'nbsp iexcl cent pound curren yen brvbar sect uml copy ordf laquo not shy reg macr deg plusmn ' +
+	'sup2 sup3 acute micro para middot cedil sup1 ordm raquo frac14 frac12 frac34 iquest Agrave ' +
+	'Aacute Acirc Atilde Auml Aring AElig Ccedil Egrave Eacute Ecirc Euml Igrave Iacute Icirc Iuml ' +
+	'ETH Ntilde Ograve Oacute Ocirc Otilde Ouml times Oslash Ugrave Uacute Ucirc Uuml Yacute THORN ' +
+	'szlig agrave aacute acirc atilde auml aring aelig ccedil egrave eacute ecirc euml igrave iacute ' +
+	'icirc iuml eth ntilde ograve oacute ocirc otilde ouml divide oslash ugrave uacute ucirc uuml ' +
+	'yacute thorn yuml';
+
 const ENTITIES: Record<string, string> = {
-	nbsp: ' ',
 	amp: '&',
 	lt: '<',
 	gt: '>',
 	quot: '"',
 	apos: "'",
-	deg: '°'
+	euro: '€',
+	hellip: '…',
+	ndash: '–',
+	mdash: '—',
+	lsquo: '‘',
+	rsquo: '’',
+	ldquo: '“',
+	rdquo: '”',
+	bull: '•',
+	...Object.fromEntries(LATIN1.split(' ').map((name, index) => [name, String.fromCharCode(160 + index)])),
+	// A plain space rather than the unbreakable one it stands for: ianseo pads its cells with these,
+	// and a name read back with an invisible different space in it never matches the one followed.
+	nbsp: ' '
 };
 
 export function decode(text: string): string {
 	// `nbsp` is allowed to arrive unclosed because ianseo writes it that way in its result lines.
-	return text.replace(/&(#x?[0-9a-fA-F]+;|\w+;|nbsp)/g, (whole, body: string) => {
-		body = body.replace(/;$/, '');
-		if (body[0] === '#') {
-			const code = body[1] === 'x' || body[1] === 'X' ? parseInt(body.slice(2), 16) : Number(body.slice(1));
-			return Number.isFinite(code) ? String.fromCodePoint(code) : whole;
+	return text.replace(/&(#x?[0-9a-fA-F]+;|[A-Za-z][A-Za-z0-9]*;|nbsp)/g, (whole, body: string) => {
+		const name = body.replace(/;$/, '');
+		if (name[0] === '#') {
+			const code = name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1));
+			return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : whole;
 		}
-		return ENTITIES[body.toLowerCase()] ?? whole;
+		// Case matters: &Eacute; and &eacute; are two different letters, one of them a capital.
+		return ENTITIES[name] ?? whole;
 	});
 }
 

@@ -26,6 +26,8 @@
 		| 'storm'
 		| 'star'
 		| 'medal'
+		| 'podium'
+		| 'refresh'
 		| 'chevronUp'
 		| 'check'
 		| 'edit'
@@ -210,6 +212,16 @@
 		<path d="M6 14.5L12 8.5l6 6" />
 	{:else if name === 'check'}
 		<path d="M5 12.5l4.5 4.5L19 7" />
+	{:else if name === 'refresh'}
+		<!-- A circle that does not quite close, with the arrow that carries it round. -->
+		<path d="M20.2 12a8.2 8.2 0 1 1-2.4-5.8" />
+		<path d="M20.4 3.6v5h-5" />
+	{:else if name === 'podium'}
+		<!-- A podium seen from the front, second, first and third: a competition once it is over. -->
+		<path d="M9.2 12.4h5.6v8.4H9.2z" fill={filled ? 'currentColor' : 'none'} />
+		<path d="M3.2 15.6h6v5.2h-6z" />
+		<path d="M14.8 17.2h6v3.6h-6z" />
+		<path d="M12.0 2.7 L12.9 5.0 L15.4 5.2 L13.5 6.8 L14.1 9.2 L12.0 7.8 L9.9 9.2 L10.5 6.8 L8.6 5.2 L11.1 5.0 Z" fill={filled ? 'currentColor' : 'none'} />
 	{:else if name === 'star'}
 		<path
 			d="M12 3.6l2.6 5.3 5.8.8-4.2 4.1 1 5.8-5.2-2.7-5.2 2.7 1-5.8-4.2-4.1 5.8-.8z"

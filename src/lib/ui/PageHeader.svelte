@@ -15,6 +15,7 @@
 		| 'stats'
 		| 'badges'
 		| 'tricks'
+		| 'ianseo'
 		| 'exercises'
 		| 'experience'
 		| 'feed'
@@ -180,6 +181,39 @@
 				/>
 				<circle cx={face.x} cy={face.y} r="3" fill="currentColor" opacity={0.2 + i * 0.08} />
 			{/each}
+		</svg>
+	{:else if motif === 'ianseo'}
+		<!-- An elimination bracket closing on one archer: what a competition is, drawn in one line. -->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 140 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			<g transform="translate(14 0)">
+				{#each [
+					{ round: 0, d: 'M-6 6H28V20H-6' },
+					{ round: 0, d: 'M-6 33H28V47H-6' },
+					{ round: 0, d: 'M-6 61H28V74H-6' },
+					{ round: 0, d: 'M-6 88H28V102H-6' },
+					{ round: 1, d: 'M28 13H60V40H28' },
+					{ round: 1, d: 'M28 68H60V95H28' },
+					{ round: 2, d: 'M60 27H90V81H60' },
+					{ round: 3, d: 'M90 54H118' }
+				] as tie (tie.d)}
+					<!-- Each round is drawn a shade stronger than the one before, so the eye runs to the final. -->
+					<path
+						d={tie.d}
+						stroke="currentColor"
+						stroke-width="2.6"
+						stroke-linecap="round"
+						stroke-linejoin="round"
+						opacity={0.14 + tie.round * 0.06}
+					/>
+				{/each}
+				<circle cx="118" cy="54" r="4.5" fill="currentColor" opacity="0.34" />
+			</g>
 		</svg>
 	{:else if motif === 'exercises'}
 		<!-- A band stretched wider each time: the same movement, asked for a little more of. -->

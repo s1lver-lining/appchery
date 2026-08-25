@@ -61,6 +61,22 @@ export const formatNumber = derived(locale, ($locale) => {
 	return (value: number) => formatter.format(value);
 });
 
+/**
+ * How long ago something happened, in the app's own language. Read on anything the app did not
+ * choose the moment of: a page read back from somebody else's server is only as good as its age.
+ */
+export const formatSince = derived(locale, ($locale) => {
+	const relative = new Intl.RelativeTimeFormat($locale, { numeric: 'auto' });
+	return (at: number, now = Date.now()) => {
+		const seconds = Math.round((at - now) / 1000);
+		const size = Math.abs(seconds);
+		if (size < 60) return relative.format(Math.round(seconds), 'second');
+		if (size < 3600) return relative.format(Math.round(seconds / 60), 'minute');
+		if (size < 86400) return relative.format(Math.round(seconds / 3600), 'hour');
+		return relative.format(Math.round(seconds / 86400), 'day');
+	};
+});
+
 export const formatDateTime = derived(dateFormats, ($f) => $f.dateTime);
 export const formatDayDateTime = derived(dateFormats, ($f) => $f.dayDateTime);
 export const formatTime = derived(dateFormats, ($f) => $f.time);
@@ -423,3 +439,20 @@ export const defaultBowId = storedString(DEFAULT_BOW_KEY);
  * asked once rather than guessed, since half the guide reads backwards for the wrong hand.
  */
 export const bowHand = storedString('appchery.bowHand');
+
+/**
+ * The countries whose competitions the ianseo page shows, as the flags there code them. Empty until
+ * the archer has answered: the app offers the one the device suggests rather than choosing for them,
+ * because a phone a country out would silently hide the archer's own list.
+ */
+export const ianseoCountries = storedList('appchery.ianseoCountries');
+
+/** Whether the country the device suggests has already been offered, so it is offered once. */
+export const ianseoCountryAsked = flag('appchery.ianseoCountryAsked', false);
+
+/**
+ * Whether the competitions the ianseo team run themselves are shown whatever country they are in.
+ * On by default: those are the championships and the international games, which is most of what an
+ * archer following results at all is following.
+ */
+export const ianseoMajor = flag('appchery.ianseoMajor', true);

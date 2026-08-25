@@ -263,6 +263,8 @@ export const MIGRATIONS: string[][] = [
 			label TEXT NOT NULL,
 			detail TEXT,
 			added_at INTEGER NOT NULL,
+			/** The newest thing ianseo has published for it, as the app last read the competition. */
+			published_at INTEGER,
 			/** The newest publication the archer has already looked at, which is what makes one new. */
 			seen_at INTEGER
 		);`,
