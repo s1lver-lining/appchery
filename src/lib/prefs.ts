@@ -456,3 +456,19 @@ export const ianseoCountryAsked = flag('appchery.ianseoCountryAsked', false);
  * archer following results at all is following.
  */
 export const ianseoMajor = flag('appchery.ianseoMajor', true);
+
+/**
+ * How far the competitions page reaches, in kilometres, or 0 for no distance filter. A town is only
+ * ever looked up while this is on, so leaving it off is also leaving the app off the network.
+ */
+export const ianseoRadiusKm = storedNumber('appchery.ianseoRadiusKm', 0);
+
+/**
+ * Where the archer said they were, last time they asked the page to find out. Kept so the filter
+ * survives a reload without asking the browser for a position on every visit, and dropped by the
+ * same button that set it. Never leaves the device: only town names are ever sent anywhere.
+ */
+export const ianseoHere = storedString('appchery.ianseoHere');
+
+/** Whether a search reaches past the filters, which is what a search usually wants. */
+export const ianseoSearchEverywhere = flag('appchery.ianseoSearchEverywhere', true);

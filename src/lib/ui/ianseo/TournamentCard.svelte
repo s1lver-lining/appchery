@@ -3,6 +3,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import type { Tournament } from '$lib/ianseo/types';
 	import type { When } from '$lib/ianseo/select';
+	import { roundKm } from '$lib/competitions/distance';
 
 	/**
 	 * One competition in a list. The dates lead rather than the name, because a list of competitions
@@ -13,7 +14,8 @@
 		when,
 		href,
 		following = false,
-		fresh = false
+		fresh = false,
+		km = null
 	}: {
 		tournament: Tournament;
 		when: When;
@@ -21,6 +23,8 @@
 		following?: boolean;
 		/** Something has been published since the archer last opened it. */
 		fresh?: boolean;
+		/** How far away it is, where the town has been located. */
+		km?: number | null;
 	} = $props();
 </script>
 
@@ -64,7 +68,11 @@
 		</span>
 		<span class="mt-0.5 block font-semibold break-words">{tournament.name}</span>
 		<span class="mt-0.5 block truncate text-xs text-muted">
-			{[tournament.city, tournament.organiser].filter(Boolean).join(' · ')}
+			{#if km !== null}
+				<!-- In front of the town, because it is the thing being asked about when it is on show. -->
+				<span class="font-medium text-brand-text">{$t('ianseo.away', { km: roundKm(km) })}</span>
+				·
+			{/if}{[tournament.city, tournament.organiser].filter(Boolean).join(' · ')}
 		</span>
 	</span>
 </a>

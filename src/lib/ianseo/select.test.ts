@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countriesOf, filterTournaments, guessedCountry, matches, whenOf } from './select';
+import { countriesOf, EMPTY_FILTER, filterTournaments, guessedCountry, matches, whenOf } from './select';
 import type { Tournament } from './types';
 
 const NOW = Date.UTC(2026, 7, 25, 12, 0);
@@ -70,7 +70,7 @@ describe('filterTournaments', () => {
 		tournament({ toId: 'away', country: { code: 'JPN', name: 'Japan' }, city: 'Tokyo' }),
 		tournament({ toId: 'games', country: { code: 'ITA', name: 'Italy' }, major: true, name: 'Games' })
 	];
-	const filter = { countries: ['FRA'], major: true, search: '' };
+	const filter = { ...EMPTY_FILTER, countries: ['FRA'], major: true };
 
 	it('keeps the archer’s own country and the events the ianseo team run', () => {
 		expect(filterTournaments(list, filter, NOW).map((row) => row.toId)).toEqual(['home', 'games']);
@@ -86,10 +86,61 @@ describe('filterTournaments', () => {
 		expect(filterTournaments(list, { ...filter, countries: [] }, NOW)).toHaveLength(3);
 	});
 
-	it('searches the whole of ianseo, not only the countries being followed', () => {
+	it('searches the whole of ianseo when the search says it may', () => {
 		expect(filterTournaments(list, { ...filter, search: 'tokyo' }, NOW).map((row) => row.toId)).toEqual([
 			'away'
 		]);
+	});
+
+	it('searches only what the filters leave when the search is told to', () => {
+		const narrowed = { ...filter, search: 'tokyo', searchEverywhere: false };
+		expect(filterTournaments(list, narrowed, NOW)).toEqual([]);
+		// The named shoot is in the archer's own country, so narrowing the search still finds it.
+		expect(
+			filterTournaments(list, { ...narrowed, search: 'a shoot' }, NOW).map((row) => row.toId)
+		).toEqual(['home']);
+	});
+});
+
+describe('filterTournaments, by distance', () => {
+	const here = { latitude: 48.11, longitude: -1.67 };
+	const list = [
+		tournament({ toId: 'near' }),
+		tournament({ toId: 'far' }),
+		tournament({ toId: 'unknown' })
+	];
+	const distances = new Map<string, number | null>([
+		['near', 30],
+		['far', 400],
+		['unknown', null]
+	]);
+	const filter = { ...EMPTY_FILTER, here, radiusKm: 100 };
+
+	it('keeps what is inside the radius and drops what is beyond it', () => {
+		const kept = filterTournaments(list, filter, NOW, distances).map((row) => row.toId);
+		expect(kept).toContain('near');
+		expect(kept).not.toContain('far');
+	});
+
+	it('keeps a competition whose town has not been looked up yet', () => {
+		// The list narrows as the answers arrive rather than hiding what nobody has asked about.
+		expect(filterTournaments(list, filter, NOW, distances).map((row) => row.toId)).toContain(
+			'unknown'
+		);
+	});
+
+	it('filters by nothing at all until the archer has offered where they are', () => {
+		const nowhere = { ...filter, here: null };
+		expect(filterTournaments(list, nowhere, NOW, distances)).toHaveLength(3);
+	});
+
+	it('filters by nothing when no radius was chosen', () => {
+		expect(filterTournaments(list, { ...filter, radiusKm: null }, NOW, distances)).toHaveLength(3);
+	});
+
+	it('still answers a search that reaches past the radius', () => {
+		const searching = { ...filter, search: 'a shoot', searchEverywhere: true };
+		expect(filterTournaments(list, searching, NOW, distances)).toHaveLength(3);
 	});
 
 	it('shows what is being shot now, then what is next, then what finished last', () => {
@@ -101,7 +152,7 @@ describe('filterTournaments', () => {
 				tournament({ toId: 'now', from: day(-1), to: day(1) }),
 				tournament({ toId: 'just-gone', from: day(-3), to: day(-3) })
 			],
-			{ countries: [], major: true, search: '' },
+			{ ...EMPTY_FILTER },
 			NOW
 		);
 		expect(ordered.map((row) => row.toId)).toEqual(['now', 'soon', 'later', 'just-gone', 'long-gone']);
@@ -113,7 +164,7 @@ describe('filterTournaments', () => {
 				tournament({ toId: 'quiet', from: day(0), to: day(1), updatedAt: NOW - 7200_000 }),
 				tournament({ toId: 'live', from: day(0), to: day(1), updatedAt: NOW - 60_000 })
 			],
-			{ countries: [], major: true, search: '' },
+			{ ...EMPTY_FILTER },
 			NOW
 		);
 		expect(ordered.map((row) => row.toId)).toEqual(['live', 'quiet']);
@@ -121,7 +172,7 @@ describe('filterTournaments', () => {
 
 	it('leaves the list it was given alone', () => {
 		const given = [tournament({ toId: 'a', from: day(5) }), tournament({ toId: 'b', from: day(-5) })];
-		filterTournaments(given, { countries: [], major: true, search: '' }, NOW);
+		filterTournaments(given, { ...EMPTY_FILTER }, NOW);
 		expect(given.map((row) => row.toId)).toEqual(['a', 'b']);
 	});
 });

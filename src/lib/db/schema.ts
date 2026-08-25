@@ -372,3 +372,16 @@ export const ianseoCache = sqliteTable('ianseo_cache', {
 	payload: text('payload').notNull(),
 	cachedAt: integer('cached_at').notNull()
 });
+
+/**
+ * Where a town is, looked up once and kept. Towns do not move, and the competition sources name the
+ * same few thousand of them over and over, so this is the difference between one lookup and a
+ * thousand. A town that could not be found is remembered as not found, which is also an answer.
+ */
+export const competitionPlace = sqliteTable('competition_place', {
+	key: text('key').primaryKey(),
+	latitude: real('latitude'),
+	longitude: real('longitude'),
+	found: integer('found').notNull(),
+	cachedAt: integer('cached_at').notNull()
+});

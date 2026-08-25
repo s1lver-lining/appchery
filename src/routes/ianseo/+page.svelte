@@ -2,7 +2,14 @@
 	import { page } from '$app/stores';
 	import { t, locale } from '$lib/i18n';
 	import { originOf, setPageUp, withOrigin } from '$lib/nav';
-	import { ianseoCountries, ianseoCountryAsked, ianseoMajor } from '$lib/prefs';
+	import {
+		ianseoCountries,
+		ianseoCountryAsked,
+		ianseoHere,
+		ianseoMajor,
+		ianseoRadiusKm,
+		ianseoSearchEverywhere
+	} from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -11,7 +18,11 @@
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadTournaments } from '$lib/ianseo/client';
 	import { countriesOf, filterTournaments, guessedCountry, whenOf, type When } from '$lib/ianseo/select';
+	import { distanceKm } from '$lib/competitions/distance';
 	import { favourites, isNew, notePublished, type Favourite } from '$lib/ianseo/store';
+	import { RADII, roundKm, type Point } from '$lib/competitions/distance';
+	import { keyOf, knownPlaces, locate, PlaceUnavailable } from '$lib/competitions/places';
+	import { requestPosition, LocationDeniedError } from '$lib/conditions';
 	import type { Tournament } from '$lib/ianseo/types';
 
 	/**
@@ -31,6 +42,7 @@
 	let search = $state('');
 	let pinned = $state<Favourite[]>([]);
 	let countrySheet = $state(false);
+	let radiusSheet = $state(false);
 	let countryTerm = $state('');
 	/** The country the device suggests, offered once and only while nothing has been chosen. */
 	let offered = $state<{ code: string; name: string } | null>(null);
@@ -90,8 +102,41 @@
 		offered = null;
 	}
 
-	const filter = $derived({ countries: $ianseoCountries, major: $ianseoMajor, search });
-	const shown = $derived(filterTournaments(list, filter));
+	/** Where the archer said they were, kept as `latitude,longitude` so a reload does not ask again. */
+	const here = $derived.by<Point | null>(() => {
+		const [latitude, longitude] = ($ianseoHere ?? '').split(',').map(Number);
+		return Number.isFinite(latitude) && Number.isFinite(longitude) ? { latitude, longitude } : null;
+	});
+
+	/** Towns already looked up, by the key they are remembered under. Filled in as answers arrive. */
+	let places = $state(new Map<string, Point | null>());
+	let locating = $state(0);
+
+	const townOf = (tournament: Tournament) => ({
+		name: tournament.city,
+		country: tournament.country?.name ?? null
+	});
+	const placeOf = (tournament: Tournament) => places.get(keyOf(townOf(tournament))) ?? null;
+
+	const distances = $derived.by(() => {
+		const found = new Map<string, number | null>();
+		if (!here) return found;
+		for (const tournament of list) {
+			const point = placeOf(tournament);
+			found.set(tournament.toId, point ? distanceKm(here, point) : null);
+		}
+		return found;
+	});
+
+	const filter = $derived({
+		countries: $ianseoCountries,
+		major: $ianseoMajor,
+		search,
+		searchEverywhere: $ianseoSearchEverywhere,
+		radiusKm: $ianseoRadiusKm > 0 ? $ianseoRadiusKm : null,
+		here
+	});
+	const shown = $derived(filterTournaments(list, filter, Date.now(), distances));
 	const now = Date.now();
 
 	/** The competitions followed, in the order the list already puts them: what is on now, first. */
@@ -116,6 +161,63 @@
 	const fresh = $derived(
 		new Set(pinned.filter((one) => one.kind === 'competition' && isNew(one)).map((one) => one.toId))
 	);
+
+	/**
+	 * The towns of what is on screen, looked up a few at a time and kept for good. Only ever while a
+	 * distance filter is on: a town name is sent to a third party to be located, and nothing asks for
+	 * that unless the archer has asked to be told how far away things are.
+	 */
+	$effect(() => {
+		if ($ianseoRadiusKm <= 0 || !here) return;
+		void fillPlaces(shown.slice(0, 120).map(townOf));
+	});
+
+	let filling = false;
+	async function fillPlaces(towns: { name: string; country: string | null }[]) {
+		if (filling) return;
+		filling = true;
+		try {
+			const wanted = towns.filter((town) => town.name && !places.has(keyOf(town)));
+			if (wanted.length === 0) return;
+
+			const known = await knownPlaces(wanted.map(keyOf));
+			if (known.size > 0) places = new Map([...places, ...known]);
+
+			const missing = wanted.filter((town) => !known.has(keyOf(town)));
+			locating = missing.length;
+			for (const town of missing) {
+				try {
+					const found = await locate(town);
+					places = new Map(places).set(found.key, found.point);
+				} catch (error) {
+					// No network: the towns left are asked about again next time rather than remembered wrong.
+					if (error instanceof PlaceUnavailable) break;
+				}
+				locating--;
+			}
+		} finally {
+			locating = 0;
+			filling = false;
+		}
+	}
+
+	let locationError = $state(false);
+	async function useMyLocation() {
+		locationError = false;
+		try {
+			const position = await requestPosition();
+			ianseoHere.set(`${position.coords.latitude},${position.coords.longitude}`);
+		} catch (error) {
+			locationError = error instanceof LocationDeniedError;
+			ianseoRadiusKm.set(0);
+		}
+	}
+
+	function chooseRadius(km: number) {
+		ianseoRadiusKm.set(km);
+		radiusSheet = false;
+		if (km > 0 && !here) void useMyLocation();
+	}
 
 	const countries = $derived(countriesOf(list));
 	const offerable = $derived(
@@ -187,6 +289,25 @@
 		{/if}
 	</div>
 
+	{#if search.trim()}
+		<!-- A search reaches past the filters by default, and says so rather than doing it silently. -->
+		<div class="flex flex-wrap items-center gap-1.5">
+			<span class="text-xs text-muted">{$t('ianseo.searchScope')}</span>
+			{#each [true, false] as everywhere (everywhere)}
+				<button
+					class="rounded-full border px-2.5 py-1 text-xs font-medium {$ianseoSearchEverywhere ===
+					everywhere
+						? 'border-brand/40 bg-brand/10 text-brand-text'
+						: 'border-line text-muted'}"
+					aria-pressed={$ianseoSearchEverywhere === everywhere}
+					onclick={() => ianseoSearchEverywhere.set(everywhere)}
+				>
+					{everywhere ? $t('ianseo.searchAll') : $t('ianseo.searchMine')}
+				</button>
+			{/each}
+		</div>
+	{/if}
+
 	{#if offered}
 		<!-- Offered rather than taken: a phone one country over would otherwise hide the archer's own list. -->
 		<div class="rounded-2xl border border-brand/40 bg-gradient-to-r from-brand/10 to-surface p-3">
@@ -231,6 +352,16 @@
 			{$t('ianseo.addCountry')}
 		</button>
 		<button
+			class="flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-2 text-xs font-medium {$ianseoRadiusKm >
+			0
+				? 'border-brand/40 bg-brand/10 text-brand-text'
+				: 'border-line text-muted'}"
+			aria-pressed={$ianseoRadiusKm > 0}
+			onclick={() => (radiusSheet = true)}
+		>
+			{$ianseoRadiusKm > 0 ? $t('ianseo.within', { km: $ianseoRadiusKm }) : $t('ianseo.nearMe')}
+		</button>
+		<button
 			class="flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-1.5 text-xs font-medium {$ianseoMajor
 				? 'border-brand/40 bg-brand/10 text-brand-text'
 				: 'border-line text-muted'}"
@@ -242,6 +373,22 @@
 			{$t('ianseo.majorEvents')}
 		</button>
 	</div>
+
+	{#if $ianseoRadiusKm > 0}
+		<p class="flex flex-wrap items-center gap-x-2 gap-y-1 px-1 text-xs text-muted">
+			{#if locationError}
+				<span class="text-danger">{$t('ianseo.locationDenied')}</span>
+			{:else if !here}
+				<span>{$t('ianseo.locating')}</span>
+			{:else if locating > 0}
+				<!-- Towns are looked up a few at a time, so the list narrows as the answers come back. -->
+				<span>{$t('ianseo.locatingTowns', { n: locating })}</span>
+			{:else}
+				<span>{$t('ianseo.nearYou', { km: $ianseoRadiusKm })}</span>
+			{/if}
+			<button class="underline" onclick={useMyLocation}>{$t('ianseo.updateLocation')}</button>
+		</p>
+	{/if}
 
 	{#if failed}
 		<EmptyState
@@ -264,6 +411,7 @@
 								href={link(one.tournament.toId)}
 								following
 								fresh={isNew(one.favourite)}
+								km={distances.get(one.tournament.toId) ?? null}
 							/>
 						{:else}
 							<!-- Followed before the list held it, or held under a competition ianseo has retired. -->
@@ -301,6 +449,7 @@
 							href={link(tournament.toId)}
 							following={following.has(tournament.toId)}
 							fresh={fresh.has(tournament.toId)}
+							km={distances.get(tournament.toId) ?? null}
 						/>
 					{/each}
 				</div>
@@ -325,6 +474,27 @@
 		<span>· {$t('ianseo.byline')}</span>
 	</ReadNote>
 </div>
+
+<Sheet open={radiusSheet} title={$t('ianseo.nearMe')} onclose={() => (radiusSheet = false)}>
+	<p class="mb-2 text-xs text-muted">{$t('ianseo.nearMeHint')}</p>
+	<ul class="space-y-1">
+		{#each [0, ...RADII] as km (km)}
+			<li>
+				<button
+					class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm {$ianseoRadiusKm ===
+					km
+						? 'bg-brand/10 font-semibold text-brand-text'
+						: 'hover:bg-line/30'}"
+					aria-pressed={$ianseoRadiusKm === km}
+					onclick={() => chooseRadius(km)}
+				>
+					{km === 0 ? $t('ianseo.anyDistance') : $t('ianseo.within', { km })}
+					{#if $ianseoRadiusKm === km}<Icon name="check" size={16} />{/if}
+				</button>
+			</li>
+		{/each}
+	</ul>
+</Sheet>
 
 <Sheet open={countrySheet} title={$t('ianseo.chooseCountry')} onclose={() => (countrySheet = false)}>
 	<input

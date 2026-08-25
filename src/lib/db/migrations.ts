@@ -303,5 +303,19 @@ export const MIGRATIONS: string[][] = [
 			cached_at INTEGER NOT NULL
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_ianseo_favourite_kind ON ianseo_favourite (kind, added_at);`
+	],
+	// 0006 where a town is, so a competition can be told how far away it is
+	[
+		// Towns looked up once and kept for good: they do not move, and every source names the same
+		// few thousand of them over and over. A town nobody could find is remembered as such, or it
+		// would be asked for again on every refresh.
+		`CREATE TABLE IF NOT EXISTS competition_place (
+			key TEXT PRIMARY KEY NOT NULL,
+			latitude REAL,
+			longitude REAL,
+			/** 0 where the lookup came back with nothing, which is an answer worth keeping. */
+			found INTEGER NOT NULL,
+			cached_at INTEGER NOT NULL
+		);`
 	]
 ];

@@ -210,6 +210,91 @@ async function checkFrench(browser) {
 	await context.close();
 }
 
+/**
+ * Distance. The archer's position is granted to the browser and the geocoder answers from a table
+ * here, so the check measures the app rather than the weather over somebody else's town.
+ */
+async function checkDistance(browser) {
+	const context = await browser.newContext({
+		viewport: { width: 390, height: 844 },
+		permissions: ['geolocation'],
+		// Rennes, which the fixture has a competition near and several thousand kilometres from.
+		geolocation: { latitude: 48.1111, longitude: -1.6743 }
+	});
+	await serveIanseo(context);
+
+	// Towns, as the geocoder would give them back. Anything not named here comes back unknown.
+	const TOWNS = {
+		crispiano: { country: 'Italy', latitude: 40.6038, longitude: 17.2329 },
+		jakarta: { country: 'Indonesia', latitude: -6.2146, longitude: 106.8451 },
+		rennes: { country: 'France', latitude: 48.1111, longitude: -1.6743 }
+	};
+	let lookups = 0;
+	await context.route('**/geocoding-api.open-meteo.com/**', (route) => {
+		lookups++;
+		const name = (new URL(route.request().url()).searchParams.get('name') ?? '').toLowerCase();
+		const town = TOWNS[name];
+		route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({ results: town ? [{ ...town, name }] : [] })
+		});
+	});
+
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	const all = await page.locator('a[href*="/ianseo/"]').count();
+
+	check('no town is looked up until distance is asked for', lookups === 0);
+
+	await page.getByRole('button', { name: /Near me/ }).click();
+	await page.getByRole('button', { name: /Within 25 km/ }).click();
+	await page.getByText(/Competitions within/).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+	await page.waitForTimeout(1500);
+
+	check('asking for distance looks the towns up', lookups > 0, `${lookups} lookups`);
+	const near = await page.locator('a[href*="/ianseo/"]').count();
+	check('a radius drops what is beyond it', near < all, `${near} of ${all}`);
+	check(
+		'and drops the competition on the other side of the world',
+		(await page.getByText(/SATRIA LEGAWA/).count()) === 0
+	);
+	await shot(page, 'distance');
+
+	// Widening it brings back what the tighter radius had cut.
+	await page.getByRole('button', { name: /Within 25 km/ }).click();
+	await page.getByRole('button', { name: /Within 500 km/ }).click();
+	await page.waitForTimeout(1200);
+	check(
+		'widening the radius brings competitions back',
+		(await page.locator('a[href*="/ianseo/"]').count()) >= near
+	);
+
+	// A second visit must not ask again: a town does not move.
+	const before = lookups;
+	await page.reload({ waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	await page.waitForTimeout(1500);
+	check('a town already located is never looked up twice', lookups === before, `${lookups - before} extra`);
+
+	// Searching reaches past the distance filter unless it is told not to.
+	await page.getByPlaceholder(/Search every competition/i).fill('jakarta');
+	await page.waitForTimeout(400);
+	check('a search reaches past the radius', (await page.getByText(/SATRIA LEGAWA/).count()) > 0);
+	await shot(page, 'search-scope');
+
+	await page.getByRole('button', { name: /^What I follow$/ }).click();
+	await page.waitForTimeout(400);
+	check(
+		'and stays inside it when told to',
+		(await page.getByText(/SATRIA LEGAWA/).count()) === 0
+	);
+	check('the list stays inside the screen with distance on', !(await overflows(page)).wide);
+
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -294,6 +379,7 @@ async function run() {
 	await checkNewResults(browser);
 	await checkOffline(browser);
 	await checkFrench(browser);
+	await checkDistance(browser);
 
 	await browser.close();
 

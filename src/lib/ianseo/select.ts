@@ -1,3 +1,4 @@
+import { distanceKm, type Point } from '$lib/competitions/distance';
 import type { Tournament } from './types';
 
 /**
@@ -17,9 +18,41 @@ export type Filter = {
 	/** Whether the competitions the ianseo team run are shown whatever country they are held in. */
 	major: boolean;
 	search: string;
+	/**
+	 * Whether a search is asked of the whole of ianseo or only of what the filters already leave.
+	 * Its own switch rather than a rule: an archer looking up a competition by name usually means one
+	 * anywhere, and an archer narrowing their own list usually does not.
+	 */
+	searchEverywhere: boolean;
+	/** Kilometres from `here`, or null for no distance filter at all. */
+	radiusKm: number | null;
+	/** Where the archer is, which they have to have offered: nothing here asks for it. */
+	here: Point | null;
 };
 
-export const EMPTY_FILTER: Filter = { countries: [], major: true, search: '' };
+export const EMPTY_FILTER: Filter = {
+	countries: [],
+	major: true,
+	search: '',
+	searchEverywhere: true,
+	radiusKm: null,
+	here: null
+};
+
+/**
+ * How far away a competition is, or null while nobody knows yet. A town is looked up in the
+ * background, so this answers "not yet" far more often than it answers "nowhere".
+ */
+export function distanceOf(
+	tournament: Tournament,
+	places: Map<string, Point | null>,
+	here: Point | null,
+	keyOf: (tournament: Tournament) => string
+): number | null {
+	if (!here) return null;
+	const point = places.get(keyOf(tournament));
+	return point ? distanceKm(here, point) : null;
+}
 
 const DAY = 86400_000;
 
@@ -49,16 +82,34 @@ export function matches(tournament: Tournament, search: string): boolean {
 	return terms.every((term) => haystack.includes(term));
 }
 
-export function filterTournaments(list: Tournament[], filter: Filter, now = Date.now()): Tournament[] {
+export function filterTournaments(
+	list: Tournament[],
+	filter: Filter,
+	now = Date.now(),
+	/** How far away each competition is, where that is known. Absent means nothing is filtered by it. */
+	distances?: Map<string, number | null>
+): Tournament[] {
 	const wanted = new Set(filter.countries);
-	const kept = list.filter((tournament) => {
-		if (!matches(tournament, filter.search)) return false;
-		// A search is asked of the whole of ianseo: somebody looking for a competition by name has
-		// already said which one they mean, and hiding it behind a country filter would be perverse.
-		if (filter.search.trim()) return true;
+
+	const near = (tournament: Tournament) => {
+		if (filter.radiusKm === null || !filter.here || !distances) return true;
+		const km = distances.get(tournament.toId);
+		// A competition whose town has not been looked up yet is kept: the list narrows as the answers
+		// arrive, rather than hiding what it has not got round to asking about.
+		return km === null || km === undefined || km <= filter.radiusKm;
+	};
+
+	const mine = (tournament: Tournament) => {
+		if (!near(tournament)) return false;
 		if (wanted.size === 0) return true;
 		if (filter.major && tournament.major) return true;
 		return tournament.country !== null && wanted.has(tournament.country.code);
+	};
+
+	const kept = list.filter((tournament) => {
+		if (!matches(tournament, filter.search)) return false;
+		if (!filter.search.trim()) return mine(tournament);
+		return filter.searchEverywhere ? true : mine(tournament);
 	});
 
 	return kept.sort((a, b) => order(a, b, now));
