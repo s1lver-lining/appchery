@@ -161,6 +161,8 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+	<ReadNote {loading} {stale} {cachedAt} banner />
+
 	<!-- The search sits above the filters because it overrides them: a name is asked of all of ianseo. -->
 	<div class="relative">
 		<span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">

@@ -127,6 +127,82 @@ async function checkNewResults(browser) {
 	await context.close();
 }
 
+/**
+ * ianseo unreachable, which at a shooting line is the normal case. What was read stays on screen and
+ * says how old it is; a device that has never read anything says that instead of showing an empty page.
+ */
+async function checkOffline(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	const before = await page.locator('a[href*="/ianseo/"]').count();
+
+	await context.unroute('**/ianseo-api/**');
+	await context.route('**/ianseo-api/**', (route) => route.abort());
+	await page.getByRole('button', { name: /Refresh/i }).click();
+	await page.waitForTimeout(1200);
+
+	check(
+		'a list already read survives ianseo going away',
+		(await page.locator('a[href*="/ianseo/"]').count()) === before
+	);
+	check(
+		'and says so rather than passing itself off as current',
+		await page.getByText(/could not be reached/i).first().isVisible()
+	);
+	await shot(page, 'offline-stale');
+	await context.close();
+
+	// A device that has never read anything has nothing to fall back on, and says that instead.
+	const cold = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await cold.route('**/ianseo-api/**', (route) => route.abort());
+	const empty = await cold.newPage();
+	await empty.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await empty.waitForTimeout(1200);
+	check(
+		'a device with nothing read yet offers to try again',
+		await empty.getByRole('button', { name: /Try again/i }).isVisible()
+	);
+	check('and does not sit on an empty page', await empty.getByText(/could not be reached/i).first().isVisible());
+	await shot(empty, 'offline-cold');
+	await cold.close();
+}
+
+/**
+ * The same screens in French, at the width that fits least. French is longer than English almost
+ * everywhere, and a chip that fits one word and not the other is a layout that was only half tested.
+ */
+async function checkFrench(browser) {
+	const context = await browser.newContext({
+		viewport: { width: 300, height: 720 },
+		locale: 'fr-FR'
+	});
+	await serveIanseo(context);
+	const page = await context.newPage();
+	await page.addInitScript(() => window.localStorage.setItem('appchery.locale', 'fr'));
+
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	check('French: the competition list reads', await page.getByText('Compétitions').first().isVisible());
+	check('French: the list stays inside the screen', !(await overflows(page)).wide, JSON.stringify((await overflows(page)).culprits));
+	await shot(page, 'french-list');
+
+	await page.goto(`${BASE}/ianseo/26053/IQRM`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('table tbody tr');
+	await page.locator('table tbody tr button[aria-expanded]').first().click();
+	await page.waitForTimeout(200);
+	check('French: an opened row offers the archer', await page.getByRole('button', { name: /^Suivre DUCROCQ Tanguy/ }).isVisible());
+	check('French: the result stays inside the screen', !(await overflows(page)).wide, JSON.stringify((await overflows(page)).culprits));
+	await shot(page, 'french-result');
+
+	await page.goto(`${BASE}/tricks`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(300);
+	check('French: the tricks page carries the competition tricks', await page.getByText(/La recherche va au delà/).isVisible());
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -209,6 +285,8 @@ async function run() {
 	}
 
 	await checkNewResults(browser);
+	await checkOffline(browser);
+	await checkFrench(browser);
 
 	await browser.close();
 

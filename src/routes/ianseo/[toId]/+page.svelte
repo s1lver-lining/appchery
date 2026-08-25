@@ -134,6 +134,8 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+	<ReadNote {loading} {stale} {cachedAt} banner />
+
 	{#if competition?.organiser}
 		<p class="px-1 text-sm text-muted">{competition.organiser}</p>
 	{/if}

@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
-import { targetOf } from './src/lib/ianseo/proxy';
+import { targetOf } from './src/lib/ianseo/proxy.ts';
 
 /**
  * SQLite's OPFS backend requires the page to be cross-origin isolated.

@@ -147,6 +147,8 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+	<ReadNote {loading} {stale} {cachedAt} banner />
+
 	{#if error === 'missing'}
 		<EmptyState
 			title={$t('ianseo.missingDocumentTitle')}

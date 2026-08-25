@@ -916,7 +916,7 @@ export const fr: Dictionary = {
 		errorBody: "Rien n'en a encore été lu sur cet appareil, il n'y a donc rien à montrer.",
 		retry: 'Réessayer',
 		offerCountry: 'Suivre les compétitions en {country} ?',
-		offerCountryBody: "Ce sont celles que vous verriez en premier. Le reste reste accessible par la recherche.",
+		offerCountryBody: "Ce sont celles que vous verriez en premier. Tout le reste demeure accessible par la recherche.",
 		offerYes: 'Oui, suivre {country}',
 		offerNo: 'Pas maintenant',
 		follow: 'Suivre',
