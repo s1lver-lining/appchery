@@ -160,6 +160,13 @@ export async function writeCache(path: string, value: unknown): Promise<void> {
 	await prune();
 }
 
+/**
+ * Pages that are read from every screen and are the whole of what the app has with no signal. Kept
+ * whatever their age: browsing a couple of hundred documents would otherwise drop the list of
+ * competitions itself, which is the one page an archer at a range cannot do without.
+ */
+const KEPT = ['/TourList.php', 'inscriptarc:entries'];
+
 /** The oldest pages beyond the limit, dropped. Nothing here is a record: every row can be read again. */
 async function prune(): Promise<void> {
 	const rows = await db()
@@ -168,14 +175,9 @@ async function prune(): Promise<void> {
 		.orderBy(desc(schema.ianseoCache.cachedAt))
 		.limit(CACHE_LIMIT);
 	if (rows.length < CACHE_LIMIT) return;
-	await db()
-		.delete(schema.ianseoCache)
-		.where(
-			notInArray(
-				schema.ianseoCache.path,
-				rows.map((row) => row.path)
-			)
-		);
+
+	const keep = [...new Set([...rows.map((row) => row.path), ...KEPT])];
+	await db().delete(schema.ianseoCache).where(notInArray(schema.ianseoCache.path, keep));
 }
 
 /** Everything read back from ianseo, dropped: the favourites are what the archer chose and stay. */

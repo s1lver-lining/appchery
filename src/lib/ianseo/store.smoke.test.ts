@@ -170,6 +170,18 @@ describe('the cache', () => {
 		expect(await store.readCache('/page/0')).toBe(null);
 	});
 
+	/**
+	 * The list of competitions is what the app has at a range with no signal, and browsing a couple of
+	 * hundred documents used to be enough to drop it for being the oldest thing there.
+	 */
+	it('never drops the list of competitions, however old it is', async () => {
+		await store.writeCache('/TourList.php', [{ toId: '1' }]);
+		for (let index = 0; index < 260; index++) await store.writeCache(`/page/${index}`, index);
+		expect((await store.readCache<{ toId: string }[]>('/TourList.php'))?.value).toEqual([
+			{ toId: '1' }
+		]);
+	});
+
 	it('leaves what the archer follows alone when the pages are dropped', async () => {
 		await store.addFavourite(competition('1'));
 		for (let index = 0; index < 260; index++) await store.writeCache(`/page/${index}`, index);
