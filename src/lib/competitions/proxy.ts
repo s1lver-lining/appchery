@@ -11,6 +11,7 @@ export const PROXY_PREFIX = '/competitions-api';
 
 export const IANSEO_ORIGIN = 'https://www.ianseo.net';
 export const FFTA_ORIGIN = 'https://www.ffta.fr';
+export const INSCRIPTARC_ORIGIN = 'https://www.inscriptarc.fr';
 
 type Source = {
 	prefix: string;
@@ -39,6 +40,13 @@ const SOURCES: Source[] = [
 		paths: [/^\/competitions$/, /^\/epreuve\/\d+$/],
 		query: ['start', 'end', 'sort_by', 'sort_order', 'page', 'discipline', 'univers'],
 		lists: ['dep[]']
+	},
+	{
+		prefix: '/inscriptarc',
+		origin: INSCRIPTARC_ORIGIN,
+		// One page holds every competition in the country that is open for entry, so one path does.
+		paths: [/^\/competitions\/resultats$/],
+		query: []
 	}
 ];
 

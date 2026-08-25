@@ -39,6 +39,19 @@ describe('targetOf, for the FFTA', () => {
 	});
 });
 
+describe('targetOf, for Inscript\'Arc', () => {
+	it('points at the one page that lists what is open for entry', () => {
+		expect(at('/inscriptarc/competitions/resultats')).toBe(
+			'https://www.inscriptarc.fr/competitions/resultats'
+		);
+	});
+
+	it('reaches nothing else on the platform, which is where archers’ own details are', () => {
+		expect(at('/inscriptarc/competitions')).toBe(null);
+		expect(at('/inscriptarc/identification')).toBe(null);
+	});
+});
+
 describe('targetOf, on anything else', () => {
 	it('answers for no path either source does not publish', () => {
 		expect(at('/ianseo/Admin.php')).toBe(null);

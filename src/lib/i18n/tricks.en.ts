@@ -318,6 +318,10 @@ export const tricksEn = {
 					body: 'Open any row of a result list, or tap the star beside a name in a bracket, and that archer is followed for that competition. Their line is then marked wherever it appears in it, and the competition is followed too.'
 				},
 				{
+					lead: 'The way in, where there is one.',
+					body: 'A French competition taking entries through Inscript’Arc carries its entry form, the club’s announcement and the list of who has entered. Competitions the app cannot match to one are gathered under Open for entry at the foot of the list.'
+				},
+				{
 					lead: 'A result you have not read says so.',
 					body: 'A followed competition that ianseo has rebuilt since you last opened it is marked New in the list, and the competitions tile on the home page carries a dot. Opening the competition is what clears it.'
 				},

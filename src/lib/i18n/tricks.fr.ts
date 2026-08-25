@@ -313,6 +313,10 @@ export const tricksFr: TricksDictionary = {
 					body: "Ouvrez une ligne d'une liste de résultats, ou touchez l'étoile à côté d'un nom dans un tableau, et cet archer est suivi pour cette compétition. Sa ligne est alors marquée partout où elle apparaît, et la compétition est suivie elle aussi."
 				},
 				{
+					lead: "L'accès aux inscriptions, quand il existe.",
+					body: "Une compétition française qui prend ses inscriptions par Inscript'Arc porte son formulaire, le mandat du club et la liste des inscrits. Celles que l'application ne peut rattacher à aucune compétition sont regroupées sous Inscriptions ouvertes, en bas de la liste."
+				},
+				{
 					lead: "Un résultat que vous n'avez pas lu le dit.",
 					body: "Une compétition suivie que ianseo a reconstruite depuis votre dernière visite est marquée Nouveau dans la liste, et la tuile des compétitions sur l'accueil porte un point. C'est l'ouverture de la compétition qui l'efface."
 				},

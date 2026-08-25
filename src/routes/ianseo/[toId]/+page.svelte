@@ -20,6 +20,10 @@
 		type Favourite
 	} from '$lib/ianseo/store';
 	import type { Competition, Tournament } from '$lib/ianseo/types';
+	import EntryCard from '$lib/ui/ianseo/EntryCard.svelte';
+	import { loadEntries } from '$lib/inscriptarc/client';
+	import { entryFor } from '$lib/inscriptarc/match';
+	import type { Entry } from '$lib/inscriptarc/types';
 
 	/**
 	 * One competition: what ianseo has published for it, in the panels ianseo publishes it under.
@@ -38,6 +42,8 @@
 	let loading = $state(true);
 	let failed = $state(false);
 	let pinned = $state<Favourite[]>([]);
+	/** The entry form, where one can be matched to this competition beyond doubt. */
+	let entry = $state<Entry | null>(null);
 
 	const id = $derived(favouriteId('competition', toId));
 	const followed = $derived(pinned.some((one) => one.id === id));
@@ -64,6 +70,7 @@
 		pinned = known;
 		tournament = list?.value.find((row) => row.toId === id) ?? null;
 		await read(false, mine);
+		await findEntry(mine);
 	}
 
 	async function read(refresh: boolean, mine = ++request) {
@@ -104,6 +111,21 @@
 			});
 		}
 		pinned = await favourites();
+	}
+
+	/**
+	 * Whether this competition can be entered online. Only ever asked about a French one, because the
+	 * platform that takes the entries is French, and only for one that has not been shot yet.
+	 */
+	async function findEntry(mine: number) {
+		entry = null;
+		const here = tournament;
+		if (!here || here.country?.code !== 'FRA') return;
+		if ((here.to ?? here.from ?? 0) < Date.now() - 86400_000) return;
+
+		const entries = await loadEntries();
+		if (mine !== request) return;
+		entry = entryFor({ name: here.name, town: here.city, from: here.from, to: here.to }, entries);
 	}
 
 	/** The panels in the order ianseo publishes them, which is the order a competition is shot in. */
@@ -148,6 +170,10 @@
 
 	{#if competition?.organiser}
 		<p class="px-1 text-sm text-muted">{competition.organiser}</p>
+	{/if}
+
+	{#if entry}
+		<EntryCard {entry} />
 	{/if}
 
 	{#if people.length > 0}

@@ -23,6 +23,10 @@
 	import { RADII, roundKm, type Point } from '$lib/competitions/distance';
 	import { keyOf, knownPlaces, locate, PlaceUnavailable } from '$lib/competitions/places';
 	import { requestPosition, LocationDeniedError } from '$lib/conditions';
+	import EntryCard from '$lib/ui/ianseo/EntryCard.svelte';
+	import { loadEntries } from '$lib/inscriptarc/client';
+	import { unmatched } from '$lib/inscriptarc/match';
+	import type { Entry } from '$lib/inscriptarc/types';
 	import type { Tournament } from '$lib/ianseo/types';
 
 	/**
@@ -47,6 +51,8 @@
 	let failed = $state(false);
 	let search = $state('');
 	let pinned = $state<Favourite[]>([]);
+	/** What is open for entry in France, which is worth showing even where ianseo has never heard of it. */
+	let entries = $state<Entry[]>([]);
 	let countrySheet = $state(false);
 	let radiusSheet = $state(false);
 	let countryTerm = $state('');
@@ -60,6 +66,20 @@
 	async function open() {
 		pinned = await favourites();
 		await read();
+	}
+
+	// Asked again when the countries change, so adding France does not need the page reopening.
+	$effect(() => {
+		void readEntries($ianseoCountries);
+	});
+
+	/**
+	 * The entry forms, asked for only where they could mean anything: the platform is French, so an
+	 * archer following Japan is not made to wait on a page about somebody else's country.
+	 */
+	async function readEntries(countries: string[]) {
+		const french = countries.length === 0 || countries.includes('FRA');
+		entries = french ? await loadEntries() : [];
 	}
 
 	async function read(refresh = false) {
@@ -233,6 +253,14 @@
 		radiusSheet = false;
 		if (km > 0 && !here) void useMyLocation();
 	}
+
+	/** Everything open for entry that no competition on screen already carries a way in to. */
+	const spare = $derived(
+		unmatched(
+			shown.map((row) => ({ name: row.name, town: row.city, from: row.from, to: row.to })),
+			entries
+		).filter((one) => (one.to ?? one.from ?? 0) >= now - 86400_000)
+	);
 
 	const countries = $derived(countriesOf(list));
 	const offerable = $derived(
@@ -470,6 +498,24 @@
 				</div>
 			</section>
 		{/each}
+
+		{#if spare.length > 0 && !search.trim()}
+			<section>
+				<h2 class="mb-1 px-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
+					{$t('ianseo.entrySection')}
+				</h2>
+				<!-- Said once for the section rather than on every card, which is where it was noise. -->
+				<p class="mb-2 px-1 text-xs text-muted">
+					{$t('ianseo.entrySectionHint')}
+					{$t('ianseo.entryBy')}
+				</p>
+				<div class="space-y-2">
+					{#each spare as one (one.site)}
+						<EntryCard entry={one} compact />
+					{/each}
+				</div>
+			</section>
+		{/if}
 
 		{#if groups.length === 0 && !loading}
 			{#if search.trim()}

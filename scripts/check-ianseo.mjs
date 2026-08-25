@@ -29,6 +29,17 @@ function check(name, ok, detail = '') {
 
 const fixture = (name) => readFileSync(`test/ianseo/${name}.html`, 'utf8');
 
+/** The competitions open for entry, as Inscript'Arc listed them on the day the fixture was taken. */
+function serveEntries(context) {
+	return context.route('**/competitions-api/inscriptarc/**', (route) =>
+		route.fulfill({
+			status: 200,
+			contentType: 'text/html; charset=utf-8',
+			body: readFileSync('test/inscriptarc/competitions.html', 'utf8')
+		})
+	);
+}
+
 /** ianseo, as it was on the day the fixtures were taken. */
 function serveIanseo(context, state = {}) {
 	return context.route('**/competitions-api/ianseo/**', (route) => {
@@ -347,6 +358,40 @@ async function checkStaleRead(browser) {
 	await context.close();
 }
 
+/**
+ * The way in to a competition. The links belong to somebody else's platform, so what is checked here
+ * is that the app offers them where they belong and nowhere else.
+ */
+async function checkEntries(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	await serveEntries(context);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	await page.getByText('Open for entry').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+
+	const forms = await page.getByRole('link', { name: 'Inscription' }).count();
+	check('what is open for entry is offered', forms > 5, `${forms} entry forms`);
+	check(
+		'and every way in leaves the app rather than pretending to be part of it',
+		(await page.locator('a[target="_blank"][href*="inscriptarc.fr"]').count()) > 0
+	);
+	check('the list stays inside the screen with the entry forms on it', !(await overflows(page)).wide);
+	await shot(page, 'entries');
+
+	// A search is about competitions, so the entry forms step out of the way rather than pad it out.
+	await page.getByPlaceholder(/Search every competition/i).fill('mediterranean');
+	await page.waitForTimeout(400);
+	check(
+		'and they stand aside for a search',
+		(await page.getByRole('link', { name: 'Inscription' }).count()) === 0
+	);
+
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -433,6 +478,7 @@ async function run() {
 	await checkFrench(browser);
 	await checkDistance(browser);
 	await checkStaleRead(browser);
+	await checkEntries(browser);
 
 	await browser.close();
 

@@ -155,7 +155,29 @@ The results PDFs themselves are public and fetch cleanly, so a link to one alway
 What would unblock it is permission rather than cleverness: an interface the federation offers, or
 an agreement to let a named client through. The parsers are ready for the day there is one.
 
-## 9. What is not built
+## 9. Entering a competition
+
+ianseo publishes what was shot; it says nothing about how to enter anything. Most French clubs take
+their entries through **Inscript'Arc**, which lists every competition in the country currently open
+for entry on one page of about thirty, at `/competitions/resultats`. It answers a plain GET, needs no
+session, and its robots.txt permits everything.
+
+What it carries that nothing else does is the way in: the club's announcement, the entry form, and
+the list of who has entered already. It carries no town and no results, so it is never a source of
+competitions on its own.
+
+Matching an entry form to a competition is done on the days and the town together, in
+`src/lib/inscriptarc/match.ts`, and deliberately refuses more often than it guesses: handing an
+archer the entry form for the wrong competition is worse than handing them none. The town has to
+appear as a whole word in the entry's own name or its club's, the dates have to overlap, and two
+entries answering the same competition are an ambiguity rather than a match.
+
+The entry forms nothing on screen accounts for are listed on their own at the foot of the page,
+because those are the local shoots ianseo never hears about and they are most of them.
+
+Only the one listing page is proxied. The rest of the platform is where archers' own details are.
+
+## 10. What is not built
 
 - **No push.** A followed competition is compared against the list when the list is read. Notifying a
   closed app would need a scheduled poller, a subscription table and store credentials on both
