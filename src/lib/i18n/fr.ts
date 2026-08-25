@@ -1042,17 +1042,23 @@ export const fr: Dictionary = {
 		everything: 'Supprimer toutes les données',
 		everythingHint: 'Supprime toutes les séances, activités, arcs, plans et badges de cet appareil.',
 		everythingRemoved: 'Tout a été supprimé.',
+		rebuild: 'Refaire la base de données',
+		rebuildHint: "Vide entièrement la base et la reconstruit telle que cette version de l'application l'attend. La seule issue pour une base que l'application ne sait pas lire.",
+		rebuilt: 'La base de données a été refaite.',
 		confirmTitle: {
 			imported: 'Supprimer les séances importées ?',
-			everything: 'Tout supprimer ?'
+			everything: 'Tout supprimer ?',
+			rebuild: 'Refaire la base de données ?'
 		},
 		confirmBody: {
 			imported: "Toutes les séances écrites par un import disparaissent, avec leurs comptages et leurs flèches. Les séances saisies dans Appchery sont conservées.",
-			everything: "Toutes les séances, activités, arcs, plans et badges de cet appareil disparaissent. Exportez une sauvegarde d'abord si vous voulez en récupérer quelque chose."
+			everything: "Toutes les séances, activités, arcs, plans et badges de cet appareil disparaissent. Exportez une sauvegarde d'abord si vous voulez en récupérer quelque chose.",
+			rebuild: "Tout ce qui est sur cet appareil disparaît, et la base est reconstruite à partir de rien. Une sauvegarde exportée maintenant emporterait le même problème : mettez de côté ce dont vous avez besoin autrement."
 		},
 		confirmAction: {
 			imported: 'Supprimer les imports',
-			everything: 'Tout supprimer'
+			everything: 'Tout supprimer',
+			rebuild: 'La refaire'
 		}
 	},
 	importer: {
@@ -1178,6 +1184,8 @@ export const fr: Dictionary = {
 		placeTitle: 'Nommer le lieu',
 		placeHint:
 			'Recherche la ville la plus proche. Vos coordonnées sont envoyées à un tiers, ce que leur enregistrement local ne fait pas.',
+		schema: 'schéma {version}',
+		schemaAhead: "Cette base a été écrite par une version de l'application plus récente que celle ci. Rien ici ne peut la faire avancer : ce qui lui manque continuera d'échouer tant qu'elle n'aura pas été refaite.",
 		storage: 'Stockage',
 		persistent: 'Persistant',
 		volatile: 'En mémoire, perdu au rechargement',

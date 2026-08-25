@@ -66,11 +66,68 @@ export function db(): SqliteRemoteDatabase<typeof schema> {
 	return database;
 }
 
+/** The migration level this build brings a database up to, and the highest one it can read. */
+export const LATEST_SCHEMA = MIGRATIONS.length;
+
 /** The migration level the open database is at, recorded in a backup so a restore can refuse a newer file. */
 export async function schemaVersion(): Promise<number> {
 	if (!driver) throw new Error('initDb() must be awaited before using schemaVersion()');
 	const [[version]] = (await driver.query('PRAGMA user_version;', [])) as [[number]];
 	return version;
+}
+
+/**
+ * A database stamped past the last migration this build has, which is a file written by a newer
+ * version of the app or by a branch whose migrations were rewritten since.
+ *
+ * Migrations only ever run forward, so nothing will ever touch such a file again: every table added
+ * after it was written is simply absent, and every query against one of them fails for good.
+ */
+export async function schemaIsAhead(): Promise<boolean> {
+	return (await schemaVersion()) > LATEST_SCHEMA;
+}
+
+/** The tables the open file actually has, which is not always the tables this build expects. */
+export async function tableNames(): Promise<string[]> {
+	if (!driver) throw new Error('initDb() must be awaited before using tableNames()');
+	const rows = (await driver.query(
+		`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';`,
+		[]
+	)) as [string][];
+	return rows.map(([name]) => name);
+}
+
+/**
+ * Everything in the file dropped, and the migrations run again from nothing.
+ *
+ * The last resort for a database this build cannot recognise. Deleting rows does not fix a schema,
+ * and there is no migration to bring a file forward from a version that never existed here, so the
+ * only honest repair is to make it afresh. Everything in it goes, which is why nothing calls this
+ * without asking first.
+ */
+export async function rebuildDatabase(): Promise<void> {
+	if (!driver) throw new Error('initDb() must be awaited before using rebuildDatabase()');
+	await rebuildOn(driver);
+}
+
+/** The rebuild itself, against a given connection, so it can be run against a file that is not ours. */
+export async function rebuildOn(driver: SqlDriver): Promise<void> {
+	const rows = (await driver.query(
+		`SELECT name, type FROM sqlite_master WHERE type IN ('table', 'view') AND name NOT LIKE 'sqlite_%';`,
+		[]
+	)) as [string, string][];
+
+	// Off while the file is emptied, so the order things are dropped in cannot matter, and put back
+	// to whatever it was rather than to what it ought to be.
+	const [[keys]] = (await driver.query('PRAGMA foreign_keys;', [])) as [[number]];
+	await driver.exec('PRAGMA foreign_keys = OFF;');
+	for (const [name, type] of rows) {
+		await driver.exec(`DROP ${type === 'view' ? 'VIEW' : 'TABLE'} IF EXISTS "${name}";`);
+	}
+	await driver.exec('PRAGMA user_version = 0;');
+	await driver.exec(`PRAGMA foreign_keys = ${keys ? 'ON' : 'OFF'};`);
+
+	await runMigrations(driver);
 }
 
 export function dbInfo(): Pick<SqlDriver, 'kind' | 'persistent'> {

@@ -1038,17 +1038,23 @@ export const en = {
 		everything: 'Remove all data',
 		everythingHint: 'Deletes every session, activity, bow, plan and badge on this device.',
 		everythingRemoved: 'Everything was removed.',
+		rebuild: 'Make the database afresh',
+		rebuildHint: 'Empties the database completely and builds it again the way this version of the app expects. The only way out of a database this app cannot read.',
+		rebuilt: 'The database was made afresh.',
 		confirmTitle: {
 			imported: 'Remove imported sessions?',
-			everything: 'Remove everything?'
+			everything: 'Remove everything?',
+			rebuild: 'Make the database afresh?'
 		},
 		confirmBody: {
 			imported: 'Every session written by an import goes, with its rounds and arrows. Sessions you recorded in Appchery are kept.',
-			everything: 'Every session, activity, bow, plan and badge on this device goes. Export a backup first if you want any of it back.'
+			everything: 'Every session, activity, bow, plan and badge on this device goes. Export a backup first if you want any of it back.',
+			rebuild: 'Everything on this device goes, and the database is built again from nothing. A backup exported now would carry the same problem, so save what you need another way first.'
 		},
 		confirmAction: {
 			imported: 'Remove imported',
-			everything: 'Remove everything'
+			everything: 'Remove everything',
+			rebuild: 'Make it afresh'
 		}
 	},
 	importer: {
@@ -1175,6 +1181,8 @@ export const en = {
 		placeTitle: 'Name the place',
 		placeHint:
 			'Looks up the nearest town. This sends your coordinates to a third party, which recording them on the device does not.',
+		schema: 'schema {version}',
+		schemaAhead: 'This database was written by a build of the app newer than this one. Nothing here can bring it forward, so anything it is missing will keep failing until it is made afresh.',
 		storage: 'Storage',
 		persistent: 'Persistent',
 		volatile: 'In memory, lost on reload',

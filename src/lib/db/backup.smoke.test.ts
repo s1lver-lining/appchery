@@ -30,6 +30,12 @@ vi.mock('./index', async () => {
 		db: () => proxy,
 		schema: actual,
 		schemaVersion: async () => MIGRATIONS.length,
+		// Erasing the device asks the file what it has before deleting from it, so the fake answers too.
+		tableNames: async () =>
+			sqlite
+				.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';`)
+				.all()
+				.map((row) => (row as { name: string }).name),
 		transaction: <T>(work: () => Promise<T>) => work()
 	};
 });

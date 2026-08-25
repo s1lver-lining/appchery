@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
 	import { theme, THEMES } from '$lib/theme';
-	import { dbInfo } from '$lib/db';
+	import { dbInfo, LATEST_SCHEMA, rebuildDatabase, schemaVersion } from '$lib/db';
 	import {
 		autoLocation,
 		autoWeather,
@@ -65,6 +65,17 @@
 	$effect(() => {
 		if (!info.persistent) diagnoseStorage().then((problem) => (storageProblem = problem));
 	});
+
+	/**
+	 * A database stamped past the migrations this build has cannot be brought forward by any of them,
+	 * so it is missing every table added since it was written and says so here. Nothing else in the
+	 * app can explain itself: each screen only ever sees its own query failing.
+	 */
+	let schema = $state<number | null>(null);
+	$effect(() => {
+		schemaVersion().then((version) => (schema = version));
+	});
+	const schemaAhead = $derived(schema !== null && schema > LATEST_SCHEMA);
 
 	// The browser owns this, so the switch follows it: leaving fullscreen by the system gesture or
 	// the back key has to move the toggle too, or it starts lying.
@@ -181,7 +192,7 @@
 		input.value = '';
 	}
 
-	let dangerDialog = $state<'imported' | 'everything' | null>(null);
+	let dangerDialog = $state<'imported' | 'everything' | 'rebuild' | null>(null);
 	let dangerNotice = $state<string | null>(null);
 
 	async function runDanger() {
@@ -193,6 +204,10 @@
 			if (mode === 'imported') {
 				const removed = await deleteImportedSessions();
 				dangerNotice = $t('danger.importedRemoved', { n: removed });
+			} else if (mode === 'rebuild') {
+				await rebuildDatabase();
+				schema = await schemaVersion();
+				dangerNotice = $t('danger.rebuilt');
 			} else if ($account) {
 				// Erasing the device and closing the account are separate acts, and neither implies the
 				// other: an archer freeing up a phone is not asking to lose their history, see doc/sync.md.
@@ -590,7 +605,14 @@
 					<p class="text-sm">
 						<code class="rounded bg-sunk px-1">{info.kind}</code>
 						· {info.persistent ? $t('settings.persistent') : $t('settings.volatile')}
+						{#if schema !== null}
+							· {$t('settings.schema', { version: schema })}
+						{/if}
 					</p>
+					<!-- The one failure the archer can do something about, and cannot otherwise find out about. -->
+					{#if schemaAhead}
+						<p class="mt-1 text-sm text-danger">{$t('settings.schemaAhead')}</p>
+					{/if}
 					<!-- Only when it went wrong, and then in full: this is the one screen somebody is sent
 						to when their scores did not survive a reload. -->
 					{#if !info.persistent && storageProblem}
@@ -730,7 +752,20 @@
 							{$t('danger.everything')}
 						</button>
 
-						{#if dangerNotice}
+						{#if schemaAhead}
+						<!-- Offered only to a database no migration can reach, because it throws away a file
+							that is otherwise none of this button's business. -->
+						<p class="mt-4 text-sm text-muted">{$t('danger.rebuildHint')}</p>
+						<button
+							class="mt-2 w-full rounded-lg border border-danger/40 py-2 text-sm font-medium text-danger disabled:opacity-50"
+							disabled={busy}
+							onclick={() => (dangerDialog = 'rebuild')}
+						>
+							{$t('danger.rebuild')}
+						</button>
+					{/if}
+
+					{#if dangerNotice}
 							<p class="mt-3 text-sm text-muted">{dangerNotice}</p>
 						{/if}
 					</div>

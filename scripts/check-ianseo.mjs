@@ -142,7 +142,12 @@ async function checkOffline(browser) {
 	await context.unroute('**/ianseo-api/**');
 	await context.route('**/ianseo-api/**', (route) => route.abort());
 	await page.getByRole('button', { name: /Refresh/i }).click();
-	await page.waitForTimeout(1200);
+	// The refresh has to have been tried and failed before the page can say so.
+	await page
+		.getByText(/could not be reached/i)
+		.first()
+		.waitFor({ state: 'visible', timeout: 20000 })
+		.catch(() => {});
 
 	check(
 		'a list already read survives ianseo going away',
@@ -160,11 +165,13 @@ async function checkOffline(browser) {
 	await cold.route('**/ianseo-api/**', (route) => route.abort());
 	const empty = await cold.newPage();
 	await empty.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
-	await empty.waitForTimeout(1200);
-	check(
-		'a device with nothing read yet offers to try again',
-		await empty.getByRole('button', { name: /Try again/i }).isVisible()
-	);
+	// Waited for rather than slept on: the page has a database to open before it can fail to read.
+	const retry = empty.getByRole('button', { name: /Try again/i });
+	const offered = await retry
+		.waitFor({ state: 'visible', timeout: 20000 })
+		.then(() => true)
+		.catch(() => false);
+	check('a device with nothing read yet offers to try again', offered);
 	check('and does not sit on an empty page', await empty.getByText(/could not be reached/i).first().isVisible());
 	await shot(empty, 'offline-cold');
 	await cold.close();

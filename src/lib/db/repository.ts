@@ -1,5 +1,6 @@
 import { eq, and, isNull, isNotNull, desc, asc, inArray, like } from 'drizzle-orm';
-import { db, schema, transaction } from './index';
+import { getTableName } from 'drizzle-orm';
+import { db, schema, tableNames, transaction } from './index';
 import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 import { sumShots, countLabel, isRoundComplete } from '$lib/domain/rounds/geometry';
 import { evaluateBadges, type BadgeEnd, type BadgeInput } from '$lib/domain/badges';
@@ -1947,14 +1948,22 @@ export async function deleteEverything(): Promise<void> {
 		schema.ianseoCache,
 		schema.changeLog
 	];
-	for (const table of tables) await db().delete(table);
+	// Only the tables the file actually has. Erasing the device is what somebody reaches for when the
+	// database is already wrong, so it must not be the one thing that needs the database to be right:
+	// a table this build knows and the file has never heard of has nothing in it to delete anyway.
+	const present = new Set(await tableNames());
+	for (const table of tables) {
+		if (present.has(getTableName(table))) await db().delete(table);
+	}
 
 	// The cursors describe a history this device no longer has. Left where they are, signing back in
 	// would ask the server only for what changed since, and the record would never come home. The
 	// endpoint stays: where the server is is a setting, not data.
-	await db()
-		.update(schema.syncState)
-		.set({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
+	if (present.has(getTableName(schema.syncState))) {
+		await db()
+			.update(schema.syncState)
+			.set({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
+	}
 }
 
 /** Rows an earlier import wrote for the same activities, wherever they ended up sitting. */
