@@ -27,6 +27,15 @@
 	}
 
 	const shown = $derived(document.rounds.filter((round) => round.matches.length > 0));
+
+	/**
+	 * The side of a match that has somebody on it. A bye is drawn as one archer against an empty
+	 * slot, and an empty row under their name says nothing that the word Bye beside it does not.
+	 */
+	const sidesOf = (match: BracketMatch) =>
+		match.entries
+			.map((entry, at) => ({ entry, at }))
+			.filter((side) => side.entry.name.trim() !== '');
 	let round = $state(0);
 	const current = $derived(shown[Math.min(round, shown.length - 1)]);
 </script>
@@ -58,10 +67,10 @@
 		{#each current.matches as match, index (index)}
 			{@const won = winner(match)}
 			<div class="overflow-hidden rounded-2xl border border-line bg-surface">
-				{#each match.entries as entry, side (side)}
+				{#each sidesOf(match) as { entry, at: side }, index (side)}
 					{@const mine = followedLabels.has(entry.name.trim().toLowerCase())}
 					<div
-						class="flex items-center gap-2 px-3 py-2 {side === 1
+						class="flex items-center gap-2 px-3 py-2 {index === 1
 							? 'border-t border-line'
 							: ''} {mine ? 'bg-brand/10' : ''} {won === side ? 'font-semibold' : ''} {won !== null &&
 						won !== side
