@@ -14,13 +14,11 @@
 		addFavourite,
 		favouriteId,
 		favourites,
-		markSeen,
-		notePublished,
+		markCompetitionSeen,
 		removeCompetition,
 		removeFavourite,
 		type Favourite
 	} from '$lib/ianseo/store';
-	import { lastPublished } from '$lib/ianseo/parse/details';
 	import type { Competition, Tournament } from '$lib/ianseo/types';
 
 	/**
@@ -77,10 +75,8 @@
 
 	/** Opening the competition is reading it, so nothing already on screen is offered as new again. */
 	async function seen() {
-		const published = competition ? lastPublished(competition.documents) : null;
-		if (!followed || published === null) return;
-		await notePublished(toId, published);
-		await markSeen(id, published);
+		if (!followed) return;
+		await markCompetitionSeen(toId);
 		pinned = await favourites();
 	}
 
@@ -92,9 +88,10 @@
 				kind: 'competition',
 				toId,
 				label: competition?.name || tournament?.name || toId,
-				detail: tournament?.dates ?? null
+				detail: tournament?.dates ?? null,
+				// Followed now, so what ianseo has already published is not news: only the next thing is.
+				publishedAt: tournament?.updatedAt ?? null
 			});
-			await seen();
 		}
 		pinned = await favourites();
 	}

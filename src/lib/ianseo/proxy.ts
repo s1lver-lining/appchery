@@ -8,6 +8,9 @@
 
 export const IANSEO_ORIGIN = 'https://www.ianseo.net';
 
+/** The path the app asks instead of ianseo, answered by `functions/ianseo-api` on the deployed site. */
+export const PROXY_PREFIX = '/ianseo-api';
+
 const ALLOWED = [
 	/^\/TourList\.php$/,
 	/^\/Details\.php$/,
@@ -19,7 +22,7 @@ export function allowedPath(path: string): boolean {
 }
 
 /** The ianseo URL a proxied request stands for, or null where it stands for nothing the app reads. */
-export function targetOf(url: URL, prefix = '/ianseo-api'): string | null {
+export function targetOf(url: URL, prefix = PROXY_PREFIX): string | null {
 	if (!url.pathname.startsWith(prefix)) return null;
 	const path = url.pathname.slice(prefix.length) || '/';
 	if (!allowedPath(path)) return null;

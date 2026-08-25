@@ -7,10 +7,12 @@
 - **Custom rounds** by entering ends, arrows, face size, and distance.
 - **Document your bows** and launch tuning procedures against them.
 - **Live camera scoring** (planned): sweep the camera over the target and confirm what it found.
+- **Follow competitions** published on ianseo, with the results kept for reading at the range.
 
 Design and rationale live in [doc/architecture.md](doc/architecture.md) and
 [doc/data-model.md](doc/data-model.md). Read those before making structural changes. Shipping is
-[doc/deploy.md](doc/deploy.md); schema changes are [doc/migration.md](doc/migration.md).
+[doc/deploy.md](doc/deploy.md); schema changes are [doc/migration.md](doc/migration.md); reading
+competition results is [doc/ianseo.md](doc/ianseo.md).
 
 ## Stack
 

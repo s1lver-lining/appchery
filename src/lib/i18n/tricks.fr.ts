@@ -301,6 +301,32 @@ export const tricksFr: TricksDictionary = {
 			]
 		},
 		{
+			key: 'ianseo',
+			title: 'Compétitions',
+			tricks: [
+				{
+					lead: 'La recherche va au delà de vos filtres.',
+					body: "Les pays que vous suivez décident de ce que la liste affiche, mais taper dans la recherche interroge tout ianseo : chaque compétition qu'il a hébergée, par nom, ville, organisateur ou code. Vider le champ rétablit votre liste."
+				},
+				{
+					lead: "Suivez un archer depuis un résultat.",
+					body: "Ouvrez une ligne d'une liste de résultats, ou touchez l'étoile à côté d'un nom dans un tableau, et cet archer est suivi pour cette compétition. Sa ligne est alors marquée partout où elle apparaît, et la compétition est suivie elle aussi."
+				},
+				{
+					lead: "Un résultat que vous n'avez pas lu le dit.",
+					body: "Une compétition suivie que ianseo a reconstruite depuis votre dernière visite est marquée Nouveau dans la liste, et la tuile des compétitions sur l'accueil porte un point. C'est l'ouverture de la compétition qui l'efface."
+				},
+				{
+					lead: 'Tout ce qui est lu est gardé pour le pas de tir.',
+					body: "Chaque compétition et chaque résultat ouvert est stocké sur l'appareil et se relit sans réseau. Ce qui est affiché indique toujours quand il a été lu, et ne se fait jamais passer pour du direct."
+				},
+				{
+					lead: 'Ouvrir une ligne rend les colonnes.',
+					body: "Un écran étroit montre le classement, l'archer et le score. Les distances, le club et le reste sont derrière la flèche en bout de ligne, là où se trouve aussi la proposition de les suivre."
+				}
+			]
+		},
+		{
 			key: 'elsewhere',
 			title: 'Ailleurs',
 			tricks: [

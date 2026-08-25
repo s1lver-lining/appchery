@@ -1,4 +1,5 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { IANSEO_ORIGIN, PROXY_PREFIX } from './proxy';
 
 /**
  * ianseo publishes pages, not an interface, and it sends no header that would let a browser read
@@ -9,10 +10,8 @@ import { Capacitor, CapacitorHttp } from '@capacitor/core';
  * breaks in one place rather than differently on each platform.
  */
 
-export const IANSEO = 'https://www.ianseo.net';
-
-/** The path the web build asks instead, answered by `functions/ianseo-api` on the deployed site. */
-export const PROXY = '/ianseo-api';
+export const IANSEO = IANSEO_ORIGIN;
+export const PROXY = PROXY_PREFIX;
 
 export class IanseoError extends Error {
 	constructor(

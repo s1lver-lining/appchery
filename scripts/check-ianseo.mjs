@@ -30,13 +30,17 @@ function check(name, ok, detail = '') {
 const fixture = (name) => readFileSync(`test/ianseo/${name}.html`, 'utf8');
 
 /** ianseo, as it was on the day the fixtures were taken. */
-function serveIanseo(context) {
+function serveIanseo(context, state = {}) {
 	return context.route('**/ianseo-api/**', (route) => {
 		const url = new URL(route.request().url());
 		const path = url.pathname.replace('/ianseo-api', '');
 		let body = null;
 
-		if (path === '/TourList.php') body = fixture('TourList');
+		if (path === '/TourList.php') {
+			body = fixture('TourList');
+			// ianseo rebuilding a competition, which is the whole of what makes a result new.
+			if (state.published) body = body.replace(/update">[^<]*</g, `update">${state.published}<`);
+		}
 		else if (path === '/Details.php') {
 			const toId = url.searchParams.get('toId');
 			body = toId === '29743' ? fixture('Details-29743') : fixture('Details');
@@ -70,6 +74,57 @@ async function overflows(page) {
 async function shot(page, name) {
 	mkdirSync(SHOTS, { recursive: true });
 	await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
+}
+
+/**
+ * A followed competition that ianseo has rebuilt since it was last opened says so, and stops saying
+ * so once it has been. It is the one piece of state in the feature that spans three visits, and the
+ * one that quietly did nothing at all until it was driven end to end.
+ */
+async function checkNewResults(browser) {
+	const state = {};
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context, state);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo/29775`, { waitUntil: 'networkidle' });
+	await page.getByRole('button', { name: /Follow this competition/i }).click();
+	await page.waitForTimeout(250);
+
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/29775"]');
+	check(
+		'a competition just followed is not announced as new',
+		(await page.getByText('New', { exact: true }).count()) === 0
+	);
+
+	// ianseo publishes something, and the archer reads the list again.
+	state.published = 'Today 21:40';
+	await page.getByRole('button', { name: /Refresh/i }).click();
+	await page.waitForTimeout(800);
+	check(
+		'a competition rebuilt since it was read is announced as new',
+		(await page.getByText('New', { exact: true }).count()) > 0
+	);
+
+	await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(400);
+	check(
+		'the home page carries the dot that leads to it',
+		(await page.locator('a[href*="/ianseo"] span.bg-brand').count()) > 0
+	);
+
+	// Opening it is reading it, so it stops being new.
+	await page.goto(`${BASE}/ianseo/29775`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(500);
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/29775"]');
+	check(
+		'a competition that has been opened stops being new',
+		(await page.getByText('New', { exact: true }).count()) === 0
+	);
+
+	await context.close();
 }
 
 async function run() {
@@ -152,6 +207,8 @@ async function run() {
 
 		await context.close();
 	}
+
+	await checkNewResults(browser);
 
 	await browser.close();
 

@@ -14,6 +14,7 @@
 		addFavourite,
 		favouriteId,
 		favourites,
+		markCompetitionSeen,
 		removeFavourite,
 		type Favourite
 	} from '$lib/ianseo/store';
@@ -106,6 +107,7 @@
 					label: competition?.name ?? toId,
 					detail: null
 				});
+				await markCompetitionSeen(toId);
 			}
 		}
 		pinned = await favourites();

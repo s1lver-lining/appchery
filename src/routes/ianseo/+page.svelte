@@ -11,7 +11,7 @@
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadTournaments } from '$lib/ianseo/client';
 	import { countriesOf, filterTournaments, guessedCountry, whenOf, type When } from '$lib/ianseo/select';
-	import { favourites, isNew, type Favourite } from '$lib/ianseo/store';
+	import { favourites, isNew, notePublished, type Favourite } from '$lib/ianseo/store';
 	import type { Tournament } from '$lib/ianseo/types';
 
 	/**
@@ -53,11 +53,26 @@
 			cachedAt = loaded.cachedAt;
 			stale = loaded.stale;
 			offer();
+			await note();
 		} catch {
 			// Nothing has ever been read on this device, so there is not even something old to show.
 			failed = true;
 		}
 		loading = false;
+	}
+
+	/**
+	 * The followed competitions, against what the list says ianseo last rebuilt them. This is the
+	 * only place a result becomes new: opening a competition is what makes it read again.
+	 */
+	async function note() {
+		const followed = pinned.filter((one) => one.kind === 'competition');
+		if (followed.length === 0) return;
+		for (const one of followed) {
+			const tournament = list.find((row) => row.toId === one.toId);
+			if (tournament) await notePublished(one.toId!, tournament.updatedAt);
+		}
+		pinned = await favourites();
 	}
 
 	function offer() {

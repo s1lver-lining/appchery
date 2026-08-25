@@ -306,6 +306,32 @@ export const tricksEn = {
 			]
 		},
 		{
+			key: 'ianseo',
+			title: 'Competitions',
+			tricks: [
+				{
+					lead: 'The search reaches past your filters.',
+					body: 'The countries you follow decide what the list shows, but typing into the search asks the whole of ianseo: every competition it has ever hosted, by name, town, organiser or code. Clearing the box puts your own list back.'
+				},
+				{
+					lead: 'Follow an archer from inside a result.',
+					body: 'Open any row of a result list, or tap the star beside a name in a bracket, and that archer is followed for that competition. Their line is then marked wherever it appears in it, and the competition is followed too.'
+				},
+				{
+					lead: 'A result you have not read says so.',
+					body: 'A followed competition that ianseo has rebuilt since you last opened it is marked New in the list, and the competitions tile on the home page carries a dot. Opening the competition is what clears it.'
+				},
+				{
+					lead: 'Everything read is kept for the range.',
+					body: 'Every competition and result you open is stored on the device, so it reads again with no signal. What is shown always says when it was read, and refuses to pass itself off as live.'
+				},
+				{
+					lead: 'Opening a row gives back the columns.',
+					body: 'A narrow screen shows the placing, the archer and the score. The distances, the club and everything else are behind the arrow at the end of the row, which is also where the offer to follow them is.'
+				}
+			]
+		},
+		{
 			key: 'elsewhere',
 			title: 'Elsewhere',
 			tricks: [

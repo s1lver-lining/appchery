@@ -22,6 +22,7 @@
     "db:check": "./scripts/check-sql.sh",
     "server:check": "node scripts/check-server.mjs",
     "browser:check": "node scripts/check-browser.mjs",
+		"ianseo:check": "node scripts/check-ianseo.mjs",
     "deploy:prod": "./scripts/deploy.sh prod",
     "dev:site": "vite dev --config vite.site.config.ts",
     "build:site": "vite build --config vite.site.config.ts",

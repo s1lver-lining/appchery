@@ -103,11 +103,13 @@ src/lib/
     equipment/   bow-type setting schemas and revision diffing
     stats.ts     personal bests, averages, trends
   i18n/          reference dictionary and locales
+  ianseo/        reading competition results published by ianseo    <- see ianseo.md
   sync/          change log, push/pull, conflict resolution      <- see sync.md
   vision/        face fit, arrow proposals, viewpoint agreement   <- see camera-scoring.md
   ui/            components
 routes/
   sessions/[id]/  activities/[id]/  equipment/[id]/  stats/  settings/
+  ianseo/[toId]/[doc]/
 ```
 
 The `domain/` layer is **pure TypeScript with no database or UI imports**. Scoring rules, zone
