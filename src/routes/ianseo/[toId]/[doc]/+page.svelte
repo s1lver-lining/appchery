@@ -35,9 +35,9 @@
 	let entry = $state<CompetitionDocument | null>(null);
 	let document = $state<ResultDocument | null>(null);
 	let cachedAt = $state<number | null>(null);
-	let stale = $state(false);
+	let problem = $state<'offline' | 'unreadable' | null>(null);
 	let loading = $state(true);
-	let error = $state<'missing' | 'offline' | null>(null);
+	let error = $state<'missing' | 'offline' | 'unreadable' | null>(null);
 	let pinned = $state<Favourite[]>([]);
 
 	const followedLabels = $derived(
@@ -94,10 +94,13 @@
 			if (mine !== request) return;
 			document = loaded.value;
 			cachedAt = loaded.cachedAt;
-			stale = loaded.stale;
+			problem = loaded.problem;
 		} catch (thrown) {
 			if (mine !== request) return;
-			error = thrown instanceof IanseoError && thrown.kind === 'missing' ? 'missing' : 'offline';
+			error =
+				thrown instanceof IanseoError && (thrown.kind === 'missing' || thrown.kind === 'unreadable')
+					? thrown.kind
+					: 'offline';
 		}
 		loading = false;
 	}
@@ -163,7 +166,7 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-	<ReadNote {loading} {stale} {cachedAt} banner />
+	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	{#if error === 'missing'}
 		<EmptyState
@@ -171,23 +174,35 @@
 			body={$t('ianseo.missingDocumentBody')}
 			action={{ label: $t('ianseo.documents'), href: from }}
 		/>
-	{:else if error === 'offline'}
+	{:else if error}
 		<EmptyState
-			title={$t('ianseo.errorTitle')}
-			body={$t('ianseo.errorBody')}
+			title={$t(error === 'unreadable' ? 'ianseo.unreadableTitle' : 'ianseo.errorTitle')}
+			body={$t(error === 'unreadable' ? 'ianseo.unreadableBody' : 'ianseo.errorBody')}
 			action={{ label: $t('ianseo.retry'), onclick: () => read(true) }}
 		/>
-	{:else if document?.kind === 'bracket'}
-		<BracketBoard {document} {followedLabels} onfollow={follow} />
-	{:else if sections.length > 0}
-		{#each sections as section, index (index)}
-			<ResultTable {section} {followedLabels} onfollow={follow} />
-		{/each}
-	{:else if !loading}
-		<EmptyState title={$t('ianseo.emptyDocumentTitle')} body={$t('ianseo.emptyDocumentBody')} />
 	{/if}
 
-	<ReadNote {loading} {stale} {cachedAt}>
+	{#if document && document.skipped > 0}
+		<!-- Said rather than hidden: a result list quietly missing a line is worse than one that admits it. -->
+		<p class="flex items-center gap-2 rounded-xl border border-line bg-line/25 px-3 py-2 text-xs text-muted">
+			<span class="shrink-0"><Icon name="bulb" size={16} /></span>
+			{$t('ianseo.partial')}
+		</p>
+	{/if}
+
+	{#if !error}
+		{#if document?.kind === 'bracket'}
+			<BracketBoard {document} {followedLabels} onfollow={follow} />
+		{:else if sections.length > 0}
+			{#each sections as section, index (index)}
+				<ResultTable {section} {followedLabels} onfollow={follow} />
+			{/each}
+		{:else if !loading}
+			<EmptyState title={$t('ianseo.emptyDocumentTitle')} body={$t('ianseo.emptyDocumentBody')} />
+		{/if}
+	{/if}
+
+	<ReadNote {loading} {problem} {cachedAt}>
 		{#if entry?.pdfPath}
 			<a
 				class="rounded-lg border border-line px-2 py-1 font-medium"

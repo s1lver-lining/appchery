@@ -81,6 +81,27 @@ semicolon) and accented (`rue de l&eacute;glise`). Both have their own tests.
 Every parser is tested against real pages saved in `test/ianseo/`. When ianseo changes its markup,
 those tests fail rather than a screen going blank.
 
+### When a page changes anyway
+
+ianseo will rearrange a page one day, and the app has to behave when it does. Two rules, in
+`src/lib/ianseo/parse/reading.ts`:
+
+**A line that cannot be read never takes the page with it.** Rows, documents and matches are read one
+at a time, and one that throws is stepped over. Half a result list is worth far more than an error:
+the archer is looking for a name, and the rest of the list still holds it. A table that came back
+short says so at the top rather than quietly showing fewer archers, counted from the rows that
+yielded no cells or fewer cells than the table has columns. That count is zero on every page saved
+in `test/ianseo/`, so it means what it says.
+
+**A page that plainly held something, out of which nothing could be read, says so in its own words.**
+`looksLike` asks whether the page had the shape of the thing being looked for: a list links
+competitions by `toId`, a competition links documents under `/TourData/{year}/`, a document is a
+table. An empty parse of a page with that shape raises `unreadable`, which the screens report as "this
+page of ianseo has changed" rather than "ianseo could not be reached". The two are not the same:
+waiting fixes one and never fixes the other, and a competition that has simply published nothing yet
+is neither. Whatever was read before the change stays on screen, dated, and the PDF on ianseo still
+has everything.
+
 ## 4. What the app keeps
 
 Two tables, both local to the device and neither synced (`migration 0004`):

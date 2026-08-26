@@ -10,6 +10,7 @@ import type {
 	TableDocument
 } from '../types';
 import { cells, flagOf, hasClass, rows, tags, text, type Cell } from './html';
+import { readEach } from './reading';
 
 /**
  * One published document, whatever it holds. Nothing here knows what a class code means or which
@@ -19,7 +20,19 @@ import { cells, flagOf, hasClass, rows, tags, text, type Cell } from './html';
 export function parseDocument(html: string): ResultDocument | null {
 	const table = tags(html, 'table')[0];
 	if (!table) return null;
-	return /\btable-grid\b/.test(table.attrs) ? parseBracket(table.html) : parseTable(table.html);
+
+	if (/\btable-grid\b/.test(table.attrs)) {
+		try {
+			const bracket = parseBracket(table.html);
+			if (bracket.rounds.some((round) => round.matches.length > 0)) return bracket;
+		} catch {
+			// A grid this app can no longer read as a bracket is still a table of names and numbers.
+		}
+		const fallback = parseTable(table.html);
+		return fallback.sections.length > 0 ? fallback : parseBracket(table.html);
+	}
+
+	return parseTable(table.html);
 }
 
 /** The heading row a section is introduced by: one cell reaching across the table. */
@@ -41,6 +54,7 @@ function cellOf(cell: Cell): DocumentCell {
 }
 
 function parseTable(html: string): TableDocument {
+	let skipped = 0;
 	let title = '';
 	let base: DocumentColumn[] | null = null;
 	let columns: DocumentColumn[] = [];
@@ -69,32 +83,45 @@ function parseTable(html: string): TableDocument {
 			continue;
 		}
 
+		// Row by row, so an archer's line that cannot be read costs that line and not the whole table.
 		for (const row of rows(group.html)) {
-			// The secondary lines are the same row again, unfolded for a narrow screen: they are its detail.
-			if (hasClass(row.attrs, 'results-secondary-lines')) {
-				const last = section?.rows.at(-1);
-				const line = text(row.html);
-				if (last && line) last.detail.push(line);
-				continue;
+			try {
+				// The secondary lines are the same row again, unfolded for a narrow screen: its detail.
+				if (hasClass(row.attrs, 'results-secondary-lines')) {
+					const last = section?.rows.at(-1);
+					const line = text(row.html);
+					if (last && line) last.detail.push(line);
+					continue;
+				}
+				const values = cells(row.html);
+				if (values.length === 0) {
+					// An empty row is a spacer; one with words in it that yielded no cells is a row lost.
+					if (text(row.html)) skipped++;
+					continue;
+				}
+				if (!section) {
+					section = { heading, columns, rows: [] };
+					sections.push(section);
+				}
+				// A line narrower than the table it is in has lost something the markup no longer says.
+				if (columns.length > 0 && values.length < columns.length) skipped++;
+				section.rows.push({
+					cells: values.map(cellOf),
+					detail: [],
+					// Bold is how ianseo marks a podium, and it is worth keeping when the table is redrawn.
+					strong: hasClass(row.attrs, 'bold')
+				});
+			} catch {
+				// One row lost. The archer is looking for a name, and the rest of the list still holds it.
+				skipped++;
 			}
-			const values = cells(row.html);
-			if (values.length === 0) continue;
-			if (!section) {
-				section = { heading, columns, rows: [] };
-				sections.push(section);
-			}
-			section.rows.push({
-				cells: values.map(cellOf),
-				detail: [],
-				// Bold is how ianseo marks a podium, and it is worth keeping when the table is redrawn.
-				strong: hasClass(row.attrs, 'bold')
-			});
 		}
 	}
 
 	return {
 		kind: 'table',
 		title,
+		skipped,
 		sections: sections.filter((one) => one.rows.length > 0).map(trim)
 	};
 }
@@ -138,6 +165,7 @@ function blocks(html: string): { name: 'thead' | 'tbody'; html: string }[] {
  * arrows to another.
  */
 function parseBracket(html: string): BracketDocument {
+	let skipped = 0;
 	const all = rows(html);
 	const title = all.length > 0 ? (headingOf(all[0].html) ?? '') : '';
 
@@ -146,7 +174,14 @@ function parseBracket(html: string): BracketDocument {
 	const tables: { row: number; column: number; sets: string[][] }[] = [];
 
 	all.slice(1).forEach((row, at) => {
-		const values = cells(row.html);
+		let values: Cell[];
+		try {
+			values = cells(row.html);
+		} catch {
+			// A line of the grid lost, which costs a match rather than the whole draw.
+			skipped++;
+			return;
+		}
 		if (values.length > 0 && values.every((cell) => cell.header || text(cell.html) === '')) {
 			for (const cell of values) {
 				const label = text(cell.html);
@@ -197,7 +232,7 @@ function parseBracket(html: string): BracketDocument {
 		title: round.title,
 		matches: round.matches.map((match) => ({ entries: match.entries, sets: match.sets }))
 	}));
-	return { kind: 'bracket', title, rounds: shown };
+	return { kind: 'bracket', title, skipped, rounds: shown };
 }
 
 /** Six cells where the bracket names an athlete in full, two where it only carries them forward. */

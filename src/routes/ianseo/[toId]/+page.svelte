@@ -8,7 +8,7 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadCompetition, loadTournaments, TOURNAMENT_LIST } from '$lib/ianseo/client';
-	import { IANSEO } from '$lib/ianseo/fetch';
+	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import { readCache } from '$lib/ianseo/store';
 	import {
 		addFavourite,
@@ -38,9 +38,9 @@
 	let competition = $state<Competition | null>(null);
 	let tournament = $state<Tournament | null>(null);
 	let cachedAt = $state<number | null>(null);
-	let stale = $state(false);
+	let problem = $state<'offline' | 'unreadable' | null>(null);
 	let loading = $state(true);
-	let failed = $state(false);
+	let failed = $state<'offline' | 'unreadable' | null>(null);
 	let pinned = $state<Favourite[]>([]);
 	/** The entry form, where one can be matched to this competition beyond doubt. */
 	let entry = $state<Entry | null>(null);
@@ -75,17 +75,17 @@
 
 	async function read(refresh: boolean, mine = ++request) {
 		loading = true;
-		failed = false;
+		failed = null;
 		try {
 			const loaded = await loadCompetition(toId, { refresh });
 			if (mine !== request) return;
 			competition = loaded.value;
 			cachedAt = loaded.cachedAt;
-			stale = loaded.stale;
+			problem = loaded.problem;
 			await seen();
-		} catch {
+		} catch (error) {
 			if (mine !== request) return;
-			failed = true;
+			failed = error instanceof IanseoError && error.kind === 'unreadable' ? 'unreadable' : 'offline';
 		}
 		loading = false;
 	}
@@ -166,7 +166,7 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-	<ReadNote {loading} {stale} {cachedAt} banner />
+	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	{#if competition?.organiser}
 		<p class="px-1 text-sm text-muted">{competition.organiser}</p>
@@ -202,8 +202,8 @@
 
 	{#if failed}
 		<EmptyState
-			title={$t('ianseo.errorTitle')}
-			body={$t('ianseo.errorBody')}
+			title={$t(failed === 'unreadable' ? 'ianseo.unreadableTitle' : 'ianseo.errorTitle')}
+			body={$t(failed === 'unreadable' ? 'ianseo.unreadableBody' : 'ianseo.errorBody')}
 			action={{ label: $t('ianseo.retry'), onclick: () => read(true) }}
 		/>
 	{:else if groups.length === 0 && !loading}
@@ -245,7 +245,7 @@
 		</section>
 	{/each}
 
-	<ReadNote {loading} {stale} {cachedAt}>
+	<ReadNote {loading} {problem} {cachedAt}>
 		<button
 			class="rounded-lg border border-line px-2 py-1 font-medium disabled:opacity-50"
 			disabled={loading}

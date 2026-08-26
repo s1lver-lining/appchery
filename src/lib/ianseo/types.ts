@@ -80,6 +80,8 @@ export type TableDocument = {
 	kind: 'table';
 	title: string;
 	sections: DocumentSection[];
+	/** Lines this build could not read, so a page missing an archer says so instead of looking whole. */
+	skipped: number;
 };
 
 /** One side of one match in an elimination bracket. */
@@ -107,6 +109,8 @@ export type BracketDocument = {
 	kind: 'bracket';
 	title: string;
 	rounds: BracketRound[];
+	/** Lines this build could not read, so a bracket missing a match says so instead of looking whole. */
+	skipped: number;
 };
 
 export type ResultDocument = TableDocument | BracketDocument;

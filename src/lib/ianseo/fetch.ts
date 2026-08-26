@@ -15,7 +15,12 @@ export const PROXY = `${PROXY_PREFIX}/ianseo`;
 
 export class IanseoError extends Error {
 	constructor(
-		readonly kind: 'offline' | 'unavailable' | 'missing',
+		/**
+		 * `unreadable` is the one that is nobody's fault but ours: ianseo answered, and the app could
+		 * not make sense of what it sent. It is worth its own word on screen, because a page that has
+		 * been rearranged needs the app updating and no amount of waiting for a signal will help.
+		 */
+		readonly kind: 'offline' | 'unavailable' | 'missing' | 'unreadable',
 		message: string
 	) {
 		super(message);

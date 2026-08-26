@@ -1,5 +1,6 @@
 import type { Tournament } from '../types';
 import { attr, cells, flagOf, hasClass, rows, text } from './html';
+import { readEach } from './reading';
 
 /**
  * The tournament list, which ianseo publishes as one page of every competition it has ever hosted.
@@ -23,11 +24,11 @@ const MONTHS = [
 ];
 
 export function parseTournaments(html: string, now = Date.now()): Tournament[] {
-	const found: Tournament[] = [];
-	for (const row of rows(html)) {
+	// Row by row, so one competition ianseo has written oddly costs that competition and no other.
+	return readEach(rows(html), (row) => {
 		const toId = attr(row.attrs, 'onclick')?.match(/toId=(\d+)/)?.[1];
 		// The secondary rows repeat a competition for the narrow layout, so they would double the list.
-		if (!toId || hasClass(row.attrs, 'results-secondary-lines')) continue;
+		if (!toId || hasClass(row.attrs, 'results-secondary-lines')) return null;
 
 		const columns = cells(row.html);
 		const column = (n: number, wide = false) =>
@@ -36,11 +37,11 @@ export function parseTournaments(html: string, now = Date.now()): Tournament[] {
 			);
 
 		const name = text(column(3, true)?.html ?? column(2, true)?.html ?? '');
-		if (!name) continue;
+		if (!name) return null;
 
 		const dates = text(column(7)?.html ?? '');
 		const span = parseDateSpan(dates, now);
-		found.push({
+		return {
 			toId,
 			code: text(column(2, true)?.html ?? ''),
 			name,
@@ -53,9 +54,8 @@ export function parseTournaments(html: string, now = Date.now()): Tournament[] {
 			updatedAt: parseUpdated(text(column(8)?.html ?? ''), now),
 			// The ianseo team run the events nobody local organises: the championships and the games.
 			major: hasClass(row.attrs, 'ianseo')
-		});
-	}
-	return found;
+		};
+	});
 }
 
 /**

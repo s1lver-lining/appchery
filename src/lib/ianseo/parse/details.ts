@@ -1,5 +1,6 @@
 import type { Competition, CompetitionDocument } from '../types';
 import { decode, tags, text } from './html';
+import { readEach } from './reading';
 
 /**
  * A competition's own page: the heading it is published under, and every document it has released.
@@ -16,13 +17,12 @@ export function parseCompetition(toId: string, html: string): Competition {
 				.filter(Boolean)
 		: [];
 
+	// Document by document: one line ianseo has written oddly must not lose the archer the others.
 	const documents: CompetitionDocument[] = [];
 	for (const panel of tags(html, 'div').filter((tag) => /results-panel"/.test(tag.attrs))) {
 		const group = tags(panel.html, 'div').find((tag) => /results-panel-head/.test(tag.attrs));
-		for (const item of tags(panel.html, 'div').filter((tag) => /results-item-container/.test(tag.attrs))) {
-			const document = readDocument(item.html, text(group?.html ?? ''));
-			if (document) documents.push(document);
-		}
+		const items = tags(panel.html, 'div').filter((tag) => /results-item-container/.test(tag.attrs));
+		documents.push(...readEach(items, (item) => readDocument(item.html, text(group?.html ?? ''))));
 	}
 
 	return {

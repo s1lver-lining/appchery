@@ -17,6 +17,7 @@
 	import TournamentCard from '$lib/ui/ianseo/TournamentCard.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadTournaments } from '$lib/ianseo/client';
+	import { IanseoError } from '$lib/ianseo/fetch';
 	import { countriesOf, filterTournaments, guessedCountry, whenOf, type When } from '$lib/ianseo/select';
 	import { distanceKm } from '$lib/competitions/distance';
 	import { favourites, isNew, notePublished, type Favourite } from '$lib/ianseo/store';
@@ -46,9 +47,9 @@
 	let now = $state(Date.now());
 	let list = $state<Tournament[]>([]);
 	let cachedAt = $state<number | null>(null);
-	let stale = $state(false);
+	let problem = $state<'offline' | 'unreadable' | null>(null);
 	let loading = $state(true);
-	let failed = $state(false);
+	let failed = $state<'offline' | 'unreadable' | null>(null);
 	let search = $state('');
 	let pinned = $state<Favourite[]>([]);
 	/** What is open for entry in France, which is worth showing even where ianseo has never heard of it. */
@@ -84,18 +85,18 @@
 
 	async function read(refresh = false) {
 		loading = true;
-		failed = false;
+		failed = null;
 		now = Date.now();
 		try {
 			const loaded = await loadTournaments({ refresh });
 			list = loaded.value;
 			cachedAt = loaded.cachedAt;
-			stale = loaded.stale;
+			problem = loaded.problem;
 			offer();
 			await note();
-		} catch {
+		} catch (error) {
 			// Nothing has ever been read on this device, so there is not even something old to show.
-			failed = true;
+			failed = error instanceof IanseoError && error.kind === 'unreadable' ? 'unreadable' : 'offline';
 		}
 		loading = false;
 	}
@@ -306,7 +307,7 @@
 </PageHeader>
 
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-	<ReadNote {loading} {stale} {cachedAt} banner />
+	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	<!-- The search sits above the filters because it overrides them: a name is asked of all of ianseo. -->
 	<div class="relative">
@@ -435,8 +436,8 @@
 
 	{#if failed}
 		<EmptyState
-			title={$t('ianseo.errorTitle')}
-			body={$t('ianseo.errorBody')}
+			title={$t(failed === 'unreadable' ? 'ianseo.unreadableTitle' : 'ianseo.errorTitle')}
+			body={$t(failed === 'unreadable' ? 'ianseo.unreadableBody' : 'ianseo.errorBody')}
 			action={{ label: $t('ianseo.retry'), onclick: () => read(true) }}
 		/>
 	{:else}
@@ -531,7 +532,7 @@
 	{/if}
 
 	<!-- Dated rather than dressed as live: everything above was read at a moment, and says which. -->
-	<ReadNote {loading} {stale} {cachedAt}>
+	<ReadNote {loading} {problem} {cachedAt}>
 		<span>· {$t('ianseo.byline')}</span>
 	</ReadNote>
 </div>

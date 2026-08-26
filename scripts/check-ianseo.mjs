@@ -392,6 +392,105 @@ async function checkEntries(browser) {
 	await context.close();
 }
 
+/**
+ * The day ianseo rearranges a page. What matters is that the app says which of the two things went
+ * wrong: a range with no signal, which waiting fixes, or a page this build can no longer read, which
+ * waiting never fixes. And that whatever could still be read is still on screen.
+ */
+async function checkUnreadable(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	/** The markup rearranged: still plainly a results page, no longer one this build can read. */
+	const rearrange = (html) => html.replace(/<t([dhr])\b/g, '<x$1').replace(/<\/t([dhr])>/g, '</x$1>');
+
+	let mangle = false;
+	await context.route('**/competitions-api/ianseo/**', (route) => {
+		const url = new URL(route.request().url());
+		const path = url.pathname.replace('/competitions-api/ianseo', '');
+		let body =
+			path === '/TourList.php'
+				? fixture('TourList')
+				: path === '/Details.php'
+					? fixture('Details')
+					: null;
+		if (body === null) {
+			const name = path.split('/').pop()?.replace('.php', '');
+			try {
+				body = fixture(name);
+			} catch {
+				body = null;
+			}
+		}
+		if (body === null) return route.fulfill({ status: 404, body: 'no fixture' });
+		route.fulfill({
+			status: 200,
+			contentType: 'text/html; charset=utf-8',
+			body: mangle && path.includes('IQRM') ? rearrange(body) : body
+		});
+	});
+
+	const page = await context.newPage();
+	mangle = true;
+	await page.goto(`${BASE}/ianseo/26053/IQRM`, { waitUntil: 'networkidle' });
+	await page.getByText(/has changed/i).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
+
+	check(
+		'a page ianseo has rearranged is named as that, not as a network failure',
+		await page.getByText('This page of ianseo has changed').isVisible()
+	);
+	check(
+		'and the archer is not told to try again later, which would not help',
+		(await page.getByText(/could not be reached/i).count()) === 0
+	);
+	await shot(page, 'unreadable');
+
+	// What was read before it changed is still worth showing, and still says how old it is.
+	mangle = false;
+	await page.getByRole('button', { name: /Try again/i }).click();
+	await page.waitForSelector('table tbody tr', { timeout: 20000 });
+	mangle = true;
+	await page.getByRole('button', { name: /Refresh/i }).click();
+	await page.waitForTimeout(1500);
+
+	check(
+		'what was read before the page changed stays on screen',
+		(await page.locator('table tbody tr').count()) > 3
+	);
+	check(
+		'and says the page has changed rather than that it could not be reached',
+		(await page.getByText(/ianseo has changed this page/i).count()) > 0
+	);
+	await shot(page, 'unreadable-stale');
+
+	/**
+	 * A page only half rearranged, which is the likelier accident. What can be read is read, and the
+	 * page says outright that some of it could not be, rather than quietly showing a shorter list.
+	 */
+	await context.unroute('**/competitions-api/ianseo/**');
+	await context.route('**/competitions-api/ianseo/**', (route) => {
+		const path = new URL(route.request().url()).pathname.replace('/competitions-api/ianseo', '');
+		let body = path === '/Details.php' ? fixture('Details') : null;
+		if (path.includes('IQRM')) {
+			// Two archers' lines left unreadable, out of a list of seven.
+			body = fixture('IQRM').replace(/<td class="text-right">58[13]<\/td>/g, '<td class="text-right">581');
+		}
+		if (body === null) return route.fulfill({ status: 404, body: 'no fixture' });
+		route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body });
+	});
+
+	await page.getByRole('button', { name: /Refresh/i }).click();
+	await page.waitForTimeout(1500);
+	check(
+		'a page only half readable says so rather than quietly showing less',
+		await page.getByText(/could not be read/i).first().isVisible()
+	);
+	check(
+		'and still shows the lines it could read',
+		(await page.locator('table tbody tr').count()) > 2
+	);
+	await shot(page, 'partial');
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -479,6 +578,7 @@ async function run() {
 	await checkDistance(browser);
 	await checkStaleRead(browser);
 	await checkEntries(browser);
+	await checkUnreadable(browser);
 
 	await browser.close();
 

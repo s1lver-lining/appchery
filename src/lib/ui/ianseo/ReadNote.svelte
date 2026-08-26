@@ -10,14 +10,18 @@
 	 */
 	let {
 		loading,
-		stale,
+		problem,
 		cachedAt,
 		banner = false,
 		children
 	}: {
 		loading: boolean;
-		/** ianseo could not be reached, so what is shown is whatever the device already had. */
-		stale: boolean;
+		/**
+		 * Why what is shown is whatever the device already had. `offline` is ianseo not answering,
+		 * which waiting fixes; `unreadable` is ianseo answering with a page this build of the app
+		 * cannot make sense of, which waiting does not fix and which says so in its own words.
+		 */
+		problem: 'offline' | 'unreadable' | null;
 		cachedAt: number | null;
 		/**
 		 * Shown at the top of the page and only while it is stale. The quiet line belongs at the
@@ -33,10 +37,12 @@
 </script>
 
 {#if banner}
-	{#if stale && cachedAt}
+	{#if problem && cachedAt}
 		<p class="flex items-center gap-2 rounded-xl border border-line bg-line/25 px-3 py-2 text-xs text-muted">
-			<span class="shrink-0"><Icon name="cloud" size={16} /></span>
-			{$t('ianseo.stale', { when: $formatSince(cachedAt) })}
+			<span class="shrink-0"><Icon name={problem === 'unreadable' ? 'bulb' : 'cloud'} size={16} /></span>
+			{$t(problem === 'unreadable' ? 'ianseo.unreadableStale' : 'ianseo.stale', {
+				when: $formatSince(cachedAt)
+			})}
 		</p>
 	{/if}
 {:else}
@@ -44,8 +50,10 @@
 	<span>
 		{#if loading}
 			{$t('ianseo.reading')}
-		{:else if stale && cachedAt}
-			{$t('ianseo.stale', { when: $formatSince(cachedAt) })}
+		{:else if problem && cachedAt}
+			{$t(problem === 'unreadable' ? 'ianseo.unreadableStale' : 'ianseo.stale', {
+				when: $formatSince(cachedAt)
+			})}
 		{:else if justNow}
 			{$t('ianseo.justRead')}
 		{:else if cachedAt}
