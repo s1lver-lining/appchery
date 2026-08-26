@@ -1,18 +1,13 @@
 import type { LengthUnit } from '../rounds/types';
 
 /**
- * A drill: shooting done to a rule rather than to a round.
+ * A drill: shooting to a rule rather than to a round.
  *
- * A round asks one question, which is what the archer scored over a fixed number of arrows. A drill
- * asks a different one every time: how often the arrow went where it was meant to, how long a run
- * was held before it broke, how many arrows a target score cost, which shaft of the set is the odd
- * one. The answer is a reading of an afternoon's work and never a score to be compared with a score,
- * which is why a drill is its own kind of activity and stays out of averages and personal bests. Its
- * arrows count as volume, like a match or a bare shaft session: arrows shot are arrows shot.
- *
- * What it is shot at lives in the measurements block rather than in a round definition, deliberately
- * and for the same reason free scoring does it, see ../freeScore.ts: anything that finds a round
- * definition treats what it finds as a round, and a drill must never be read as one.
+ * What it reports is how often the arrow went where it was meant to, not a score to be set beside a
+ * score, so a drill is its own kind of activity and stays out of averages and personal bests. Its
+ * arrows count as volume, like a match does. What it is shot at lives in the measurements block for
+ * the reason free scoring does it, see ../freeScore.ts: anything that finds a round definition
+ * treats what it found as a round, and a drill must never be read as one.
  */
 export const DRILL_KIND = 'drill';
 
@@ -41,13 +36,7 @@ export interface DrillFace {
 	unit: LengthUnit;
 }
 
-/**
- * Every setting any game takes, in one flat shape.
- *
- * One shape rather than a union per game so that a block written by an older version parses into a
- * usable drill instead of into nothing: a field a game does not read costs a few bytes and cannot
- * be wrong, and a field it does read always has a default to fall back on.
- */
+/** Every setting any game takes, in one shape, so an older block still parses into a usable drill. */
 export interface DrillConfig {
 	/** The lowest ring that counts as a success, as a zone label so X and the 10 stay distinct. */
 	thresholdLabel: string;
@@ -68,19 +57,9 @@ export interface DrillConfig {
 	arrowSet: number;
 }
 
-/**
- * What the drill has to remember that its arrows cannot say on their own.
- *
- * Everything derivable from the arrows is derived, every time, in engine.ts: a counter kept beside
- * the shots is a counter that can disagree with them, and an arrow edited on the sheet afterwards
- * would leave it lying. Only what no arrow records is stored here.
- */
+/** Only what the arrows cannot say themselves: everything else is derived from them in engine.ts. */
 export interface DrillState {
-	/**
-	 * The ring called for each arrow so far, one entry per arrow, calledShot only. Persisted rather
-	 * than drawn when it is needed: a call regenerated on a reload is a call that changed under the
-	 * archer between nocking and loosing.
-	 */
+	/** The ring called for each arrow, kept so a reload cannot change the call under the archer. */
 	calls: string[];
 	/** When the clock was started, for the games that run against one. Null until it is. */
 	startedAt: number | null;
@@ -122,10 +101,7 @@ export interface ArrowRanking {
 	spread: number | null;
 }
 
-/**
- * The reading of a drill, worked out from its arrows every time it is asked for. Nothing here is
- * stored, so nothing here can go stale against the arrows it was counted from.
- */
+/** The reading of a drill, worked out from its arrows and never stored, so it cannot go stale. */
 export interface DrillOutcome {
 	arrows: number;
 	hits: number;
@@ -137,7 +113,7 @@ export interface DrillOutcome {
 	bestStreak: number;
 	/** Misses left before it ends, or null when misses do not end it. */
 	livesLeft: number | null;
-	/** Ladder step reached, 0 based, and the ring that step asks for. */
+	/** Ladder step reached, and the ring that step asks for. */
 	step: number;
 	stepLabel: string | null;
 	/** Seconds left on the clock, null when the drill runs against no clock or has not started. */

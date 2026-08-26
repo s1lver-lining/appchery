@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { WA_10_RING } from '../rounds/seed';
-import { defaultConfig, newDrill, validateDrill, drillFaceLabel } from './games';
-import { endSize, parseDrill, serialiseDrill, usesFace } from './serialise';
+import { defaultConfig, drillFaceLabel, needsSetup, newDrill, validateDrill } from './games';
+import { countsOwnArrows, endSize, parseDrill, serialiseDrill, usesFace } from './serialise';
 
 describe('parseDrill', () => {
 	it('brings back everything it was handed', () => {
@@ -55,6 +55,15 @@ describe('validateDrill', () => {
 		expect(validateDrill(drill)).toContain('arrows');
 	});
 
+	it('measures the sorting drill against its set, which is the end it actually shoots', () => {
+		const drill = newDrill('arrowSorting');
+		drill.config.arrowSet = 12;
+		drill.config.arrows = 6;
+		expect(validateDrill(drill)).toContain('arrows');
+		drill.config.arrows = 36;
+		expect(validateDrill(drill)).toEqual([]);
+	});
+
 	it('says nothing about a setting the game does not read', () => {
 		const drill = newDrill('streak');
 		drill.config.goal = -1;
@@ -83,6 +92,17 @@ describe('shape of a drill', () => {
 	it('knows the one drill that is shot at nothing', () => {
 		expect(usesFace(newDrill('blindBale'))).toBe(false);
 		expect(usesFace(newDrill('successZone'))).toBe(true);
+	});
+
+	it('makes the drill with no shot rows carry its own arrow count', () => {
+		expect(countsOwnArrows(newDrill('blindBale'))).toBe(true);
+		expect(countsOwnArrows(newDrill('successZone'))).toBe(false);
+	});
+
+	it('asks about a drill with nothing to set only when there is something to set', () => {
+		expect(needsSetup('blindBale')).toBe(false);
+		expect(needsSetup('successZone')).toBe(true);
+		expect(needsSetup('streak')).toBe(true);
 	});
 
 	it('names a drill by where it was shot and on what', () => {

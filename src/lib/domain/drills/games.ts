@@ -2,11 +2,7 @@ import type { IconName } from '$lib/ui/Icon.svelte';
 import { WA_10_RING } from '../rounds/seed';
 import { DRILL_GAMES, type DrillConfig, type DrillFace, type DrillGame, type Drill } from './types';
 
-/**
- * The catalogue. One entry per game, holding everything the rest of the app needs to offer it, set
- * it up and draw it, so that adding a game is adding an entry here and a branch in engine.ts rather
- * than touching the session sheet, the activity page and the repository in turn.
- */
+/** The catalogue, so adding a game is an entry here and a branch in engine.ts, nothing else. */
 
 /** Which of the settings a game actually reads, and so which ones its setup screen asks for. */
 export type DrillField =
@@ -23,12 +19,9 @@ export type DrillField =
 export interface DrillDefinition {
 	game: DrillGame;
 	icon: IconName;
-	/**
-	 * How arrows get in. `pad` is the ordinary keypad and face, the same input as a scored round.
-	 * `count` is a tally with no face behind it, for the one drill that is shot at nothing.
-	 */
+	/** `pad` is the keypad and face a round is scored on; `count` is a tally, for the drill shot at nothing. */
 	input: 'pad' | 'count';
-	/** Opens on the face rather than the keys, for the drills whose whole reading is where it landed. */
+	/** Opens on the face, for the drills whose whole reading is where the arrow landed. */
 	prefersPlot: boolean;
 	/** True when the drill runs against a clock the page has to keep. */
 	timed: boolean;
@@ -50,7 +43,6 @@ export const DEFAULT_CONFIG: DrillConfig = {
 };
 
 export const DRILL_DEFINITIONS: Record<DrillGame, DrillDefinition> = {
-	/** The plain one, and the one every other pass or fail game is a variation of. */
 	successZone: {
 		game: 'successZone',
 		icon: 'target',
@@ -118,13 +110,10 @@ export const DRILL_DEFINITIONS: Record<DrillGame, DrillDefinition> = {
 		fields: ['seconds', 'arrowsPerEnd'],
 		defaults: { arrows: null, arrowsPerEnd: 3, seconds: 120 }
 	},
-	/**
-	 * Reads where each numbered shaft lands, so it wants plots: a shaft that scores the same as the
-	 * rest while landing somewhere else is exactly the shaft this drill exists to find.
-	 */
+	// Wants plots: the shaft it looks for scores like the rest and lands somewhere else.
 	arrowSorting: {
 		game: 'arrowSorting',
-		icon: 'list',
+		icon: 'chart',
 		input: 'pad',
 		prefersPlot: true,
 		timed: false,
@@ -142,7 +131,7 @@ export const DRILL_DEFINITIONS: Record<DrillGame, DrillDefinition> = {
 	},
 	onePressure: {
 		game: 'onePressure',
-		icon: 'check',
+		icon: 'bow',
 		input: 'pad',
 		prefersPlot: false,
 		timed: true,
@@ -157,6 +146,12 @@ export function drillDefinition(game: DrillGame): DrillDefinition {
 
 export function isDrillGame(value: unknown): value is DrillGame {
 	return typeof value === 'string' && (DRILL_GAMES as readonly string[]).includes(value);
+}
+
+/** A drill with nothing to set and no face to choose is better started than asked about. */
+export function needsSetup(game: DrillGame): boolean {
+	const definition = drillDefinition(game);
+	return definition.fields.length > 0 || definition.input === 'pad';
 }
 
 export function defaultConfig(game: DrillGame): DrillConfig {
@@ -189,10 +184,7 @@ export const DRILL_LIMITS = {
 	distance: { min: 1, max: 300 }
 };
 
-/**
- * What is out of range, by field name, so the setup screen can mark the offending input rather than
- * refusing the whole form with one message.
- */
+/** What is out of range, by field name, so the setup screen can mark the input that is wrong. */
 export function validateDrill(drill: Drill): string[] {
 	const errors: string[] = [];
 	const { config, face } = drill;
@@ -215,7 +207,8 @@ export function validateDrill(drill: Drill): string[] {
 	check(face.distance, 'distance');
 
 	// A drill that asks for fewer arrows than it puts in an end could never finish an end.
-	if (config.arrows !== null && config.arrows < config.arrowsPerEnd) errors.push('arrows');
+	const perEnd = drill.game === 'arrowSorting' ? config.arrowSet : config.arrowsPerEnd;
+	if (config.arrows !== null && config.arrows < perEnd) errors.push('arrows');
 
 	return [...new Set(errors)];
 }
