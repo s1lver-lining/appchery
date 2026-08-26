@@ -30,6 +30,7 @@ import { RUNNING_KIND, isRunDone, parseRun, serialiseRun, type RunRecord } from 
 import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
 import {
 	DRILL_KIND,
+	countsOwnArrows,
 	isDrillDone,
 	serialiseDrill,
 	type Drill,
@@ -403,14 +404,19 @@ export async function loadDrillShots(activityId: string): Promise<DrillShot[]> {
 }
 
 /**
- * Whether a drill is finished is a question about its arrows, so it is asked of them rather than
- * remembered: an arrow corrected on the sheet can reopen a drill that its own rule had ended.
+ * Whether a drill is finished is asked of its arrows rather than remembered: an arrow corrected on
+ * the sheet can reopen a drill that its own rule had ended.
+ *
+ * A drill shot at no face has no shot rows to count, so its tally is written to the arrow column
+ * here. Arrows shot are arrows shot, and leaving them out would lose them from the volume.
  */
 export async function updateDrill(activityId: string, drill: Drill) {
 	const shots = await loadDrillShots(activityId);
+	const counted = countsOwnArrows(drill) ? { arrowsShot: drill.state.blindArrows } : {};
 	await db()
 		.update(schema.activity)
 		.set({
+			...counted,
 			measurements: serialiseDrill(drill),
 			status: isDrillDone(drill, shots) ? 'complete' : 'in_progress',
 			updatedAt: Date.now()
