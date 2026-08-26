@@ -84,19 +84,20 @@
 <div class="mx-auto w-full max-w-2xl space-y-4 p-4">
 	<section class="rounded-xl border border-line bg-surface p-4">
 		<p class="text-sm">{$t(`drill.game.${game}.hint`)}</p>
-		<p class="mt-2 text-xs text-muted">
-			<span class="font-medium">{$t('drill.trains')}</span>
-			· {$t(`drill.game.${game}.trains`)}
-		</p>
 	</section>
 
 	<!-- The rule. What makes this drill this drill, so it comes before where it is shot. -->
 	{#if definition.fields.length > 0}
 		<section class="space-y-4 rounded-xl border border-line bg-surface p-4">
 			{#if asks('threshold')}
+				{@const called = game === 'calledShot'}
 				<div>
-					<span class="text-sm text-muted">{$t('drill.threshold')}</span>
-					<p class="mb-2 text-xs text-muted">{$t('drill.thresholdHint')}</p>
+					<span class="text-sm text-muted">
+						{called ? $t('drill.callFrom') : $t('drill.threshold')}
+					</span>
+					<p class="mb-2 text-xs text-muted">
+						{called ? $t('drill.callFromHint') : $t('drill.thresholdHint')}
+					</p>
 					<div class="flex flex-wrap gap-1.5">
 						{#each rings as ring (ring.label)}
 							<button
@@ -140,7 +141,7 @@
 			{#if asks('lives')}
 				<div>
 					{@render counter($t('drill.lives'), [1, 2, 3, 5, 10], drill.config.lives, (v) => (drill.config.lives = v))}
-					<p class="mt-1 text-xs text-muted">{$t('drill.livesHint')}</p>
+					<p class="mt-1.5 text-xs text-muted">{$t('drill.livesHint')}</p>
 				</div>
 			{/if}
 
