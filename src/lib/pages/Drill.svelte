@@ -15,6 +15,7 @@
 		endSize,
 		meetsRing,
 		parseDrill,
+		rankingIsThin,
 		summarise,
 		usesFace,
 		type Drill,
@@ -31,31 +32,38 @@
 	} from '$lib/db/repository';
 
 	/**
-	 * A drill, shot arrow by arrow at the same keypad a round is scored on.
-	 *
-	 * Everything on show is worked out from the arrows on the sheet, never from a counter kept
-	 * alongside them: the rule is applied to the shots every time the page draws, so an arrow taken
-	 * back gives back the life it cost and the run it broke, without a line of code that says so.
+	 * A drill, shot arrow by arrow at the same keypad a round is scored on. Everything on show is
+	 * read from the arrows on the sheet, so taking one back gives back the life it cost.
 	 */
 	let { activity, onchange }: { activity: ActivityRow; onchange: () => void } = $props();
 
 	let drill = $state<Drill>(parseDrill(null));
 	let shots = $state<DrillShot[]>([]);
+	let endCount = $state(0);
+	/** When the last end was written, taken from the sheet so a reload cannot skip a pause. */
+	let lastEndAt = $state(0);
 	let pending = $state<Omit<Shot, 'ordinal'>[]>([]);
 	let mode = $state<'number' | 'face'>('number');
+	let padOpen = $state(true);
 	let loadedFrom = $state<string | null>(null);
 	let confirmingStop = $state(false);
 	let autoScoring = $state(false);
-	/** Ticks only while something on the page is counting down, so a still page costs nothing. */
+	/** Ticks only while something is counting down, so a still page costs nothing. */
 	let now = $state(Date.now());
+	/** Writes run one after another: two fast taps would otherwise claim the same end number. */
+	let writes: Promise<void> = Promise.resolve();
 
 	const definition = $derived(drillDefinition(drill.game));
 	const scoreSet = $derived(getScoreSet(drill.face.scoreSetId));
 	const perEnd = $derived(endSize(drill));
-	const outcome = $derived(summarise(drill, shots, now));
+	/** The arrows on the sheet and the ones on the screen: the rule reads both, or it reads late. */
+	const live = $derived<DrillShot[]>([
+		...shots,
+		...pending.map((shot, i) => ({ ...shot, ordinal: i + 1 }))
+	]);
+	const outcome = $derived(summarise(drill, live, now));
 	const face = $derived(usesFace(drill));
 
-	/** Arrows already on the sheet, drawn faded behind the ones being entered. */
 	const plotted = $derived<Shot[]>(
 		shots
 			.filter((shot) => shot.x !== null && shot.y !== null)
@@ -63,13 +71,11 @@
 	);
 	const pendingShots = $derived<Shot[]>(pending.map((shot, i) => ({ ...shot, ordinal: i + 1 })));
 
-	/**
-	 * The arrows, and only the arrows. Called after every write, and deliberately never re-reads the
-	 * rule from the row: the measurements on the prop are whatever the parent last handed down, which
-	 * after a save of our own is one version behind. What is in hand here is the newer of the two.
-	 */
+	/** The arrows only. Never the rule: after a save of our own the prop is a version behind. */
 	async function loadShots() {
 		const { ends, shotsByEnd } = await loadSheet(activity.id);
+		endCount = ends.length;
+		lastEndAt = ends.length === 0 ? 0 : (ends[ends.length - 1].createdAt ?? 0);
 		shots = ends.flatMap((one) =>
 			(shotsByEnd.get(one.id) ?? []).map((shot) => ({
 				ordinal: shot.ordinal,
@@ -81,7 +87,6 @@
 		);
 	}
 
-	/** The whole drill, which is only ever read once: when the page arrives at a different activity. */
 	async function load() {
 		drill = parseDrill(activity.measurements);
 		if (definition.prefersPlot) mode = 'face';
@@ -95,11 +100,7 @@
 		load();
 	});
 
-	/**
-	 * The called ring is drawn once and then kept, because a call redrawn on every render is a call
-	 * that changes while the arrow is on the string. One stands ready at all times; arrows taken back
-	 * take their calls with them.
-	 */
+	/** One call always stands ready, and arrows taken back take their calls with them. */
 	async function ensureCall() {
 		if (drill.game !== 'calledShot') return;
 		const wanted = shots.length + pending.length + 1;
@@ -115,7 +116,6 @@
 		onchange();
 	}
 
-	/** A clock nobody started is a clock that has not cost the archer anything yet. */
 	async function startClock() {
 		drill.state.startedAt = Date.now();
 		now = Date.now();
@@ -124,56 +124,51 @@
 
 	async function stop() {
 		confirmingStop = false;
+		if (pending.length > 0) commit([...pending]);
 		drill.state.endedAt = Date.now();
-		pending = [];
+		await writes;
 		await save();
 	}
 
 	async function reopen() {
 		drill.state.endedAt = null;
+		padOpen = true;
 		await save();
 	}
 
-	/**
-	 * The pause the one arrow drill is made of. Counted from when the last arrow was written rather
-	 * than ticked down, so a phone that locked between arrows comes back knowing the wait is over.
-	 */
-	let lastEndAt = $state(0);
+	/** The pause the one arrow drill is made of, counted from the last end rather than ticked. */
 	const waiting = $derived(
-		drill.game === 'onePressure' && lastEndAt > 0
+		drill.game === 'onePressure' && lastEndAt > 0 && !outcome.done
 			? Math.max(0, drill.config.seconds - Math.floor((now - lastEndAt) / 1000))
 			: 0
 	);
 
-	/**
-	 * Arrows entered but not yet written when the drill ends under them, which only a clock can do.
-	 * Written as a short end rather than lost: they were shot, whatever the clock says.
-	 */
+	/** Arrows entered but not written when a clock ends the drill under them: they were still shot. */
 	$effect(() => {
 		if (outcome.done && pending.length > 0) commit([...pending]);
 	});
 
-	// Only a page with something counting down needs a heartbeat, and only while it is counting.
+	const ticking = $derived(
+		drill.state.endedAt === null &&
+			((drill.game === 'beatTheClock' && drill.state.startedAt !== null) ||
+				(drill.game === 'onePressure' && lastEndAt > 0))
+	);
+
 	$effect(() => {
-		const ticking =
-			(definition.timed && drill.state.startedAt !== null && !outcome.done) || waiting > 0;
 		if (!ticking) return;
 		const timer = setInterval(() => (now = Date.now()), 500);
 		return () => clearInterval(timer);
 	});
 
-
-
-	async function commit(next: Omit<Shot, 'ordinal'>[]) {
+	function commit(next: Omit<Shot, 'ordinal'>[]) {
 		pending = [];
-		// The end number carries on from what is already there, so an undo leaves no gap behind it.
-		const endNo = Math.ceil(shots.length / perEnd) + 1;
-		await recordEnd(activity.id, 0, endNo, next);
-		lastEndAt = Date.now();
-		now = Date.now();
-		await loadShots();
-		await ensureCall();
-		await save();
+		writes = writes.then(async () => {
+			await recordEnd(activity.id, 0, endCount + 1, next);
+			now = Date.now();
+			await loadShots();
+			await ensureCall();
+			await save();
+		});
 	}
 
 	function add(shot: Omit<Shot, 'ordinal'>) {
@@ -192,7 +187,7 @@
 		add(shotFromZone(zone));
 	}
 
-	/** Plotting derives the value from where it landed, so the score and the position cannot disagree. */
+	/** Plotting takes the value from where it landed, so score and position cannot disagree. */
 	function plot(x: number, y: number) {
 		add(shotFromPlot(scoreAt(scoreSet, x, y), x, y));
 	}
@@ -211,307 +206,324 @@
 		}
 	}
 
-	/**
-	 * Taking back the last end. The whole end rather than the last arrow, because an end is what was
-	 * written: the rule is then read again over what is left, which is what gives back the life or
-	 * the run that arrow cost.
-	 */
-	async function undoLastEnd() {
-		// The arrow on the screen before the ones on the sheet: it is the last one entered.
+	/** The whole end, because an end is what was written: the rule is then read again over the rest. */
+	async function undoLast() {
 		if (pending.length > 0) {
 			pending = pending.slice(0, -1);
 			await ensureCall();
 			return;
 		}
 		if (shots.length === 0) return;
-		await deleteLastEnd(activity.id);
-		await loadShots();
-		await ensureCall();
-		await save();
+		writes = writes.then(async () => {
+			await deleteLastEnd(activity.id);
+			await loadShots();
+			await ensureCall();
+			await save();
+		});
 	}
 
-	/** Keys that are not what the drill is asking for, faded rather than locked. */
+	/** Keys that are not what the drill asks for, faded rather than locked: a six still scores six. */
 	const dim = $derived((zone: Zone) => {
+		if (drill.game === 'calledShot')
+			return outcome.called !== null && zone.label !== outcome.called;
 		const wanted =
 			drill.game === 'shrinkingZone'
 				? outcome.stepLabel
-				: drill.game === 'calledShot'
-					? null
-					: definition.fields.includes('threshold')
-						? drill.config.thresholdLabel
-						: null;
-		if (drill.game === 'calledShot')
-			return outcome.called !== null && zone.label !== outcome.called;
+				: definition.fields.includes('threshold')
+					? drill.config.thresholdLabel
+					: null;
 		return wanted !== null && !meetsRing(scoreSet, zone.label, wanted);
 	});
 
-	/** The one figure the drill is about, said in as few words as it can be. */
+	/** The one figure the drill is about, and whether it has anything to say yet. */
 	const headline = $derived.by(() => {
+		const figure = (label: string, value: string, empty = false) => ({ label, value, empty });
 		switch (drill.game) {
 			case 'lives':
-				return { label: $t('drill.livesLeft'), value: String(outcome.livesLeft ?? 0) };
+				return figure($t('drill.livesLeft'), String(outcome.livesLeft ?? 0));
 			case 'streak':
-				return { label: $t('drill.bestStreak'), value: String(outcome.bestStreak) };
+				return figure($t('drill.bestStreak'), String(outcome.bestStreak));
 			case 'shrinkingZone':
-				return {
-					label: $t('drill.stepRing'),
-					value: outcome.stepLabel ?? $t('drill.finished')
-				};
+				return figure($t('drill.stepRing'), outcome.stepLabel ?? $t('drill.finished'));
 			case 'targetScore':
-				return { label: $t('drill.score'), value: `${outcome.score} / ${drill.config.goal}` };
+				return figure($t('drill.score'), `${outcome.score} / ${drill.config.goal}`);
 			case 'beatTheClock':
-				return {
-					label: $t('drill.score'),
-					value: String(outcome.score)
-				};
+				return figure($t('drill.score'), String(outcome.score));
 			case 'blindBale':
-				return { label: $t('drill.blindArrows'), value: String(outcome.arrows) };
+				return figure($t('drill.blindArrows'), String(outcome.arrows));
 			case 'arrowSorting':
-				return { label: $t('drill.arrows'), value: String(outcome.arrows) };
+				return figure($t('drill.arrows'), String(outcome.arrows));
 			default:
-				return {
-					label: $t('drill.rate'),
-					value: outcome.rate === null ? '–' : `${Math.round(outcome.rate * 100)}%`
-				};
+				return outcome.rate === null
+					? figure($t('drill.rate'), $t('drill.noReading'), true)
+					: figure($t('drill.rate'), `${Math.round(outcome.rate * 100)}%`);
 		}
 	});
 
-	/** What sits under the headline: the second figure worth having, when there is one. */
+	const rating = $derived(drill.state.ratings[0] ?? null);
+
+	/** The second figure worth having, when there is one. */
 	const subline = $derived.by(() => {
 		if (drill.game === 'blindBale')
-			return drill.state.ratings.length === 0
-				? null
-				: `${$t('drill.meanRating')} ${
-						$t(
-							`drill.ratings.${Math.round(
-								drill.state.ratings.reduce((sum, one) => sum + one, 0) /
-									drill.state.ratings.length
-							)}`
-						)
-					}`;
+			return rating === null ? null : $t('drill.meanRating', { rating: $t(`drill.ratings.${rating}`) });
 		if (drill.game === 'targetScore') return $t('drill.arrowsUsed', { n: outcome.arrows });
 		if (drill.game === 'streak') return $t('drill.onNow', { n: outcome.currentStreak });
 		if (drill.game === 'lives' || drill.game === 'shrinkingZone')
-			return $t('drill.hitsOf', { hits: outcome.hits, arrows: outcome.arrows });
+			return $t('drill.arrowsUsed', { n: outcome.arrows });
 		if (outcome.remaining !== null && !outcome.done)
 			return $t('drill.remaining', { n: outcome.remaining });
 		return null;
 	});
 
-	const clockLeft = $derived(outcome.secondsLeft);
+	const thinRanking = $derived(rankingIsThin(outcome.ranking));
 
 	async function countBlind(delta: number) {
+		buzz();
 		drill.state.blindArrows = Math.max(0, drill.state.blindArrows + delta);
 		await save();
 	}
 
 	async function rate(value: number) {
-		drill.state.ratings = [...drill.state.ratings, value];
+		drill.state.ratings = rating === value ? [] : [value];
 		await save();
 	}
 </script>
 
-<div class="mx-auto w-full max-w-2xl space-y-3 p-4 pb-2">
-	<!-- What it is and where it was shot, which is everything the row is filed under. -->
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<div class="flex items-start gap-3">
-			<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-text">
-				<Icon name={definition.icon} size={20} />
+<div class="mx-auto flex w-full max-w-2xl flex-col">
+	<div class="safe-top flex h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">
+		<header class="flex shrink-0 items-center gap-2">
+			<a
+				href="/sessions/{activity.sessionId}"
+				class="shrink-0 text-muted"
+				aria-label={$t('common.back')}
+			>
+				<Icon name="back" size={22} />
+			</a>
+			<h1 class="min-w-0 flex-1 truncate text-center text-base font-bold">
+				{$t(`drill.game.${drill.game}.name`)}
+			</h1>
+			<span class="shrink-0 text-xs text-muted">
+				{face ? drillFaceLabel(drill.face) : ''}
 			</span>
-			<div class="min-w-0 flex-1">
-				<h2 class="font-semibold">{$t(`drill.game.${drill.game}.name`)}</h2>
-				<p class="text-xs text-muted">
-					{face ? `${drillFaceLabel(drill.face)} · ` : ''}{$t(`drill.game.${drill.game}.hint`)}
-				</p>
-			</div>
-		</div>
-	</section>
+		</header>
 
-	<!-- The live band: the one figure the drill is about, big enough to read from the shooting line. -->
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<div class="flex items-end justify-between gap-3">
-			<div class="min-w-0">
-				<p class="text-xs text-muted">{headline.label}</p>
-				<p class="text-4xl font-bold tabular">{headline.value}</p>
-				{#if subline}<p class="mt-0.5 text-xs text-muted">{subline}</p>{/if}
-			</div>
-			{#if definition.timed}
-				<div class="shrink-0 text-right">
-					<p class="text-xs text-muted">{$t('drill.clock')}</p>
-					{#if clockLeft === null}
-						<button
-							class="mt-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
-							onclick={startClock}
-						>
-							{$t('drill.startClock')}
-						</button>
-					{:else}
-						<p class="text-3xl font-bold tabular {clockLeft <= 10 ? 'text-danger' : ''}">
-							{clockLeft}
+		<div class="min-h-0 flex-1 space-y-3 overflow-y-auto">
+			<!-- The one figure the drill is about, and the clock when it runs against one. -->
+			<section class="rounded-2xl border border-line bg-surface p-4">
+				<div class="flex items-end justify-between gap-3">
+					<div class="min-w-0">
+						<p class="text-xs text-muted">{headline.label}</p>
+						<p class="tabular text-4xl font-bold {headline.empty ? 'text-muted' : ''}">
+							{headline.value}
 						</p>
+						{#if subline}<p class="mt-0.5 text-xs text-muted">{subline}</p>{/if}
+					</div>
+					{#if definition.timed}
+						<div class="shrink-0 text-right">
+							{#if outcome.secondsLeft === null}
+								<button
+									class="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink"
+									onclick={startClock}
+								>
+									{$t('drill.startClock')}
+								</button>
+							{:else}
+								<p class="text-xs text-muted">{$t('drill.clock')}</p>
+								<p
+									class="tabular text-3xl font-bold {outcome.secondsLeft <= 10 ? 'text-danger' : ''}"
+								>
+									{outcome.secondsLeft}
+								</p>
+							{/if}
+						</div>
 					{/if}
 				</div>
+
+				<p class="mt-2 text-xs text-muted">{$t(`drill.game.${drill.game}.hint`)}</p>
+			</section>
+
+			<!-- Shot at no face, so it counts its own arrows and keeps how they felt. -->
+			{#if !face}
+				<section class="rounded-2xl border border-line bg-surface p-4">
+					<div class="flex gap-2">
+						{#each [1, 3, 6] as step (step)}
+							<button
+								class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
+								onclick={() => countBlind(step)}
+							>
+								{$t('drill.addArrows', { n: step })}
+							</button>
+						{/each}
+						<button
+							class="rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-muted disabled:opacity-40"
+							disabled={drill.state.blindArrows === 0}
+							onclick={() => countBlind(-1)}
+						>
+							{$t('drill.removeArrow')}
+						</button>
+					</div>
+
+					<h2 class="mt-4 mb-2 text-sm font-semibold text-muted">{$t('drill.rating')}</h2>
+					<div class="flex gap-1">
+						{#each [1, 2, 3, 4, 5] as value (value)}
+							<button
+								class="flex-1 rounded-lg border px-1 py-2 text-xs font-medium
+									{rating === value ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+								onclick={() => rate(value)}
+							>
+								{$t(`drill.ratings.${value}`)}
+							</button>
+						{/each}
+					</div>
+				</section>
+			{/if}
+
+			<!-- Which shaft of the set lands somewhere else, once there are enough plots to say. -->
+			{#if drill.game === 'arrowSorting'}
+				<section class="rounded-2xl border border-line bg-surface p-4">
+					<h2 class="text-sm font-semibold">{$t('drill.ranking')}</h2>
+					<p class="mt-1 text-xs text-muted">{$t('drill.rankingHint')}</p>
+					{#if outcome.ranking.length === 0}
+						<p class="mt-3 text-sm text-muted">{$t('drill.rankingEmpty')}</p>
+					{:else if thinRanking}
+						<p class="mt-3 text-sm text-muted">{$t('drill.rankingThin')}</p>
+					{:else}
+						<div class="mt-3 overflow-x-auto">
+							<table class="w-full text-sm">
+								<thead class="text-xs text-muted">
+									<tr>
+										<th class="py-1 text-left font-medium">{$t('drill.arrowNo')}</th>
+										<th class="py-1 text-right font-medium">{$t('drill.offGroup')}</th>
+										<th class="py-1 text-right font-medium">{$t('drill.ownGroup')}</th>
+										<th class="py-1 text-right font-medium">{$t('drill.average')}</th>
+									</tr>
+								</thead>
+								<tbody>
+									{#each outcome.ranking as entry (entry.ordinal)}
+										<tr class="border-t border-line">
+											<td class="py-1.5 font-medium">{entry.ordinal}</td>
+											<td class="tabular py-1.5 text-right">
+												{entry.offset === null ? $t('drill.noReading') : entry.offset.toFixed(2)}
+											</td>
+											<td class="tabular py-1.5 text-right">
+												{entry.spread === null ? $t('drill.noReading') : entry.spread.toFixed(2)}
+											</td>
+											<td class="tabular py-1.5 text-right">{entry.mean.toFixed(1)}</td>
+										</tr>
+									{/each}
+								</tbody>
+							</table>
+						</div>
+					{/if}
+				</section>
+			{/if}
+
+			{#if outcome.done}
+				<section class="rounded-2xl border border-line bg-surface p-4">
+					<p class="text-sm text-muted">{$t('drill.over')}</p>
+					<div class="mt-3 flex gap-2">
+						{#if drill.state.endedAt !== null}
+							<button
+								class="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium"
+								onclick={reopen}
+							>
+								{$t('drill.reopen')}
+							</button>
+						{/if}
+						{#if shots.length > 0}
+							<button
+								class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-line py-2.5 text-sm font-medium text-muted"
+								onclick={undoLast}
+							>
+								<Icon name="back" size={16} />
+								{$t('undo.action')}
+							</button>
+						{/if}
+					</div>
+				</section>
+			{:else}
+				<button
+					class="w-full rounded-xl border border-line py-2.5 text-sm font-medium text-muted"
+					onclick={() => (confirmingStop = true)}
+				>
+					{$t('drill.stop')}
+				</button>
 			{/if}
 		</div>
 
-		{#if outcome.done}
-			<p class="mt-3 rounded-lg bg-sunk px-3 py-2 text-xs text-muted">{$t('drill.over')}</p>
-		{/if}
-	</section>
-
-	<!-- Blind bale is shot at nothing, so it has a tally rather than a keypad. -->
-	{#if !face}
-		<section class="rounded-2xl border border-line bg-surface p-4">
-			<h3 class="mb-2 text-sm font-semibold text-muted">{$t('drill.blindArrows')}</h3>
-			<div class="flex gap-2">
-				{#each [1, 3, 6] as step (step)}
-					<button
-						class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
-						onclick={() => countBlind(step)}
-					>
-						{$t('drill.addArrows', { n: step })}
-					</button>
-				{/each}
-				<button
-					class="rounded-lg border border-line px-3 py-2 text-sm text-muted"
-					aria-label={$t('undo.action')}
-					onclick={() => countBlind(-1)}
+		<!-- The same input a round is scored on, out to both edges: the page is inset, a sheet is not. -->
+		{#if face && !outcome.done && padOpen}
+			<div class="-mx-4 -mb-4 shrink-0 pb-4">
+				<ArrowPad
+					flush
+					{scoreSet}
+					{dim}
+					bind:mode
+					shots={pendingShots}
+					otherShots={plotted}
+					onclose={() => (padOpen = false)}
+					onpick={tapZone}
+					onplot={plot}
 				>
-					<Icon name="back" size={16} />
-				</button>
+					{#snippet title()}
+						<span class="tabular font-semibold text-ink">{pending.length} / {perEnd}</span>
+					{/snippet}
+
+					{#snippet callout()}
+						{#if drill.game === 'calledShot' && outcome.called}
+							<span class="text-sm font-semibold text-brand-text">
+								{$t('drill.called', { ring: outcome.called })}
+							</span>
+						{:else if waiting > 0}
+							<span class="text-sm font-semibold text-brand-text">
+								{$t('drill.waiting', { n: waiting })}
+							</span>
+						{:else if drill.game === 'onePressure'}
+							<span class="text-sm text-muted">{$t('drill.ready')}</span>
+						{:else if drill.game === 'shrinkingZone' && outcome.stepLabel}
+							<span class="text-sm font-semibold text-brand-text">
+								{$t('drill.stepRing')}: {outcome.stepLabel}
+							</span>
+						{/if}
+					{/snippet}
+
+					{#snippet footer()}
+						<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
+							<button
+								class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
+								disabled={shots.length === 0 && pending.length === 0}
+								onclick={undoLast}
+							>
+								<Icon name="back" size={18} />
+								{$t('undo.action')}
+							</button>
+							<button
+								class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-brand px-2 py-2 text-sm font-semibold whitespace-nowrap text-brand-text"
+								onclick={() => (autoScoring = true)}
+							>
+								<Icon name="camera" size={18} />
+								{$t('auto.open')}
+							</button>
+						</div>
+					{/snippet}
+				</ArrowPad>
 			</div>
-
-			<h3 class="mt-4 mb-1 text-sm font-semibold text-muted">{$t('drill.rating')}</h3>
-			<p class="mb-2 text-xs text-muted">{$t('drill.ratingHint')}</p>
-			<div class="flex gap-1">
-				{#each [1, 2, 3, 4, 5] as value (value)}
-					<button
-						class="flex-1 rounded-lg border border-line py-2 text-xs font-medium"
-						onclick={() => rate(value)}
-					>
-						{$t(`drill.ratings.${value}`)}
-					</button>
-				{/each}
-			</div>
-		</section>
-	{/if}
-
-	<!-- The sorting drill's whole reading: which shaft of the set lands somewhere else. -->
-	{#if drill.game === 'arrowSorting'}
-		<section class="rounded-2xl border border-line bg-surface p-4">
-			<h3 class="text-sm font-semibold text-muted">{$t('drill.ranking')}</h3>
-			<p class="mt-1 mb-3 text-xs text-muted">{$t('drill.rankingHint')}</p>
-			{#if outcome.ranking.length === 0}
-				<p class="text-sm text-muted">{$t('drill.rankingEmpty')}</p>
-			{:else}
-				<div class="overflow-x-auto">
-					<table class="w-full text-sm">
-						<thead class="text-xs text-muted">
-							<tr>
-								<th class="py-1 text-left font-medium">{$t('drill.arrowNo', { n: '' })}</th>
-								<th class="py-1 text-right font-medium">{$t('drill.offGroup')}</th>
-								<th class="py-1 text-right font-medium">{$t('drill.ownGroup')}</th>
-								<th class="py-1 text-right font-medium">{$t('drill.average')}</th>
-							</tr>
-						</thead>
-						<tbody>
-							{#each outcome.ranking as entry (entry.ordinal)}
-								<tr class="border-t border-line">
-									<td class="py-1.5 font-medium">{entry.ordinal}</td>
-									<td class="py-1.5 text-right tabular">
-										{entry.offset === null ? $t('drill.noReading') : entry.offset.toFixed(2)}
-									</td>
-									<td class="py-1.5 text-right tabular">
-										{entry.spread === null ? $t('drill.noReading') : entry.spread.toFixed(2)}
-									</td>
-									<td class="py-1.5 text-right tabular">{entry.mean.toFixed(1)}</td>
-								</tr>
-							{/each}
-						</tbody>
-					</table>
-				</div>
-			{/if}
-		</section>
-	{/if}
-
-	<div class="flex gap-2">
-		{#if outcome.done && drill.state.endedAt !== null}
-			<button class="flex-1 rounded-xl border border-line py-2 text-sm font-medium" onclick={reopen}>
-				{$t('drill.reopen')}
-			</button>
-		{:else if !outcome.done}
+		{:else if face && !outcome.done}
 			<button
-				class="flex-1 rounded-xl border border-line py-2 text-sm font-medium text-muted"
-				onclick={() => (confirmingStop = true)}
+				class="shrink-0 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-ink"
+				onclick={() => (padOpen = true)}
 			>
-				{$t('drill.stop')}
-			</button>
-		{/if}
-		{#if shots.length > 0 || pending.length > 0}
-			<button
-				class="flex items-center justify-center gap-1.5 rounded-xl border border-line px-4 py-2 text-sm font-medium text-muted"
-				onclick={undoLastEnd}
-			>
-				<Icon name="back" size={16} />
-				{$t('undo.action')}
+				{$t('drill.enterArrows')}
 			</button>
 		{/if}
 	</div>
 </div>
 
-<!-- The same input a round is scored on, so nothing here is a new thing to learn. -->
-{#if face && !outcome.done}
-	<div class="sticky bottom-0 z-20">
-		<ArrowPad
-			{scoreSet}
-			{dim}
-			bind:mode
-			shots={pendingShots}
-			otherShots={plotted}
-			flush
-			onpick={tapZone}
-			onplot={plot}
-		>
-			{#snippet title()}
-				{pending.length} / {perEnd}
-			{/snippet}
-
-			{#snippet callout()}
-				{#if drill.game === 'calledShot' && outcome.called}
-					<span class="text-sm font-semibold text-brand-text">
-						{$t('drill.called', { ring: outcome.called })}
-					</span>
-				{:else if waiting > 0}
-					<span class="text-sm font-semibold text-brand-text">{$t('drill.waiting', { n: waiting })}</span>
-				{:else if drill.game === 'onePressure'}
-					<span class="text-sm text-muted">{$t('drill.ready')}</span>
-				{:else if drill.game === 'shrinkingZone' && outcome.stepLabel}
-					<span class="text-sm font-semibold text-brand-text">
-						{$t('drill.stepRing')}: {outcome.stepLabel}
-					</span>
-				{/if}
-			{/snippet}
-
-			{#snippet footer()}
-				<div class="flex gap-2 border-t border-line p-2">
-					<button
-						class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm text-muted"
-						onclick={() => (autoScoring = true)}
-					>
-						<Icon name="camera" size={16} />
-						{$t('auto.open')}
-					</button>
-				</div>
-			{/snippet}
-		</ArrowPad>
-	</div>
-{/if}
-
 {#if autoScoring}
 	<AutoScore
 		{scoreSet}
 		remaining={perEnd - pending.length}
-		videoName="drill-{activity.id}-{shots.length}"
+		videoName="drill-{activity.id}-{endCount + 1}"
 		onaccept={acceptDetected}
 		onrecorded={() => {}}
 		onclose={() => (autoScoring = false)}
