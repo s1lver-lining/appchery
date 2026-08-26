@@ -776,6 +776,7 @@ export const en = {
 			match: 'Matches',
 			tuning: 'Tuning',
 			freeScore: 'Score only',
+			drill: 'Drills',
 			training: 'Free arrows'
 		},
 		bestOn: 'Best on {date}',
@@ -1357,6 +1358,126 @@ insetHint:
 		efforts: { easy: 'Easy', steady: 'Steady', tempo: 'Tempo', hard: 'Hard', max: 'All out' },
 		whatItWorks: 'What it works',
 		unfinished: 'Saved as it stands. A run with only half its numbers is still a run you did.'
+	},
+	// Shooting to a rule rather than to a round, see src/lib/domain/drills/types.ts.
+	drill: {
+		title: 'Drills',
+		group: 'Drills',
+		hint: 'Shooting to a rule: a zone to hit, a run to hold, a clock to beat.',
+		setupHint: 'Where this is shot, and what the rule is. Everything else is entered as you go.',
+		create: 'Start',
+		trains: 'What it trains',
+		// The settings a drill is made of. Each one is asked for only by the games that read it.
+		threshold: 'Success zone',
+		thresholdHint: 'An arrow in this ring or further in counts as a success.',
+		arrows: 'Arrows',
+		arrowsOpen: 'No limit',
+		arrowsOpenHint: 'Runs until you stop it.',
+		arrowsPerEnd: 'Arrows per end',
+		lives: 'Lives',
+		livesHint: 'Arrows outside the zone you are allowed before it ends.',
+		ladder: 'Rings to work through',
+		ladderHint: 'Clear one and the next opens. A miss starts the ring you are on again.',
+		stepArrows: 'Arrows to clear a ring',
+		goal: 'Points to reach',
+		seconds: 'Seconds',
+		secondsHint: 'The clock starts when you say so, not when the drill is made.',
+		arrowSet: 'Arrows in the set',
+		arrowSetHint: 'Shoot them in the same order every end, so arrow one is always arrow one.',
+		// The live band above the keypad: the one figure the drill is about.
+		rate: 'Success rate',
+		hitsOf: '{hits} of {arrows}',
+		livesLeft: 'Lives left',
+		bestStreak: 'Best run',
+		onNow: 'On {n} now',
+		stepRing: 'Ring to hit',
+		called: 'Called: {ring}',
+		callWaiting: 'Ready for the next call',
+		goalLeft: '{n} points to go',
+		clock: 'Time left',
+		arrowsUsed: '{n} arrows',
+		remaining: '{n} arrows left',
+		score: 'Score',
+		outcome: 'Result',
+		// Running it.
+		startClock: 'Start the clock',
+		stop: 'Stop the drill',
+		stopConfirm: 'Stop this drill?',
+		stopBody: 'It keeps every arrow already in it and takes no more.',
+		reopen: 'Take it up again',
+		finished: 'Finished',
+		over: 'This drill is over. Nothing more goes in it.',
+		waiting: 'Wait {n} s',
+		ready: 'Shoot when you are ready',
+		waitHint: 'One arrow, then put the bow down and wait it out. The pause is the drill.',
+		// Blind bale, which is shot at no face and so has no arrows of its own.
+		blindArrows: 'Arrows shot',
+		addArrows: 'Add {n}',
+		rating: 'How that end felt',
+		ratingHint: 'The only reading a bale with no face on it gives you.',
+		ratings: { 1: 'Awful', 2: 'Rough', 3: 'Fine', 4: 'Good', 5: 'The best ones' },
+		meanRating: 'Felt like',
+		// Arrow sorting.
+		ranking: 'Your arrows, the odd ones first',
+		rankingHint: 'Each shaft measured against the rest of the set rather than against the middle of the target: a group that is all left is a sight to move, not a shaft to pull.',
+		rankingEmpty: 'Plot the arrows on the face and the odd shaft shows itself. Numbers alone can only rank them by score.',
+		arrowNo: 'Arrow {n}',
+		offGroup: 'Off the group',
+		ownGroup: 'Own group',
+		average: 'Average',
+		noReading: '–',
+		game: {
+			successZone: {
+				name: 'Success zone',
+				hint: 'Pick a ring. Every arrow is a hit or a miss, and what you get back is how often you did it.',
+				trains: 'Aiming to a standard rather than to a total, which is what a scored round hides.'
+			},
+			lives: {
+				name: 'Lives',
+				hint: 'Shoot until you have missed the zone once too often. How far you got is the score.',
+				trains: 'Shooting with something at stake on every arrow.'
+			},
+			streak: {
+				name: 'Streak',
+				hint: 'How long a run of good arrows you can hold. One outside the zone and the run is over.',
+				trains: 'Holding a standard, which is harder than reaching one.'
+			},
+			shrinkingZone: {
+				name: 'Shrinking zone',
+				hint: 'Clear a ring and the next one in opens. Work inwards as far as you can get.',
+				trains: 'Raising your own bar, and finding where it actually is.'
+			},
+			calledShot: {
+				name: 'Called ring',
+				hint: 'The app calls a ring before each arrow. Hitting a better one is still a miss.',
+				trains: 'Aiming where you meant to rather than at the middle out of habit.'
+			},
+			targetScore: {
+				name: 'Target score',
+				hint: 'Reach the score in as few arrows as you can.',
+				trains: 'Making the arrows count, which is what a match asks of you.'
+			},
+			beatTheClock: {
+				name: 'Beat the clock',
+				hint: 'Score as much as you can before the time runs out.',
+				trains: 'Shooting to a rhythm, and keeping the shot when the clock is loud.'
+			},
+			arrowSorting: {
+				name: 'Arrow sorting',
+				hint: 'Shoot the set in order, plot every arrow, and see which shaft lands somewhere else.',
+				trains: 'Tuning: it finds the odd arrow rather than blaming the archer for it.'
+			},
+			blindBale: {
+				name: 'Blind bale',
+				hint: 'Close your eyes and shoot at a bale with nothing on it. No score, only how it felt.',
+				trains: 'Form, with the target taken away so nothing pulls the shot about.'
+			},
+			onePressure: {
+				name: 'One arrow',
+				hint: 'One arrow, then a wait, then one more. Every arrow is on its own.',
+				trains: 'The single arrow that decides a match, practised the only way it can be.'
+			}
+		}
 	},
 	exercises: {
 		title: 'Exercises',

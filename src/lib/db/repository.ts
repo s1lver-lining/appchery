@@ -28,6 +28,13 @@ import {
 } from '$lib/domain/strength';
 import { RUNNING_KIND, isRunDone, parseRun, serialiseRun, type RunRecord } from '$lib/domain/running';
 import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
+import {
+	DRILL_KIND,
+	isDrillDone,
+	serialiseDrill,
+	type Drill,
+	type DrillShot
+} from '$lib/domain/drills';
 import { LIMITS, safeCount, safeText } from '$lib/import/limits';
 
 // All persistence goes through here so every mutation reaches change_log and soft deletes stay hidden.
@@ -351,6 +358,61 @@ export async function updateRun(activityId: string, run: RunRecord) {
 		.set({
 			measurements: serialiseRun(run),
 			status: isRunDone(run) ? 'complete' : 'in_progress',
+			updatedAt: Date.now()
+		})
+		.where(eq(schema.activity.id, activityId));
+	await log('activity', activityId, 'update');
+}
+
+/**
+ * A drill: shooting to a rule rather than to a round, see src/lib/domain/drills/types.ts.
+ *
+ * Its arrows go in the ordinary end and shot rows, which is what gives it plotting, the camera, the
+ * score sheet and sync without a line of its own. What it never carries is a round definition: the
+ * rule it was shot to lives in measurements, because anything that finds a round definition treats
+ * what it found as a round, and a drill read as a round would join averages and personal bests.
+ */
+export async function createDrillActivity(sessionId: string, drill: Drill) {
+	await unplan(sessionId);
+	const base = stamp();
+	await db().insert(schema.activity).values({
+		...base,
+		sessionId,
+		kind: DRILL_KIND,
+		measurements: serialiseDrill(drill),
+		startedAt: base.createdAt,
+		status: 'in_progress'
+	});
+	await log('activity', base.id, 'insert');
+	return base.id;
+}
+
+/** Every arrow of a drill in the order it was shot, which is the order its rule reads them in. */
+export async function loadDrillShots(activityId: string): Promise<DrillShot[]> {
+	const { ends, shotsByEnd } = await loadSheet(activityId);
+	return ends.flatMap((one) =>
+		(shotsByEnd.get(one.id) ?? []).map((shot) => ({
+			// The place in its end is the number written on the shaft, which is what sorting reads.
+			ordinal: shot.ordinal,
+			value: shot.value,
+			zoneLabel: shot.zoneLabel,
+			x: shot.x,
+			y: shot.y
+		}))
+	);
+}
+
+/**
+ * Whether a drill is finished is a question about its arrows, so it is asked of them rather than
+ * remembered: an arrow corrected on the sheet can reopen a drill that its own rule had ended.
+ */
+export async function updateDrill(activityId: string, drill: Drill) {
+	const shots = await loadDrillShots(activityId);
+	await db()
+		.update(schema.activity)
+		.set({
+			measurements: serialiseDrill(drill),
+			status: isDrillDone(drill, shots) ? 'complete' : 'in_progress',
 			updatedAt: Date.now()
 		})
 		.where(eq(schema.activity.id, activityId));

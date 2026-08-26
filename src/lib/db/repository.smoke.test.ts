@@ -6,6 +6,14 @@ import * as schema from './schema';
 import { MIGRATIONS } from './migrations';
 import { STRENGTH_KIND, parseStrength, serialiseStrength, setsDone } from '$lib/domain/strength';
 import { RUNNING_KIND, parseRun, serialiseRun } from '$lib/domain/running';
+import {
+	DRILL_KIND,
+	newDrill,
+	parseDrill,
+	serialiseDrill,
+	summarise,
+	type DrillShot
+} from '$lib/domain/drills';
 
 /**
  * Exercises the real SQL Drizzle generates against a real SQLite, which unit tests over the domain
@@ -205,5 +213,86 @@ describe('training activities', () => {
 		}
 		expect(setsDone(parseStrength(rows.find((r) => r.id === 'activity-strength')!.measurements))).toBe(1);
 		expect(parseRun(rows.find((r) => r.id === 'activity-run')!.measurements).distanceM).toBe(5000);
+	});
+});
+
+
+/**
+ * A drill shoots real arrows into the ordinary end and shot tables and carries no round definition,
+ * which is the whole of what keeps it out of averages and personal bests. Both halves of that are
+ * worth checking against real SQL rather than trusting: the arrows have to be there, and the round
+ * definition has to be absent.
+ */
+describe('drill activities', () => {
+	const stamp = (id: string) => ({ id, createdAt: 1, updatedAt: 1, deviceId: 'device' });
+
+	it('stores its rule in measurements, its arrows in the shot table, and no round anywhere', async () => {
+		const drill = newDrill('lives');
+		drill.config.thresholdLabel = '9';
+		drill.config.lives = 2;
+
+		await proxy
+			.insert(schema.session)
+			.values({ ...stamp('s-drill'), startedAt: 1, kind: 'practice' });
+		await proxy.insert(schema.activity).values({
+			...stamp('a-drill'),
+			sessionId: 's-drill',
+			kind: DRILL_KIND,
+			measurements: serialiseDrill(drill),
+			startedAt: 1,
+			arrowsShot: 3,
+			totalScore: 26,
+			status: 'in_progress'
+		});
+		await proxy
+			.insert(schema.end)
+			.values({ ...stamp('e-drill'), activityId: 'a-drill', stageIndex: 0, endNo: 1, subtotal: 26 });
+		for (const [ordinal, value, zoneLabel] of [
+			[1, 10, '10'],
+			[2, 7, '7'],
+			[3, 9, '9']
+		] as const) {
+			await proxy.insert(schema.shot).values({
+				...stamp(`sh-drill-${ordinal}`),
+				endId: 'e-drill',
+				ordinal,
+				value,
+				zoneLabel,
+				source: 'manual'
+			});
+		}
+
+		const [row] = await proxy
+			.select()
+			.from(schema.activity)
+			.where(eq(schema.activity.id, 'a-drill'));
+		expect(row.roundDefinition).toBeNull();
+		expect(row.roundDefinitionId).toBeNull();
+		expect(row.arrowsShot).toBe(3);
+
+		const shots = await proxy
+			.select()
+			.from(schema.shot)
+			.where(and(eq(schema.shot.endId, 'e-drill'), isNull(schema.shot.deletedAt)));
+		expect(shots).toHaveLength(3);
+
+		// The rule read again over what came back out of the database, which is the whole round trip.
+		const read = parseDrill(row.measurements);
+		const outcome = summarise(
+			read,
+			shots
+				.sort((a, b) => a.ordinal - b.ordinal)
+				.map((shot): DrillShot => ({
+					ordinal: shot.ordinal,
+					value: shot.value,
+					zoneLabel: shot.zoneLabel,
+					x: shot.x,
+					y: shot.y
+				}))
+		);
+		expect(read.config.lives).toBe(2);
+		expect(outcome.hits).toBe(2);
+		expect(outcome.livesLeft).toBe(1);
+		expect(outcome.done).toBe(false);
 	});
 });

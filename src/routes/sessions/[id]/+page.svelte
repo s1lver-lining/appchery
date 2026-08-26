@@ -37,6 +37,13 @@
 	} from '$lib/domain/strength';
 	import { RUNNING_KIND, clock, emptyRun, parseRun } from '$lib/domain/running';
 import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
+	import {
+		DRILL_GAMES,
+		DRILL_KIND,
+		drillDefinition,
+		drillFaceLabel,
+		parseDrill
+	} from '$lib/domain/drills';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { BOT_LEVELS } from '$lib/domain/bots';
 	import {
@@ -680,6 +687,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			return stage ? `${stage} · ${name}` : name;
 		}
 		if (a.kind === FREE_SCORE_KIND) return $t('freeScore.title');
+		// The game's name rather than the word "drill": the row said nothing otherwise.
+		if (a.kind === DRILL_KIND) return $t(`drill.game.${parseDrill(a.measurements).game}.name`);
 		if (a.kind === STRENGTH_KIND) return $t('strength.title');
 		if (a.kind === RUNNING_KIND) return $t('running.title');
 		// The procedure's name, not the key it is stored under: the row said "limb-alignment".
@@ -689,6 +698,18 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				: $t('tuning.title');
 		const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 		return round?.name ?? '';
+	}
+
+	/**
+	 * What a drill row is worth reading at a glance: where it was shot and how many arrows it took.
+	 * Never its total, which is not a score anybody can compare, see src/lib/domain/drills/types.ts.
+	 */
+	function drillSummary(a: ActivityRow): string {
+		const drill = parseDrill(a.measurements);
+		const arrows = `${a.arrowsShot} ${$t('score.arrow')}`;
+		return drillDefinition(drill.game).input === 'pad'
+			? `${drillFaceLabel(drill.face)} · ${arrows}`
+			: arrows;
 	}
 
 	/** Sets done out of sets planned: what a training row is worth reading at a glance. */
@@ -813,6 +834,17 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	);
 	const foundCustom = $derived(matchesQuery(query, [$t('round.custom'), $t('round.customHint')]));
 	const foundFree = $derived(matchesQuery(query, [$t('freeScore.title'), $t('freeScore.hint')]));
+	/** A drill answers to its own name, to what it is for, and to the word for the group as a whole. */
+	const foundDrills = $derived(
+		DRILL_GAMES.filter((game) =>
+			matchesQuery(query, [
+				$t(`drill.game.${game}.name`),
+				$t(`drill.game.${game}.hint`),
+				$t(`drill.game.${game}.trains`),
+				$t('drill.group')
+			])
+		)
+	);
 	const foundTraining = $derived(
 		matchesQuery(query, [
 			$t('training.group'),
@@ -827,6 +859,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			disciplines.length === 0 &&
 			foundMatchFormats.length === 0 &&
 			foundTemplates.length === 0 &&
+			foundDrills.length === 0 &&
 			!foundCustom &&
 			!foundFree &&
 			!foundTraining
@@ -1214,6 +1247,15 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 														>
 															<Icon name="target" size={18} />
 														</span>
+													{:else if a.kind === DRILL_KIND}
+														<span
+															class="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-sunk text-muted"
+														>
+															<Icon
+																name={drillDefinition(parseDrill(a.measurements).game).icon}
+																size={18}
+															/>
+														</span>
 													{:else if a.kind === STRENGTH_KIND || a.kind === RUNNING_KIND}
 														<span
 															class="flex h-9 w-9 items-center justify-center rounded-lg border border-line bg-sunk text-muted"
@@ -1231,11 +1273,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 																? matchSummary(a)
 																: a.kind === FREE_SCORE_KIND
 																	? `${freeScoreLabel(parseFreeScore(a.measurements))} · ${a.arrowsShot} ${$t('score.arrow')}`
-																	: a.kind === STRENGTH_KIND
-																		? strengthSummary(a)
-																		: a.kind === RUNNING_KIND
-																			? runSummary(a)
-																			: `${a.arrowsShot} ${$t('score.arrow')}`}
+																	: a.kind === DRILL_KIND
+																		? drillSummary(a)
+																		: a.kind === STRENGTH_KIND
+																			? strengthSummary(a)
+																			: a.kind === RUNNING_KIND
+																				? runSummary(a)
+																				: `${a.arrowsShot} ${$t('score.arrow')}`}
 													</p>
 												</div>
 												{#if a.kind === 'scoring'}
@@ -1578,6 +1622,31 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							<span class="mt-0.5 block text-xs text-muted">{$t('freeScore.hint')}</span>
 						</span>
 					</a>
+				</section>
+
+				<!-- Shooting to a rule rather than to a round: arrows and no score to compare, see
+					src/lib/domain/drills/types.ts. Between the scoring shapes and the training that
+					shoots nothing, which is exactly where a drill sits. -->
+				<section class:hidden={foundDrills.length === 0}>
+					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('drill.group')}</h3>
+					<div class="grid gap-2 sm:grid-cols-2">
+						{#each foundDrills as game (game)}
+							<a
+								href="/sessions/{sessionId}/drill/{game}"
+								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+							>
+								<span
+									class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
+								>
+									<Icon name={drillDefinition(game).icon} size={20} />
+								</span>
+								<span class="min-w-0">
+									<span class="block font-medium">{$t(`drill.game.${game}.name`)}</span>
+									<span class="mt-0.5 block text-xs text-muted">{$t(`drill.game.${game}.hint`)}</span>
+								</span>
+							</a>
+						{/each}
+					</div>
 				</section>
 
 				<!-- Training, which is work done for the shooting rather than shooting: no arrows, no score. -->

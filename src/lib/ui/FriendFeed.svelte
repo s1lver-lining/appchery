@@ -4,6 +4,7 @@
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
+	import { DRILL_KIND, drillDefinition, drillFaceLabel, parseDrill } from '$lib/domain/drills';
 	import { STRENGTH_KIND, parseStrength, setsDone, setsPlanned } from '$lib/domain/strength';
 	import { RUNNING_KIND, clock, parseRun } from '$lib/domain/running';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -58,6 +59,8 @@
 	function title(shared: SharedActivity) {
 		const kind = kindOf(shared);
 		if (kind === FREE_SCORE_KIND) return $t('freeScore.title');
+		if (kind === DRILL_KIND)
+			return $t(`drill.game.${parseDrill(shared.activity.measurements as string | null).game}.name`);
 		if (kind === STRENGTH_KIND) return $t('strength.title');
 		if (kind === RUNNING_KIND) return $t('running.title');
 		if (kind === 'tuning') {
@@ -88,15 +91,27 @@
 				.join(' · ');
 		}
 		const shots = `${arrows} ${$t('score.arrow')}`;
+		if (kind === DRILL_KIND) {
+			const drill = parseDrill(shared.activity.measurements as string | null);
+			return drillDefinition(drill.game).input === 'pad'
+				? `${drillFaceLabel(drill.face)} · ${shots}`
+				: shots;
+		}
 		if (kind === FREE_SCORE_KIND) {
 			return `${freeScoreLabel(parseFreeScore(shared.activity.measurements as string | null))} · ${shots}`;
 		}
 		return shots;
 	}
 
-	/** A procedure has no total worth reading, and a free score's is not one that compares. */
+	/**
+	 * A procedure has no total worth reading, and a free score's is not one that compares. Nor is a
+	 * drill's: what it adds up to depends on the rule it was shot to and on how many arrows the
+	 * archer chose, so putting it beside a round's score would invite a comparison that means nothing.
+	 */
 	const scoreOf = (shared: SharedActivity) =>
-		kindOf(shared) === 'tuning' ? null : Number(shared.activity.total_score ?? 0);
+		kindOf(shared) === 'tuning' || kindOf(shared) === DRILL_KIND
+			? null
+			: Number(shared.activity.total_score ?? 0);
 
 	/** One archer's rounds of one shape, which is the only grouping the shared rows can be compared in. */
 	const shapeOf = (shared: SharedActivity) =>

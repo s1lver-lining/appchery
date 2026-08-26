@@ -21,7 +21,9 @@
 		plotOnly = false,
 		showPerimeter = false,
 		flush = false,
+		dim,
 		title,
+		callout,
 		footer,
 		onpick,
 		onplot,
@@ -41,8 +43,15 @@
 		showPerimeter?: boolean;
 		/** Sat against the edges of the screen, as a panel that rose from the bottom of it. */
 		flush?: boolean;
+		/**
+		 * Keys that are not what is being asked for, drawn faded. Never disabled: an archer who shot
+		 * a six has to be able to record a six, whatever the drill was hoping for.
+		 */
+		dim?: (zone: Zone) => boolean;
 		/** What is being filled in, said in the panel's own strip. */
 		title?: Snippet;
+		/** Something the input itself has to say, such as the ring called for the arrow on the string. */
+		callout?: Snippet;
 		/** The actions under the keys. Inside the panel, so putting it away takes them with it. */
 		footer?: Snippet;
 		/** Not given by a plot only pad, which has no keys to pick from. */
@@ -87,8 +96,9 @@
 
 	/** A miss has no fill of its own, so it borrows the surface instead of rendering invisible. */
 	function chipStyle(zone: Zone): string {
-		if (!zone.countsAsHit) return 'background-color: var(--c-sunk); color: var(--c-muted);';
-		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;`;
+		const faded = dim?.(zone) ? 'opacity: 0.35;' : '';
+		if (!zone.countsAsHit) return `background-color: var(--c-sunk); color: var(--c-muted);${faded}`;
+		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;${faded}`;
 	}
 </script>
 
@@ -144,6 +154,10 @@
 		</div>
 	</header>
 
+	{#if callout}
+		<div class="border-b border-line bg-brand/5 px-3 py-2 text-center">{@render callout()}</div>
+	{/if}
+
 	<div class="p-3">
 		{#if shown === 'face'}
 			<div class="mx-auto aspect-square w-full max-w-72">
@@ -175,6 +189,7 @@
 				{/each}
 				<button
 					class="rounded-xl border border-line py-3 text-lg font-bold text-muted transition-transform active:scale-95"
+					style={dim?.(missZone(scoreSet)) ? 'opacity: 0.35;' : ''}
 					onclick={() => {
 						buzz();
 						onpick?.(missZone(scoreSet));

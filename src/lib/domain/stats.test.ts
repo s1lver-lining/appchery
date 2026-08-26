@@ -647,7 +647,13 @@ describe('volumeRoundKey', () => {
 
 	it('offers a key for every kind of arrow that had no round', () => {
 		const keys = VOLUME_KINDS.map((kind) => volumeRoundKey({ ...activity({ id: kind }), kind }));
-		expect(keys).toEqual(['kind:match', 'kind:tuning', 'kind:freeScore', 'kind:training']);
+		expect(keys).toEqual([
+			'kind:match',
+			'kind:tuning',
+			'kind:freeScore',
+			'kind:drill',
+			'kind:training'
+		]);
 	});
 
 	it('reads an activity carrying no kind as a round, which is what a round only list holds', () => {
@@ -688,6 +694,38 @@ describe('activities that shoot nothing', () => {
 		// A run stores its distance somewhere, and whatever column it lands in is not a score.
 		const volume = toVolume([strength({ kind: 'running', totalScore: 5000, arrowsShot: 0 })]);
 		expect(volume).toEqual([]);
+	});
+});
+
+/**
+ * A drill puts arrows downrange and its total is not a score: it is what a rule happened to add up
+ * to, over an arrow count the archer chose. Letting one into an average or a personal best would be
+ * comparing an afternoon of pressure games against a scored round, so this is where it is stopped.
+ */
+describe('drills count as arrows and never as a score', () => {
+	const drill = (extra: Partial<ActivityLike> = {}): ActivityLike => ({
+		...activity({ id: 'drill', arrowsShot: 24, totalScore: 210, roundDefinitionId: null, round: null }),
+		kind: 'drill',
+		...extra
+	});
+
+	it('puts its arrows in the volume', () => {
+		expect(toVolume([drill()]).map((entry) => entry.arrowsShot)).toEqual([24]);
+	});
+
+	it('strips the total it happened to add up to', () => {
+		const [volume] = toVolume([drill({ count10s: 9, countX: 4 })]);
+		expect(volume.totalScore).toBe(0);
+		expect(volume.count10s).toBe(0);
+		expect(volume.countX).toBe(0);
+	});
+
+	it('can never be a personal best, having no round to be best at', () => {
+		expect(isPersonalBest(drill(), [drill({ id: 'older', totalScore: 100 })])).toBe(false);
+	});
+
+	it('is filed under what it was rather than under a round shape', () => {
+		expect(volumeRoundKey(drill())).toBe('kind:drill');
 	});
 });
 

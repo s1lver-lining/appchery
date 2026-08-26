@@ -88,8 +88,10 @@
 	import { updateFreeScore } from '$lib/db/repository';
 	import { STRENGTH_KIND } from '$lib/domain/strength';
 	import { RUNNING_KIND } from '$lib/domain/running';
+	import { DRILL_KIND } from '$lib/domain/drills';
 	import Strength from '$lib/pages/Strength.svelte';
 	import Running from '$lib/pages/Running.svelte';
+	import Drill from '$lib/pages/Drill.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
 	import { scrim } from '$lib/ui/statusBar';
@@ -919,6 +921,15 @@
 		{:else}
 			<Running {activity} onchange={refresh} />
 		{/if}
+	</div>
+{:else if activity && activity.kind === DRILL_KIND}
+	<!-- Arrows at the same keypad a round is scored on, to a rule instead of to a round. -->
+	<div class="safe-top pt-2">
+		<header class="mx-auto w-full max-w-2xl px-4 pt-4">
+			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
+			<h1 class="text-2xl font-bold tracking-tight">{$t('drill.title')}</h1>
+		</header>
+		<Drill {activity} onchange={refresh} />
 	</div>
 {:else if activity && activity.kind === 'tuning'}
 	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
