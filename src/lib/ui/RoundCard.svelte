@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { dateFormats } from '$lib/prefs';
 	import Icon from './Icon.svelte';
+	import { withOrigin } from '$lib/nav';
 	import ScoreScale from './ScoreScale.svelte';
 	import DistributionChart from './DistributionChart.svelte';
 	import { consistency, type RoundSummary, type ValueCount } from '$lib/domain/stats';
@@ -56,10 +57,15 @@
 	</div>
 
 	<div class="mt-3 flex items-end gap-6">
-		<div>
-			<p class="tabular text-3xl font-bold">{summary.best.totalScore}</p>
-			<p class="text-xs text-muted">{$t('stats.personalBest')}</p>
-		</div>
+		<!-- The best opens the round that set it: a personal best is a day's shooting, and the figure
+			is worth nothing next to the sheet it came off. -->
+		<a href={withOrigin(`/activities/${summary.best.id}`, '/stats')} class="block">
+			<p class="tabular text-3xl font-bold text-brand-text">{summary.best.totalScore}</p>
+			<p class="flex items-center gap-1 text-xs text-muted">
+				{$t('stats.personalBest')}
+				<span class="rotate-180 text-brand-text"><Icon name="back" size={12} /></span>
+			</p>
+		</a>
 		<div>
 			<p class="tabular text-xl font-semibold">{summary.average.toFixed(0)}</p>
 			<p class="text-xs text-muted">{$t('stats.average')}</p>
