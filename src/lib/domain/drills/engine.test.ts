@@ -7,6 +7,7 @@ import {
 	drawCall,
 	meetsRing,
 	rankArrows,
+	rankingIsThin,
 	ringRank,
 	secondsLeft,
 	summarise
@@ -204,6 +205,15 @@ describe('arrowSorting', () => {
 		const ranked = rankArrows(shots(['9', '8']));
 		expect(ranked.every((entry) => entry.offset === null)).toBe(true);
 		expect(ranked.map((entry) => entry.mean)).toContain(8);
+	});
+
+	it('calls a ranking thin until every shaft has been plotted enough times to mean anything', () => {
+		const set = ['9', '9', '9', '9', '9', '9'];
+		const plots: [number, number][] = set.map(() => [0.1, 0.1]);
+		expect(rankingIsThin(rankArrows(shots(set, plots)))).toBe(true);
+		// Three ends of the same six shafts, which is three plots each.
+		const three = [...set, ...set, ...set];
+		expect(rankingIsThin(rankArrows(shots(three, [...plots, ...plots, ...plots])))).toBe(false);
 	});
 
 	it('lets the score decide when the plots cannot: two shafts are only ever odd to each other', () => {

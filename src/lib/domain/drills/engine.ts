@@ -4,57 +4,43 @@ import { getScoreSet } from '../rounds/seed';
 import type { ArrowRanking, Drill, DrillConfig, DrillOutcome, DrillShot } from './types';
 
 /**
- * What a drill has come to, worked out from its arrows.
- *
- * Pure, and deliberately without a counter of its own: everything here is derived from the shots
- * every time it is asked for, so an arrow corrected on the sheet afterwards corrects the reading
- * with it. A running total kept beside the arrows is a total that can end up disagreeing with them,
- * and a drill whose headline disagrees with its own score sheet is worse than no headline.
+ * What a drill has come to, read from its arrows every time rather than counted alongside them: a
+ * total kept beside the shots can end up disagreeing with them, and an arrow corrected on the sheet
+ * has to correct the reading with it.
  */
 
-/**
- * How far in a ring is, as its place in the score set rather than as its value: the X and the 10
- * score the same and are not the same ring, and a threshold that could not tell them apart could
- * not express the one drill every archer sets themselves.
- */
+/** Rings compare by their place in the score set, not their value: the X and the 10 both score ten. */
 export function ringRank(scoreSet: ScoreSet, label: string): number {
 	const index = scoreSet.zones.findIndex((zone) => zone.label === label);
-	// A ring this score set has never heard of counts as a miss rather than as the best thing on it.
+	// A ring this score set never heard of counts as a miss, not as the best thing on it.
 	return index < 0 ? 0 : index;
 }
 
-/** Whether an arrow met a threshold: at the ring asked for, or inside it. */
 export function meetsRing(scoreSet: ScoreSet, label: string, threshold: string): boolean {
 	return ringRank(scoreSet, label) >= ringRank(scoreSet, threshold);
 }
 
-/**
- * The rings a called shot drill draws from: the threshold ring and everything inside it, less the
- * inner rings that only break ties. Calling for an X when the 10 beside it scores the same would be
- * asking for a distinction the archer cannot aim at.
- */
+/** Inner rings are left out: calling for an X over the 10 beside it asks for an impossible aim. */
 export function callPool(scoreSet: ScoreSet, threshold: string): Zone[] {
 	return scorableZones(scoreSet)
 		.filter((zone) => !zone.isInner && ringRank(scoreSet, zone.label) >= ringRank(scoreSet, threshold))
-		// Outermost first, so a pool is the same list however the keypad happens to be ordered.
 		.sort((a, b) => ringRank(scoreSet, a.label) - ringRank(scoreSet, b.label));
 }
 
-/**
- * The ring to call next. Random by nature, so the caller stores what comes back rather than asking
- * again: a call redrawn on a reload is a call that changed while the arrow was on the string.
- */
+/** Random, so the caller stores what comes back: a call redrawn on a reload changed under the archer. */
 export function drawCall(scoreSet: ScoreSet, config: DrillConfig, random = Math.random): string {
 	const pool = callPool(scoreSet, config.thresholdLabel);
 	if (pool.length === 0) return config.thresholdLabel;
 	return pool[Math.min(pool.length - 1, Math.floor(random() * pool.length))].label;
 }
 
+/** Plots per shaft below which the sorting drill is reading noise rather than a pattern. */
+export const RANKING_MIN_SHOTS = 3;
+
 function mean(values: number[]): number {
 	return values.length === 0 ? 0 : values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
-/** Root mean square distance from a group's own centre: how widely that shaft groups against itself. */
 function spreadOf(points: { x: number; y: number }[]): number {
 	const cx = mean(points.map((p) => p.x));
 	const cy = mean(points.map((p) => p.y));
@@ -62,11 +48,8 @@ function spreadOf(points: { x: number; y: number }[]): number {
 }
 
 /**
- * Each numbered shaft against the rest of the set, worst first.
- *
- * Measured from the centre of the other arrows rather than from the centre of the target, for the
- * reason arrowDrift.ts is careful about too: an archer whose whole group is left has a sight to move
- * and no shaft to blame, and this must stay quiet about that.
+ * Each numbered shaft against the rest of the set, worst first. Measured from the centre of the
+ * other arrows, not of the target: a group that is all left is a sight to move, not a shaft to pull.
  */
 export function rankArrows(shots: DrillShot[]): ArrowRanking[] {
 	const byOrdinal = new Map<number, DrillShot[]>();
@@ -97,65 +80,49 @@ export function rankArrows(shots: DrillShot[]): ArrowRanking[] {
 		};
 	});
 
-	// Worst first: the shaft that lands furthest from the others, then the one that scores least.
 	return rankings.sort((a, b) => (b.offset ?? -1) - (a.offset ?? -1) || a.mean - b.mean);
 }
 
+/** Whether a ranking stands on enough arrows to name a shaft rather than a run of luck. */
+export function rankingIsThin(ranking: ArrowRanking[]): boolean {
+	return ranking.length < 3 || ranking.some((entry) => entry.shots < RANKING_MIN_SHOTS);
+}
+
 /**
- * Where a shrinking zone drill has got to: the step reached and how many of that step's arrows are
- * already in. The run has to be unbroken, so a failure drops the archer back to the start of the
- * step they are on and never off the step itself: a drill that took a ring back would be one nobody
- * ever finished.
+ * The ladder, walked once for both the step reached and whether each arrow met the ring it was shot
+ * at. A failure restarts the step it was on and never takes back a ring already won.
  */
-function walkLadder(
-	scoreSet: ScoreSet,
-	config: DrillConfig,
-	shots: DrillShot[]
-): { step: number; cleared: number } {
+function walkLadder(scoreSet: ScoreSet, config: DrillConfig, shots: DrillShot[]) {
 	let step = 0;
 	let cleared = 0;
-	for (const shot of shots) {
-		if (step >= config.ladder.length) break;
-		if (meetsRing(scoreSet, shot.zoneLabel, config.ladder[step])) {
-			cleared += 1;
-			if (cleared >= config.stepArrows) {
-				step += 1;
-				cleared = 0;
-			}
-		} else {
+	const met = shots.map((shot) => {
+		if (step >= config.ladder.length) return true;
+		const ok = meetsRing(scoreSet, shot.zoneLabel, config.ladder[step]);
+		if (!ok) {
+			cleared = 0;
+			return false;
+		}
+		cleared += 1;
+		if (cleared >= config.stepArrows) {
+			step += 1;
 			cleared = 0;
 		}
-	}
-	return { step, cleared };
+		return true;
+	});
+	return { step, cleared, met };
 }
 
 /** Whether each arrow in turn met the rule of the drill it was shot in. */
 function successes(scoreSet: ScoreSet, drill: Drill, shots: DrillShot[]): boolean[] {
 	const { game, config, state } = drill;
-	if (game === 'calledShot') {
-		// Exactly the ring called, not merely as good: hitting a 10 when the 7 was called is a miss.
+	// Exactly the ring called, not merely as good: a 10 when the 7 was called is a miss.
+	if (game === 'calledShot')
 		return shots.map((shot, i) => state.calls[i] !== undefined && shot.zoneLabel === state.calls[i]);
-	}
-	if (game === 'shrinkingZone') {
-		let step = 0;
-		let cleared = 0;
-		return shots.map((shot) => {
-			if (step >= config.ladder.length) return true;
-			const met = meetsRing(scoreSet, shot.zoneLabel, config.ladder[step]);
-			if (met) {
-				cleared += 1;
-				if (cleared >= config.stepArrows) {
-					step += 1;
-					cleared = 0;
-				}
-			} else cleared = 0;
-			return met;
-		});
-	}
+	if (game === 'shrinkingZone') return walkLadder(scoreSet, config, shots).met;
 	return shots.map((shot) => meetsRing(scoreSet, shot.zoneLabel, config.thresholdLabel));
 }
 
-/** Seconds still on the clock, or null when this drill runs against none or has not started one. */
+/** Counted from when the clock was started, so a phone that slept comes back knowing the time is up. */
 export function secondsLeft(drill: Drill, now: number): number | null {
 	const { config, state } = drill;
 	if (state.startedAt === null) return null;
@@ -163,9 +130,8 @@ export function secondsLeft(drill: Drill, now: number): number | null {
 }
 
 /**
- * The whole reading of a drill. One function rather than one per game because they share almost all
- * of it: what differs between them is which figure is the headline and what stops the drill, and
- * both of those are a line each.
+ * The whole reading of a drill. One function for all of them because they share nearly everything:
+ * what differs is which figure is the headline and what stops the drill.
  */
 export function summarise(drill: Drill, shots: DrillShot[], now = Date.now()): DrillOutcome {
 	const { game, config, state } = drill;
@@ -174,7 +140,6 @@ export function summarise(drill: Drill, shots: DrillShot[], now = Date.now()): D
 
 	const arrows = game === 'blindBale' ? state.blindArrows : shots.length;
 	const hits = met.filter(Boolean).length;
-	const misses = met.length - hits;
 	const score = shots.reduce((sum, shot) => sum + shot.value, 0);
 
 	let currentStreak = 0;
@@ -185,24 +150,20 @@ export function summarise(drill: Drill, shots: DrillShot[], now = Date.now()): D
 	}
 
 	const ladder = walkLadder(scoreSet, config, shots);
-	const clock = secondsLeft(drill, now);
-	const livesLeft = game === 'lives' ? Math.max(0, config.lives - misses) : null;
-
-	// Which figure this game is actually about, and so which games get a rate at all.
 	const rated = game === 'successZone' || game === 'calledShot' || game === 'onePressure';
 
 	const outcome: DrillOutcome = {
 		arrows,
 		hits,
-		misses,
+		misses: met.length - hits,
 		rate: rated && met.length > 0 ? hits / met.length : null,
 		score,
 		currentStreak,
 		bestStreak,
-		livesLeft,
+		livesLeft: game === 'lives' ? Math.max(0, config.lives - (met.length - hits)) : null,
 		step: ladder.step,
 		stepLabel: config.ladder[ladder.step] ?? null,
-		secondsLeft: clock,
+		secondsLeft: secondsLeft(drill, now),
 		called: game === 'calledShot' ? (state.calls[shots.length] ?? null) : null,
 		ranking: game === 'arrowSorting' ? rankArrows(shots) : [],
 		remaining: config.arrows === null ? null : Math.max(0, config.arrows - shots.length),
@@ -213,10 +174,7 @@ export function summarise(drill: Drill, shots: DrillShot[], now = Date.now()): D
 	return outcome;
 }
 
-/**
- * What stops each drill. Stopping it by hand always counts, because several of these have no natural
- * end at all: a streak drill is over when the archer says it is.
- */
+/** Stopping by hand always counts: several of these drills have no end of their own. */
 function isDone(drill: Drill, outcome: DrillOutcome): boolean {
 	const { game, config, state } = drill;
 	if (state.endedAt !== null) return true;
@@ -236,15 +194,11 @@ function isDone(drill: Drill, outcome: DrillOutcome): boolean {
 	}
 }
 
-/** The status the row is filed under, which is the same question the outcome already answers. */
 export function isDrillDone(drill: Drill, shots: DrillShot[], now = Date.now()): boolean {
 	return summarise(drill, shots, now).done;
 }
 
-/**
- * The arrows the drill is still ready to take. Nothing may be entered once it is over, which is what
- * makes a drill that ended on a miss keep the miss it ended on.
- */
+/** Nothing may be entered once it is over, so a drill that ended on a miss keeps the miss. */
 export function acceptsArrows(drill: Drill, shots: DrillShot[], now = Date.now()): boolean {
 	return !summarise(drill, shots, now).done;
 }
