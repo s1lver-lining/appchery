@@ -348,6 +348,14 @@ export const tricksEn = {
 					body: 'Every competition and result you open is stored on the device, so it reads again with no signal. What is shown always says when it was read, and refuses to pass itself off as live.'
 				},
 				{
+					lead: 'Look for one archer in a list of three hundred.',
+					body: 'A result list, an entry list and a bracket all carry a search above them. Every word typed has to appear somewhere in the line, in any order, and accents are ignored: the surname alone usually does it. A competition with more than a handful of documents can be searched the same way, by class or by bow.'
+				},
+				{
+					lead: 'Choose what a result shows.',
+					body: 'The button beside that search picks the columns. They are remembered by their heading rather than by the competition, so switching the tens and the nines off once switches them off in every result that has them.'
+				},
+				{
 					lead: 'Opening a row gives back the columns.',
 					body: 'A narrow screen shows the placing, the archer and the score. The distances, the club and everything else are behind the arrow at the end of the row, which is also where the offer to follow them is.'
 				}

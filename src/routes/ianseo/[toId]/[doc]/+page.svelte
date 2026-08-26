@@ -7,6 +7,11 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import ResultTable from '$lib/ui/ianseo/ResultTable.svelte';
+	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
+	import Sheet from '$lib/ui/Sheet.svelte';
+	import Toggle from '$lib/ui/Toggle.svelte';
+	import { ianseoHiddenColumns } from '$lib/prefs';
+	import { countRows, findInRounds, findInSections } from '$lib/ianseo/find';
 	import BracketBoard from '$lib/ui/ianseo/BracketBoard.svelte';
 	import { loadCompetition, loadResultDocument } from '$lib/ianseo/client';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
@@ -132,7 +137,42 @@
 		pinned = await favourites();
 	}
 
-	const sections = $derived(document?.kind === 'table' ? document.sections : []);
+	let search = $state('');
+	let columnSheet = $state(false);
+
+	/** Switched off by the archer, matched on the heading so it holds across every list of its kind. */
+	const hidden = $derived(new Set($ianseoHiddenColumns));
+
+	const sections = $derived(
+		findInSections(document?.kind === 'table' ? document.sections : [], search)
+	);
+	const rounds = $derived(findInRounds(document?.kind === 'bracket' ? document.rounds : [], search));
+
+	/** Every heading this document offers, so the sheet lists what is here rather than what once was. */
+	const columns = $derived([
+		...new Map(
+			(document?.kind === 'table' ? document.sections : [])
+				.flatMap((section) => section.columns)
+				.filter((column) => column.label)
+				.map((column) => [column.label, column])
+		).values()
+	]);
+
+	/** Never the last one standing: a table with every column switched off is a table of nothing. */
+	const shownColumns = $derived(columns.filter((column) => !hidden.has(column.label)).length);
+
+	function toggleColumn(label: string) {
+		if (hidden.has(label)) ianseoHiddenColumns.set($ianseoHiddenColumns.filter((one) => one !== label));
+		else if (shownColumns > 1) ianseoHiddenColumns.set([...$ianseoHiddenColumns, label]);
+	}
+
+	const found = $derived(
+		search.trim()
+			? document?.kind === 'bracket'
+				? $t('ianseo.foundMatches', { n: rounds.reduce((all, one) => all + one.matches.length, 0) })
+				: $t('ianseo.foundRows', { n: countRows(sections) })
+			: ''
+	);
 
 	/**
 	 * ianseo qualifies a document's title in brackets: "Recurve Men [After 60 Arrows]". The class is
@@ -184,6 +224,16 @@
 		/>
 	{/if}
 
+	{#if document && !error}
+		<PageTools
+			bind:value={search}
+			placeholder={$t('ianseo.findInDocument')}
+			settings={document.kind === 'table' && columns.length > 0 ? () => (columnSheet = true) : undefined}
+			settingsLabel={$t('ianseo.columns')}
+			count={found}
+		/>
+	{/if}
+
 	{#if document && document.skipped > 0}
 		<!-- Said rather than hidden: a result list quietly missing a line is worse than one that admits it. -->
 		<p class="flex items-center gap-2 rounded-xl border border-line bg-line/25 px-3 py-2 text-xs text-muted">
@@ -194,11 +244,13 @@
 
 	{#if !error}
 		{#if document?.kind === 'bracket'}
-			<BracketBoard {document} {followedLabels} onfollow={follow} />
+			<BracketBoard document={{ ...document, rounds }} {followedLabels} onfollow={follow} />
 		{:else if sections.length > 0}
 			{#each sections as section, index (index)}
-				<ResultTable {section} {followedLabels} onfollow={follow} />
+				<ResultTable {section} {hidden} {followedLabels} onfollow={follow} />
 			{/each}
+		{:else if search.trim()}
+			<EmptyState title={$t('ianseo.noOneFound')} body={$t('ianseo.noOneFoundBody')} />
 		{:else if !loading}
 			<EmptyState title={$t('ianseo.emptyDocumentTitle')} body={$t('ianseo.emptyDocumentBody')} />
 		{/if}
@@ -217,3 +269,19 @@
 		{/if}
 	</ReadNote>
 </div>
+
+<Sheet open={columnSheet} title={$t('ianseo.columns')} onclose={() => (columnSheet = false)}>
+	<p class="mb-2 text-xs text-muted">{$t('ianseo.columnsHint')}</p>
+	<ul class="space-y-1">
+		{#each columns as column (column.label)}
+			<li class="flex items-center justify-between gap-3 rounded-lg px-2 py-2">
+				<span class="min-w-0 flex-1 truncate text-sm">{column.label}</span>
+				<Toggle
+					checked={!hidden.has(column.label)}
+					onchange={() => toggleColumn(column.label)}
+					label={column.label}
+				/>
+			</li>
+		{/each}
+	</ul>
+</Sheet>

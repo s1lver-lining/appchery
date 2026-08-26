@@ -557,8 +557,10 @@
 			{/if}
 
 			<!-- The week's own heading is gone when it shares the line, so the card carries the link. -->
+			<!-- To the outings the figure is made of, not to the statistics: this counts the arrows of
+				a week, and what somebody wants after reading it is the week itself. -->
 			<a
-				href="/stats"
+				href="/sessions"
 				class="block rounded-2xl border border-line bg-surface p-3.5 {next
 					? ''
 					: 'min-[300px]:col-span-2'}"

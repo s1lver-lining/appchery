@@ -14,10 +14,13 @@
 	 */
 	let {
 		section,
+		hidden = new Set<string>(),
 		followedLabels,
 		onfollow
 	}: {
 		section: DocumentSection;
+		/** Headings the archer has switched off, which are dropped at every width rather than folded. */
+		hidden?: Set<string>;
 		/** Lowercased, because a name is followed as it was written and read back however it is printed. */
 		followedLabels: Set<string>;
 		onfollow: (kind: 'archer' | 'club', label: string) => void;
@@ -25,7 +28,7 @@
 
 	let open = $state<number | null>(null);
 
-	const width = $derived(section.columns.length || 1);
+	const width = $derived(section.columns.filter((column) => !hidden.has(column.label)).length || 1);
 
 	/** Where a phrase stops being a phrase and starts being prose, in characters. */
 	const PHRASE = 22;
@@ -86,7 +89,10 @@
 		)
 	);
 
-	const shown = $derived(folded.filter((one) => !one).length);
+	/** Switched off outright: not folded behind the arrow, but gone, because that is what was asked. */
+	const dropped = $derived(section.columns.map((column) => hidden.has(column.label)));
+
+	const shown = $derived(folded.filter((one, at) => !one && !dropped[at]).length);
 	const useDetail = $derived(shown === width);
 </script>
 
@@ -102,6 +108,7 @@
 			<thead>
 				<tr class="border-b border-line text-[10px] tracking-wide text-muted uppercase">
 					{#each section.columns as column, at (at)}
+						{#if !dropped[at]}
 						<!--
 							Only the short columns are pinned to their content. Everything with words in it is
 							left unmeasured, so the table hands each of them width in proportion to what they
@@ -117,6 +124,7 @@
 						>
 							{column.label}
 						</th>
+						{/if}
 					{/each}
 					<th class="w-6"></th>
 				</tr>
@@ -132,6 +140,7 @@
 							: ''}"
 					>
 						{#each section.columns as column, at (at)}
+							{#if !dropped[at]}
 							<td
 								class="px-2 py-2 align-top {folded[at] ? 'hidden md:table-cell' : ''} {shape[at]
 									.wordy || at === wrapping
@@ -147,6 +156,7 @@
 									</span>
 								{/if}{row.cells[at]?.text ?? ''}
 							</td>
+							{/if}
 						{/each}
 						<td class="w-6 px-1 py-2 align-top">
 							{#if expandable}
@@ -170,7 +180,7 @@
 								<!-- The folded columns come back as pairs, since without their heading they say nothing. -->
 								<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs md:hidden">
 									{#each section.columns as column, at (at)}
-										{#if folded[at] && row.cells[at]?.text}
+										{#if folded[at] && !dropped[at] && row.cells[at]?.text}
 											<dt class="text-muted">{column.label}</dt>
 											<dd class="break-words">{row.cells[at].text}</dd>
 										{/if}

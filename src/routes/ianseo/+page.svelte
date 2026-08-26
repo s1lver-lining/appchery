@@ -15,6 +15,7 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import TournamentCard from '$lib/ui/ianseo/TournamentCard.svelte';
+	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadTournaments } from '$lib/ianseo/client';
 	import { IanseoError } from '$lib/ianseo/fetch';
@@ -310,28 +311,7 @@
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	<!-- The search sits above the filters because it overrides them: a name is asked of all of ianseo. -->
-	<div class="relative">
-		<span class="pointer-events-none absolute top-1/2 left-3 -translate-y-1/2 text-muted">
-			<Icon name="search" size={16} />
-		</span>
-		<input
-			class="w-full rounded-xl border border-line bg-surface py-2.5 pr-9 pl-9 text-sm"
-			bind:value={search}
-			autocomplete="off"
-			type="search"
-			placeholder={$t('ianseo.searchPlaceholder')}
-			aria-label={$t('ianseo.searchPlaceholder')}
-		/>
-		{#if search}
-			<button
-				class="absolute top-1/2 right-2 -translate-y-1/2 rounded-lg p-1 text-muted"
-				aria-label={$t('common.close')}
-				onclick={() => (search = '')}
-			>
-				<Icon name="close" size={16} />
-			</button>
-		{/if}
-	</div>
+	<PageTools bind:value={search} placeholder={$t('ianseo.searchPlaceholder')} />
 
 	{#if search.trim()}
 		<!-- A search reaches past the filters by default, and says so rather than doing it silently. -->

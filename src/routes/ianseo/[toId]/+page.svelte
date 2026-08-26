@@ -21,6 +21,8 @@
 	} from '$lib/ianseo/store';
 	import type { Competition, Tournament } from '$lib/ianseo/types';
 	import EntryCard from '$lib/ui/ianseo/EntryCard.svelte';
+	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
+	import { terms } from '$lib/ianseo/find';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
 	import type { Entry } from '$lib/inscriptarc/types';
@@ -128,10 +130,28 @@
 		entry = entryFor({ name: here.name, town: here.city, from: here.from, to: here.to }, entries);
 	}
 
+	let search = $state('');
+
+	/**
+	 * A big competition publishes a document per class per round, which runs to ninety of them. The
+	 * search is over what they are called, which is the class and the bow the archer came looking for.
+	 */
+	const documents = $derived.by(() => {
+		const wanted = terms(search);
+		if (wanted.length === 0) return competition?.documents ?? [];
+		return (competition?.documents ?? []).filter((document) => {
+			const text = `${document.title} ${document.group}`
+				.toLowerCase()
+				.normalize('NFD')
+				.replace(/[\u0300-\u036f]/g, '');
+			return wanted.every((term) => text.includes(term));
+		});
+	});
+
 	/** The panels in the order ianseo publishes them, which is the order a competition is shot in. */
 	const groups = $derived.by(() => {
 		const found = new Map<string, Competition['documents']>();
-		for (const document of competition?.documents ?? []) {
+		for (const document of documents) {
 			found.set(document.group, [...(found.get(document.group) ?? []), document]);
 		}
 		return [...found].map(([group, documents]) => ({ group, documents }));
@@ -176,6 +196,15 @@
 		<EntryCard {entry} />
 	{/if}
 
+	<!-- Only where there is enough to search: three documents are read rather than looked through. -->
+	{#if (competition?.documents.length ?? 0) > 6}
+		<PageTools
+			bind:value={search}
+			placeholder={$t('ianseo.findDocument')}
+			count={search.trim() ? $t('ianseo.foundDocuments', { n: documents.length }) : ''}
+		/>
+	{/if}
+
 	{#if people.length > 0}
 		<section class="rounded-2xl border border-line bg-surface p-3">
 			<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
@@ -206,6 +235,8 @@
 			body={$t(failed === 'unreadable' ? 'ianseo.unreadableBody' : 'ianseo.errorBody')}
 			action={{ label: $t('ianseo.retry'), onclick: () => read(true) }}
 		/>
+	{:else if groups.length === 0 && search.trim()}
+		<EmptyState title={$t('ianseo.noDocumentFound')} body={$t('ianseo.noDocumentFoundBody')} />
 	{:else if groups.length === 0 && !loading}
 		<EmptyState title={$t('ianseo.noDocumentsTitle')} body={$t('ianseo.noDocumentsBody')} />
 	{/if}

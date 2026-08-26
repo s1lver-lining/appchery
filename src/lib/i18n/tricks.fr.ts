@@ -343,6 +343,14 @@ export const tricksFr: TricksDictionary = {
 					body: "Chaque compétition et chaque résultat ouvert est stocké sur l'appareil et se relit sans réseau. Ce qui est affiché indique toujours quand il a été lu, et ne se fait jamais passer pour du direct."
 				},
 				{
+					lead: 'Trouvez un archer dans une liste de trois cents.',
+					body: "Une liste de résultats, une liste d'inscrits et un tableau portent tous une recherche au dessus d'eux. Chaque mot tapé doit apparaître quelque part dans la ligne, dans n'importe quel ordre, et les accents sont ignorés : le nom de famille seul suffit en général. Une compétition qui publie plus de quelques documents se cherche de la même façon, par catégorie ou par type d'arc."
+				},
+				{
+					lead: "Choisissez ce qu'affiche un résultat.",
+					body: "Le bouton à côté de cette recherche choisit les colonnes. Elles sont retenues par leur intitulé plutôt que par la compétition : masquer les dix et les neuf une fois les masque dans tous les résultats qui les portent."
+				},
+				{
 					lead: 'Ouvrir une ligne rend les colonnes.',
 					body: "Un écran étroit montre le classement, l'archer et le score. Les distances, le club et le reste sont derrière la flèche en bout de ligne, là où se trouve aussi la proposition de les suivre."
 				}

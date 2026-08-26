@@ -95,11 +95,14 @@ async function overflows(page) {
  * between, so a fixed sleep is a race the check loses whenever the machine is busy.
  */
 async function settled(page) {
-	await page
-		.getByText(/Competitions within/)
-		.waitFor({ state: 'visible', timeout: 30000 })
-		.catch(() => {});
-	await page.waitForTimeout(300);
+	// "Competitions within" shows both before the lookups begin and after they end, so it is not on
+	// its own an answer. Quiet twice over, a breath apart, is.
+	for (let quiet = 0, tries = 0; quiet < 2 && tries < 60; tries++) {
+		const locating = await page.getByText(/Locating \d+ towns/).count();
+		const done = await page.getByText(/Competitions within/).count();
+		quiet = locating === 0 && done > 0 ? quiet + 1 : 0;
+		await page.waitForTimeout(250);
+	}
 }
 
 async function shot(page, name) {
@@ -631,6 +634,87 @@ async function checkSearchResultOpens(browser) {
 	await context.close();
 }
 
+/**
+ * Looking for one archer in a list of three hundred, and deciding what a result shows. Both live on
+ * the line above the table, which scrolls away with it rather than sitting over it.
+ */
+async function checkDocumentTools(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo/28536/ENA`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('table tbody tr');
+	const all = await page.locator('table tbody tr').count();
+
+	await page.getByPlaceholder(/Find an archer/i).fill('cadiot');
+	await page.waitForTimeout(400);
+	const found = await page.locator('table tbody tr').count();
+	check('a document can be searched for one archer', found > 0 && found < all, `${found} of ${all}`);
+	check('and says how many lines it left', await page.getByText(/\d+ lines/).isVisible());
+
+	await page.getByPlaceholder(/Find an archer/i).fill('nobody at all');
+	await page.waitForTimeout(400);
+	check(
+		'a search that finds nobody says so rather than looking empty',
+		await page.getByText(/Nobody by that name/).isVisible()
+	);
+	await page.getByPlaceholder(/Find an archer/i).fill('');
+	await page.waitForTimeout(300);
+
+	// The cross belongs to the app; the browser's own is hidden so there are never two of them.
+	await page.getByPlaceholder(/Find an archer/i).fill('cadiot');
+	await page.waitForTimeout(200);
+	await page.locator('input[type="search"] ~ button').first().click();
+	await page.waitForTimeout(300);
+	check(
+		'the cross empties the search',
+		(await page.getByPlaceholder(/Find an archer/i).inputValue()) === ''
+	);
+
+	// Columns: switched off here, and gone from the table until switched back on.
+	const headings = () => page.locator('table').first().locator('thead th:visible').allInnerTexts();
+	const before = (await headings()).join('/');
+	await page.getByRole('button', { name: /Columns/i }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('switch', { name: 'Cible' }).click();
+	await page.waitForTimeout(400);
+	const after = (await headings()).join('/');
+	check('a column switched off leaves the table', before.includes('CIBLE') && !after.includes('CIBLE'), after);
+
+	// And it is remembered, because the next result list has the same headings on it.
+	await page.reload({ waitUntil: 'networkidle' });
+	await page.waitForSelector('table tbody tr');
+	check(
+		'and stays off when the document is opened again',
+		!(await headings()).join('/').includes('CIBLE')
+	);
+
+	await page.getByRole('button', { name: /Columns/i }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('switch', { name: 'Cible' }).click();
+	await page.waitForTimeout(400);
+	check('and comes back when switched on', (await headings()).join('/').includes('CIBLE'));
+	await shot(page, 'document-tools');
+	await context.close();
+}
+
+/** A competition with ninety documents on it is looked through rather than read. */
+async function checkCompetitionSearch(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo/26053`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/26053/"]');
+	const all = await page.locator('a[href*="/ianseo/26053/"]').count();
+
+	await page.getByPlaceholder(/Find a document/i).fill('compound');
+	await page.waitForTimeout(400);
+	const found = await page.locator('a[href*="/ianseo/26053/"]').count();
+	check('a competition can be searched for a class', found > 0 && found < all, `${found} of ${all}`);
+	check('and says how many documents it left', await page.getByText(/\d+ documents/).isVisible());
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -721,6 +805,8 @@ async function run() {
 	await checkUnreadable(browser);
 	await checkForeignColumns(browser);
 	await checkSearchResultOpens(browser);
+	await checkDocumentTools(browser);
+	await checkCompetitionSearch(browser);
 
 	await browser.close();
 

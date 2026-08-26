@@ -472,3 +472,10 @@ export const ianseoHere = storedString('appchery.ianseoHere');
 
 /** Whether a search reaches past the filters, which is what a search usually wants. */
 export const ianseoSearchEverywhere = flag('appchery.ianseoSearchEverywhere', true);
+
+/**
+ * Columns the archer has switched off in a published result, by the heading they carry. Kept by
+ * heading rather than by document, because ianseo heads every list of the same kind the same way:
+ * hiding the tens and the nines once hides them on every result the archer opens after it.
+ */
+export const ianseoHiddenColumns = storedList('appchery.ianseoHiddenColumns');
