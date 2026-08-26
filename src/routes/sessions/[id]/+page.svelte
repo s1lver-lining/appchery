@@ -42,7 +42,11 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		DRILL_KIND,
 		drillDefinition,
 		drillFaceLabel,
-		parseDrill
+		needsSetup,
+		usesFace,
+		newDrill,
+		parseDrill,
+		type DrillGame
 	} from '$lib/domain/drills';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { BOT_LEVELS } from '$lib/domain/bots';
@@ -100,6 +104,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		restoreActivities,
 		createScoringActivity,
 		createTuningActivity,
+		createDrillActivity,
 		createStrengthActivity,
 		createRunningActivity,
 		createMatchActivity,
@@ -486,6 +491,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	 * empty: the exercises and the two numbers are filled in on the activity's own page, where the
 	 * work is actually done.
 	 */
+	/** A drill with nothing to set opens straight at the keypad, the rest at their setup first. */
+	async function openDrill(game: DrillGame) {
+		const id = await materialise();
+		if (needsSetup(game)) goto(`/sessions/${id}/drill/${game}`);
+		else goto(`/activities/${await createDrillActivity(id, newDrill(game))}`);
+	}
+
 	async function startStrength() {
 		const id = await materialise();
 		goto(`/activities/${await createStrengthActivity(id, emptyStrengthPlan())}`);
@@ -707,9 +719,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	function drillSummary(a: ActivityRow): string {
 		const drill = parseDrill(a.measurements);
 		const arrows = `${a.arrowsShot} ${$t('score.arrow')}`;
-		return drillDefinition(drill.game).input === 'pad'
-			? `${drillFaceLabel(drill.face)} · ${arrows}`
-			: arrows;
+		return usesFace(drill) ? `${drillFaceLabel(drill.face)} · ${arrows}` : arrows;
 	}
 
 	/** Sets done out of sets planned: what a training row is worth reading at a glance. */
@@ -834,13 +844,11 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	);
 	const foundCustom = $derived(matchesQuery(query, [$t('round.custom'), $t('round.customHint')]));
 	const foundFree = $derived(matchesQuery(query, [$t('freeScore.title'), $t('freeScore.hint')]));
-	/** A drill answers to its own name, to what it is for, and to the word for the group as a whole. */
 	const foundDrills = $derived(
 		DRILL_GAMES.filter((game) =>
 			matchesQuery(query, [
 				$t(`drill.game.${game}.name`),
 				$t(`drill.game.${game}.hint`),
-				$t(`drill.game.${game}.trains`),
 				$t('drill.group')
 			])
 		)
@@ -1631,9 +1639,9 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('drill.group')}</h3>
 					<div class="grid gap-2 sm:grid-cols-2">
 						{#each foundDrills as game (game)}
-							<a
-								href="/sessions/{sessionId}/drill/{game}"
-								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+							<button
+								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+								onclick={() => openDrill(game)}
 							>
 								<span
 									class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
@@ -1644,7 +1652,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 									<span class="block font-medium">{$t(`drill.game.${game}.name`)}</span>
 									<span class="mt-0.5 block text-xs text-muted">{$t(`drill.game.${game}.hint`)}</span>
 								</span>
-							</a>
+							</button>
 						{/each}
 					</div>
 				</section>
