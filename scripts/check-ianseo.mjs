@@ -671,8 +671,42 @@ async function checkDocumentTools(browser) {
 		(await page.getByPlaceholder(/Find an archer/i).inputValue()) === ''
 	);
 
-	// Columns: switched off here, and gone from the table until switched back on.
+	/**
+	 * A start list opens with the two columns that tell one line from the next, and the row opens onto
+	 * everything the document holds: what a column choice decides is what fits across a line, never
+	 * what the archer is allowed to read.
+	 */
 	const headings = () => page.locator('table').first().locator('thead th:visible').allInnerTexts();
+	const opens = (await headings()).map((one) => one.trim()).filter(Boolean);
+	check('a start list opens with the target and the archer', opens.join('/') === 'ATHLÈTE/CIBLE', opens.join('/'));
+
+	await page.locator('table tbody tr button[aria-expanded]').first().click();
+	await page.waitForTimeout(300);
+	const drawer = await page.locator('table tbody dl').first().innerText();
+	check(
+		'and the row opens onto every column the document holds',
+		['Athlète', 'Cible', 'Clubs / Pays', 'Epreuve', 'Départ'].every((one) => drawer.includes(one)),
+		drawer.replace(/\n/g, ' ').slice(0, 80)
+	);
+	await page.locator('table tbody tr button[aria-expanded]').first().click();
+	await page.waitForTimeout(200);
+
+	// A column asked for joins the table, and is remembered for every list that has one.
+	await page.getByRole('button', { name: /Columns/i }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('switch', { name: 'Clubs / Pays' }).click();
+	await page.waitForTimeout(400);
+	check(
+		'a column asked for joins the table',
+		(await headings()).join('/').includes('CLUBS / PAYS')
+	);
+	await page.getByRole('switch', { name: 'Clubs / Pays' }).click();
+	await page.waitForTimeout(400);
+	// The sheet stays open between changes, so it is closed before anything else is reached for.
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).last().click();
+	await page.waitForTimeout(400);
+
+	// Columns: switched off here, and gone from the table until switched back on.
 	const before = (await headings()).join('/');
 	await page.getByRole('button', { name: /Columns/i }).click();
 	await page.waitForTimeout(400);

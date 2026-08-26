@@ -1,26 +1,27 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
-	import { followable, marked, personColumn } from '$lib/ianseo/rows';
+	import { followable, marked } from '$lib/ianseo/rows';
+	import { NO_CHOICE, shapeOf, visibleColumns, wrappingColumn, type ColumnChoice } from '$lib/ianseo/columns';
 	import type { DocumentSection } from '$lib/ianseo/types';
 
 	/**
 	 * A published result list, redrawn.
 	 *
-	 * The columns ianseo's own stylesheet drops on a narrow screen are the ones folded away here, so
-	 * a phone shows the placing, the archer and the score and nothing else. Opening a row gives back
-	 * everything that was folded, the lines ianseo hides behind "show details", and the offer to
+	 * The table carries the few columns that tell one line from the next, plus whichever others the
+	 * archer has asked for. Opening a row gives back the whole of it, every column the document holds
+	 * whatever the table is showing, the lines ianseo hides behind "show details", and the offer to
 	 * follow whoever the row names.
 	 */
 	let {
 		section,
-		hidden = new Set<string>(),
+		choice = NO_CHOICE,
 		followedLabels,
 		onfollow
 	}: {
 		section: DocumentSection;
-		/** Headings the archer has switched off, which are dropped at every width rather than folded. */
-		hidden?: Set<string>;
+		/** Which columns the archer has asked for, and which they have sent away. */
+		choice?: ColumnChoice;
 		/** Lowercased, because a name is followed as it was written and read back however it is printed. */
 		followedLabels: Set<string>;
 		onfollow: (kind: 'archer' | 'club', label: string) => void;
@@ -28,72 +29,10 @@
 
 	let open = $state<number | null>(null);
 
-	const width = $derived(section.columns.filter((column) => !hidden.has(column.label)).length || 1);
-
-	/** Where a phrase stops being a phrase and starts being prose, in characters. */
-	const PHRASE = 22;
-
-	/**
-	 * What each column actually holds, read from the rows rather than from its heading. ianseo heads
-	 * every competition in the organiser's own language, so the values are the only thing that says
-	 * whether a column is a placing, a score or somebody's name.
-	 */
-	const shape = $derived(
-		section.columns.map((column, at) => {
-			const values = section.rows.map((row) => row.cells[at]?.text ?? '').filter(Boolean);
-			const longest = values.reduce((most, one) => Math.max(most, one.length), 0);
-			const figures = values.length > 0 && values.every((one) => /^[\d.,:/\s+-]+$/.test(one));
-			return {
-				figures,
-				longest,
-				/** Prose, which has to be allowed to wrap. A short phrase is better kept on its line. */
-				wordy: !figures && longest > PHRASE,
-				/** A word or a short phrase: never a figure, never long enough to be worth breaking. */
-				phrase: !figures && longest > 8 && longest <= PHRASE,
-				label: column.label
-			};
-		})
-	);
-
-	/**
-	 * The column that may wrap, which takes whatever width the others do not want. The archer's name
-	 * where the document names one, and otherwise whichever column carries the most words.
-	 */
-	const wrapping = $derived.by(() => {
-		const person = personColumn(section.columns);
-		if (person !== null && !section.columns[person].secondary) return person;
-
-		let widest = -1;
-		let at = 0;
-		shape.forEach((column, index) => {
-			if (section.columns[index].secondary) return;
-			if (column.longest > widest) {
-				widest = column.longest;
-				at = index;
-			}
-		});
-		return at;
-	});
-
-	/**
-	 * Columns kept off a narrow screen: the ones ianseo folds itself, and every other column of prose.
-	 *
-	 * A row of five columns of French is four lines tall on a phone, which turns a list of archers
-	 * into a wall. The placing, the name and the figures fit on one line; the club and the class are
-	 * behind the arrow, where the rest of the row already is.
-	 */
-	const folded = $derived(
-		section.columns.map(
-			(column, at) =>
-				column.secondary || ((shape[at].wordy || shape[at].phrase) && at !== wrapping)
-		)
-	);
-
-	/** Switched off outright: not folded behind the arrow, but gone, because that is what was asked. */
-	const dropped = $derived(section.columns.map((column) => hidden.has(column.label)));
-
-	const shown = $derived(folded.filter((one, at) => !one && !dropped[at]).length);
-	const useDetail = $derived(shown === width);
+	const shape = $derived(shapeOf(section));
+	const wrapping = $derived(wrappingColumn(section, shape));
+	const visible = $derived(visibleColumns(section, choice, shape));
+	const width = $derived(visible.filter(Boolean).length || 1);
 </script>
 
 <div class="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -108,15 +47,14 @@
 			<thead>
 				<tr class="border-b border-line text-[10px] tracking-wide text-muted uppercase">
 					{#each section.columns as column, at (at)}
-						{#if !dropped[at]}
+						{#if visible[at]}
 						<!--
 							Only the short columns are pinned to their content. Everything with words in it is
 							left unmeasured, so the table hands each of them width in proportion to what they
 							hold: giving one column all the room left starved the rest into a word a line.
 						-->
 						<th
-							class="px-2 py-1.5 font-semibold {folded[at] ? 'hidden md:table-cell' : ''} {shape[at]
-								.wordy || at === wrapping
+							class="px-2 py-1.5 font-semibold {shape[at].wordy || at === wrapping
 								? 'text-left'
 								: shape[at].phrase
 									? 'w-px text-left whitespace-nowrap'
@@ -133,17 +71,17 @@
 				{#each section.rows as row, index (index)}
 					{@const mine = marked(row, followedLabels)}
 					{@const offers = followable(row, section.columns)}
-					{@const expandable = offers.length > 0 || shown < width || row.detail.length > 0}
+					<!-- Always: the row opens onto everything the document holds, columns and all. -->
+					{@const expandable = true}
 					<tr
 						class="border-b border-line/60 last:border-0 {row.strong ? 'font-semibold' : ''} {mine
 							? 'bg-brand/10'
 							: ''}"
 					>
 						{#each section.columns as column, at (at)}
-							{#if !dropped[at]}
+							{#if visible[at]}
 							<td
-								class="px-2 py-2 align-top {folded[at] ? 'hidden md:table-cell' : ''} {shape[at]
-									.wordy || at === wrapping
+								class="px-2 py-2 align-top {shape[at].wordy || at === wrapping
 									? 'break-words'
 									: shape[at].phrase
 										? 'w-px text-left whitespace-nowrap'
@@ -177,19 +115,22 @@
 					{#if open === index}
 						<tr class="border-b border-line/60 bg-line/15">
 							<td colspan={width + 1} class="px-3 py-2.5">
-								<!-- The folded columns come back as pairs, since without their heading they say nothing. -->
-								<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs md:hidden">
+								<!--
+									The whole row, not only the part the table left out: what a column choice
+									decides is what fits across a line, never what the archer is allowed to read.
+								-->
+								<dl class="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-xs">
 									{#each section.columns as column, at (at)}
-										{#if folded[at] && !dropped[at] && row.cells[at]?.text}
+										{#if column.label && row.cells[at]?.text}
 											<dt class="text-muted">{column.label}</dt>
 											<dd class="break-words">{row.cells[at].text}</dd>
 										{/if}
 									{/each}
 								</dl>
 
-								{#if useDetail}{#each row.detail as line (line)}
+								{#each row.detail as line (line)}
 									<p class="mt-1 text-xs break-words text-muted">{line}</p>
-								{/each}{/if}
+								{/each}
 
 								{#if offers.length > 0}
 									<div class="mt-2 flex flex-wrap gap-1.5">

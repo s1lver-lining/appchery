@@ -616,7 +616,7 @@ export const fr: Dictionary = {
 		next: 'Prochaine',
 		resume: 'Reprendre',
 		thisWeek: 'Cette semaine',
-		elsewhere: 'Tout le reste',
+		elsewhere: 'Applis',
 		newBest: 'Nouveau record'
 	},
 	share: {
@@ -907,7 +907,7 @@ export const fr: Dictionary = {
 		noOneFound: 'Personne de ce nom ici',
 		noOneFoundBody: 'Chaque mot doit apparaître quelque part dans la ligne. Essayez le nom seul, ou un club.',
 		columns: 'Colonnes',
-		columnsHint: "Ce qui est affiché dans un résultat. Retenu par intitulé : en masquer une ici la masque dans tous les résultats qui la portent.",
+		columnsHint: "Un résultat s'ouvre avec les colonnes qui distinguent une ligne d'une autre. Ajoutez celles que vous voulez : elles sont retenues par intitulé, donc ajouter le club une fois l'ajoute à toutes les listes qui en portent un. Ouvrir une ligne montre tout, de toute façon.",
 		findDocument: 'Chercher un document',
 		foundDocuments: '{n} documents',
 		noDocumentFound: 'Aucun document de ce nom',

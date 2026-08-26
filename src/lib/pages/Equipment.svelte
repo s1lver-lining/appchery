@@ -7,7 +7,7 @@
 	import { listBows, createBow, updateSession, type BowRow } from '$lib/db/repository';
 	import { defaultBowId } from '$lib/prefs';
 	import { withOrigin } from '$lib/nav';
-	import Icon from '$lib/ui/Icon.svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Bow from './Bow.svelte';
@@ -42,6 +42,13 @@
 		addAsked = true;
 		openAdd();
 	});
+	const BOW_ICONS: Record<BowType, IconName> = {
+		recurve: 'bowRecurve',
+		compound: 'bowCompound',
+		barebow: 'bowBarebow',
+		longbow: 'bowLongbow'
+	};
+
 	let name = $state('');
 	let type = $state<BowType>('recurve');
 	// The type is the name most bows would be given, so it is written in until somebody writes better.
@@ -217,18 +224,23 @@
 		{#if nameMissing}
 			<p class="text-sm text-danger">{$t('equipment.nameRequired')}</p>
 		{/if}
-		<label class="block text-sm font-semibold">
-			{$t('equipment.bowType')}
-			<select
-				class="mt-1 w-full rounded-lg border border-line bg-bg p-2 text-ink"
-				value={type}
-				onchange={(e) => pickType(e.currentTarget.value as BowType)}
-			>
+		<!-- Shown rather than listed: a bow is recognised by its shape long before its name is read. -->
+		<div>
+			<span class="block text-sm font-semibold">{$t('equipment.bowType')}</span>
+			<div class="mt-1 grid grid-cols-4 gap-2">
 				{#each BOW_TYPES as option (option)}
-					<option value={option}>{$t(`bow.${option}`)}</option>
+					<button
+						class="flex flex-col items-center gap-1 rounded-lg border p-1.5
+							{type === option ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
+						aria-pressed={type === option}
+						onclick={() => pickType(option)}
+					>
+						<Icon name={BOW_ICONS[option]} size={30} />
+						<span class="block w-full truncate text-[10px] text-muted">{$t(`bow.${option}`)}</span>
+					</button>
 				{/each}
-			</select>
-		</label>
+			</div>
+		</div>
 		<div class="flex items-start justify-between gap-4 pt-1">
 			<div class="flex-1">
 				<p class="text-sm font-semibold">{$t('equipment.makeDefault')}</p>

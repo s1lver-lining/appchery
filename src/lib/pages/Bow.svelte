@@ -282,6 +282,11 @@
 
 	async function startTuning(templateKey: string) {
 		if (starting) return;
+		// Asked before anything is made, or answering "stay" would leave an outing and a procedure behind.
+		if (pending.length > 0 && !leavingNow) {
+			leaving = () => startTuning(templateKey);
+			return;
+		}
 		starting = true;
 		const sessions = await listSessions();
 		// Tuning joins today's session for this bow when there is one, rather than opening a new outing.
@@ -556,47 +561,6 @@
 							</p>
 						{/if}
 					</section>
-
-					<section class="rounded-xl border border-line bg-surface p-4">
-						<!-- The procedures below are what to run; the guide is how to run them, a tap away. -->
-						<div class="mb-1 flex items-start justify-between gap-3">
-							<h2 class="text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
-							<a
-								class="flex shrink-0 items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-ink"
-								href={guideHref}
-							>
-								<Icon name="wrench" size={14} />
-								{$t('tuning.guideShort')}
-							</a>
-						</div>
-						<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow?.name ?? '' })}</p>
-						<ul class="space-y-1">
-							{#each templatesForBowType(type) as template (template.key)}
-								{@const diagram = diagramOf(template.key)}
-								<li>
-									<button
-										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm disabled:opacity-50"
-										disabled={starting}
-										onclick={() => startTuning(template.key)}
-									>
-										<!-- Dark ground under it, or the ink lines vanish into the card at this size. -->
-										<span
-											class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border"
-											style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
-												border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line))"
-										>
-											{#if diagram}
-												<TuningDiagram name={diagram} tone="inverted" />
-											{:else}
-												<span class="text-bg"><Icon name="wrench" size={16} /></span>
-											{/if}
-										</span>
-										{$t(`tuning.template.${template.key}`)}
-									</button>
-								</li>
-							{/each}
-						</ul>
-					</section>
 				{:else if key === 'settings'}
 					<section class="rounded-xl border border-line bg-surface p-4">
 						<div class="flex items-start justify-between gap-4">
@@ -642,6 +606,47 @@
 							value={bow?.notes ?? ''}
 							onchange={(e) => updateBow(bowId, { notes: e.currentTarget.value.trim() || null })}
 						></textarea>
+					</section>
+
+					<section class="rounded-xl border border-line bg-surface p-4">
+						<!-- The procedures below are what to run; the guide is how to run them, a tap away. -->
+						<div class="mb-1 flex items-start justify-between gap-3">
+							<h2 class="text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
+							<a
+								class="flex shrink-0 items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-ink"
+								href={guideHref}
+							>
+								<Icon name="wrench" size={14} />
+								{$t('tuning.guideShort')}
+							</a>
+						</div>
+						<p class="mb-2 text-sm text-muted">{$t('tuning.forBow', { bow: bow?.name ?? '' })}</p>
+						<ul class="space-y-1">
+							{#each templatesForBowType(type) as template (template.key)}
+								{@const diagram = diagramOf(template.key)}
+								<li>
+									<button
+										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm disabled:opacity-50"
+										disabled={starting}
+										onclick={() => startTuning(template.key)}
+									>
+										<!-- Dark ground under it, or the ink lines vanish into the card at this size. -->
+										<span
+											class="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border"
+											style="background: color-mix(in srgb, var(--color-ink) 82%, var(--color-brand));
+												border-color: color-mix(in srgb, var(--color-ink) 45%, var(--color-line))"
+										>
+											{#if diagram}
+												<TuningDiagram name={diagram} tone="inverted" />
+											{:else}
+												<span class="text-bg"><Icon name="wrench" size={16} /></span>
+											{/if}
+										</span>
+										{$t(`tuning.template.${template.key}`)}
+									</button>
+								</li>
+							{/each}
+						</ul>
 					</section>
 
 					<section class="rounded-xl border border-line bg-surface p-4">

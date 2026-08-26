@@ -4,6 +4,10 @@
 		| 'home'
 		| 'target'
 		| 'bow'
+		| 'bowRecurve'
+		| 'bowCompound'
+		| 'bowBarebow'
+		| 'bowLongbow'
 		| 'chart'
 		| 'sliders'
 		| 'plus'
@@ -77,6 +81,29 @@
 		<path d="M9.9 5.6v12.8" />
 		<path d="M4.6 12h9.8" />
 		<path d="M18.4 12h2.6M18.4 12l-1.9-1.9M18.4 12l-1.9 1.9" />
+	{:else if name === 'bowRecurve'}
+		<!-- Recurve: curled tips, plus the sight ring and long rod that only a recurve carries. -->
+		<path d="M9.2 3.2c3.6 2 5.6 5.2 5.6 8.8s-2 6.8-5.6 8.8" />
+		<path d="M9.2 3.2c1.4 .5 2.2 1.3 2.4 2.4M9.2 20.8c1.4-.5 2.2-1.3 2.4-2.4" />
+		<path d="M11.6 5.6v12.8" />
+		<path d="M13.9 7.8h3.4" />
+		<circle cx="18.9" cy="7.8" r="1.6" />
+		<path d="M14.8 12.4h6" />
+	{:else if name === 'bowCompound'}
+		<!-- Compound: the cams at the limb tips are the whole silhouette. -->
+		<circle cx="10.4" cy="5.6" r="1.9" />
+		<circle cx="10.4" cy="18.4" r="1.9" />
+		<path d="M11.7 6.7c2.3 1.5 3.3 3.3 3.3 5.3s-1 3.8-3.3 5.3" />
+		<path d="M8.9 6.5v11" />
+	{:else if name === 'bowBarebow'}
+		<!-- Barebow: a recurve stripped of everything that could be aimed with. -->
+		<path d="M9.2 3.2c3.6 2 5.6 5.2 5.6 8.8s-2 6.8-5.6 8.8" />
+		<path d="M9.2 3.2c1.4 .5 2.2 1.3 2.4 2.4M9.2 20.8c1.4-.5 2.2-1.3 2.4-2.4" />
+		<path d="M11.6 5.6v12.8" />
+	{:else if name === 'bowLongbow'}
+		<!-- Longbow: one unbroken D, no recurve at the tips. -->
+		<path d="M8.6 3.2c4.5 2.4 6.8 5.4 6.8 8.8s-2.3 6.4-6.8 8.8" />
+		<path d="M8.6 3.2v17.6" />
 	{:else if name === 'chart'}
 		<path d="M4 19.5V4.5" />
 		<path d="M4 19.5h16" />

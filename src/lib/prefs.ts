@@ -474,8 +474,12 @@ export const ianseoHere = storedString('appchery.ianseoHere');
 export const ianseoSearchEverywhere = flag('appchery.ianseoSearchEverywhere', true);
 
 /**
- * Columns the archer has switched off in a published result, by the heading they carry. Kept by
- * heading rather than by document, because ianseo heads every list of the same kind the same way:
- * hiding the tens and the nines once hides them on every result the archer opens after it.
+ * Columns the archer has asked for, and columns they have sent away, in a published result. Kept by
+ * the heading each carries rather than by the document, because ianseo heads every list of the same
+ * kind the same way: adding the club once adds it to every start list opened after it.
+ *
+ * Two lists rather than one, because a result opens with only the columns that tell one line from
+ * the next: some choices are additions to that and some are subtractions from it.
  */
+export const ianseoShownColumns = storedList('appchery.ianseoShownColumns');
 export const ianseoHiddenColumns = storedList('appchery.ianseoHiddenColumns');

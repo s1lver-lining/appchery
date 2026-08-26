@@ -615,7 +615,7 @@ export const en = {
 		next: 'Next',
 		resume: 'Carry on',
 		thisWeek: 'This week',
-		elsewhere: 'Everywhere else',
+		elsewhere: 'Apps',
 		newBest: 'New personal best'
 	},
 	share: {
@@ -904,7 +904,7 @@ export const en = {
 		noOneFound: 'Nobody by that name here',
 		noOneFoundBody: 'Every word has to appear somewhere in the line. Try the surname on its own, or a club.',
 		columns: 'Columns',
-		columnsHint: 'What to show in a result. Kept by heading, so switching one off here switches it off in every result that has it.',
+		columnsHint: 'A result opens with the columns that tell one line from the next. Add whichever others you want: they are kept by heading, so adding the club once adds it to every list that has one. Opening a row shows everything either way.',
 		findDocument: 'Find a document',
 		foundDocuments: '{n} documents',
 		noDocumentFound: 'No document by that name',

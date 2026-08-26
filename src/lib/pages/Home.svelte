@@ -629,6 +629,12 @@
 		{/if}
 	</section>
 
+	<!-- Above the history: the places to go are a choice, and what has been shot is only a reminder. -->
+	<section>
+		{@render heading($t('home.elsewhere'))}
+		<AppGrid from="/" />
+	</section>
+
 	<section>
 		{@render heading(
 			$t('home.recent'),
@@ -672,12 +678,6 @@
 				{/each}
 			</ul>
 		{/if}
-	</section>
-
-	<!-- Last on the page, where a page that has been read out ends: everywhere else to go. -->
-	<section>
-		{@render heading($t('home.elsewhere'))}
-		<AppGrid from="/" />
 	</section>
 
 </div>

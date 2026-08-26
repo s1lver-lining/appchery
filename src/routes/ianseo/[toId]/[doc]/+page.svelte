@@ -10,7 +10,8 @@
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
-	import { ianseoHiddenColumns } from '$lib/prefs';
+	import { ianseoHiddenColumns, ianseoShownColumns } from '$lib/prefs';
+	import { afterToggle, defaultColumns, visibleColumns } from '$lib/ianseo/columns';
 	import { countRows, findInRounds, findInSections } from '$lib/ianseo/find';
 	import BracketBoard from '$lib/ui/ianseo/BracketBoard.svelte';
 	import { loadCompetition, loadResultDocument } from '$lib/ianseo/client';
@@ -140,30 +141,46 @@
 	let search = $state('');
 	let columnSheet = $state(false);
 
-	/** Switched off by the archer, matched on the heading so it holds across every list of its kind. */
-	const hidden = $derived(new Set($ianseoHiddenColumns));
+	/** What the archer has asked for and sent away, matched on the heading each column carries. */
+	const choice = $derived({
+		chosen: new Set($ianseoShownColumns),
+		refused: new Set($ianseoHiddenColumns)
+	});
 
 	const sections = $derived(
 		findInSections(document?.kind === 'table' ? document.sections : [], search)
 	);
 	const rounds = $derived(findInRounds(document?.kind === 'bracket' ? document.rounds : [], search));
 
-	/** Every heading this document offers, so the sheet lists what is here rather than what once was. */
-	const columns = $derived([
-		...new Map(
-			(document?.kind === 'table' ? document.sections : [])
-				.flatMap((section) => section.columns)
-				.filter((column) => column.label)
-				.map((column) => [column.label, column])
-		).values()
-	]);
+	/**
+	 * Every heading this document offers, with what it is doing now and what it would do left alone,
+	 * read off the first section that has it: the sheet lists what is here rather than what once was.
+	 */
+	const columns = $derived.by(() => {
+		const found = new Map<string, { label: string; visible: boolean; byDefault: boolean }>();
+		for (const section of document?.kind === 'table' ? document.sections : []) {
+			const shown = visibleColumns(section, choice);
+			const fallback = defaultColumns(section);
+			section.columns.forEach((column, at) => {
+				if (!column.label || found.has(column.label)) return;
+				found.set(column.label, {
+					label: column.label,
+					visible: shown[at],
+					byDefault: fallback[at]
+				});
+			});
+		}
+		return [...found.values()];
+	});
 
 	/** Never the last one standing: a table with every column switched off is a table of nothing. */
-	const shownColumns = $derived(columns.filter((column) => !hidden.has(column.label)).length);
+	const showing = $derived(columns.filter((column) => column.visible).length);
 
-	function toggleColumn(label: string) {
-		if (hidden.has(label)) ianseoHiddenColumns.set($ianseoHiddenColumns.filter((one) => one !== label));
-		else if (shownColumns > 1) ianseoHiddenColumns.set([...$ianseoHiddenColumns, label]);
+	function toggleColumn(column: { label: string; visible: boolean; byDefault: boolean }) {
+		if (column.visible && showing <= 1) return;
+		const after = afterToggle(column.label, column.visible, column.byDefault, choice);
+		ianseoShownColumns.set([...after.chosen]);
+		ianseoHiddenColumns.set([...after.refused]);
 	}
 
 	const found = $derived(
@@ -247,7 +264,7 @@
 			<BracketBoard document={{ ...document, rounds }} {followedLabels} onfollow={follow} />
 		{:else if sections.length > 0}
 			{#each sections as section, index (index)}
-				<ResultTable {section} {hidden} {followedLabels} onfollow={follow} />
+				<ResultTable {section} {choice} {followedLabels} onfollow={follow} />
 			{/each}
 		{:else if search.trim()}
 			<EmptyState title={$t('ianseo.noOneFound')} body={$t('ianseo.noOneFoundBody')} />
@@ -277,8 +294,9 @@
 			<li class="flex items-center justify-between gap-3 rounded-lg px-2 py-2">
 				<span class="min-w-0 flex-1 truncate text-sm">{column.label}</span>
 				<Toggle
-					checked={!hidden.has(column.label)}
-					onchange={() => toggleColumn(column.label)}
+					checked={column.visible}
+					disabled={column.visible && showing <= 1}
+					onchange={() => toggleColumn(column)}
 					label={column.label}
 				/>
 			</li>
