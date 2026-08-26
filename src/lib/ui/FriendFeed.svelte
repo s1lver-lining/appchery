@@ -4,7 +4,7 @@
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
-	import { DRILL_KIND, drillDefinition, drillFaceLabel, parseDrill } from '$lib/domain/drills';
+	import { DRILL_KIND, drillFaceLabel, parseDrill, usesFace } from '$lib/domain/drills';
 	import { STRENGTH_KIND, parseStrength, setsDone, setsPlanned } from '$lib/domain/strength';
 	import { RUNNING_KIND, clock, parseRun } from '$lib/domain/running';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
@@ -93,9 +93,7 @@
 		const shots = `${arrows} ${$t('score.arrow')}`;
 		if (kind === DRILL_KIND) {
 			const drill = parseDrill(shared.activity.measurements as string | null);
-			return drillDefinition(drill.game).input === 'pad'
-				? `${drillFaceLabel(drill.face)} · ${shots}`
-				: shots;
+			return usesFace(drill) ? `${drillFaceLabel(drill.face)} · ${shots}` : shots;
 		}
 		if (kind === FREE_SCORE_KIND) {
 			return `${freeScoreLabel(parseFreeScore(shared.activity.measurements as string | null))} · ${shots}`;
