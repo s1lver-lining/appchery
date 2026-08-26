@@ -429,7 +429,7 @@
 		<div class="absolute right-1 bottom-1 flex gap-1">
 			{#if showCentreToggle}
 				<button
-					class="rounded-lg border p-1.5 shadow-sm
+					class="press rounded-lg border p-1.5 shadow-sm
 						{showCentre ? 'border-brand bg-brand text-brand-ink' : 'border-line bg-surface text-muted'}"
 					aria-label="Group centre"
 					aria-pressed={showCentre}
@@ -440,7 +440,7 @@
 			{/if}
 			{#if showOtherToggle}
 				<button
-					class="rounded-lg border p-1.5 shadow-sm
+					class="press rounded-lg border p-1.5 shadow-sm
 						{showOther ? 'border-brand bg-brand text-brand-ink' : 'border-line bg-surface text-muted'}"
 					aria-label="Other ends"
 					aria-pressed={showOther}

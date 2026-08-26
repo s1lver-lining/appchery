@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { flip } from 'svelte/animate';
+	import { fade } from 'svelte/transition';
+	import { listMs } from '$lib/ui/motion';
 	import { dataVersion } from '$lib/db/changed';
 	import { goto, replaceState } from '$app/navigation';
 	import { page } from '$app/stores';
@@ -7,7 +10,8 @@
 	import { listBows, createBow, updateSession, type BowRow } from '$lib/db/repository';
 	import { defaultBowId } from '$lib/prefs';
 	import { withOrigin } from '$lib/nav';
-	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
+	import Icon from '$lib/ui/Icon.svelte';
+	import { BOW_ICONS } from '$lib/ui/bowIcon';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Bow from './Bow.svelte';
@@ -42,13 +46,6 @@
 		addAsked = true;
 		openAdd();
 	});
-	const BOW_ICONS: Record<BowType, IconName> = {
-		recurve: 'bowRecurve',
-		compound: 'bowCompound',
-		barebow: 'bowBarebow',
-		longbow: 'bowLongbow'
-	};
-
 	let name = $state('');
 	let type = $state<BowType>('recurve');
 	// The type is the name most bows would be given, so it is written in until somebody writes better.
@@ -169,10 +166,10 @@
 	{:else}
 		<ul class="space-y-2">
 			{#each bows as bow (bow.id)}
-				<li>
+				<li animate:flip={{ duration: listMs() }} transition:fade={{ duration: listMs() }}>
 					<a
 						href={withOrigin(`/equipment/${bow.id}`, '/equipment?list=1')}
-						class="flex items-center gap-3 rounded-xl border bg-surface p-3
+						class="press flex items-center gap-3 rounded-xl border bg-surface p-3
 							{$defaultBowId === bow.id ? 'border-brand ring-1 ring-brand' : 'border-line'}"
 					>
 						<span class="flex h-14 w-14 items-center justify-center rounded-lg bg-sunk text-muted">
@@ -194,9 +191,9 @@
 </div>
 
 <!-- Sticky rather than fixed, so it sits under the list yet never scrolls out of reach. -->
-<div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+<div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
+		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
 		onclick={openAdd}
 	>
 		<Icon name="plus" size={20} />
@@ -230,7 +227,7 @@
 			<div class="mt-1 grid grid-cols-4 gap-2">
 				{#each BOW_TYPES as option (option)}
 					<button
-						class="flex flex-col items-center gap-1 rounded-lg border p-1.5
+						class="press flex flex-col items-center gap-1 rounded-lg border p-1.5
 							{type === option ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
 						aria-pressed={type === option}
 						onclick={() => pickType(option)}
@@ -259,13 +256,13 @@
 
 	{#snippet footer()}
 		<button
-			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+			class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium"
 			onclick={closeAdd}
 		>
 			{$t('common.cancel')}
 		</button>
 		<button
-			class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+			class="press flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 			onclick={add}
 		>
 			{$t('common.save')}

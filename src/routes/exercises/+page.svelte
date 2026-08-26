@@ -39,7 +39,7 @@
 	<!-- Filtered by what the archer has to hand, which is the question asked before any other. -->
 	<div class="flex flex-wrap gap-1.5">
 		<button
-			class="rounded-full border px-3 py-1.5 text-sm
+			class="press rounded-full border px-3 py-1.5 text-sm
 				{kit === null ? 'border-brand bg-brand/10 font-semibold' : 'border-line'}"
 			onclick={() => (kit = null)}
 		>
@@ -48,7 +48,7 @@
 		</button>
 		{#each KITS as entry (entry)}
 			<button
-				class="rounded-full border px-3 py-1.5 text-sm
+				class="press rounded-full border px-3 py-1.5 text-sm
 					{kit === entry ? 'border-brand bg-brand/10 font-semibold' : 'border-line'}"
 				onclick={() => (kit = kit === entry ? null : entry)}
 			>
@@ -68,7 +68,7 @@
 				<li>
 					<a
 						href={withOrigin(`/exercises/${entry.key}`, '/exercises')}
-						class="flex h-full flex-col gap-2 rounded-2xl border border-line bg-surface p-4"
+						class="press flex h-full flex-col gap-2 rounded-2xl border border-line bg-surface p-4"
 					>
 						<div class="flex items-start justify-between gap-2">
 							<h2 class="font-semibold">{$t(`exercises.item.${entry.key}.name`)}</h2>

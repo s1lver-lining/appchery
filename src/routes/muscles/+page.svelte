@@ -62,7 +62,7 @@
 		<div class="mb-3 flex gap-1">
 			{#each VIEWS as entry (entry)}
 				<button
-					class="flex-1 rounded-lg border py-1.5 text-sm
+					class="press flex-1 rounded-lg border py-1.5 text-sm
 						{view === entry ? 'border-brand bg-brand/10 font-semibold' : 'border-line'}"
 					onclick={() => (view = entry)}
 				>
@@ -142,7 +142,7 @@
 					{/each}
 				</div>
 				<button
-					class="rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
+					class="press rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
 					onclick={() => (playing = !playing)}
 				>
 					{playing ? $t('muscles.pause') : $t('muscles.play')}
@@ -160,7 +160,7 @@
 						 tapping a muscle is a way of asking its name rather than a change to a diagram. -->
 					{#each [null, ...SHOT_PHASES] as entry (entry ?? 'none')}
 						<button
-							class="rounded-lg border px-2 py-1 text-[11px] leading-tight
+							class="press rounded-lg border px-2 py-1 text-[11px] leading-tight
 								{phase === entry && !playing
 								? 'border-brand bg-brand/10 font-semibold'
 								: 'border-line'}"
@@ -231,7 +231,7 @@
 			{#each MUSCLES as entry (entry.id)}
 				<li>
 					<button
-						class="flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left
+						class="press flex w-full items-center gap-2 rounded-lg border px-2 py-1.5 text-left
 							{selected.includes(entry.id) ? 'border-brand bg-brand/10' : 'border-line'}"
 						onclick={() => pick(entry.id)}
 					>

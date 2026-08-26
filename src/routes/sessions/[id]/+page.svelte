@@ -19,6 +19,7 @@
 	} from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import NamePicker from '$lib/ui/NamePicker.svelte';
 	import {
@@ -116,6 +117,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		type PlanSlotRow
 	} from '$lib/db/repository';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
+	import { BOW_ICONS } from '$lib/ui/bowIcon';
 	import MatchGlyph from '$lib/ui/MatchGlyph.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
@@ -341,6 +343,9 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		(bows.find((b) => b.id === session?.bowId)?.type ?? session?.bowType ?? null) as BowType | null
 	);
 	const tuningTemplates = $derived(selectedBowType ? templatesForBowType(selectedBowType) : []);
+
+	/** What the bow picker has highlighted: one of the archer's own bows, a generic type, or neither. */
+	const chosenBow = $derived(session?.bowId ? `bow:${session.bowId}` : (session?.bowType ?? ''));
 
 	async function refresh() {
 		bows = await listBows();
@@ -897,7 +902,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			<div class="grid gap-2 sm:grid-cols-2">
 				{#each foundMatchFormats as format (format)}
 					<button
-						class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+						class="press flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 						onclick={() => openMatch(format)}
 					>
 						<span class="flex shrink-0 items-center justify-center">
@@ -919,7 +924,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 {#snippet roundCard(round: RoundDefinition, withDate: boolean)}
 	{@const stats = statsOf(round)}
 	<button
-		class="flex items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+		class="press flex items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 		onclick={() => startRound(round)}
 	>
 		<span class="h-11 w-11 shrink-0">
@@ -1100,7 +1105,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							</button>
 							<div class="flex items-center gap-1.5">
 								<button
-									class="touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
+									class="press touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
 									disabled={trainingArrows === 0}
 									aria-label={$t('session.oneLess')}
 									onclick={() => countArrows(-1)}
@@ -1113,14 +1118,14 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 								</button>
 								{#each [1, 3, 6] as step (step)}
 									<button
-										class="tabular rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium"
+										class="press tabular rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium"
 										onclick={() => countArrows(step)}
 									>
 										+{step}
 									</button>
 								{/each}
 								<button
-									class="rounded-lg bg-brand px-2.5 py-1.5 text-sm font-semibold text-brand-ink"
+									class="press rounded-lg bg-brand px-2.5 py-1.5 text-sm font-semibold text-brand-ink"
 									aria-label={$t('session.customArrows')}
 									onclick={() => openCount('add')}
 								>
@@ -1150,7 +1155,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 											</span>
 											<a
 												href="/activities/{a.id}"
-												class="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line px-2 py-1.5"
+												class="press flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-line px-2 py-1.5"
 											>
 												<span class="min-w-0 flex-1 truncate text-sm">
 													{config?.bot
@@ -1174,7 +1179,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							<div class="mb-2 flex items-center justify-between">
 								<h2 class="text-sm font-semibold">{$t('session.activities')}</h2>
 								<button
-									class="flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+									class="press flex items-center gap-1.5 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
 									onclick={openPicker}
 								>
 									<Icon name="plus" size={16} />
@@ -1216,7 +1221,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 													event.preventDefault();
 													toggleActivity(a.id);
 												}}
-												class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
+												class="press flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
 													{isSelected(a.id) ? 'inset-ring-2 inset-ring-brand' : ''}"
 											>
 												{#if selecting}
@@ -1345,7 +1350,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							<div class="mt-2 flex gap-2">
 								{#each DAY_SHIFTS as shift (shift)}
 									<button
-										class="flex-1 rounded-lg border border-line py-1.5 text-xs font-medium text-muted"
+										class="press flex-1 rounded-lg border border-line py-1.5 text-xs font-medium text-muted"
 										onclick={() => shiftDays(shift)}
 									>
 										{shift > 0 ? '+' : ''}{shift}
@@ -1355,28 +1360,53 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							</div>
 						</section>
 
+						<!-- Shown rather than listed: a bow is known by its shape, and the archer's own bows
+							wear the shape of the type they were made as. -->
 						<section class="rounded-xl border border-line bg-surface p-4">
-							<label class="mb-1 block text-sm font-semibold" for="bow">{$t('session.bow')}</label>
-							<select
-								id="bow"
-								class="w-full rounded-lg border border-line bg-bg p-2 text-ink"
-								value={session.bowId ? `bow:${session.bowId}` : (session.bowType ?? '')}
-								onchange={(e) => setBow(e.currentTarget.value)}
-							>
-								<option value="">{$t('session.noBow')}</option>
-								{#if bows.length > 0}
-									<optgroup label={$t('session.myBows')}>
-										{#each bows as b (b.id)}
-											<option value="bow:{b.id}">{b.name}</option>
-										{/each}
-									</optgroup>
-								{/if}
-								<optgroup label={$t('session.genericBow')}>
-									{#each BOW_TYPES as type (type)}
-										<option value={type}>{$t(`bow.${type}`)}</option>
+							<span class="mb-1 block text-sm font-semibold">{$t('session.bow')}</span>
+
+							{#if bows.length > 0}
+								<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
+								<div class="mb-3 grid grid-cols-2 gap-2">
+									{#each bows as b (b.id)}
+										<button
+											class="press flex items-center gap-2 rounded-lg border p-2 text-left
+												{chosenBow === `bow:${b.id}`
+												? 'border-brand bg-brand/10 text-brand-text'
+												: 'border-line'}"
+											aria-pressed={chosenBow === `bow:${b.id}`}
+											onclick={() => setBow(`bow:${b.id}`)}
+										>
+											<Icon name={BOW_ICONS[b.type as BowType] ?? 'bow'} size={22} />
+											<span class="min-w-0 truncate text-sm font-medium">{b.name}</span>
+										</button>
 									{/each}
-								</optgroup>
-							</select>
+								</div>
+							{/if}
+
+							<span class="mb-1 block text-xs text-muted">{$t('session.genericBow')}</span>
+							<div class="grid grid-cols-4 gap-2">
+								{#each BOW_TYPES as type (type)}
+									<button
+										class="press flex flex-col items-center gap-1 rounded-lg border p-1.5
+											{chosenBow === type ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
+										aria-pressed={chosenBow === type}
+										onclick={() => setBow(type)}
+									>
+										<Icon name={BOW_ICONS[type]} size={28} />
+										<span class="block w-full truncate text-[10px] text-muted">{$t(`bow.${type}`)}</span>
+									</button>
+								{/each}
+							</div>
+
+							<button
+								class="press mt-2 w-full rounded-lg border py-1.5 text-xs font-medium
+									{chosenBow === '' ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
+								aria-pressed={chosenBow === ''}
+								onclick={() => setBow('')}
+							>
+								{$t('session.noBow')}
+							</button>
 						</section>
 
 						<section class="overflow-hidden rounded-xl border border-line bg-surface">
@@ -1531,7 +1561,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					{#if foundCustom}
 						<a
 							href="/sessions/{sessionId}/custom"
-							class="mb-2 flex items-center gap-3 rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
+							class="press mb-2 flex items-center gap-3 rounded-xl border border-dashed border-brand/60 bg-brand/5 p-3"
 						>
 							<span
 								class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-brand/10 text-brand-text"
@@ -1587,7 +1617,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							{#each foundTemplates as template (template.key)}
 								{@const diagram = diagramOf(template.key)}
 								<button
-									class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+									class="press flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 									onclick={() => startTuning(template.key)}
 								>
 									<!--
@@ -1618,7 +1648,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					<h3 class="mb-2 text-sm font-semibold text-muted">{$t('freeScore.group')}</h3>
 					<a
 						href="/sessions/{sessionId}/free"
-						class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
+						class="press flex items-center gap-3 rounded-xl border border-line bg-surface p-3"
 					>
 						<span
 							class="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg bg-sunk text-muted"
@@ -1640,7 +1670,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					<div class="grid gap-2 sm:grid-cols-2">
 						{#each foundDrills as game (game)}
 							<button
-								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+								class="press flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 								onclick={() => openDrill(game)}
 							>
 								<span
@@ -1663,7 +1693,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					<div class="grid gap-2">
 						{#each [{ kind: STRENGTH_KIND, icon: 'exercise', title: $t('strength.title'), hint: $t('strength.hint'), start: startStrength }, { kind: RUNNING_KIND, icon: 'run', title: $t('running.title'), hint: $t('running.hint'), start: startRunning }] as entry (entry.kind)}
 							<button
-								class="flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+								class="press flex items-center gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 								onclick={entry.start}
 							>
 								<span
@@ -1683,7 +1713,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		</div>
 	{/if}
 {:else}
-	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+	<PageSkeleton stats cards={3} />
 {/if}
 
 {#if draftMatch}
@@ -1700,7 +1730,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				<div class="flex shrink-0 gap-1 rounded-lg bg-sunk p-0.5">
 					{#each ['set', 'cumulative'] as const as system (system)}
 						<button
-							class="rounded-md px-3 py-1.5 text-sm font-medium
+							class="press rounded-md px-3 py-1.5 text-sm font-medium
 								{draftMatch.system === system ? 'bg-brand text-brand-ink shadow-sm' : 'text-muted'}"
 							onclick={() => draftMatch && (draftMatch = { ...draftMatch, system })}
 						>
@@ -1725,7 +1755,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				<div class="flex gap-2">
 					{#each BOT_LEVELS as level (level)}
 						<button
-							class="flex-1 rounded-lg border py-2 text-xs font-medium
+							class="press flex-1 rounded-lg border py-2 text-xs font-medium
 								{draftMatch.bot === level ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 							onclick={() => draftMatch && (draftMatch = { ...draftMatch, bot: level })}
 						>
@@ -1771,7 +1801,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				<div class="mt-1 grid grid-cols-4 gap-2">
 					{#each MATCH_FACES as set (set.id)}
 						<button
-							class="rounded-lg border p-1.5
+							class="press rounded-lg border p-1.5
 								{draftMatch.scoreSetId === set.id ? 'border-brand bg-brand/10' : 'border-line'}"
 							aria-pressed={draftMatch.scoreSetId === set.id}
 							onclick={() => draftMatch && (draftMatch = { ...draftMatch, scoreSetId: set.id })}
@@ -1788,7 +1818,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				<div class="mt-1 flex gap-2">
 					{#each FACE_SIZES as size (size)}
 						<button
-							class="tabular flex-1 rounded-lg border py-2 text-sm font-medium
+							class="press tabular flex-1 rounded-lg border py-2 text-sm font-medium
 								{draftMatch.faceSize === size ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 							onclick={() => draftMatch && (draftMatch = { ...draftMatch, faceSize: size })}
 						>
@@ -1805,7 +1835,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 					<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
 						{#each ['m', 'yd'] as const as unit (unit)}
 							<button
-								class="rounded-md px-3 py-1 text-xs font-medium
+								class="press rounded-md px-3 py-1 text-xs font-medium
 									{(draftMatch.distance?.unit ?? 'm') === unit
 									? 'bg-surface text-ink shadow-sm'
 									: 'text-muted'}"
@@ -1935,13 +1965,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 		{#snippet footer()}
 			<button
-				class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+				class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium"
 				onclick={() => (draftMatch = null)}
 			>
 				{$t('common.cancel')}
 			</button>
 			<button
-				class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+				class="press flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 				onclick={startMatch}
 			>
 				{$t('match.start')}
@@ -1976,7 +2006,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			<div class="mt-2 flex flex-wrap gap-1.5">
 				{#each GOAL_PRESETS as preset (preset)}
 					<button
-						class="tabular rounded-lg border px-3 py-1.5 text-sm font-medium
+						class="press tabular rounded-lg border px-3 py-1.5 text-sm font-medium
 							{Number(goalDraft) === preset ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 						onclick={() => (goalDraft = preset)}
 					>
@@ -1988,14 +2018,14 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			<div class="mt-4 flex gap-2">
 				{#if session?.arrowGoal}
 					<button
-						class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium text-danger"
+						class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium text-danger"
 						onclick={() => saveGoal(null)}
 					>
 						{$t('session.removeGoal')}
 					</button>
 				{/if}
 				<button
-					class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+					class="press flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
 					onclick={() => saveGoal(Number(goalDraft) > 0 ? Number(goalDraft) : null)}
 				>
 					{$t('common.save')}
@@ -2029,13 +2059,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			/>
 			<div class="mt-4 flex gap-2">
 				<button
-					class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
+					class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
 					onclick={() => (countDialog = null)}
 				>
 					{$t('common.cancel')}
 				</button>
 				<button
-					class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+					class="press flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
 					onclick={applyCount}
 				>
 					{countDialog === 'set' ? $t('common.save') : $t('common.add')}

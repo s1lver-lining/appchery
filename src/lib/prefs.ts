@@ -483,3 +483,10 @@ export const ianseoSearchEverywhere = flag('appchery.ianseoSearchEverywhere', tr
  */
 export const ianseoShownColumns = storedList('appchery.ianseoShownColumns');
 export const ianseoHiddenColumns = storedList('appchery.ianseoHiddenColumns');
+
+/**
+ * Whether a club is named the way its federation files it, number and all: `0702022 - JUSSY`. Off,
+ * because the number is how a federation finds a club rather than how anybody says its name, and a
+ * column of them is a column of noise. Opening a row shows the whole of it either way.
+ */
+export const ianseoFullClubNames = flag('appchery.ianseoFullClubNames', false);

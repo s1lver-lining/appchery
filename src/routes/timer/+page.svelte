@@ -201,21 +201,21 @@
 	<div class="flex gap-2">
 		{#if running || preparing}
 			<button
-				class="flex-1 rounded-xl border border-line bg-surface py-3 font-semibold"
+				class="press flex-1 rounded-xl border border-line bg-surface py-3 font-semibold"
 				onclick={stop}
 			>
 				{$t('timer.stop')}
 			</button>
 		{:else}
 			<button
-				class="flex-1 rounded-xl bg-brand py-3 font-semibold text-brand-ink"
+				class="press flex-1 rounded-xl bg-brand py-3 font-semibold text-brand-ink"
 				onclick={callUp}
 			>
 				{$t('timer.start')}
 			</button>
 		{/if}
 		<button
-			class="rounded-xl border border-line bg-surface px-4 py-3 font-semibold"
+			class="press rounded-xl border border-line bg-surface px-4 py-3 font-semibold"
 			onclick={reset}
 		>
 			{preset.alternating ? $t('timer.nextTurn') : $t('timer.reset')}
@@ -232,7 +232,7 @@
 		<div class="grid gap-2 sm:grid-cols-2">
 			{#each times as entry (entry.key)}
 				<button
-					class="flex items-center gap-3 rounded-xl border p-3 text-left
+					class="press flex items-center gap-3 rounded-xl border p-3 text-left
 						{preset.key === entry.key ? 'border-brand bg-brand/5' : 'border-line bg-surface'}"
 					onclick={() => choose(entry)}
 				>
@@ -286,7 +286,7 @@
 		<div class="mt-3 flex flex-wrap gap-2 border-t border-line pt-3">
 			{#each ['lineUp', 'start', 'end', 'stop'] as const as signal (signal)}
 				<button
-					class="rounded-lg border border-line px-3 py-1.5 text-sm"
+					class="press rounded-lg border border-line px-3 py-1.5 text-sm"
 					onclick={() => {
 						unlockSound();
 						whistle(signal);
@@ -350,7 +350,7 @@
 
 	{#snippet footer()}
 		<button
-			class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+			class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium"
 			onclick={() => {
 				timerTimes.set({});
 				timerPrepSeconds.set(10);
@@ -359,7 +359,7 @@
 			{$t('timer.resetTimes')}
 		</button>
 		<button
-			class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+			class="press flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 			onclick={() => (editing = false)}
 		>
 			{$t('common.done')}

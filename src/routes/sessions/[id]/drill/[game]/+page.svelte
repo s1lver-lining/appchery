@@ -101,7 +101,7 @@
 					<div class="flex flex-wrap gap-1.5">
 						{#each rings as ring (ring.label)}
 							<button
-								class="min-w-11 rounded-lg border py-2 text-sm font-bold
+								class="press min-w-11 rounded-lg border py-2 text-sm font-bold
 									{drill.config.thresholdLabel === ring.label
 									? 'border-brand bg-brand text-brand-ink'
 									: 'border-line'}"
@@ -121,7 +121,7 @@
 					<div class="flex flex-wrap gap-1.5">
 						{#each rings as ring (ring.label)}
 							<button
-								class="min-w-11 rounded-lg border py-2 text-sm font-bold
+								class="press min-w-11 rounded-lg border py-2 text-sm font-bold
 									{drill.config.ladder.includes(ring.label)
 									? 'border-brand bg-brand text-brand-ink'
 									: 'border-line'}"
@@ -186,7 +186,7 @@
 						<span class="text-sm text-muted">{$t('drill.arrows')}</span>
 						<!-- Several of these have no natural end, so "no limit" is a setting and not a gap. -->
 						<button
-							class="rounded-lg border px-3 py-1 text-xs font-medium
+							class="press rounded-lg border px-3 py-1 text-xs font-medium
 								{drill.config.arrows === null ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 							onclick={() => (drill.config.arrows = drill.config.arrows === null ? 36 : null)}
 						>
@@ -220,7 +220,7 @@
 				<div class="mt-1 flex gap-2">
 					{#each FACE_SIZES as size (size)}
 						<button
-							class="flex-1 rounded-lg border py-2 text-sm font-medium
+							class="press flex-1 rounded-lg border py-2 text-sm font-medium
 								{drill.face.faceSize === size ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 							onclick={() => (drill.face.faceSize = size)}
 						>
@@ -236,7 +236,7 @@
 					<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
 						{#each ['m', 'yd'] as const as unit (unit)}
 							<button
-								class="rounded-md px-3 py-1 text-xs font-medium
+								class="press rounded-md px-3 py-1 text-xs font-medium
 									{drill.face.unit === unit ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 								onclick={() => {
 									drill.face.unit = unit;
@@ -270,7 +270,7 @@
 		<div class="mt-1 flex gap-2">
 			{#each options as option (option)}
 				<button
-					class="flex-1 rounded-lg border py-2 text-sm font-medium tabular
+					class="press flex-1 rounded-lg border py-2 text-sm font-medium tabular
 						{current === option ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 					onclick={() => pick(option)}
 				>
@@ -281,9 +281,9 @@
 	</div>
 {/snippet}
 
-<div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+<div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
+		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
 		disabled={errors.length > 0}
 		onclick={create}
 	>

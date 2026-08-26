@@ -31,6 +31,20 @@
                 <data android:mimeType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" />
             </intent-filter>
 
+            <!--
+                Links to the app's own pages, so a competition scanned off somebody's phone opens
+                here rather than in a browser. Verified rather than offered: until
+                https://app.appchery.com/.well-known/assetlinks.json names this app's signing
+                certificate, Android hands the link to the browser instead of asking, which is the
+                right answer for anybody who has not installed the app. See doc/deploy.md.
+            -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="https" android:host="app.appchery.com" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />

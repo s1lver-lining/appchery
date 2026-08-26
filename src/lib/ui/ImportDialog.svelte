@@ -145,11 +145,11 @@
 			</div>
 
 			<div class="mt-4 flex shrink-0 gap-2">
-				<button class="flex-1 rounded-lg border border-line py-2 text-sm font-medium" onclick={onclose}>
+				<button class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium" onclick={onclose}>
 					{$t('common.cancel')}
 				</button>
 				<button
-					class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+					class="press flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 					onclick={run}
 				>
 					{$t('importer.confirmAction')}
@@ -197,7 +197,7 @@
 				{/if}
 			</div>
 			<button
-				class="mt-4 w-full shrink-0 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+				class="press mt-4 w-full shrink-0 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 				onclick={onclose}
 			>
 				{$t('common.close')}

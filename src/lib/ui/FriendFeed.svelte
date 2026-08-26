@@ -155,7 +155,7 @@
 			either is read. A round they beat their own shared best on takes the medal colour the rest of
 			the app already spends on a record. -->
 		<a
-			class="flex items-center gap-3 rounded-xl border p-3 {best
+			class="press flex items-center gap-3 rounded-xl border p-3 {best
 				? 'border-accent/60 bg-gradient-to-r from-accent/10 to-surface'
 				: kind === 'scoring'
 					? 'border-line bg-gradient-to-r from-brand/6 to-surface'

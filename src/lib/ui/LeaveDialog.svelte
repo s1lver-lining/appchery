@@ -50,7 +50,7 @@
 		<div class="mt-4 space-y-2">
 			<div class="flex gap-2">
 				<button
-					class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+					class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium"
 					onclick={oncancel}
 				>
 					{$t('common.cancel')}
@@ -63,7 +63,7 @@
 				</button>
 			</div>
 			<button
-				class="w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+				class="press w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 				onclick={onsave}
 			>
 				{saveLabel}

@@ -352,6 +352,14 @@ export const tricksEn = {
 					body: 'A result list, an entry list and a bracket all carry a search above them. Every word typed has to appear somewhere in the line, in any order, and accents are ignored: the surname alone usually does it. A competition with more than a handful of documents can be searched the same way, by class or by bow.'
 				},
 				{
+					lead: 'Hand a competition to somebody beside you.',
+					body: 'The code button on a competition draws it as a QR code. Whoever points a phone at it lands on the same page: in Appchery if they have it, in the web app if they do not.'
+				},
+				{
+					lead: 'Clubs are named the way people say them.',
+					body: 'A federation files a club under a number, and ianseo prints it: 0702022 - JUSSY. The app shows the name alone. The columns button has the switch for anybody who wants the number back, and opening a row shows the whole of it either way.'
+				},
+				{
 					lead: 'Choose what a result shows.',
 					body: 'The button beside that search picks the columns. They are remembered by their heading rather than by the competition, so switching the tens and the nines off once switches them off in every result that has them.'
 				},

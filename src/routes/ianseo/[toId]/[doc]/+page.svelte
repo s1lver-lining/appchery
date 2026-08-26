@@ -10,7 +10,7 @@
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
-	import { ianseoHiddenColumns, ianseoShownColumns } from '$lib/prefs';
+	import { ianseoFullClubNames, ianseoHiddenColumns, ianseoShownColumns } from '$lib/prefs';
 	import { afterToggle, defaultColumns, visibleColumns } from '$lib/ianseo/columns';
 	import { countRows, findInRounds, findInSections } from '$lib/ianseo/find';
 	import BracketBoard from '$lib/ui/ianseo/BracketBoard.svelte';
@@ -212,7 +212,7 @@
 	{/snippet}
 	{#snippet actions()}
 		<button
-			class="rounded-lg border border-line bg-surface p-2 text-muted disabled:opacity-50"
+			class="press rounded-lg border border-line bg-surface p-2 text-muted disabled:opacity-50"
 			aria-label={$t('ianseo.refresh')}
 			disabled={loading || !entry}
 			onclick={() => read(true)}
@@ -276,7 +276,7 @@
 	<ReadNote {loading} {problem} {cachedAt}>
 		{#if entry?.pdfPath}
 			<a
-				class="rounded-lg border border-line px-2 py-1 font-medium"
+				class="press rounded-lg border border-line px-2 py-1 font-medium"
 				href="{IANSEO}{entry.pdfPath}"
 				target="_blank"
 				rel="noreferrer"
@@ -302,4 +302,17 @@
 			</li>
 		{/each}
 	</ul>
+
+	<!-- Beneath the columns because it is about what one of them says rather than whether it is there. -->
+	<div class="mt-3 border-t border-line pt-3">
+		<div class="flex items-center justify-between gap-3 px-2 py-2">
+			<span class="min-w-0 flex-1 text-sm">{$t('ianseo.fullClubNames')}</span>
+			<Toggle
+				checked={$ianseoFullClubNames}
+				onchange={(value) => ianseoFullClubNames.set(value)}
+				label={$t('ianseo.fullClubNames')}
+			/>
+		</div>
+		<p class="px-2 text-xs text-muted">{$t('ianseo.fullClubNamesHint')}</p>
+	</div>
 </Sheet>

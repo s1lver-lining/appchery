@@ -749,6 +749,69 @@ async function checkCompetitionSearch(browser) {
 	await context.close();
 }
 
+/**
+ * Handing a competition to somebody standing next to you, and naming a club the way people say it.
+ */
+async function checkShareAndClubs(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo/26053`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/26053/"]');
+	await page.getByRole('button', { name: /Share this competition/i }).click();
+	await page.waitForTimeout(500);
+
+	const label = await page.getByRole('img').last().getAttribute('aria-label');
+	check(
+		'a competition can be handed over as a code',
+		label === 'https://app.appchery.com/ianseo/26053',
+		label ?? ''
+	);
+	check(
+		'and the address is written out for anybody who would rather type it',
+		await page.getByText('app.appchery.com/ianseo/26053').isVisible()
+	);
+	await shot(page, 'share');
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).last().click();
+	await page.waitForTimeout(300);
+
+	// Clubs: the name on its own by default, the federation's number behind the setting.
+	await page.goto(`${BASE}/ianseo/28536/ENA`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('table tbody tr');
+	await page.getByRole('button', { name: /Columns/i }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('switch', { name: 'Clubs / Pays' }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).last().click();
+	await page.waitForTimeout(400);
+
+	const club = () => page.locator('table tbody tr').first().locator('td').nth(2).innerText();
+	check('a club is named on its own', (await club()).trim() === 'JUSSY', (await club()).trim());
+
+	await page.getByRole('button', { name: /Columns/i }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('switch', { name: /Club numbers/i }).click();
+	await page.waitForTimeout(400);
+	await page.getByRole('dialog').getByRole('button', { name: 'Close' }).last().click();
+	await page.waitForTimeout(400);
+	check(
+		'and carries its federation number when that is asked for',
+		(await club()).trim() === '0702022 - JUSSY',
+		(await club()).trim()
+	);
+
+	// The row holds the whole of it whichever way the setting is left.
+	await page.locator('table tbody tr button[aria-expanded]').first().click();
+	await page.waitForTimeout(300);
+	check(
+		'and the row holds the whole of it either way',
+		(await page.locator('table tbody dl').first().innerText()).includes('0702022 - JUSSY')
+	);
+	await shot(page, 'club-names');
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -841,6 +904,7 @@ async function run() {
 	await checkSearchResultOpens(browser);
 	await checkDocumentTools(browser);
 	await checkCompetitionSearch(browser);
+	await checkShareAndClubs(browser);
 
 	await browser.close();
 

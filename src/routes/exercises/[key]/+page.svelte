@@ -75,7 +75,7 @@
 			<div class="mb-2 flex items-center justify-between">
 				<h2 class="text-sm font-semibold text-muted">{$t('exercises.howTitle')}</h2>
 				<button
-					class="rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
+					class="press rounded-lg border border-line px-3 py-1.5 text-sm font-medium"
 					onclick={() => (playing = !playing)}
 				>
 					{playing ? $t('exercises.pause') : $t('exercises.play')}
@@ -113,7 +113,7 @@
 					<div class="mb-2 flex gap-1">
 						{#each VIEWS as choice (choice)}
 							<button
-								class="flex-1 rounded-lg border py-1 text-xs
+								class="press flex-1 rounded-lg border py-1 text-xs
 									{board === choice ? 'border-brand bg-brand/10 font-semibold' : 'border-line'}"
 								onclick={() => (view = choice)}
 							>

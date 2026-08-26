@@ -177,7 +177,7 @@
 				</div>
 				<p class="mt-2 text-xs text-muted">{$t('friends.handleRules')}</p>
 				<button
-					class="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+					class="press mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
 					disabled={busy || claiming.trim().length < 3}
 					onclick={claim}
 				>
@@ -196,7 +196,7 @@
 					{#each [false, true] as wanted (wanted)}
 						{@const on = isPublic === wanted}
 						<button
-							class="flex-1 rounded-lg border py-2 text-sm
+							class="press flex-1 rounded-lg border py-2 text-sm
 								{on ? 'border-brand bg-brand/10 font-semibold text-brand-text' : 'border-line text-muted'}"
 							aria-pressed={on}
 							disabled={busy || on}
@@ -220,7 +220,7 @@
 					autocomplete="off"
 					placeholder={$t('friends.searchPlaceholder')}
 				/>
-				<button class="rounded-lg border border-line px-4 text-sm font-medium disabled:opacity-50" disabled={busy}>
+				<button class="press rounded-lg border border-line px-4 text-sm font-medium disabled:opacity-50" disabled={busy}>
 					{$t('friends.find')}
 				</button>
 			</form>
@@ -236,7 +236,7 @@
 					</a>
 					{#if found.followStatus === 'none'}
 						<button
-							class="relative rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50"
+							class="press relative rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50"
 							disabled={busy}
 							onclick={() => act(() => follow(found!.userId))}
 						>
@@ -263,14 +263,14 @@
 							</a>
 							<div class="flex gap-2">
 								<button
-									class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50"
+									class="press rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50"
 									disabled={busy}
 									onclick={() => act(() => approve(profile.userId))}
 								>
 									{$t('friends.approve')}
 								</button>
 								<button
-									class="rounded-lg border border-line px-3 py-1.5 text-xs disabled:opacity-50"
+									class="press rounded-lg border border-line px-3 py-1.5 text-xs disabled:opacity-50"
 									disabled={busy}
 									onclick={() => act(() => removeFollower(profile.userId))}
 								>
@@ -292,7 +292,7 @@
 						<EmptyState title={$t('friends.emptyFollowingTitle')} body={$t('friends.emptyFollowingBody')} />
 					{:else}
 						{#each mine as profile (profile.userId)}
-							<a class="flex items-center justify-between rounded-xl border border-line bg-surface p-3" href="/friends/{profile.handle}">
+							<a class="press flex items-center justify-between rounded-xl border border-line bg-surface p-3" href="/friends/{profile.handle}">
 								<span class="min-w-0">
 									<span class="block truncate text-sm font-medium">{shownName(profile)}</span>
 									<span class="block truncate text-xs text-muted">@{profile.handle}</span>
@@ -315,7 +315,7 @@
 								<p class="truncate text-xs text-muted">@{profile.handle}</p>
 							</a>
 							<button
-								class="rounded-lg border border-line px-3 py-1.5 text-xs disabled:opacity-50"
+								class="press rounded-lg border border-line px-3 py-1.5 text-xs disabled:opacity-50"
 								disabled={busy}
 								onclick={() => act(() => removeFollower(profile.userId))}
 							>

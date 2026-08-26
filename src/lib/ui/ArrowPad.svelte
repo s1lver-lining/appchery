@@ -143,7 +143,7 @@
 		<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
 			{#each [{ key: 'number' as const, label: $t('score.byNumber') }, { key: 'face' as const, label: $t('score.plotMode') }] as option (option.key)}
 				<button
-					class="rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-40
+					class="press rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-40
 						{shown === option.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 					disabled={plotOnly}
 					onclick={() => (mode = option.key)}

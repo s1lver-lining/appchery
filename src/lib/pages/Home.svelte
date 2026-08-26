@@ -1,4 +1,7 @@
 <script lang="ts" module>
+	import { flip } from 'svelte/animate';
+	import { fade } from 'svelte/transition';
+	import { listMs } from '$lib/ui/motion';
 	let rippled = false;
 </script>
 
@@ -561,7 +564,7 @@
 				a week, and what somebody wants after reading it is the week itself. -->
 			<a
 				href="/sessions"
-				class="block rounded-2xl border border-line bg-surface p-3.5 {next
+				class="press block rounded-2xl border border-line bg-surface p-3.5 {next
 					? ''
 					: 'min-[300px]:col-span-2'}"
 			>
@@ -613,7 +616,7 @@
 				waiting on the archer. Only while the outing is still warm: after that it is history. -->
 			<a
 				href="/activities/{unfinished.id}"
-				class="mt-2 flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
+				class="press mt-2 flex items-center gap-3 rounded-2xl border border-line bg-surface p-3"
 			>
 				<span class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-sunk text-muted">
 					<Icon name="sight" size={22} />
@@ -649,7 +652,11 @@
 			<ul class="space-y-2">
 				{#each recent as s (s.id)}
 					<!-- The same shape as the sessions list: day in the margin, the session in the card. -->
-					<li class="flex items-center gap-3">
+					<li
+						class="flex items-center gap-3"
+						animate:flip={{ duration: listMs() }}
+						transition:fade={{ duration: listMs() }}
+					>
 						<div class="w-9 shrink-0 text-center">
 							<p class="text-[11px] leading-none text-muted">{shortDay(s.startedAt)}</p>
 							<p
@@ -663,7 +670,7 @@
 						</div>
 						<a
 							href="/sessions/{s.id}"
-							class="flex flex-1 items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3"
+							class="press flex flex-1 items-center justify-between gap-3 rounded-2xl border border-line bg-surface p-3"
 						>
 							<div class="min-w-0">
 								<p class="truncate font-semibold">{sessionName(s)}</p>
@@ -683,7 +690,7 @@
 </div>
 
 <!-- The one action this page exists for, kept where the thumb lands, with the rest behind the arrow. -->
-<div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+<div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<!-- One button across the bar: starting an outing is what this page is for, and the rarer ways
 		to start one are held behind a long press rather than given a permanent fifth of the width. -->
 	<div class="mx-auto w-full max-w-2xl">
@@ -725,7 +732,7 @@
 				{#each STAT_KEYS as key (key)}
 					{@const chosen = (picking === 'primary' ? primary : secondary) === key}
 					<button
-						class="flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm
+						class="press flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2.5 text-left text-sm
 							{chosen ? 'border-brand bg-brand/10 font-semibold' : 'border-line'}"
 						onclick={() => chooseStat(key)}
 					>

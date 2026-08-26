@@ -98,7 +98,7 @@
 					<div class="grid grid-cols-4 gap-2">
 						{#each list as badge (badge.definition.key)}
 							<button
-								class="flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center {badge.earnedAt !==
+								class="press flex flex-col items-center gap-1.5 rounded-xl border p-2 text-center {badge.earnedAt !==
 								null
 									? 'border-accent/40 bg-surface'
 									: 'border-line bg-surface/60'}"

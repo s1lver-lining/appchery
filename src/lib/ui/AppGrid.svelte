@@ -44,7 +44,7 @@
 	{#each SHORTCUTS as item (item.href)}
 		<a
 			href={withOrigin(item.href, from)}
-			class="relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-line bg-surface px-1 text-center"
+			class="press relative flex aspect-square flex-col items-center justify-center gap-2 rounded-xl border border-line bg-surface px-1 text-center"
 		>
 			<span class="text-brand-text"><Icon name={item.icon} size={32} /></span>
 			{#if item.alert}

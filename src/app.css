@@ -96,6 +96,9 @@
 	--c-band-poor: #a3392c;
 	--c-kind-qualification: #1a6ba8;
 
+	/* A press dims paper and lifts ink, so the same rule reads on a white card and a brand button. */
+	--press-dim: 0.94;
+
 	color-scheme: light;
 }
 
@@ -132,6 +135,8 @@
 		--c-band-poor: #e0776a;
 		--c-kind-qualification: #4f9ac9;
 
+		--press-dim: 1.14;
+
 		color-scheme: dark;
 	}
 }
@@ -167,6 +172,8 @@
 	--c-band-poor: #e0776a;
 	--c-kind-qualification: #4f9ac9;
 
+	--press-dim: 1.14;
+
 	color-scheme: dark;
 }
 
@@ -176,6 +183,43 @@ body {
 	color: var(--c-ink);
 	overscroll-behavior: none;
 	-webkit-tap-highlight-color: transparent;
+}
+
+/*
+ * A tap that is felt. The app is used with a thumb between ends, where the row that was hit must
+ * answer before the page it opens has drawn, or the app reads as slower than it is. Kept off the
+ * ring itself, since the tap highlight is turned off above and this is what replaces it.
+ */
+.press {
+	transition:
+		filter 120ms ease-out,
+		transform 120ms ease-out;
+}
+
+.press:active {
+	filter: brightness(var(--press-dim));
+	transform: scale(0.985);
+}
+
+/* A pressed card must not lift the text off its own baseline, so the scale is only ever inward. */
+@media (prefers-reduced-motion: reduce) {
+	.press:active {
+		transform: none;
+	}
+}
+
+/* Keyboard only: a mouse or a thumb has the press above to go by and wants no ring left behind. */
+:where(a, button, [role='button'], input, select, textarea):focus-visible {
+	outline: 2px solid var(--c-brand);
+	outline-offset: 2px;
+}
+
+/*
+ * A bar pinned over content it does not scroll with. The line alone reads as pasted on, so the
+ * content passing under it is dimmed by a shadow that says which of the two is nearer.
+ */
+.overbar {
+	box-shadow: 0 -8px 16px -12px color-mix(in srgb, var(--c-ink) 55%, transparent);
 }
 
 /* Scores are read at a glance between ends, so digits must not shift width as they change. */
@@ -243,6 +287,42 @@ body {
 	to {
 		opacity: 1;
 		transform: translateY(0);
+	}
+}
+
+/*
+ * What a page shows while it reads itself out of the database: blocks the shape of the content that
+ * is coming, so the layout is already the right size when the real thing lands and nothing jumps.
+ * The sweep travels across the whole page rather than each block, so a group reads as one surface
+ * being uncovered instead of a dozen bars blinking out of step.
+ */
+@keyframes skeleton-sweep {
+	from {
+		background-position: 100% 0;
+	}
+	to {
+		background-position: -100% 0;
+	}
+}
+
+.skeleton {
+	border-radius: 0.5rem;
+	background-color: var(--c-sunk);
+	background-image: linear-gradient(
+		90deg,
+		transparent 0%,
+		color-mix(in srgb, var(--c-ink) 7%, transparent) 50%,
+		transparent 100%
+	);
+	background-size: 200% 100%;
+	background-repeat: no-repeat;
+	animation: skeleton-sweep 1.4s linear infinite;
+}
+
+/* Stopped, not hidden: the blocks still say what is coming and how big it will be. */
+@media (prefers-reduced-motion: reduce) {
+	.skeleton {
+		animation: none;
 	}
 }
 

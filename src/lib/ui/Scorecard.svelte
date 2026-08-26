@@ -173,7 +173,7 @@
 		<!-- Two ways out: to another app, or onto the phone. Neither needs the width of the screen. -->
 		<div class="mx-auto flex max-w-md items-center justify-center gap-2">
 			<button
-				class="flex items-center justify-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-50"
+				class="press flex items-center justify-center gap-2 rounded-lg bg-brand px-5 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-50"
 				disabled={busy !== null}
 				onclick={() => send('share')}
 			>

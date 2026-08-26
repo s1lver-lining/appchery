@@ -322,7 +322,7 @@
 						<div class="shrink-0 text-right">
 							{#if outcome.secondsLeft === null}
 								<button
-									class="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink"
+									class="press rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink"
 									onclick={startClock}
 								>
 									{$t('drill.startClock')}
@@ -348,14 +348,14 @@
 					<div class="flex gap-2">
 						{#each [1, 3, 6] as step (step)}
 							<button
-								class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
+								class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
 								onclick={() => countBlind(step)}
 							>
 								{$t('drill.addArrows', { n: step })}
 							</button>
 						{/each}
 						<button
-							class="rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-muted disabled:opacity-40"
+							class="press rounded-lg border border-line px-4 py-2.5 text-sm font-medium text-muted disabled:opacity-40"
 							disabled={drill.state.blindArrows === 0}
 							onclick={() => countBlind(-1)}
 						>
@@ -367,7 +367,7 @@
 					<div class="flex gap-1">
 						{#each [1, 2, 3, 4, 5] as value (value)}
 							<button
-								class="flex-1 rounded-lg border px-1 py-2 text-xs font-medium
+								class="press flex-1 rounded-lg border px-1 py-2 text-xs font-medium
 									{rating === value ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 								onclick={() => rate(value)}
 							>
@@ -424,7 +424,7 @@
 					<div class="mt-3 flex gap-2">
 						{#if drill.state.endedAt !== null}
 							<button
-								class="flex-1 rounded-xl border border-line py-2.5 text-sm font-medium"
+								class="press flex-1 rounded-xl border border-line py-2.5 text-sm font-medium"
 								onclick={reopen}
 							>
 								{$t('drill.reopen')}
@@ -432,7 +432,7 @@
 						{/if}
 						{#if shots.length > 0}
 							<button
-								class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-line py-2.5 text-sm font-medium text-muted"
+								class="press flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-line py-2.5 text-sm font-medium text-muted"
 								onclick={undoLast}
 							>
 								<Icon name="back" size={16} />
@@ -443,7 +443,7 @@
 				</section>
 			{:else}
 				<button
-					class="w-full rounded-xl border border-line py-2.5 text-sm font-medium text-muted"
+					class="press w-full rounded-xl border border-line py-2.5 text-sm font-medium text-muted"
 					onclick={() => (confirmingStop = true)}
 				>
 					{$t('drill.stop')}
@@ -490,7 +490,7 @@
 					{#snippet footer()}
 						<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 							<button
-								class="flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
+								class="press flex flex-1 basis-0 items-center justify-center gap-1.5 rounded-lg border border-line bg-surface px-3 py-2 text-sm disabled:opacity-40"
 								disabled={shots.length === 0 && pending.length === 0}
 								onclick={undoLast}
 							>
@@ -510,7 +510,7 @@
 			</div>
 		{:else if face && !outcome.done}
 			<button
-				class="shrink-0 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-ink"
+				class="press shrink-0 rounded-xl bg-brand py-2.5 text-sm font-semibold text-brand-ink"
 				onclick={() => (padOpen = true)}
 			>
 				{$t('drill.enterArrows')}

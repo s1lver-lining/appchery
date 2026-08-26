@@ -118,7 +118,7 @@
 {#snippet chip(label: string, on: boolean, icon: number, onclick?: () => void)}
 	<!-- Sized in em so one font size on the row scales the padding and the gaps with the text. -->
 	<button
-		class="flex shrink-0 items-center gap-[0.35em] rounded-full border font-medium whitespace-nowrap
+		class="press flex shrink-0 items-center gap-[0.35em] rounded-full border font-medium whitespace-nowrap
 			{on ? 'border-brand bg-brand text-brand-ink' : 'border-line bg-surface text-muted'}"
 		style="padding: 0.35em 0.6em 0.35em 0.85em"
 		aria-pressed={on}
@@ -198,7 +198,7 @@
 		{#each PERIODS as period (period)}
 			<li>
 				<button
-					class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
+					class="press flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
 						{filter.period === period ? 'bg-sunk font-semibold' : ''}"
 					aria-pressed={filter.period === period}
 					onclick={() => (filter = { ...filter, period })}
@@ -244,7 +244,7 @@
 			{#each facetsOf(dimension) as facet (facet.key)}
 				<li>
 					<button
-						class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
+						class="press flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
 							{facet.selected ? 'bg-sunk font-semibold' : ''}"
 						aria-pressed={facet.selected}
 						onclick={() => (filter = toggleValue(filter, dimension, facet.key))}
@@ -264,13 +264,13 @@
 
 		{#snippet footer()}
 			<button
-				class="flex-1 rounded-lg border border-line py-2 text-sm font-medium"
+				class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium"
 				onclick={() => clear(dimension)}
 			>
 				{$t('stats.filter.clearOne')}
 			</button>
 			<button
-				class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
+				class="press flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink"
 				onclick={() => (openSheet = null)}
 			>
 				{$t('common.done')}

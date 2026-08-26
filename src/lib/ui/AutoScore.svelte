@@ -489,11 +489,11 @@ import { SteadyFace } from '$lib/vision/steady';
 		</p>
 
 		<div class="flex gap-2">
-			<button class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium" onclick={onclose}>
+			<button class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium" onclick={onclose}>
 				{$t('common.cancel')}
 			</button>
 			<button
-				class="flex-[2] rounded-lg bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-40"
+				class="press flex-[2] rounded-lg bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-40"
 				disabled={kept.length === 0}
 				onclick={accept}
 			>

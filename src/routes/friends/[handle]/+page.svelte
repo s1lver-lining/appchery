@@ -127,7 +127,7 @@
 			<div class="mt-3 flex gap-2">
 				{#if profile.followStatus === 'none'}
 					<button
-						class="flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+						class="press flex-1 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
 						disabled={busy}
 						onclick={() => act(() => follow(profile!.userId))}
 					>
@@ -135,7 +135,7 @@
 					</button>
 				{:else}
 					<button
-						class="flex-1 rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+						class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 						disabled={busy}
 						onclick={() => act(() => unfollow(profile!.userId))}
 					>
@@ -144,7 +144,7 @@
 				{/if}
 				{#if !blocked}
 					<button
-						class="rounded-lg border border-line px-4 py-2 text-sm text-danger disabled:opacity-50"
+						class="press rounded-lg border border-line px-4 py-2 text-sm text-danger disabled:opacity-50"
 						disabled={busy}
 						onclick={() => (confirmingBlock = true)}
 					>

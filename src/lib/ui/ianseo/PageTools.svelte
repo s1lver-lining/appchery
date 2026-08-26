@@ -52,7 +52,7 @@
 
 	{#if settings}
 		<button
-			class="shrink-0 rounded-xl border border-line bg-surface p-2.5 text-muted"
+			class="press shrink-0 rounded-xl border border-line bg-surface p-2.5 text-muted"
 			aria-label={settingsLabel ?? $t('ianseo.columns')}
 			onclick={settings}
 		>

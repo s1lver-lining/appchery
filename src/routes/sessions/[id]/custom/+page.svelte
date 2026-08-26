@@ -85,7 +85,7 @@
 			<div class="mt-1 flex gap-2">
 				{#each FACE_SIZES as size (size)}
 					<button
-						class="flex-1 rounded-lg border py-2 text-sm font-medium
+						class="press flex-1 rounded-lg border py-2 text-sm font-medium
 							{custom.faceSize === size ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 						onclick={() => (custom.faceSize = size)}
 					>
@@ -102,7 +102,7 @@
 				<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
 					{#each ['m', 'yd'] as const as unit (unit)}
 						<button
-							class="rounded-md px-3 py-1 text-xs font-medium
+							class="press rounded-md px-3 py-1 text-xs font-medium
 								{custom.unit === unit ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 							onclick={() => {
 								custom.unit = unit;
@@ -130,9 +130,9 @@
 </div>
 
 <!-- Sticky rather than fixed, so the picker above it scrolls yet the action stays under the thumb. -->
-<div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+<div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
+		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
 		disabled={errors.length > 0}
 		onclick={create}
 	>

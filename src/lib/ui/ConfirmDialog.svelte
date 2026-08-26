@@ -43,7 +43,7 @@
 		<p class="mt-1 text-sm whitespace-pre-line text-muted">{message}</p>
 
 		<div class="mt-4 flex gap-2">
-			<button class="flex-1 rounded-lg border border-line py-2 text-sm font-medium" onclick={oncancel}>
+			<button class="press flex-1 rounded-lg border border-line py-2 text-sm font-medium" onclick={oncancel}>
 				{$t('common.cancel')}
 			</button>
 			<button

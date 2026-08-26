@@ -1,4 +1,7 @@
 <script lang="ts">
+	import { flip } from 'svelte/animate';
+	import { fade } from 'svelte/transition';
+	import { listMs } from '$lib/ui/motion';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { dataVersion } from '$lib/db/changed';
@@ -41,6 +44,7 @@
 	import { afterNavigate, beforeNavigate } from '$app/navigation';
 	import { registerLeaveGuard, withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
@@ -380,7 +384,7 @@
 					<section class="grid grid-cols-4 gap-2">
 						{#each [{ value: usage.arrowsShot, label: $t('equipment.arrowsShotShort'), full: $t('equipment.arrowsShot') }, { value: usage.sessions, label: $t('equipment.sessionsCount'), full: $t('equipment.sessionsCount') }, { value: usage.activities, label: $t('equipment.activitiesCount'), full: $t('equipment.activitiesCount') }, { value: usage.bestScore ?? '—', label: $t('stats.personalBestShort'), full: $t('stats.personalBest') }] as stat, i (stat.label)}
 							<button
-								class="relative rounded-xl border bg-surface p-2.5 text-left
+								class="press relative rounded-xl border bg-surface p-2.5 text-left
 									{explained === stat.full ? 'border-brand' : 'border-line'}"
 								title={stat.full}
 								onpointerdown={(event) => {
@@ -416,7 +420,7 @@
 							<div class="flex gap-1 rounded-lg bg-sunk p-0.5">
 								{#each ['m', 'yd'] as const as unit (unit)}
 									<button
-										class="rounded-md px-2 py-1 text-xs font-medium
+										class="press rounded-md px-2 py-1 text-xs font-medium
 											{markUnit === unit ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 										onclick={() => (markUnit = unit)}
 									>
@@ -431,7 +435,11 @@
 						{:else}
 							<ul class="divide-y divide-line">
 								{#each marks as mark (mark.id)}
-									<li class="flex items-center gap-2 px-4 py-2">
+									<li
+										class="flex items-center gap-2 px-4 py-2"
+										animate:flip={{ duration: listMs() }}
+										transition:fade={{ duration: listMs() }}
+									>
 										<span
 											class="tabular w-14 shrink-0 text-sm font-semibold"
 										>
@@ -503,7 +511,7 @@
 								onkeydown={(e) => e.key === 'Enter' && addMark()}
 							/>
 							<button
-								class="flex items-center gap-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+								class="press flex items-center gap-1 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
 								onclick={addMark}
 							>
 								<Icon name="plus" size={16} />
@@ -523,7 +531,7 @@
 						<div class="flex flex-wrap gap-1.5 border-t border-line px-4 py-2.5">
 							{#each EXTRAS as key (key)}
 								<button
-									class="rounded-full border px-2.5 py-1 text-xs font-medium
+									class="press rounded-full border px-2.5 py-1 text-xs font-medium
 										{shownExtras.includes(key) ? 'border-brand text-brand-text' : 'border-line text-muted'}"
 									aria-pressed={shownExtras.includes(key)}
 									onclick={() => toggleExtra(key)}
@@ -613,7 +621,7 @@
 						<div class="mb-1 flex items-start justify-between gap-3">
 							<h2 class="text-sm font-semibold">{$t('equipment.tuningSteps')}</h2>
 							<a
-								class="flex shrink-0 items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-ink"
+								class="press flex shrink-0 items-center gap-1 rounded-lg bg-brand px-2.5 py-1 text-xs font-semibold text-brand-ink"
 								href={guideHref}
 							>
 								<Icon name="wrench" size={14} />
@@ -626,7 +634,7 @@
 								{@const diagram = diagramOf(template.key)}
 								<li>
 									<button
-										class="flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm disabled:opacity-50"
+										class="press flex w-full items-center gap-2 rounded-lg border border-line p-2 text-left text-sm disabled:opacity-50"
 										disabled={starting}
 										onclick={() => startTuning(template.key)}
 									>
@@ -658,7 +666,11 @@
 							</h2>
 							<ul class="mb-3 space-y-1 text-sm">
 								{#each pending as change (change.field.key)}
-									<li class="flex justify-between gap-2">
+									<li
+										class="flex justify-between gap-2"
+										animate:flip={{ duration: listMs() }}
+										transition:fade={{ duration: listMs() }}
+									>
 										<span class="text-muted">{change.field.label}</span>
 										<span>
 											{formatSetting(change.field, change.before)} → <strong
@@ -674,7 +686,7 @@
 								bind:value={reason}
 							/>
 							<button
-								class="w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
+								class="press w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
 								disabled={saving}
 								onclick={save}
 							>
@@ -732,7 +744,7 @@
 		</TabDeck>
 	</div>
 {:else}
-	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+	<PageSkeleton stats cards={2} />
 {/if}
 
 {#if leaving}
@@ -802,7 +814,7 @@
 			</div>
 
 			<button
-				class="mt-4 w-full rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+				class="press mt-4 w-full rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
 				onclick={() => (editingGroup = null)}
 			>
 				{$t('common.done')}

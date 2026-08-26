@@ -18,7 +18,7 @@
 	} = $props();
 </script>
 
-<div class="sticky bottom-0 z-20 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+<div class="overbar sticky bottom-0 z-20 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<div class="mx-auto w-full max-w-2xl space-y-2">
 		<div class="flex items-center gap-2">
 			<button
@@ -40,7 +40,7 @@
 		<div class="flex gap-2">
 			{#each actions as action (action.label)}
 				<button
-					class="flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold
+					class="press flex flex-1 items-center justify-center gap-1.5 rounded-xl border py-2.5 text-sm font-semibold
 						{action.danger ? 'border-danger/40 text-danger' : 'border-line'}"
 					disabled={count === 0}
 					onclick={action.onselect}

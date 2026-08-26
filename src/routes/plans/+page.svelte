@@ -81,7 +81,7 @@
 			<!-- A plan put aside stays in the list, greyed: it is kept to be turned back on. -->
 			<a
 				href="/plans/{plan.id}"
-				class="flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
+				class="press flex items-center justify-between gap-3 rounded-xl border border-line bg-surface p-3
 					{plan.isActive === 0 ? 'opacity-60' : ''}"
 			>
 				<div class="min-w-0">
@@ -108,9 +108,9 @@
 	{/if}
 </div>
 
-<div class="sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+<div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
+		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
 		onclick={add}
 	>
 		<Icon name="plus" size={20} />

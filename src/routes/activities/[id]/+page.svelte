@@ -24,6 +24,7 @@
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS, stepText } from '$lib/domain/tuning/guide';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import BraceTuning from '$lib/ui/BraceTuning.svelte';
 	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import {
@@ -993,7 +994,7 @@
 				></textarea>
 			</label>
 			<button
-				class="w-full rounded-lg border border-line py-2 font-semibold"
+				class="press w-full rounded-lg border border-line py-2 font-semibold"
 				onclick={saveTuning}
 			>
 				{saved ? $t('common.done') : $t('common.save')}
@@ -1056,7 +1057,7 @@
 				{/if}
 
 				<button
-					class="mt-3 w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
+					class="press mt-3 w-full rounded-lg bg-brand py-2 font-semibold text-brand-ink disabled:opacity-50"
 					disabled={settingChanges.length === 0 || applied}
 					onclick={applyAdjustment}
 				>
@@ -1103,7 +1104,7 @@
 			</div>
 			<div class="flex items-center gap-1.5">
 				<button
-					class="touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
+					class="press touch-manipulation rounded-lg border border-line px-2.5 py-1.5 text-sm font-semibold select-none disabled:opacity-30"
 					disabled={freeArrows === 0}
 					aria-label={$t('session.oneLess')}
 					onclick={() => countFreeArrows(-1)}
@@ -1112,7 +1113,7 @@
 				</button>
 				{#each [1, 3, 6] as step (step)}
 					<button
-						class="tabular rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium"
+						class="press tabular rounded-lg border border-line px-2.5 py-1.5 text-sm font-medium"
 						onclick={() => countFreeArrows(step)}
 					>
 						+{step}
@@ -1371,7 +1372,7 @@
 					<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
 						{#each [{ plot: false, label: $t('score.byNumber') }, { plot: true, label: $t('score.plotMode') }] as mode (mode.label)}
 							<button
-								class="rounded-md px-2 py-1 text-[11px] font-medium
+								class="press rounded-md px-2 py-1 text-[11px] font-medium
 									{plotting === mode.plot ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 								onclick={() => (plotting = mode.plot)}
 							>
@@ -1430,7 +1431,7 @@
 				<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 					{#if editing || editingPending !== null}
 						<button
-							class="flex flex-1 items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm"
+							class="press flex flex-1 items-center justify-center rounded-lg border border-line bg-surface px-4 py-2 text-sm"
 							onclick={() => {
 								editing = null;
 								editingPending = null;
@@ -1441,7 +1442,7 @@
 					{:else}
 						{#if currentSlot}
 							<button
-								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap disabled:opacity-40"
+								class="press flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap disabled:opacity-40"
 								disabled={pending.length === 0}
 								onclick={undo}
 							>
@@ -1457,7 +1458,7 @@
 						{/if}
 						{#if sheetRows.length > 0}
 							<button
-								class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap text-muted"
+								class="press flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap text-muted"
 								onclick={undoEnd}
 							>
 								{$t('score.undoEnd')}
@@ -1500,13 +1501,13 @@
 				</p>
 				<div class="mt-3 flex gap-2">
 					<button
-						class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+						class="press flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
 						onclick={() => (driftDismissed = true)}
 					>
 						{$t('score.driftDismiss')}
 					</button>
 					<button
-						class="flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+						class="press flex-1 rounded-lg border border-line bg-surface px-3 py-2 text-sm"
 						onclick={ignoreDrift}
 					>
 						{$t('score.driftIgnore')}
@@ -1618,7 +1619,7 @@
 							</button>
 						{/each}
 						<button
-							class="rounded border border-line py-2 text-sm font-bold"
+							class="press rounded border border-line py-2 text-sm font-bold"
 							onclick={() => editModalShot(missZone(scoreSet))}
 						>
 							{$t('score.miss')}
@@ -1698,5 +1699,5 @@
 {/if}
 
 {:else}
-	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+	<PageSkeleton cards={3} />
 {/if}

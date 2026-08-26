@@ -22,6 +22,7 @@
 	import type { Competition, Tournament } from '$lib/ianseo/types';
 	import EntryCard from '$lib/ui/ianseo/EntryCard.svelte';
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
+	import ShareSheet from '$lib/ui/ianseo/ShareSheet.svelte';
 	import { terms } from '$lib/ianseo/find';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
@@ -131,6 +132,14 @@
 	}
 
 	let search = $state('');
+	let shareSheet = $state(false);
+
+	/**
+	 * Where this competition lives for everybody else. The app's own address rather than ianseo's, so
+	 * whoever scans it lands on this page: in Appchery if they have it, in the web app if they do not.
+	 */
+	const SITE = 'https://app.appchery.com';
+	const shareUrl = $derived(`${SITE}/ianseo/${toId}`);
 
 	/**
 	 * A big competition publishes a document per class per round, which runs to ninety of them. The
@@ -172,8 +181,16 @@
 		</a>
 	{/snippet}
 	{#snippet actions()}
+		<div class="flex items-center gap-1.5">
 		<button
-			class="rounded-lg border p-2 {followed
+			class="rounded-lg border border-line bg-surface p-2 text-muted"
+			aria-label={$t('ianseo.share')}
+			onclick={() => (shareSheet = true)}
+		>
+			<Icon name="qr" size={18} />
+		</button>
+		<button
+			class="press rounded-lg border p-2 {followed
 				? 'border-brand/40 bg-brand/10 text-brand-text'
 				: 'border-line bg-surface text-muted'}"
 			aria-label={followed ? $t('ianseo.unfollowCompetition') : $t('ianseo.followCompetition')}
@@ -182,6 +199,7 @@
 		>
 			<Icon name="star" size={18} filled={followed} />
 		</button>
+		</div>
 	{/snippet}
 </PageHeader>
 
@@ -213,7 +231,7 @@
 			<div class="mt-2 flex flex-wrap gap-1.5">
 				{#each people as one (one.id)}
 					<button
-						class="flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-brand-text"
+						class="press flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-brand-text"
 						aria-label={$t('ianseo.unfollowName', { name: one.label })}
 						onclick={async () => {
 							await removeFavourite(one.id);
@@ -261,7 +279,7 @@
 						</a>
 						{#if document.pdfPath}
 							<a
-								class="relative mr-2 shrink-0 rounded-lg border border-line px-2 py-1 text-[10px] font-bold text-muted"
+								class="press relative mr-2 shrink-0 rounded-lg border border-line px-2 py-1 text-[10px] font-bold text-muted"
 								href="{IANSEO}{document.pdfPath}"
 								target="_blank"
 								rel="noreferrer"
@@ -278,7 +296,7 @@
 
 	<ReadNote {loading} {problem} {cachedAt}>
 		<button
-			class="rounded-lg border border-line px-2 py-1 font-medium disabled:opacity-50"
+			class="press rounded-lg border border-line px-2 py-1 font-medium disabled:opacity-50"
 			disabled={loading}
 			onclick={() => read(true)}
 		>
@@ -286,3 +304,10 @@
 		</button>
 	</ReadNote>
 </div>
+
+<ShareSheet
+	open={shareSheet}
+	title={competition?.name || tournament?.name || $t('ianseo.title')}
+	url={shareUrl}
+	onclose={() => (shareSheet = false)}
+/>

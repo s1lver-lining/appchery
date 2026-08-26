@@ -1,6 +1,8 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { clubName } from '$lib/ianseo/clubs';
+	import { ianseoFullClubNames } from '$lib/prefs';
 	import type { BracketDocument, BracketMatch } from '$lib/ianseo/types';
 
 	/**
@@ -50,7 +52,7 @@
 		<div class="flex w-max gap-1.5">
 			{#each shown as one, index (one.title + index)}
 				<button
-					class="rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap {index === round
+					class="press rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap {index === round
 						? 'border-brand/40 bg-brand/10 text-brand-text'
 						: 'border-line text-muted'}"
 					aria-pressed={index === round}
@@ -88,7 +90,9 @@
 								{entry.name || '—'}
 							</p>
 							{#if entry.club || entry.country}
-								<p class="truncate text-xs text-muted">{entry.country?.name ?? entry.club}</p>
+								<p class="truncate text-xs text-muted">
+									{entry.country?.name ?? clubName(entry.club ?? '', $ianseoFullClubNames)}
+								</p>
 							{/if}
 						</div>
 						{#if match.sets[side]?.length}

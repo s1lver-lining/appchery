@@ -135,7 +135,7 @@
 
 			{#each grid as cell (cell.at)}
 				<button
-					class="flex aspect-square items-center justify-center rounded-lg text-sm
+					class="press flex aspect-square items-center justify-center rounded-lg text-sm
 						{cell.inMonth ? '' : 'opacity-30'}
 						{day === cell.at ? 'bg-brand font-bold text-brand-ink' : ''}
 						{cell.at === today && day !== cell.at ? 'ring-1 ring-brand' : ''}"
@@ -187,13 +187,13 @@
 
 		<div class="mt-4 flex gap-2">
 			<button
-				class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
+				class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
 				onclick={oncancel}
 			>
 				{$t('common.cancel')}
 			</button>
 			<button
-				class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+				class="press flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
 				onclick={confirm}
 			>
 				{confirmLabel ?? $t('common.save')}

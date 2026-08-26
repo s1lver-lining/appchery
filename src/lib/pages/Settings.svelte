@@ -270,7 +270,7 @@
 					<div class="flex gap-2">
 						{#each LOCALES as code (code)}
 							<button
-								class="rounded-lg border px-4 py-2 text-sm
+								class="press rounded-lg border px-4 py-2 text-sm
 									{$locale === code ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 								onclick={() => locale.set(code)}
 							>
@@ -285,7 +285,7 @@
 					<div class="flex gap-2">
 						{#each THEMES as option (option)}
 							<button
-								class="rounded-lg border px-4 py-2 text-sm
+								class="press rounded-lg border px-4 py-2 text-sm
 									{$theme === option ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 								onclick={() => theme.set(option)}
 							>
@@ -314,7 +314,7 @@
 								</p>
 							</div>
 							<button
-								class="shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold"
+								class="press shrink-0 rounded-lg border border-line px-3 py-1.5 text-sm font-semibold"
 								onclick={async () => (refreshFailed = !(await refreshApp()))}
 							>
 								{$t('settings.refreshAction')}
@@ -330,7 +330,7 @@
 									<p class="mt-0.5 text-sm text-muted">{$t('settings.installHint')}</p>
 								</div>
 								<button
-									class="shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
+									class="press shrink-0 rounded-lg bg-brand px-3 py-1.5 text-sm font-semibold text-brand-ink"
 									onclick={() => promptInstall()}
 								>
 									{$t('settings.installAction')}
@@ -410,7 +410,7 @@
 								{#each [null, ...COMPETITION_COLOURS] as choice (choice ?? 'default')}
 									{@const on = $competitionColour === choice}
 									<button
-										class="flex items-center gap-2 rounded-full border py-1 pr-3 pl-1.5 text-sm
+										class="press flex items-center gap-2 rounded-full border py-1 pr-3 pl-1.5 text-sm
 											{on ? 'border-brand font-semibold' : 'border-line text-muted'}"
 										aria-pressed={on}
 										onclick={() => competitionColour.set(choice)}
@@ -538,7 +538,7 @@
 							{#each [['classical', $t('settings.detectorClassical')], ['learned', $t('settings.detectorLearned')]] as [value, label] (value)}
 								<button
 									type="button"
-									class="flex-1 rounded-lg border py-2 text-sm font-medium
+									class="press flex-1 rounded-lg border py-2 text-sm font-medium
 										{($arrowDetector ?? 'classical') === value
 										? 'border-brand bg-brand text-brand-ink'
 										: 'border-line'}"
@@ -627,14 +627,14 @@
 
 						<div class="mt-3 flex gap-2">
 							<button
-								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+								class="press flex flex-1 items-center justify-center gap-1.5 rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
 								disabled={busy}
 								onclick={exportToFile}
 							>
 								{$t('backup.export')}
 							</button>
 							<button
-								class="flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+								class="press flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 								disabled={busy}
 								onclick={() => fileInput?.click()}
 							>
@@ -670,7 +670,7 @@
 						<p class="text-sm text-muted">{$t('importer.hint')}</p>
 
 						<button
-							class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+							class="press mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 							disabled={busy}
 							onclick={() => importInput?.click()}
 						>
@@ -692,7 +692,7 @@
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('settings.recalcHint')}</p>
 						<button
-							class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+							class="press mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 							disabled={busy}
 							onclick={recheckBadges}
 						>
@@ -712,7 +712,7 @@
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('settings.forgetHint')}</p>
 						<button
-							class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+							class="press mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 							disabled={busy}
 							onclick={forgetCelebrations}
 						>

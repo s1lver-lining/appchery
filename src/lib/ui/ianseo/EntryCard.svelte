@@ -46,7 +46,7 @@
 	<div class="mt-2 flex flex-wrap gap-1.5">
 		{#each ordered as link, index (link.href)}
 			<a
-				class="rounded-lg px-2.5 py-1.5 text-xs font-semibold {index === 0
+				class="press rounded-lg px-2.5 py-1.5 text-xs font-semibold {index === 0
 					? 'bg-brand text-brand-ink'
 					: 'border border-line text-muted'}"
 				href={link.href}

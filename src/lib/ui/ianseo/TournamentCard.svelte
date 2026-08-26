@@ -34,7 +34,7 @@
 
 <a
 	{href}
-	class="relative flex items-start gap-3 rounded-2xl border bg-surface p-3 {when === 'running'
+	class="press relative flex items-start gap-3 rounded-2xl border bg-surface p-3 {when === 'running'
 		? 'border-brand/40 bg-gradient-to-r from-brand/8 to-surface'
 		: 'border-line'}"
 >

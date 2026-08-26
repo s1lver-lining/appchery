@@ -610,7 +610,7 @@
 				-->
 				{@const slot = shot ? shot.ordinal - 1 : index}
 				<button
-					class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.5)] font-bold
+					class="press tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.5)] font-bold
 						{shot ? '' : 'border border-dashed border-line text-muted'}
 						{cursor?.endNo === endNo && cursor.side === side && cursor.index === slot
 						? cursorClass
@@ -783,13 +783,13 @@
 					<p class="mb-2 text-sm font-semibold">{$t('match.whoWon')}</p>
 					<div class="flex gap-2">
 						<button
-							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
+							class="press flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
 							onclick={() => callShootOff('us')}
 						>
 							{$t('match.weWon')}
 						</button>
 						<button
-							class="flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
+							class="press flex-1 rounded-lg border border-line bg-surface py-2 text-sm font-medium"
 							onclick={() => callShootOff('them')}
 						>
 							{$t('match.theyWon')}
@@ -824,7 +824,7 @@
 						{#snippet footer()}
 							<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 								<button
-									class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm"
+									class="press flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm"
 									onclick={() => (cursor = null)}
 								>
 									{$t('common.done')}
@@ -838,7 +838,7 @@
 								</button>
 								{#if rows.some((row) => row.endNo === cursor?.endNo)}
 									<button
-										class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
+										class="press flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-3 py-2 text-sm text-danger"
 										onclick={() => cursor && clearEnd(cursor.endNo)}
 									>
 										{$t('match.deleteEnd')}
@@ -941,7 +941,7 @@
 				<div class="flex gap-2">
 					{#each BOT_LEVELS as level (level)}
 						<button
-							class="flex-1 rounded-lg border py-2 text-xs font-medium
+							class="press flex-1 rounded-lg border py-2 text-xs font-medium
 								{config?.bot === level ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 							onclick={() =>
 								config && updateMatchConfig(activity.id, { ...config, bot: level }).then(refresh)}
@@ -975,7 +975,7 @@
 				<div class="flex shrink-0 gap-1 rounded-lg bg-sunk p-0.5">
 					{#each ['set', 'cumulative'] as const as system (system)}
 						<button
-							class="rounded-md px-3 py-1.5 text-sm font-medium
+							class="press rounded-md px-3 py-1.5 text-sm font-medium
 								{config?.system === system ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 							onclick={() =>
 								config && updateMatchConfig(activity.id, { ...config, system }).then(refresh)}

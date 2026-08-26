@@ -750,7 +750,7 @@
 
 			<!-- Plain whatever is chosen: it says which half of the page is open, not that anything is on. -->
 			<button
-				class="flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface py-1.5 pr-2 pl-3 text-sm font-medium whitespace-nowrap"
+				class="press flex shrink-0 items-center gap-1.5 rounded-full border border-line bg-surface py-1.5 pr-2 pl-3 text-sm font-medium whitespace-nowrap"
 				aria-haspopup="dialog"
 				onclick={() => (pickingView = true)}
 			>
@@ -919,7 +919,7 @@
 							{@const list = byDay.get(day.at) ?? []}
 							{@const marks = dayMarks(day.at)}
 							<button
-								class="flex aspect-square flex-col items-center justify-center rounded-lg text-sm
+								class="press flex aspect-square flex-col items-center justify-center rounded-lg text-sm
 									{day.inMonth ? '' : 'opacity-30'}
 									{selectedDay === day.at ? 'bg-brand font-bold text-brand-ink' : ''}
 									{day.at === today && selectedDay !== day.at ? 'ring-1 ring-brand' : ''}"
@@ -975,11 +975,11 @@
 			]}
 		/>
 	{:else if $fullNewSessionButton}
-		<div class="sticky bottom-0 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
+		<div class="overbar sticky bottom-0 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 			<div class="mx-auto flex w-full max-w-2xl gap-2">
 				<MoreMenu label={$t('sessions.moreKinds')} items={NEW_KINDS} />
 				<button
-					class="flex w-4/5 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
+					class="press flex w-4/5 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
 					onclick={() => start()}
 				>
 					<Icon name="plus" size={20} />
@@ -1009,7 +1009,7 @@
 		{#each VIEWS as view (view.key)}
 			<li>
 				<button
-					class="flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
+					class="press flex w-full items-center gap-3 rounded-lg px-2 py-2.5 text-left text-sm
 						{tab === view.key ? 'bg-sunk font-semibold' : ''}"
 					aria-pressed={tab === view.key}
 					onclick={() => {
@@ -1093,7 +1093,7 @@
 
 			<div class="mt-4 flex gap-2">
 				<button
-					class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
+					class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium"
 					onclick={() => {
 						viewed = { year: new Date().getFullYear(), month: new Date().getMonth() };
 						selectedDay = null;
@@ -1102,7 +1102,7 @@
 					{$t('sessions.thisMonth')}
 				</button>
 				<button
-					class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+					class="press flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
 					onclick={() => {
 						selectedDay = null;
 						pickingMonth = false;

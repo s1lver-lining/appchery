@@ -30,6 +30,7 @@
 	import { watchSync } from '$lib/sync/watch';
 	import { syncAlertUnread, refreshSyncAlert } from '$lib/sync/alert';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import UndoBar from '$lib/ui/UndoBar.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Pager from '$lib/ui/Pager.svelte';
@@ -140,9 +141,9 @@
 		}
 
 		App.getLaunchUrl().then((launch) => {
-			if (launch?.url) openHandedFile(launch.url);
+			if (launch?.url) openHanded(launch.url);
 		});
-		const listener = App.addListener('appUrlOpen', (event) => openHandedFile(event.url));
+		const listener = App.addListener('appUrlOpen', (event) => openHanded(event.url));
 		return () => {
 			listener.then((l) => l.remove());
 		};
@@ -151,10 +152,29 @@
 	/** A cold start reports the launch through both the promise and the listener, so it is deduped. */
 	let handedUrl: string | null = null;
 
-	/** Android hands over a content URI rather than a file, and only the platform can read it. */
-	async function openHandedFile(url: string) {
+	/**
+	 * Where the app's own pages live on the web. A link to one of them, scanned off somebody's phone
+	 * or followed out of a message, opens the page here rather than the site: the app that claimed
+	 * the link is the app that should answer it.
+	 */
+	const SITE = 'https://app.appchery.com';
+
+	/** Whatever the platform handed over: a file to import, or a link to one of the app's own pages. */
+	async function openHanded(url: string) {
 		if (url === handedUrl) return;
 		handedUrl = url;
+
+		if (url.startsWith(SITE)) {
+			const here = new URL(url);
+			goto(`${here.pathname}${here.search}` || '/');
+			return;
+		}
+
+		await openHandedFile(url);
+	}
+
+	/** Android hands over a content URI rather than a file, and only the platform can read it. */
+	async function openHandedFile(url: string) {
 		if (!/\.xlsx(\?|$)/i.test(url) && !url.startsWith('content://')) return;
 		try {
 			const { Filesystem } = await import('@capacitor/filesystem');
@@ -383,7 +403,8 @@
 			<p class="mt-1 text-sm">{error}</p>
 		</div>
 	{:else if !ready}
-		<div class="flex flex-1 items-center justify-center text-muted">{$t('common.loading')}</div>
+		<!-- The database opening, which is the one wait every tab shares. -->
+		<PageSkeleton />
 	{:else}
 		{#if volatileStorage && !warningIgnored}
 			<div class="safe-top flex items-center gap-3 bg-accent/20 px-4 py-1.5 text-sm">
@@ -418,7 +439,7 @@
 		<!-- Over the page but under the tab bar: what it offers back is worth a glance, not the screen. -->
 		<UndoBar />
 
-		<nav data-tabbar class="safe-bottom flex border-t border-line bg-surface">
+		<nav data-tabbar class="overbar safe-bottom flex border-t border-line bg-surface">
 			{#each tabs as tab (tab.href)}
 				<a
 					href={tab.href}

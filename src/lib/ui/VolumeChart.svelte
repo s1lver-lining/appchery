@@ -139,7 +139,7 @@
 	<nav class="mt-3 flex gap-1 rounded-lg bg-sunk p-1" aria-label={$t('stats.metric')}>
 		{#each METRICS as item (item)}
 			<button
-				class="flex-1 rounded-md py-1.5 text-xs font-medium
+				class="press flex-1 rounded-md py-1.5 text-xs font-medium
 					{metric === item ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 				aria-pressed={metric === item}
 				onclick={() => (metric = item)}

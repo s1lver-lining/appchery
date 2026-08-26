@@ -85,7 +85,7 @@
 <nav class="flex gap-1 rounded-lg bg-sunk p-1">
 	{#each tabs as item, i (item.key)}
 		<button
-			class="flex-1 rounded-md py-1.5 text-sm font-medium
+			class="press flex-1 rounded-md py-1.5 text-sm font-medium
 				{value === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 			onclick={() => select(i)}
 		>

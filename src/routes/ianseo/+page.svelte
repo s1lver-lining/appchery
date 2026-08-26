@@ -297,7 +297,7 @@
 	{/snippet}
 	{#snippet actions()}
 		<button
-			class="rounded-lg border border-line bg-surface p-2 text-muted disabled:opacity-50"
+			class="press rounded-lg border border-line bg-surface p-2 text-muted disabled:opacity-50"
 			aria-label={$t('ianseo.refresh')}
 			disabled={loading}
 			onclick={() => read(true)}
@@ -319,7 +319,7 @@
 			<span class="text-xs text-muted">{$t('ianseo.searchScope')}</span>
 			{#each [true, false] as everywhere (everywhere)}
 				<button
-					class="rounded-full border px-2.5 py-1 text-xs font-medium {$ianseoSearchEverywhere ===
+					class="press rounded-full border px-2.5 py-1 text-xs font-medium {$ianseoSearchEverywhere ===
 					everywhere
 						? 'border-brand/40 bg-brand/10 text-brand-text'
 						: 'border-line text-muted'}"
@@ -339,13 +339,13 @@
 			<p class="mt-1 text-xs text-muted">{$t('ianseo.offerCountryBody')}</p>
 			<div class="mt-3 flex flex-wrap gap-2">
 				<button
-					class="rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink"
+					class="press rounded-lg bg-brand px-3 py-1.5 text-xs font-semibold text-brand-ink"
 					onclick={() => takeOffer(offered!)}
 				>
 					{$t('ianseo.offerYes', { country: offered.name })}
 				</button>
 				<button
-					class="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted"
+					class="press rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-muted"
 					onclick={() => {
 						ianseoCountryAsked.set(true);
 						offered = null;
@@ -361,7 +361,7 @@
 	<div class="flex flex-wrap items-center gap-1.5">
 		{#each $ianseoCountries as code (code)}
 			<button
-				class="flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-brand-text"
+				class="press flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-brand-text"
 				onclick={() => drop(code)}
 			>
 				{named.get(code) ?? code}
@@ -369,14 +369,14 @@
 			</button>
 		{/each}
 		<button
-			class="flex items-center gap-1 rounded-full border border-line py-1 pr-2.5 pl-1.5 text-xs font-medium text-muted"
+			class="press flex items-center gap-1 rounded-full border border-line py-1 pr-2.5 pl-1.5 text-xs font-medium text-muted"
 			onclick={() => (countrySheet = true)}
 		>
 			<Icon name="plus" size={13} />
 			{$t('ianseo.addCountry')}
 		</button>
 		<button
-			class="flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-2 text-xs font-medium {$ianseoRadiusKm >
+			class="press flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-2 text-xs font-medium {$ianseoRadiusKm >
 			0
 				? 'border-brand/40 bg-brand/10 text-brand-text'
 				: 'border-line text-muted'}"
@@ -386,7 +386,7 @@
 			{$ianseoRadiusKm > 0 ? $t('ianseo.within', { km: $ianseoRadiusKm }) : $t('ianseo.nearMe')}
 		</button>
 		<button
-			class="flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-1.5 text-xs font-medium {$ianseoMajor
+			class="press flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-1.5 text-xs font-medium {$ianseoMajor
 				? 'border-brand/40 bg-brand/10 text-brand-text'
 				: 'border-line text-muted'}"
 			aria-pressed={$ianseoMajor}
@@ -441,7 +441,7 @@
 							<!-- Followed before the list held it, or held under a competition ianseo has retired. -->
 							<a
 								href={link(one.favourite.toId ?? '')}
-								class="flex items-center gap-2 rounded-2xl border border-line bg-surface p-3"
+								class="press flex items-center gap-2 rounded-2xl border border-line bg-surface p-3"
 							>
 								<span class="text-brand-text"><Icon name="star" size={16} filled /></span>
 								<span class="min-w-0 flex-1 truncate font-semibold">{one.favourite.label}</span>
@@ -523,7 +523,7 @@
 		{#each [0, ...RADII] as km (km)}
 			<li>
 				<button
-					class="flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm {$ianseoRadiusKm ===
+					class="press flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm {$ianseoRadiusKm ===
 					km
 						? 'bg-brand/10 font-semibold text-brand-text'
 						: 'hover:bg-line/30'}"

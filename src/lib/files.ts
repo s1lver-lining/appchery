@@ -183,3 +183,34 @@ function toBase64(blob: Blob): Promise<string> {
 		reader.readAsDataURL(blob);
 	});
 }
+
+/**
+ * A link handed to somebody else: the system share sheet on a phone, the browser's where it has one,
+ * and the clipboard where neither exists. Nothing is uploaded: the link is the whole of the message.
+ */
+export async function shareLink(title: string, url: string): Promise<'shared' | 'copied' | null> {
+	if (Capacitor.isNativePlatform()) {
+		const { Share } = await import('@capacitor/share');
+		try {
+			await Share.share({ title, url });
+			return 'shared';
+		} catch {
+			// Dismissing the sheet is not a failure, and neither is a platform without one.
+		}
+	} else if (navigator.share) {
+		try {
+			await navigator.share({ title, url });
+			return 'shared';
+		} catch {
+			// Same again: the archer changed their mind, or the browser refused a sheet it advertised.
+		}
+	}
+
+	try {
+		await navigator.clipboard.writeText(url);
+		return 'copied';
+	} catch {
+		// A page without clipboard rights still shows the address, which is what it is written out for.
+		return null;
+	}
+}

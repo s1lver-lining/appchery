@@ -212,7 +212,7 @@
 				<div class="mt-2 flex flex-wrap items-center gap-1.5">
 					{#each group.ends as end, i (end.id)}
 						<button
-							class="flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs"
+							class="press flex items-center gap-1 rounded-full border border-line px-2.5 py-1 text-xs"
 							onclick={() => dropEnd(end.id)}
 						>
 							{$t('brace.end', { n: i + 1, arrows: end.shots.length })}
@@ -240,13 +240,13 @@
 					bind:value={newBrace}
 					onkeydown={(e) => e.key === 'Enter' && addBrace()}
 				/>
-				<button class="rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink" onclick={addBrace}>
+				<button class="press rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink" onclick={addBrace}>
 					{$t('common.save')}
 				</button>
 			</div>
 		{:else}
 			<button
-				class="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line py-2.5 text-sm font-semibold text-brand-text"
+				class="press flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-line py-2.5 text-sm font-semibold text-brand-text"
 				onclick={() => (adding = true)}
 			>
 				<Icon name="plus" size={16} />
@@ -286,7 +286,7 @@
 				{#snippet footer()}
 					<div class="flex items-stretch gap-2 border-t border-line bg-sunk/60 px-3 py-2">
 						<button
-							class="flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap disabled:opacity-40"
+							class="press flex flex-1 basis-0 items-center justify-center rounded-lg border border-line bg-surface px-2 py-2 text-sm whitespace-nowrap disabled:opacity-40"
 							disabled={(plotting?.shots.length ?? 0) === 0}
 							onclick={() =>
 								plotting && (plotting = { ...plotting, shots: plotting.shots.slice(0, -1) })}
@@ -301,7 +301,7 @@
 							{$t('auto.open')}
 						</button>
 						<button
-							class="flex flex-1 basis-0 items-center justify-center rounded-lg bg-brand px-2 py-2 text-sm font-semibold whitespace-nowrap text-brand-ink disabled:opacity-40"
+							class="press flex flex-1 basis-0 items-center justify-center rounded-lg bg-brand px-2 py-2 text-sm font-semibold whitespace-nowrap text-brand-ink disabled:opacity-40"
 							disabled={(plotting?.shots.length ?? 0) === 0}
 							onclick={commit}
 						>

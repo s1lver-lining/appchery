@@ -200,7 +200,7 @@
 								{@const step_text = text(step.key)}
 								<li>
 									<button
-										class="flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+										class="press flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 										onclick={() => (open = step)}
 									>
 										<span
@@ -250,7 +250,7 @@
 					<div class="flex gap-2">
 						{#each ['right', 'left'] as const as option (option)}
 							<button
-								class="flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
+								class="press flex-1 rounded-lg border border-line py-2 text-sm font-semibold"
 								onclick={() => chooseHand(option)}
 							>
 								{$t(`tuning.hand.${option}`)}
@@ -323,7 +323,7 @@
 
 			{#if template}
 				<button
-					class="flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-brand-ink disabled:opacity-50"
+					class="press flex w-full items-center justify-center gap-2 rounded-xl bg-brand py-3 font-semibold text-brand-ink disabled:opacity-50"
 					disabled={!target || starting}
 					onclick={() => startTuning(template.key)}
 				>

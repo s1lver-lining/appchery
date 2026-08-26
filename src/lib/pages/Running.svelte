@@ -143,7 +143,7 @@
 		<div class="flex gap-1">
 			{#each EFFORTS as level (level)}
 				<button
-					class="flex-1 rounded-lg border py-2 text-xs font-medium {run.effort === level
+					class="press flex-1 rounded-lg border py-2 text-xs font-medium {run.effort === level
 						? 'border-brand bg-brand/10 font-semibold'
 						: 'border-line'}"
 					onclick={() => {

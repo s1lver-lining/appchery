@@ -19,6 +19,7 @@
 	import { dateFormats } from '$lib/prefs';
 	import { setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
@@ -191,7 +192,7 @@
 							<span class="block text-xs text-muted">{entry.label}</span>
 							<div class="mt-1 flex items-center gap-1">
 								<button
-									class="flex-1 rounded-lg border border-line bg-bg p-2 text-left text-sm
+									class="press flex-1 rounded-lg border border-line bg-bg p-2 text-left text-sm
 										{entry.at === null ? 'text-muted' : 'text-ink'}"
 									onclick={() => (picking = entry.field as 'startDate' | 'endDate')}
 								>
@@ -248,7 +249,7 @@
 
 					{#each byDay(day) as slot (slot.id)}
 						<button
-							class="rounded-lg border border-line bg-surface px-1 py-1.5 text-center"
+							class="press rounded-lg border border-line bg-surface px-1 py-1.5 text-center"
 							onclick={() => openSlot(slot)}
 						>
 							<span class="tabular block text-[11px] leading-tight font-semibold">
@@ -266,7 +267,7 @@
 					{/each}
 
 					<button
-						class="rounded-lg border border-dashed border-line py-1.5 text-muted"
+						class="press rounded-lg border border-dashed border-line py-1.5 text-muted"
 						aria-label={$t('plans.addSlot')}
 						onclick={() => openNew(day)}
 					>
@@ -294,7 +295,7 @@
 				<div class="mb-3 flex gap-1">
 					{#each weekdays as name, day (day)}
 						<button
-							class="flex-1 rounded-lg border py-1.5 text-xs font-medium
+							class="press flex-1 rounded-lg border py-1.5 text-xs font-medium
 								{draftDay === day ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
 							onclick={() => (draftDay = day)}
 						>
@@ -336,14 +337,14 @@
 				<div class="mt-4 flex gap-2">
 					{#if editing}
 						<button
-							class="flex-1 rounded-lg border border-line py-2.5 text-sm font-medium text-danger"
+							class="press flex-1 rounded-lg border border-line py-2.5 text-sm font-medium text-danger"
 							onclick={removeSlot}
 						>
 							{$t('common.delete')}
 						</button>
 					{/if}
 					<button
-						class="flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
+						class="press flex-1 rounded-lg bg-brand py-2.5 font-semibold text-brand-ink"
 						onclick={saveSlot}
 					>
 						{$t('common.save')}
@@ -372,5 +373,5 @@
 		/>
 	{/if}
 {:else}
-	<p class="p-8 text-center text-muted">{$t('common.loading')}</p>
+	<PageSkeleton cards={3} />
 {/if}

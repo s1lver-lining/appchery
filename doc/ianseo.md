@@ -198,7 +198,20 @@ because those are the local shoots ianseo never hears about and they are most of
 
 Only the one listing page is proxied. The rest of the platform is where archers' own details are.
 
-## 10. What is not built
+## 10. Handing a competition over
+
+The code button on a competition draws `https://app.appchery.com/ianseo/{toId}` as a QR code, so an
+archer beside you can point a phone at it and land on the same page.
+
+The address is the app's own rather than ianseo's, which is what makes it open in the app where the
+app is installed. On Android the manifest claims that host with `autoVerify`, and the layout routes
+an `appUrlOpen` for it to the matching page. **The last step is not done and cannot be from here:**
+Android only hands the link over once `https://app.appchery.com/.well-known/assetlinks.json` names
+this app's signing certificate, and iOS needs an `apple-app-site-association` file and the associated
+domains entitlement. Until then a scan opens the web app, which is the same page and the right answer
+for anybody who has not installed anything.
+
+## 11. What is not built
 
 - **No push.** A followed competition is compared against the list when the list is read. Notifying a
   closed app would need a scheduled poller, a subscription table and store credentials on both

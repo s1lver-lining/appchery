@@ -147,21 +147,21 @@
 			<!-- Said next to the button, because a button is the app asking to be told when to sync. -->
 			<p class="mt-1 text-sm text-muted">{$t('account.syncAutomatic')}</p>
 			<button
-				class="mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+				class="press mt-3 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
 				disabled={busy || $syncStatus.phase === 'syncing'}
 				onclick={sync}
 			>
 				{$t('account.syncNow')}
 			</button>
 			<a
-				class="mt-2 flex w-full items-center justify-center rounded-lg border border-line py-2 text-sm font-medium"
+				class="press mt-2 flex w-full items-center justify-center rounded-lg border border-line py-2 text-sm font-medium"
 				href="/friends"
 			>
 				{$t('friends.title')}
 			</a>
 			<p class="mt-3 text-sm text-muted">{$t('account.signOutKeeps')}</p>
 			<button
-				class="mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+				class="press mt-3 w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 				disabled={busy}
 				onclick={leave}
 			>
@@ -196,7 +196,7 @@
 					/>
 				</label>
 				<button
-					class="w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
+					class="press w-full rounded-lg border border-line py-2 text-sm font-medium disabled:opacity-50"
 					type="submit"
 					disabled={busy}
 				>

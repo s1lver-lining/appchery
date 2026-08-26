@@ -347,6 +347,14 @@ export const tricksFr: TricksDictionary = {
 					body: "Une liste de résultats, une liste d'inscrits et un tableau portent tous une recherche au dessus d'eux. Chaque mot tapé doit apparaître quelque part dans la ligne, dans n'importe quel ordre, et les accents sont ignorés : le nom de famille seul suffit en général. Une compétition qui publie plus de quelques documents se cherche de la même façon, par catégorie ou par type d'arc."
 				},
 				{
+					lead: "Passez une compétition à quelqu'un à côté de vous.",
+					body: "Le bouton code sur une compétition la dessine en QR code. Qui le vise avec un téléphone arrive sur la même page : dans Appchery s'il l'a, sur la version web sinon."
+				},
+				{
+					lead: 'Les clubs portent le nom qu\'on leur donne.',
+					body: "Une fédération enregistre un club sous un numéro, et ianseo l'imprime : 0702022 - JUSSY. L'application n'affiche que le nom. Le bouton des colonnes porte l'interrupteur pour qui veut le numéro, et ouvrir une ligne montre tout de toute façon."
+				},
+				{
 					lead: "Choisissez ce qu'affiche un résultat.",
 					body: "Le bouton à côté de cette recherche choisit les colonnes. Elles sont retenues par leur intitulé plutôt que par la compétition : masquer les dix et les neuf une fois les masque dans tous les résultats qui les portent."
 				},

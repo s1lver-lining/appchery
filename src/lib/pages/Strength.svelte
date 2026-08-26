@@ -182,7 +182,7 @@
 				<div class="flex shrink-0 items-center gap-1">
 					{#if known}
 						<button
-							class="rounded-lg border border-line p-1.5 text-muted"
+							class="press rounded-lg border border-line p-1.5 text-muted"
 							aria-label={$t('exercises.movementTitle')}
 							onclick={() => (showing = showing === entry.exerciseKey ? null : entry.exerciseKey)}
 						>
@@ -190,7 +190,7 @@
 						</button>
 					{/if}
 					<button
-						class="rounded-lg border border-line p-1.5 text-muted"
+						class="press rounded-lg border border-line p-1.5 text-muted"
 						aria-label={$t('common.delete')}
 						onclick={() => remove(index)}
 					>
@@ -254,7 +254,7 @@
 			<div class="mt-3 flex flex-wrap gap-2">
 				{#each entry.sets as set, setIndex (setIndex)}
 					<button
-						class="flex h-12 min-w-12 flex-col items-center justify-center rounded-xl border px-2 text-sm font-semibold tabular
+						class="press flex h-12 min-w-12 flex-col items-center justify-center rounded-xl border px-2 text-sm font-semibold tabular
 							{set.doneAt !== null
 							? 'border-brand bg-brand text-brand-ink'
 							: upNext && upNext.entry === index && upNext.set === setIndex
@@ -270,13 +270,13 @@
 				{/each}
 				<div class="flex flex-col justify-center gap-1">
 					<button
-						class="rounded-lg border border-line px-2 py-0.5 text-xs text-muted"
+						class="press rounded-lg border border-line px-2 py-0.5 text-xs text-muted"
 						onclick={() => addSet(index)}
 					>
 						+
 					</button>
 					<button
-						class="rounded-lg border border-line px-2 py-0.5 text-xs text-muted disabled:opacity-40"
+						class="press rounded-lg border border-line px-2 py-0.5 text-xs text-muted disabled:opacity-40"
 						disabled={entry.sets.length <= 1}
 						onclick={() => dropSet(index)}
 					>
@@ -288,7 +288,7 @@
 	{/each}
 
 	<button
-		class="flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-surface p-4 font-medium text-brand-text"
+		class="press flex w-full items-center justify-center gap-2 rounded-2xl border border-dashed border-line bg-surface p-4 font-medium text-brand-text"
 		onclick={() => (picking = true)}
 	>
 		<Icon name="plus" size={18} />
@@ -310,7 +310,7 @@
 	<div class="space-y-3">
 		<div class="flex flex-wrap gap-1.5">
 			<button
-				class="rounded-full border px-3 py-1.5 text-sm {kit === null
+				class="press rounded-full border px-3 py-1.5 text-sm {kit === null
 					? 'border-brand bg-brand/10 font-semibold'
 					: 'border-line'}"
 				onclick={() => (kit = null)}
@@ -319,7 +319,7 @@
 			</button>
 			{#each KITS as entry (entry)}
 				<button
-					class="rounded-full border px-3 py-1.5 text-sm {kit === entry
+					class="press rounded-full border px-3 py-1.5 text-sm {kit === entry
 						? 'border-brand bg-brand/10 font-semibold'
 						: 'border-line'}"
 					onclick={() => (kit = kit === entry ? null : entry)}
@@ -333,7 +333,7 @@
 			{#each offered as entry (entry.key)}
 				<li>
 					<button
-						class="flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
+						class="press flex w-full items-start gap-3 rounded-xl border border-line bg-surface p-3 text-left"
 						onclick={() => add(entry)}
 					>
 						<span class="min-w-0 flex-1">

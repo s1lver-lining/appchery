@@ -33,7 +33,7 @@
 		<div class="flex items-center justify-between gap-3">
 			<span class="text-sm font-medium">{sharedAt === null ? $t('friends.share') : $t('friends.shared')}</span>
 			<button
-				class="rounded-lg border border-line px-3 py-1.5 text-xs font-medium disabled:opacity-50"
+				class="press rounded-lg border border-line px-3 py-1.5 text-xs font-medium disabled:opacity-50"
 				disabled={busy}
 				onclick={toggle}
 			>

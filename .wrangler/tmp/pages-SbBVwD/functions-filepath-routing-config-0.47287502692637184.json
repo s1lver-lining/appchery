@@ -1,0 +1,13 @@
+{
+  "routes": [
+    {
+      "routePath": "/competitions-api/:path*",
+      "mountPath": "/competitions-api",
+      "method": "GET",
+      "module": [
+        "competitions-api/[[path]].ts:onRequestGet"
+      ]
+    }
+  ],
+  "baseURL": "/"
+}

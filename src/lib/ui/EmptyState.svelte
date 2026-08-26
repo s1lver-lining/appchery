@@ -46,14 +46,14 @@
 	{#if action}
 		{#if action.href}
 			<a
-				class="mt-3 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
+				class="press mt-3 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
 				href={action.href}
 			>
 				{action.label}
 			</a>
 		{:else}
 			<button
-				class="mt-3 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
+				class="press mt-3 inline-flex rounded-lg bg-brand px-4 py-2 text-sm font-semibold text-brand-ink"
 				onclick={action.onclick}
 			>
 				{action.label}

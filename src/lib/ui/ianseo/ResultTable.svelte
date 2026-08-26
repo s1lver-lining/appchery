@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
-	import { followable, marked } from '$lib/ianseo/rows';
+	import { bodyColumn, followable, marked } from '$lib/ianseo/rows';
+	import { clubName } from '$lib/ianseo/clubs';
+	import { ianseoFullClubNames } from '$lib/prefs';
 	import { NO_CHOICE, shapeOf, visibleColumns, wrappingColumn, type ColumnChoice } from '$lib/ianseo/columns';
 	import type { DocumentSection } from '$lib/ianseo/types';
 
@@ -33,6 +35,11 @@
 	const wrapping = $derived(wrappingColumn(section, shape));
 	const visible = $derived(visibleColumns(section, choice, shape));
 	const width = $derived(visible.filter(Boolean).length || 1);
+
+	/** The column a club is written in, which is the one the federation's own reference sits in front of. */
+	const club = $derived(bodyColumn(section.columns));
+	const named = (at: number, value: string) =>
+		at === club ? clubName(value, $ianseoFullClubNames) : value;
 </script>
 
 <div class="overflow-hidden rounded-2xl border border-line bg-surface">
@@ -92,7 +99,7 @@
 									<span class="mr-1 inline-block align-middle text-brand-text">
 										<Icon name="star" size={12} filled />
 									</span>
-								{/if}{row.cells[at]?.text ?? ''}
+								{/if}{named(at, row.cells[at]?.text ?? '')}
 							</td>
 							{/if}
 						{/each}
@@ -123,6 +130,7 @@
 									{#each section.columns as column, at (at)}
 										{#if column.label && row.cells[at]?.text}
 											<dt class="text-muted">{column.label}</dt>
+											<!-- The whole of it here, reference and all: this is the row read out in full. -->
 											<dd class="break-words">{row.cells[at].text}</dd>
 										{/if}
 									{/each}
@@ -136,8 +144,12 @@
 									<div class="mt-2 flex flex-wrap gap-1.5">
 										{#each offers as offer (offer.label)}
 											{@const already = followedLabels.has(offer.label.toLowerCase())}
+											{@const shown =
+												offer.kind === 'club'
+													? clubName(offer.label, $ianseoFullClubNames)
+													: offer.label}
 											<button
-												class="flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium {already
+												class="press flex items-center gap-1 rounded-full border px-2.5 py-1 text-xs font-medium {already
 													? 'border-brand/40 bg-brand/10 text-brand-text'
 													: 'border-line text-muted'}"
 												aria-pressed={already}
@@ -146,8 +158,8 @@
 												<Icon name="star" size={12} filled={already} />
 												<span class="max-w-48 truncate">
 													{already
-														? $t('ianseo.unfollowName', { name: offer.label })
-														: $t('ianseo.followName', { name: offer.label })}
+														? $t('ianseo.unfollowName', { name: shown })
+														: $t('ianseo.followName', { name: shown })}
 												</span>
 											</button>
 										{/each}
