@@ -269,6 +269,24 @@ export const tricksFr: TricksDictionary = {
 			]
 		},
 		{
+			key: 'drills',
+			title: 'Exercices de tir',
+			tricks: [
+				{
+					lead: 'Reprenez une flèche et l’exercice la reprend avec vous.',
+					body: "Annuler retire la dernière volée et la règle est relue sur ce qui reste : une vie perdue revient, une série cassée repart où elle en était. Cela marche même sur un exercice que sa propre règle a terminé : annulez la flèche qui l'a terminé et il rouvre."
+				},
+				{
+					lead: 'Un exercice compte en flèches, jamais en score.',
+					body: "Son total dépend de la règle choisie et du nombre de flèches décidé : il ne voudrait rien dire à côté d'un tir compté. Les exercices comptent dans votre volume, votre expérience et vos badges de flèches, et restent hors des moyennes, des records et des comparaisons de tirs."
+				},
+				{
+					lead: 'Les touches que l’exercice ne demande pas restent utilisables.',
+					body: "Le clavier estompe les anneaux hors de la zone choisie, et les accepte quand même : une flèche arrivée dans le six est enregistrée comme un six. Un exercice mesure ce que vous avez tiré, il ne le décide pas."
+				}
+			]
+		},
+		{
 			key: 'training',
 			title: 'Entraînement',
 			tricks: [

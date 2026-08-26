@@ -274,6 +274,24 @@ export const tricksEn = {
 			]
 		},
 		{
+			key: 'drills',
+			title: 'Drills',
+			tricks: [
+				{
+					lead: 'Take an arrow back and the drill takes it back with you.',
+					body: 'Undo removes the last end and the rule is read again over what is left, so a life you lost comes back and a run that broke picks up where it was. This works on a drill its own rule has already ended: undo the arrow that ended it and it opens again.'
+				},
+				{
+					lead: 'A drill counts as arrows, never as a score.',
+					body: 'Its total depends on the rule it was shot to and on how many arrows you chose, so it would mean nothing beside a round. Drills count towards your volume, your experience and your arrow badges, and stay out of averages, records and round comparisons.'
+				},
+				{
+					lead: 'The keys the drill is not asking for stay usable.',
+					body: 'The keypad fades every ring outside the zone you set, and still takes them: an arrow that landed in the six is recorded as a six. A drill measures what you shot, it does not decide it.'
+				}
+			]
+		},
+		{
 			key: 'training',
 			title: 'Training',
 			tricks: [
