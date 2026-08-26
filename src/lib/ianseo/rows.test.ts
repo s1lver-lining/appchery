@@ -20,6 +20,11 @@ describe('personColumn', () => {
 		expect(personColumn(columns('Pos.', ' ARCHER '))).toBe(1);
 	});
 
+	/** ianseo heads each competition's columns in the organiser's own language. */
+	it('reads the label whatever accents the organiser writes it with', () => {
+		expect(personColumn(columns('Pos.', 'Athlète', 'Clubs / Pays', 'Epreuve'))).toBe(1);
+	});
+
 	it('has no answer for a table of numbers', () => {
 		expect(personColumn(columns('NOC', 'Men', 'Women', 'Total'))).toBe(null);
 	});
@@ -28,6 +33,10 @@ describe('personColumn', () => {
 describe('bodyColumn', () => {
 	it('finds the club, which a national event still files under Country', () => {
 		expect(bodyColumn(columns('Pos.', 'Athlete', 'Country', 'Total'))).toBe(2);
+	});
+
+	it('finds a French club column, however it is headed', () => {
+		expect(bodyColumn(columns('Athlète', 'Cible', 'Clubs / Pays', 'Epreuve'))).toBe(2);
 	});
 
 	it('never gives back the column the archer was read from', () => {

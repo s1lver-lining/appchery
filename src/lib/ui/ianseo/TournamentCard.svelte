@@ -1,9 +1,10 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { locale, t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
 	import type { Tournament } from '$lib/ianseo/types';
 	import type { When } from '$lib/ianseo/select';
 	import { roundKm } from '$lib/competitions/distance';
+	import { competitionDates } from '$lib/competitions/dates';
 
 	/**
 	 * One competition in a list. The dates lead rather than the name, because a list of competitions
@@ -26,6 +27,9 @@
 		/** How far away it is, where the town has been located. */
 		km?: number | null;
 	} = $props();
+
+	/** ianseo writes `25-28 Aug` for a French competition as readily as for an English one. */
+	const days = $derived(competitionDates($locale, tournament));
 </script>
 
 <a
@@ -41,7 +45,7 @@
 			? 'bg-brand/15 text-brand-text'
 			: 'bg-line/40 text-muted'}"
 	>
-		<span class="text-[11px] leading-tight font-semibold break-words">{tournament.dates}</span>
+		<span class="text-[11px] leading-tight font-semibold break-words">{days}</span>
 	</span>
 
 	<span class="min-w-0 flex-1">

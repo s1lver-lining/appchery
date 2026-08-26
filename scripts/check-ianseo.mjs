@@ -54,7 +54,15 @@ function serveIanseo(context, state = {}) {
 		}
 		else if (path === '/Details.php') {
 			const toId = url.searchParams.get('toId');
-			body = toId === '29743' ? fixture('Details-29743') : fixture('Details');
+			body =
+				toId === '29743'
+					? fixture('Details-29743')
+					: toId === '28536'
+						? fixture('Details-28536')
+						: fixture('Details');
+		} else if (path.includes('/28536/ENA.php')) {
+			// A French competition, whose columns ianseo heads in French and folds none of.
+			body = fixture('ENA-fr');
 		} else {
 			const name = path.split('/').pop()?.replace('.php', '');
 			try {
@@ -215,6 +223,20 @@ async function checkFrench(browser) {
 	check('French: the result stays inside the screen', !(await overflows(page)).wide, JSON.stringify((await overflows(page)).culprits));
 	await shot(page, 'french-result');
 
+	// The entry links are the platform's own words, and French is the one language they are already in.
+	await serveEntries(context);
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.getByText('Inscriptions ouvertes').first().waitFor({ timeout: 20000 }).catch(() => {});
+	check(
+		'French: the entry links read in French',
+		(await page.getByRole('link', { name: 'Inscription', exact: true }).count()) > 0
+	);
+	check(
+		'French: and a competition says its dates the French way',
+		(await page.getByText(/\d+ [a-zéû]+\.? \d{4}/).count()) > 0
+	);
+	await shot(page, 'french-entries');
+
 	await page.goto(`${BASE}/tricks`, { waitUntil: 'networkidle' });
 	await page.waitForTimeout(300);
 	check('French: the tricks page carries the competition tricks', await page.getByText(/La recherche va au delà/).isVisible());
@@ -372,8 +394,13 @@ async function checkEntries(browser) {
 	await page.waitForSelector('a[href*="/ianseo/"]');
 	await page.getByText('Open for entry').first().waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
 
-	const forms = await page.getByRole('link', { name: 'Inscription' }).count();
+	// The platform publishes its links in French; the app says what they are for in its own language.
+	const forms = await page.getByRole('link', { name: 'Enter', exact: true }).count();
 	check('what is open for entry is offered', forms > 5, `${forms} entry forms`);
+	check(
+		'and says what each link is for in the language the app is in',
+		(await page.getByRole('link', { name: 'Who has entered' }).count()) > 0
+	);
 	check(
 		'and every way in leaves the app rather than pretending to be part of it',
 		(await page.locator('a[target="_blank"][href*="inscriptarc.fr"]').count()) > 0
@@ -386,7 +413,7 @@ async function checkEntries(browser) {
 	await page.waitForTimeout(400);
 	check(
 		'and they stand aside for a search',
-		(await page.getByRole('link', { name: 'Inscription' }).count()) === 0
+		(await page.getByRole('link', { name: 'Enter', exact: true }).count()) === 0
 	);
 
 	await context.close();
@@ -491,6 +518,42 @@ async function checkUnreadable(browser) {
 	await context.close();
 }
 
+/**
+ * A document in the organiser's own language, with five columns and no hint from ianseo about which
+ * of them a phone should drop. What matters is that an archer still gets a line each.
+ */
+async function checkForeignColumns(browser) {
+	for (const size of [{ name: 'narrow', width: 300 }, { name: 'phone', width: 390 }]) {
+		const context = await browser.newContext({ viewport: { width: size.width, height: 800 } });
+		await serveIanseo(context);
+		const page = await context.newPage();
+		await page.goto(`${BASE}/ianseo/28536/ENA`, { waitUntil: 'networkidle' });
+		await page.waitForSelector('table tbody tr');
+
+		// The archer's own column is the one allowed to wrap, whatever language it is headed in.
+		const heads = (await page.locator('table').first().locator('thead th:visible').allInnerTexts())
+			.map((one) => one.trim())
+			.filter(Boolean);
+		check(`${size.name}: a French document keeps its narrow columns narrow`, heads.length <= 3, heads.join('/'));
+		check(`${size.name}: and leads with the archer`, /athl/i.test(heads[0] ?? ''), heads[0]);
+
+		/** One archer, one line: the row is no taller than a single line of text needs. */
+		const tall = await page.evaluate(() => {
+			const rows = [...document.querySelectorAll('table')][0]
+				? [...document.querySelectorAll('table')[0].querySelectorAll('tbody tr')].filter(
+						(r) => !r.querySelector('td[colspan]')
+					)
+				: [];
+			const heights = rows.map((r) => r.getBoundingClientRect().height);
+			return { worst: Math.max(...heights), rows: heights.length };
+		});
+		check(`${size.name}: one archer takes one line`, tall.worst < 56, `tallest ${Math.round(tall.worst)}px`);
+		check(`${size.name}: the French list stays inside the screen`, !(await overflows(page)).wide);
+		await shot(page, `french-columns-${size.name}`);
+		await context.close();
+	}
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -579,6 +642,7 @@ async function run() {
 	await checkStaleRead(browser);
 	await checkEntries(browser);
 	await checkUnreadable(browser);
+	await checkForeignColumns(browser);
 
 	await browser.close();
 

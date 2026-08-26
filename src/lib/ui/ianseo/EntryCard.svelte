@@ -1,6 +1,7 @@
 <script lang="ts">
-	import { t } from '$lib/i18n';
+	import { locale, t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
+	import { competitionDates } from '$lib/competitions/dates';
 	import type { Entry } from '$lib/inscriptarc/types';
 
 	/**
@@ -9,6 +10,20 @@
 	 * drawn as links out.
 	 */
 	let { entry, compact = false }: { entry: Entry; compact?: boolean } = $props();
+
+	/**
+	 * The platform publishes its three links in French, being French. The app knows what each of them
+	 * is for, so it says that in the archer's own language, and falls back to the platform's own word
+	 * for anything it has not seen before rather than guessing at it.
+	 */
+	function labelOf(label: string): string {
+		if (/inscription/i.test(label)) return $t('ianseo.entryForm');
+		if (/mandat/i.test(label)) return $t('ianseo.entryMandat');
+		if (/inscrits/i.test(label)) return $t('ianseo.entryWho');
+		return label;
+	}
+
+	const when = $derived(competitionDates($locale, entry));
 
 	/** The entry form leads, because it is the one an archer reading this came to press. */
 	const ordered = $derived(
@@ -20,7 +35,7 @@
 	{#if compact}
 		<!-- The section it sits in says what these are and where they go, so the card only names one. -->
 		<p class="font-semibold break-words">{entry.name}</p>
-		<p class="text-xs text-muted">{entry.dates} · {entry.club}</p>
+		<p class="text-xs text-muted">{when} · {entry.club}</p>
 	{:else}
 		<p class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-brand-text uppercase">
 			<Icon name="edit" size={13} />
@@ -38,7 +53,7 @@
 				target="_blank"
 				rel="noreferrer"
 			>
-				{link.label}
+				{labelOf(link.label)}
 			</a>
 		{/each}
 	</div>

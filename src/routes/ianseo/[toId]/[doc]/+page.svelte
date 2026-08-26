@@ -165,7 +165,9 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<!-- Wider than the app's usual column: a result list is a table of ten things, not a paragraph, and
+	the room is the difference between an archer a line and an archer a paragraph. -->
+<div class="mx-auto w-full max-w-4xl space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	{#if error === 'missing'}

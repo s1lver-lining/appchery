@@ -8,12 +8,49 @@ import type { DocumentColumn, DocumentRow } from './types';
  * Nothing in the app depends on it having been right.
  */
 
-const PERSON = ['athlete', 'archer', 'name', 'athlete name', 'competitor', 'participant', 'nom', 'nombre', 'atleta'];
-const BODY = ['country', 'country name', 'club', 'team', 'society', 'nation', 'noc', 'pays'];
+const PERSON = [
+	'athlete',
+	'athlete name',
+	'archer',
+	'name',
+	'competitor',
+	'participant',
+	'nom',
+	'nombre',
+	'atleta',
+	'sportler'
+];
+const BODY = [
+	'country',
+	'country name',
+	'club',
+	'clubs',
+	'clubs / pays',
+	'team',
+	'society',
+	'nation',
+	'noc',
+	'pays',
+	'club / pays'
+];
+
+/**
+ * Compared without its accents, because ianseo prints each competition's columns in the organiser's
+ * own language: the same list is headed `Athlete` in one country and `Athlète` in the next, and one
+ * of those spellings used to leave the app unable to tell which column held the archer.
+ */
+function plain(label: string): string {
+	return label
+		.trim()
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/\s+/g, ' ');
+}
 
 function indexOf(columns: DocumentColumn[], labels: string[], skip = -1): number | null {
 	const at = columns.findIndex(
-		(column, index) => index !== skip && labels.includes(column.label.trim().toLowerCase())
+		(column, index) => index !== skip && labels.includes(plain(column.label))
 	);
 	return at < 0 ? null : at;
 }
