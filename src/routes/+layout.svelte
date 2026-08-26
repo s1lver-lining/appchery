@@ -203,8 +203,11 @@
 	 * of the page. Popping it navigates nowhere, which gives the guards the chance the hardware key
 	 * gives them on Android — back closes the dialog, and the page underneath stays put.
 	 *
-	 * A focused text field counts as dismissable for the same reason it does natively: the first
-	 * back press there means "I am done typing", not "leave".
+	 * Only for things that are open, never for a cursor sitting in a text field. Tapping a search
+	 * result blurs the field and navigates in the same gesture, and the blur asked for the entry back
+	 * a task before the navigation had begun: taking it killed the navigation, and the archer tapped
+	 * a competition and stayed on the search. The hardware key does not treat a focused field as
+	 * dismissable either, so the browser no longer does.
 	 */
 	let trapped = false;
 	/** Where the spare entry was parked, so it is only ever reclaimed while it is still on top. */
@@ -220,30 +223,12 @@
 		return el.isContentEditable || el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
 	}
 
-	// Focus moves without touching any store, so the trap has to be re-evaluated when it does.
-	let focusTick = $state(0);
 	$effect(() => {
-		/*
-		 * Counted after the current task rather than in the handler: removing a focused element
-		 * fires focusout from inside Svelte's own teardown, and a state change there is forbidden.
-		 * Every sheet that closes on a tapped button removes one, so this is the common case.
-		 */
-		const bump = () => queueMicrotask(() => focusTick++);
-		document.addEventListener('focusin', bump);
-		document.addEventListener('focusout', bump);
-		return () => {
-			document.removeEventListener('focusin', bump);
-			document.removeEventListener('focusout', bump);
-		};
-	});
-
-	$effect(() => {
-		void focusTick;
 		// Capacitor's listener already owns the key on a device, and a second interception there
 		// would eat the press before the guards ever saw it.
 		if (Capacitor.isNativePlatform()) return;
 
-		const holding = $backGuards.length > 0 || editableFocused();
+		const holding = $backGuards.length > 0;
 
 		if (holding && !trapped) {
 			trapped = true;

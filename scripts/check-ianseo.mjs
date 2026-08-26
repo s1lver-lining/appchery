@@ -90,6 +90,18 @@ async function overflows(page) {
 	});
 }
 
+/**
+ * Waits until the page has stopped looking towns up. They are fetched one at a time with a pause
+ * between, so a fixed sleep is a race the check loses whenever the machine is busy.
+ */
+async function settled(page) {
+	await page
+		.getByText(/Competitions within/)
+		.waitFor({ state: 'visible', timeout: 30000 })
+		.catch(() => {});
+	await page.waitForTimeout(300);
+}
+
 async function shot(page, name) {
 	mkdirSync(SHOTS, { recursive: true });
 	await page.screenshot({ path: `${SHOTS}/${name}.png`, fullPage: true });
@@ -283,8 +295,8 @@ async function checkDistance(browser) {
 
 	await page.getByRole('button', { name: /Near me/ }).click();
 	await page.getByRole('button', { name: /Within 25 km/ }).click();
-	await page.getByText(/Competitions within/).waitFor({ state: 'visible', timeout: 20000 }).catch(() => {});
-	await page.waitForTimeout(1500);
+	// Waited on rather than slept through: the towns are looked up one at a time, on purpose.
+	await settled(page);
 
 	check('asking for distance looks the towns up', lookups > 0, `${lookups} lookups`);
 	const near = await page.locator('a[href*="/ianseo/"]').count();
@@ -298,7 +310,7 @@ async function checkDistance(browser) {
 	// Widening it brings back what the tighter radius had cut.
 	await page.getByRole('button', { name: /Within 25 km/ }).click();
 	await page.getByRole('button', { name: /Within 500 km/ }).click();
-	await page.waitForTimeout(1200);
+	await settled(page);
 	check(
 		'widening the radius brings competitions back',
 		(await page.locator('a[href*="/ianseo/"]').count()) >= near
@@ -308,7 +320,7 @@ async function checkDistance(browser) {
 	const before = lookups;
 	await page.reload({ waitUntil: 'networkidle' });
 	await page.waitForSelector('a[href*="/ianseo/"]');
-	await page.waitForTimeout(1500);
+	await settled(page);
 	check('a town already located is never looked up twice', lookups === before, `${lookups - before} extra`);
 
 	// Searching reaches past the distance filter unless it is told not to.
@@ -554,6 +566,71 @@ async function checkForeignColumns(browser) {
 	}
 }
 
+/**
+ * Tapping a search result. The field has focus, so the layout has parked a spare history entry to
+ * catch the back key; the tap blurs the field and navigates in one gesture, and the blur used to
+ * reclaim that entry before the navigation had begun, killing it. The archer tapped a competition
+ * and stayed on the list.
+ */
+async function checkSearchResultOpens(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	await page.getByPlaceholder(/Search every competition/i).fill('mediterranean');
+	await page.waitForTimeout(400);
+
+	const card = page.locator('a[href*="/ianseo/"]').first();
+	const wanted = (await card.getAttribute('href')) ?? '';
+	await card.click();
+	await page.waitForTimeout(2000);
+	check(
+		'a search result opens the competition it names',
+		page.url().includes(wanted.split('?')[0]),
+		page.url().replace(BASE, '')
+	);
+
+	// And the way back is still the search that found it.
+	await page.goBack();
+	await page.waitForSelector('a[href*="/ianseo/"]', { timeout: 20000 });
+	check('and going back lands on the list again', page.url().replace(BASE, '').startsWith('/ianseo'));
+
+	/**
+	 * Back with the cursor in a field leaves the page, the way the hardware key does on a phone. It
+	 * used to be swallowed to mean "I am done typing", and that is what killed the tap above.
+	 */
+	await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
+	await page.getByRole('link', { name: /Competitions/ }).click();
+	await page.waitForSelector('a[href*="/ianseo/"]', { timeout: 20000 });
+	await page.getByPlaceholder(/Search every competition/i).click();
+	await page.waitForTimeout(400);
+	await page.goBack();
+	await page.waitForTimeout(1200);
+	check(
+		'back with the cursor in the search leaves the page, as the back key does',
+		page.url().replace(BASE, '') === '/',
+		page.url().replace(BASE, '')
+	);
+
+	// And a sheet still swallows it, which is what the spare entry is actually for.
+	await page.goBack().catch(() => {});
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	await page.getByRole('button', { name: /Add a country/i }).click();
+	await page.waitForTimeout(500);
+	await page.goBack();
+	await page.waitForTimeout(900);
+	check(
+		'back closes an open sheet without leaving the page',
+		(await page.locator('[role="dialog"]').count()) === 0 &&
+			page.url().replace(BASE, '').startsWith('/ianseo')
+	);
+
+	await context.close();
+}
+
 async function run() {
 	const browser = await chromium.launch();
 
@@ -643,6 +720,7 @@ async function run() {
 	await checkEntries(browser);
 	await checkUnreadable(browser);
 	await checkForeignColumns(browser);
+	await checkSearchResultOpens(browser);
 
 	await browser.close();
 
