@@ -6,6 +6,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
+	import { fileLink } from '$lib/competitions/links';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import ResultTable from '$lib/ui/ianseo/ResultTable.svelte';
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
@@ -84,12 +85,13 @@
 		if (mine !== request) return;
 
 		competition = found;
-		entry = found?.documents.find((one) => one.path.split('/').pop() === `${name}.php`) ?? null;
+		entry = found?.documents.find((one) => one.path?.split('/').pop() === `${name}.php`) ?? null;
 		await read(false, mine);
 	}
 
 	async function read(refresh: boolean, mine = ++request) {
-		if (!entry) {
+		const path = entry?.path;
+		if (!path) {
 			loading = false;
 			error = 'missing';
 			return;
@@ -97,7 +99,7 @@
 		loading = true;
 		error = null;
 		try {
-			const loaded = await loadResultDocument(entry.path, { refresh });
+			const loaded = await loadResultDocument(path, { refresh });
 			if (mine !== request) return;
 			document = loaded.value;
 			cachedAt = loaded.cachedAt;
@@ -282,7 +284,7 @@
 		{#if entry?.pdfPath}
 			<a
 				class="press rounded-lg border border-line px-2 py-1 font-medium"
-				href="{IANSEO}{entry.pdfPath}"
+				href={fileLink(entry.pdfPath, IANSEO)}
 				target="_blank"
 				rel="noreferrer"
 			>

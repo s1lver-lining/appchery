@@ -19,9 +19,22 @@ export function parseCompetition(toId: string, html: string): Competition {
 
 	// Document by document: one line ianseo has written oddly must not lose the archer the others.
 	const documents: CompetitionDocument[] = [];
-	for (const panel of tags(html, 'div').filter((tag) => /results-panel"/.test(tag.attrs))) {
-		const group = tags(panel.html, 'div').find((tag) => /results-panel-head/.test(tag.attrs));
-		const items = tags(panel.html, 'div').filter((tag) => /results-item-container/.test(tag.attrs));
+	const panels = tags(html, 'div').filter((tag) => /results-panel"/.test(tag.attrs));
+	for (const panel of panels) {
+		const inside = tags(panel.html, 'div');
+		const items = inside.filter((tag) => /results-item-container/.test(tag.attrs));
+		if (items.length === 0) continue;
+
+		/*
+		 * A panel holding other panels is a heading over them, and its documents are theirs: a
+		 * qualification round split into individual and team listed every document of both twice.
+		 */
+		const holds = inside
+			.filter((tag) => /results-panel"/.test(tag.attrs))
+			.some((tag) => /results-item-container/.test(tag.html));
+		if (holds) continue;
+
+		const group = inside.find((tag) => /results-panel-head/.test(tag.attrs));
 		documents.push(...readEach(items, (item) => readDocument(item.html, text(group?.html ?? ''))));
 	}
 
@@ -37,16 +50,20 @@ export function parseCompetition(toId: string, html: string): Competition {
 function readDocument(html: string, group: string): CompetitionDocument | null {
 	const links = tags(html, 'a');
 	const page = links.find((link) => /href="[^"]*\.php/i.test(link.attrs));
-	if (!page) return null;
+	const pdfs = links.filter((link) => /href="[^"]*\.pdf/i.test(link.attrs));
+	const pdf = pdfs[0];
+	// A mandate is published as a PDF and nothing else, and is the one document an archer needs
+	// before the competition rather than after it. An index that only kept pages threw it away.
+	if (!page && !pdf) return null;
 
-	const path = href(page.attrs);
-	const pdf = links.find((link) => /href="[^"]*\.pdf/i.test(link.attrs));
+	// The icon and the words are two links to the same file, and only one of them has words in it.
+	const named = page ?? pdfs.find((link) => text(link.html).trim()) ?? pdf;
 	const stamp = pdf ? href(pdf.attrs).match(/time=([^&]+)/)?.[1] : null;
 
 	return {
-		path,
+		path: page ? href(page.attrs) : null,
 		pdfPath: pdf ? href(pdf.attrs) : null,
-		title: text(page.html),
+		title: text(named.html),
 		group,
 		updatedAt: stamp ? parseStamp(stamp) : null
 	};

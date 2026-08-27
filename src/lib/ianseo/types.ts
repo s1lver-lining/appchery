@@ -27,8 +27,12 @@ export type Tournament = {
 
 /** One published document: a result list, a bracket, an entry list. */
 export type CompetitionDocument = {
-	/** The path under ianseo, such as `/TourData/2026/26053/IQRM.php`. Identifies the document. */
-	path: string;
+	/**
+	 * The path under ianseo, such as `/TourData/2026/26053/IQRM.php`. Identifies the document. Null
+	 * where the competition published nothing but a PDF, which is how the mandate and the practical
+	 * information reach the archers who need them most.
+	 */
+	path: string | null;
 	/** The same document as a PDF, which is what ianseo prints for the notice board. */
 	pdfPath: string | null;
 	title: string;

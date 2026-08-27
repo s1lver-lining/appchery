@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { webLink } from '$lib/competitions/links';
 	import { locale, t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
 	import { competitionDates } from '$lib/competitions/dates';
@@ -49,7 +50,7 @@
 				class="press rounded-lg px-2.5 py-1.5 text-xs font-semibold {index === 0
 					? 'bg-brand text-brand-ink'
 					: 'border border-line text-muted'}"
-				href={link.href}
+				href={webLink(link.href)}
 				target="_blank"
 				rel="noreferrer"
 			>
