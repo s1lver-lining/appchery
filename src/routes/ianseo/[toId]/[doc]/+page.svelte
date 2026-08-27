@@ -99,7 +99,9 @@
 		loading = true;
 		error = null;
 		try {
-			const loaded = await loadResultDocument(path, { refresh });
+			// Same again a level down: the competition index stamps each document it lists, and a
+			// result read before ianseo last published it is the previous round's.
+			const loaded = await loadResultDocument(path, { refresh, since: entry?.updatedAt });
 			if (mine !== request) return;
 			document = loaded.value;
 			cachedAt = loaded.cachedAt;

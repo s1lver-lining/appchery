@@ -82,7 +82,9 @@
 		loading = true;
 		failed = null;
 		try {
-			const loaded = await loadCompetition(toId, { refresh });
+			// The list says when ianseo last rebuilt this competition, so a cached index read before
+			// that is stale however new it is: a competition marked new opened on yesterday's papers.
+			const loaded = await loadCompetition(toId, { refresh, since: tournament?.updatedAt });
 			if (mine !== request) return;
 			competition = loaded.value;
 			cachedAt = loaded.cachedAt;

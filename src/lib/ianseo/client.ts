@@ -35,7 +35,17 @@ export type Loaded<T> = {
 	problem: 'offline' | 'unreadable' | null;
 };
 
-export type LoadOptions = { refresh?: boolean; signal?: AbortSignal };
+export type LoadOptions = {
+	refresh?: boolean;
+	signal?: AbortSignal;
+	/**
+	 * When ianseo last published this, where something the app already trusts says so: the list
+	 * stamps every competition, and a competition stamps every document it holds. Anything read
+	 * before that moment is out of date whatever its age, which is what an archer is being told by
+	 * a competition marked new that then opens on yesterday's results.
+	 */
+	since?: number | null;
+};
 
 async function load<T>(
 	path: string,
@@ -44,7 +54,10 @@ async function load<T>(
 	options: LoadOptions = {}
 ): Promise<Loaded<T>> {
 	const cached = await readCache<T>(path);
-	if (cached && !options.refresh && Date.now() - cached.cachedAt < ttl) {
+	// Age is only a guess at whether this has changed. A publishing time is knowledge, and wins.
+	const published = options.since ?? 0;
+	const current = cached && Date.now() - cached.cachedAt < ttl && cached.cachedAt >= published;
+	if (cached && current && !options.refresh) {
 		return { value: cached.value, cachedAt: cached.cachedAt, problem: null };
 	}
 

@@ -107,3 +107,37 @@ describe('a document', () => {
 		await expect(loadResultDocument(DOC)).rejects.toMatchObject({ kind: 'missing' });
 	});
 });
+
+/**
+ * A competition marked new that opens on the results from before it was marked.
+ *
+ * Age alone cannot tell a cached page from a current one: ianseo republishes a competition several
+ * times an evening as each class finishes, and the list says exactly when it last did. A reading
+ * taken before that moment is the previous round's, however few minutes old it is.
+ */
+describe('a page ianseo has published since it was read', () => {
+	it('is read again rather than served from a cache younger than its time to live', async () => {
+		const first = await loadCompetition('26053');
+		expect(first.value.documents.length).toBeGreaterThan(0);
+
+		// ianseo publishes another class, and the list stamps the competition a minute from now.
+		pages.set(
+			'/Details.php?toId=26053',
+			pages
+				.get('/Details.php?toId=26053')!
+				.replace('IQRM.php', 'IQRM.php')
+				.replace('Recurve Men [After 60 Arrows]', 'Recurve Men [After 72 Arrows]')
+		);
+
+		const again = await loadCompetition('26053', { since: Date.now() + 60_000 });
+		expect(again.value.documents.some((one) => one.title.includes('72 Arrows'))).toBe(true);
+	});
+
+	it('and is still served from the cache when nothing has been published since', async () => {
+		const first = await loadCompetition('26053');
+		pages.clear();
+		const again = await loadCompetition('26053', { since: first.cachedAt });
+		expect(again.value.documents.length).toBe(first.value.documents.length);
+		expect(again.problem).toBe(null);
+	});
+});
