@@ -89,15 +89,22 @@
 		await load();
 	}
 
+	/** Read together and put up together, so the page does not fill itself in section by section. */
 	async function load() {
-		mine = await following();
-		theirs = await followers();
-		waiting = await pendingRequests();
-		feed = await sharedFeed();
-		if ($account) {
-			handle = await myHandle().catch(() => null);
-			isPublic = await isProfilePublic().catch(() => false);
-		}
+		const [followed, followingMe, requests, shared, name, published] = await Promise.all([
+			following(),
+			followers(),
+			pendingRequests(),
+			sharedFeed(),
+			$account ? myHandle().catch(() => null) : Promise.resolve(handle),
+			$account ? isProfilePublic().catch(() => false) : Promise.resolve(isPublic)
+		]);
+		mine = followed;
+		theirs = followingMe;
+		waiting = requests;
+		feed = shared;
+		handle = name;
+		isPublic = published;
 	}
 
 	function explain(e: unknown): string {
