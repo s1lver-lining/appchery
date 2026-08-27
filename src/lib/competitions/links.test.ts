@@ -44,3 +44,18 @@ describe('webLink', () => {
 		expect(webLink(null)).toBeUndefined();
 	});
 });
+
+/** What a competition calls its paperwork, which is a file name and not an address. */
+describe('fileLink, on the names people actually use', () => {
+	it('encodes what resolving an address leaves behind', () => {
+		expect(fileLink('/TourData/2026/29418/Feuilles [U13-U18].pdf', IANSEO)).toBe(
+			'https://www.ianseo.net/TourData/2026/29418/Feuilles%20%5BU13-U18%5D.pdf'
+		);
+	});
+
+	it('and leaves what was already encoded alone', () => {
+		expect(fileLink('/TourData/2026/29418/a%20b.pdf?time=1+2', IANSEO)).toBe(
+			'https://www.ianseo.net/TourData/2026/29418/a%20b.pdf?time=1+2'
+		);
+	});
+});

@@ -49,20 +49,29 @@ export function parseCompetition(toId: string, html: string): Competition {
 
 function readDocument(html: string, group: string): CompetitionDocument | null {
 	const links = tags(html, 'a');
-	const page = links.find((link) => /href="[^"]*\.php/i.test(link.attrs));
-	const pdfs = links.filter((link) => /href="[^"]*\.pdf/i.test(link.attrs));
-	const pdf = pdfs[0];
-	// A mandate is published as a PDF and nothing else, and is the one document an archer needs
-	// before the competition rather than after it. An index that only kept pages threw it away.
-	if (!page && !pdf) return null;
+	const own = (link: { attrs: string }) => !/href="\s*[a-z][a-z0-9+.-]*:/i.test(link.attrs);
 
-	// The icon and the words are two links to the same file, and only one of them has words in it.
-	const named = page ?? pdfs.find((link) => text(link.html).trim()) ?? pdf;
+	const page = links.find((link) => own(link) && /href="[^"]*\.php/i.test(link.attrs));
+	const pdfs = links.filter((link) => own(link) && /href="[^"]*\.pdf/i.test(link.attrs));
+	const pdf = pdfs[0];
+	/*
+	 * A competition's information panel is whatever the organiser put in it. A mandate published as
+	 * a PDF and nothing else, which is the one document an archer wants before the competition
+	 * rather than after it. Their own website, which is where the hotels and the road to the field
+	 * are written. Both were thrown away by an index that only kept pages ianseo hosts itself.
+	 */
+	const elsewhere = links.filter((link) => /href="\s*https?:/i.test(link.attrs));
+	if (!page && !pdf && elsewhere.length === 0) return null;
+
+	// The icon and the words are two links to the same place, and only one of them has words in it.
+	const candidates = page ? [page] : pdfs.length > 0 ? pdfs : elsewhere;
+	const named = candidates.find((link) => text(link.html).trim()) ?? candidates[0];
 	const stamp = pdf ? href(pdf.attrs).match(/time=([^&]+)/)?.[1] : null;
 
 	return {
 		path: page ? href(page.attrs) : null,
 		pdfPath: pdf ? href(pdf.attrs) : null,
+		url: !page && !pdf && elsewhere[0] ? href(elsewhere[0].attrs) : null,
 		title: text(named.html),
 		group,
 		updatedAt: stamp ? parseStamp(stamp) : null

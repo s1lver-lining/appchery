@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { parseCompetition, parseStamp, lastPublished } from './details';
+import { fileLink } from '$lib/competitions/links';
 
 const html = readFileSync('test/ianseo/Details.html', 'utf8');
 
@@ -59,9 +60,9 @@ describe('lastPublished', () => {
 	it('takes the newest document, ignoring the ones with no stamp', () => {
 		expect(
 			lastPublished([
-				{ path: 'a', pdfPath: null, title: '', group: '', updatedAt: 10 },
-				{ path: 'b', pdfPath: null, title: '', group: '', updatedAt: null },
-				{ path: 'c', pdfPath: null, title: '', group: '', updatedAt: 40 }
+				{ path: 'a', pdfPath: null, url: null, title: '', group: '', updatedAt: 10 },
+				{ path: 'b', pdfPath: null, url: null, title: '', group: '', updatedAt: null },
+				{ path: 'c', pdfPath: null, url: null, title: '', group: '', updatedAt: 40 }
 			])
 		).toBe(40);
 	});
@@ -102,6 +103,46 @@ describe('parseCompetition, on a competition with its own paperwork', () => {
 		expect(new Set(paths).size).toBe(paths.length);
 		expect(paperwork.documents.find((document) => document.title === 'Mandat')?.group).toBe(
 			'Information'
+		);
+	});
+});
+
+/**
+ * A competition whose paperwork is filed under the names people actually type: spaces, accents and
+ * brackets, none of which are legal in an address until something encodes them.
+ */
+describe('parseCompetition, on paperwork named the way people name files', () => {
+	const named = parseCompetition(
+		'29418',
+		readFileSync('test/ianseo/Details-29418.html', 'utf8')
+	);
+
+	it('keeps the file exactly as ianseo wrote it', () => {
+		const spread = named.documents.find((one) => one.title === 'Répartition des pelotons - jeudi');
+		expect(spread?.pdfPath).toBe(
+			'/TourData/2026/29418/répartition jeudi ecouen.pdf?time=2026-08-12+15%3A20%3A10'
+		);
+	});
+
+	/** The panel is whatever the organiser put in it, and half of it is their own website. */
+	it('keeps the competition own website beside its files', () => {
+		const beds = named.documents.find((one) => one.title === 'Les hébergements');
+		expect(beds).toMatchObject({
+			path: null,
+			pdfPath: null,
+			url: 'https://france3d2026.archersdecouen.com/hebergements'
+		});
+
+		const times = named.documents.find((one) => one.title.startsWith('Horaires des départs'));
+		expect(times?.url).toBe(
+			'https://france3d2026.archersdecouen.com/documents/horaires_jeudi_vendredi.pdf'
+		);
+	});
+
+	it('and hands out an address a browser will accept', () => {
+		const sheets = named.documents.find((one) => one.title.startsWith('Feuilles de marque - Jeune'));
+		expect(fileLink(sheets?.pdfPath, 'https://www.ianseo.net')).toBe(
+			'https://www.ianseo.net/TourData/2026/29418/Feuilles%20de%20marque%20-%20Jeune%20%5BU13-U18%5D.pdf?time=2026-08-14+14%3A06%3A41'
 		);
 	});
 });

@@ -12,8 +12,18 @@ export function fileLink(path: string | null | undefined, origin: string): strin
 	if (!path) return undefined;
 	try {
 		const url = new URL(path, origin);
-		// Resolved rather than matched, so a path with a space in it is encoded on the way through.
-		return url.origin === new URL(origin).origin ? url.href : undefined;
+		if (url.origin !== new URL(origin).origin) return undefined;
+		/*
+		 * Resolving encodes the spaces and the accents, which is most of what a competition names its
+		 * paperwork with. It leaves the brackets, and a square bracket is reserved for an address of
+		 * quite another kind: a file called `Feuilles de marque [U13-U18].pdf` produced a link that
+		 * some readers of an address take and others refuse outright.
+		 */
+		url.pathname = url.pathname.replace(
+			/[[\]{}|^`]/g,
+			(character) => `%${character.charCodeAt(0).toString(16).toUpperCase()}`
+		);
+		return url.href;
 	} catch {
 		return undefined;
 	}

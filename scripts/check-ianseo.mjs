@@ -62,7 +62,9 @@ function serveIanseo(context, state = {}) {
 					? fixture('Details-29743')
 					: toId === '28536'
 						? fixture('Details-28536')
-						: fixture('Details');
+						: toId === '29418'
+							? fixture('Details-29418')
+							: fixture('Details');
 			// A class that has just finished, which is what ianseo rebuilding a competition means.
 			if (state.late) {
 				body = body.replace(
@@ -102,6 +104,17 @@ function serveIanseo(context, state = {}) {
  * it would prove the notice was worked out and never that it was raised.
  */
 async function checkTelling() {
+	/*
+	 * Opt in, because this one has to be headed: headless Chromium refuses notification permission
+	 * outright, so a headless run would prove the notice was worked out and never that it was
+	 * raised. A window opening on somebody's screen every time they run the checks is not worth it,
+	 * so the rest of the suite stays quiet and this runs when it is asked for.
+	 */
+	if (!process.env.CHECK_NOTIFICATIONS) {
+		console.log('SKIP  being told about a result: run with CHECK_NOTIFICATIONS=1 (opens a window)');
+		return;
+	}
+
 	// Wiped first: a profile left behind by the last run is a device that already follows things.
 	const profile = `${TEMP}/telling-profile`;
 	rmSync(profile, { recursive: true, force: true });
@@ -219,6 +232,45 @@ async function wake(context, page, tag) {
 		tag
 	});
 	await session.detach();
+}
+
+/**
+ * The paperwork a competition publishes as a file and nothing else: a mandate, a schedule, a
+ * scoresheet per class. Named the way people name files, which is with spaces, accents and brackets
+ * in them, and worth a check of its own because a row that is displayed and does nothing when
+ * tapped looks exactly like a row that works.
+ */
+async function checkPaperwork(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo/29418`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*=".pdf"]', { timeout: 15000 });
+
+	const row = page.getByRole('link', { name: /Répartition des pelotons - jeudi/ }).first();
+	check('a document published only as a file is listed', await row.isVisible());
+	check(
+		'and the row itself opens it',
+		(await row.getAttribute('href')) ===
+			'https://www.ianseo.net/TourData/2026/29418/r%C3%A9partition%20jeudi%20ecouen.pdf?time=2026-08-12+15%3A20%3A10',
+		String(await row.getAttribute('href'))
+	);
+
+	const brackets = page.getByRole('link', { name: /Feuilles de marque - Jeune/ }).first();
+	check(
+		'a file named with brackets is handed over as an address, not as a file name',
+		((await brackets.getAttribute('href')) ?? '').includes('%5BU13-U18%5D'),
+		String(await brackets.getAttribute('href'))
+	);
+
+	// Nothing in this list may be a dead row: an anchor with no address is a tap that does nothing.
+	const dead = await page.locator('section a:not([href])').count();
+	check('no row in the list is a link to nowhere', dead === 0, `${dead} without an address`);
+	check('the paperwork stays inside the screen', !(await overflows(page)).wide);
+	await shot(page, 'paperwork');
+
+	await context.close();
 }
 
 /** Nothing on the page may reach past its own edge: a sideways scrollbar is the app being wrong. */
@@ -1088,6 +1140,7 @@ async function run() {
 	await checkDocumentTools(browser);
 	await checkCompetitionSearch(browser);
 	await checkShareAndClubs(browser);
+	await checkPaperwork(browser);
 
 	await browser.close();
 

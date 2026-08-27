@@ -35,6 +35,12 @@ export type CompetitionDocument = {
 	path: string | null;
 	/** The same document as a PDF, which is what ianseo prints for the notice board. */
 	pdfPath: string | null;
+	/**
+	 * Somewhere else entirely. A competition's information panel carries its own website as often as
+	 * it carries a file: the hotels, the timetable, the route to the field. Null for everything ianseo
+	 * publishes itself, which is all the rest of them.
+	 */
+	url: string | null;
 	title: string;
 	/** The panel it was published under, such as "Qualification Round". */
 	group: string;

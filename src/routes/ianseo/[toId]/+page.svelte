@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { originOf, setPageUp, withOrigin } from '$lib/nav';
+	import { externalTarget, originOf, setPageUp, withOrigin } from '$lib/nav';
 	import { formatSince } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
@@ -10,7 +10,7 @@
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadCompetition, loadTournaments, TOURNAMENT_LIST } from '$lib/ianseo/client';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
-	import { fileLink } from '$lib/competitions/links';
+	import { fileLink, webLink } from '$lib/competitions/links';
 	import { readCache } from '$lib/ianseo/store';
 	import { noteWhatIsFollowed } from '$lib/ianseo/notify';
 	import {
@@ -284,15 +284,17 @@
 					A document published as a PDF and nothing else opens the PDF: the mandate is the one an
 					archer wants before the competition rather than after it, so it is not left off the page.
 				-->
-				{#each documents as document (document.path ?? document.pdfPath)}
+				{#each documents as document (document.path ?? document.pdfPath ?? document.url)}
 					{@const inApp = document.path
 						? withOrigin(`/ianseo/${toId}/${nameOf(document.path)}`, $page.url.pathname)
 						: null}
+					<!-- A file on ianseo, or the competition's own website, which is where the hotels are. -->
+					{@const away = fileLink(document.pdfPath, IANSEO) ?? webLink(document.url)}
 					<li class="relative flex items-center gap-2">
 						<a
 							class="min-w-0 flex-1 p-3"
-							href={inApp ?? fileLink(document.pdfPath, IANSEO)}
-							target={inApp ? null : '_blank'}
+							href={inApp ?? away}
+							target={inApp ? null : externalTarget()}
 							rel={inApp ? null : 'noreferrer'}
 						>
 							<!-- The whole row opens the document; the PDF beside it is lifted over that link. -->
@@ -308,7 +310,7 @@
 							<a
 								class="press relative mr-2 shrink-0 rounded-lg border border-line px-2 py-1 text-[10px] font-bold text-muted"
 								href={fileLink(document.pdfPath, IANSEO)}
-								target="_blank"
+								target={externalTarget()}
 								rel="noreferrer"
 								aria-label={$t('ianseo.pdf')}
 							>
@@ -336,7 +338,7 @@
 		<a
 			class="press inline-flex text-xs font-medium text-muted underline"
 			href="{IANSEO}/Details.php?toId={toId}"
-			target="_blank"
+			target={externalTarget()}
 			rel="noreferrer"
 		>
 			{$t('ianseo.onIanseo')}
