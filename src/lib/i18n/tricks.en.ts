@@ -341,7 +341,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'A result you have not read says so.',
-					body: 'A followed competition that ianseo has rebuilt since you last opened it is marked New in the list, and the competitions tile on the home page carries a dot. Opening the competition is what clears it.'
+					body: 'A followed competition that ianseo has rebuilt since you last opened it is marked New in the list, and the competitions tile on the home page carries the number of them. Opening the competition is what clears it.'
 				},
 				{
 					lead: 'Told about a result while the app is shut.',

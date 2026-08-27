@@ -336,7 +336,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: "Un résultat que vous n'avez pas lu le dit.",
-					body: "Une compétition suivie que ianseo a reconstruite depuis votre dernière visite est marquée Nouveau dans la liste, et la tuile des compétitions sur l'accueil porte un point. C'est l'ouverture de la compétition qui l'efface."
+					body: "Une compétition suivie que ianseo a reconstruite depuis votre dernière visite est marquée Nouveau dans la liste, et la tuile des compétitions sur l'accueil en porte le nombre. C'est l'ouverture de la compétition qui l'efface."
 				},
 				{
 					lead: "Être averti d'un résultat, application fermée.",

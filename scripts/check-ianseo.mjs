@@ -9,7 +9,7 @@
  * Serve the app first: `npx vite dev --port 4180`.
  */
 import { chromium } from 'playwright';
-import { readFileSync, mkdirSync } from 'node:fs';
+import { readFileSync, mkdirSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 
 const BASE = process.argv[2] ?? 'http://localhost:4180';
@@ -102,7 +102,9 @@ function serveIanseo(context, state = {}) {
  * it would prove the notice was worked out and never that it was raised.
  */
 async function checkTelling() {
+	// Wiped first: a profile left behind by the last run is a device that already follows things.
 	const profile = `${TEMP}/telling-profile`;
+	rmSync(profile, { recursive: true, force: true });
 	let context;
 	try {
 		context = await chromium.launchPersistentContext(profile, {
@@ -287,8 +289,9 @@ async function checkNewResults(browser) {
 	await page.goto(`${BASE}/`, { waitUntil: 'networkidle' });
 	await page.waitForTimeout(400);
 	check(
-		'the home page carries the dot that leads to it',
-		(await page.locator('a[href*="/ianseo"] span.bg-brand').count()) > 0
+		'the home page carries the count that leads to it',
+		(await page.locator('a[href*="/ianseo"] span.bg-brand').allInnerTexts()).includes('1'),
+		JSON.stringify(await page.locator('a[href*="/ianseo"] span.bg-brand').allInnerTexts())
 	);
 
 	// Opening it is reading it, so it stops being new.
