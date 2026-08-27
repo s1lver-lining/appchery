@@ -112,6 +112,7 @@ export const fr: Dictionary = {
 		overviewTab: 'Aperçu',
 		settingsTab: 'Réglages',
 		weather: 'Météo',
+		sky: 'Ciel',
 		weatherNone: 'Non enregistrée',
 		weatherOff: "L'enregistrement de la météo est désactivé. Activez-le dans les paramètres.",
 		noConditions: 'Rien enregistré pour cette séance.',
@@ -396,6 +397,7 @@ export const fr: Dictionary = {
 		confirmBody: 'Ses volées et ses flèches sont supprimées avec elle. Action irréversible.'
 	},
 	weather: {
+		unspecified: 'Non précisé',
 		sun: 'Dégagé',
 		cloud: 'Nuageux',
 		rain: 'Pluie',
@@ -943,6 +945,7 @@ export const fr: Dictionary = {
 		justRead: "Lu à l'instant",
 		readNever: 'Jamais lu',
 		refresh: 'Actualiser',
+		onIanseo: 'Ouvrir sur ianseo',
 		reading: 'Lecture de ianseo',
 		stale: 'ianseo est injoignable. Ceci a été lu {when}.',
 		emptyTitle: 'Rien à afficher pour le moment',
@@ -1602,7 +1605,7 @@ insetHint:
 	},
 	experience: {
 		title: 'Expérience',
-		hint: 'Chaque flèche, chaque volée comptée, chaque badge, chaque match gagné.',
+		hint: 'Chaque flèche, volée comptée, badge, match gagné.',
 		levelStat: 'Niveau',
 		level: 'Niveau {level}',
 		levelUp: 'Niveau supérieur',

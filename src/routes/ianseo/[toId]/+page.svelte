@@ -324,6 +324,18 @@
 			{$t('ianseo.refresh')}
 		</button>
 	</ReadNote>
+
+	<!-- Where all of this came from: whatever the app has not redrawn is still one tap away. -->
+	<p class="pb-2 text-center">
+		<a
+			class="press inline-flex text-xs font-medium text-muted underline"
+			href="{IANSEO}/Details.php?toId={toId}"
+			target="_blank"
+			rel="noreferrer"
+		>
+			{$t('ianseo.onIanseo')}
+		</a>
+	</p>
 </div>
 {/if}
 

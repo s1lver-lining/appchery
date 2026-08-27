@@ -110,6 +110,7 @@ export const en = {
 		overviewTab: 'Overview',
 		settingsTab: 'Settings',
 		weather: 'Weather',
+		sky: 'Sky',
 		weatherNone: 'Not recorded',
 		weatherOff: 'Weather recording is off. Turn it on in Settings.',
 		noConditions: 'Nothing recorded for this session yet.',
@@ -396,6 +397,7 @@ export const en = {
 		confirmBody: 'Its ends and arrows are deleted with it. This cannot be undone.'
 	},
 	weather: {
+		unspecified: 'Unspecified',
 		sun: 'Clear',
 		cloud: 'Cloudy',
 		rain: 'Rain',
@@ -940,6 +942,7 @@ export const en = {
 		justRead: 'Just read',
 		readNever: 'Never read',
 		refresh: 'Refresh',
+		onIanseo: 'Open on ianseo',
 		reading: 'Reading ianseo',
 		stale: 'ianseo could not be reached. This was read {when}.',
 		emptyTitle: 'Nothing to show yet',
@@ -1589,7 +1592,7 @@ insetHint:
 	},
 	experience: {
 		title: 'Experience',
-		hint: 'Every arrow, every round, every badge, every match won.',
+		hint: 'Every arrow, round, badge, match won.',
 		levelStat: 'Level',
 		level: 'Level {level}',
 		levelUp: 'Level up',
