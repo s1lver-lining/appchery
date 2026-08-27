@@ -44,8 +44,9 @@
 
 <div class="overflow-hidden rounded-2xl border border-line bg-surface">
 	{#if section.heading}
+		<!-- An entry list by club heads each section with one, number and all, so it is named too. -->
 		<h3 class="border-b border-line bg-line/25 px-3 py-2 text-sm font-semibold break-words">
-			{section.heading}
+			{clubName(section.heading, $ianseoFullClubNames)}
 		</h3>
 	{/if}
 
