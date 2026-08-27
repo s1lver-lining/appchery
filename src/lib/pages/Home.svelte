@@ -94,11 +94,18 @@
 	let ripple = $state(!rippled);
 	rippled = true;
 
+	/**
+	 * Read together and put on screen together, so the home page arrives as one thing. Assigned a
+	 * reading at a time, it built itself up in front of the archer: the week's arrows climbing off
+	 * zero and the planned outings appearing under them a moment later.
+	 */
 	async function refresh() {
-		sessions = await listSessions();
-		slots = await listPlanSlots();
-		plans = await listPlans();
-		const activities = await listAllActivities();
+		const [outings, planned, allPlans, activities] = await Promise.all([
+			listSessions(),
+			listPlanSlots(),
+			listPlans(),
+			listAllActivities()
+		]);
 		unfinished = activities.find(
 			(a) =>
 				a.kind === 'scoring' &&
@@ -133,10 +140,14 @@
 			roundDefinitionId: a.roundDefinitionId,
 			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 		}));
-		earned = experience(await loadExperienceInput());
-		noteLevel(earned.level);
 		volume = toVolume(all);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
+		sessions = outings;
+		slots = planned;
+		plans = allPlans;
+		// The level is its own reading, so the page is not held back waiting on it.
+		earned = experience(await loadExperienceInput());
+		noteLevel(earned.level);
 		/* Read from the cache only: the home page never waits on the network to paint. */
 		feed = await sharedFeed();
 	}
