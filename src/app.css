@@ -24,6 +24,29 @@
 	--color-face-blue: #3aa0d8;
 	--color-face-black: #23282c;
 	--color-face-white: #f4f1ea;
+
+	/*
+	 * How wide a page is allowed to get. Indirected through a runtime variable like the colours
+	 * above, because the desk layout widens it at a breakpoint and Tailwind cannot vary a theme
+	 * value by media query on its own.
+	 */
+	--container-page: var(--c-page-max);
+}
+
+:root {
+	/* A phone column, which is what every screen got before the desk layout existed. */
+	--c-page-max: 42rem;
+}
+
+/*
+ * The desk. Past this width the bottom tab bar gives way to a rail down the side, the pages stop
+ * sliding under a finger, and a page is allowed the room it is being given rather than sitting in
+ * a phone sized strip with emptiness either side.
+ */
+@media (min-width: 64rem) {
+	:root {
+		--c-page-max: 76rem;
+	}
 }
 
 /*
@@ -196,6 +219,8 @@ body {
 		transform 120ms ease-out;
 }
 
+/* `data-pressed` is set by the pointer watcher; `:active` is what a mouse and a keyboard still use. */
+.press[data-pressed],
 .press:active {
 	filter: brightness(var(--press-dim));
 	transform: scale(0.985);
@@ -203,6 +228,7 @@ body {
 
 /* A pressed card must not lift the text off its own baseline, so the scale is only ever inward. */
 @media (prefers-reduced-motion: reduce) {
+	.press[data-pressed],
 	.press:active {
 		transform: none;
 	}
@@ -229,6 +255,13 @@ body {
 
 .safe-top {
 	padding-top: env(safe-area-inset-top);
+}
+
+/* No status bar to clear on a desk, and a header flush against the window edge reads as cropped. */
+@media (min-width: 64rem) {
+	.safe-top {
+		padding-top: max(env(safe-area-inset-top), 0.5rem);
+	}
 }
 
 .safe-bottom {

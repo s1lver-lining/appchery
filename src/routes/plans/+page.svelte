@@ -52,7 +52,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-2 p-4">
+<div class="mx-auto w-full max-w-page space-y-2 p-4">
 	{#if plans.length === 0}
 		<EmptyState
 			title={$t('empty.plans.title')}
@@ -110,7 +110,7 @@
 
 <div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
+		class="press mx-auto flex w-full max-w-page items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
 		onclick={add}
 	>
 		<Icon name="plus" size={20} />

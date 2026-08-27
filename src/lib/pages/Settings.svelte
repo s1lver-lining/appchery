@@ -286,8 +286,8 @@
 
 <PageHeader motif="settings" title={$t('settings.title')} />
 
-<div class="mx-auto w-full max-w-2xl p-4">
-	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4" swipeable={false}>
+<div class="mx-auto w-full max-w-page p-4">
+	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4" swipeable={false} expand="even">
 		{#snippet pane(key)}
 			{#if key === 'app'}
 				<!-- What this build is, for a bug report: the release, the commit count behind it, and

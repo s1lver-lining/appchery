@@ -57,6 +57,7 @@
 	import { withOrigin } from '$lib/nav';
 	import HeaderEdge from '$lib/ui/HeaderEdge.svelte';
 	import { SNAP_EASE } from '$lib/ui/swipe';
+	import { isDesk } from '$lib/ui/desk';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import DateTimeDialog from '$lib/ui/DateTimeDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
@@ -263,7 +264,8 @@
 	 * Only outings that have happened: what is still ahead is announced above, not recalled here.
 	 */
 	const shot = $derived(sessions.filter((s) => hasHappened(s)));
-	const recent = $derived(shot.slice(0, 3).reverse());
+	// Three is what a phone has room for under everything else; a desk column has room for twice that.
+	const recent = $derived(shot.slice(0, $isDesk ? 6 : 3).reverse());
 
 	const today = startOfDay(Date.now());
 
@@ -414,7 +416,7 @@
 		/>
 	</svg>
 
-	<div class="relative mx-auto w-full max-w-2xl px-4">
+	<div class="relative mx-auto w-full max-w-page px-4">
 		<p class="text-sm font-medium text-brand-text">{$t('home.greeting')}</p>
 		<h1 class="text-3xl font-bold tracking-tight">{$t('home.title')}</h1>
 
@@ -447,12 +449,14 @@
 	</div>
 {/snippet}
 
-<div class="mx-auto w-full max-w-2xl flex-1 space-y-5 p-4">
+<div
+	class="mx-auto w-full max-w-page flex-1 space-y-5 p-4 lg:grid lg:grid-cols-3 lg:content-start lg:items-start lg:gap-5 lg:space-y-0"
+>
 	{#if freshBest}
 		<!-- Said once, for a few days: a record that stays on the page stops being one. It leads the
 			page while it lasts, because it is the only thing here that just happened. -->
 		<div
-			class="relative flex items-center gap-3 rounded-2xl border border-accent/40 bg-gradient-to-r from-accent/12 to-surface p-3 shadow-sm"
+			class="relative flex items-center gap-3 rounded-2xl border border-accent/40 bg-gradient-to-r from-accent/12 to-surface p-3 shadow-sm lg:col-span-3"
 		>
 			<a href="/activities/{freshBest.best.id}" class="flex min-w-0 flex-1 items-center gap-3">
 				<span
@@ -521,7 +525,7 @@
 	<!-- What is coming and what the week has come to, side by side: the two things worth a tap before
 		anything else, and neither of them fills a line on its own. -->
 	<!-- The level shares the line rather than taking one of its own: it is a standing, not an event. -->
-	<section>
+	<section class="lg:col-span-3">
 		<!-- The week names itself on its own card now, so this line is left to the outing and the level.
 			Both can be absent, and an empty line still takes its margin. -->
 		{#if next || earned}
@@ -643,13 +647,17 @@
 		{/if}
 	</section>
 
-	<!-- Above the history: the places to go are a choice, and what has been shot is only a reminder. -->
-	<section>
+	<!--
+		Above the history on a phone, beside it on a desk: the places to go are a choice, and what has
+		been shot is only a reminder. Ordered rather than rewritten, so the phone keeps the reading
+		order it was given and the grid gets the one a window wants.
+	-->
+	<section class="lg:order-2 lg:col-span-1">
 		{@render heading($t('home.elsewhere'))}
 		<AppGrid from="/" />
 	</section>
 
-	<section>
+	<section class="lg:order-1 lg:col-span-2">
 		{@render heading(
 			$t('home.recent'),
 			shot.length > recent.length ? { href: '/sessions', label: $t('home.seeAll') } : undefined
@@ -704,7 +712,7 @@
 <div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<!-- One button across the bar: starting an outing is what this page is for, and the rarer ways
 		to start one are held behind a long press rather than given a permanent fifth of the width. -->
-	<div class="mx-auto w-full max-w-2xl">
+	<div class="mx-auto w-full max-w-page">
 		<MoreMenu
 			label={$t('home.moreActions')}
 			wrapperClass="w-full"

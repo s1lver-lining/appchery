@@ -172,7 +172,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl p-4">
+<div class="mx-auto w-full max-w-page p-4">
 	<p class="mb-3 text-sm text-muted">{$t('tuning.guideHint')}</p>
 
 	<!--
@@ -239,7 +239,7 @@
 			</button>
 		</header>
 
-		<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 overflow-y-auto p-4">
+		<div class="mx-auto w-full max-w-page flex-1 space-y-4 overflow-y-auto p-4">
 			<p class="text-[15px] leading-relaxed">{openText.why}</p>
 
 			{#if mustAsk}

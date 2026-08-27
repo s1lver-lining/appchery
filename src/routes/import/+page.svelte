@@ -41,7 +41,7 @@
 
 <PageHeader motif="settings" title={$t('importer.title')} />
 
-<div class="mx-auto w-full max-w-2xl p-4">
+<div class="mx-auto w-full max-w-page p-4">
 	{#if missing}
 		<p class="text-sm text-muted">{$t('importer.nothingHanded')}</p>
 		<a href="/settings" class="mt-3 inline-block text-sm font-semibold text-brand-text">

@@ -33,7 +33,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<p class="text-sm text-muted">{$t('exercises.intro')}</p>
 
 	<!-- Filtered by what the archer has to hand, which is the question asked before any other. -->

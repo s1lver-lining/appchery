@@ -70,7 +70,7 @@
 	}
 </script>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<section class="rounded-2xl border border-line bg-surface p-4">
 		<h2 class="mb-3 text-sm font-semibold text-muted">{$t('running.what')}</h2>
 

@@ -356,7 +356,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<!-- Pulled up towards the header: the chips belong to it more than to the cards below them. -->
 	<div class="-mt-2">
 			<FilterBar

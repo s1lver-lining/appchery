@@ -54,7 +54,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<p class="text-sm text-muted">{$t('muscles.intro')}</p>
 
 	<!-- The picker, first: it is what the page is for, and the shot below shades it in the same way. -->

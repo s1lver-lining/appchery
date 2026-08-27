@@ -53,7 +53,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<section class="rounded-xl border border-line bg-surface p-4">
 		<label class="block text-sm">
 			{$t('round.name')} <span class="text-muted">({$t('common.optional')})</span>
@@ -132,7 +132,7 @@
 <!-- Sticky rather than fixed, so the picker above it scrolls yet the action stays under the thumb. -->
 <div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
+		class="press mx-auto flex w-full max-w-page items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink disabled:opacity-50"
 		disabled={errors.length > 0}
 		onclick={create}
 	>

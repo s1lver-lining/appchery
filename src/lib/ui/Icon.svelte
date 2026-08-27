@@ -96,6 +96,10 @@
 		fog: `
 			<path d="M7.4 13.4a4.2 4.2 0 0 1-.4-8.4 5.4 5.4 0 0 1 10.3 1.4 3.5 3.5 0 0 1-.6 7z" />
 			<path d="M5 17h14M7 20.4h10" />`,
+		// A sky nobody wrote down: the question stands in for the shape that would have been drawn.
+		unknown: `
+			<path d="M9.1 9.1a2.9 2.9 0 0 1 5.7 .9c0 1.9-2.8 2.3-2.8 4.1" />
+			<circle cx="12" cy="17.8" r="1.1" fill="currentColor" stroke="none" />`,
 		storm: `
 			<path d="M7.4 14.4a4.2 4.2 0 0 1-.4-8.4 5.4 5.4 0 0 1 10.3 1.4 3.5 3.5 0 0 1-.6 7z" />
 			<path d="M13 16.4l-2.6 3.6h3l-2 2.4" />`,

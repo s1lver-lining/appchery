@@ -321,7 +321,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	<!-- The search sits above the filters because it overrides them: a name is asked of all of ianseo. -->

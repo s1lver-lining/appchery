@@ -647,7 +647,7 @@
 {/snippet}
 
 {#if config && result && scoreSet}
-	<div class="mx-auto flex w-full max-w-2xl flex-col">
+	<div class="mx-auto flex w-full max-w-page flex-col">
 		<div class="safe-top flex max-h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">
 			<div class="shrink-0 space-y-3">
 				<!-- The header every activity wears: back, the name in the middle, its actions to the right. -->

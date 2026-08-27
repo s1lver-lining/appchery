@@ -163,7 +163,7 @@
 
 <PageHeader motif="sessions" title={$t('friends.title')} />
 
-<div class="mx-auto w-full max-w-2xl p-4">
+<div class="mx-auto w-full max-w-page p-4">
 	{#if !$account}
 		<EmptyState title={$t('friends.signedOutTitle')} body={$t('friends.signedOutBody')} action={{ label: $t('account.title'), href: '/settings' }} />
 	{:else if !handle}
@@ -290,7 +290,7 @@
 			</section>
 		{/if}
 
-		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-2 pt-4" swipeable={false}>
+		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-2 pt-4" swipeable={false} expand="primary">
 			{#snippet pane(key)}
 				{#if key === 'feed'}
 					<FriendFeed {feed} {known} />

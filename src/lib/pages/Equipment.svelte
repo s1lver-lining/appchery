@@ -143,7 +143,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl flex-1 space-y-4 p-4">
+<div class="mx-auto w-full max-w-page flex-1 space-y-4 p-4">
 	{#if bows.length === 0}
 		<EmptyState
 			title={$t('empty.equipment.title')}
@@ -193,7 +193,7 @@
 <!-- Sticky rather than fixed, so it sits under the list yet never scrolls out of reach. -->
 <div class="overbar sticky bottom-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
 	<button
-		class="press mx-auto flex w-full max-w-2xl items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
+		class="press mx-auto flex w-full max-w-page items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"
 		onclick={openAdd}
 	>
 		<Icon name="plus" size={20} />

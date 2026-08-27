@@ -98,7 +98,7 @@
 
 <PageHeader motif="sessions" title={profile?.displayName || `@${handle}`} subtitle={profile ? `@${profile.handle}` : undefined} />
 
-<div class="mx-auto w-full max-w-2xl p-4">
+<div class="mx-auto w-full max-w-page p-4">
 	{#if !profile}
 		<EmptyState title={$t('friends.noSuchHandle')} body={$t('friends.noSuchHandleBody')} action={{ label: $t('friends.title'), href: '/friends' }} />
 	{:else}

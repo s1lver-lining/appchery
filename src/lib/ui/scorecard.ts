@@ -38,7 +38,7 @@ export interface CardData {
 	category: string | null;
 	/** What the outing was called, which for a competition is the name of the competition. */
 	sessionName: string | null;
-	weather: { icon: WeatherGlyph; temperature: string; wind: string } | null;
+	weather: { icon: WeatherGlyph; temperature: string | null; wind: string | null } | null;
 	isBest: boolean;
 	options: CardOptions;
 	labels: {

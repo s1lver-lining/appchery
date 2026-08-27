@@ -911,7 +911,7 @@
 {:else if activity && (activity.kind === STRENGTH_KIND || activity.kind === RUNNING_KIND)}
 	<!-- Training rather than shooting: no score sheet, no keypad, and no arrows anywhere on it. -->
 	<div class="safe-top pt-2">
-		<header class="mx-auto w-full max-w-2xl px-4 pt-4">
+		<header class="mx-auto w-full max-w-page px-4 pt-4">
 			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
 			<h1 class="text-2xl font-bold tracking-tight">
 				{$t(activity.kind === STRENGTH_KIND ? 'strength.title' : 'running.title')}
@@ -927,7 +927,7 @@
 	<!-- Arrows at the same keypad a round is scored on, to a rule instead of to a round. -->
 	<Drill {activity} onchange={refresh} />
 {:else if activity && activity.kind === 'tuning'}
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
+	<div class="safe-top mx-auto w-full max-w-page space-y-4 p-4 pt-6">
 		<header>
 			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
 			<h1 class="text-2xl font-bold tracking-tight">{templateName}</h1>
@@ -1090,7 +1090,7 @@
 		No target face and no keypad: this page exists because the arrows were never recorded one by
 		one. It asks the two things the archer does know, and counts nothing on their behalf.
 	-->
-	<div class="safe-top mx-auto w-full max-w-2xl space-y-4 p-4 pt-6">
+	<div class="safe-top mx-auto w-full max-w-page space-y-4 p-4 pt-6">
 		<header>
 			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
 			<h1 class="text-2xl font-bold tracking-tight">{$t('freeScore.title')}</h1>
@@ -1160,7 +1160,7 @@
 	</div>
 
 {:else if activity && round && scoreSet}
-	<div class="mx-auto flex w-full max-w-2xl flex-col">
+	<div class="mx-auto flex w-full max-w-page flex-col">
 		<!-- A fixed height, not a minimum: the sheet must scroll so the keypad stays on screen. -->
 		<!-- Capped rather than fixed, so a short sheet leaves no dead space under the keypad. -->
 <div class="safe-top flex max-h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">

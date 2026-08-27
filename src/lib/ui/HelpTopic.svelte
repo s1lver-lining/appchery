@@ -31,7 +31,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-3 p-4">
+<div class="mx-auto w-full max-w-page space-y-3 p-4">
 	{#each terms as item (item.term)}
 		<section class="rounded-xl border border-line bg-surface p-4">
 			<p class="text-[15px] leading-relaxed">

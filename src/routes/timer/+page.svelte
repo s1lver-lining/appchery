@@ -182,7 +182,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<!-- The clock itself, the size of the screen: it is read from the shooting line, not from a desk. -->
 	<section
 		class="flex flex-col items-center justify-center rounded-2xl py-10 transition-colors {BAND[light]}"

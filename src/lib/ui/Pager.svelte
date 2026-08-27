@@ -10,6 +10,7 @@
 		mainScrollReset
 	} from '$lib/nav';
 	import { swipe, COMMIT_RATIO, SNAP_MS, SNAP_EASE } from './swipe';
+	import { isDesk } from './desk';
 	import Feed from '$lib/pages/Feed.svelte';
 	import Home from '$lib/pages/Home.svelte';
 	import Sessions from '$lib/pages/Sessions.svelte';
@@ -137,7 +138,10 @@
 	/** Runs the track to `target` and hands it the page once it is centred, whatever moved it. */
 	function settle(target: number) {
 		settling = true;
-		duration = SNAP_MS;
+		// A window is not a phone: a page picked off the rail arrives, it does not slide in from
+		// somewhere. The track still carries it, only with nothing to watch on the way.
+		const ms = $isDesk ? 0 : SNAP_MS;
+		duration = ms;
 		offset = -Math.sign(target - index) * width;
 		setTimeout(async () => {
 			// A tab bar tap has already changed the URL, and going there twice would double the history.
@@ -150,7 +154,7 @@
 			sliding = null;
 			index = target;
 			settling = false;
-		}, SNAP_MS);
+		}, ms);
 	}
 
 	/** A tap on the tab bar travels the same way a swipe does, so the two never feel like two apps. */
@@ -196,7 +200,7 @@
 	}}
 	bind:clientWidth={width}
 	use:swipe={{
-		enabled: () => !settling,
+		enabled: () => !settling && !$isDesk,
 		onMove: (dx) => {
 			duration = 0;
 			offset = damp(dx);

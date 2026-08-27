@@ -36,7 +36,7 @@
 
 <PageHeader motif="feed" title={$t('friends.feedTab')} subtitle={$t('feed.subtitle')} />
 
-<div class="mx-auto w-full max-w-2xl space-y-2 p-4">
+<div class="mx-auto w-full max-w-page space-y-2 p-4">
 	{#if feed.length === 0}
 		<EmptyState
 			title={$t('friends.emptyFeedTitle')}

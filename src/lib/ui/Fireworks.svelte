@@ -4,6 +4,7 @@
 	import { withOrigin } from '$lib/nav';
 	import Icon from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
+	import { celebrate } from '$lib/haptics';
 
 	/** One thing worth interrupting for: a record, or a badge. */
 	export interface Award {
@@ -20,6 +21,11 @@
 	 * and the whole thing gets out of the way on its own: the archer is still stood on the line.
 	 */
 	let { awards, onclose }: { awards: Award[]; onclose: () => void } = $props();
+
+	// Felt as well as seen: the moment this fires, the archer is usually still looking at the target.
+	$effect(() => {
+		if (awards.length > 0) celebrate();
+	});
 
 	// A record is dismissed by the back key like anything else sitting on top of the page.
 	closeOnBack(

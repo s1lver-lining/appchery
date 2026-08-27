@@ -79,6 +79,12 @@
 	]);
 
 	const share = (xp: number) => (earned && earned.total > 0 ? (xp / earned.total) * 100 : 0);
+
+	/**
+	 * Seven figures do not fit the hole in the ring, so past a million the total is read out under
+	 * the donut instead of spilling over its own arc.
+	 */
+	const spills = $derived((earned?.total ?? 0) >= 1000000);
 	const slices = $derived(
 		earned
 			? XP_SOURCES.map((source) => ({
@@ -100,7 +106,7 @@
 </PageHeader>
 
 {#if earned}
-	<div class="mx-auto w-full max-w-2xl space-y-5 p-4">
+	<div class="mx-auto w-full max-w-page space-y-5 p-4">
 		<!-- The level, what it took, and what the next one asks: the three numbers the page is for. -->
 		<section class="rounded-2xl border border-line bg-surface p-4">
 			<div class="flex items-baseline justify-between">
@@ -145,12 +151,35 @@
 				<p class="text-sm text-muted">{$t('experience.empty')}</p>
 			{:else}
 				<div class="flex flex-wrap items-center justify-center gap-5">
-					<ShareDonut {slices}>
-						{#snippet centre()}
-							<p class="tabular text-2xl leading-none font-bold">{$formatNumber(earned!.total)}</p>
-							<p class="mt-1 text-[11px] text-muted">{$t('experience.total')}</p>
-						{/snippet}
-					</ShareDonut>
+					<!--
+						Seven figures do not fit the hole, and a total that spills over its own ring reads as a
+						fault in the page. Past a million the hole keeps the caption and the figure moves below
+						it, where it has the width of the whole donut to be read across.
+					-->
+					<div class="flex shrink-0 flex-col items-center">
+						<ShareDonut {slices}>
+							{#snippet centre()}
+								{#if spills}
+									<p
+										class="max-w-[7rem] text-[11px] leading-tight font-semibold tracking-wider text-muted uppercase"
+									>
+										{$t('experience.total')}
+									</p>
+								{:else}
+									<p class="tabular text-2xl leading-none font-bold">{$formatNumber(earned!.total)}</p>
+									<p class="mt-1 text-[11px] text-muted">{$t('experience.total')}</p>
+								{/if}
+							{/snippet}
+						</ShareDonut>
+
+						{#if spills}
+							<p
+								class="tabular -mt-1 rounded-full border border-line bg-sunk px-3.5 py-1 text-xl leading-none font-bold text-brand-text"
+							>
+								{$formatNumber(earned!.total)}
+							</p>
+						{/if}
+					</div>
 
 					<ul class="min-w-52 flex-1 space-y-2.5">
 						{#each XP_SOURCES as source (source)}

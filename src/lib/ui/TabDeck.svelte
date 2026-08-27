@@ -2,6 +2,7 @@
 	import type { Snippet } from 'svelte';
 	import { swipe, COMMIT_RATIO, SNAP_MS, SNAP_EASE } from './swipe';
 	import { registerTabs } from '$lib/nav';
+	import { isDesk } from './desk';
 
 	/**
 	 * The tabs inside a page, sliding the way the pages themselves do. Both panes stay mounted so a
@@ -12,12 +13,27 @@
 		value = $bindable(),
 		pane,
 		paneClass = 'space-y-4',
-		swipeable = true
+		swipeable = true,
+		expand = false
 	}: {
 		tabs: { key: K; label: string; alert?: boolean }[];
 		value: K;
 		pane: Snippet<[K]>;
 		paneClass?: string;
+		/**
+		 * Whether the deck may stop being a deck when there is room for it. A tab exists because a
+		 * phone can only show one pane at a time; give the page a window's width and the panes stand
+		 * side by side, each under its own name, and the tabs are no longer a question anybody has to
+		 * answer. Only for decks whose panes are separate things: a deck whose tabs are views of one
+		 * thing still has to pick one.
+		 *
+		 * How they stand depends on what they are to each other. `primary` gives the first tab two
+		 * thirds and stacks the rest down the side, which suits a page that is mostly one thing with
+		 * context beside it. `even` gives every tab a column of its own, for tabs that are peers:
+		 * stacking two long peers in a third of the width leaves one column running far past the
+		 * other, which is worse than the tabs were.
+		 */
+		expand?: false | 'primary' | 'even';
 		/**
 		 * Off on a page that is itself swiped between: on the main pager a sideways drag belongs to
 		 * the pages, and a deck that also answered it would leave the archer between two of each.
@@ -45,7 +61,13 @@
 
 	// A swipe anywhere else on the page reaches the deck through here, since only the deck itself is
 	// close enough to the finger to follow it.
-	$effect(() => (swipeable ? registerTabs({ count: tabs.length, index, select }) : undefined));
+	/** Laid out in columns rather than stacked, which is the whole of what expanding means. */
+	const spread = $derived(expand && $isDesk ? expand : null);
+
+	// The gesture belongs to the sliding deck: with every pane on show there is nothing to slide to.
+	$effect(() =>
+		swipeable && !spread ? registerTabs({ count: tabs.length, index, select }) : undefined
+	);
 
 	function select(target: number) {
 		if (target === index) return;
@@ -82,6 +104,60 @@
 	}
 </script>
 
+{#snippet heading(item: { label: string; alert?: boolean })}
+	<h2
+		class="mb-2.5 flex items-center gap-1.5 border-b border-line pb-1.5 text-[11px] font-semibold tracking-wider text-muted uppercase"
+	>
+		{item.label}
+		{#if item.alert}
+			<span class="size-1.5 rounded-full bg-danger"></span>
+		{/if}
+	</h2>
+{/snippet}
+
+{#if spread}
+	<!--
+		Every pane at once, but not as equals. Tiling a phone layout across a window gives three narrow
+		strips and no more room than before; a page has one thing it is mostly for and the rest is what
+		you glance at while doing it. So the first tab takes two thirds and the others stack down the
+		side, which is the shape a window actually wants.
+	-->
+	{#if spread === 'even'}
+		<div
+			class="grid items-start gap-5 {tabs.length >= 3 ? 'grid-cols-3' : 'grid-cols-2'}"
+			data-noswipe="true"
+		>
+			{#each tabs as item (item.key)}
+				<section class="min-w-0">
+					{@render heading(item)}
+					<div class={paneClass}>
+						{@render pane(item.key)}
+					</div>
+				</section>
+			{/each}
+		</div>
+	{:else}
+		<div class="grid grid-cols-3 items-start gap-5" data-noswipe="true">
+			<section class="col-span-2 min-w-0">
+				{@render heading(tabs[0])}
+				<div class={paneClass}>
+					{@render pane(tabs[0].key)}
+				</div>
+			</section>
+
+			<div class="min-w-0 space-y-6">
+				{#each tabs.slice(1) as item (item.key)}
+					<section class="min-w-0">
+						{@render heading(item)}
+						<div class={paneClass}>
+							{@render pane(item.key)}
+						</div>
+					</section>
+				{/each}
+			</div>
+		</div>
+	{/if}
+{:else}
 <nav class="flex gap-1 rounded-lg bg-sunk p-1">
 	{#each tabs as item, i (item.key)}
 		<button
@@ -127,3 +203,4 @@
 		</div>
 	{/each}
 </div>
+{/if}

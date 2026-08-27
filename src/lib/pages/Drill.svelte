@@ -289,7 +289,7 @@
 	}
 </script>
 
-<div class="mx-auto flex w-full max-w-2xl flex-col">
+<div class="mx-auto flex w-full max-w-page flex-col">
 	<div class="safe-top flex h-[calc(100dvh-4.6rem)] flex-col gap-3 p-4 pt-6">
 		<header class="flex shrink-0 items-center gap-2">
 			<a

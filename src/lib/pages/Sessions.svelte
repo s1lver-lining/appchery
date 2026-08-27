@@ -733,7 +733,7 @@
 
 	<!-- The search stays put and the list under it scrolls, the way a calendar app holds its header.
 		One line for both: the view is a pill rather than a tab strip, which spends a row on nothing. -->
-	<div class="mx-auto flex min-h-0 w-full max-w-2xl flex-1 flex-col px-4 pt-3">
+	<div class="mx-auto flex min-h-0 w-full max-w-page flex-1 flex-col px-4 pt-3">
 		<div class="mb-3 flex shrink-0 items-center gap-2">
 			<!-- Nothing to search in a month grid, so the box greys out rather than filtering nothing. -->
 			<div class="relative min-w-0 flex-1 {tab === 'calendar' ? 'opacity-50' : ''}">
@@ -987,7 +987,7 @@
 		/>
 	{:else if $fullNewSessionButton}
 		<div class="overbar sticky bottom-0 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
-			<div class="mx-auto flex w-full max-w-2xl gap-2">
+			<div class="mx-auto flex w-full max-w-page gap-2">
 				<MoreMenu label={$t('sessions.moreKinds')} items={NEW_KINDS} />
 				<button
 					class="press flex w-4/5 items-center justify-center gap-1.5 rounded-xl bg-brand py-2.5 font-semibold text-brand-ink"

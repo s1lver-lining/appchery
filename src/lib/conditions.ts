@@ -10,9 +10,13 @@ export interface Conditions {
 }
 
 export interface WeatherSnapshot {
-	temperatureC: number;
-	windSpeedKmh: number;
-	windDirectionDeg: number;
+	/**
+	 * Absent on a sky said by hand, which answers what it looked like and nothing more: an archer
+	 * out of signal knows it was raining without knowing it was eleven degrees.
+	 */
+	temperatureC?: number;
+	windSpeedKmh?: number;
+	windDirectionDeg?: number;
 	code: number;
 	fetchedAt: number;
 }
@@ -134,11 +138,15 @@ export async function fetchPlace(latitude: number, longitude: number): Promise<s
 	}
 }
 
-export function formatTemperature(snapshot: WeatherSnapshot): string {
+/** Null rather than a figure when nothing was read, so a sky said by hand never invents a reading. */
+export function formatTemperature(snapshot: WeatherSnapshot): string | null {
+	if (typeof snapshot.temperatureC !== 'number') return null;
 	return `${Math.round(snapshot.temperatureC)}°C`;
 }
 
-export function formatWind(snapshot: WeatherSnapshot): string {
+export function formatWind(snapshot: WeatherSnapshot): string | null {
+	if (typeof snapshot.windSpeedKmh !== 'number') return null;
+	if (typeof snapshot.windDirectionDeg !== 'number') return `${Math.round(snapshot.windSpeedKmh)} km/h`;
 	return `${Math.round(snapshot.windSpeedKmh)} km/h ${compass(snapshot.windDirectionDeg)}`;
 }
 
@@ -162,4 +170,33 @@ export function weatherIcon(code: number): WeatherIcon {
 
 export function weatherLabelKey(code: number): string {
 	return `weather.${weatherIcon(code)}`;
+}
+
+/** The skies an archer can name, in the order the picker offers them. */
+export const WEATHER_ICONS: WeatherIcon[] = ['sun', 'cloud', 'rain', 'snow', 'fog', 'storm'];
+
+/**
+ * One WMO code per sky the app draws, so a sky chosen by hand reads back through `weatherIcon` as
+ * the very icon that was picked. Each is the plainest code in its group: clear, overcast, fog,
+ * moderate rain, moderate snow, thunderstorm.
+ */
+const CODE_FOR_ICON: Record<WeatherIcon, number> = {
+	sun: 0,
+	cloud: 3,
+	fog: 45,
+	rain: 61,
+	snow: 71,
+	storm: 95
+};
+
+/**
+ * The sky named by hand. Any temperature and wind already read stay as they are: only the sky was
+ * in question, and a reading taken at the range is worth more than the guess that replaced it.
+ */
+export function withSky(existing: WeatherSnapshot | null, icon: WeatherIcon): WeatherSnapshot {
+	return {
+		...(existing ?? {}),
+		code: CODE_FOR_ICON[icon],
+		fetchedAt: existing?.fetchedAt ?? Date.now()
+	};
 }

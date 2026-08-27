@@ -167,7 +167,7 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="mx-auto w-full max-w-2xl space-y-3 p-4">
+	<div class="mx-auto w-full max-w-page space-y-3 p-4">
 		<!-- First, because a plan that is off asks nothing of the week and every figure below it is
 			then a description of a plan rather than of what is expected. -->
 		<section class="rounded-xl border border-line bg-surface p-3.5">

@@ -14,7 +14,7 @@
 	}: { title?: boolean; stats?: boolean; cards?: number } = $props();
 </script>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4" aria-busy="true">
+<div class="mx-auto w-full max-w-page space-y-4 p-4" aria-busy="true">
 	{#if title}
 		<Skeleton class="h-6 w-2/5" />
 	{/if}

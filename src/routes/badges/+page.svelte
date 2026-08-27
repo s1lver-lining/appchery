@@ -77,7 +77,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-6 p-4">
+<div class="mx-auto w-full max-w-page space-y-6 p-4">
 	<p class="text-sm text-muted">
 		{$t('badges.earnedCount', { n: earned, total: badges.length })}
 	</p>

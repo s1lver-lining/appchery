@@ -34,8 +34,13 @@
 	import UndoBar from '$lib/ui/UndoBar.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import Pager from '$lib/ui/Pager.svelte';
+	import Rail from '$lib/ui/Rail.svelte';
+	import { watchPresses } from '$lib/ui/press';
 
 	let { children } = $props();
+
+	// One watcher for every pressable card in the app, installed before the first one can be tapped.
+	watchPresses();
 
 	/**
 	 * Where each page inside the tree was left, and where it is put back when it is come back to.
@@ -415,6 +420,10 @@
 			</div>
 		{/if}
 
+		<!-- A row on the desk and a column on a phone: the rail and the tab bar are the same nav. -->
+		<div class="flex min-h-0 flex-1 lg:flex-row">
+		<Rail {tabs} />
+
 		{#if isMainPage($page.url.pathname)}
 			<Pager />
 		{:else}
@@ -435,11 +444,13 @@
 				{@render children()}
 			</main>
 		{/if}
+		</div>
 
 		<!-- Over the page but under the tab bar: what it offers back is worth a glance, not the screen. -->
 		<UndoBar />
 
-		<nav data-tabbar class="overbar safe-bottom flex border-t border-line bg-surface">
+		<!-- Gone once the rail has taken over: two navs saying the same thing is one too many. -->
+		<nav data-tabbar class="overbar safe-bottom flex border-t border-line bg-surface lg:hidden">
 			{#each tabs as tab (tab.href)}
 				<a
 					href={tab.href}

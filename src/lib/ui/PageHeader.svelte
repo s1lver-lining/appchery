@@ -352,7 +352,7 @@
 		{#if subtitle}<p class="mt-0.5 text-sm text-muted">{subtitle}</p>{/if}
 	{/snippet}
 
-	<div class="relative mx-auto flex w-full max-w-2xl items-start gap-3 px-4 pt-5 pb-8">
+	<div class="relative mx-auto flex w-full max-w-page items-start gap-3 px-4 pt-5 pb-8">
 		<div class="min-w-0 flex-1">
 			<!--
 				A page that brings its own title inside the lead lays itself out; where the header owns the

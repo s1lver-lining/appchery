@@ -19,7 +19,7 @@
 </script>
 
 <div class="overbar sticky bottom-0 z-20 shrink-0 border-t border-line bg-bg/95 p-3 backdrop-blur">
-	<div class="mx-auto w-full max-w-2xl space-y-2">
+	<div class="mx-auto w-full max-w-page space-y-2">
 		<div class="flex items-center gap-2">
 			<button
 				class="shrink-0 rounded-lg p-1 text-muted"

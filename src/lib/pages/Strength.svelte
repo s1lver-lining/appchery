@@ -123,7 +123,7 @@
 	const name = (key: string) => $t(`exercises.item.${key}.name`);
 </script>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<!-- What is left, and what to wait for: the two things asked of this page mid session. -->
 	<section class="rounded-2xl border border-line bg-surface p-4">
 		<div class="flex items-center justify-between gap-3">

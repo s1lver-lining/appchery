@@ -84,6 +84,9 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		formatTemperature,
 		formatWind,
 		weatherIcon,
+		withSky,
+		WEATHER_ICONS,
+		type WeatherIcon,
 		weatherLabelKey,
 		autoLocation,
 		autoWeather,
@@ -347,6 +350,11 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	const tuningTemplates = $derived(selectedBowType ? templatesForBowType(selectedBowType) : []);
 
 	/** What the bow picker has highlighted: one of the archer's own bows, a generic type, or neither. */
+	/** Temperature and wind if either was ever read: a sky said by hand carries neither. */
+	const weatherReading = $derived(
+		weather ? [formatTemperature(weather), formatWind(weather)].filter(Boolean).join(' · ') : ''
+	);
+
 	const chosenBow = $derived(session?.bowId ? `bow:${session.bowId}` : (session?.bowType ?? ''));
 	/** The archer's own bow this outing is on, where it is one of theirs rather than a generic type. */
 	const myBow = $derived(bows.find((b) => b.id === session?.bowId) ?? null);
@@ -438,6 +446,16 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		const id = await materialise();
 		if (value.startsWith('bow:')) await updateSession(id, { bowId: value.slice(4), bowType: null });
 		else await updateSession(id, { bowId: null, bowType: value || null });
+		await refresh();
+	}
+
+	/**
+	 * The sky said by hand. Kept apart from fetching it: an archer with location switched off, or no
+	 * signal at the range, still knows whether the sun was out, and that is worth recording.
+	 */
+	async function setSky(icon: WeatherIcon | null) {
+		const id = await materialise();
+		await updateSession(id, { weather: icon ? JSON.stringify(withSky(weather, icon)) : null });
 		await refresh();
 	}
 
@@ -1014,8 +1032,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		{/snippet}
 	</PageHeader>
 
-	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-		<TabDeck tabs={TABS} bind:value={tab}>
+	<div class="mx-auto w-full max-w-page space-y-4 p-4">
+		<TabDeck tabs={TABS} bind:value={tab} expand="primary">
 			{#snippet pane(key)}
 				<!-- Guarded again here: the check outside does not narrow inside a snippet. -->
 				{#if session}
@@ -1092,10 +1110,12 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 										<div class="flex items-center justify-center gap-1.5">
 											<Icon name={weatherIcon(weather.code)} size={session.location ? 26 : 30} />
 											<p class="tabular text-sm leading-tight font-semibold">
-												{formatTemperature(weather)}
+												{formatTemperature(weather) ?? $t(weatherLabelKey(weather.code))}
 											</p>
 										</div>
-										<p class="tabular text-[11px] leading-tight text-muted">{formatWind(weather)}</p>
+										{#if formatWind(weather)}
+											<p class="tabular text-[11px] leading-tight text-muted">{formatWind(weather)}</p>
+										{/if}
 									{/if}
 									{#if session.location}
 										<p class="mt-0.5 w-full truncate text-[11px] leading-tight text-muted">
@@ -1459,7 +1479,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							</label>
 
 							{#if session.location || session.latitude !== null}
-								<div class="flex items-center gap-4 p-4">
+								<div class="flex items-center gap-4 border-b border-line p-4">
 									{#if weather}
 										<div class="flex flex-col items-center text-brand-text">
 											<Icon name={weatherIcon(weather.code)} size={40} />
@@ -1471,29 +1491,48 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 										{#if session.location}
 											<p class="text-lg font-semibold">{session.location}</p>
 										{/if}
-										{#if weather}
-											<p class="tabular text-sm text-muted">
-												{formatTemperature(weather)} · {formatWind(weather)}
-											</p>
-										{:else}
+										{#if weatherReading}
+											<p class="tabular text-sm text-muted">{weatherReading}</p>
+										{:else if !weather}
 											<p class="text-sm text-muted">{$t('session.weatherNone')}</p>
 										{/if}
 									</div>
 								</div>
-							{:else}
-								<p class="p-4 text-sm text-muted">{$t('session.noConditions')}</p>
+							{:else if !weather}
+								<p class="border-b border-line p-4 text-sm text-muted">{$t('session.noConditions')}</p>
 							{/if}
+
+							<!-- Always offered, position or none: the sky is remembered, not measured. -->
+							<div class="p-4">
+								<span class="mb-1 block text-xs text-muted">{$t('session.sky')}</span>
+								<div class="grid grid-cols-4 gap-2">
+									{#each [null, ...WEATHER_ICONS] as icon (icon ?? 'none')}
+										{@const chosen = (weather ? weatherIcon(weather.code) : null) === icon}
+										<button
+											class="press flex flex-col items-center gap-1 rounded-lg border p-1.5
+												{chosen ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
+											aria-pressed={chosen}
+											onclick={() => setSky(icon)}
+										>
+											<Icon name={icon ?? 'unknown'} size={26} />
+											<span class="block w-full truncate text-[10px] text-muted">
+												{$t(icon ? `weather.${icon}` : 'weather.unspecified')}
+											</span>
+										</button>
+									{/each}
+								</div>
+							</div>
 
 							{#if notice}
 								<p class="border-t border-line px-4 py-2 text-sm text-danger">
-									{notice}
-									{#if noticeSetting}
-										<!-- Straight to the switch it is about, which the settings page rings for a moment. -->
-										<a class="font-semibold underline" href="/settings?setting={noticeSetting}">
-											{$t('session.openSettings')}
-										</a>
-									{/if}
-								</p>
+			{notice}
+			{#if noticeSetting}
+				<!-- Straight to the switch it is about, which the settings page rings for a moment. -->
+				<a class="font-semibold underline" href="/settings?setting={noticeSetting}">
+					{$t('session.openSettings')}
+				</a>
+			{/if}
+		</p>
 							{/if}
 						</section>
 
@@ -1550,7 +1589,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			</header>
 
 			<!-- Above the list rather than scrolling with it: the catalogue is reached through it. -->
-			<div class="mx-auto w-full max-w-2xl px-4 pt-3">
+			<div class="mx-auto w-full max-w-page px-4 pt-3">
 				<div class="relative">
 					<span class="absolute top-1/2 left-2.5 -translate-y-1/2 text-muted">
 						<Icon name="search" size={16} />
@@ -1574,7 +1613,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				</div>
 			</div>
 
-			<div class="mx-auto w-full max-w-2xl flex-1 space-y-6 overflow-y-auto p-4">
+			<div class="mx-auto w-full max-w-page flex-1 space-y-6 overflow-y-auto p-4">
 				{#if nothingFound}
 					<p class="py-8 text-center text-sm text-muted">{$t('sessions.noMatch')}</p>
 				{/if}

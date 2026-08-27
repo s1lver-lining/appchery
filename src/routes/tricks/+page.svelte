@@ -21,7 +21,7 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-6 p-4">
+<div class="mx-auto w-full max-w-page space-y-6 p-4">
 	<p class="text-sm leading-relaxed text-muted">{$tricks.lead}</p>
 
 	{#each $tricks.groups as group (group.key)}

@@ -2,6 +2,7 @@
 	import { flip } from 'svelte/animate';
 	import { fade } from 'svelte/transition';
 	import { listMs } from '$lib/ui/motion';
+	import { commit } from '$lib/haptics';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { dataVersion } from '$lib/db/changed';
@@ -152,6 +153,7 @@
 		if (pending.length === 0) return;
 		saving = true;
 		await createRevision(bowId, draft, reason);
+		commit();
 		reason = '';
 		await refresh();
 		saving = false;
@@ -380,8 +382,8 @@
 		{/snippet}
 	</PageHeader>
 
-	<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
-		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4" swipeable={backTo !== null}>
+	<div class="mx-auto w-full max-w-page space-y-4 p-4">
+		<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-4" swipeable={backTo !== null} expand="primary">
 			{#snippet pane(key)}
 				{#if key === 'overview'}
 					{#if usage}

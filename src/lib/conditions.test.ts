@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest';
-import { conditionsPatch } from './conditions';
+import {
+	conditionsPatch,
+	formatTemperature,
+	formatWind,
+	weatherIcon,
+	withSky,
+	WEATHER_ICONS
+} from './conditions';
 
 const weather = {
 	temperatureC: 14,
@@ -47,5 +54,27 @@ describe('conditionsPatch', () => {
 	it('never writes an empty place, which is not a place', () => {
 		const patch = conditionsPatch({ latitude: 1, longitude: 2, place: '', weather: null });
 		expect(patch).not.toHaveProperty('location');
+	});
+});
+
+describe('withSky', () => {
+	it('reads back through weatherIcon as the very sky that was picked', () => {
+		for (const icon of WEATHER_ICONS) {
+			expect(weatherIcon(withSky(null, icon).code)).toBe(icon);
+		}
+	});
+
+	it('says the sky and claims no reading, because nothing was measured', () => {
+		const said = withSky(null, 'rain');
+		expect(formatTemperature(said)).toBeNull();
+		expect(formatWind(said)).toBeNull();
+	});
+
+	it('keeps a reading already taken: only the sky was in question', () => {
+		const corrected = withSky(weather, 'storm');
+		expect(weatherIcon(corrected.code)).toBe('storm');
+		expect(formatTemperature(corrected)).toBe('14°C');
+		expect(formatWind(corrected)).toBe('9 km/h W');
+		expect(corrected.fetchedAt).toBe(weather.fetchedAt);
 	});
 });
