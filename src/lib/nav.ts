@@ -1,4 +1,5 @@
 import { get, writable } from "svelte/store";
+import { Capacitor } from '@capacitor/core';
 
 /**
  * The pages the swipe pager holds, in the order they sit on its track. They are the roots of the
@@ -152,4 +153,16 @@ export function forgetMainScroll(path: string) {
 /** Where `path` sits in the pager, or -1 when it is not one of the swipeable main pages. */
 export function mainPageIndex(path: string): number {
   return (MAIN_PAGES as readonly string[]).indexOf(strip(path));
+}
+
+/**
+ * Where a link to somebody else's site should open.
+ *
+ * A new tab everywhere a tab is a thing. In the native shell it is not: an Android webview drops a
+ * `target="_blank"` click on the floor unless the app has asked for multiple windows, so the PDFs a
+ * competition publishes did nothing at all when tapped. Left as an ordinary navigation, the shell
+ * hands the address to the system instead, which opens the browser and leaves the app where it was.
+ */
+export function externalTarget(): '_blank' | null {
+	return Capacitor.isNativePlatform() ? null : '_blank';
 }

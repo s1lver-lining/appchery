@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { originOf, setPageUp } from '$lib/nav';
+	import { externalTarget, originOf, setPageUp } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -287,7 +287,7 @@
 			<a
 				class="press rounded-lg border border-line px-2 py-1 font-medium"
 				href={fileLink(entry.pdfPath, IANSEO)}
-				target="_blank"
+				target={externalTarget()}
 				rel="noreferrer"
 			>
 				{$t('ianseo.pdf')}

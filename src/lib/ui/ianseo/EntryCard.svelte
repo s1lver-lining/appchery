@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { webLink } from '$lib/competitions/links';
+	import { externalTarget } from '$lib/nav';
 	import { locale, t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
 	import { competitionDates } from '$lib/competitions/dates';
@@ -51,7 +52,7 @@
 					? 'bg-brand text-brand-ink'
 					: 'border border-line text-muted'}"
 				href={webLink(link.href)}
-				target="_blank"
+				target={externalTarget()}
 				rel="noreferrer"
 			>
 				{labelOf(link.label)}
