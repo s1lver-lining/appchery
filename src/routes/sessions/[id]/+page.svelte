@@ -346,6 +346,9 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 	/** What the bow picker has highlighted: one of the archer's own bows, a generic type, or neither. */
 	const chosenBow = $derived(session?.bowId ? `bow:${session.bowId}` : (session?.bowType ?? ''));
+	/** The archer's own bow this outing is on, where it is one of theirs rather than a generic type. */
+	const myBow = $derived(bows.find((b) => b.id === session?.bowId) ?? null);
+	let bowSheet = $state(false);
 
 	async function refresh() {
 		bows = await listBows();
@@ -1365,7 +1368,24 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 						<section class="rounded-xl border border-line bg-surface p-4">
 							<span class="mb-1 block text-sm font-semibold">{$t('session.bow')}</span>
 
-							{#if bows.length > 0}
+							{#if bows.length > 2}
+								<!-- A rack of bows is a list, not a wall of buttons: past a couple it is picked
+									from a drawer, which is the one place their names have room to be read. -->
+								<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
+								<button
+									class="press mb-3 flex w-full items-center gap-2 rounded-lg border p-2 text-left
+										{chosenBow.startsWith('bow:')
+										? 'border-brand bg-brand/10 text-brand-text'
+										: 'border-line'}"
+									onclick={() => (bowSheet = true)}
+								>
+									<Icon name={BOW_ICONS[(myBow?.type ?? 'recurve') as BowType] ?? 'bow'} size={22} />
+									<span class="min-w-0 flex-1 truncate text-sm font-medium">
+										{myBow?.name ?? $t('session.pickBow')}
+									</span>
+									<Icon name="chevronUp" size={16} />
+								</button>
+							{:else if bows.length > 0}
 								<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
 								<div class="mb-3 grid grid-cols-2 gap-2">
 									{#each bows as b (b.id)}
@@ -1715,6 +1735,28 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 {:else}
 	<PageSkeleton stats cards={3} />
 {/if}
+
+<Sheet open={bowSheet} title={$t('session.myBows')} onclose={() => (bowSheet = false)}>
+	<ul class="space-y-1">
+		{#each bows as b (b.id)}
+			<li>
+				<button
+					class="press flex w-full items-center gap-3 rounded-lg border p-3 text-left
+						{chosenBow === `bow:${b.id}` ? 'border-brand bg-brand/10 text-brand-text' : 'border-line'}"
+					aria-pressed={chosenBow === `bow:${b.id}`}
+					onclick={() => {
+						setBow(`bow:${b.id}`);
+						bowSheet = false;
+					}}
+				>
+					<Icon name={BOW_ICONS[b.type as BowType] ?? 'bow'} size={24} />
+					<span class="min-w-0 flex-1 truncate text-sm font-medium">{b.name}</span>
+					<span class="shrink-0 text-xs text-muted">{$t(`bow.${b.type}`)}</span>
+				</button>
+			</li>
+		{/each}
+	</ul>
+</Sheet>
 
 {#if draftMatch}
 	<!-- Set up before it is opened: who it is against and under which rules is what a match is. -->
