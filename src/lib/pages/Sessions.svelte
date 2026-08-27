@@ -154,13 +154,19 @@
 
 	closeOnBack(() => selecting, endSelection);
 
+	/**
+	 * Read together and put on screen together. Assigned one at a time, the list drew itself in
+	 * layers: the outings first, then a moment later the planned ones sliding in between them and
+	 * every week's arrow total climbing off zero.
+	 */
 	async function refresh() {
-		sessions = await listSessions();
-		bows = await listBows();
-		slots = await listPlanSlots();
-		plans = await listPlans();
-		const activities = await listAllActivities();
-		loaded = true;
+		const [outings, allBows, planned, allPlans, activities] = await Promise.all([
+			listSessions(),
+			listBows(),
+			listPlanSlots(),
+			listPlans(),
+			listAllActivities()
+		]);
 		counts = activities.reduce<
 			Record<string, { activities: number; arrows: number; names: string[] }>
 		>((acc, a) => {
@@ -181,6 +187,11 @@
 			entry.arrows += a.arrowsShot;
 			return acc;
 		}, {});
+		sessions = outings;
+		bows = allBows;
+		slots = planned;
+		plans = allPlans;
+		loaded = true;
 	}
 	$effect(() => {
 		void $dataVersion;
