@@ -145,12 +145,26 @@ function merge(base: DocumentColumn[], over: DocumentColumn[]): DocumentColumn[]
 	return over.map((column, index) => (column.label ? column : (base[index] ?? column)));
 }
 
-/** `<thead>` and `<tbody>` in the order they appear, which is what makes a section its rows. */
+/**
+ * `<thead>` and `<tbody>` in the order they appear, which is what makes a section its rows.
+ *
+ * A block runs to its own closing tag, or, where the page never writes one, to the start of the next
+ * block or the end of the table. ianseo publishes team standings with the `<tbody>` left open, and a
+ * reader that insisted on the closing tag threw away every line of them.
+ */
 function blocks(html: string): { name: 'thead' | 'tbody'; html: string }[] {
+	const opens = [...html.matchAll(/<(thead|tbody)\b[^>]*>/gi)];
+	// A table written without either is all rows, which is how the smaller documents are published.
+	if (opens.length === 0) return [{ name: 'tbody', html }];
+
 	const found: { name: 'thead' | 'tbody'; html: string }[] = [];
-	for (const match of html.matchAll(/<(thead|tbody)\b[^>]*>([\s\S]*?)<\/\1>/gi)) {
-		found.push({ name: match[1].toLowerCase() as 'thead' | 'tbody', html: match[2] });
-	}
+	opens.forEach((open, index) => {
+		const name = open[1].toLowerCase() as 'thead' | 'tbody';
+		const start = open.index + open[0].length;
+		const next = opens[index + 1]?.index ?? html.length;
+		const close = html.slice(start, next).search(new RegExp(`</${name}\\b`, 'i'));
+		found.push({ name, html: html.slice(start, close < 0 ? next : start + close) });
+	});
 	return found;
 }
 

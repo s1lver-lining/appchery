@@ -78,7 +78,9 @@ describe('parseDocument, on a document of many classes', () => {
 			'Recurve - Women [After 60 Arrows]',
 			'Recurve - Under 21 Men [After 60 Arrows]',
 			'Recurve - Under 21 Women [After 60 Arrows]',
-			'Compound - Men [After 60 Arrows]'
+			'Compound - Men [After 60 Arrows]',
+			// The last class on the page, whose rows sit in a `<tbody>` the document never closes.
+			'Compound - Women [After 60 Arrows]'
 		]);
 	});
 
@@ -252,5 +254,33 @@ describe('parseDocument, on a bracket with a bye in it', () => {
 describe('parseDocument, on a page with no table at all', () => {
 	it('says so rather than returning an empty document', () => {
 		expect(parseDocument('<html><body>Not found</body></html>')).toBe(null);
+	});
+});
+
+/**
+ * A team standing, whose `<tbody>` ianseo never closes. Read for the shape rather than for this one
+ * competition: a document the app throws away is an archer told their class was never shot.
+ */
+describe('parseDocument, on a table left open', () => {
+	const document = table('TQD2F');
+
+	it('reads the rows the markup never closed', () => {
+		expect(document.title).toBe('D2 - Femmes [Après 216 flèches]');
+		expect(document.sections).toHaveLength(1);
+		expect(document.sections[0].rows.length).toBeGreaterThan(5);
+		expect(document.skipped).toBe(0);
+	});
+
+	it('and keeps each team with its club and its archers', () => {
+		const first = document.sections[0].rows[0];
+		expect(first.cells.map((cell) => cell.text)).toEqual([
+			'1',
+			'0441103 - Vineuil',
+			'COLBERT Noemie DUPLESSIS Anouk OLLIVIER Diane',
+			'1635',
+			'17',
+			'4',
+			''
+		]);
 	});
 });
