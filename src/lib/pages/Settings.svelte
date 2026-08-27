@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/stores';
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
 	import { theme, THEMES } from '$lib/theme';
 	import { dbInfo, LATEST_SCHEMA, rebuildDatabase, schemaVersion } from '$lib/db';
@@ -38,6 +39,45 @@
 		BackupError
 	} from '$lib/db/backup';
 	import Toggle from '$lib/ui/Toggle.svelte';
+
+	/**
+	 * A setting somebody was sent here to change, named in the address. The page scrolls to it and
+	 * rings it for a moment: being told to turn something on in the settings is no help at all if
+	 * finding it is then the archer's problem.
+	 */
+	let flashing = $state<string | null>(null);
+	/** Which tab a setting lives on, since being sent to one on another tab is being sent nowhere. */
+	const TAB_OF: Record<string, 'app' | 'shooting' | 'data'> = {
+		location: 'shooting',
+		weather: 'shooting'
+	};
+
+	$effect(() => {
+		const wanted = $page.url.searchParams.get('setting');
+		if (!wanted) return;
+		tab = TAB_OF[wanted] ?? 'app';
+
+		let frame = 0;
+		let timer: ReturnType<typeof setTimeout>;
+		// Waited for rather than assumed: the tab was turned a moment ago and its pane is still coming.
+		const look = () => {
+			const found = document.getElementById(`setting-${wanted}`);
+			if (!found) {
+				if (frame++ < 30) raf = requestAnimationFrame(look);
+				return;
+			}
+			// Down the page only: the tabs sit side by side, and scrolling across drags the deck along.
+			found.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
+			flashing = wanted;
+			timer = setTimeout(() => (flashing = null), 2400);
+		};
+		let raf = requestAnimationFrame(look);
+
+		return () => {
+			cancelAnimationFrame(raf);
+			clearTimeout(timer);
+		};
+	});
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
@@ -486,7 +526,11 @@
 				<section class="space-y-4">
 					<h2 class="text-sm font-semibold text-muted">{$t('settings.conditions')}</h2>
 
-					<div class="flex items-start justify-between gap-4">
+					<div
+						id="setting-location"
+						class="flex items-start justify-between gap-4 rounded-lg transition-shadow duration-500
+							{flashing === 'location' ? 'ring-2 ring-brand ring-offset-4 ring-offset-bg' : ''}"
+					>
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.locationTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.locationHint')}</p>
@@ -499,7 +543,12 @@
 					</div>
 
 					{#if $autoLocation}
-						<div class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
+						<div
+							id="setting-weather"
+							class="flex items-start justify-between gap-4 rounded-lg border-l-2 border-line pl-4
+								transition-shadow duration-500
+								{flashing === 'weather' ? 'ring-2 ring-brand ring-offset-4 ring-offset-bg' : ''}"
+						>
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.weatherTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.weatherHint')}</p>

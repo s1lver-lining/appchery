@@ -161,6 +161,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	}
 	let fetching = $state(false);
 	let notice = $state<string | null>(null);
+	/** The setting the notice is about, so the archer is taken to it rather than sent looking. */
+	let noticeSetting = $state<string | null>(null);
 	/** The name reads as a heading until tapped, so the page does not look like a form. */
 	let editingName = $state(false);
 	let nameInput = $state<HTMLInputElement | null>(null);
@@ -441,10 +443,12 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 	async function fetchConditions() {
 		notice = null;
+		noticeSetting = null;
 		// Nothing asks the system for a position while the setting is off, since granting it would
 		// still leave the archer with a switch that says location is not recorded.
 		if (!$autoLocation) {
 			notice = $t('session.locationOff');
+			noticeSetting = 'location';
 			return;
 		}
 		const id = await materialise();
@@ -453,11 +457,14 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			const conditions = await captureConditions($autoWeather, $autoPlaceName);
 			await updateSession(id, conditionsPatch(conditions));
 			// Being offline at a range is normal, so a failed lookup says so rather than showing nothing.
-			if (!$autoWeather) notice = $t('session.weatherOff');
-			else if (!conditions.weather) notice = $t('session.weatherFailed');
+			if (!$autoWeather) {
+				notice = $t('session.weatherOff');
+				noticeSetting = 'weather';
+			} else if (!conditions.weather) notice = $t('session.weatherFailed');
 			await refresh();
 		} catch (error) {
 			notice = error instanceof LocationDeniedError ? $t('session.locationDenied') : String(error);
+			if (error instanceof LocationDeniedError) noticeSetting = 'location';
 		}
 		fetching = false;
 	}
@@ -1478,7 +1485,15 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							{/if}
 
 							{#if notice}
-								<p class="border-t border-line px-4 py-2 text-sm text-danger">{notice}</p>
+								<p class="border-t border-line px-4 py-2 text-sm text-danger">
+									{notice}
+									{#if noticeSetting}
+										<!-- Straight to the switch it is about, which the settings page rings for a moment. -->
+										<a class="font-semibold underline" href="/settings?setting={noticeSetting}">
+											{$t('session.openSettings')}
+										</a>
+									{/if}
+								</p>
 							{/if}
 						</section>
 

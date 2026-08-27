@@ -107,6 +107,7 @@ export const fr: Dictionary = {
 		locationDenied: "L'autorisation de localisation est requise pour récupérer les conditions.",
 		locationOff:
 			'La localisation est désactivée. Activez « Enregistrer le lieu » dans les réglages.',
+		openSettings: 'Ouvrir les réglages',
 		weatherFailed: 'Météo indisponible. Le lieu a tout de même été enregistré.',
 		activities: 'Activités',
 		overviewTab: 'Aperçu',

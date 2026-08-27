@@ -105,6 +105,7 @@ export const en = {
 		fetching: 'Fetching…',
 		locationDenied: 'Location permission is required to fetch conditions.',
 		locationOff: 'Location is off. Turn "Record location" on in the settings first.',
+		openSettings: 'Open settings',
 		weatherFailed: 'Could not fetch the weather. Location was still recorded.',
 		activities: 'Activities',
 		overviewTab: 'Overview',
