@@ -66,13 +66,19 @@
 	let showByRound = $state(false);
 	let showBlocks = $state(false);
 
+	/**
+	 * Everything the page draws, read together and put up together. Assigned one reading at a time,
+	 * the charts drew themselves against a history that was still arriving and redrew twice more.
+	 */
 	async function refresh() {
-		favourites = new Set(await listFavouriteRounds());
-		sessions = await listSessions();
-		bows = await listBows();
-		shots = await listShotValues();
-		ends = await listEndTotals();
-		const activities = await listAllActivities();
+		const [rounds, outings, allBows, values, totals, activities] = await Promise.all([
+			listFavouriteRounds(),
+			listSessions(),
+			listBows(),
+			listShotValues(),
+			listEndTotals(),
+			listAllActivities()
+		]);
 		/**
 		 * Read once for every kind of activity, because volume is every arrow and the rounds are the
 		 * subset of them that was scored. Mapping twice is what let the two figures drift apart.
@@ -91,6 +97,11 @@
 		}));
 		volume = toVolume(all);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
+		favourites = new Set(rounds);
+		sessions = outings;
+		bows = allBows;
+		shots = values;
+		ends = totals;
 		loaded = true;
 	}
 	$effect(() => {
