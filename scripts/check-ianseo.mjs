@@ -226,8 +226,13 @@ async function checkFrench(browser) {
 
 	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
 	await page.waitForSelector('a[href*="/ianseo/"]');
-	check('French: the competition list reads', await page.getByText('Compétitions').first().isVisible());
-	check('French: the list stays inside the screen', !(await overflows(page)).wide, JSON.stringify((await overflows(page)).culprits));
+	// The heading itself, not whatever else says the word: the header carries a second copy of the
+	// title that only shows once the page is scrolled, and which of the two came first was luck.
+	check(
+		'French: the competition list reads',
+		await page.getByRole('heading', { name: 'Compétitions' }).first().isVisible()
+	);
+	check('French: the list stays inside the screen', !(await overflows(page)).wide);
 	await shot(page, 'french-list');
 
 	await page.goto(`${BASE}/ianseo/26053/IQRM`, { waitUntil: 'networkidle' });

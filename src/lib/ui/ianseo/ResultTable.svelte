@@ -1,8 +1,8 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
-	import { bodyColumn, followable, marked } from '$lib/ianseo/rows';
-	import { clubName } from '$lib/ianseo/clubs';
+	import { followable, marked } from '$lib/ianseo/rows';
+	import { clubName, namedColumns } from '$lib/ianseo/clubs';
 	import { ianseoFullClubNames } from '$lib/prefs';
 	import { NO_CHOICE, shapeOf, visibleColumns, wrappingColumn, type ColumnChoice } from '$lib/ianseo/columns';
 	import type { DocumentSection } from '$lib/ianseo/types';
@@ -36,10 +36,10 @@
 	const visible = $derived(visibleColumns(section, choice, shape));
 	const width = $derived(visible.filter(Boolean).length || 1);
 
-	/** The column a club is written in, which is the one the federation's own reference sits in front of. */
-	const club = $derived(bodyColumn(section.columns));
+	/** The columns a federation's own reference is printed in front of, whatever they are headed. */
+	const identified = $derived(namedColumns(section.columns, section.rows));
 	const named = (at: number, value: string) =>
-		at === club ? clubName(value, $ianseoFullClubNames) : value;
+		identified[at] ? clubName(value, $ianseoFullClubNames) : value;
 </script>
 
 <div class="overflow-hidden rounded-2xl border border-line bg-surface">
