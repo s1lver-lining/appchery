@@ -2,6 +2,10 @@ import type { Tournament } from '../types';
 import { attr, cells, flagOf, hasClass, rows, text } from './html';
 import { readEach } from './reading';
 
+/** Where ianseo publishes it. Here rather than beside the reader, so a background task that
+ * cannot load the database can still ask for the page. */
+export const TOURNAMENT_LIST = '/TourList.php';
+
 /**
  * The tournament list, which ianseo publishes as one page of every competition it has ever hosted.
  * Rows are read by the class on each cell rather than by position: the list repeats several columns

@@ -344,6 +344,10 @@ export const tricksEn = {
 					body: 'A followed competition that ianseo has rebuilt since you last opened it is marked New in the list, and the competitions tile on the home page carries a dot. Opening the competition is what clears it.'
 				},
 				{
+					lead: 'Told about a result while the app is shut.',
+					body: 'Under the competitions you follow there is a switch to be told when one of them publishes. It runs on the device: the browser wakes the app now and then, asks ianseo the same question the list asks, and raises the notice itself. No account, nothing sent anywhere, and nothing to pay for. A phone saving power may check rarely, or not at all, which is the price of there being no server behind it.'
+				},
+				{
 					lead: 'Everything read is kept for the range.',
 					body: 'Every competition and result you open is stored on the device, so it reads again with no signal. What is shown always says when it was read, and refuses to pass itself off as live.'
 				},

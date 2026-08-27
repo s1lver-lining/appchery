@@ -10,9 +10,12 @@
  */
 import { chromium } from 'playwright';
 import { readFileSync, mkdirSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 
 const BASE = process.argv[2] ?? 'http://localhost:4180';
 const SHOTS = 'test/pictures/ianseo';
+/** A browser profile of its own: a service worker needs a real one, and this one is disposable. */
+const TEMP = `${tmpdir()}/appchery-check`;
 
 /** The narrowest screen the app promises to work on, a normal phone, and a tablet. */
 const WIDTHS = [
@@ -85,6 +88,135 @@ function serveIanseo(context, state = {}) {
 		if (body === null) return route.fulfill({ status: 404, body: 'no fixture' });
 		route.fulfill({ status: 200, contentType: 'text/html; charset=utf-8', body });
 	});
+}
+
+/**
+ * Being told about a result while the app is shut.
+ *
+ * The whole of it runs on the device: the browser wakes the service worker, the worker asks ianseo
+ * the question the app asks when it opens, and it raises the notice itself. There is no server in
+ * this feature, so there is nothing to stand in for here either. The background wake is delivered
+ * over the devtools protocol, which is what a browser would do on its own schedule.
+ *
+ * Headed on purpose: headless Chromium refuses notification permission outright, so a check run in
+ * it would prove the notice was worked out and never that it was raised.
+ */
+async function checkTelling() {
+	const profile = `${TEMP}/telling-profile`;
+	let context;
+	try {
+		context = await chromium.launchPersistentContext(profile, {
+			headless: false,
+			viewport: { width: 390, height: 844 },
+			permissions: ['notifications'],
+			serviceWorkers: 'allow'
+		});
+	} catch (error) {
+		console.log(`SKIP  being told about a result: no display for a headed browser (${error.message})`);
+		return;
+	}
+
+	const state = {};
+	await serveIanseo(context, state);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo/29775`, { waitUntil: 'networkidle' });
+	await page.getByRole('button', { name: /Follow this competition/i }).click();
+	await page.waitForTimeout(400);
+
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/29775"]');
+	check(
+		'the offer to be told sits with the competitions it is about',
+		await page.getByText('Tell me about new results').isVisible()
+	);
+
+	await page.getByRole('switch', { name: /Tell me about new results/ }).click();
+	await page.waitForTimeout(600);
+	const note = await watchNote(page);
+	check(
+		'turning it on leaves the worker the list it cannot ask the database for',
+		note?.enabled === true && note.watches.length === 1 && note.watches[0].toId === '29775',
+		JSON.stringify(note?.watches ?? [])
+	);
+	// Nothing is announced for what the archer has already seen, or following would announce itself.
+	const told = note.watches[0].announcedAt;
+
+	// ianseo publishes, and the browser gets round to waking the worker.
+	state.published = 'Today 23:59';
+	await wake(context, page, 'ianseo-results');
+	await page.waitForTimeout(2500);
+
+	const shown = await page.evaluate(async () => {
+		const registration = await navigator.serviceWorker.ready;
+		return (await registration.getNotifications()).map((one) => ({
+			title: one.title,
+			body: one.body,
+			path: one.data?.path
+		}));
+	});
+	check(
+		'a competition rebuilt while the app was shut raises a notice',
+		shown.length === 1 && /Internal Squad Selection/.test(shown[0].title),
+		JSON.stringify(shown)
+	);
+	check(
+		'that opens the competition it is about',
+		shown[0]?.path === '/ianseo/29775',
+		String(shown[0]?.path)
+	);
+
+	const after = await watchNote(page);
+	check(
+		'and is not raised a second time for the same publishing',
+		after.watches[0].announcedAt > told,
+		`${told} to ${after.watches[0].announcedAt}`
+	);
+
+	await page.evaluate(async () => {
+		for (const one of await (await navigator.serviceWorker.ready).getNotifications()) one.close();
+	});
+	await wake(context, page, 'ianseo-results');
+	await page.waitForTimeout(1500);
+	const again = await page.evaluate(async () =>
+		(await (await navigator.serviceWorker.ready).getNotifications()).length
+	);
+	check('nothing is said twice about the same publishing', again === 0, `${again} notices`);
+
+	await context.close();
+}
+
+/** The note the app leaves in IndexedDB for a worker that has no way into the database. */
+function watchNote(page) {
+	return page.evaluate(
+		() =>
+			new Promise((resolve, reject) => {
+				const open = indexedDB.open('appchery-watch', 1);
+				open.onerror = () => reject(open.error);
+				open.onsuccess = () => {
+					const read = open.result.transaction('state').objectStore('state').get('ianseo');
+					read.onsuccess = () => resolve(read.result ?? null);
+					read.onerror = () => reject(read.error);
+				};
+			})
+	);
+}
+
+/** What a browser does on its own schedule, asked for on demand. */
+async function wake(context, page, tag) {
+	const session = await context.newCDPSession(page);
+	await session.send('ServiceWorker.enable');
+	const registration = await new Promise((resolve) => {
+		session.on('ServiceWorker.workerRegistrationUpdated', ({ registrations }) => {
+			if (registrations[0]) resolve(registrations[0]);
+		});
+	});
+	await session.send('ServiceWorker.dispatchPeriodicSyncEvent', {
+		origin: new URL(BASE).origin,
+		registrationId: registration.registrationId,
+		tag
+	});
+	await session.detach();
 }
 
 /** Nothing on the page may reach past its own edge: a sideways scrollbar is the app being wrong. */
@@ -955,6 +1087,8 @@ async function run() {
 	await checkShareAndClubs(browser);
 
 	await browser.close();
+
+	await checkTelling();
 
 	const failed = results.filter((one) => !one.ok);
 	console.log(`\n${results.length - failed.length}/${results.length} passed`);

@@ -339,6 +339,10 @@ export const tricksFr: TricksDictionary = {
 					body: "Une compétition suivie que ianseo a reconstruite depuis votre dernière visite est marquée Nouveau dans la liste, et la tuile des compétitions sur l'accueil porte un point. C'est l'ouverture de la compétition qui l'efface."
 				},
 				{
+					lead: "Être averti d'un résultat, application fermée.",
+					body: "Sous les compétitions suivies se trouve un interrupteur pour être averti quand l'une d'elles publie. Tout se passe sur l'appareil : le navigateur réveille l'application de temps en temps, pose à ianseo la question que pose déjà la liste, et affiche l'avis lui même. Sans compte, sans rien envoyer nulle part et sans rien à payer. Un téléphone en économie d'énergie peut vérifier rarement, voire pas du tout : c'est le prix de l'absence de serveur."
+				},
+				{
 					lead: 'Tout ce qui est lu est gardé pour le pas de tir.',
 					body: "Chaque compétition et chaque résultat ouvert est stocké sur l'appareil et se relit sans réseau. Ce qui est affiché indique toujours quand il a été lu, et ne se fait jamais passer pour du direct."
 				},

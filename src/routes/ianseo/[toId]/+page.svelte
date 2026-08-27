@@ -12,6 +12,7 @@
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import { fileLink } from '$lib/competitions/links';
 	import { readCache } from '$lib/ianseo/store';
+	import { noteWhatIsFollowed } from '$lib/ianseo/notify';
 	import {
 		addFavourite,
 		favouriteId,
@@ -102,6 +103,7 @@
 		if (!followed) return;
 		await markCompetitionSeen(toId);
 		pinned = await favourites();
+		await noteWhatIsFollowed();
 	}
 
 	async function toggle() {
@@ -118,6 +120,7 @@
 			});
 		}
 		pinned = await favourites();
+		await noteWhatIsFollowed();
 	}
 
 	/**
@@ -247,6 +250,7 @@
 						onclick={async () => {
 							await removeFavourite(one.id);
 							pinned = await favourites();
+		await noteWhatIsFollowed();
 						}}
 					>
 						<span class="max-w-40 truncate">{one.label}</span>

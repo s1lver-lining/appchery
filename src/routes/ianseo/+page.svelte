@@ -14,6 +14,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
+	import Toggle from '$lib/ui/Toggle.svelte';
 	import TournamentCard from '$lib/ui/ianseo/TournamentCard.svelte';
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
@@ -22,6 +23,7 @@
 	import { countriesOf, filterTournaments, guessedCountry, whenOf, type When } from '$lib/ianseo/select';
 	import { distanceKm } from '$lib/competitions/distance';
 	import { favourites, isNew, notePublished, type Favourite } from '$lib/ianseo/store';
+	import { canBeTold, noteWhatIsFollowed, startTelling, stopTelling, tellingIsOn } from '$lib/ianseo/notify';
 	import { RADII, roundKm, type Point } from '$lib/competitions/distance';
 	import { keyOf, knownPlaces, locate, PlaceUnavailable } from '$lib/competitions/places';
 	import { requestPosition, LocationDeniedError } from '$lib/conditions';
@@ -64,6 +66,31 @@
 	$effect(() => {
 		void open();
 	});
+
+	/**
+	 * Being told about a result while the app is shut. Offered only where the browser can actually
+	 * do it, so nothing on screen promises something this device has no way of keeping.
+	 */
+	let canTell = $state(false);
+	let telling = $state(false);
+	let tellRefused = $state(false);
+
+	$effect(() => {
+		canTell = canBeTold();
+		void tellingIsOn().then((on) => (telling = on));
+	});
+
+	async function setTelling(wanted: boolean) {
+		tellRefused = false;
+		if (!wanted) {
+			await stopTelling();
+			telling = false;
+			return;
+		}
+		telling = await startTelling();
+		// Refused in the browser rather than in the app, which is not somewhere the app can go.
+		tellRefused = !telling;
+	}
 
 	async function open() {
 		pinned = await favourites();
@@ -117,6 +144,8 @@
 			if (tournament) await notePublished(one.toId!, tournament.updatedAt);
 		}
 		pinned = await favourites();
+		// The worker cannot ask the database what is followed, so it is told again whenever that moves.
+		await noteWhatIsFollowed();
 	}
 
 	function offer() {
@@ -468,6 +497,23 @@
 						{/if}
 					{/each}
 				</div>
+
+				<!--
+					With the competitions it is about rather than in a settings page: the archer who has
+					just followed something is the one who wants telling about it, and they are here.
+				-->
+				{#if canTell}
+					<div class="mt-2 flex items-start justify-between gap-3 rounded-2xl border border-line bg-surface p-3">
+						<div class="min-w-0 flex-1">
+							<p class="text-sm font-medium">{$t('ianseo.toldTitle')}</p>
+							<p class="mt-0.5 text-xs text-muted">{$t('ianseo.toldHint')}</p>
+							{#if tellRefused}
+								<p class="mt-1 text-xs text-danger">{$t('ianseo.toldRefused')}</p>
+							{/if}
+						</div>
+						<Toggle checked={telling} label={$t('ianseo.toldTitle')} onchange={setTelling} />
+					</div>
+				{/if}
 			</section>
 		{/if}
 

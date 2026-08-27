@@ -1,6 +1,6 @@
 import { parseCompetition } from './parse/details';
 import { parseDocument } from './parse/document';
-import { parseTournaments } from './parse/list';
+import { parseTournaments, TOURNAMENT_LIST } from './parse/list';
 import { looksLike } from './parse/reading';
 import { fetchIanseo, IanseoError } from './fetch';
 import { readCache, writeCache } from './store';
@@ -12,14 +12,14 @@ import type { Competition, ResultDocument, Tournament } from './types';
  * else's problem: a result from an hour ago, clearly dated, beats a spinner that never resolves.
  */
 
-export const TOURNAMENT_LIST = '/TourList.php';
-
 /** The list is a rebuild of every competition ianseo has ever hosted, and it changes by the day, not the minute. */
 const LIST_TTL = 6 * 3600_000;
 /** A competition's index of documents, which grows a line each time a class finishes. */
 const COMPETITION_TTL = 15 * 60_000;
 /** A result that is being shot moves end by end, so it is only ever trusted for a few minutes. */
 const DOCUMENT_TTL = 5 * 60_000;
+
+export { TOURNAMENT_LIST };
 
 export type Loaded<T> = {
 	value: T;
