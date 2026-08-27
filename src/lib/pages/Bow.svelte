@@ -96,13 +96,20 @@
 		)
 	);
 
+	/** Read together, so the bow arrives with its settings rather than filling itself in afterwards. */
 	async function refresh() {
-		bow = await getBow(bowId);
-		revisions = await listRevisions(bowId);
-		usage = await bowUsage(bowId);
-		marks = await listSightMarks(bowId);
-		const latest = await currentRevision(bowId);
+		const [read, history, used, sightMarks, latest] = await Promise.all([
+			getBow(bowId),
+			listRevisions(bowId),
+			bowUsage(bowId),
+			listSightMarks(bowId),
+			currentRevision(bowId)
+		]);
 		draft = latest ? JSON.parse(latest.settings) : {};
+		bow = read;
+		revisions = history;
+		usage = used;
+		marks = sightMarks;
 	}
 	/**
 	 * Read again when the database is replaced wholesale, or the page goes on showing revisions an
