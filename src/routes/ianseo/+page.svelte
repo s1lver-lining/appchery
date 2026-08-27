@@ -90,6 +90,9 @@
 		now = Date.now();
 		try {
 			const loaded = await loadTournaments({ refresh });
+			// Before the list goes on screen, not after: a distance filter that arrives a moment late
+			// shows every competition in the world and then takes most of them away again.
+			await primePlaces(loaded.value);
 			list = loaded.value;
 			cachedAt = loaded.cachedAt;
 			problem = loaded.problem;
@@ -200,11 +203,22 @@
 		void fillPlaces(shown.slice(0, 120).map(townOf));
 	});
 
+	/**
+	 * The towns of the first page as this device already has them, read back in one go. Nothing is
+	 * asked of the geocoder here: this is only what is known for free, so that the first thing drawn
+	 * is already the filtered list rather than a list that jumps.
+	 */
+	async function primePlaces(loaded: Tournament[]) {
+		if ($ianseoRadiusKm <= 0 || !here) return;
+		const towns = filterTournaments(loaded, filter, now).slice(0, 120).map(townOf);
+		await fillPlaces(towns, false);
+	}
+
 	/** A breath between lookups: this is somebody else's free service, asked for a hundred towns at once. */
 	const GAP_MS = 120;
 
 	let filling = false;
-	async function fillPlaces(towns: { name: string; country: string | null }[]) {
+	async function fillPlaces(towns: { name: string; country: string | null }[], ask = true) {
 		if (filling) return;
 		filling = true;
 		try {
@@ -218,7 +232,7 @@
 			const known = await knownPlaces([...wanted.keys()]);
 			if (known.size > 0) places = new Map([...places, ...known]);
 
-			const missing = [...wanted].filter(([key]) => !known.has(key));
+			const missing = ask ? [...wanted].filter(([key]) => !known.has(key)) : [];
 			locating = missing.length;
 			const found = new Map(places);
 			for (const [key, town] of missing) {

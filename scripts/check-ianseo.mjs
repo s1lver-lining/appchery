@@ -321,9 +321,30 @@ async function checkDistance(browser) {
 
 	// A second visit must not ask again: a town does not move.
 	const before = lookups;
+	// Every state the page passes through, not just the one it settles on: a filter applied a moment
+	// late shows the whole world and then takes it away, which is a flicker nothing can catch after.
+	await page.addInitScript(() => {
+		window.__everShown = false;
+		const watch = () => {
+			if (document.body?.textContent?.includes('SATRIA LEGAWA')) window.__everShown = true;
+		};
+		// Started once there is a document to watch: this runs before the page has one.
+		const start = () =>
+			new MutationObserver(watch).observe(document.documentElement, {
+				subtree: true,
+				childList: true,
+				characterData: true
+			});
+		if (document.documentElement) start();
+		else document.addEventListener('DOMContentLoaded', start);
+	});
 	await page.reload({ waitUntil: 'networkidle' });
 	await page.waitForSelector('a[href*="/ianseo/"]');
 	await settled(page);
+	check(
+		'a reopened list arrives narrowed rather than flickering through the whole world',
+		(await page.evaluate(() => window.__everShown)) === false
+	);
 	check('a town already located is never looked up twice', lookups === before, `${lookups - before} extra`);
 
 	// Searching reaches past the distance filter unless it is told not to.
