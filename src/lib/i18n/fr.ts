@@ -630,7 +630,7 @@ export const fr: Dictionary = {
 		end: 'Volée',
 		endTotal: 'T/V',
 		running: 'Total',
-		tagline: 'Tiré avec Appchery',
+		tagline: 'appchery.com',
 		options: 'Ce qui est affiché',
 		unavailable: 'Non enregistré',
 		optionDate: 'Date',

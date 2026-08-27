@@ -629,7 +629,7 @@ export const en = {
 		end: 'End',
 		endTotal: 'E/T',
 		running: 'Total',
-		tagline: 'Shot with Appchery',
+		tagline: 'appchery.com',
 		options: 'What to show',
 		unavailable: 'Not recorded',
 		optionDate: 'Date',

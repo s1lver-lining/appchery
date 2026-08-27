@@ -29,7 +29,7 @@ const base: Omit<CardData, 'options'> = {
 		end: 'End',
 		endTotal: 'A very long archer name',
 		runningTotal: 'Another long name here',
-		tagline: 'Shot with Appchery'
+		tagline: 'appchery.com'
 	}
 };
 
