@@ -6,6 +6,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadCompetition, loadTournaments, TOURNAMENT_LIST } from '$lib/ianseo/client';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
@@ -203,7 +204,14 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-2xl space-y-4 p-4">
+<!--
+	Nothing has been read yet, so the page is drawn in outline rather than as an empty one that fills
+	itself in a moment later. This is the wait the rest of the app already shows.
+-->
+{#if loading && !competition && !failed}
+	<PageSkeleton title={false} cards={4} />
+{:else}
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	{#if competition?.organiser}
@@ -304,6 +312,7 @@
 		</button>
 	</ReadNote>
 </div>
+{/if}
 
 <ShareSheet
 	open={shareSheet}

@@ -5,6 +5,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
+	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import ResultTable from '$lib/ui/ianseo/ResultTable.svelte';
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
@@ -224,6 +225,10 @@
 
 <!-- Wider than the app's usual column: a result list is a table of ten things, not a paragraph, and
 	the room is the difference between an archer a line and an archer a paragraph. -->
+{#if loading && !document && !error}
+	<!-- The same wait the rest of the app shows, rather than an empty page that fills itself in. -->
+	<PageSkeleton title={false} cards={4} />
+{:else}
 <div class="mx-auto w-full max-w-4xl space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
@@ -286,6 +291,7 @@
 		{/if}
 	</ReadNote>
 </div>
+{/if}
 
 <Sheet open={columnSheet} title={$t('ianseo.columns')} onclose={() => (columnSheet = false)}>
 	<p class="mb-2 text-xs text-muted">{$t('ianseo.columnsHint')}</p>
