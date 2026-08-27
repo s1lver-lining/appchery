@@ -60,6 +60,16 @@ function serveIanseo(context, state = {}) {
 					: toId === '28536'
 						? fixture('Details-28536')
 						: fixture('Details');
+			// A class that has just finished, which is what ianseo rebuilding a competition means.
+			if (state.late) {
+				body = body.replace(
+					'<div class="results-item-container">',
+					`<div class="results-item-container"><div></div>
+						<div><a href="/TourData/2026/26053/LATE.pdf?time=2026-05-10+21%3A40%3A00"><img class="pdf-icon" src="/images/pdf.png" alt="PDF"/></a></div>
+						<div class="results-link"><a href="/TourData/2026/26053/LATE.php">Late Class Result</a></div>
+					</div><div class="results-item-container">`
+				);
+			}
 		} else if (path.includes('/28536/ENA.php')) {
 			// A French competition, whose columns ianseo heads in French and folds none of.
 			body = fixture('ENA-fr');
@@ -134,6 +144,7 @@ async function checkNewResults(browser) {
 
 	// ianseo publishes something, and the archer reads the list again.
 	state.published = 'Today 21:40';
+	state.late = true;
 	await page.getByRole('button', { name: /Refresh/i }).click();
 	await page.waitForTimeout(800);
 	check(
@@ -151,6 +162,17 @@ async function checkNewResults(browser) {
 	// Opening it is reading it, so it stops being new.
 	await page.goto(`${BASE}/ianseo/29775`, { waitUntil: 'networkidle' });
 	await page.waitForTimeout(500);
+	/*
+	 * And reading it means reading it again. The index was cached minutes ago and its time to live
+	 * has not run out, but the list has just said ianseo rebuilt this competition since, so what is
+	 * on screen has to be what was published rather than what was kept. Nothing is pressed here:
+	 * refreshing by hand has always worked, and being told there is something new and then having to
+	 * ask for it a second time is the bug.
+	 */
+	check(
+		'a competition announced as new opens on what was published, not on what was cached',
+		await page.getByText('Late Class Result').isVisible()
+	);
 	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
 	await page.waitForSelector('a[href*="/ianseo/29775"]');
 	check(
