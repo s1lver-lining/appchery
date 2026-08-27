@@ -64,3 +64,18 @@ describe('parseDates', () => {
 		expect(parseDates('bientôt')).toEqual({ from: null, to: null });
 	});
 });
+
+describe('the links a competition publishes', () => {
+	it('keeps nothing that is not a page on the web', () => {
+		const entries = parseEntries(`
+			<div class="competition-block">
+				<h2>Concours</h2>
+				<a href="javascript:alert(1)">Inscription</a>
+				<a href="https://x.inscriptarc.fr/inscription">Inscription</a>
+			</div>
+		`);
+		for (const entry of entries) {
+			for (const link of entry.links) expect(link.href.startsWith('https://')).toBe(true);
+		}
+	});
+});

@@ -45,9 +45,9 @@ export function parseEntries(html: string): Entry[] {
 
 /** The platform writes its links without a scheme, which is not a thing a phone can open. */
 function absolute(href: string): string {
-	if (href.startsWith('//')) return `https:${href}`;
-	if (href.startsWith('http')) return href;
-	return '';
+	const full = href.startsWith('//') ? `https:${href}` : href;
+	// A page on the web or nothing at all: this address was typed by whoever runs the competition.
+	return /^https?:\/\//i.test(full) ? full : '';
 }
 
 /** "Organisé par : Cie D'arc De Brouchy (Affiliation FFTA n°0780305)", less the parts that are labels. */
