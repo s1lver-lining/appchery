@@ -1,6 +1,9 @@
 node_modules/
 .svelte-kit/
 build/
+# Wrangler bundles the Pages functions through here on every deploy and only tidies up after itself
+# when it exits cleanly, so an interrupted deploy leaves its scratch behind.
+.wrangler/
 drizzle/
 *.log
 .DS_Store

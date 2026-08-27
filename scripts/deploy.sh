@@ -230,5 +230,8 @@ npx wrangler pages deploy build \
 	--branch "$BRANCH" \
 	--commit-dirty="$([ -n "$DIRTY" ] && echo true || echo false)"
 
+# Wrangler bundles the functions under here and leaves the scratch behind whenever it is interrupted.
+rm -rf .wrangler/tmp
+
 echo
 echo "Deployed to ${URL}"
