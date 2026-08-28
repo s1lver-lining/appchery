@@ -240,4 +240,25 @@ describe('importPlan', () => {
 		const mine = await proxy.select().from(schema.session).where(eq(schema.session.id, 'mine'));
 		expect(mine).toHaveLength(1);
 	});
+
+	/**
+	 * A re-import takes the previous run's ends and shots away for real, and they had change log
+	 * entries. Left behind, those entries name rows a push can never read, so they are counted as
+	 * changes waiting to go up for as long as the archer keeps the app.
+	 */
+	it('leaves no change waiting on a row it took away for good', async () => {
+		await importPlan(plan(28));
+		await importPlan(plan(26));
+
+		const log = await proxy.select().from(schema.changeLog);
+		const live = {
+			session: new Set((await proxy.select().from(schema.session)).map((row) => row.id)),
+			activity: new Set((await proxy.select().from(schema.activity)).map((row) => row.id)),
+			round_end: new Set((await proxy.select().from(schema.end)).map((row) => row.id)),
+			shot: new Set((await proxy.select().from(schema.shot)).map((row) => row.id))
+		} as Record<string, Set<string>>;
+
+		const orphans = log.filter((entry) => !live[entry.tableName]?.has(entry.rowId));
+		expect(orphans).toEqual([]);
+	});
 });

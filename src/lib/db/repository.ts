@@ -62,6 +62,24 @@ async function log(table: string, rowId: string, op: 'insert' | 'update' | 'dele
 		.values({ tableName: table, rowId, op, changedAt: Date.now(), syncedAt: null });
 }
 
+/**
+ * Entries for rows taken away for real rather than tombstoned. A row that is simply gone announces
+ * nothing: left behind, the entry is read by every push, never sent, and never stops being counted
+ * as a change the archer is waiting on.
+ */
+async function forgetLog(table: string, rowIds: string[]) {
+	for (let i = 0; i < rowIds.length; i += 100) {
+		await db()
+			.delete(schema.changeLog)
+			.where(
+				and(
+					eq(schema.changeLog.tableName, table),
+					inArray(schema.changeLog.rowId, rowIds.slice(i, i + 100))
+				)
+			);
+	}
+}
+
 async function logMany(table: string, rowIds: string[], op: 'insert' | 'update' | 'delete') {
 	if (rowIds.length === 0) return;
 	const changedAt = Date.now();
@@ -2045,10 +2063,17 @@ async function clearImportedActivities(ids: string[]) {
 			.where(inArray(schema.end.activityId, chunk));
 		const endIds = ends.map((row) => row.id);
 		if (endIds.length > 0) {
+			const shots = await db()
+				.select({ id: schema.shot.id })
+				.from(schema.shot)
+				.where(inArray(schema.shot.endId, endIds));
 			await db().delete(schema.shot).where(inArray(schema.shot.endId, endIds));
 			await db().delete(schema.end).where(inArray(schema.end.activityId, chunk));
+			await forgetLog('shot', shots.map((row) => row.id));
+			await forgetLog('round_end', endIds);
 		}
 		await db().delete(schema.activity).where(inArray(schema.activity.id, chunk));
+		await forgetLog('activity', chunk);
 	}
 }
 
@@ -2071,11 +2096,22 @@ async function clearImportedSession(sessionId: string) {
 			.from(schema.end)
 			.where(inArray(schema.end.activityId, activityIds));
 		const endIds = ends.map((row) => row.id);
+		const shotIds: string[] = [];
 		for (let i = 0; i < endIds.length; i += 100) {
-			await db().delete(schema.shot).where(inArray(schema.shot.endId, endIds.slice(i, i + 100)));
+			const chunk = endIds.slice(i, i + 100);
+			const shots = await db()
+				.select({ id: schema.shot.id })
+				.from(schema.shot)
+				.where(inArray(schema.shot.endId, chunk));
+			shotIds.push(...shots.map((row) => row.id));
+			await db().delete(schema.shot).where(inArray(schema.shot.endId, chunk));
 		}
 		await db().delete(schema.end).where(inArray(schema.end.activityId, activityIds));
 		await db().delete(schema.activity).where(eq(schema.activity.sessionId, sessionId));
+		await forgetLog('shot', shotIds);
+		await forgetLog('round_end', endIds);
+		await forgetLog('activity', activityIds);
 	}
 	await db().delete(schema.session).where(eq(schema.session.id, sessionId));
+	await forgetLog('session', [sessionId]);
 }
