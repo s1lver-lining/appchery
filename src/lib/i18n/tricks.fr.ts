@@ -35,7 +35,7 @@ export const tricksFr: TricksDictionary = {
 					body: 'La liste s’ouvre sur aujourd’hui, puis reste où vous l’avez laissée : revenir d’une séance vous rend la semaine que vous lisiez. Touchez l’onglet séances alors que la liste est déjà affichée pour être ramené à aujourd’hui, qui s’illumine à l’arrivée.'
 				},
 				{
-					lead: 'La recherche lit toute la sortie.',
+					lead: 'La recherche lit toute la séance.',
 					body: 'Le champ au-dessus de la liste cherche dans le nom d’une séance, son lieu, ses notes et le nom de chaque tir et de chaque procédure qui s’y trouve. Chaque mot tapé doit être trouvé quelque part, dans n’importe quel ordre, et les accents sont ignorés.'
 				},
 				{
@@ -88,7 +88,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Les totaux d’abord, les flèches s’il y a le temps.',
-					body: 'Une volée ne demande que les deux totaux, parce qu’un match se tire à la pendule. Touchez plutôt une case et le clavier monte sous la feuille, en remplissant notre côté puis le leur ; taper un total ensuite efface les flèches de ce côté, un nombre ne pouvant pas avoir deux sources. Le clavier et le blason sont le même bouton que sur la page de score.'
+					body: 'Une volée ne demande que les deux totaux, parce qu’un match se tire à la pendule. Touchez plutôt une case et le clavier monte sous la feuille, en remplissant notre côté puis le leur. Taper un total ensuite efface les flèches de ce côté, un nombre ne pouvant pas avoir deux sources.'
 				},
 				{
 					lead: 'Tenir la carte pour quelqu’un d’autre.',
@@ -126,11 +126,11 @@ export const tricksFr: TricksDictionary = {
 			tricks: [
 				{
 					lead: 'Numéroter les flèches.',
-					body: 'La page de score peut marquer chaque flèche de l’ordre dans lequel elle a été saisie, ce qui les distingue une fois la feuille triée du plus haut au plus bas. Les deux interrupteurs sont en bas de la page de score, et fonctionnent aussi sur une carte de match.'
+					body: 'La page de score peut numéroter chaque flèche dans votre ordre de saisie, pour les distinguer même une fois la feuille triée. Les deux interrupteurs sont en bas de la page de score, et fonctionnent aussi sur une carte de match.'
 				},
 				{
 					lead: 'Un tube qui rate sans arrêt est désigné.',
-					body: 'Placez vos flèches sur le blason et la page de score surveille chaque flèche de la volée, par la position à laquelle elle a été appelée, face aux autres. Si l’une d’elles se pose toujours à l’écart et que son propre groupement n’est pas pire que le leur, une carte apparaît au-dessus de l’histogramme en disant laquelle et de quel côté. C’est volontairement difficile à déclencher : trois positions pour cette flèche, huit pour les autres, un écart qui vaut un anneau, et toutes ses positions du même côté. Un groupement entier décalé ne dit rien : c’est l’archer ou le viseur, pas le tube.'
+					body: 'Placez vos flèches sur le blason et l’app compare chaque flèche de la volée aux autres. Si l’une se pose toujours à l’écart, une carte au-dessus de l’histogramme dit laquelle et de quel côté. Il faut un écart net et répété pour la déclencher. Un groupement entier décalé ne dit rien : c’est l’archer ou le viseur, pas le tube.'
 				},
 				{
 					lead: 'La feuille se corrige après coup.',
@@ -163,7 +163,7 @@ export const tricksFr: TricksDictionary = {
 					body: 'La main d’arc et l’allonge sont rangées avec chaque arc plutôt qu’avec vous, parce que le même archer allonge moins sur un longbow que sur un poulies, et qu’un arc emprunté dans l’autre sens se tire dans l’autre sens. Elles sont versionnées comme tout autre réglage : une allonge modifiée reste dans l’historique.'
 				},
 				{
-					lead: 'Un arc créé depuis une sortie est l’arc de cette sortie.',
+					lead: 'Un arc créé depuis une séance est l’arc de cette séance.',
 					body: 'Sans aucun arc enregistré, la section réglages de l’écran d’ajout propose le formulaire directement. L’arc créé là est affecté à la séance qui l’a demandé, qu’il devienne votre arc par défaut ou non.'
 				},
 				{
@@ -198,7 +198,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Le graphique principal compte toutes les flèches.',
-					body: 'Tirs inachevés compris, colorés par type de sortie. Les cartes de tir font l’inverse : uniquement les tirs menés à leur terme, parce qu’un tir abandonné score plus bas pour des raisons qui ne disent rien de votre tir.'
+					body: 'Tirs inachevés compris, colorés par type de séance. Les cartes de tir font l’inverse : uniquement les tirs menés à leur terme, parce qu’un tir abandonné score plus bas pour des raisons qui ne disent rien de votre tir.'
 				}
 			]
 		},
@@ -238,11 +238,11 @@ export const tricksFr: TricksDictionary = {
 			tricks: [
 				{
 					lead: 'Rien n’est mis de côté.',
-					body: 'Les points d’expérience ne sont jamais stockés : le total est recalculé sur l’historique tel qu’il est, donc un même historique donne toujours le même niveau. Supprimer une séance reprend donc exactement ce qu’elle avait donné, flèches, tir compté et match gagné compris, et corriger un score déplace les points avec lui. Les badges sont la seule chose qui survive au tir qui les a gagnés, parce que le badge lui-même y survit : perdez-en un à la revérification de l’onglet données des paramètres et ses points partent avec lui.'
+					body: 'Les points d’expérience ne sont jamais stockés : le total est recalculé sur votre historique, donc un même historique donne toujours le même niveau, et corriger un score déplace les points avec lui. Les badges font exception, parce que le badge lui-même survit au tir qui l’a gagné.'
 				},
 				{
 					lead: 'Une célébration est retenue par appareil.',
-					body: 'L’app garde le niveau pour lequel elle vous a félicité en dernier, pour ne jamais annoncer deux fois le même, et elle abaisse ce repère toute seule quand une séance supprimée vous coûte un niveau: regagnez-le et le feu d’artifice revient avec lui. Pour être félicité de là où vous êtes déjà, le bouton fêter à nouveau de l’onglet données des réglages oublie tout, niveaux et records compris.'
+					body: 'L’app retient le dernier niveau pour lequel elle vous a félicité, pour ne jamais annoncer deux fois le même, et abaisse ce repère si une séance supprimée vous coûte un niveau. Pour être félicité de là où vous êtes déjà, « Fêter à nouveau » dans l’onglet données des paramètres oublie tout, niveaux et records compris.'
 				},
 				{
 					lead: 'Le niveau peut tenir l’en-tête.',
@@ -402,7 +402,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Ce que les autres voient de vous est un instantané.',
-					body: 'Votre profil affiche vos flèches, vos sorties, vos badges et votre niveau à qui peut voir vos partages. C’est votre téléphone qui calcule ces chiffres et les publie en se synchronisant : ils datent donc de votre dernière synchronisation, jamais d’une seconde plus tard.'
+					body: 'Votre profil affiche vos flèches, vos séances, vos badges et votre niveau à qui peut voir vos partages. C’est votre téléphone qui calcule ces chiffres et les publie en se synchronisant : ils datent donc de votre dernière synchronisation, jamais d’une seconde plus tard.'
 				},
 				{
 					lead: 'Bloquer ne dit rien.',

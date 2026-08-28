@@ -40,7 +40,7 @@ export const tricksEn = {
 					body: 'The list opens on today, then stays where you put it: coming back from a session leaves you in the week you were reading. Tap the sessions tab while the list is already on show to be taken back to today, which rings as it arrives.'
 				},
 				{
-					lead: 'The search reads the whole outing.',
+					lead: 'The search reads the whole session.',
 					body: 'The box above the list matches a session’s name, its place, its notes and the name of every round and procedure shot in it. Every word typed has to be found somewhere, in any order, and accents are ignored.'
 				},
 				{
@@ -52,7 +52,7 @@ export const tricksEn = {
 					body: 'The display section of the settings turns the round plus button in the corner into the full width bar.'
 				},
 				{
-					lead: 'Work on several outings at once.',
+					lead: 'Work on several sessions at once.',
 					body: 'Hold a session down, or right click it, and the list turns into a selection: tapping picks rows instead of opening them. The bar at the foot then changes the bow of everything picked, or deletes it all, and the same hold works on the activities inside a session.'
 				},
 				{
@@ -93,7 +93,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'Totals first, arrows when there is time.',
-					body: 'An end needs only the two totals, because a match is shot on the clock. Tap a slot instead and the keypad rises from under the sheet, filling our side then theirs; typing a total afterwards clears that side’s arrows, since one number cannot have two sources. The keypad and the face are the same switch the scoring page uses.'
+					body: 'An end needs only the two totals, because a match is shot on the clock. Tap a slot instead and the keypad rises from under the sheet, filling our side then theirs. Typing a total afterwards clears that side’s arrows, since one number cannot have two sources.'
 				},
 				{
 					lead: 'Keep the card for somebody else.',
@@ -131,11 +131,11 @@ export const tricksEn = {
 			tricks: [
 				{
 					lead: 'Number the arrows.',
-					body: 'The scoring page can mark each arrow with the order it was entered in, which is what keeps them apart once the sheet is sorted highest first. Both switches live at the foot of the scoring page, and both work on a match card too.'
+					body: 'The scoring page can number each arrow in the order you entered it, so you can still tell them apart once the sheet is sorted highest first. Both switches are at the foot of the scoring page, and both work on a match card too.'
 				},
 				{
 					lead: 'A shaft that keeps missing is named.',
-					body: 'Plot your arrows on the face and the scoring page watches each arrow of the end, by the position it was called in, against the others. If one of them keeps landing away from the rest, and its own grouping is no worse than theirs, a card appears above the histogram saying which arrow it is and where it goes. It is deliberately hard to trigger: three plots of that arrow, eight of the others, a gap worth a ring, and every plot of it on the same side. A whole group that is out says nothing, because that is the archer or the sight, not the shaft.'
+					body: 'Plot your arrows on the face and the app compares each arrow of the end against the others. If one keeps landing away from the rest, a card above the histogram says which arrow it is and which way it goes. It takes a clear, repeated pattern to trigger. A whole group that is out says nothing: that is the archer or the sight, not the shaft.'
 				},
 				{
 					lead: 'The sheet is editable after the fact.',
@@ -168,7 +168,7 @@ export const tricksEn = {
 					body: 'Bow hand and draw length sit with each bow rather than with you, because the same archer draws a longbow shorter than a compound, and a bow borrowed the other way round is shot the other way round. They are versioned like every other setting, so a changed draw length is in the history.'
 				},
 				{
-					lead: 'A bow made from an outing is that outing’s bow.',
+					lead: 'A bow made from a session is that session’s bow.',
 					body: 'With no bow recorded at all, the tuning section of the add screen offers the form directly. The bow made there is set on the session that asked for it, whether or not it becomes your default bow.'
 				},
 				{
@@ -203,7 +203,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'The main chart counts every arrow.',
-					body: 'Unfinished rounds included, coloured by the kind of outing. The round cards are the opposite: only rounds shot to the end, because a round you walked away from scores lower for reasons that say nothing about how you shot.'
+					body: 'Unfinished rounds included, coloured by the kind of session. The round cards are the opposite: only rounds shot to the end, because a round you walked away from scores lower for reasons that say nothing about how you shot.'
 				}
 			]
 		},
@@ -213,7 +213,7 @@ export const tricksEn = {
 			tricks: [
 				{
 					lead: 'They find you.',
-					body: 'Badges are awarded as you shoot, and they announce themselves with the same fireworks a personal best does. The sky lights up at four moments: finishing a round, winning a match, adding arrows on either arrow counter, and going up a level. Whatever a single moment won is shown under one volley, so a last arrow that sets a record, earns two badges and takes you up a level shows all four cards together. The list is behind the dots menu on the stats page, or the medal in the app grid.'
+					body: 'Badges are awarded as you shoot, with the same fireworks a personal best gets: on finishing a round, winning a match, counting arrows, or going up a level. Everything won at one moment is shown together. The list is behind the dots menu on the stats page, or the medal in the app grid.'
 				},
 				{
 					lead: 'A card in the sky opens the page behind it.',
@@ -243,11 +243,11 @@ export const tricksEn = {
 			tricks: [
 				{
 					lead: 'Nothing is banked.',
-					body: 'Experience points are never stored: the total is worked out afresh from the history as it stands, so the same history always gives the same level. That means deleting a session takes back exactly what it gave, arrows, round and match win alike, and correcting a score moves the points with it. Badges are the one thing that outlives their shooting, because the badge itself does: lose one to the recheck in the settings data tab and its points go with it.'
+					body: 'Experience points are never stored: the total is worked out afresh from your history, so the same history always gives the same level, and correcting a score moves the points with it. Badges are the exception, because the badge itself outlives the shooting that won it.'
 				},
 				{
 					lead: 'A celebration is remembered per device.',
-					body: 'The app keeps the level it last congratulated you for, so it never announces the same one twice, and it lowers that mark on its own when a deleted session costs you a level: win it back and the fireworks come back with it. To be congratulated for where you already stand, the celebrate again button in the settings data tab forgets the lot, levels and records alike.'
+					body: 'The app remembers the last level it congratulated you for, so it never announces the same one twice, and lowers that mark if a deleted session costs you a level. To be congratulated for where you already stand, celebrate again in the settings data tab forgets the lot, levels and records alike.'
 				},
 				{
 					lead: 'The level can ride the header.',
@@ -407,7 +407,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'What others see of you is a snapshot.',
-					body: 'Your profile shows arrows, outings, badges and level to whoever may see what you share. Your own phone works those figures out and publishes them when it syncs, so they are as recent as your last sync and never a moment fresher.'
+					body: 'Your profile shows arrows, sessions, badges and level to whoever may see what you share. Your own phone works those figures out and publishes them when it syncs, so they are as recent as your last sync and never a moment fresher.'
 				},
 				{
 					lead: 'Blocking says nothing.',

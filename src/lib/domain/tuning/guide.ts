@@ -231,7 +231,7 @@ const EN: Record<string, StepText> = {
 		why: 'Limbs that sit off the bow plane push the arrow sideways on every shot, and no setting further down this list can make up for it.',
 		steps: [
 			'Fit at least one alignment gauge to each limb, and two where you can: one near the tip and one near the pocket.',
-			'The string should pass through the middle of both gauges, and through the middle of the riser. The middle of the riser is where the tiller bolts sit.',
+			'Check that the string passes through the middle of both gauges and of the riser. The middle of the riser is where the tiller bolts sit.',
 			'Adjust the limbs: follow the maker instructions for moving a limb sideways in its pocket.',
 			'Check both limbs again after every change, since moving one limb moves where the string sits on the other.'
 		],
@@ -273,7 +273,7 @@ const EN: Record<string, StepText> = {
 		steps: [
 			'Stand the bow upright and nock an arrow on the rest. A straight stabiliser helps you find the bow plane.',
 			'Stand behind the bow and look along the string, in the bow plane. The string should cut the stabiliser in two.',
-			'The point sits in the bow plane. It can also sit slightly outside it (left on a right handed bow), depending on taste.',
+			'Set the point in the bow plane, or slightly outside it (left on a right handed bow), to taste.',
 			'Set the position with the button barrel until the arrow lines up.'
 		],
 		results: [
@@ -284,7 +284,7 @@ const EN: Record<string, StepText> = {
 			steps: [
 				'Stand the bow upright and nock an arrow on the rest. A straight stabiliser helps you find the bow plane.',
 				'Stand behind the bow and look along the string, in the bow plane. The string should cut the stabiliser in two.',
-				'The point sits in the bow plane. It can also sit slightly outside it (right on a left handed bow), depending on taste.',
+				'Set the point in the bow plane, or slightly outside it (right on a left handed bow), to taste.',
 				'Set the position with the button barrel until the arrow lines up.'
 			]
 		}
@@ -295,8 +295,7 @@ const EN: Record<string, StepText> = {
 		steps: [
 			'Set the sight so the ring sits on the string line with the bow braced.',
 			'Slide the block up and down while watching the ring against the string.',
-			'The ring should stay on the string line over the whole travel.',
-			'Adjust the extension bar against the sight bar until the ring stays on the string line.'
+			'Adjust the extension bar against the sight bar until the ring stays on the string line over the whole travel.'
 		],
 		results: [
 			{ observation: 'The ring drifts sideways as the block comes down', suggests: 'The bar is not parallel to the bow plane: realign it' },
@@ -310,7 +309,7 @@ const EN: Record<string, StepText> = {
 			'Measure from the string to the pivot point of the grip with a bow square.',
 			'Start from the limb maker figure, or from a table like the one below.',
 			'Twist the string to raise the brace height and untwist to lower it, a few turns at a time, until it falls inside the maker range.',
-			'Brace height gets its fine setting after everything else. See the "Brace height" step for the fine pass.'
+			'The fine setting comes later: see the "Brace height" step.'
 		],
 		results: [
 			{ observation: 'A loud, harsh shot', suggests: 'Raise the brace height by a few string turns' },
@@ -325,7 +324,7 @@ const EN: Record<string, StepText> = {
 			'Measure from the string to where each limb meets the riser, square to the limb. The difference between the top figure and the bottom one is the tiller.',
 			'Start from about +0.6 cm for a recurve with a sight, and about 0 for barebow.',
 			'Change it at the limb bolts, keeping the draw weight in mind: tightening adds weight. Take care not to back the limb bolts out too far (see the maker manual).',
-			'The tiller gets its fine setting after the other steps. See the "Tiller" step for the fine pass.'
+			'The fine setting comes later: see the "Tiller" step.'
 		],
 		results: [
 			{ observation: 'The tiller is too large', suggests: 'Tighten the top limb bolt' },
@@ -456,7 +455,7 @@ const EN: Record<string, StepText> = {
 		steps: [
 			'Measure axle to axle and brace height with the bow at rest.',
 			'Compare against the numbers the maker publishes for that model and draw length.',
-			'A difference usually means cable or string stretch, or a limb bolt that has moved.'
+			'Treat any difference as cable or string stretch, or a limb bolt that has moved.'
 		],
 		results: [
 			{ observation: 'Axle to axle long, brace short', suggests: 'Strings and cables have stretched: twist them back to spec' },
@@ -552,7 +551,7 @@ const EN: Record<string, StepText> = {
 		title: 'Paper tuning',
 		why: 'Paper shows the attitude of the arrow the instant it leaves, which is the fastest way to see what the rest and the loop are doing.',
 		steps: [
-			'Stand about two metres from a sheet of paper, with a boss well behind it.',
+			'Stand about two metres from a sheet of paper, with a butt well behind it.',
 			'Shoot through the paper with a fletched arrow and read the tear.',
 			'Fix vertical first, then horizontal, moving the rest or the loop a millimetre at a time.',
 			'Move back to four or five metres and check the tear holds.'
@@ -574,9 +573,9 @@ const EN: Record<string, StepText> = {
 		title: 'Walk-back tuning',
 		why: 'It proves the centre shot across distance rather than at one range, which is where a small windage error becomes a large one.',
 		steps: [
-			'Set a vertical line on the boss with a mark at the top.',
+			'Set a vertical line on the butt with a mark at the top.',
 			'Aim at the top mark from close range and shoot, then repeat from progressively longer distances without moving the sight.',
-			'The group centres should fall on the line, not drift sideways as you walk back.'
+			'Check that the group centres fall on the line rather than drifting sideways as you walk back.'
 		],
 		results: [
 			{ observation: 'Arrows drift left as you walk back, right handed', suggests: 'Move the rest right in very small steps' },
@@ -650,7 +649,7 @@ const FR: Record<string, StepText> = {
 		why: "Des branches alignées hors du plan d'arc poussent la flèche de côté à chaque tir. Aucun réglage plus bas dans cette liste ne peut le rattraper.",
 		steps: [
 			"Posez au moins une cale d'alignement sur chaque branche. Si possible en mettre deux: en haut et en bas de la branche.",
-			'La corde doit passer par le centre des deux cales, et par le centre de la poignée. Le centre de la poignée est la position des vis de Tiller.',
+			'Vérifiez que la corde passe par le centre des deux cales et par le centre de la poignée. Le centre de la poignée est la position des vis de tiller.',
 			"Ajustez les branches : Suivez les instruction du fabricant pour déplacer horizontalement les branches dans leurs logements.",
 			"Revérifiez les deux branches après chaque modification : déplacer une branche change la position de la corde sur l'autre."
 		],
@@ -692,7 +691,7 @@ const FR: Record<string, StepText> = {
 		steps: [
 			"Fixez l'arc à la verticale et encochez une flèche sur le repose-flèche. Un stabilisation doite peut être ajoutée pour trouver le plan de l'arc.",
 			"Placez vous derrière l'arc et regardez le long de la corde dans le plan de l'arc. La stabilisation doit être coupée en deux par la corde.",
-			"La pointe se place dans le plan de l'arc. Elle peut aussi être légèrement vers l'extérieur (gauche pour un arc droitier) selon les préférences.",
+			"Placez la pointe dans le plan de l'arc, ou légèrement vers l'extérieur (à gauche pour un arc droitier), selon les préférences.",
 			'Réglez la position avec le barillet du berger jusqu\'à ce que la flèche soit correctement alignée.'
 		],
 		results: [
@@ -703,7 +702,7 @@ const FR: Record<string, StepText> = {
 			steps: [
 				"Fixez l'arc à la verticale et encochez une flèche sur le repose-flèche. Un stabilisation doite peut être ajoutée pour trouver le plan de l'arc.",
 				"Placez vous derrière l'arc et regardez le long de la corde dans le plan de l'arc. La stabilisation doit être coupée en deux par la corde.",
-				"La pointe se place dans le plan de l'arc. Elle peut aussi être légèrement vers l'extérieur (droite pour un arc gaucher) selon les préférences.",
+				"Placez la pointe dans le plan de l'arc, ou légèrement vers l'extérieur (à droite pour un arc gaucher), selon les préférences.",
 				'Réglez la position avec le barillet du berger jusqu\'à ce que la flèche soit correctement alignée.'
 			]
 		}
@@ -714,8 +713,7 @@ const FR: Record<string, StepText> = {
 		steps: [
 			"Placez le viseur pour que l'œilleton se pose sur la ligne de corde, arc bandé.",
 			"Faites coulisser le bloc de haut en bas en regardant l'œilleton contre la corde.",
-			"L'œilleton doit rester sur la ligne de corde sur toute la hauteur.",
-			"Regler la position de la reglette du viseur par rapport à la tige du viseur pour que l'œilleton reste sur la ligne de corde."
+			"Réglez la position de la réglette du viseur par rapport à la tige du viseur pour que l'œilleton reste sur la ligne de corde sur toute la hauteur."
 		],
 		results: [
 			{ observation: "L’œilleton part sur le côté quand le bloc descend", suggests: "La reglette n'est pas parallèle au plan d'arc : réalignez-la" },
@@ -729,7 +727,7 @@ const FR: Record<string, StepText> = {
 			"Mesurez la distance de la corde au point de pivot de la poignée avec une équerre.",
 			"Partez de la valeur du fabricant de branches, ou d'un tableau comme çi dessous.",
 			'Vrillez la corde pour monter le band, dévrillez pour le baisser, quelques tours à la fois, jusqu\'à ce que le band soit dans la plage de réglage du fabricant.',
-			'Le band devra être reglé finement après tous les autres réglages. Voir l\'étape "Réglage du band" pour le réglage fin.'
+			'Le réglage fin vient plus tard : voir l\'étape "Réglage du band".'
 		],
 		results: [
 			{ observation: 'Tir bruyant et sec', suggests: 'Montez le band de quelques tours de corde' },
@@ -737,27 +735,27 @@ const FR: Record<string, StepText> = {
 			{ observation: 'La corde claque le bras d’arc', suggests: 'Montez le band, puis vérifiez la rotation de votre bras d’arc' }
 		]
 	},
-	"pre-tiller": {
+	'pre-tiller': {
 		title: 'Pré-réglage du Tiller',
 		why: "Le tiller équilibre le travail des deux branches pour l'équilibrer car la corde n'est pas tenue au centre. Il permet de garder la flèche qui part à l'horizontale.",
 		steps: [
-			"Mesurez de la corde à la jonction de chaque branche avec la poignée, perpendiculairement à la branche. La difference entre celle du haut et celle du bas est le tiller.",
+			"Mesurez de la corde à la jonction de chaque branche avec la poignée, perpendiculairement à la branche. La différence entre celle du haut et celle du bas est le tiller.",
 			'Partez d\'environ +0,6 cm pour un classique avec viseur, et d\'environ 0 pour un arc nu.',
-			'Modifiez-le aux vis de branches, en gardant la puissance en tête : serrer augmente la force. Attention à ne pas trop désserer les vis de branches (voir le manuel du fabricant).',
-			'Le tiller sera réglé finement après les autres réglages. Voir l\'étape "Réglage du Tiller" pour le réglage fin.',
+			'Modifiez-le aux vis de branches, en gardant la puissance en tête : serrer augmente la force. Attention à ne pas trop desserrer les vis de branches (voir le manuel du fabricant).',
+			'Le réglage fin vient plus tard : voir l\'étape "Réglage du Tiller".'
 		],
 		results: [
 			{ observation: 'Le tiller est trop élevé', suggests: 'Serrer la vis de branche du haut' },
 			{ observation: 'Le tiller est trop bas', suggests: 'Serrer la vis de branche du bas' }
 		]
 	},
-	"nocking-point": {
-		title: 'Détalonage (point d\'encochage)',
+	'nocking-point': {
+		title: 'Détalonnage (point d\'encochage)',
 		why: "Le point d'encochage fixe l'angle vertical de sortie. Un point d'encochage mal réglé se traduit par un écart vertical que personne ne peut corriger.",
 		steps: [
 			"Posez une équerre d'arc sur le repose-flèche et clipsez-la sur la corde.",
-			'Placez le nock-set inférieur à environ 0,5 cm au-dessus de l\'équerre pour commencer. Il y a souvant des repères sur l\'equerre pour les points d\'encochage.',
-			'Enchocher une flèche et ajoutez le second nock-set à 1mm au-dessus de l\'encoche.',
+			'Placez le nock-set inférieur à environ 0,5 cm au-dessus de l\'équerre pour commencer. Il y a souvent des repères sur l\'équerre pour les points d\'encochage.',
+			'Encochez une flèche et ajoutez le second nock-set à 1 mm au-dessus de l\'encoche.',
 			'Validez à la flèche non empennée à courte distance. (voir Validation aux flèches non-empennées)'
 		],
 		results: [
@@ -875,7 +873,7 @@ const FR: Record<string, StepText> = {
 		steps: [
 			'Mesurez l’entraxe et le band, arc au repos.',
 			'Comparez aux valeurs publiées par le fabricant pour ce modèle et cette allonge.',
-			'Un écart vient le plus souvent de câbles ou de corde qui se sont allongés, ou d’une vis de branche qui a bougé.'
+			'Attribuez tout écart à des câbles ou une corde allongés, ou à une vis de branche qui a bougé.'
 		],
 		results: [
 			{ observation: 'Entraxe long et band court', suggests: 'Corde et câbles ont fatigué : revrillez-les à la cote' },
@@ -995,7 +993,7 @@ const FR: Record<string, StepText> = {
 		steps: [
 			'Tracez une verticale sur la cible avec un repère en haut.',
 			'Visez le repère de près et tirez, puis recommencez de plus en plus loin sans toucher au viseur.',
-			'Les centres de groupement doivent rester sur la ligne, sans dériver.'
+			'Vérifiez que les centres de groupement restent sur la ligne, sans dériver.'
 		],
 		results: [
 			{ observation: 'Dérive à gauche en reculant, droitier', suggests: 'Décalez le repose-flèche vers la droite, très légèrement' },

@@ -466,9 +466,26 @@
 	{:else}
 		{#if followed.length > 0}
 			<section>
-				<h2 class="mb-2 px-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
-					{$t('ianseo.following')}
-				</h2>
+				<!--
+					With the competitions it is about rather than in a settings page: the archer who has
+					just followed something is the one who wants telling about it, and they are here.
+				-->
+				<div class="mb-2 flex items-center justify-between gap-3 px-1">
+					<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+						{$t('ianseo.following')}
+					</h2>
+					{#if canTell}
+						<div class="flex items-center gap-2">
+							<span class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+								{$t('ianseo.notifications')}
+							</span>
+							<Toggle checked={telling} label={$t('ianseo.toldTitle')} onchange={setTelling} />
+						</div>
+					{/if}
+				</div>
+				{#if canTell && tellRefused}
+					<p class="mb-2 px-1 text-xs text-danger">{$t('ianseo.toldRefused')}</p>
+				{/if}
 				<div class="space-y-2">
 					{#each followed as one (one.favourite.id)}
 						{#if one.tournament}
@@ -497,23 +514,6 @@
 						{/if}
 					{/each}
 				</div>
-
-				<!--
-					With the competitions it is about rather than in a settings page: the archer who has
-					just followed something is the one who wants telling about it, and they are here.
-				-->
-				{#if canTell}
-					<div class="mt-2 flex items-start justify-between gap-3 rounded-2xl border border-line bg-surface p-3">
-						<div class="min-w-0 flex-1">
-							<p class="text-sm font-medium">{$t('ianseo.toldTitle')}</p>
-							<p class="mt-0.5 text-xs text-muted">{$t('ianseo.toldHint')}</p>
-							{#if tellRefused}
-								<p class="mt-1 text-xs text-danger">{$t('ianseo.toldRefused')}</p>
-							{/if}
-						</div>
-						<Toggle checked={telling} label={$t('ianseo.toldTitle')} onchange={setTelling} />
-					</div>
-				{/if}
 			</section>
 		{/if}
 

@@ -104,8 +104,8 @@ export const en = {
 		fetchConditions: 'Fetch location and weather',
 		fetching: 'Fetching…',
 		locationDenied: 'Location permission is required to fetch conditions.',
-		locationOff: 'Location is off. Turn "Record location" on in the settings first.',
-		openSettings: 'Open settings',
+		locationOff: 'Location is off. Turn "Record location" on in Settings first.',
+		openSettings: 'Open Settings',
 		weatherFailed: 'Could not fetch the weather. Location was still recorded.',
 		activities: 'Activities',
 		overviewTab: 'Overview',
@@ -123,7 +123,7 @@ export const en = {
 		notesHint: 'What the wind did, what you changed, how it felt.',
 		setGoal: 'Set a goal',
 		goalTitle: 'Arrow goal',
-		goalHint: 'How many arrows this outing is meant to be.',
+		goalHint: 'How many arrows this session is meant to be.',
 		goalLeft: '{n} to go',
 		goalReached: 'Goal reached.',
 		removeGoal: 'Remove',
@@ -158,11 +158,11 @@ export const en = {
 	empty: {
 		sample: 'Example',
 		sessions: {
-			title: 'No outings yet',
+			title: 'No sessions yet',
 			body: 'Every time you shoot, start a session here. It keeps the date, the place, the weather and the bow for you.'
 		},
 		activities: {
-			title: 'Nothing shot in this outing yet',
+			title: 'Nothing shot in this session yet',
 			body: 'Add a round to score arrow by arrow, a match to play somebody, or a tuning procedure.'
 		},
 		stats: {
@@ -190,7 +190,7 @@ export const en = {
 	leave: {
 		discard: 'Discard',
 		bowTitle: 'Unsaved settings',
-		bowBody: 'This bow has {n} changes that are not part of any revision yet.',
+		bowBody: '{n} changes have not been saved as a revision yet.',
 		tuningTitle: 'Unsaved adjustment',
 		tuningBody: 'This test has {n} adjustments that have not been applied to the bow yet.'
 	},
@@ -232,7 +232,7 @@ export const en = {
 			alternating: 'Alternating, one arrow'
 		},
 		soundTitle: 'Sound the signals',
-		soundHint: 'Two blasts to come to the line, one to start, three to collect. Synthesised on the device, not recorded.',
+		soundHint: 'Two blasts to come to the line, one to start, three to collect. Generated on the device.',
 		signal: {
 			lineUp: 'Come to the line',
 			start: 'Start',
@@ -369,7 +369,7 @@ export const en = {
 		editArrow: 'Edit arrow {n} of end {end}',
 		groupSize: 'Group size',
 		arrowNumbers: 'Use arrow number',
-		arrowNumbersHint: 'Marks each arrow with the order it was entered in, which is what tells them apart once they are sorted.',
+		arrowNumbersHint: 'Numbers each arrow in the order you entered it, so you can still tell them apart once sorted.',
 		arrowNumberChart: 'Mean score by arrow number',
 		arrowNumberOf: 'Arrow {n}, over {arrows} shot',
 		arrowNumberFloor: 'Bars are drawn from {n}, not from zero.',
@@ -412,7 +412,7 @@ export const en = {
 		drawWeight: 'Draw weight',
 		unit: 'g/lb',
 		fromIdeal: 'from 70',
-		hint: 'Weigh the bow as you shoot it, then draw it on a scale.',
+		hint: 'Weigh the bow ready to shoot, then measure its draw weight on a scale.',
 		verdict: {
 			good: 'Right where it should be: the bow carries its weight well.',
 			fair: 'Off the mark, but shootable. Worth a change of stabiliser mass.',
@@ -440,9 +440,9 @@ export const en = {
 		centreSeries: 'Group height',
 		spreadSeries: 'Group size',
 		exampleTitle: 'What a good test looks like',
-		exampleHint: 'Both curves peak on the brace height worth keeping: the group closes up as it climbs.',
+		exampleHint: 'Both curves peak at the brace height worth keeping.',
 		tableTitle: 'Where to start, by bow length',
-		tableHint: 'For a 25 inch riser. A starting range, not a setting: the fine pass is shot.',
+		tableHint: 'For a 25 inch riser. A starting range, not a final setting: you find the exact height by shooting.',
 		tableBow: 'Bow',
 		tableMin: 'Min',
 		tableMax: 'Max'
@@ -500,7 +500,7 @@ export const en = {
 		guideHint:
 			'The order a bow is set up in. Each step assumes the ones above it are already right.',
 		askHand: 'Which hand do you shoot?',
-		askHandHint: 'This step reads the other way round on the other bow. Asked once, then remembered.',
+		askHandHint: 'Left and right swap on a left-handed bow. Asked once, then remembered.',
 		hand: {
 			right: 'Right handed',
 			left: 'Left handed'
@@ -530,7 +530,7 @@ export const en = {
 			'walk-back': 'Walk-back tuning',
 			'weight-ratio': 'Mass to draw weight'
 		},
-		noSettings: 'This test changes nothing the bow record holds, so it lives in the notes.',
+		noSettings: 'This test changes no recorded setting, so the result is saved in the notes.',
 		interpretation: 'What the result suggests',
 		notes: 'Notes',
 		notesHint: 'What you observed, and what you changed.',
@@ -538,7 +538,7 @@ export const en = {
 		noBowSelected:
 			'Choose a bow in the session first, or mark one as your default bow in the equipment list so it is added to every new session.',
 		forBow: 'Tuning steps for {bow}',
-		// The session a tuning opens for itself, named so it reads as a tuning outing and not a shoot.
+		// The session a tuning opens for itself, named so it reads as a tuning session and not a shoot.
 		sessionLabel: '{bow} Tuning'
 	},
 	equipment: {
@@ -549,7 +549,7 @@ export const en = {
 		nameRequired: 'A name is needed.',
 		bowType: 'Type',
 		makeDefault: 'Make it my default bow',
-		makeDefaultHint: 'Every new session starts on it, and the equipment tab opens it.',
+		makeDefaultHint: 'Every new session starts with this bow.',
 		tuningSteps: 'Tuning',
 		overviewTab: 'Overview',
 		settingsTab: 'Settings',
@@ -584,7 +584,7 @@ export const en = {
 		addMark: 'Add',
 		height: 'Sight height',
 		interpolatedHeight: 'Sight height, worked out',
-		interpolatedHint: 'Worked out from the marks you shot in. Shoot it, then type what you found.',
+		interpolatedHint: 'Estimated from marks you have already shot. Shoot this distance, then enter the real mark.',
 		windage: 'Windage',
 		clicker: 'Clicker',
 		plunger: 'Plunger'
@@ -650,37 +650,37 @@ export const en = {
 		title: 'How this works',
 		sessionTerm: 'A session',
 		sessionBody:
-			'is **one outing**. You went somewhere, you shot, you came home. It carries the date, the bow you took, and the weather it happened in. Everything else in the app hangs off it, so a session is **the first thing you create**, even before you know what you will shoot.',
+			'is **one outing**: a date, a bow, the weather. Everything else hangs off it, so a session is **the first thing you create**.',
 		activityTerm: 'An activity',
 		activityBody:
-			'is **one thing done inside a session**: a scored round, or a tuning procedure. A session can hold several. A round records **every arrow**, so a score can be corrected later; a tuning run records what you changed and writes a new revision of the bow. Arrows shot without scoring them go in the **training counter** instead, and still count towards your volume.',
+			'is **one thing done inside a session**: a scored round, or a tuning run. A session can hold several. A round records **every arrow**, so a score can be corrected later. Arrows shot without scoring go in the **training counter**, and still count towards your volume.',
 		planTerm: 'A plan',
 		planBody:
-			'is **a week you mean to repeat**. It holds the outings you intend, on the days and at the times you intend them, with an optional arrow goal each. Plans are **templates, not history**: their sessions show up in your list for the coming week, and nothing is written until you actually shoot one. A week you skip leaves no trace.',
+			'is **a week you mean to repeat**: the sessions you intend, on the days you intend them. Plans are **templates, not history** — nothing is written until you actually shoot. A week you skip leaves no trace.',
 		bowTerm: 'A bow',
 		bowBody:
-			'is anything you shoot: yours, a club bow, a barebow you set up for a weekend. Give it a name you would recognise on the rack. Its **type** decides which settings the app asks for and which tuning procedures it offers, so a compound is never asked about tiller.',
+			'is anything you shoot: yours, a club bow, a barebow set up for a weekend. Its **type** decides which settings and tuning procedures you are offered, so a compound is never asked about tiller.',
 		revisionTerm: 'A revision',
 		revisionBody:
-			'is **the settings of a bow at one point in time**, kept rather than overwritten. Change a setting and the old numbers stay readable, so a score shot last month can still be matched to the bow that shot it. A tuning activity writes a revision when you record what you changed.',
+			'is **the settings of a bow at one point in time**, kept rather than overwritten, so a score shot last month still matches the bow that shot it. A tuning activity writes one.',
 		defaultBowTerm: 'The default bow',
 		defaultBowBody:
-			'is the one preselected on a new session, marked on this page. It is **kept on this device** rather than synced, because which bow you reach for depends on where you are.',
+			'is the one preselected on a new session. It is **kept on this device** rather than synced, because which bow you reach for depends on where you are.',
 		rangeTerm: 'The filters',
 		rangeBody:
-			'at the top of the page decide what every figure below them reads from: a period, a round, a bow, a kind of outing, a wind. They combine, so you can ask how you shoot **in the wind with one bow**. The periods are rolling, not calendar: on the second of the month you still see thirty days of work.',
+			'decide what every figure below them reads from, and they combine: how you shoot **in the wind with one bow**. Periods are rolling, not calendar.',
 		chartTerm: 'The main chart',
 		chartBody:
-			'counts every arrow you entered, finished round or not, and colours each bar by the **kind of outing** it came from. One measure at a time: volume, score per arrow, or rounds. Tap a bar to read that day, week or month on its own.',
+			'counts every arrow you entered, finished round or not, coloured by the **kind of session**. One measure at a time. Tap a bar to read that day on its own.',
 		roundTerm: 'A kind of round',
 		roundBody:
-			'is worked out from what you shot, never from what it was called: the **distance, the face, the ends and the arrows in them**. The same twelve ends at 70m are one round type whether you picked WA 720 from the list or built it yourself.',
+			'is worked out from what you shot, never what it was called: the **distance, the face, the ends and the arrows in them**. Twelve ends at 70m are one round type however you set them up.',
 		bestTerm: 'A personal best',
 		bestBody:
-			'is the highest score of **one kind of round**, and only finished rounds count: a round you walked away from scores lower for reasons that say nothing about how you shot. Ties break on tens, then on Xs, the usual way. Pin the rounds you care about to keep them at the top.',
+			'is the highest score of **one kind of round**, finished rounds only. Ties break on tens, then on Xs. Pin the rounds you care about to keep them at the top.',
 		consistencyTerm: 'Consistency',
 		consistencyBody:
-			'is the spread of your recent scores rather than their average. It is the figure worth watching once the average stops moving: **archers plateau on average long before they plateau on consistency**, and a smaller spread is a more repeatable shot.'
+			'is the spread of your recent scores rather than their average. Worth watching once the average stops moving: a smaller spread is a more repeatable shot.'
 	},
 	plans: {
 		title: 'Plans',
@@ -754,7 +754,7 @@ export const en = {
 		barLabel: '{arrows} arrows across {rounds} rounds',
 		barRange: '{from} to {to}',
 		clearBar: 'Back to the whole period',
-		scaleHint: 'the more solid, the more recent',
+		scaleHint: 'Solid colour means more recent',
 		byKind: 'Score by kind of session',
 		emptyRange: 'Nothing shot in this period.',
 		empty: 'Finish a round and its scores will appear here.',
@@ -843,7 +843,7 @@ export const en = {
 		noFace: 'Looking for the target face',
 		settling: 'Looking for arrows',
 		watching: 'Looking for arrows',
-		angle: 'Move round towards the front of the boss',
+		angle: 'Move so you face the target square on',
 		keep: 'Keep {n}',
 		drop: 'Drop this arrow',
 		tapToDrop: 'Tap an arrow to drop it.',
@@ -868,11 +868,11 @@ export const en = {
 		adopted: 'Your {n} existing records now belong to this account.',
 		adoptedNone: 'Signed in.',
 		unclaimed: '{n} records on this device belong to no account yet.',
-		someRefused: 'The server would not take {n} changes.',
+		someRefused: 'The server rejected {n} changes.',
 		silentSince: 'Nothing has synced for {days} days.',
-		pressSync: 'Sync now tries them again.',
+		pressSync: 'Sync now to retry them.',
 		syncNow: 'Sync now',
-		syncAutomatic: 'Syncing is automatic. This button only asks for it sooner.',
+		syncAutomatic: 'Syncing is automatic. This button just does it now.',
 		syncing: 'Syncing…',
 		lastSync: 'Last synced {at}',
 		neverSynced: 'Not synced yet.',
@@ -891,7 +891,7 @@ export const en = {
 		subtitle: 'Results published on ianseo',
 		searchPlaceholder: 'Search every competition',
 		nearMe: 'Near me',
-		nearMeHint: 'Competitions are placed by the town they are held in, which is looked up once and kept. Only the town name is ever sent anywhere: your own position stays on this device.',
+		nearMeHint: 'Competitions are placed by town. Your position never leaves this device.',
 		anyDistance: 'Any distance',
 		entryForm: 'Enter',
 		entryMandat: 'Announcement',
@@ -906,9 +906,9 @@ export const en = {
 		noOneFound: 'Nobody by that name here',
 		noOneFoundBody: 'Every word has to appear somewhere in the line. Try the surname on its own, or a club.',
 		fullClubNames: 'Club numbers',
-		fullClubNamesHint: 'Clubs as their federation files them, number and all: 0702022 - JUSSY. Off, they are named on their own: JUSSY. Opening a row shows the whole of it either way.',
+		fullClubNamesHint: 'On: 0702022 - JUSSY. Off: JUSSY.',
 		columns: 'Columns',
-		columnsHint: 'A result opens with the columns that tell one line from the next. Add whichever others you want: they are kept by heading, so adding the club once adds it to every list that has one. Opening a row shows everything either way.',
+		columnsHint: 'Add the columns you want. Opening a row shows everything either way.',
 		findDocument: 'Find a document',
 		foundDocuments: '{n} documents',
 		noDocumentFound: 'No document by that name',
@@ -945,7 +945,7 @@ export const en = {
 		refresh: 'Refresh',
 		onIanseo: 'Open on ianseo',
 		toldTitle: 'Tell me about new results',
-		toldHint: 'Checks ianseo in the background and tells you when a competition you follow publishes. No account, and the app never has to be open. A phone saving power may check less often, or not at all.',
+		notifications: 'Notifications',
 		toldOne: 'New results for {name}',
 		toldBody: 'Published on ianseo.',
 		toldMany: '{n} competitions have published',
@@ -958,14 +958,14 @@ export const en = {
 		noMatchTitle: 'No competition found',
 		noMatchBody: 'ianseo has nothing under those words. Try the town, or the organiser.',
 		errorTitle: 'ianseo could not be reached',
-		errorBody: 'Nothing has been read from it on this device yet, so there is nothing to show.',
+		errorBody: 'This device has never read ianseo, so there is nothing to show.',
 		unreadableTitle: 'This page of ianseo has changed',
-		unreadableBody: 'ianseo answered, but this version of the app could not read what it sent, which usually means the page has been rearranged and the app needs updating. The PDF on ianseo itself still has everything.',
+		unreadableBody: 'ianseo answered, but this version of the app cannot read the page. The PDF on ianseo still has everything.',
 		unreadableStale: 'Read {when}. Since then ianseo has changed this page, and this version of the app can no longer read it.',
 		partial: 'Some of this page could not be read, so parts of it may be missing.',
 		retry: 'Try again',
 		offerCountry: 'Follow competitions in {country}?',
-		offerCountryBody: 'They would be the ones you see first. Everything else is still a search away.',
+		offerCountryBody: 'They appear first. Everything else is still searchable.',
 		offerYes: 'Yes, follow {country}',
 		offerNo: 'Not now',
 		follow: 'Follow',
@@ -998,7 +998,7 @@ export const en = {
 		signedOutTitle: 'Sign in to follow archers',
 		signedOutBody: 'Following somebody, and sharing what you shot, needs an account. Everything else in the app never will.',
 		claimTitle: 'Choose a handle',
-		claimHint: 'A handle is how somebody finds you. Nothing before this point makes you findable, and you can stop here.',
+		claimHint: 'A handle is how people find you. Without one, nobody can.',
 		handlePlaceholder: 'yourname',
 		handleRules: 'Three to twenty characters: letters, numbers and underscores.',
 		handleTaken: 'That handle is taken.',
@@ -1052,7 +1052,7 @@ export const en = {
 		cardLevel: 'Level',
 		cardStale: 'As of their last sync.',
 		share: 'Share this activity',
-		shareHint: 'Shared activities are visible to whoever your profile allows. The place, the weather and the bow never travel with it.',
+		shareHint: 'Visible to whoever your profile allows. The place, the weather and the bow never travel with it.',
 		shared: 'Shared',
 		unshare: 'Stop sharing'
 	},
@@ -1074,7 +1074,7 @@ export const en = {
 	},
 	freeScore: {
 		title: 'Score only',
-		group: 'Scored without arrows',
+		group: 'Scored without arrow detail',
 		hint: 'Arrows counted and a total, with no arrow by arrow record.',
 		setupHint: 'Where this was shot. The arrows and the score are entered as you go.',
 		create: 'Start',
@@ -1114,13 +1114,13 @@ export const en = {
 		warning: {
 			unreadableRow: '{n} rows could not be read and were left out.',
 			undatedRow: '{n} rows carried no usable date and were left out.',
-			orphanRow: '{n} rounds named a session the file does not contain, and were given one of their own.',
+			orphanRow: '{n} rounds pointed to a session missing from the file, so each was given its own.',
 			droppedCoordinates: '{n} rounds had arrow positions that did not match their scores, so the positions were dropped and the scores kept.',
-			unknownSheet: 'The sheet "{detail}" was not recognised and was left alone.',
+			unknownSheet: 'The sheet "{detail}" was not recognised and was ignored.',
 			noSessionSheet: 'The file carries no session sheet, so every round was given a session of its own.'
 		},
-		nothingHanded: 'No file was handed over. Open an export from your files, or pick one in the settings.',
-		openSettings: 'Go to settings',
+		nothingHanded: 'No file was received. Open an export from your files, or pick one in Settings.',
+		openSettings: 'Open Settings',
 		reading: 'Reading the file…',
 		doneTitle: 'Imported',
 		failedTitle: 'Import failed',
@@ -1171,12 +1171,12 @@ export const en = {
 		plotting: 'Plotting arrows',
 		tapWindowTitle: 'Tap or aim',
 		tapWindowHint:
-			'A press shorter than this drops the arrow where you touched. Longer, and the magnifier opens so you can aim before letting go.',
+			'Short press drops the arrow. Longer press opens the magnifier to aim.',
 		tapWindowShort: 'Quicker to aim',
 		tapWindowLong: 'Quicker to tap',
 		driftTitle: 'Warn about an arrow that is out',
 		driftHint:
-			'Says so when one numbered arrow keeps landing away from the others. Needs the arrows plotted on the face and numbered, and stays quiet unless the pattern is clear.',
+			'Warns when one numbered arrow keeps landing away from the rest. Needs numbered, plotted arrows.',
 		hapticsTitle: 'Vibrate on a tap',
 		hapticsHint: 'A short buzz when a tap counts an arrow or takes aim, like a key on a keyboard.',
 		milliseconds: '{n} ms',
@@ -1186,25 +1186,25 @@ export const en = {
 			'Keeps a video of each camera scoring session on this device, to help improve detection. Nothing is uploaded.',
 		motionTitle: 'Also record how the phone moved',
 		motionHint:
-			'Saves the tilt and turn of the phone alongside the video, to help improve detection later. Turn it off if the camera page misbehaves on this device.',
+			'Saves the tilt of the phone alongside the video. Turn it off if the camera misbehaves.',
 		motionNone:
 			'This device reported no motion while recording, so no motion file was saved. Phones report it; most laptops do not.',
 		recordPath:
-			'Videos are saved on this device, one per end, named after the activity and end they belong to. Copy them off with a cable or the file manager.',
+			'One video per end, saved on this device. Copy them off with a cable or the file manager.',
 		detectorTitle: 'Arrow detector',
 		detectorHint:
-			'Which method reads the arrows. Classical uses shape and colour rules; learned uses a small trained model. Both run on this device.',
+			'Classical: shape and colour rules. Learned: a small trained model. Both run on this device.',
 		detectorClassical: 'Classical',
 		detectorLearned: 'Learned',
 		smoothTitle: 'Steady the overlay',
 		smoothHint:
-			'Smooths the lines drawn over the target so they stop trembling. Only the drawing changes; the arrows are read the same way either way.',
+			'Steadies the overlay lines. Scoring is unaffected.',
 		feedHintTitle: 'Offer the feed on the home page',
 		feedHintHint:
-			'When archers you follow share something you have not read, home says so. The feed itself stays one swipe left of home either way.',
+			'Home shows a mark when the feed has something unread.',
 		newButtonTitle: 'Full new session button',
 		newButtonHint:
-			'Ends the sessions list with the wide button and its menu. Off, a round plus button sits in the corner and opens the same choices.',
+			'Off, a round plus button in the corner opens the same menu.',
 		refreshTitle: 'Refresh the app',
 		refreshHint: 'Loads the latest version again. Your data is untouched.',
 		refreshOffline: 'No network: connect and try again.',
@@ -1218,7 +1218,7 @@ export const en = {
 			'Hides the browser bars until you leave the page or reload. Installing the app does this for good.',
 		noAnimationsTitle: 'Turn off animations',
 		noAnimationsHint:
-			'Stops the ripple when the app opens, the ring on the sessions list, and the fireworks over a record. Progress indicators keep moving.',
+			'Stops the decorative animations. Progress indicators keep moving.',
 		competitionColourTitle: 'Competition colour',
 		competitionColourHint:
 			'The colour a competition wears in the sessions list and on the statistics page.',
@@ -1232,15 +1232,15 @@ export const en = {
 		clockHint: 'Show times as 14:30 rather than 2:30 PM.',
 		placeTitle: 'Name the place',
 		placeHint:
-			'Looks up the nearest town. This sends your coordinates to a third party, which recording them on the device does not.',
+			'Looks up the nearest town. This sends your coordinates to a third party.',
 		schema: 'schema {version}',
-		schemaAhead: 'This database was written by a build of the app newer than this one. Nothing here can bring it forward, so anything it is missing will keep failing until it is made afresh.',
+		schemaAhead: 'This database was written by a newer build of the app. Make it afresh to use it here.',
 		storage: 'Storage',
 		persistent: 'Persistent',
 		volatile: 'In memory, lost on reload',
 		storageWhy: {
 			insecure: 'This address is not a secure context, so the browser will not keep a database here. Open the app over HTTPS, or on localhost.',
-			notIsolated: 'The page is not cross-origin isolated: the server is not sending the two isolation headers.',
+			notIsolated: 'The server is not sending the headers the browser needs to store data here.',
 			blocked: 'The browser is refusing to store data for this site. Check that site data is not set to be cleared or blocked for this address, then reload.',
 			noOpfs: 'This browser has no private file system for the app to store a database in.',
 			unknown: 'Another window of Appchery probably has the database open, or the browser is still clearing this site. Close the other windows and reload.'
@@ -1255,12 +1255,12 @@ export const en = {
 		linkMuscles: 'Anatomy',
 		forgetTitle: 'Celebrate again',
 		forgetHint:
-			'A level or a record is only announced once. Forget which ones were, and the next one you reach brings the fireworks back.',
+			'A level or a record is only announced once. Reset so the next one is announced again.',
 		forgetAction: 'Forget what was celebrated',
 		forgetResult: 'Forgotten. The next round, match or arrow counted brings the fireworks back.',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
-			'A badge is kept once earned. Recheck it against the shooting still recorded, and any badge whose rounds are gone is taken back.',
+			'Rechecks badges against the shooting still recorded. A badge whose rounds are gone is taken back.',
 		recalcAction: 'Recheck',
 		recalcResult: '{awarded} awarded, {revoked} taken back.'
 	},
@@ -1270,7 +1270,7 @@ export const en = {
 			'What a shot asks of the body, muscle by muscle and moment by moment. Pick the muscles an exercise trains.',
 		bones: 'Bones',
 		bonesHint:
-			'Watch the shoulder blades. They slide in towards the spine as the draw comes back, and that sliding is the shot: no muscle drawn on a still figure can show it.',
+			'Watch the shoulder blades slide in towards the spine. That sliding is the shot.',
 		plateTitle: 'The back, drawn from life',
 		plateAlt: 'An anatomical plate of the muscles of the back, with the trapezius intact on one side and lifted away on the other.',
 		plateCaption:
@@ -1288,7 +1288,7 @@ export const en = {
 		peak: 'Works hardest at the {phase}',
 		deepTitle: 'Under the surface',
 insetHint:
-			'Both blades, with the trapezius and the deltoid lifted away. Picking a muscle picks it on both sides, the same as on the body.',
+			'Both blades, trapezius and deltoid lifted away. Picking a muscle picks both sides.',
 		load: { 1: 'Light', 2: 'Working', 3: 'Hardest' },
 		view: { back: 'Back', front: 'Front', both: 'Both', deep: 'Deep' },
 		inset: {
@@ -1382,9 +1382,9 @@ insetHint:
 		outOfRange: 'That is further or longer than a run the app can hold.',
 		pace: 'Pace',
 		perKm: 'per km',
-		paceWaiting: 'Enter a distance and a time and the pace works itself out.',
+		paceWaiting: 'Enter a distance and a time and the pace is worked out for you.',
 		effort: 'How it felt',
-		effortHint: 'The only measure of effort you always have, and the one that tells you whether tomorrow is a rest day.',
+		effortHint: 'Effort as you felt it. It tells you whether tomorrow should be a rest day.',
 		efforts: { easy: 'Easy', steady: 'Steady', tempo: 'Tempo', hard: 'Hard', max: 'All out' },
 		whatItWorks: 'What it works',
 		unfinished: 'Saved as it stands. A run with only half its numbers is still a run you did.'
@@ -1440,7 +1440,7 @@ insetHint:
 		ratings: { 1: 'Awful', 2: 'Rough', 3: 'Fine', 4: 'Good', 5: 'The best' },
 		meanRating: 'Felt: {rating}',
 		ranking: 'Your arrows, the odd ones first',
-		rankingHint: 'Each shaft against the rest of the set, not against the middle of the target.',
+		rankingHint: 'Ranks each shaft against the others in the set, not against the middle of the target.',
 		rankingEmpty: 'Plot the arrows on the face to see this.',
 		rankingThin: 'Shoot three ends and the odd shaft shows itself.',
 		arrowNo: 'Arrow',
@@ -1511,7 +1511,7 @@ insetHint:
 				step1: 'Anchor a band above head height and take one end in each hand, arms straight out towards it.',
 				step2: 'Pull the band towards your nose, leading with the elbows and letting them travel out wide and back past your ears.',
 				step3: 'Hold for a moment with the shoulder blades set down and together, then return under control.',
-				step4: 'Keep the shoulders down throughout. A shrug at the top hands the work to the muscle the shot wants quiet.'
+				step4: 'Keep the shoulders down throughout. A shrug at the top moves the work to the trapezius, which the shot needs quiet.'
 			},
 			proneYtw: {
 				name: 'Prone Y, T and W',
@@ -1574,7 +1574,7 @@ insetHint:
 				step1: 'Lie face down, then come up onto your forearms and toes with your elbows under your shoulders.',
 				step2: 'Set a straight line from your heels to the top of your head, with the hips neither dropped nor lifted.',
 				step3: 'Hold it, breathing normally rather than bracing against held breath.',
-				step4: 'End the set when the line breaks. Time held out of shape is time spent teaching the shape.'
+				step4: 'End the set when the line breaks. Time held out of shape only teaches the bad shape.'
 			},
 			running: {
 				name: 'Running',
@@ -1629,25 +1629,25 @@ insetHint:
 			arrows: {
 				title: 'Arrows',
 				formula: 'arrows shot × {xp} XP',
-				body: 'Every arrow that counts towards your volume pays the same, whatever it was shot for: a warm up, a procedure, a match, a scored round. This is the only thing that pays no matter how it went.'
+				body: 'Every arrow counts the same, whatever it was shot for. The only thing that pays no matter how it went.'
 			},
 			rounds: {
 				title: 'Rounds shot to the end',
 				formula: 'arrows × {xp} × difficulty × form',
 				difficulty: 'difficulty = ({face} ÷ {metres}) ÷ (face in cm ÷ distance in m), kept between {min} and {max}',
 				form: 'form = {floor} + {rest} × (your score ÷ the best possible)',
-				body: 'Paid on top of the arrows, and only once the round is complete. Difficulty is the face measured against an 18m round on a 40cm face, so that round is worth 1 and a face further away for its size is worth more. Form never falls below {floor}, because a bad round is still a round shot.',
+				body: 'On top of the arrows, and only once the round is complete. Form never falls below {floor}, because a bad round is still a round shot.',
 				example: 'A WA 720 at 70m scored 640: 72 × 3 × 1.28 × 0.94 = 260 XP'
 			},
 			badges: {
 				title: 'Badges',
 				formula: 'the value written on the badge, once',
-				body: 'Each badge is worth its own amount, from 100 for beating the beginner bot to 2500 for a gold progression arrow. It pays the first time it is earned and never again. Lose one to the recheck in the settings data tab and its points go with it.'
+				body: 'Paid the first time a badge is earned, never again. Lose one to the recheck and its points go with it.'
 			},
 			matches: {
 				title: 'Matches won',
 				formula: '{xp} XP × stage × opponent',
-				body: 'On top of the arrows the match took. Stage runs from 1 for a match outside any bracket to 2 for a final, and the opponent from 0.6 for the beginner bot to 1.5 for the professional, a person counting 1. A draw pays {draw} of it, a loss nothing, and a card kept for somebody else pays nothing at all, arrows included.'
+				body: 'On top of the arrows the match took. A draw pays {draw}, a loss nothing, and a card kept for somebody else nothing at all.'
 			},
 			levels: {
 				title: 'Levels',
@@ -1656,7 +1656,7 @@ insetHint:
 				example: 'Level 2 at 100 XP, level 10 at 8,100, level 20 at 36,100.'
 			}
 		},
-		rateDeterministic: 'Nothing is banked: the total is worked out from the history as it stands, so deleting a session takes back exactly what it gave.'
+		rateDeterministic: 'Nothing is banked: deleting a session takes back exactly what it gave.'
 	},
 	badges: {
 		title: 'Badges',
@@ -1732,11 +1732,11 @@ insetHint:
 			},
 			halfMarathon: {
 				name: 'Half Marathon',
-				hint: '{arrows} arrows in a single outing.'
+				hint: '{arrows} arrows in a single session.'
 			},
 			marathon: {
 				name: 'Marathon',
-				hint: '{arrows} arrows in a single outing.'
+				hint: '{arrows} arrows in a single session.'
 			},
 			thousandArrows: {
 				name: 'Quiver Emptier',

@@ -168,7 +168,7 @@
 	{#each plan.entries as entry, index (index)}
 		{@const known = exercise(entry.exerciseKey)}
 		<section class="rounded-2xl border border-line bg-surface p-4">
-			<div class="flex items-start justify-between gap-2">
+			<div class="flex items-center justify-between gap-2">
 				<div class="min-w-0">
 					<h3 class="font-semibold">{name(entry.exerciseKey)}</h3>
 					{#if known}
