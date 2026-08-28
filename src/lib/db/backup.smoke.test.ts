@@ -36,7 +36,19 @@ vi.mock('./index', async () => {
 				.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%';`)
 				.all()
 				.map((row) => (row as { name: string }).name),
-		transaction: <T>(work: () => Promise<T>) => work()
+		// A real one, because a restore empties the database before it fills it and the rollback is
+		// the whole reason a half readable file must not be able to take the history with it.
+		transaction: async <T>(work: () => Promise<T>) => {
+			sqlite.exec('BEGIN');
+			try {
+				const result = await work();
+				sqlite.exec('COMMIT');
+				return result;
+			} catch (error) {
+				sqlite.exec('ROLLBACK');
+				throw error;
+			}
+		}
 	};
 });
 
@@ -103,6 +115,16 @@ describe('restoring a backup', () => {
 		);
 
 		expect(await proxy.select().from(schema.syncState)).toEqual([]);
+	});
+
+	it('leaves the history alone when the file turns out to be unreadable part way through', async () => {
+		await proxy.insert(schema.session).values(SESSION);
+
+		await expect(
+			importBackup(backupOf({ session: [{ ...SESSION, id: 'session-b' }, { kind: 'practice' }] }))
+		).rejects.toThrow();
+
+		expect((await proxy.select().from(schema.session)).map((row) => row.id)).toEqual(['session-a']);
 	});
 
 	it('enqueues a deleted row too, so the delete reaches the server as well', async () => {

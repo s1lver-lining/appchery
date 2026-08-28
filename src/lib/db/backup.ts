@@ -1,4 +1,4 @@
-import { db, schema, schemaVersion } from './index';
+import { db, schema, schemaVersion, transaction } from './index';
 import { MIGRATIONS } from './migrations';
 import { OWNED_TABLES } from './synced';
 
@@ -86,33 +86,37 @@ export interface RestoreReport {
  * sync layer can define, so restoring is deliberately all or nothing.
  */
 export async function importBackup(backup: Backup): Promise<RestoreReport> {
-	let rows = 0;
-	let restored = 0;
+	// One commit, because the wipe comes first: a row the file cannot store would otherwise leave the
+	// archer with neither the history they had nor the one they were restoring.
+	return transaction(async () => {
+		let rows = 0;
+		let restored = 0;
 
-	// Children first, so a delete never trips a foreign key on its way through.
-	for (const [, table] of [...TABLES].reverse()) {
-		await db().delete(table);
-	}
-	for (const table of NOT_BACKED_UP) await db().delete(table);
-
-	for (const [name, table] of TABLES) {
-		const list = backup.tables[name];
-		if (!Array.isArray(list) || list.length === 0) continue;
-		restored += 1;
-		// Chunked: one statement per row is slow, and one statement for ten thousand rows exceeds
-		// SQLite's variable limit.
-		for (let i = 0; i < list.length; i += 100) {
-			const chunk = list.slice(i, i + 100) as Record<string, unknown>[];
-			await db()
-				.insert(table)
-				.values(chunk as never);
-			rows += chunk.length;
+		// Children first, so a delete never trips a foreign key on its way through.
+		for (const [, table] of [...TABLES].reverse()) {
+			await db().delete(table);
 		}
-	}
+		for (const table of NOT_BACKED_UP) await db().delete(table);
 
-	await enqueueRestored();
+		for (const [name, table] of TABLES) {
+			const list = backup.tables[name];
+			if (!Array.isArray(list) || list.length === 0) continue;
+			restored += 1;
+			// Chunked: one statement per row is slow, and one statement for ten thousand rows exceeds
+			// SQLite's variable limit.
+			for (let i = 0; i < list.length; i += 100) {
+				const chunk = list.slice(i, i + 100) as Record<string, unknown>[];
+				await db()
+					.insert(table)
+					.values(chunk as never);
+				rows += chunk.length;
+			}
+		}
 
-	return { rows, tables: restored };
+		await enqueueRestored();
+
+		return { rows, tables: restored };
+	});
 }
 
 /**
