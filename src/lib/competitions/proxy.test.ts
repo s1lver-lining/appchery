@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { PROXY_PREFIX, targetOf } from './proxy';
+import { PROXY_PREFIX, proxyHeaders, targetOf } from './proxy';
 
 const at = (path: string) => targetOf(new URL(`https://appchery.com${PROXY_PREFIX}${path}`));
 
@@ -68,5 +68,19 @@ describe('targetOf, on anything else', () => {
 	it('never lets one source’s path be asked of the other', () => {
 		expect(at('/ffta/TourList.php')).toBe(null);
 		expect(at('/ianseo/competitions')).toBe(null);
+	});
+});
+
+describe('proxyHeaders', () => {
+	it('hands a page over in an origin of its own, with no script', () => {
+		const headers = proxyHeaders('text/html; charset=UTF-8');
+		// Somebody else's markup on the app's own origin would reach the archer's stored session.
+		expect(headers['Content-Security-Policy']).toBe('sandbox');
+		expect(headers['X-Content-Type-Options']).toBe('nosniff');
+	});
+
+	it('calls a page a page when the source did not say what it was', () => {
+		expect(proxyHeaders(null)['Content-Type']).toBe('text/html; charset=UTF-8');
+		expect(proxyHeaders('application/pdf')['Content-Type']).toBe('application/pdf');
 	});
 });

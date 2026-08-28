@@ -1,4 +1,4 @@
-import { targetOf } from '../../src/lib/competitions/proxy';
+import { proxyHeaders, targetOf } from '../../src/lib/competitions/proxy';
 
 /**
  * Neither ianseo nor the FFTA sends a header that would let the app read their pages from another
@@ -19,11 +19,6 @@ export const onRequestGet: PagesFunction = async ({ request }) => {
 		cf: { cacheTtl: 60, cacheEverything: false }
 	});
 
-	const headers = new Headers({
-		'Content-Type': answer.headers.get('Content-Type') ?? 'text/html; charset=UTF-8',
-		'Cache-Control': 'public, max-age=60',
-		// The app is served cross-origin isolated, which every subresource has to opt into.
-		'Cross-Origin-Resource-Policy': 'same-origin'
-	});
+	const headers = new Headers(proxyHeaders(answer.headers.get('Content-Type')));
 	return new Response(answer.body, { status: answer.status, headers });
 };

@@ -81,3 +81,24 @@ export function targetOf(url: URL, prefix = PROXY_PREFIX): string | null {
 	const search = query.toString();
 	return `${source.origin}${path}${search ? `?${search}` : ''}`;
 }
+
+/**
+ * The headers a proxied page is answered with, shared by both servers.
+ *
+ * The app reads these pages with `fetch` and parses them itself, so nothing needs a browser to
+ * render one. Handed to a browser it would be somebody else's markup running on the app's own
+ * origin, where the archer's session is kept: a competition name is typed by whoever runs the
+ * competition, and that is all it takes. The sandbox puts any such page in an origin of its own
+ * with no script at all, and nosniff stops the type being talked into something else.
+ */
+export function proxyHeaders(contentType: string | null): Record<string, string> {
+	return {
+		'Content-Type': contentType ?? 'text/html; charset=UTF-8',
+		'Content-Security-Policy': 'sandbox',
+		'X-Content-Type-Options': 'nosniff',
+		// A competition's pages are rebuilt as it is shot, and a cached result is a wrong result.
+		'Cache-Control': 'public, max-age=60',
+		// The app is served cross-origin isolated, which every subresource has to opt into.
+		'Cross-Origin-Resource-Policy': 'same-origin'
+	};
+}

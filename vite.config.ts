@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
-import { targetOf } from './src/lib/competitions/proxy.ts';
+import { proxyHeaders, targetOf } from './src/lib/competitions/proxy.ts';
 
 /**
  * SQLite's OPFS backend requires the page to be cross-origin isolated.
@@ -68,7 +68,8 @@ function ianseoProxy(): Plugin {
 				headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Appchery/1.0; +https://appchery.com)' }
 			});
 			response.statusCode = answer.status;
-			response.setHeader('Content-Type', answer.headers.get('Content-Type') ?? 'text/html');
+			for (const [key, value] of Object.entries(proxyHeaders(answer.headers.get('Content-Type'))))
+				response.setHeader(key, value);
 			response.end(await answer.text());
 		} catch (error) {
 			response.statusCode = 502;
