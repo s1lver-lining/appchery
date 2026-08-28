@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t, locale } from '$lib/i18n';
-	import { getScoreSet } from '$lib/domain/rounds/seed';
+	import { knownScoreSet } from '$lib/domain/rounds/seed';
 	import { getTemplate } from '$lib/domain/tuning/templates';
 	import { GUIDE_STEPS } from '$lib/domain/tuning/guide';
 	import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
@@ -166,9 +166,9 @@
 		>
 			<!-- Dropped where the screen cannot spare the width, as in the session's own list. -->
 			<span class="hidden shrink-0 min-[301px]:flex">
-				{#if round}
+				{#if round && knownScoreSet(round.scoreSetId)}
 					<span class="h-9 w-9">
-						<TargetFace scoreSet={getScoreSet(round.scoreSetId)} />
+						<TargetFace scoreSet={knownScoreSet(round.scoreSetId)!} />
 					</span>
 				{:else if kind === STRENGTH_KIND || kind === RUNNING_KIND}
 					<span

@@ -104,6 +104,14 @@ export function getRound(id: string): RoundDefinition | undefined {
 	return ALL_ROUNDS.find((r) => r.id === id);
 }
 
+/**
+ * The set an id names, or nothing. What another archer shared was written by a build this one knows
+ * nothing about, so a face it cannot draw has to be a face it leaves out rather than a thrown error.
+ */
+export function knownScoreSet(id: unknown): ScoreSet | undefined {
+	return typeof id === 'string' ? SCORE_SETS.find((s) => s.id === id) : undefined;
+}
+
 export function getScoreSet(id: string): ScoreSet {
 	const set = SCORE_SETS.find((s) => s.id === id);
 	if (!set) throw new Error(`Unknown score set "${id}"`);
