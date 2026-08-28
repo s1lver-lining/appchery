@@ -302,15 +302,47 @@ function findEndOfCentralDirectory(view: DataView): number {
 async function inflateRaw(data: Uint8Array): Promise<Uint8Array> {
 	if (typeof DecompressionStream === 'function') {
 		try {
-			const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
-			const out = new Uint8Array(await new Response(stream).arrayBuffer());
-			if (out.length > LIMITS.partBytes) throw new Error('part too large');
-			return out;
-		} catch {
-			// Falls through to the hand written inflater rather than failing the whole import.
+			return await inflateStream(data);
+		} catch (error) {
+			// A part refused for its size is refused: inflating it again by hand would unpack the very
+			// bomb the limit is there to stop. Only a platform that could not do the work falls through.
+			if (error instanceof PartTooLarge) throw error;
 		}
 	}
 	return inflate(data);
+}
+
+class PartTooLarge extends Error {}
+
+/**
+ * Read a chunk at a time and given up on as soon as it passes the limit, because a bomb has to be
+ * refused before it is held: buffering the whole part first and measuring it after is the memory
+ * the limit exists to refuse, already spent.
+ */
+async function inflateStream(data: Uint8Array): Promise<Uint8Array> {
+	const stream = new Blob([data as BlobPart]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+	const reader = stream.getReader();
+	const chunks: Uint8Array[] = [];
+	let size = 0;
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			size += value.length;
+			if (size > LIMITS.partBytes) throw new PartTooLarge('part too large');
+			chunks.push(value);
+		}
+	} finally {
+		await reader.cancel().catch(() => {});
+	}
+
+	const out = new Uint8Array(size);
+	let at = 0;
+	for (const chunk of chunks) {
+		out.set(chunk, at);
+		at += chunk.length;
+	}
+	return out;
 }
 
 const LENGTH_BASE = [
