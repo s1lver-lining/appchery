@@ -24,7 +24,6 @@ export const fr: Dictionary = {
 		settings: 'Paramètres'
 	},
 	common: {
-		start: 'Commencer',
 		cancel: 'Annuler',
 		save: 'Enregistrer',
 		add: 'Ajouter',
@@ -434,8 +433,7 @@ export const fr: Dictionary = {
 		plotTitle: 'Band {brace} cm',
 		plotHint: 'Touchez le blason à l’endroit de chaque impact.',
 		chartEmpty: 'Tirez une volée à au moins deux bands pour voir les courbes.',
-		chartLabel: 'Hauteur et taille du groupement selon le band',
-		chartUnits: 'Hauteur à gauche, taille du groupement à droite, en cm',
+		chart: 'Hauteur (à gauche) et taille du groupement (à droite) selon le band, en cm',
 		chartAxis: 'Band (cm)',
 		centreSeries: 'Hauteur du groupement',
 		spreadSeries: 'Taille du groupement',
@@ -544,7 +542,6 @@ export const fr: Dictionary = {
 	},
 	equipment: {
 		title: 'Liste du matériel',
-		empty: 'Aucun arc. Ajoutez-en un pour suivre ses réglages et son historique.',
 		addBow: 'Ajouter un arc',
 		bowName: 'Nom',
 		nameRequired: 'Un nom est nécessaire.',
@@ -608,9 +605,7 @@ export const fr: Dictionary = {
 		statNone: 'Rien',
 		pickStat: 'Afficher ici',
 		replayRings: 'Frapper la cible',
-		seeStats: 'Statistiques',
 		weekSessions: '{n} séances',
-		lastSession: 'Dernière séance',
 		neverShot: 'Aucune séance pour le moment.',
 		recent: 'Séances récentes',
 		seeAll: 'Toutes les séances',
@@ -689,7 +684,6 @@ export const fr: Dictionary = {
 		slot: 'Prévue',
 		newPlan: 'Nouveau programme',
 		name: 'Nom du programme',
-		empty: 'Aucun programme. Un programme est une semaine que vous comptez répéter.',
 		activeTitle: 'Programme actif',
 		activeHint:
 			"Désactivé, ce programme ne remplit plus la liste des séances et ne compte plus dans l'objectif hebdomadaire.",
@@ -840,9 +834,7 @@ export const fr: Dictionary = {
 		starting: 'Démarrage de la caméra.',
 		recording: 'Enr',
 		open: 'Score auto',
-		hint: 'Les flèches détectées sont des propositions. Touchez-en une pour la retirer, puis gardez le reste.',
 		noFace: 'Recherche du blason',
-		settling: 'Recherche des flèches',
 		angle: 'Placez-vous bien en face de la cible',
 		watching: 'Recherche des flèches',
 		keep: 'Garder {n}',
@@ -1147,6 +1139,13 @@ export const fr: Dictionary = {
 			unreadableWorkbook: "Ce fichier n'a pas pu être ouvert. Réexportez-le depuis l'autre application.",
 			nothingFound: "Rien d'exploitable n'a été trouvé dans ce fichier."
 		}
+	},
+	dbError: {
+		title: 'Appchery doit être rechargé',
+		body: "Une nouvelle version de l'application a été publiée pendant que celle-ci était ouverte : les deux ne s'accordent plus sur la façon dont vos tirs sont enregistrés. Recharger installe la nouvelle version.",
+		safe: "Rien de ce qui est enregistré sur cet appareil n'est perdu.",
+		action: 'Recharger',
+		persist: "Si le rechargement ne suffit pas, fermez les autres fenêtres d'Appchery et réessayez."
 	},
 	storage: {
 		volatileWarning: "Les scores seront perdus au rechargement. Installez l'application.",
@@ -1546,37 +1545,42 @@ insetHint:
 			},
 			scapularSetting: {
 				name: 'Placement des omoplates',
-				summary: 'Trouver les muscles qui tiennent le tir, seuls, avant de leur mettre la moindre charge.',
+				summary:
+					"Trouver les muscles qui tiennent le tir, seuls, avant de leur mettre la moindre charge. C'est la position dans laquelle le transfert vous met, apprise là où elle est facile à trouver.",
 				step1: 'Debout, bras le long du corps et épaules relâchées.',
 				step2: 'Faites glisser les deux omoplates vers le bas et vers la colonne, sans monter les épaules ni bouger les bras.',
 				step3: 'Tenez en respirant normalement, puis relâchez lentement.',
-				step4: 'C\'est la position dans laquelle le transfert vous met. La trouver ici est ce qui permet de la trouver à pleine allonge.'
 			},
 			holdingSpt: {
 				name: 'SPT de maintien',
 				summary:
 					"Pleine allonge, tenue. SPT veut dire entraînement physique spécifique : un travail qui entraîne le tir en faisant le tir, et celui ci est celui qui rend la dernière volée semblable à la première.",
-				step1: "Encochez une flèche et placez vous face à une cible, pour qu'une corde qui échappe à des doigts fatigués ne coûte qu'un tir. Sans cible où tirer, faites le sans rien sur la corde.",
+				step1:
+					"Encochez une flèche et placez vous face à une cible : un lâcher accidentel ne coûte alors qu'une flèche. Sans cible où tirer, travaillez sans rien sur la corde.",
 				step2: "Déroulez votre séquence de tir à l'arc ou à l'élastique jusqu'à la position de maintien.",
 				step3: 'Tenez en alignement complet, sans viser quoi que ce soit de précis, en respirant normalement.',
 				step4: 'Redescendez en contrôlant plutôt que de décocher, puis reposez et recommencez. À mesure que le maintien devient facile, allongez le et allongez le repos avec lui.',
 				step5: "Arrêtez la série dès que l'alignement part. Un maintien épaule effondrée entraîne l'effondrement.",
-				caution: "Un arc lâché à vide se détruit, et souvent avec la main qui le tient. Le plus sûr est donc de tenir avec une flèche encochée et une cible devant soi : si la corde part, la flèche part là où une flèche doit partir. Sans cible où tirer, tenez corde nue et redescendez délibérément à chaque fois. Dans tous les cas, à faire après le tir plutôt qu'avant."
+				caution:
+					"Un arc lâché à vide se détruit, et souvent avec la main qui le tient. Le plus sûr est une flèche encochée et une cible devant soi : des doigts fatigués lâchent, et la flèche part alors là où une flèche doit partir. Sans cible où tirer, travaillez corde nue et redescendez délibérément à chaque fois. À faire après le tir plutôt qu'avant."
 			},
 			reversals: {
 				name: 'Reversals',
 				summary: 'Armer, tenir, redescendre, recommencer. L\'armement lui même, répété bien plus qu\'une séance ne le demande.',
-				step1: "Encochez une flèche et placez vous face à une cible, pour qu'un lâcher accidentel en fin de série coûte une flèche et rien d'autre. Sans cible où tirer, armez sans rien sur la corde.",
+				step1:
+					"Encochez une flèche et placez vous face à une cible : un lâcher accidentel ne coûte alors qu'une flèche. Sans cible où tirer, travaillez sans rien sur la corde.",
 				step2: "Armez l'arc par votre séquence habituelle jusqu'à l'ancrage et au transfert.",
 				step3: 'Tenez deux secondes en alignement complet.',
 				step4: "Redescendez en contrôlant jusqu'à la position de placement, sans laisser tomber le bras d'arc.",
 				step5: 'Enchaînez la série, puis reposez vraiment avant la suivante. Chaque répétition est une répétition de votre tir : arrêtez la série plutôt que de la finir mal.',
-				caution: "Un arc armé et décoché sans rien sur la corde se détruit, et détruit la main qui le tient. Une flèche encochée devant une cible est la façon la plus sûre de faire ces séries, parce que des doigts fatigués lâchent : corde nue, rien ne rattrape cette erreur, et chaque descente doit être délibérée."
+				caution:
+					"Un arc lâché à vide se détruit, et souvent avec la main qui le tient. Le plus sûr est une flèche encochée et une cible devant soi : des doigts fatigués lâchent, et la flèche part alors là où une flèche doit partir. Sans cible où tirer, travaillez corde nue et redescendez délibérément à chaque fois. À faire après le tir plutôt qu'avant."
 			},
 			bowRaise: {
 				name: 'Montée d\'arc',
 				summary: 'Tenir l\'arc en l\'air, rien d\'autre. Ce qui fatigue en premier sur un long tir, travaillé à part.',
-				step1: "Encochez une flèche et placez vous face à une cible si vous le pouvez, puis montez l'arc en position de placement, à peu près à hauteur de vos épaules.",
+				step1:
+					"Encochez une flèche et placez vous face à une cible : un lâcher accidentel ne coûte alors qu'une flèche. Sans cible où tirer, travaillez sans rien sur la corde. Montez l'arc en position de placement, à peu près à hauteur de vos épaules.",
 				step2: 'Tenez le bras d\'arc tendu et l\'épaule basse, en respirant normalement.',
 				step3: 'Redescendez en contrôlant et reposez une minute ou deux.',
 				step4: 'Arrêtez quand l\'épaule commence à monter vers l\'oreille. C\'est la fin de la série, quoi que dise le chronomètre.'
@@ -1591,10 +1595,10 @@ insetHint:
 			},
 			running: {
 				name: 'Course à pied',
-				summary: 'La base sous tout le reste. Un concours, c\'est quatre heures debout, et cela se prépare.',
+				summary:
+					"La base sous tout le reste. Un concours, c'est quatre heures debout, et ce qu'elle apporte est la récupération entre les volées et un cœur qui redescend à la demande.",
 				step1: 'Courez à une allure où vous pourriez tenir une conversation. C\'est de l\'endurance, pas un chrono.',
 				step2: 'Augmentez la distance d\'un dixième par semaine au plus, et gardez un jour entre une sortie et un gros volume de flèches.',
-				step3: 'Son intérêt en tir à l\'arc est la récupération entre les volées et un cœur qui redescend à la demande, pas les jambes.'
 			}
 		},
 		frame: {

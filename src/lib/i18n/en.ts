@@ -23,7 +23,6 @@ export const en = {
 		settings: 'Settings'
 	},
 	common: {
-		start: 'Start',
 		cancel: 'Cancel',
 		save: 'Save',
 		add: 'Add',
@@ -434,8 +433,7 @@ export const en = {
 		plotTitle: 'Brace height {brace} cm',
 		plotHint: 'Tap the face where each arrow landed.',
 		chartEmpty: 'Plot an end at two heights or more to see the curves.',
-		chartLabel: 'Group height and group size against brace height',
-		chartUnits: 'Group height left, group size right, both in cm',
+		chart: 'Group height (left) and group size (right) against brace height, in cm',
 		chartAxis: 'Brace height (cm)',
 		centreSeries: 'Group height',
 		spreadSeries: 'Group size',
@@ -543,7 +541,6 @@ export const en = {
 	},
 	equipment: {
 		title: 'Equipment list',
-		empty: 'No bows yet. Add one to record its settings and tuning history.',
 		addBow: 'Add a bow',
 		bowName: 'Name',
 		nameRequired: 'A name is needed.',
@@ -607,9 +604,7 @@ export const en = {
 		statNone: 'Nothing',
 		pickStat: 'Show here',
 		replayRings: 'Ring the target',
-		seeStats: 'Statistics',
 		weekSessions: '{n} sessions',
-		lastSession: 'Last session',
 		neverShot: 'No sessions yet.',
 		recent: 'Recent sessions',
 		seeAll: 'All sessions',
@@ -688,7 +683,6 @@ export const en = {
 		slot: 'Planned',
 		newPlan: 'New plan',
 		name: 'Plan name',
-		empty: 'No plans yet. A plan is a week you mean to repeat.',
 		activeTitle: 'Plan active',
 		activeHint:
 			'Off, this plan stops filling the sessions list and stops counting towards the weekly goal.',
@@ -839,9 +833,7 @@ export const en = {
 		starting: 'Waking the camera up.',
 		recording: 'Rec',
 		open: 'Auto score',
-		hint: 'Detected arrows are proposals. Tap one to drop it, then keep the rest.',
 		noFace: 'Looking for the target face',
-		settling: 'Looking for arrows',
 		watching: 'Looking for arrows',
 		angle: 'Move so you face the target square on',
 		keep: 'Keep {n}',
@@ -1143,6 +1135,13 @@ export const en = {
 			unreadableWorkbook: 'That file could not be opened. Export it again from the other app.',
 			nothingFound: 'Nothing recognisable was found in that file.'
 		}
+	},
+	dbError: {
+		title: 'Appchery needs a reload',
+		body: 'A new version of the app was published while this one was open, so the two no longer agree on how your shooting is stored. Reloading picks up the new version.',
+		safe: 'Nothing recorded on this device is lost.',
+		action: 'Reload',
+		persist: 'If reloading does not help, close any other Appchery windows and try again.'
 	},
 	storage: {
 		// Short enough for one line on a phone: Settings spells out the storage mode in full, and this
@@ -1533,37 +1532,42 @@ insetHint:
 			},
 			scapularSetting: {
 				name: 'Scapular setting',
-				summary: 'Finding the muscles that hold the shot, on their own, before any load is put on them.',
+				summary:
+					'Finding the muscles that hold the shot, on their own, before any load is put on them. It is the position the transfer puts you in, learnt where it is easy to find.',
 				step1: 'Stand tall with your arms hanging and your shoulders relaxed.',
 				step2: 'Slide both shoulder blades down and in towards your spine, without lifting the shoulders and without moving the arms.',
 				step3: 'Hold, breathing normally, then release slowly.',
-				step4: 'This is the position the transfer puts you in. Learning to find it here is what lets you find it at full draw.'
 			},
 			holdingSpt: {
 				name: 'Holding SPT',
 				summary:
 					'Full draw, held. SPT is specific physical training: work that trains the shot by doing the shot, and this is the one that makes the last end of a round feel like the first.',
-				step1: 'Nock an arrow and stand facing a target butt, so that a string slipping off tired fingers only costs you a shot. Where you cannot shoot into a butt, do it with nothing on the string at all.',
+				step1:
+					'Nock an arrow and face a target butt: a slip then costs you an arrow and nothing else. Where you cannot shoot into a butt, work with nothing on the string.',
 				step2: 'Go through your shot process on a bow or a stretch band until you reach the holding position.',
 				step3: 'Hold there in full alignment, aiming at nothing in particular, breathing normally.',
 				step4: 'Let down under control rather than releasing, then rest and repeat. As the hold gets easier, lengthen it and lengthen the rest with it.',
 				step5: 'Stop the set the moment the alignment goes. A hold made with the shoulder collapsed trains the collapse.',
-				caution: 'A bow loosed with nothing on the string destroys itself, and often the hand holding it. So the safest way to hold is with an arrow nocked and a butt in front of you: if the string does go, an arrow goes where an arrow is meant to go. With no butt to shoot into, hold with an empty string and let down deliberately every time. Either way, do this after shooting rather than before it.'
+				caution:
+					'A bow loosed with nothing on the string destroys itself, and often the hand holding it. The safest way is an arrow nocked with a butt in front of you: tired fingers let go, and an arrow then goes where an arrow is meant to go. With no butt to shoot into, work with an empty string and let down deliberately every time. Do this after shooting rather than before it.'
 			},
 			reversals: {
 				name: 'Reversals',
 				summary: 'Draw, hold, let down, repeat. The draw itself, done far more often than a session would ask.',
-				step1: 'Nock an arrow and face a target butt, so that a slip at the end of a hard set costs you an arrow and nothing else. Where you cannot shoot into a butt, draw with nothing on the string.',
+				step1:
+					'Nock an arrow and face a target butt: a slip then costs you an arrow and nothing else. Where you cannot shoot into a butt, work with nothing on the string.',
 				step2: 'Draw the bow through your normal shot process to anchor and transfer.',
 				step3: 'Hold for a couple of seconds in full alignment.',
 				step4: 'Let down under control to the set up position, without dropping the bow arm.',
 				step5: 'Repeat for the set, then rest properly before the next one. Every rep is a rep of your shot, so stop the set rather than finish it badly.',
-				caution: 'A bow drawn and released with nothing on the string will destroy itself, and the hand holding it. An arrow nocked in front of a butt is the safest way to do these, because tired fingers let go: with an empty string there is nothing to catch that mistake, so every let down has to be deliberate.'
+				caution:
+					'A bow loosed with nothing on the string destroys itself, and often the hand holding it. The safest way is an arrow nocked with a butt in front of you: tired fingers let go, and an arrow then goes where an arrow is meant to go. With no butt to shoot into, work with an empty string and let down deliberately every time. Do this after shooting rather than before it.'
 			},
 			bowRaise: {
 				name: 'Bow raise',
 				summary: 'Holding the bow up, and nothing else. What tires first in a long round, trained on its own.',
-				step1: 'Nock an arrow and face a target butt where you can, then raise the bow to the set up position, at about the height of your own shoulders.',
+				step1:
+					'Nock an arrow and face a target butt: a slip then costs you an arrow and nothing else. Where you cannot shoot into a butt, work with nothing on the string. Raise the bow to the set up position, about the height of your own shoulders.',
 				step2: 'Hold it there with the bow arm straight and the shoulder down, breathing normally.',
 				step3: 'Lower under control and rest for a minute or two.',
 				step4: 'Stop when the shoulder starts to climb towards your ear. That is the end of the set, whatever the clock says.'
@@ -1578,10 +1582,10 @@ insetHint:
 			},
 			running: {
 				name: 'Running',
-				summary: 'The base under everything else. A round is four hours on your feet, and that is a fitness question.',
+				summary:
+					'The base under everything else. A round is four hours on your feet, and what it buys is recovery between ends and a heart rate that settles on demand.',
 				step1: 'Run at a pace you could hold a conversation at. This is endurance work, not a time trial.',
 				step2: 'Build the distance by no more than a tenth a week, and keep at least one day between runs and heavy shooting.',
-				step3: 'Its place in archery is recovery between ends and a heart rate that settles on demand, not the legs themselves.'
 			}
 		},
 		frame: {

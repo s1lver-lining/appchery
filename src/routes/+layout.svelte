@@ -26,7 +26,7 @@
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
 	import { incomingFile, namedFile } from '$lib/import/incoming';
-	import { watchForUpdates } from '$lib/update';
+	import { refreshApp, watchForUpdates } from '$lib/update';
 	import { watchSync } from '$lib/sync/watch';
 	import { syncAlertUnread, refreshSyncAlert } from '$lib/sync/alert';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
@@ -116,6 +116,7 @@
 			// Not every rejection is an Error: worker APIs reject with plain response objects, and
 			// String() renders those as "[object Object]", which tells a user nothing at all.
 			.catch((e) => {
+				console.error('Appchery: the database would not open', e);
 				if (e instanceof Error) error = e.message;
 				else if (e && typeof e === 'object')
 					error = ((e as { message?: string }).message ?? JSON.stringify(e)).slice(0, 500);
@@ -403,9 +404,34 @@
 
 <div class="flex h-full flex-col bg-bg text-ink">
 	{#if error}
-		<div class="m-4 rounded-lg border border-danger/40 bg-danger/10 p-4 text-danger">
-			<p class="font-semibold">Database failed to open</p>
-			<p class="mt-1 text-sm">{error}</p>
+		<!--
+			Almost always a deploy that landed while this tab was open: the shell is new and the
+			database the old one left behind is not. The cause is not worth explaining in a stack
+			trace, so the screen offers the one thing that fixes it. The error itself goes to the
+			console for whoever is looking for it.
+		-->
+		<div class="flex flex-1 items-center justify-center p-6">
+			<div class="w-full max-w-sm text-center">
+				<div
+					class="mx-auto mb-4 flex size-14 items-center justify-center rounded-2xl bg-brand/15 text-brand-text"
+				>
+					<Icon name="refresh" size={26} />
+				</div>
+				<h1 class="text-xl font-bold tracking-tight">{$t('dbError.title')}</h1>
+				<p class="mt-2 text-sm leading-snug text-muted">{$t('dbError.body')}</p>
+				<p class="mt-1 text-sm leading-snug text-muted">{$t('dbError.safe')}</p>
+				<button
+					class="press mt-5 w-full rounded-xl bg-brand px-4 py-2.5 font-semibold text-brand-ink"
+					onclick={async () => {
+						// refreshApp refuses while offline rather than emptying the cache; a plain
+						// reload is still the right move here, since the shell is already loaded.
+						if (!(await refreshApp())) location.reload();
+					}}
+				>
+					{$t('dbError.action')}
+				</button>
+				<p class="mt-4 text-xs leading-snug text-muted">{$t('dbError.persist')}</p>
+			</div>
 		</div>
 	{:else if !ready}
 		<!-- The database opening, which is the one wait every tab shares. -->

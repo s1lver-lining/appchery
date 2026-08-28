@@ -76,7 +76,7 @@
 			</span>
 		</div>
 
-		<svg viewBox="0 0 {W} {height}" class="w-full" role="img" aria-label={$t('brace.chartLabel')}>
+		<svg viewBox="0 0 {W} {height}" class="w-full" role="img" aria-label={$t('brace.chart')}>
 			<line
 				x1={PAD.left}
 				x2={W - PAD.right}
@@ -124,6 +124,6 @@
 			{/each}
 		</svg>
 		<p class="text-center text-[11px] text-muted">{$t('brace.chartAxis')}</p>
-		<p class="text-center text-[11px] text-muted">{$t('brace.chartUnits')}</p>
+		<p class="text-center text-[11px] text-muted">{$t('brace.chart')}</p>
 	</div>
 {/if}

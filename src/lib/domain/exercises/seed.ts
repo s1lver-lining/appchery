@@ -412,7 +412,7 @@ export const EXERCISES: Exercise[] = [
 		load: { rhomboids: 3, trapeziusMid: 3, trapeziusLower: 2, serratusAnterior: 1 },
 		phases: ['transfer', 'expansion'],
 		movement: SCAPULAR_SETTING,
-		steps: 4
+		steps: 3
 	},
 	{
 		key: 'holdingSpt',
@@ -535,6 +535,6 @@ export const EXERCISES: Exercise[] = [
 		},
 		phases: ['stance'],
 		movement: RUNNING,
-		steps: 3
+		steps: 2
 	}
 ];

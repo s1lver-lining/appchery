@@ -357,7 +357,10 @@ import { SteadyFace } from '$lib/vision/steady';
 
 <div class="fixed inset-0 z-[60] flex flex-col bg-black" use:lockScroll>
 	<header class="safe-top flex items-center justify-between px-4 py-3 pt-6 text-white">
-		<h2 class="text-lg font-bold">{$t('auto.title')}</h2>
+		<div class="min-w-0">
+			<h2 class="text-lg font-bold">{$t('auto.title')}</h2>
+			<p class="text-xs text-white/60">{$t('auto.experimental')}</p>
+		</div>
 		<button class="opacity-80" aria-label={$t('common.close')} onclick={onclose}>
 			<Icon name="close" size={22} />
 		</button>
