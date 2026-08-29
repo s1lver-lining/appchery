@@ -167,7 +167,6 @@
 				<MuscleBoard {load} class="max-h-[28vh] w-full" />
 			</div>
 		</div>
-		<p class="mt-2 text-[11px] text-muted">{$t('exercises.item.running.step3')}</p>
 	</section>
 
 	{#if !isRunDone(run)}
