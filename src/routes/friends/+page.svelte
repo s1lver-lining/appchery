@@ -20,6 +20,7 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import FriendFeed from '$lib/ui/FriendFeed.svelte';
 	import { account } from '$lib/sync/auth';
+	import { feedSeenAt } from '$lib/prefs';
 	import {
 		myHandle,
 		claimHandle,
@@ -75,6 +76,17 @@
 
 	$effect(() => {
 		void open();
+	});
+
+	/**
+	 * The same rule the feed page keeps: read is read. This tab is the one the page opens on and it
+	 * draws the very same activities, so leaving the mark to the other page left the home screen
+	 * counting as unread a feed the archer had just been through.
+	 */
+	$effect(() => {
+		if (tab !== 'feed') return;
+		const newest = feed.reduce((top, shared) => Math.max(top, shared.sharedAt), 0);
+		if (newest > $feedSeenAt) feedSeenAt.set(newest);
 	});
 
 	/**
