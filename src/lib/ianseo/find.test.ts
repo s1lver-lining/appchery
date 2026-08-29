@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { countRows, findInRounds, findInSections, terms } from './find';
+import { countRows, findInRounds, findInSections, namesFound, terms } from './find';
 import type { BracketRound, DocumentSection } from './types';
 
 const row = (...cells: string[]) => ({
@@ -99,5 +99,78 @@ describe('findInRounds', () => {
 
 	it('searches the club too', () => {
 		expect(findInRounds(rounds, 'wonogiri')[0].matches).toHaveLength(1);
+	});
+});
+
+describe('namesFound', () => {
+	const table = {
+		kind: 'table' as const,
+		title: 'Qualification',
+		skipped: 0,
+		sections: [
+			{
+				heading: 'Recurve Men',
+				columns: [
+					{ label: 'Rank', secondary: false },
+					{ label: 'Athlete', secondary: false },
+					{ label: 'Score', secondary: false }
+				],
+				rows: [
+					{
+						cells: [{ text: '1' }, { text: 'DUPONT Marie' }, { text: '650' }],
+						detail: ['Rennes Cie'],
+						strong: false
+					},
+					{
+						cells: [{ text: '2' }, { text: 'MARTIN Paul' }, { text: '640' }],
+						detail: ['Boé'],
+						strong: false
+					}
+				]
+			}
+		]
+	};
+
+	it('gives back the archer it found rather than only that it found one', () => {
+		expect(namesFound(table as never, 'dupont')).toEqual(['DUPONT Marie']);
+	});
+
+	it('finds a name typed without the accents the organiser wrote it with', () => {
+		expect(namesFound(table as never, 'boe')).toEqual(['MARTIN Paul']);
+	});
+
+	it('takes the words in whatever order they were typed', () => {
+		expect(namesFound(table as never, 'marie dupont')).toEqual(['DUPONT Marie']);
+	});
+
+	it('gives back the archer on a line that answered on its club, not the club', () => {
+		expect(namesFound(table as never, 'rennes')).toEqual(['DUPONT Marie']);
+	});
+
+	it('says nothing about a document nobody asked about, and nothing where nobody matches', () => {
+		expect(namesFound(table as never, '')).toEqual([]);
+		expect(namesFound(table as never, 'nobody')).toEqual([]);
+	});
+
+	it('reads both sides of a bracket, which is where a name appears without a row of its own', () => {
+		const bracket = {
+			kind: 'bracket' as const,
+			title: '1/8',
+			skipped: 0,
+			rounds: [
+				{
+					title: '1/8',
+					matches: [
+						{
+							entries: [
+								{ seed: '1', name: 'DUPONT Marie', country: null, club: 'Rennes', score: '6' },
+								{ seed: '16', name: 'MARTIN Paul', country: null, club: 'Boé', score: '0' }
+							]
+						}
+					]
+				}
+			]
+		};
+		expect(namesFound(bracket as never, 'marie')).toEqual(['DUPONT Marie']);
 	});
 });

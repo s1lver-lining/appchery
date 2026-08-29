@@ -8,7 +8,12 @@
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
-	import { loadCompetition, loadTournaments, TOURNAMENT_LIST } from '$lib/ianseo/client';
+	import {
+		loadCompetition,
+		loadResultDocument,
+		loadTournaments,
+		TOURNAMENT_LIST
+	} from '$lib/ianseo/client';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import { fileLink, webLink } from '$lib/competitions/links';
 	import { readCache } from '$lib/ianseo/store';
@@ -26,7 +31,7 @@
 	import EntryCard from '$lib/ui/ianseo/EntryCard.svelte';
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import ShareSheet from '$lib/ui/ianseo/ShareSheet.svelte';
-	import { terms } from '$lib/ianseo/find';
+	import { namesFound, terms } from '$lib/ianseo/find';
 	import { groupKey } from '$lib/ianseo/groups';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
@@ -159,6 +164,9 @@
 		const wanted = terms(search);
 		if (wanted.length === 0) return competition?.documents ?? [];
 		return (competition?.documents ?? []).filter((document) => {
+			// A document the archer was found in is kept whatever it is called, which is the whole point
+			// of having read it: a name is never in the title ianseo published the document under.
+			if (document.path && scanCurrent && scanned.has(document.path)) return true;
 			// The panel's translated name too, so a French archer finds the brackets by typing "tableaux".
 			const text = `${document.title} ${document.group} ${named(document.group)}`
 				.toLowerCase()
@@ -167,6 +175,72 @@
 			return wanted.every((term) => text.includes(term));
 		});
 	});
+
+	/**
+	 * Looking for a person rather than for a document.
+	 *
+	 * The competition page knows what was published, never who is in it: ianseo puts the names inside
+	 * each document and nowhere else, so answering "am I in this" means reading them. That is a few
+	 * hundred kilobytes on a club shoot and several megabytes on a championship, which is somebody's
+	 * data at a shooting line, so it is never done on a keystroke: the archer asks for it, watches it
+	 * happen, and can stop it. What has already been read is free, because the documents are cached.
+	 */
+	let scanned = $state(new Map<string, string[]>());
+	/** The search the map above answers, so a name typed over another one does not inherit its results. */
+	let scannedFor = $state('');
+	let scanning = $state(false);
+	let scanDone = $state(0);
+	let scan = 0;
+
+	const searchable = $derived((competition?.documents ?? []).filter((one) => one.path));
+	const scanTerm = $derived(search.trim());
+	/** Whether what is on screen answers the search that is in the box, rather than an older one. */
+	const scanCurrent = $derived(scannedFor === scanTerm && scanTerm !== '');
+
+	// A search that changes is a scan that no longer means anything, so it stops rather than finishing.
+	$effect(() => {
+		if (scanTerm !== scannedFor) stopScan();
+	});
+
+	function stopScan() {
+		scan++;
+		scanning = false;
+	}
+
+	/** Read a few at a time: ianseo is somebody else's server, and this asks it for a whole competition. */
+	const AT_ONCE = 4;
+
+	async function scanForPerson() {
+		const wanted = scanTerm;
+		if (!wanted) return;
+		const mine = ++scan;
+
+		scanned = new Map();
+		scannedFor = wanted;
+		scanDone = 0;
+		scanning = true;
+
+		const queue = [...searchable];
+		const readers = Array.from({ length: AT_ONCE }, async () => {
+			while (queue.length > 0 && mine === scan) {
+				const document = queue.shift()!;
+				try {
+					const loaded = await loadResultDocument(document.path!, { since: document.updatedAt });
+					if (mine !== scan) return;
+					const names = namesFound(loaded.value, wanted);
+					// Only the documents the archer is in: an empty answer is still an answer, and is kept
+					// out of the map so the list below has nothing to draw for it.
+					if (names.length > 0) scanned = new Map([...scanned, [document.path!, names]]);
+				} catch {
+					// A document ianseo will not give up is one this search cannot answer for, and no more.
+				}
+				if (mine === scan) scanDone++;
+			}
+		});
+
+		await Promise.all(readers);
+		if (mine === scan) scanning = false;
+	}
 
 	/** The panels in the order ianseo publishes them, which is the order a competition is shot in. */
 	const groups = $derived.by(() => {
@@ -256,6 +330,27 @@
 			placeholder={$t('ianseo.findDocument')}
 			count={search.trim() ? $t('ianseo.foundDocuments', { n: documents.length }) : ''}
 		/>
+
+		<!--
+			Offered rather than done: the names are inside the documents, so answering this reads the
+			whole competition off ianseo. The archer asks for it, sees how far it has got, and can stop.
+		-->
+		{#if scanTerm}
+			<div class="flex flex-wrap items-center gap-x-3 gap-y-1 px-1 text-xs text-muted">
+				{#if scanning}
+					<span>{$t('ianseo.searchingPeople', { done: scanDone, n: searchable.length })}</span>
+					<button class="underline" onclick={stopScan}>{$t('ianseo.stopSearch')}</button>
+				{:else if scanCurrent}
+					<span>{$t('ianseo.searchedPeople', { done: scanDone, n: searchable.length })}</span>
+					<button class="underline" onclick={scanForPerson}>{$t('ianseo.searchAgain')}</button>
+				{:else if searchable.length > 0}
+					<span>{$t('ianseo.peopleOffer')}</span>
+					<button class="font-semibold text-brand-text underline" onclick={scanForPerson}>
+						{$t('ianseo.searchPeople', { n: searchable.length })}
+					</button>
+				{/if}
+			</div>
+		{/if}
 	{/if}
 
 	{#if people.length > 0}
@@ -290,7 +385,10 @@
 			action={{ label: $t('ianseo.retry'), onclick: () => read(true) }}
 		/>
 	{:else if groups.length === 0 && search.trim()}
-		<EmptyState title={$t('ianseo.noDocumentFound')} body={$t('ianseo.noDocumentFoundBody')} />
+		<EmptyState
+			title={$t(scanCurrent ? 'ianseo.noPersonFound' : 'ianseo.noDocumentFound')}
+			body={$t(scanCurrent ? 'ianseo.noPersonFoundBody' : 'ianseo.noDocumentFoundBody')}
+		/>
 	{:else if groups.length === 0 && !loading}
 		<EmptyState title={$t('ianseo.noDocumentsTitle')} body={$t('ianseo.noDocumentsBody')} />
 	{/if}
@@ -321,6 +419,15 @@
 							<!-- The whole row opens the document; the PDF beside it is lifted over that link. -->
 							<span class="absolute inset-0" aria-hidden="true"></span>
 							<span class="block font-medium break-words">{document.title}</span>
+							<!-- Who was found, because a surname in a big competition is three different people. -->
+							{#if document.path && scanCurrent && scanned.has(document.path)}
+								<span class="mt-0.5 block text-xs font-medium text-brand-text">
+									{scanned.get(document.path)!.slice(0, 3).join(' · ')}
+									{#if scanned.get(document.path)!.length > 3}
+										{$t('ianseo.andMoreNames', { n: scanned.get(document.path)!.length - 3 })}
+									{/if}
+								</span>
+							{/if}
 							{#if document.updatedAt}
 								<span class="mt-0.5 block text-xs text-muted">
 									{$t('ianseo.updated', { when: $formatSince(document.updatedAt) })}

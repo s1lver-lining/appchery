@@ -1,4 +1,5 @@
-import type { BracketRound, DocumentSection } from './types';
+import { wrappingColumn } from './columns';
+import type { BracketRound, DocumentSection, ResultDocument } from './types';
 
 /**
  * Finding somebody in a published document.
@@ -65,4 +66,45 @@ export function findInRounds(rounds: BracketRound[], search: string): BracketRou
 /** How many lines a search left, so a document with nothing in it can say so rather than look empty. */
 export function countRows(sections: DocumentSection[]): number {
 	return sections.reduce((total, section) => total + section.rows.length, 0);
+}
+
+/**
+ * Whether a published document names somebody, and who. Used to answer the question an archer
+ * actually arrives with, which is not "what did this competition publish" but "am I in it": the
+ * competition page reads its documents and keeps only the ones the name appears in.
+ *
+ * The names are given back so the page can say who it found, because a search for a surname in a
+ * competition of six hundred archers is answered by three different people often enough to matter.
+ */
+export function namesFound(document: ResultDocument, search: string): string[] {
+	const wanted = terms(search);
+	if (wanted.length === 0) return [];
+
+	const found = new Set<string>();
+	if (document.kind === 'bracket') {
+		for (const round of findInRounds(document.rounds, search)) {
+			for (const match of round.matches) {
+				for (const entry of match.entries) {
+					if (holds(`${entry.name} ${entry.club ?? ''} ${entry.country?.name ?? ''}`, wanted)) {
+						found.add(entry.name);
+					}
+				}
+			}
+		}
+		return [...found];
+	}
+
+	for (const section of findInSections(document.sections, search)) {
+		// Whoever the line is about, not whichever cell answered: a search for a club is still asking
+		// which archers are in it, and a row that matched on its club would otherwise give back the club.
+		const person = section.columns.length > 0 ? wrappingColumn(section) : -1;
+		for (const row of section.rows) {
+			// The longest cell where the document published no columns at all to say which one is which.
+			const named =
+				row.cells[person]?.text?.trim() ||
+				[...row.cells].sort((a, b) => b.text.length - a.text.length)[0]?.text?.trim();
+			if (named) found.add(named);
+		}
+	}
+	return [...found];
 }
