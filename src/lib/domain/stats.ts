@@ -182,9 +182,20 @@ export interface VolumeBucket {
 	byKey: Record<string, { arrows: number; rounds: number }>;
 }
 
-/** The last day a bucket covers, so a bar can say which span it stands for and not just where it starts. */
+/**
+ * The last day a bucket covers, so a bar can say which span it stands for and not just where it
+ * starts.
+ *
+ * Stepped back a day through the Date constructor, for the same reason nextGrain steps forward
+ * through it. Taking a fixed twenty four hours off the next bucket's midnight is right on all but
+ * one day a year: the day the clocks go forward is twenty three hours long, so the subtraction
+ * overshoots into the evening before, and the bucket is reported as ending a day early. The weekly
+ * bar covering that Sunday read as though it stopped on the Saturday, and a daily one ended before
+ * it began.
+ */
 export function grainEnd(at: number, grain: Grain): number {
-	return startOfDay(nextGrain(at, grain) - DAY_MS);
+	const next = new Date(nextGrain(at, grain));
+	return new Date(next.getFullYear(), next.getMonth(), next.getDate() - 1).getTime();
 }
 
 /**
