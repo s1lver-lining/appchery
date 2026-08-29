@@ -17,10 +17,20 @@ import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { listRecordings } from './lib/recordings.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const WORK = join(ROOT, 'test/datasets/labelling');
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
+
+/**
+ * Where a recording lives, which is not always at the top of the corpus: a session dropped in as its
+ * own dated folder is still one of the recordings this is measuring.
+ */
+async function fileOf(name) {
+	const found = await listRecordings(VIDEOS);
+	return found.find((r) => r.name === name)?.path ?? join(VIDEOS, name);
+}
 const SCALE = 4;
 const ANCHOR = 0.8;
 const ANCHORS = [
@@ -94,7 +104,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, 30, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
 
 	let index = 0;
-	for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {
+	for await (const frame of decode(await fileOf(name), small.width, small.height, small)) {
 		if (index < first) {
 			index += 1;
 			continue;

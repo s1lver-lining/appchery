@@ -38,6 +38,7 @@ import { readFile, writeFile, appendFile, mkdir, mkdtemp, readdir, rm } from 'no
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename, extname } from 'node:path';
+import { listRecordings, motionPath } from './lib/recordings.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
@@ -108,7 +109,7 @@ async function prepare() {
 	await mkdir(WORK, { recursive: true });
 
 	for (const name of await recordings()) {
-		const file = join(VIDEOS, name);
+		const file = await fileOf(name);
 		const { width, height } = await probe(file);
 		const total = await countFrames(file);
 		const step = Math.max(1, Math.floor(total / SAMPLES));
@@ -236,8 +237,13 @@ async function extract(file, indices, into) {
 }
 
 async function recordings() {
-	const all = (await readdir(VIDEOS)).filter((n) => /\.(webm|mp4|mov|mkv)$/i.test(n)).sort();
-	return only ? all.filter((n) => n.includes(only)) : all;
+	return (await listRecordings(VIDEOS, only)).map((r) => r.name);
+}
+
+/** Where a recording actually lives, which is not always at the top of the corpus. */
+async function fileOf(name) {
+	const found = await listRecordings(VIDEOS);
+	return found.find((r) => r.name === name)?.path ?? join(VIDEOS, name);
 }
 
 /** The labelling page, served locally so clicks can be written straight back to the workspace. */
@@ -351,7 +357,7 @@ async function exportSet() {
 		let written = 0;
 		const frames = [];
 
-		for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {
+		for await (const frame of decode(await fileOf(name), small.width, small.height, small)) {
 			const face = track.push({
 				width: small.width,
 				height: small.height,
@@ -376,7 +382,7 @@ async function exportSet() {
 
 		const wanted = new Map(frames.map((f) => [f.index, f.face]));
 		let atFrame = 0;
-		for await (const frame of decode(join(VIDEOS, name), width, height)) {
+		for await (const frame of decode(await fileOf(name), width, height)) {
 			const face = wanted.get(atFrame);
 			const here = atFrame;
 			atFrame += 1;

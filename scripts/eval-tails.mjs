@@ -5,9 +5,19 @@ import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { listRecordings } from './lib/recordings.mjs';
 const ROOT = '/home/u/scripts/appchery/';
 const WORK = join(ROOT, 'test/datasets/labelling');
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
+
+/**
+ * Where a recording lives, which is not always at the top of the corpus: a session dropped in as its
+ * own dated folder is still one of the recordings this is measuring.
+ */
+async function fileOf(name) {
+	const found = await listRecordings(VIDEOS);
+	return found.find((r) => r.name === name)?.path ?? join(VIDEOS, name);
+}
 const SCALE = 4;
 const A = [[0.8,0],[0,0.8],[-0.8,0],[0,-0.8]];
 
@@ -34,7 +44,7 @@ for (const name of (await readdir(WORK)).sort()) {
     const fit = label.frames?.[index]?.handles ? label.frames[index] : { handles: meta.seeds?.[Number(index)]?.handles };
     if (!fit?.handles) continue;
     const small = { width: Math.floor(meta.width / SCALE), height: Math.floor(meta.height / SCALE) };
-    const frame = await frameAt(join(VIDEOS, name), meta.chosen[Number(index)], small);
+    const frame = await frameAt(await fileOf(name), meta.chosen[Number(index)], small);
     if (!frame) continue;
     const face = faceFromAnchors(fit.handles.map(([x, y]) => [x / SCALE, y / SCALE]), 1);
     if (!face) continue;
