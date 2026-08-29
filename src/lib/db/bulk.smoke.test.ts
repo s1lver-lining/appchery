@@ -41,8 +41,16 @@ vi.stubGlobal('localStorage', {
 	setItem: (key: string, value: string) => void store.set(key, value)
 });
 
-const { addTrainingArrows, deleteSessions, restoreSessions, setSessionsBow, deleteImportedSessions } =
-	await import('./repository');
+const {
+	addTrainingArrows,
+	createPlanSlot,
+	listPlanSlots,
+	updatePlanSlot,
+	deleteSessions,
+	restoreSessions,
+	setSessionsBow,
+	deleteImportedSessions
+} = await import('./repository');
 
 beforeAll(() => {
 	for (const group of MIGRATIONS) for (const statement of group) sqlite.exec(statement);
@@ -179,5 +187,27 @@ describe('counting arrows that were never scored', () => {
 		await addTrainingArrows('counting-c', 30);
 
 		expect(await addTrainingArrows('counting-c', -100)).toBe(0);
+	});
+});
+
+/**
+ * A slot's goal is the bar a week is read against, on the home page and in the badge that asks
+ * whether a plan was kept. It comes off the same kind of plain number field the counter does.
+ */
+describe('what a plan asks of a week', () => {
+	it('asks for whole arrows, whatever was typed', async () => {
+		await proxy
+			.insert(schema.plan)
+			.values({ id: 'plan-a', createdAt: 1, updatedAt: 1, deviceId: 'd', name: 'A' });
+		const id = await createPlanSlot({
+			planId: 'plan-a',
+			weekday: 1,
+			minuteOfDay: 600,
+			arrowGoal: 250.5
+		});
+		expect((await listPlanSlots('plan-a')).find((s) => s.id === id)?.arrowGoal).toBe(251);
+
+		await updatePlanSlot(id, { arrowGoal: 1e9 });
+		expect((await listPlanSlots('plan-a')).find((s) => s.id === id)?.arrowGoal).toBe(LIMITS.arrows);
 	});
 });

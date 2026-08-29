@@ -154,6 +154,7 @@ export async function updateSession(
 		notes: string | null;
 	}>
 ) {
+	if ('arrowGoal' in patch) patch = { ...patch, arrowGoal: safeGoal(patch.arrowGoal) };
 	await db()
 		.update(schema.session)
 		.set({ ...patch, updatedAt: Date.now() })
@@ -1358,6 +1359,7 @@ export async function updatePlan(
 		endDate: number | null;
 	}>
 ) {
+	if ('freeArrows' in patch) patch = { ...patch, freeArrows: safeGoal(patch.freeArrows) };
 	await db()
 		.update(schema.plan)
 		.set({ ...patch, updatedAt: Date.now() })
@@ -1391,6 +1393,17 @@ export async function listPlanSlots(planId?: string) {
 	return db().select().from(schema.planSlot).where(where).orderBy(asc(schema.planSlot.minuteOfDay));
 }
 
+/**
+ * An arrow goal as it can be stored. Typed into a plain number field like the arrow counter, and it
+ * sets the bar the week is read against, so half an arrow asked for reads back as half an arrow owed.
+ */
+function safeGoal(value: number | null | undefined): number | null {
+	if (value === null || value === undefined) return null;
+	const bounded = safeCount(value, LIMITS.arrows);
+	// Nothing asked for is no goal at all, which is not the same as a goal of zero arrows.
+	return bounded > 0 ? bounded : null;
+}
+
 export async function createPlanSlot(input: {
 	planId: string;
 	weekday: number;
@@ -1406,7 +1419,7 @@ export async function createPlanSlot(input: {
 			planId: input.planId,
 			weekday: input.weekday,
 			minuteOfDay: input.minuteOfDay,
-			arrowGoal: input.arrowGoal ?? null,
+			arrowGoal: safeGoal(input.arrowGoal),
 			label: input.label ?? null
 		});
 	await log('plan_slot', base.id, 'insert');
@@ -1419,7 +1432,11 @@ export async function updatePlanSlot(
 ) {
 	await db()
 		.update(schema.planSlot)
-		.set({ ...patch, updatedAt: Date.now() })
+		.set({
+			...patch,
+			...('arrowGoal' in patch ? { arrowGoal: safeGoal(patch.arrowGoal) } : {}),
+			updatedAt: Date.now()
+		})
 		.where(eq(schema.planSlot.id, id));
 	await log('plan_slot', id, 'update');
 }
