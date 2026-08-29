@@ -34,6 +34,8 @@
 	let editing = $state(false);
 
 	let startedAt = $state<number | null>(null);
+	/** How far the start sequence has got: the two blasts, the walk up, then the start blast. */
+	let phase = $state<'idle' | 'lineUp' | 'prep' | 'start'>('idle');
 	/** While the line walks up: the clock is not running yet, but it is not idle either. */
 	let preparingUntil = $state<number | null>(null);
 	let now = $state(Date.now());
@@ -44,9 +46,14 @@
 	const prep = $derived(Math.max(0, Math.round($timerPrepSeconds)));
 	const remaining = $derived(startedAt === null ? total : remainingAt(startedAt, total, now));
 	const running = $derived(startedAt !== null && remaining > 0);
-	const preparing = $derived(preparingUntil !== null);
+	const preparing = $derived(phase !== 'idle');
+	// The blasts either side of the walk up show it whole and show it spent: the sequence never stalls.
 	const prepLeft = $derived(
-		preparingUntil === null ? 0 : Math.max(0, Math.ceil((preparingUntil - now) / 1000))
+		phase === 'lineUp'
+			? prep
+			: phase === 'prep' && preparingUntil !== null
+				? Math.max(0, Math.ceil((preparingUntil - now) / 1000))
+				: 0
 	);
 	// Nobody may shoot while the line is walking up, which is the same thing red says at the end.
 	const light = $derived(preparing ? 'red' : lightFor(remaining, total, startedAt !== null));
@@ -117,6 +124,8 @@
 		unlockSound();
 		const token = ++calling;
 		const sound = $timerSound;
+		// Marked before the first blast, because a button that does nothing for a second reads as broken.
+		phase = 'lineUp';
 
 		if (sound) {
 			whistle('lineUp');
@@ -127,12 +136,14 @@
 		// Kept even with the sound off: the pause is time the archers are given, not a gap between noises.
 		if (prep > 0) {
 			now = Date.now();
+			phase = 'prep';
 			preparingUntil = now + prep * 1000;
 			await wait(prep * 1000);
 			if (token !== calling) return;
 			preparingUntil = null;
 		}
 
+		phase = 'start';
 		if (sound) {
 			whistle('start');
 			await wait(whistleMs('start'));
@@ -144,10 +155,12 @@
 	/** Nothing half started survives: a called off sequence leaves the clock where it was. */
 	function callOff() {
 		calling += 1;
+		phase = 'idle';
 		preparingUntil = null;
 	}
 
 	function start() {
+		phase = 'idle';
 		now = Date.now();
 		startedAt = now;
 	}
