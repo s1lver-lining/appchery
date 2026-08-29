@@ -35,7 +35,7 @@ const CODECS = {
 	'.mp4': ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
 };
 
-export async function replayVideo({ input, output, watch, model, json, limit, everyMs, arrows, pretty }) {
+export async function replayVideo({ input, output, watch, model, json, limit, everyMs, arrows, pretty, sharp }) {
 	const { width, height, fps } = await probe(input);
 	const target = json ? null : resolve(output ?? defaultOutput(input));
 
@@ -45,7 +45,7 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 
 	const { Replay, DRAWN_RINGS, DETECT_EVERY_MS } = await load();
 	paint.rings = DRAWN_RINGS;
-	const replay = new Replay(everyMs || DETECT_EVERY_MS, model ?? null, Boolean(pretty));
+	const replay = new Replay(everyMs || DETECT_EVERY_MS, model ?? null, Boolean(pretty), Boolean(sharp));
 	if (arrows) replay.setLimit(arrows);
 
 	/**

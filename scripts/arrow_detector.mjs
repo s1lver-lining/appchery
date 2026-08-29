@@ -82,7 +82,8 @@ if (VIDEO.has(extname(input).toLowerCase())) {
 		limit: Number(flags.get('--limit')) || 0,
 		everyMs: Number(flags.get('--every')) || 0,
 		arrows: Number(flags.get('--arrows') ?? flags.get('-a')) || 0,
-		pretty: flags.has('--pretty')
+		pretty: flags.has('--pretty'),
+		sharp: flags.has('--sharp')
 	});
 	process.exit(0);
 }

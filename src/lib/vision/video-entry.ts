@@ -48,12 +48,21 @@ export class Replay {
 	/** The frame the crop is cut from, kept only for the length of one push. */
 	private full: Frame | null = null;
 
-	constructor(detectEveryMs: number, model: unknown | null, pretty = false) {
+	/**
+	 * `sharp` cuts the learned detector's crop from the full resolution frame instead of the reduced
+	 * one the face was found on.
+	 *
+	 * Off by default because the app does not do it. Detection there runs in a worker and the only
+	 * thing handed across is the reduced frame, so live the model reads a picture four times blurrier
+	 * than the crops it was trained on. A replay that cut a sharp crop measured a detector no archer
+	 * has, and flattered it: the point of this replay is to show what the phone would have shown.
+	 */
+	constructor(detectEveryMs: number, model: unknown | null, pretty = false, sharp = false) {
 		this.detectEveryMs = detectEveryMs;
 		this.pretty = pretty;
 		this.scanner = new Scanner({
 			model: (model ?? null) as never,
-			crop: model ? (face, size, span) => this.cut(face, size, span) : null
+			crop: model && sharp ? (face, size, span) => this.cut(face, size, span) : null
 		});
 	}
 
