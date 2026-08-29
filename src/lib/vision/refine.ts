@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor } from './face';
+import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor, nearestTurn, pinFace } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -524,16 +524,41 @@ function descend(frame: Frame, start: FaceLocation, floor = 0.0075, from = 0.06,
  * the face less than a pixel between frames, and a floor of a pixel cannot express that, so the fit
  * sat still and then jumped. It starts from last frame's answer, so the finer steps cost few rounds.
  */
-export function refineFace(frame: Frame, start: FaceLocation, thorough = true): FaceLocation {
+export function refineFace(
+	frame: Frame,
+	start: FaceLocation,
+	thorough = true,
+	/**
+	 * Which way is up in the picture, in radians, when something outside the picture can say.
+	 *
+	 * Given, the fit's angular origin is pinned to it outright instead of being chained to the previous
+	 * frame. Only worth doing with a direction that is fixed to the boss rather than to the camera,
+	 * which in practice means gravity: the picture's own vertical turns with the phone, so pinning to
+	 * that trades a slow drift for the phone's own roll, and measured over eight recorded sweeps it
+	 * made the steady ones worse while only half mending the bad ones.
+	 */
+	up: number | null = null
+): FaceLocation {
 	// Starting fine as well as ending fine: a frame's worth of camera movement is small, and the coarse
 	// rounds a search needs are pure cost when the answer is already almost right.
 	// Following, the layout is not in question: a boss does not turn from a full face into a three spot
 	// between two frames, so the three scorings it takes to decide are pure cost every frame.
 	if (!thorough) {
 		const known = start.spot === undefined ? undefined : start.spot ? THREE_SPOT : FULL_FACE;
-		// Turned back onto the angle it came in at, because which way round a face is described is a free
-		// choice the descent would otherwise make differently every frame.
-		return alignFace(start, descend(frame, start, FOLLOW_STEP, FOLLOW_START, known));
+		const fitted = descend(frame, start, FOLLOW_STEP, FOLLOW_START, known);
+		/*
+		 * Pinned where there is something to pin to, and otherwise turned back onto the angle it came in
+		 * at, because which way round a face is described is a free choice the descent would otherwise
+		 * make differently every frame.
+		 *
+		 * Both keep the coordinates continuous; only the pin keeps them still. Chaining each frame to the
+		 * last leaves the free choice free, and a chain of small free choices is a walk: measured over
+		 * eight recorded sweeps its origin walked twenty five degrees on three of them and nearly sixty
+		 * on another, which is the found arrows creeping round the gold, and worse than it looks. The
+		 * tracker gathers evidence per place on the face, so an arrow whose coordinates are turning has
+		 * its votes smeared over an arc instead of piling up, and never clears the bar at all.
+		 */
+		return up === null ? alignFace(start, fitted) : nearestTurn(start, pinFace(fitted, up));
 	}
 
 	const fitted = descend(frame, start);

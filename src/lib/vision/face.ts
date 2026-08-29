@@ -372,6 +372,117 @@ export function cropToFace(face: FaceLocation, x: number, y: number): { x: numbe
 
 
 /**
+ * Turns a fit so its angular origin points a named way in the picture, rather than wherever the
+ * descent left it.
+ *
+ * `alignFace` chains each fit to the one before, which keeps the coordinates continuous but pins
+ * nothing: a chain of steps each free to turn a little is a random walk, and it walks. Measured over
+ * eight recorded sweeps, the fit's origin turned by sixty degrees on three of them and by a hundred on
+ * another, in ten seconds, with no jump anywhere in it. That is what an archer sees as the found
+ * arrows creeping round the gold, and it is worse than it looks: the tracker gathers its evidence per
+ * place on the face, so a real arrow whose coordinates are slowly turning has its votes smeared over
+ * an arc instead of piling up on one place, and never clears the bar at all.
+ *
+ * The freedom is real and cannot be fitted away. A target is a set of circles, so the same picture is
+ * described equally well by the same four points anywhere round the ring, and the descent that places
+ * them is choosing along a direction that costs it nothing. Since nothing in the rings can decide it,
+ * the answer is to decide it by convention instead of leaving it to the noise, and any fixed direction
+ * in the picture will do: scoring reads a radius, which no turn changes.
+ *
+ * `up` is that direction, as an angle in image pixels. The picture's own vertical is the honest
+ * default. It is not the boss's true vertical, and a phone held at a tilt will have the face's origin
+ * tilted with it; what it is, is the same on every frame, which is the property that was missing.
+ * A phone that reports gravity can pass the real up here instead and get the true one.
+ */
+export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
+	/** Where a turn of `t` puts the first anchor, as an angle about the fit's centre in the picture. */
+	const heading = (t: number) => {
+		const point = apply(fitted.transform, Math.cos(t) * ANCHOR_RADIUS, Math.sin(t) * ANCHOR_RADIUS);
+		return Math.atan2(point.y - fitted.cy, point.x - fitted.cx);
+	};
+
+	/** How far a turn leaves the first anchor from where it is wanted, the short way round. */
+	const miss = (t: number) => {
+		let d = heading(t) - up;
+		while (d > Math.PI) d -= 2 * Math.PI;
+		while (d < -Math.PI) d += 2 * Math.PI;
+		return Math.abs(d);
+	};
+
+	/*
+	 * Coarse over the whole circle, then bisected. The whole circle because there is nothing to start
+	 * from: unlike `alignFace` this is not correcting a small drift, it is choosing the angle outright,
+	 * and it must give the same answer whatever the descent happened to hand it. Four turns a quarter
+	 * apart are all equally right, so the search settles on whichever is nearest and the result is
+	 * continuous everywhere except at the exact diagonals between them.
+	 */
+	let best = 0;
+	let bestMiss = Infinity;
+	for (let i = 0; i < 72; i++) {
+		const t = (i / 72) * 2 * Math.PI;
+		const value = miss(t);
+		if (value < bestMiss) {
+			bestMiss = value;
+			best = t;
+		}
+	}
+	for (let step = (2 * Math.PI) / 72; step > 0.0005; step /= 3) {
+		for (const way of [step, -step]) {
+			let improved = true;
+			while (improved) {
+				improved = false;
+				const value = miss(best + way);
+				if (value < bestMiss - 1e-12) {
+					best += way;
+					bestMiss = value;
+					improved = true;
+				}
+			}
+		}
+	}
+
+	const turned = ANCHOR_POINTS.map((_, i) => {
+		const angle = (i * Math.PI) / 2 + best;
+		const point = apply(fitted.transform, Math.cos(angle) * ANCHOR_RADIUS, Math.sin(angle) * ANCHOR_RADIUS);
+		return [point.x, point.y] as [number, number];
+	});
+	return { ...(faceFromAnchors(turned, fitted.support) ?? fitted), spot: fitted.spot };
+}
+
+/**
+ * Picks, of the four ways a pinned fit can be labelled, the one nearest the fit before it.
+ *
+ * A pin says which way up the face is. It cannot say which of the four anchors is the one that points
+ * that way, because they are interchangeable: the same face turned a quarter is the same face. Left to
+ * the pin, the choice flips whenever the camera passes a diagonal, and a flip moves every arrow a
+ * quarter turn at once, which is far worse for the tracker than the drift the pin was mending.
+ *
+ * So the pin fixes the angle and this fixes the labelling, by keeping whichever quarter turn sits
+ * closest to where the previous frame had it. Nothing here changes the geometry: all four describe the
+ * identical face, and a score reads a radius.
+ */
+export function nearestTurn(previous: FaceLocation, pinned: FaceLocation): FaceLocation {
+	let best = pinned;
+	let bestCost = Infinity;
+	for (let quarter = 0; quarter < 4; quarter++) {
+		const turned = ANCHOR_POINTS.map((_, i) => {
+			const angle = ((i + quarter) * Math.PI) / 2;
+			const point = apply(pinned.transform, Math.cos(angle) * ANCHOR_RADIUS, Math.sin(angle) * ANCHOR_RADIUS);
+			return [point.x, point.y] as [number, number];
+		});
+		let cost = 0;
+		for (let i = 0; i < turned.length; i++) {
+			const [x, y] = previous.anchors[i];
+			cost += (turned[i][0] - x) ** 2 + (turned[i][1] - y) ** 2;
+		}
+		if (cost >= bestCost) continue;
+		bestCost = cost;
+		best = { ...(faceFromAnchors(turned, pinned.support) ?? pinned), spot: pinned.spot };
+	}
+	return best;
+}
+
+/**
  * Re-expresses a face with the same angular origin as the one before it.
  *
  * A target face is the same face turned through any angle. The rings say nothing about which way round

@@ -49,6 +49,33 @@ export class MotionLog {
 		this.latest.heading = { alpha: event.alpha ?? 0, beta: event.beta ?? 0, gamma: event.gamma ?? 0 };
 	};
 
+	/**
+	 * Which way is up in the picture right now, in radians, or null where the phone cannot say.
+	 *
+	 * This is the one thing the fit cannot see. A target face is a set of circles, so the picture says
+	 * nothing at all about which way round the boss is, and the fit is free to describe it from any
+	 * angle. Left free it wanders, and the arrows written in its coordinates wander with it.
+	 *
+	 * Gravity answers it without drift and without any of the picture. `accelerationIncludingGravity`
+	 * is in the phone's own axes with x across the screen and y up it, so the direction the ground lies
+	 * in is (-x, -y) on the screen, and the direction the sky lies in is (x, y). Canvas y grows
+	 * downwards, hence the negated y.
+	 *
+	 * Null while the phone is being shaken hard enough that the reading is mostly the archer's stride
+	 * rather than the earth, since a wrong up is worse than none: the fit falls back to keeping the
+	 * angle it already had.
+	 */
+	get up(): number | null {
+		const gravity = this.latest.gravity;
+		if (!gravity) return null;
+		/** Roughly a quarter of a g of slack either way, which a walking phone stays inside. */
+		const magnitude = Math.hypot(gravity.x, gravity.y, gravity.z);
+		if (magnitude < 7 || magnitude > 12) return null;
+		// Too near end on to say: the phone is pointing at the floor or the sky and the screen has no up.
+		if (Math.hypot(gravity.x, gravity.y) < 2) return null;
+		return Math.atan2(-gravity.y, gravity.x);
+	}
+
 	/** Starts listening. Silently does nothing where the device has no such sensors, which is a laptop. */
 	start(now = performance.now()) {
 		if (this.listening || typeof window === 'undefined') return;

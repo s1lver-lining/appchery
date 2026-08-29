@@ -3,6 +3,7 @@
 import { Scanner } from './pipeline';
 import { toFaceCoords, scaleFace } from './face';
 import type { Frame, FaceLocation, Impact } from './types';
+export { DETECT_EVERY_MS } from './live';
 
 export interface SweepResult {
 	/** Arrows confirmed by the end of the recording, in the detector's own face coordinates. */

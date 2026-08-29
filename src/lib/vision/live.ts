@@ -98,10 +98,31 @@ export class LiveScanner {
 		this.worker.postMessage({ type: 'limit', limit });
 	}
 
+	/**
+	 * Tells the detector which way is up, so the face's angular origin is pinned rather than drifting.
+	 *
+	 * Sent only when it has actually changed by enough to matter, because this crosses to the worker
+	 * and the sensor answers faster than the camera does. Half a degree is far below anything an arrow's
+	 * place can show and well above the jitter of a hand held phone.
+	 */
+	setUp(up: number | null) {
+		// Kept here as well, because the page follows the face itself between detection passes and the
+		// two must agree about which way round the face is or the overlay and the arrows part company.
+		this.followUp = up;
+		if (up === null ? this.up === null : this.up !== null && Math.abs(up - this.up) < 0.01) return;
+		this.up = up;
+		this.worker.postMessage({ type: 'up', up });
+	}
+
+	/** Last direction sent to the worker, so an unchanged reading costs nothing. */
+	private up: number | null = null;
+	private followUp: number | null = null;
+
 	/** Follows the faces already found. Cheap enough for every frame, which is the whole point. */
 	follow(small: Frame): FaceLocation[] {
 		// The cheap follow, not the search: this runs on every frame and the overlay waits on it.
-		if (this.faces.length > 0) this.faces = this.faces.map((face) => refineFace(small, face, false));
+		if (this.faces.length > 0)
+			this.faces = this.faces.map((face) => refineFace(small, face, false, this.followUp));
 		return this.faces;
 	}
 

@@ -40,8 +40,13 @@ const option = (name, fallback) => {
 const only = option('video', null);
 /** Seconds of the recording to use, since an archer will not sweep for a minute. */
 const seconds = Number(option('seconds', 0));
-/** Milliseconds between detection passes, which is how many looks a sweep gets. */
-const everyMs = Number(option('every', 300));
+/**
+ * Milliseconds between detection passes, which is how many looks a sweep gets.
+ *
+ * Zero means the app's own rate, taken from its module rather than written here: a harness offering
+ * passes at a different rate from the phone measures a detector nobody has.
+ */
+const everyMs = Number(option('every', 0));
 /**
  * Whether to tell the tracker how many arrows the end holds, as the app does when the round says so.
  *
@@ -56,7 +61,7 @@ const tune = JSON.parse(option('tune', '{}'));
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 
-const { Sweep, toFaceCoords } = await load();
+const { Sweep, toFaceCoords, DETECT_EVERY_MS } = await load();
 
 let found = 0;
 let wanted = 0;
@@ -86,7 +91,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	const first = seconds > 0 ? Math.max(0, at - span) : 0;
 	const limit = seconds > 0 ? at + span : Infinity;
 	// Counted from the first frame fed in, which is what the sweep sees.
-	const sweep = new Sweep(everyMs, 30, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
+	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, 30, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
 
 	let index = 0;
 	for await (const frame of decode(join(VIDEOS, name), small.width, small.height, small)) {

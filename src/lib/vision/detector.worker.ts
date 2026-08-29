@@ -29,6 +29,7 @@ type Message =
 	| FrameMessage
 	| { type: 'model'; model: ArrowModel | null }
 	| { type: 'limit'; limit: number }
+	| { type: 'up'; up: number | null }
 	| { type: 'reject'; x: number; y: number; face: number }
 	| { type: 'accept' }
 	| { type: 'clear' };
@@ -46,6 +47,11 @@ self.onmessage = (event: MessageEvent<Message>) => {
 
 	if (message.type === 'model') {
 		scanner = new Scanner({ model: message.model });
+		return;
+	}
+
+	if (message.type === 'up') {
+		scanner.setUp(message.up);
 		return;
 	}
 

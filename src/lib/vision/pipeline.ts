@@ -41,6 +41,8 @@ export interface ScannerOptions {
 	framesToSettle?: number;
 	/** Detection passes with no face before the arrows found so far are forgotten. */
 	forgetAfter?: number;
+	/** Which way is up in the picture, in radians, where something outside the picture can say. */
+	up?: number | null;
 	/** Thresholds for the shape detector, so the harness can sweep them without a code edit. */
 	still?: StillOptions;
 	/** How much agreement across viewpoints an arrow needs. */
@@ -96,6 +98,8 @@ export class Scanner {
 	private check: RingCheck | null = null;
 	/** Frames the face has been in view, which gates arrow detection. */
 	private settled = 0;
+	/** Which way is up in the picture, when anything outside the picture can say. */
+	private up: number | null = null;
 	/** Detection passes in a row that found no face, which is what tells a blink from a walk away. */
 	private missed = 0;
 	/** How many of those it takes before the arrows gathered so far are given up on. */
@@ -111,6 +115,7 @@ export class Scanner {
 		this.faceEvery = options.faceEvery ?? 15;
 		this.framesToSettle = options.framesToSettle ?? 8;
 		this.forgetAfter = options.forgetAfter ?? 8;
+		this.up = options.up ?? null;
 		this.maxArrows = options.maxArrows ?? 12;
 		this.model = options.model ?? null;
 		this.crop = options.crop ?? null;
@@ -163,7 +168,7 @@ export class Scanner {
 
 		// A carried camera is the normal case here, so movement is not a reason to distrust the face.
 		// Followed rather than searched for again: this runs on every frame and the overlay waits on it.
-		this.faces = this.faces.map((face) => refineFace(small, face, false));
+		this.faces = this.faces.map((face) => refineFace(small, face, false, this.up));
 		return this.faces;
 	}
 
@@ -362,6 +367,18 @@ export class Scanner {
 	 * is why it is passed on as a count and not only as a cap. The cap the scanner starts with is a
 	 * safety limit, not a statement about the end, and must not be mistaken for one.
 	 */
+	/**
+	 * Which way is up in the picture, in radians, from something that is not the picture.
+	 *
+	 * Null unless the phone has told us, which is the case on a laptop, on a recording made before the
+	 * sensors were kept, and on a phone being swung about hard enough that the reading is the archer's
+	 * stride rather than the earth. Null means the fit keeps the angle it already had, which drifts but
+	 * never jumps.
+	 */
+	setUp(up: number | null) {
+		this.up = up;
+	}
+
 	setLimit(limit: number) {
 		this.maxArrows = Math.max(0, limit);
 		/*

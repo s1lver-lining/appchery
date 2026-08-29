@@ -172,6 +172,19 @@ import { SteadyFace } from '$lib/vision/steady';
 			}
 			if (closed) return stop();
 			starting = false;
+			/*
+			 * Started whenever the camera is, not only when a recording is being kept. Gravity is the one
+			 * thing that can say which way up the boss is, and without it the fit's angular origin drifts
+			 * and carries the found arrows round the gold with it. A device that has no such sensor, or an
+			 * archer who has refused them, simply gets the old behaviour, and so does one who has turned the
+			 * sensors off in settings: that switch is the escape hatch for a device they misbehave on, and
+			 * it would be a poor one if something else went on using them.
+			 */
+			if ($recordMotion) {
+				void allowMotion().then((allowed) => {
+					if (allowed && !closed) motion.start();
+				});
+			}
 			if ($recordCameraVideo) startRecording();
 			raf = requestAnimationFrame(tick);
 		} catch (e) {
@@ -195,12 +208,6 @@ import { SteadyFace } from '$lib/vision/steady';
 		};
 		recorder.onstop = () => save(new Blob(chunks, { type: recorder?.mimeType ?? 'video/webm' }));
 		recorder.start(1000);
-		// Only asked for when it is wanted: on some devices the permission itself is the trouble.
-		if ($recordMotion) {
-			void allowMotion().then((allowed) => {
-				if (allowed && recording) motion.start();
-			});
-		}
 		recording = true;
 	}
 
@@ -267,6 +274,13 @@ import { SteadyFace } from '$lib/vision/steady';
 
 		// One sample a frame, so a sample can be paired with the frame it was taken during.
 		if (recording) motion.sample(now);
+		/*
+		 * Which way up the boss is, which is the one thing the picture cannot say. A face is a set of
+		 * circles, so the fit is free to describe it from any angle, and left free it wanders and takes
+		 * the arrows written in its coordinates with it. Read every frame whether or not anything is
+		 * being recorded: this is not a diagnostic, it is what stops the arrows creeping round the gold.
+		 */
+		scanner.setUp(motion.up);
 
 		const small = reduce();
 		if (!small) return;

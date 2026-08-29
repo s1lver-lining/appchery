@@ -4,6 +4,8 @@ import {
 	detectFaces,
 	faceFromAnchors,
 	faceFromEllipse,
+	nearestTurn,
+	pinFace,
 	toFaceCoords,
 	toImageCoords
 } from './face';
@@ -611,5 +613,66 @@ describe('an end that holds more arrows than the round says', () => {
 		 * of the end.
 		 */
 		expect({ steady, limit: tracker.limit }).toEqual({ steady: true, limit: 8 });
+	});
+});
+
+describe('pinning which way round a face is described', () => {
+	/** The angle the first anchor sits at about the centre, which is the fit's angular origin. */
+	function origin(face: FaceLocation): number {
+		const [x, y] = face.anchors[0];
+		return Math.atan2(y - face.cy, x - face.cx);
+	}
+
+	function circle(cx: number, cy: number, r: number, turn: number): FaceLocation {
+		const anchors = [0, 1, 2, 3].map((i) => {
+			const angle = (i * Math.PI) / 2 + turn;
+			return [cx + Math.cos(angle) * r, cy + Math.sin(angle) * r] as [number, number];
+		});
+		return faceFromAnchors(anchors, 1)!;
+	}
+
+	it('gives the same origin whatever angle the fit arrived at', () => {
+		const up = -Math.PI / 2;
+		/*
+		 * The point of the whole thing. A face is a set of circles, so these four fits describe the
+		 * identical boss and differ only in a free choice the descent makes with the noise. Pinned, they
+		 * have to agree, because everything measured in face coordinates depends on their agreeing.
+		 */
+		const pinned = [0.1, 0.4, -0.6, 1.2].map((turn) => origin(pinFace(circle(100, 100, 40, turn), up)));
+		for (const angle of pinned) expect(angle).toBeCloseTo(up, 2);
+	});
+
+	it('keeps the same anchor pointing up as the fit turns', () => {
+		/*
+		 * The pin fixes the angle; it cannot fix which of the four interchangeable anchors sits at it,
+		 * and left alone that choice flips as the camera passes a diagonal. A flip moves every arrow a
+		 * quarter turn at once, which is worse for the tracker than the drift the pin was mending.
+		 */
+		const up = -Math.PI / 2;
+		let previous = pinFace(circle(100, 100, 40, 0), up);
+		let worst = 0;
+		for (let step = 1; step <= 40; step++) {
+			// Most of a full turn, in small steps, as a phone rolling in the archer's hand would give.
+			const fitted = pinFace(circle(100, 100, 40, (step / 40) * Math.PI * 1.5), up);
+			const next = nearestTurn(previous, fitted);
+			let moved = origin(next) - origin(previous);
+			while (moved > Math.PI) moved -= 2 * Math.PI;
+			while (moved < -Math.PI) moved += 2 * Math.PI;
+			worst = Math.max(worst, Math.abs(moved));
+			previous = next;
+		}
+		// Nothing like a quarter turn, which is what an unresolved flip would show as.
+		expect(worst).toBeLessThan(Math.PI / 8);
+	});
+
+	it('describes the same boss after pinning, so nothing scored moves', () => {
+		const face = circle(100, 100, 40, 0.7);
+		const pinned = pinFace(face, -Math.PI / 2);
+		// A radius is what a score reads, and a turn of the coordinates cannot change one.
+		for (const [x, y] of [[120, 100], [100, 130], [85, 88]] as [number, number][]) {
+			const before = toFaceCoords(face, x, y);
+			const after = toFaceCoords(pinned, x, y);
+			expect(Math.hypot(after.x, after.y)).toBeCloseTo(Math.hypot(before.x, before.y), 4);
+		}
 	});
 });
