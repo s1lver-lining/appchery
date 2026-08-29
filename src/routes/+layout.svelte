@@ -17,6 +17,7 @@
 		backGuards,
 		isMainPage,
 		originOf,
+		pageLoading,
 		pageTabs,
 		pageUp,
 		parentPath,
@@ -60,34 +61,48 @@
 		if (scroller && nav.from?.url) scrolledTo.set(nav.from.url.pathname, scroller.scrollTop);
 	});
 
-	/** Long enough for a list read from the cache to be drawn, short enough not to fight a real scroll. */
-	const RESTORE_MS = 2000;
-	/** How long a page that has stopped growing is still given, in case its rows are one fetch behind. */
-	const SETTLED_MS = 400;
+	/** How long a page arriving is kept off screen, rather than shown at the wrong offset and moved. */
+	const HIDE_MS = 450;
+	/** The end of every wait: a page that never grows enough is left at its top, which is honest. */
+	const RESTORE_MS = 6000;
+	/** What a page that has stopped growing and is fetching nothing is still given, for a late row. */
+	const SETTLED_MS = 300;
 	let restoring = 0;
+	/** Held back while the offset is being put back, so nobody watches the page land in two places. */
+	let withheld = $state(false);
 
 	/**
 	 * Put back over the frames that follow rather than in one go. A page arriving is not its full
 	 * height yet, and a browser clamps a scroll to what the element can currently reach, so a single
-	 * assignment lands short and stays there: a competition list that fetches its rows would put the
-	 * archer at the bottom of the empty page it had at that instant. Each frame tries again until it
-	 * takes, and a page still growing keeps its chance until the deadline.
+	 * assignment lands short and stays there.
+	 *
+	 * Nothing is moved until the page is tall enough to hold the offset, because the clamp is worse
+	 * than doing nothing: it drops the archer at the bottom of the rows a competition list happens to
+	 * have read so far. Until then the page waits at its top, out of sight for the moment it usually
+	 * takes, and a page that says it is still loading is waited for however long that is.
 	 */
 	async function scrollBackTo(top: number) {
 		// The scroller is shared, so a restore left running by an earlier page must not move this one.
 		const mine = ++restoring;
 		const started = performance.now();
+		withheld = true;
 		let height = -1;
 		while (scroller && restoring === mine) {
-			scroller.scrollTop = top;
-			if (Math.abs(scroller.scrollTop - top) < 1) return;
-			const now = performance.now();
-			// Given up on: either the wait is over, or the page settled short of where it was left.
-			if (now - started > RESTORE_MS) return;
-			if (scroller.scrollHeight === height && now - started > SETTLED_MS) return;
+			const reach = scroller.scrollHeight - scroller.clientHeight;
+			if (reach >= top - 1) {
+				scroller.scrollTop = top;
+				if (Math.abs(scroller.scrollTop - top) < 1) break;
+			} else if (scroller.scrollTop !== 0) scroller.scrollTop = 0;
+			const waited = performance.now() - started;
+			// Shown again well before the wait is out: a slow page is better read than blank.
+			if (waited > HIDE_MS) withheld = false;
+			if (waited > RESTORE_MS) break;
+			const stuck = scroller.scrollHeight === height && !get(pageLoading);
+			if (stuck && waited > SETTLED_MS) break;
 			height = scroller.scrollHeight;
 			await new Promise(requestAnimationFrame);
 		}
+		if (restoring === mine) withheld = false;
 	}
 
 	afterNavigate(async (nav) => {
@@ -101,6 +116,7 @@
 		if (back) await scrollBackTo(back);
 		else if (scroller) {
 			restoring++;
+			withheld = false;
 			scroller.scrollTop = 0;
 		}
 	});
@@ -471,9 +487,14 @@
 		{#if isMainPage($page.url.pathname)}
 			<Pager />
 		{:else}
+			<!--
+				Scroll anchoring is off because it fights the restore above: a list arriving row by row
+				moves the browser's anchor node down the page with it, taking the offset to the bottom.
+			-->
 			<main
 				bind:this={scroller}
-				class="flex-1 overflow-y-auto"
+				class="flex-1 overflow-y-auto [overflow-anchor:none]"
+				style={withheld ? 'visibility: hidden' : ''}
 				ontouchstart={(e) => {
 					// A page that drags, such as a target face, opts out so a shot is never read as a swipe.
 					const inert = (e.target as Element | null)?.closest('[data-noswipe]');

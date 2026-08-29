@@ -126,6 +126,17 @@ export function registerTabs(nav: TabNav) {
 }
 
 /**
+ * Whether the page on screen is still fetching what it draws. A return is put back where it was
+ * left, and a list that has not read its rows yet is too short to go there: this is how the restore
+ * knows to keep waiting rather than to give the archer the bottom of a half drawn page.
+ */
+export const pageLoading = writable(false);
+
+export function markLoading(loading: boolean) {
+  pageLoading.set(loading);
+}
+
+/**
  * Where each main page was left. The pager is torn down the moment a link off a main page is
  * opened, so its pages cannot hold this themselves: coming back mounts them afresh at the top.
  */

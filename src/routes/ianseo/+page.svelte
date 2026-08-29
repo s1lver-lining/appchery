@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t, locale } from '$lib/i18n';
-	import { originOf, setPageUp, withOrigin } from '$lib/nav';
+	import { markLoading, originOf, setPageUp, withOrigin } from '$lib/nav';
 	import {
 		ianseoCountries,
 		ianseoCountryAsked,
@@ -65,6 +65,13 @@
 
 	$effect(() => {
 		void open();
+	});
+
+	// Said out loud, because a return to this page has to wait for the rows before it can be put back
+	// where it was left.
+	$effect(() => {
+		markLoading(loading);
+		return () => markLoading(false);
 	});
 
 	/**
