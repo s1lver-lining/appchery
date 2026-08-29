@@ -1,6 +1,6 @@
 import { downscale } from './pixels';
 import { alignFace, detectFaces, toFaceCoords } from './face';
-import { refineFace } from './refine';
+import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
 import { detectArrowsLearned, detectArrowsInCrop, type ArrowModel } from './learned';
@@ -75,6 +75,14 @@ export interface ScannerOptions {
  * other, or correct for a camera at a steep angle to the boss. Every result is a proposal the
  * archer confirms, never a score written on its own.
  */
+/**
+ * How much better the search's fit has to explain the picture before it replaces the one being
+ * followed. Enough that two fits of the same boss do not trade places a few times a second, which is
+ * what makes an overlay tremble; far below the gap between a fit that describes the face and one
+ * that does not, which the annotated set puts at 0.91 against 0.49.
+ */
+const ADOPT_MARGIN = 0.04;
+
 export class Scanner {
 	private readonly tracker: SweepTracker;
 	private readonly scale: number;
@@ -182,12 +190,29 @@ export class Scanner {
 				const ordered = fresh.map((face, i) => {
 					const followed = this.faces[i];
 					if (!followed) return face;
-					const moved = Math.hypot(face.cx - followed.cx, face.cy - followed.cy);
-					const sameFace = moved < followed.semiMajor * 0.35 && face.support <= followed.support + 0.05;
 					// A search knows nothing of which way round the last fit was describing the face, and a
 					// face has no way round of its own, so a fresh answer is turned onto the old origin
 					// before it is adopted. Otherwise every arrow already found jumps at that moment.
-					return sameFace ? followed : alignFace(followed, face);
+					const moved = Math.hypot(face.cx - followed.cx, face.cy - followed.cy);
+					if (moved >= followed.semiMajor * 0.35) return alignFace(followed, face);
+
+					/*
+					 * Which of the two explains the picture in front of the camera now.
+					 *
+					 * The two were compared on the support they carried, and support is a number a fit is
+					 * given on the frame it was made on. A fit made while half the boss was still below the
+					 * top of the screen scores well on that half, keeps the number for as long as it is
+					 * followed, and the search can never take it back: the archer raises the phone, the whole
+					 * face comes into view, and the overlay stays sitting where the half face was. It came
+					 * right only on walking in close enough for a fresh fit to beat a stale number outright.
+					 *
+					 * Scored on this frame, both of them, by the measure the refiner uses on its own steps.
+					 * A fit that no longer describes what the camera sees loses to one that does, whatever
+					 * either of them was worth when it was made.
+					 */
+					const holding = ringAgreement(small, followed);
+					const offered = ringAgreement(small, face);
+					return offered > holding + ADOPT_MARGIN ? alignFace(followed, face) : followed;
 				});
 				const moved = this.faces.length !== ordered.length || ordered.some((face, i) => {
 					const previous = this.faces[i];
