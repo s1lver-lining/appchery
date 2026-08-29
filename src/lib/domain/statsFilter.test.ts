@@ -79,6 +79,16 @@ describe('periodBounds', () => {
 		expect(bounds.to - bounds.from).toBeGreaterThan(360 * DAY);
 	});
 
+	it('reads a history longer than a call takes arguments', () => {
+		// An import is allowed twenty thousand outings of two hundred activities each, and a page that
+		// throws on the record it was asked to draw is the record gone, see src/lib/import/limits.ts.
+		const first = MARCH - 400 * DAY;
+		const many = Array.from({ length: 200_000 }, (_, i) =>
+			activity({ id: `a${i}`, startedAt: first + i })
+		);
+		expect(periodBounds(filter(), many, MARCH).from).toBeLessThanOrEqual(first);
+	});
+
 	it('reads a month as the last thirty days rather than as the calendar month', () => {
 		const bounds = periodBounds(filter({ period: 'month' }), [], MARCH);
 		expect(new Date(bounds.from).getMonth()).toBe(1);

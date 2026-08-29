@@ -95,7 +95,10 @@ function oldest(activities: ScoredActivity[], now: number): number {
 	start.setFullYear(start.getFullYear() - 1);
 	const year = startOfDay(start.getTime());
 	if (activities.length === 0) return year;
-	return Math.min(year, startOfDay(Math.min(...activities.map((a) => a.startedAt))));
+	// Reduced rather than spread: an imported history runs past the argument count a call can carry,
+	// and a stats page that throws is a whole record nobody can read again.
+	const first = activities.reduce((low, a) => Math.min(low, a.startedAt), Infinity);
+	return Math.min(year, startOfDay(first));
 }
 
 function endOfDay(at: number): number {

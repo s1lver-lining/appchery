@@ -1258,8 +1258,9 @@ export async function bowUsage(bowId: string): Promise<BowUsage> {
 		arrowsShot: done
 			.filter((a) => shootsArrows(a.kind))
 			.reduce((sum, a) => sum + a.arrowsShot, 0),
-		bestScore: finished.length > 0 ? Math.max(...finished.map((a) => a.totalScore)) : null,
-		lastUsedAt: outings.length > 0 ? Math.max(...outings.map((s) => s.startedAt)) : null
+		// Reduced rather than spread: a bow shot for years carries more rows than a call takes arguments.
+		bestScore: finished.length > 0 ? finished.reduce((top, a) => Math.max(top, a.totalScore), -Infinity) : null,
+		lastUsedAt: outings.length > 0 ? outings.reduce((last, s) => Math.max(last, s.startedAt), -Infinity) : null
 	};
 }
 
