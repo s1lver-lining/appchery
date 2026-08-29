@@ -573,7 +573,10 @@ export const fr: Dictionary = {
 		revision: 'Révision {n}',
 		initialRevision: 'Première configuration enregistrée.',
 		noRevisions: "Aucun réglage enregistré. Remplissez l'onglet Réglages puis enregistrez.",
-		deleteBow: 'Supprimer cet arc'
+		deleteBow: 'Supprimer cet arc',
+		confirmTitle: 'Supprimer cet arc ?',
+		confirmBody:
+			"Ses révisions et ses repères de viseur partent avec lui. Les séances tirées avec sont conservées et retombent sur le type d'arc."
 	},
 	sight: {
 		title: 'Repères de viseur',

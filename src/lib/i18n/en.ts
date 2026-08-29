@@ -572,7 +572,10 @@ export const en = {
 		revision: 'Revision {n}',
 		initialRevision: 'First recorded setup.',
 		noRevisions: 'No settings recorded yet. Fill in the settings tab and save.',
-		deleteBow: 'Delete this bow'
+		deleteBow: 'Delete this bow',
+		confirmTitle: 'Delete this bow?',
+		confirmBody:
+			'Its revisions and sight marks go with it. The outings shot with it are kept and fall back to the bow type.'
 	},
 	sight: {
 		title: 'Sight marks',

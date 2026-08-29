@@ -52,6 +52,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import LeaveDialog from '$lib/ui/LeaveDialog.svelte';
+	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { scrim } from '$lib/ui/statusBar';
 	import { lockScroll } from '$lib/ui/scrollLock';
@@ -319,7 +320,14 @@
 		await refresh();
 	}
 
+	/**
+	 * Asked first rather than offered back: a bow is the one thing here a delete cannot return. Its
+	 * revisions and marks go with it, and every outing that named it is rewritten to the bow type.
+	 */
+	let confirmingDelete = $state(false);
+
 	async function remove() {
+		confirmingDelete = false;
 		if (isDefault) defaultBowId.set(null);
 		await deleteBow(bowId);
 		goto('/equipment?list=1');
@@ -704,7 +712,10 @@
 						{/if}
 					</section>
 
-					<button class="flex items-center gap-1.5 text-sm text-danger" onclick={remove}>
+					<button
+						class="flex items-center gap-1.5 text-sm text-danger"
+						onclick={() => (confirmingDelete = true)}
+					>
 						<Icon name="trash" size={16} />
 						{$t('equipment.deleteBow')}
 					</button>
@@ -832,3 +843,11 @@
 	</div>
 {/if}
 
+{#if confirmingDelete}
+	<ConfirmDialog
+		title={$t('equipment.confirmTitle')}
+		message={$t('equipment.confirmBody')}
+		onconfirm={remove}
+		oncancel={() => (confirmingDelete = false)}
+	/>
+{/if}
