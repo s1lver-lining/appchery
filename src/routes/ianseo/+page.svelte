@@ -49,6 +49,8 @@
 	 */
 	let now = $state(Date.now());
 	let list = $state<Tournament[]>([]);
+	/** Whether the competitions have been read at all, which is what makes an entry form spare or not. */
+	let listRead = $state(false);
 	let cachedAt = $state<number | null>(null);
 	let problem = $state<'offline' | 'unreadable' | null>(null);
 	let loading = $state(true);
@@ -128,6 +130,7 @@
 			// shows every competition in the world and then takes most of them away again.
 			await primePlaces(loaded.value);
 			list = loaded.value;
+			listRead = true;
 			cachedAt = loaded.cachedAt;
 			problem = loaded.problem;
 			offer();
@@ -307,12 +310,15 @@
 	}
 
 	/** Everything open for entry that no competition on screen already carries a way in to. */
-	const spare = $derived(
-		unmatched(
+	const spare = $derived.by(() => {
+		// Not before the competitions are in: everything looks unmatched against a list nobody has read
+		// yet, so the whole of inscriptarc was drawn for an instant and then taken away again.
+		if (!listRead) return [];
+		return unmatched(
 			shown.map((row) => ({ name: row.name, town: row.city, from: row.from, to: row.to })),
 			entries
-		).filter((one) => (one.to ?? one.from ?? 0) >= now - 86400_000)
-	);
+		).filter((one) => (one.to ?? one.from ?? 0) >= now - 86400_000);
+	});
 
 	const countries = $derived(countriesOf(list));
 	const offerable = $derived(
