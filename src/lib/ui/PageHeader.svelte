@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import HeaderEdge from './HeaderEdge.svelte';
+	import Skeleton from './Skeleton.svelte';
 	import { SNAP_EASE } from './swipe';
 
 	/**
@@ -25,6 +26,7 @@
 		motif,
 		title,
 		subtitle,
+		subtitleLoading = false,
 		lead,
 		actions,
 		children
@@ -32,6 +34,8 @@
 		motif: HeaderMotif;
 		title?: string;
 		subtitle?: string;
+		/** Drawn in outline instead, for a page whose subtitle is one read away from being the real one. */
+		subtitleLoading?: boolean;
 		lead?: Snippet;
 		actions?: Snippet;
 		children?: Snippet;
@@ -376,7 +380,9 @@
 			the subtitle is the page's second line, so a competition's dates and town run the full width
 			instead of wrapping into a narrow column beside them.
 		-->
-		{#if subtitle}
+		{#if subtitleLoading}
+			<div class="mt-1.5 {lead && title ? 'pl-6' : ''}"><Skeleton class="h-3 w-3/5" /></div>
+		{:else if subtitle}
 			<p class="mt-0.5 text-sm text-muted {lead && title ? 'pl-6' : ''}">{subtitle}</p>
 		{/if}
 		{#if children}{@render children()}{/if}

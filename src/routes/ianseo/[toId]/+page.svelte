@@ -177,12 +177,17 @@
 	const nameOf = (path: string) => path.split('/').pop()?.replace(/\.php$/i, '') ?? path;
 </script>
 
-<!-- ianseo prints the venue and the date on one line, so the list's own undated copy of the date is
-	not added to it: the two together said the day twice, once without its year. -->
+<!--
+	ianseo prints the venue and the date on one line, so the list's own undated copy of the date is
+	not added to it: the two together said the day twice, once without its year. The list's version
+	is not shown while the competition is read either, because it reads differently enough that the
+	line was rewritten under the archer: the wait is drawn in outline, as the rest of the page is.
+-->
 <PageHeader
 	motif="ianseo"
 	title={competition?.name || tournament?.name || $t('ianseo.title')}
-	subtitle={competition?.where || [tournament?.dates, tournament?.city].filter(Boolean).join(' · ')}
+	subtitle={competition?.where}
+	subtitleLoading={!competition && !failed}
 >
 	{#snippet lead()}
 		<a href={from} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
