@@ -45,7 +45,7 @@ locale.subscribe((value) => {
 });
 
 /**
- * Usage: `$t('sessions.title')`, or `$t('score.arrowOf', { n: 2, total: 6 })`.
+ * Usage: `$t('sessions.title')`, or `$t('score.endOf', { n: 2, total: 6 })`.
  * Falls back to English for a missing key, then to the key itself — a visible
  * key in the UI is a bug report; an empty string hides one.
  */

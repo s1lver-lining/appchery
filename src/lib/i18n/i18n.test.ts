@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { readdirSync, readFileSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 import { en } from './en';
 import { fr } from './fr';
 import { LOCALES } from './index';
@@ -165,4 +167,47 @@ describe('plan season sentences', () => {
 			}
 		});
 	}
+});
+
+/**
+ * A key with nothing behind it falls back to itself, so the label an archer reads is the key. Two
+ * had been doing exactly that: a page asking for a third step of an exercise written with two, and
+ * a chart naming the group of metric labels where it needed the one label that names the group.
+ *
+ * Only keys written out in full can be checked this way. The ones built at runtime, `stats.metric.`
+ * plus a metric and the like, are covered by the dictionaries agreeing with each other above.
+ */
+describe('the keys the app actually asks for', () => {
+	function walk(dir: string, out: string[] = []): string[] {
+		for (const name of readdirSync(dir)) {
+			const path = join(dir, name);
+			if (statSync(path).isDirectory()) walk(path, out);
+			else if (/\.(svelte|ts)$/.test(path) && !/\.test\.ts$/.test(path)) out.push(path);
+		}
+		return out;
+	}
+
+	function resolves(key: string): boolean {
+		const value = key
+			.split('.')
+			.reduce<unknown>((node, part) => (node as Record<string, unknown>)?.[part], en);
+		// A group of labels is not a label: naming one leaves the caller with the key on screen.
+		return typeof value === 'string';
+	}
+
+	it('all exist, and are labels rather than groups of them', () => {
+		const missing: string[] = [];
+		let checked = 0;
+
+		for (const file of walk('src')) {
+			for (const match of readFileSync(file, 'utf8').matchAll(/\$?\bt\(\s*(['"])([A-Za-z0-9_.]+)\1/g)) {
+				checked += 1;
+				if (!resolves(match[2])) missing.push(`${match[2]} in ${file}`);
+			}
+		}
+
+		// A guard that stopped finding anything to guard would pass in silence.
+		expect(checked).toBeGreaterThan(1000);
+		expect([...new Set(missing)]).toEqual([]);
+	});
 });
