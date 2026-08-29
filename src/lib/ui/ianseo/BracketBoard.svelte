@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
 	import { clubName } from '$lib/ianseo/clubs';
+	import { readAssignment } from '$lib/ianseo/brackets';
 	import { ianseoFullClubNames } from '$lib/prefs';
 	import type { BracketDocument, BracketMatch } from '$lib/ianseo/types';
 
@@ -22,7 +23,7 @@
 
 	/** The higher score takes the match. A match nobody has shot has no winner, and says nothing. */
 	function winner(match: BracketMatch): number | null {
-		const scores = match.entries.map((entry) => Number(entry.score));
+		const scores = match.entries.map((entry) => Number(readAssignment(entry.score).score));
 		if (scores.some((score) => !Number.isFinite(score))) return null;
 		if (scores.length < 2 || scores[0] === scores[1]) return null;
 		return scores[0] > scores[1] ? 0 : 1;
@@ -38,6 +39,22 @@
 		match.entries
 			.map((entry, at) => ({ entry, at }))
 			.filter((side) => side.entry.name.trim() !== '');
+	/**
+	 * When the match is due, said once above it rather than against the archer ianseo happened to
+	 * print it beside: both sides shoot at the same time, and it is the match that is at half past.
+	 */
+	const dueAt = (match: BracketMatch) =>
+		match.entries.map((entry) => readAssignment(entry.score).at).find(Boolean) ?? null;
+
+	/**
+	 * What ianseo wrote where a score goes, in the archer's language where the app knows the word.
+	 * A bye is the one that is not a number: it is the round somebody was given rather than shot.
+	 */
+	const scoreLabel = (score: string) => (/^bye$/i.test(score) ? $t('ianseo.bye') : score);
+
+	/** A number sits in the column a score is sized for. A word needs the room a word needs. */
+	const isNumber = (score: string | null) => score !== null && Number.isFinite(Number(score));
+
 	let round = $state(0);
 	const current = $derived(shown[Math.min(round, shown.length - 1)]);
 </script>
@@ -69,8 +86,14 @@
 		{#each current.matches as match, index (index)}
 			{@const won = winner(match)}
 			<div class="overflow-hidden rounded-2xl border border-line bg-surface">
+				{#if dueAt(match)}
+					<p class="border-b border-line bg-line/15 px-3 py-1 text-[11px] text-muted">
+						{dueAt(match)}
+					</p>
+				{/if}
 				{#each sidesOf(match) as { entry, at: side }, index (side)}
 					{@const mine = followedLabels.has(entry.name.trim().toLowerCase())}
+					{@const drawn = readAssignment(entry.score)}
 					<div
 						class="flex items-center gap-2 px-3 py-2 {index === 1
 							? 'border-t border-line'
@@ -105,13 +128,20 @@
 								{/each}
 							</div>
 						{/if}
-						<span
-							class="tabular w-7 shrink-0 text-right text-lg leading-none {won === side
-								? 'text-brand-text'
-								: ''}"
-						>
-							{entry.score ?? ''}
-						</span>
+						{#if drawn.target || (drawn.score && !isNumber(drawn.score))}
+							<!-- Room for what it says: a target is `19D` and a bye is a word, neither of which is a digit. -->
+							<span class="tabular shrink-0 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted">
+								{drawn.target ?? scoreLabel(drawn.score!)}
+							</span>
+						{:else}
+							<span
+								class="tabular w-7 shrink-0 text-right text-lg leading-none {won === side
+									? 'text-brand-text'
+									: ''}"
+							>
+								{drawn.score ?? ''}
+							</span>
+						{/if}
 						{#if entry.name}
 							<button
 								class="shrink-0 rounded p-1 {mine ? 'text-brand-text' : 'text-muted/50'}"

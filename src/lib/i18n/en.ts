@@ -935,6 +935,7 @@ export const en = {
 		andMoreNames: 'and {n} more',
 		noPersonFound: 'Nobody of that name',
 		noPersonFoundBody: 'No document of this competition names them. They may not have entered it.',
+		bye: 'Bye',
 		group: {
 			individual: 'Individual',
 			team: 'Team',

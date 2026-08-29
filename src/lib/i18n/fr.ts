@@ -938,6 +938,7 @@ export const fr: Dictionary = {
 		andMoreNames: 'et {n} autres',
 		noPersonFound: 'Personne de ce nom',
 		noPersonFoundBody: "Aucun document de cette compétition ne le mentionne. Il n'y est peut-être pas inscrit.",
+		bye: 'Exempt',
 		group: {
 			individual: 'Individuel',
 			team: 'Par équipes',
