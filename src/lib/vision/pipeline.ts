@@ -318,8 +318,10 @@ export class Scanner {
 
 		const detections = [...shapes, ...learned];
 
-		// Capped at what the end can still take, so a misdetection cannot flood the list.
-		this.tracker.setLimit(this.maxArrows);
+		// Capped as `setLimit` caps it, headroom included, so an end holding more than its count can
+		// still report the extra. Set again here because the limit is what stops a misdetection flooding
+		// the list, and it must hold whatever else has been asked of the tracker since.
+		this.tracker.setLimit(this.maxArrows + EXTRA_ARROWS);
 		const found = this.tracker.push(detections);
 		return {
 			face: faces[0],

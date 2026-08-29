@@ -318,7 +318,7 @@ describe('Scanner face gating', () => {
 		expect(first.arrows).toHaveLength(0);
 	});
 
-	it('stops proposing arrows once the end is full', () => {
+	it('stops proposing arrows a little past what the end holds', () => {
 		const scanner = new Scanner({ scale: 2, faceEvery: 1, framesToSettle: 2 });
 		scanner.setLimit(1);
 
@@ -333,7 +333,13 @@ describe('Scanner face gating', () => {
 			for (const [from, to] of shots) shaft(frame, from, to);
 			result = scanner.push(frame);
 		}
-		expect(result!.arrows.length).toBeLessThanOrEqual(1);
+		/*
+		 * Three shafts are drawn and the end is told it holds one, so the cap is what is being measured
+		 * rather than the detector. A little past, not exactly at: an end does not always hold the number
+		 * the round says, and the screen draws whatever is past the count dimmed and says there are too
+		 * many, so the archer is the one who decides which of them to drop.
+		 */
+		expect(result!.arrows.length).toBeLessThanOrEqual(3);
 	});
 });
 
@@ -586,5 +592,24 @@ describe('detectArrowsLearned', () => {
 		}
 
 		expect(detectArrowsLearned(frame, face, brightnessModel(32))).toHaveLength(2);
+	});
+});
+
+describe('an end that holds more arrows than the round says', () => {
+	it('leaves the tracker room for them once the face is steady', () => {
+		const scanner = new Scanner();
+		scanner.setLimit(6);
+		const tracker = (scanner as unknown as { tracker: { limit: number } }).tracker;
+
+		let steady = false;
+		for (let i = 0; i < 40 && !steady; i++) steady = scanner.pushReduced(waFace()).steady;
+
+		/*
+		 * The headroom has to survive a scanning pass. It is set where the end's count is set, and the
+		 * pass sets the limit again for its own reasons, so held apart the two disagreed: the room for a
+		 * seventh arrow lasted until the first frame that found the face and then was gone for the rest
+		 * of the end.
+		 */
+		expect({ steady, limit: tracker.limit }).toEqual({ steady: true, limit: 8 });
 	});
 });
