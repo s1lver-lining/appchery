@@ -1,4 +1,5 @@
 import type { Point } from '$lib/competitions/distance';
+import { plain } from './find';
 import type { Tournament } from './types';
 
 /**
@@ -58,18 +59,20 @@ export function whenOf(tournament: Tournament, now: number): When {
 
 /** Words in any order, against everything printed on the row: a name, a town, a club, a code. */
 export function matches(tournament: Tournament, search: string): boolean {
-	const terms = search.toLowerCase().split(/\s+/).filter(Boolean);
+	// Folded on both sides, like the search inside a document and the one over the outings: a
+	// competition is named in the organiser's language and typed in whatever the archer's keyboard has.
+	const terms = plain(search).split(' ').filter(Boolean);
 	if (terms.length === 0) return true;
-	const haystack = [
-		tournament.name,
-		tournament.code,
-		tournament.organiser,
-		tournament.city,
-		tournament.country?.name ?? '',
-		tournament.country?.code ?? ''
-	]
-		.join(' ')
-		.toLowerCase();
+	const haystack = plain(
+		[
+			tournament.name,
+			tournament.code,
+			tournament.organiser,
+			tournament.city,
+			tournament.country?.name ?? '',
+			tournament.country?.code ?? ''
+		].join(' ')
+	);
 	return terms.every((term) => haystack.includes(term));
 }
 
@@ -134,12 +137,7 @@ function order(a: Tournament, b: Tournament, now: number): number {
  * the name with its case, accents and spacing taken out of the argument.
  */
 export function clubKey(organiser: string): string {
-	return organiser
-		.toLowerCase()
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.replace(/\s+/g, ' ')
-		.trim();
+	return plain(organiser);
 }
 
 /**

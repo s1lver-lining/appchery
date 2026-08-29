@@ -59,6 +59,13 @@ describe('matches', () => {
 		expect(matches(shoot, 'RENNES BRETAGNE')).toBe(true);
 	});
 
+	it('ignores accents, which are written by the organiser and not typed by the archer', () => {
+		const accented = tournament({ name: 'Championnat de Châteauroux', city: 'Châteauroux' });
+		expect(matches(accented, 'chateauroux')).toBe(true);
+		// And the other way about, for an archer whose keyboard does have them.
+		expect(matches(shoot, 'Bretagné')).toBe(true);
+	});
+
 	it('wants every word, not any of them', () => {
 		expect(matches(shoot, 'bretagne paris')).toBe(false);
 	});

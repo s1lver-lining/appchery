@@ -22,6 +22,7 @@
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadTournaments } from '$lib/ianseo/client';
 	import { IanseoError } from '$lib/ianseo/fetch';
+	import { plain } from '$lib/ianseo/find';
 	import {
 		clubKey,
 		clubsOf,
@@ -372,7 +373,7 @@
 			(country) =>
 				!$ianseoCountries.includes(country.code) &&
 				(countryTerm.trim() === '' ||
-					`${country.name} ${country.code}`.toLowerCase().includes(countryTerm.trim().toLowerCase()))
+					plain(`${country.name} ${country.code}`).includes(plain(countryTerm)))
 		)
 	);
 
