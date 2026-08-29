@@ -129,7 +129,22 @@ export class SweepTracker {
 		 * genuinely missing arrow could have had.
 		 */
 		this.apartDistance = options.apartDistance ?? this.mergeDistance * 2;
-		this.patience = options.patience ?? 25;
+		/**
+		 * How long a place may go unproposed before it is forgotten, counted in passes but meant as a
+		 * duration.
+		 *
+		 * Which is the distinction that was missed when passes started coming twice as often. The bars a
+		 * candidate has to clear are in looks, and looking more often is a real way to reach them sooner;
+		 * this is not one of those. It is the length of the blink a place is allowed to survive, and
+		 * halving it in seconds while nothing about a blink had changed is a change nobody chose. An
+		 * arrow goes unproposed while the camera is pointed at the other half of the boss, and how long
+		 * that takes is a fact about the archer walking, not about the detector.
+		 *
+		 * Measured over fourteen labelled recordings it is free at two and three seconds, where nothing
+		 * has been waiting long enough for it to bite, and worth four arrows of eighty four at five, with
+		 * no more wrong marks.
+		 */
+		this.patience = options.patience ?? 50;
 		this.guessAfter = options.guessAfter ?? 8;
 		/**
 		 * Nearly the bar a confirmed arrow has to clear. Offering anything seen twice was tried and gave

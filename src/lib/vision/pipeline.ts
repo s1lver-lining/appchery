@@ -114,7 +114,18 @@ export class Scanner {
 		this.scale = options.scale ?? 4;
 		this.faceEvery = options.faceEvery ?? 15;
 		this.framesToSettle = options.framesToSettle ?? 8;
-		this.forgetAfter = options.forgetAfter ?? 8;
+		/*
+		 * Passes with no face at all before the whole sweep is given up on, which is about two and a half
+		 * seconds. A duration, like the tracker's patience, and raised with the rate for the same reason:
+		 * the length of time a boss may be out of view before the archer has plainly walked away from it
+		 * is a fact about archers, and it did not change when the passes started coming twice as often.
+		 *
+		 * Left at what it was, a camera swung off the boss and back threw away everything the sweep had
+		 * gathered after one and a quarter seconds. Nothing in the fourteen labelled recordings loses the
+		 * face for that long, so this is reasoned rather than measured: what it is measured to do there
+		 * is nothing at all.
+		 */
+		this.forgetAfter = options.forgetAfter ?? 16;
 		this.up = options.up ?? null;
 		this.maxArrows = options.maxArrows ?? 12;
 		this.model = options.model ?? null;
