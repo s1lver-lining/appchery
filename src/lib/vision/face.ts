@@ -250,15 +250,20 @@ function apply(h: number[], x: number, y: number): { x: number; y: number } {
 /**
  * The ellipse the face resembles near its centre, from how the projection stretches the plane there.
  * Only ever a summary: the parts of the pipeline that ask for a radius are drawing or sizing a search
- * window, and none of them is scoring an arrow.
+ * window, and none of them is scoring an arrow off it directly.
  *
  * The lengths are the singular values and are right. The angle is not the one a reader expects: the
  * two arc tangents below want halving and adding to give the ellipse's tilt, and subtracting them
  * whole answers near zero for most faces however the ellipse really lies. It is left alone
- * deliberately. Nothing scores with it, and the one thing it does decide, the crop the learned arrow
- * detector is shown, was cut this same way when the detector's training data was made
- * (scripts/prepare-arrows.mjs). The three have to agree far more than any of them has to be right,
- * so this changes when the model is retrained and not before. vision.test.ts pins it.
+ * deliberately, because the crop the learned arrow detector is shown is cut with it and the crops it
+ * was trained on were cut the same way (scripts/prepare-arrows.mjs). The two have to agree far more
+ * than either has to be right, so this changes when the model is retrained and not before.
+ *
+ * It reaches an arrow's score through that crop, and what keeps it harmless is that cropToImage and
+ * cropToFace use the one value in both directions, so it cancels. Correcting it would move the crop
+ * and cost the model its training; using two different values for it would move the arrows, which is
+ * what once put every one of them a quarter turn out. vision.test.ts pins the angle, crop.test.ts
+ * pins the pair.
  */
 function ellipseOf(h: number[], centre: { x: number; y: number }) {
 	const w = h[8];

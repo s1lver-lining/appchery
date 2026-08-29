@@ -129,10 +129,12 @@ describe('detectFace', () => {
 	/**
 	 * `rotation` is not the angle the face is drawn at, and is left that way on purpose.
 	 *
-	 * Nothing scores an arrow with it. What it does decide is the square crop the learned arrow
-	 * detector is shown, and scripts/prepare-arrows.mjs cut the crops the detector was trained on with
-	 * this same expression. Correcting the maths here alone would show the model pictures framed
-	 * unlike any it learnt from, and nothing else in the suite would notice.
+	 * What it decides is the square crop the learned arrow detector is shown, and
+	 * scripts/prepare-arrows.mjs cut the crops the detector was trained on with this same expression.
+	 * Correcting the maths here alone would show the model pictures framed unlike any it learnt from,
+	 * and nothing else in the suite would notice. It reaches an arrow's score through that crop, and
+	 * what keeps it harmless is that the crop is cut and read back through the one value: see
+	 * crop.test.ts, which holds those two ends together.
 	 *
 	 * So this test is a tripwire rather than an approval. If it fails because the angle was corrected,
 	 * the training data and the model have to be redone with it, or the correction has to come out.

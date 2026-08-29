@@ -41,12 +41,18 @@ export interface FaceLocation {
 	 *
 	 * The two lengths are a fair summary; `rotation` is not, and is kept the way it is on purpose. It
 	 * comes out near zero for most faces whatever angle the ellipse is actually drawn at, so it is a
-	 * size that happens to carry an angle rather than an angle. Nothing scores an arrow with it: the
-	 * scoring goes through `transform` and `inverse`, which are exact. What it does decide is the
-	 * square crop the learned arrow detector is shown, and that same expression cut the crops the
-	 * detector was trained on, in scripts/prepare-arrows.mjs. Correcting it here alone would leave the
-	 * model looking at pictures framed unlike any it ever learnt from. See vision.test.ts, which pins
-	 * this, and move the three together or not at all.
+	 * size that happens to carry an angle rather than an angle.
+	 *
+	 * What it decides is the square crop the learned arrow detector is shown, and that same expression
+	 * cut the crops the detector was trained on, in scripts/prepare-arrows.mjs. Correcting it here
+	 * alone would leave the model looking at pictures framed unlike any it ever learnt from, so it
+	 * changes when the model is retrained and not before. vision.test.ts pins it.
+	 *
+	 * Where an arrow is scored no longer depends on the value being right, but it does depend on the
+	 * same value being used in both directions. `cropToImage` cuts the crop with it and `cropToFace`
+	 * reads a peak back through it, so whatever it is, it cancels. It did not always: the read back
+	 * once called a crop cell a face position outright, and every arrow came back a quarter turn from
+	 * where it was shot. crop.test.ts holds the two ends together.
 	 */
 	semiMajor: number;
 	semiMinor: number;
