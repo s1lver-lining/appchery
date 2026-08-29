@@ -1,7 +1,7 @@
 // Entry point for scripts/arrow_detector.sh, bundled and run inside a browser so it can decode and
 // re-encode images. Not imported by the app.
 import { downscale } from "./pixels";
-import { detectFaces, scaleFace, toFaceCoords } from "./face";
+import { cropToImage, detectFaces, scaleFace, toFaceCoords } from "./face";
 import { verifyRings } from "./rings";
 import { detectArrowsInStill, type StillOptions } from "./still";
 import { detectArrowsLearned, type ArrowModel } from "./learned";
@@ -134,4 +134,13 @@ export function analyse(
         arrows,
       };
     });
+}
+
+/**
+ * Where a cell of the detector's crop looks, exported so the script that cuts the training crops
+ * samples them exactly as the app does. A crop cut one way and read back another is what once put
+ * every arrow a quarter turn from where it was shot.
+ */
+export function cropPixel(face: FaceLocation, x: number, y: number): { x: number; y: number } {
+  return cropToImage(face, x, y);
 }

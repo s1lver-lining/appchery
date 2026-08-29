@@ -42,6 +42,9 @@ import { join, resolve, basename, extname } from 'node:path';
 const ROOT = new URL('..', import.meta.url).pathname;
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
 const WORK = join(ROOT, 'test/datasets/labelling');
+
+/** The app's own geometry, bundled once and kept, so anything here can reach it. */
+let vision = null;
 const SCALE = 4;
 
 /** How much the frame the crops are cut from is reduced first. */
@@ -218,6 +221,19 @@ function scaleUp(face, width, height) {
 		perspectiveX: face.perspectiveX ?? 0,
 		perspectiveY: face.perspectiveY ?? 0
 	};
+
+	/*
+	 * And the projection those four points stand for, which is what cuts the crops and what turns a
+	 * click into a place on the face. Kept beside the summary rather than instead of it because the
+	 * page reads the summary, but nothing that has to agree with the app may be read off it: the
+	 * summary is a centre, two lengths and an angle, and a face seen from off to one side is not.
+	 */
+	const whole = placed.handles ? vision?.faceFromAnchors(placed.handles, face.support) : null;
+	if (whole) {
+		placed.transform = whole.transform;
+		placed.inverse = whole.inverse;
+		placed.anchors = whole.anchors;
+	}
 	placed.visible = visibility(placed, width, height);
 	return placed;
 }
@@ -311,7 +327,7 @@ async function page() {
  * the clicked face coordinates. Frames the archer rejected in the check pass are left out.
  */
 async function exportSet() {
-	const { FaceTrack, toFace } = await load();
+	const { FaceTrack, toFace, cropPixel } = await load();
 	const out = join(ROOT, 'test/datasets/prepared-videos');
 	await mkdir(out, { recursive: true });
 	/**
@@ -384,6 +400,7 @@ async function exportSet() {
 			await appendFile(
 				blob,
 				cropBytes(
+					cropPixel,
 					{ width, height, data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length) },
 					face
 				)
@@ -445,24 +462,25 @@ function project(h, x, y) {
 }
 
 /**
- * A rectified square of the face as raw bytes. Nearest neighbour, because that is how the training
- * crops have always been sampled and the model must be shown the picture it learnt on.
+ * A rectified square of the face as raw bytes, in the face's own coordinates.
+ *
+ * Nearest neighbour, because that is how the app cuts the crops it scores and the model must be
+ * shown the picture it learnt on. The sampler is handed in rather than written out again here: it is
+ * the app's, bundled by load(), and a training crop cut any other way describes a face the labels
+ * are not about.
  */
-function cropBytes(frame, face, size = CROP_SIZE, span = CROP_SPAN) {
+function cropBytes(sample, frame, face, size = CROP_SIZE, span = CROP_SPAN) {
 	const data = Buffer.alloc(size * size * 3);
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
 
 	for (let j = 0; j < size; j++) {
 		for (let i = 0; i < size; i++) {
 			const fx = ((i + 0.5) / size) * 2 * span - span;
 			const fy = ((j + 0.5) / size) * 2 * span - span;
-			const px = fx * face.semiMajor;
-			const py = fy * face.semiMinor;
-			const depth = 1 + (face.perspectiveX ?? 0) * fx + (face.perspectiveY ?? 0) * fy;
-			const k = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
-			const x = Math.round(face.cx + (px * cos - py * sin) * k);
-			const y = Math.round(face.cy + (px * sin + py * cos) * k);
+			// The app's own sampler. It carries the perspective the hand rolled one approximated, and
+			// more to the point it is the same one, which is what the impacts above are measured in.
+			const looks = sample(face, fx, fy);
+			const x = Math.round(looks.x);
+			const y = Math.round(looks.y);
 			const at = (j * size + i) * 3;
 			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
 			const p = (y * frame.width + x) * 4;
@@ -476,6 +494,7 @@ function cropBytes(frame, face, size = CROP_SIZE, span = CROP_SPAN) {
 }
 
 async function load() {
+	if (vision) return vision;
 	const directory = await mkdtemp(join(tmpdir(), 'appchery-vision-'));
 	const outfile = join(directory, 'vision.mjs');
 	await build({
@@ -485,9 +504,9 @@ async function load() {
 		platform: 'node',
 		outfile
 	});
-	const module = await import(outfile);
+	vision = await import(outfile);
 	setTimeout(() => rm(directory, { recursive: true, force: true }), 0).unref?.();
-	return module;
+	return vision;
 }
 
 async function* decode(file, width, height, scaleTo = null, stride = 1) {

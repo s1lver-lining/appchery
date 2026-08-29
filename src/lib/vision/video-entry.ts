@@ -236,3 +236,11 @@ export class FaceTrack {
 }
 
 export { toFaceCoords as toFace } from './face';
+/**
+ * Where a cell of the detector's crop looks, exported so the labelling tool cuts its training crops
+ * exactly as the app cuts the ones it scores. Four copies of this sampling drifted apart once, and
+ * the arrows went a quarter turn with them.
+ */
+export { cropToImage as cropPixel } from './face';
+/** So a tool that keeps only the four points can build the whole projection back from them. */
+export { faceFromAnchors } from './face';

@@ -93,16 +93,16 @@ for (const task of tasks) {
 			const target = crop.getContext('2d');
 			const scene = target.createImageData(size, size);
 
-			const cos = Math.cos(face.rotation);
-			const sin = Math.sin(face.rotation);
 			for (let j = 0; j < size; j++) {
 				for (let i = 0; i < size; i++) {
 					const fx = ((i + 0.5) / size) * 2 * span - span;
 					const fy = ((j + 0.5) / size) * 2 * span - span;
-					const px = fx * face.semiMajor;
-					const py = fy * face.semiMinor;
-					const x = Math.round(face.cx + px * cos - py * sin);
-					const y = Math.round(face.cy + px * sin + py * cos);
+					// The app's own sampler, so a training crop and a crop cut at the range are the
+					// same picture of the same place. Cutting them two ways is what once left the
+					// labels describing a face the crop was not showing.
+					const sample = VISION.cropPixel(face, fx, fy);
+					const x = Math.round(sample.x);
+					const y = Math.round(sample.y);
 					const q = (j * size + i) * 4;
 					// Alpha marks what the photograph actually covers, so the loss can skip the rest.
 					if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;

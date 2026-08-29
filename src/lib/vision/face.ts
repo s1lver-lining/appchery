@@ -339,14 +339,19 @@ export function toImageCoords(face: FaceLocation, x: number, y: number): { x: nu
 /**
  * The square crop the learned arrow detector reads, and where each of its cells came from.
  *
- * Written once and shared by the two cutters and by the read back, because the only thing that says
- * where a peak in the crop came from is the sampling the crop was cut with. Three copies of this
- * drifted apart once already, and an arrow was reported a quarter turn from where it was shot.
+ * Through the projection, which makes a cell of the crop a place on the face and nothing else: the
+ * rings come out as circles whatever angle the camera stands at, the span is the same number of face
+ * radii in every direction, and a peak the detector finds is already a point that scores.
  *
- * This is the ellipse summary rather than the projection, which is not what the crop is documented
- * to be, and the reason it stays that way is that the detector's training crops were cut with it
- * (scripts/prepare-arrows.mjs). Read back through cropToFace it costs nothing: what the network sees
- * and what the archer scores are separate questions, and only the first has to match the training.
+ * It was the ellipse summary once, stretched along the picture's own axes by the face's two lengths.
+ * That is not the face's coordinates unless the face happens to lie square to the camera, and where
+ * it did not the crop and everything measured against it stood a quarter turn apart: arrows scored
+ * across the face from where they were shot, training crops that disagreed with their own labels,
+ * and a rotation augmentation turning a picture that was never round to begin with.
+ *
+ * Written once and shared by both cutters, by the read back, and by the script that cuts the
+ * training crops, because the only thing that says where a peak came from is the sampling that cut
+ * it. Three copies of the old one drifted apart, which is how the quarter turn got in.
  */
 export function cropToImage(
 	face: FaceLocation,
@@ -354,17 +359,18 @@ export function cropToImage(
 	y: number,
 	factor = 1
 ): { x: number; y: number } {
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
-	const px = x * face.semiMajor;
-	const py = y * face.semiMinor;
-	return {
-		x: (face.cx + px * cos - py * sin) * factor,
-		y: (face.cy + px * sin + py * cos) * factor
-	};
+	const point = toImageCoords(face, x, y);
+	return { x: point.x * factor, y: point.y * factor };
 }
 
-/** Where a cell of that crop sits on the face, which is the point that scores. */
+/**
+ * Where a cell of that crop sits on the face, which is the point that scores.
+ *
+ * The two are the same space now, so this is the identity in all but name. It is still written as
+ * the round trip, and still what the detector reads a peak back through, so that a sampler which
+ * ever stops being the face's own coordinates takes this with it instead of leaving the arrows
+ * behind.
+ */
 export function cropToFace(face: FaceLocation, x: number, y: number): { x: number; y: number } {
 	const pixel = cropToImage(face, x, y);
 	return toFaceCoords(face, pixel.x, pixel.y);
