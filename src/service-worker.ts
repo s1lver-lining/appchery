@@ -19,7 +19,17 @@ const CACHE = `appchery-${version}`;
 // installs costs both offline support and the install prompt that depends on it.
 // Matched on the tail, because `files` entries carry the app's base path in front of them.
 const HOST_CONFIG = ['/_headers', '/_redirects'];
-const ASSETS = [...build, ...files].filter((path) => !HOST_CONFIG.some((c) => path.endsWith(c)));
+/**
+ * The shell, which is neither a build file nor a static one: a true SPA has a single `index.html`
+ * written by the adapter, and `$service-worker` names neither it nor a prerendered page for it.
+ * Left out of the precache, the one document the app cannot start without was only ever in the cache
+ * because a navigation had put it there, and an activation drops the version that had. The first
+ * launch after a deploy with no signal then had a whole app cached and no page to open it in.
+ */
+const SHELL = '/';
+const ASSETS = [SHELL, ...build, ...files].filter(
+	(path) => !HOST_CONFIG.some((c) => path.endsWith(c))
+);
 
 const worker = self as unknown as ServiceWorkerGlobalScope;
 
@@ -98,7 +108,7 @@ worker.addEventListener('fetch', (event) => {
 					return fresh;
 				} catch {
 					// Offline, which is normal at a range: the cached shell is the whole point of it.
-					const shell = (await cache.match(request)) ?? (await cache.match('/'));
+					const shell = (await cache.match(request)) ?? (await cache.match(SHELL));
 					if (shell) return shell;
 					throw new Error('Offline and not cached');
 				}
