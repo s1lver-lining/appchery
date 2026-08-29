@@ -88,6 +88,8 @@ import { SteadyFace } from '$lib/vision/steady';
 	const work = document.createElement('canvas');
 	let stream: MediaStream | null = null;
 	let raf = 0;
+	/** Raised by stop, because the archer can close this while the browser is still asking for the camera. */
+	let closed = false;
 
 	/**
 	 * Optional recording of the session, off unless the archer turned it on in settings. Detection is
@@ -145,15 +147,20 @@ import { SteadyFace } from '$lib/vision/steady';
 	});
 
 	async function start() {
+		closed = false;
 		try {
 			stream = await navigator.mediaDevices.getUserMedia({
 				video: { facingMode: 'environment', width: { ideal: 1280 } },
 				audio: false
 			});
+			// A stop that ran while the permission sheet was up had no camera yet to let go of, so the
+			// answer is handed straight back rather than leaving the light on with nothing watching it.
+			if (closed) return stop();
 			if (video) {
 				video.srcObject = stream;
 				await video.play();
 			}
+			if (closed) return stop();
 			starting = false;
 			if ($recordCameraVideo) startRecording();
 			raf = requestAnimationFrame(tick);
@@ -201,6 +208,7 @@ import { SteadyFace } from '$lib/vision/steady';
 	}
 
 	function stop() {
+		closed = true;
 		cancelAnimationFrame(raf);
 		scanner.stop();
 		motion.stop();
