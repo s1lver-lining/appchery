@@ -6,6 +6,8 @@
 // so what the overlay shows is what an archer would have seen through the phone.
 import { Scanner } from './pipeline';
 export { DETECT_EVERY_MS } from './live';
+import { upFromGravity } from './motion';
+export { upFromGravity };
 import { alignFace, cropToImage, detectFaces, scaleFace, toImageCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';
@@ -123,8 +125,33 @@ export class Replay {
 	 * Feeds one frame, at the timestamp it would have arrived at in a live session, along with the
 	 * reduced copy detection runs on. The full frame is only ever read to cut a crop from.
 	 */
+	/**
+	 * How the phone was held, as saved beside the recording, or null for a session recorded without it.
+	 *
+	 * Fed in because gravity is the one thing that says which way up the boss is, and without it the
+	 * fit's angular origin drifts and takes the found arrows round the gold with it. A replay that left
+	 * it out would be measuring the detector the app runs on a laptop rather than the one it runs on a
+	 * phone, which is the whole thing this replay exists not to do.
+	 */
+	setMotion(samples: { at: number; gravity: { x: number; y: number; z: number } | null }[] | null) {
+		this.motion = samples;
+	}
+
+	private motion: { at: number; gravity: { x: number; y: number; z: number } | null }[] | null = null;
+	private motionAt = 0;
+
+	/** The sample taken nearest this moment of the recording, walked forward rather than searched. */
+	private upAt(nowMs: number): number | null {
+		if (!this.motion) return null;
+		while (this.motionAt + 1 < this.motion.length && this.motion[this.motionAt + 1].at <= nowMs) {
+			this.motionAt += 1;
+		}
+		return upFromGravity(this.motion[this.motionAt]?.gravity ?? null);
+	}
+
 	push(full: Frame, small: Frame, nowMs: number): FrameState {
 		this.full = full;
+		this.scanner.setUp(this.upAt(nowMs));
 		const started = performance.now();
 
 		/**

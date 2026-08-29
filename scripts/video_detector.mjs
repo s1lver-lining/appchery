@@ -15,7 +15,9 @@
  */
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, readFile } from 'node:fs/promises';
+import { existsSync } from 'node:fs';
+import { motionPath } from './lib/recordings.mjs';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename, extname } from 'node:path';
 import { Canvas, TEXT_HEIGHT } from './lib/raster.mjs';
@@ -35,7 +37,7 @@ const CODECS = {
 	'.mp4': ['-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23']
 };
 
-export async function replayVideo({ input, output, watch, model, json, limit, everyMs, arrows, pretty, sharp }) {
+export async function replayVideo({ input, output, watch, model, json, limit, everyMs, arrows, pretty, sharp, noMotion }) {
 	const { width, height, fps } = await probe(input);
 	const target = json ? null : resolve(output ?? defaultOutput(input));
 
@@ -46,6 +48,15 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 	const { Replay, DRAWN_RINGS, DETECT_EVERY_MS } = await load();
 	paint.rings = DRAWN_RINGS;
 	const replay = new Replay(everyMs || DETECT_EVERY_MS, model ?? null, Boolean(pretty), Boolean(sharp));
+	/*
+	 * How the phone was held, if it was kept. Gravity is the only thing that can say which way up the
+	 * boss is, and the fit's angular origin is pinned to it; a recording made before the sensors were
+	 * saved simply replays without one, exactly as the app does on a device that has none.
+	 */
+	const motion = motionPath(resolve(input));
+	if (!noMotion && existsSync(motion)) {
+		replay.setMotion(JSON.parse(await readFile(motion, 'utf8')).samples ?? null);
+	}
 	if (arrows) replay.setLimit(arrows);
 
 	/**

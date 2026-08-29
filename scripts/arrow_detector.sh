@@ -36,6 +36,11 @@
 # background reference, the settle counter and the tracker's evidence all build up over time, so
 # frames considered independently would measure a detector the app does not ship.
 #
+# --no-motion replays a recording as though the phone had reported no gravity, which is what a session
+# recorded before the sensors were kept looks like. Gravity is the only thing that can say which way up
+# the boss is; without it the fit's angular origin drifts, and the found arrows creep round the gold
+# with it. This is how to see the difference on one recording.
+#
 # --sharp cuts the learned detector's crop from the full resolution frame rather than the reduced one
 # the face was found on. Off by default, because the app does not do it: detection there runs in a
 # worker and the reduced frame is the only thing handed across, so live the model reads a picture four
@@ -52,7 +57,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 if [[ $# -eq 0 ]]; then
-	echo "usage: $(basename "$0") <image|video> [--ml] [--sharp] [-o out] [--json] [--watch] [--pretty] [-a 6] [--scale 2] [--threshold 0.4]" >&2
+	echo "usage: $(basename "$0") <image|video> [--ml] [--sharp] [--no-motion] [-o out] [--json] [--watch] [--pretty] [-a 6] [--scale 2] [--threshold 0.4]" >&2
 	exit 2
 fi
 

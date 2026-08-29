@@ -27,6 +27,30 @@ export interface MotionSample {
  * Collects motion while a session records. Samples arrive as fast as the device offers them, which is
  * faster than the camera, so the newest is simply kept and read once per frame.
  */
+/**
+ * Which way is up in the picture, in radians, from one gravity reading, or null where it cannot say.
+ *
+ * Apart from the class because a recorded session is replayed through the same detector and has to
+ * answer the same question from the samples saved beside it. Two readings of the same numbers would be
+ * two chances to disagree, and the whole point of pinning the face to gravity is that the answer is
+ * the same every time it is asked.
+ *
+ * `accelerationIncludingGravity` is in the phone's own axes, x across the screen and y up it, and at
+ * rest it reads the reaction to gravity: it points at the sky. Canvas y grows downwards, hence the
+ * negated y.
+ */
+export function upFromGravity(gravity: { x: number; y: number; z: number } | null): number | null {
+	if (!gravity) return null;
+	/** Roughly a quarter of a g of slack either way, which a walking phone stays inside. */
+	const magnitude = Math.hypot(gravity.x, gravity.y, gravity.z);
+	// A reading that is mostly the archer's stride rather than the earth, and a wrong up is worse than
+	// none: without one the fit keeps the angle it already had, which drifts but never jumps.
+	if (magnitude < 7 || magnitude > 12) return null;
+	// Too near end on to say: the phone points at the floor or the sky and the screen has no up.
+	if (Math.hypot(gravity.x, gravity.y) < 2) return null;
+	return Math.atan2(-gravity.y, gravity.x);
+}
+
 export class MotionLog {
 	private samples: MotionSample[] = [];
 	private latest: Omit<MotionSample, 'at'> = { gravity: null, turn: null, heading: null };
@@ -66,14 +90,7 @@ export class MotionLog {
 	 * angle it already had.
 	 */
 	get up(): number | null {
-		const gravity = this.latest.gravity;
-		if (!gravity) return null;
-		/** Roughly a quarter of a g of slack either way, which a walking phone stays inside. */
-		const magnitude = Math.hypot(gravity.x, gravity.y, gravity.z);
-		if (magnitude < 7 || magnitude > 12) return null;
-		// Too near end on to say: the phone is pointing at the floor or the sky and the screen has no up.
-		if (Math.hypot(gravity.x, gravity.y) < 2) return null;
-		return Math.atan2(-gravity.y, gravity.x);
+		return upFromGravity(this.latest.gravity);
 	}
 
 	/** Starts listening. Silently does nothing where the device has no such sensors, which is a laptop. */
