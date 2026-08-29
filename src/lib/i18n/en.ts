@@ -1861,6 +1861,24 @@ insetHint:
 		}
 	},
 	// The landing page on appchery.com, which is a separate build: see site/ and vite.site.config.ts.
+	terms: {
+		title: 'Terms of use',
+		intro: 'Appchery is a free tool for recording and training your archery. Using it means accepting what follows.',
+		shootingTitle: 'Shooting is your responsibility',
+		shootingBody: 'Archery is a physical activity with real risk. You alone are responsible for how you shoot, for the state of your equipment, and for the safety of the range you shoot on. Follow the rules of your club and of your federation, and the instructions of the people running the line.',
+		tuningTitle: 'Tuning and training advice',
+		tuningBody: 'The tuning steps, exercises and training plans in the app are general guidance, not instruction from a coach, a bow technician or a doctor. Judge whether a step suits you, your bow and your body before you follow it. A bow set up wrongly can break and injure the person holding it. If you are unsure, ask a qualified coach or archery shop.',
+		liabilityTitle: 'No liability',
+		liabilityBody: 'The app is provided as is, with no warranty of any kind. Its authors accept no responsibility for any injury, damage to equipment, or other loss arising from using the app or from following anything it suggests.',
+		dataTitle: 'Your data',
+		dataBody: 'Everything you record is written to your own device. Syncing is optional, and turning it on copies your shooting to the sync server so your devices and the archers you choose can see it. Keep your own backups: the app cannot recover data lost to a broken device, a cleared browser, or a deleted account.',
+		scoresTitle: 'Scores are not official',
+		scoresBody: 'Scores, records and badges recorded here have no official standing. Only the scorecard your competition organiser holds counts.',
+		licenceTitle: 'Licence',
+		licenceBody: 'Appchery is free software under the AGPL. You may use, study, share and modify it under that licence, which also disclaims any warranty.',
+		changesTitle: 'Changes',
+		changesBody: 'These terms may change as the app does. The current version is always the one published here.'
+	},
 	site: {
 		open: 'Open the app',
 		openLong: 'Open Appchery',

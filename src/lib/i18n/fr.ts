@@ -1876,6 +1876,24 @@ insetHint:
 		}
 	},
 	// La page d’accueil sur appchery.com, qui est une compilation à part : voir site/ et vite.site.config.ts.
+	terms: {
+		title: "Conditions d'utilisation",
+		intro: "Appchery est un outil gratuit pour enregistrer vos tirs et préparer votre pratique. L'utiliser vaut acceptation de ce qui suit.",
+		shootingTitle: 'Votre tir est votre responsabilité',
+		shootingBody: "Le tir à l'arc est une activité physique à risque réel. Vous êtes seul responsable de votre façon de tirer, de l'état de votre matériel et de la sécurité du pas de tir où vous tirez. Respectez les règles de votre club et de votre fédération, ainsi que les consignes des personnes qui dirigent le tir.",
+		tuningTitle: 'Conseils de réglage et de préparation',
+		tuningBody: "Les étapes de réglage, les exercices et les programmes de l'application sont des conseils généraux, et non l'avis d'un entraîneur, d'un armurier ou d'un médecin. Jugez si une étape convient à vous, à votre arc et à votre corps avant de la suivre. Un arc mal réglé peut casser et blesser celui qui le tient. En cas de doute, demandez à un entraîneur qualifié ou à un archer professionnel.",
+		liabilityTitle: 'Aucune responsabilité',
+		liabilityBody: "L'application est fournie telle quelle, sans garantie d'aucune sorte. Ses auteurs déclinent toute responsabilité en cas de blessure, de dommage matériel ou de toute autre perte liée à l'utilisation de l'application ou au suivi de ce qu'elle propose.",
+		dataTitle: 'Vos données',
+		dataBody: "Tout ce que vous enregistrez est écrit sur votre appareil. La synchronisation est facultative : l'activer copie vos tirs sur le serveur de synchronisation, pour vos appareils et les archers de votre choix. Faites vos propres sauvegardes : l'application ne peut rien récupérer d'un appareil cassé, d'un navigateur vidé ou d'un compte supprimé.",
+		scoresTitle: "Les scores n'ont rien d'officiel",
+		scoresBody: "Les scores, records et badges enregistrés ici n'ont aucune valeur officielle. Seule la feuille de marque tenue par l'organisateur de votre compétition compte.",
+		licenceTitle: 'Licence',
+		licenceBody: "Appchery est un logiciel libre sous licence AGPL. Vous pouvez l'utiliser, l'étudier, le partager et le modifier selon cette licence, qui exclut elle aussi toute garantie.",
+		changesTitle: 'Modifications',
+		changesBody: "Ces conditions peuvent évoluer avec l'application. La version en vigueur est toujours celle publiée ici."
+	},
 	site: {
 		open: 'Ouvrir l’appli',
 		openLong: 'Ouvrir Appchery',

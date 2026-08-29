@@ -302,6 +302,9 @@
 							{#if appBuild}· {$t('settings.build', { n: appBuild })}{/if}
 						</p>
 						<p class="mt-0.5 text-xs text-muted">{$t('settings.licence', { name: LICENCE })}</p>
+						<a class="mt-2 inline-block text-xs font-semibold text-brand-text" href="/terms">
+							{$t('terms.title')}
+						</a>
 					</div>
 				</section>
 

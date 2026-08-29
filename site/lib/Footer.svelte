@@ -11,6 +11,7 @@
 		</div>
 		<div class="flex flex-wrap items-center gap-4 sm:ml-auto">
 			<a class="font-medium text-brand-text" href={APP_URL}>app.appchery.com</a>
+			<a class="font-medium" href="/terms/">{$t('terms.title')}</a>
 			<span class="flex gap-2">
 				{#each LOCALES as code (code)}
 					<button
