@@ -16,6 +16,7 @@ import { verifyRings, classify, probeRing } from './rings';
 import { SweepTracker } from './sweep';
 import { Scanner } from './pipeline';
 import { rgbToHsv, largestComponent } from './pixels';
+import { upFromGravity } from './motion';
 import type { Frame, FaceLocation } from './types';
 
 function blank(width: number, height: number, grey = 120): Frame {
@@ -674,5 +675,35 @@ describe('pinning which way round a face is described', () => {
 			const after = toFaceCoords(pinned, x, y);
 			expect(Math.hypot(after.x, after.y)).toBeCloseTo(Math.hypot(before.x, before.y), 4);
 		}
+	});
+});
+
+describe('reading which way is up off gravity', () => {
+	const degrees = (radians: number) => (radians * 180) / Math.PI;
+
+	it('reads a phone held upright as up the screen', () => {
+		// At rest the sensor reports the reaction to gravity, so it points at the sky: up the screen.
+		expect(degrees(upFromGravity({ x: 0, y: 9.8, z: 0 })!)).toBeCloseTo(-90, 1);
+	});
+
+	it('follows the phone as it is rolled', () => {
+		// Rolled a quarter turn, up the boss is now across the screen, and the face must turn with it.
+		expect(degrees(upFromGravity({ x: 9.8, y: 0, z: 0 })!)).toBeCloseTo(0, 1);
+	});
+
+	it('reads a real sample from a recorded session', () => {
+		// Straight off a session recording: a phone held near upright and tilted back at the boss.
+		const up = degrees(upFromGravity({ x: -0.7, y: 8.4, z: 5.7 })!);
+		expect(up).toBeGreaterThan(-100);
+		expect(up).toBeLessThan(-85);
+	});
+
+	it('says nothing rather than something wrong', () => {
+		// No reading at all, a phone being shaken harder than the earth pulls, and one pointing at the
+		// floor, where the screen has no up to speak of. A wrong up turns every arrow; a missing one
+		// only leaves the fit keeping the angle it already had.
+		expect(upFromGravity(null)).toBeNull();
+		expect(upFromGravity({ x: 20, y: 20, z: 20 })).toBeNull();
+		expect(upFromGravity({ x: 0.2, y: 0.3, z: 9.8 })).toBeNull();
 	});
 });
