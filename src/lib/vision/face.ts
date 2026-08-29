@@ -331,6 +331,40 @@ export function toImageCoords(face: FaceLocation, x: number, y: number): { x: nu
 	return apply(face.transform, x, y);
 }
 
+/**
+ * The square crop the learned arrow detector reads, and where each of its cells came from.
+ *
+ * Written once and shared by the two cutters and by the read back, because the only thing that says
+ * where a peak in the crop came from is the sampling the crop was cut with. Three copies of this
+ * drifted apart once already, and an arrow was reported a quarter turn from where it was shot.
+ *
+ * This is the ellipse summary rather than the projection, which is not what the crop is documented
+ * to be, and the reason it stays that way is that the detector's training crops were cut with it
+ * (scripts/prepare-arrows.mjs). Read back through cropToFace it costs nothing: what the network sees
+ * and what the archer scores are separate questions, and only the first has to match the training.
+ */
+export function cropToImage(
+	face: FaceLocation,
+	x: number,
+	y: number,
+	factor = 1
+): { x: number; y: number } {
+	const cos = Math.cos(face.rotation);
+	const sin = Math.sin(face.rotation);
+	const px = x * face.semiMajor;
+	const py = y * face.semiMinor;
+	return {
+		x: (face.cx + px * cos - py * sin) * factor,
+		y: (face.cy + px * sin + py * cos) * factor
+	};
+}
+
+/** Where a cell of that crop sits on the face, which is the point that scores. */
+export function cropToFace(face: FaceLocation, x: number, y: number): { x: number; y: number } {
+	const pixel = cropToImage(face, x, y);
+	return toFaceCoords(face, pixel.x, pixel.y);
+}
+
 
 /**
  * Re-expresses a face with the same angular origin as the one before it.

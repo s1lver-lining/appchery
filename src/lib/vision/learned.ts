@@ -1,4 +1,4 @@
-import { toFaceCoords, toImageCoords } from './face';
+import { cropToImage, toFaceCoords } from './face';
 import type { Frame, FaceLocation } from './types';
 
 /**
@@ -62,18 +62,15 @@ interface Tensor {
  */
 function rectify(frame: Frame, face: FaceLocation, size: number, span: number): Tensor {
 	const data = new Float32Array(3 * size * size);
-	const cos = Math.cos(face.rotation);
-	const sin = Math.sin(face.rotation);
 	const plane = size * size;
 
 	for (let j = 0; j < size; j++) {
 		for (let i = 0; i < size; i++) {
 			const fx = ((i + 0.5) / size) * 2 * span - span;
 			const fy = ((j + 0.5) / size) * 2 * span - span;
-			const px = fx * face.semiMajor;
-			const py = fy * face.semiMinor;
-			const x = Math.round(face.cx + px * cos - py * sin);
-			const y = Math.round(face.cy + px * sin + py * cos);
+			const sample = cropToImage(face, fx, fy);
+			const x = Math.round(sample.x);
+			const y = Math.round(sample.y);
 			const at = j * size + i;
 			if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) {
 				/**
@@ -211,12 +208,26 @@ function run(
 			// The two offset channels recover a position finer than the grid the peak sits on.
 			const ox = data[plane + at];
 			const oy = data[2 * plane + at];
-			const x = ((i + ox) / width) * 2 * model.span - model.span;
-			const y = ((j + oy) / height) * 2 * model.span - model.span;
-			if (Math.hypot(x, y) >= 1) continue;
+			const cropX = ((i + ox) / width) * 2 * model.span - model.span;
+			const cropY = ((j + oy) / height) * 2 * model.span - model.span;
 
-			const image = toImageCoords(face, x, y);
-			found.push({ x, y, imageX: image.x, imageY: image.y, confidence });
+			/*
+			 * A cell of the crop is not a place on the face, and reporting it as one was reporting
+			 * every arrow a quarter turn from where it was shot.
+			 *
+			 * The crop is cut along the picture's own axes, stretched by the two lengths of the face's
+			 * ellipse. Where the face lies across those axes, which is what a phone stood beside the
+			 * shooting line sees, the two spaces are a quarter turn apart, and the radius is wrong with
+			 * the angle: an arrow at half the face radius came back at 1.07, past the edge, where the
+			 * check below then dropped it altogether. So the cell is turned back into the pixel it was
+			 * cut from, and that pixel is asked where it sits on the face.
+			 */
+			const image = cropToImage(face, cropX, cropY);
+			const point = toFaceCoords(face, image.x, image.y);
+			// Off the face, measured on the face rather than in the crop.
+			if (Math.hypot(point.x, point.y) >= 1) continue;
+
+			found.push({ x: point.x, y: point.y, imageX: image.x, imageY: image.y, confidence });
 		}
 	}
 

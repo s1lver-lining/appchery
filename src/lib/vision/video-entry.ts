@@ -5,7 +5,7 @@
 // This drives the real `Scanner` the same way `AutoScore.svelte` does, at the same detection rate,
 // so what the overlay shows is what an archer would have seen through the phone.
 import { Scanner } from './pipeline';
-import { alignFace, detectFaces, toImageCoords, scaleFace } from './face';
+import { alignFace, cropToImage, detectFaces, scaleFace, toImageCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';
 import { SteadyFace } from './steady';
@@ -79,18 +79,16 @@ export class Replay {
 		const frame = this.full;
 		if (!frame) return null;
 		const factor = this.scanner.scaleFactor;
-		const cos = Math.cos(face.rotation);
-		const sin = Math.sin(face.rotation);
 		const data = new Uint8ClampedArray(size * size * 4);
 
 		for (let j = 0; j < size; j++) {
 			for (let i = 0; i < size; i++) {
 				const fx = ((i + 0.5) / size) * 2 * span - span;
 				const fy = ((j + 0.5) / size) * 2 * span - span;
-				const px = fx * face.semiMajor * factor;
-				const py = fy * face.semiMinor * factor;
-				const x = Math.round(face.cx * factor + px * cos - py * sin);
-				const y = Math.round(face.cy * factor + px * sin + py * cos);
+				// The same sampling the detector reads a peak back through, at this frame's scale.
+				const sample = cropToImage(face, fx, fy, factor);
+				const x = Math.round(sample.x);
+				const y = Math.round(sample.y);
 				const at = (j * size + i) * 4;
 				data[at + 3] = 255;
 				if (x < 0 || y < 0 || x >= frame.width || y >= frame.height) continue;
