@@ -85,6 +85,63 @@ describe('tally under the set system', () => {
 	});
 });
 
+describe('a custom match whose target the two sides can both reach', () => {
+	/*
+	 * Two set points are shared out per end, so both sides can stand on the target once the match is
+	 * as many ends long as the target is points. World Archery never allows it (six points over five
+	 * ends, five over four), but the custom wheels offer one to fifteen points over one to thirty
+	 * ends, and most of the pairs an archer would pick are exactly the ones that can.
+	 *
+	 * Asking after our points first handed every one of those to us: a level match was recorded as
+	 * won, its shoot-off was never offered, and the ends still to shoot could not be entered.
+	 */
+	const custom = (maxEnds: number, setPointsToWin: number) => ({
+		...newMatch('custom'),
+		maxEnds,
+		setPointsToWin
+	});
+
+	const drawn = (count: number) =>
+		ends(...Array.from({ length: count }, () => [27, 27] as [number, number]));
+
+	it('is nobody\'s win when both arrive on the target together', () => {
+		const result = tally(custom(5, 5), drawn(5));
+		expect(result.ourPoints).toBe(5);
+		expect(result.theirPoints).toBe(5);
+		expect(result.winner).toBeNull();
+		expect(result.decided).toBe(false);
+		expect(result.needsShootOff).toBe(true);
+	});
+
+	it('goes on being shot while there are ends left', () => {
+		// Level on the target after four, with a fifth end still owed.
+		const config = custom(5, 4);
+		expect(nextEndNo(config, drawn(4))).toBe(5);
+		expect(tally(config, drawn(4)).decided).toBe(false);
+	});
+
+	it('is won by whoever is ahead on reaching it', () => {
+		const config = custom(5, 4);
+		// Level on three, then the fourth end taken: four all becomes six to four.
+		const result = tally(config, ends([27, 27], [27, 27], [27, 27], [29, 25]));
+		expect([result.ourPoints, result.theirPoints]).toEqual([5, 3]);
+		expect(result.winner).toBe('us');
+		expect(result.decided).toBe(true);
+	});
+
+	it('is won by the other side just the same', () => {
+		const result = tally(custom(5, 4), ends([27, 27], [27, 27], [27, 27], [25, 29]));
+		expect(result.winner).toBe('them');
+	});
+
+	/** One point to win and a drawn first end used to end the match before it began. */
+	it('does not end on a drawn first end when one point wins', () => {
+		const config = custom(5, 1);
+		expect(tally(config, drawn(1)).winner).toBeNull();
+		expect(nextEndNo(config, drawn(1))).toBe(2);
+	});
+});
+
 describe('tally under the cumulative system', () => {
 	const config = newMatch('individual', 'cumulative');
 

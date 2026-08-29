@@ -218,8 +218,20 @@ export function tally(config: MatchConfig, ends: MatchEnd[]): MatchTally {
 		rows.push({ end, ourPoints: ourEnd, theirPoints: theirEnd });
 
 		if (config.system === 'set') {
-			if (ourPoints >= config.setPointsToWin) winner = 'us';
-			else if (theirPoints >= config.setPointsToWin) winner = 'them';
+			/*
+			 * Reaching the target wins the match, but only for whoever is ahead on reaching it. Both
+			 * sides can arrive at it in the same end, and asking after ours first handed every one of
+			 * those to us: a match level on set points was recorded as won, the shoot-off it was owed
+			 * was never offered, and the ends still to shoot could not be entered.
+			 *
+			 * The three published formats cannot reach it, which is why this held for so long. Two
+			 * points are shared out per end, so both sides standing on the target needs at least as
+			 * many ends as the target is points, and World Archery sets six over five ends and five
+			 * over four. A custom match is built on wheels offering one to fifteen points over one to
+			 * thirty ends, where most of the pairs an archer might pick are exactly the ones that can.
+			 */
+			if (ourPoints >= config.setPointsToWin && ourPoints > theirPoints) winner = 'us';
+			else if (theirPoints >= config.setPointsToWin && theirPoints > ourPoints) winner = 'them';
 		}
 	}
 
