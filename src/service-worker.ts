@@ -33,11 +33,14 @@ worker.addEventListener('install', (event) => {
 });
 
 worker.addEventListener('activate', (event) => {
-	// Drop caches from older versions, or a device keeps every build ever installed.
+	// Drop caches from older versions, or a device keeps every build ever installed. The shared file
+	// is not one of them: a share sheet parks a file here and the app looks for it a moment later,
+	// which is exactly when a deploy noticed on coming back to the front would have taken it away.
+	const mine = (key: string) => key === CACHE || key === SHARE_CACHE;
 	event.waitUntil(
 		caches
 			.keys()
-			.then((keys) => Promise.all(keys.filter((key) => key !== CACHE).map((key) => caches.delete(key))))
+			.then((keys) => Promise.all(keys.filter((key) => !mine(key)).map((key) => caches.delete(key))))
 			.then(() => worker.clients.claim())
 	);
 });
