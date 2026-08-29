@@ -1866,54 +1866,54 @@ insetHint:
 		openLong: 'Open Appchery',
 		hero: {
 			title: 'Everything you did on the shooting line, in one place.',
-			body: 'Score a round, tune a bow, count the arrows nobody counts, train for the shot. Appchery keeps the whole outing on your own device and works with no signal at all.',
-			session: 'An outing as the app records it',
-			try: 'Click for more details',
+			body: 'Score a round, tune your bow, count your arrows, train for the shot. Appchery keeps it all on your phone, and works with no signal at all.',
+			session: 'A session, as the app records it',
+			try: 'Click to see more',
 			free: 'Free, open source, no account needed',
 			offline: 'Works offline'
 		},
 		plot: {
-			title: 'Score by pointing at the target',
-			body: 'Tap where the arrow landed and the ring is read off the same geometry the app draws the face with, so what you see and what you score cannot disagree. Type the values instead if that is faster, and the card adds up either way.',
+			title: 'Score by tapping the target',
+			body: 'Tap where your arrow landed and the app reads the ring for you. What you see is what you score. Or type the values if that is faster: the card adds up either way.',
 			note: 'Group size, spread and centre, worked out end by end.',
 			arrows: 'Arrows',
 			score: 'Scored',
 			spread: 'Spread'
 		},
 		camera: {
-			title: 'Let the camera read the face',
-			body: 'Point the phone at the target and the arrows are found for you. As quick as reading the scores out and typing them, quicker than placing six arrows by hand, and you still get what placing them gives you: where every arrow landed, and the group that comes out of it.',
+			title: 'Let the camera score for you',
+			body: 'Point your phone at the target and the arrows are found for you. As fast as typing the scores, and you still see where every arrow landed and how they grouped.',
 			note: 'Nothing is uploaded: the detection runs on the phone.'
 		},
 		stats: {
 			title: 'Numbers that answer a question',
-			body: 'How a round has gone over a season, which zones the arrows really fall in, and how much the wind costs you per arrow. Filter by bow, by distance, by kind of outing, and the whole page answers for that slice alone.',
-			note: 'Compare anything against anything: this bow against that one, indoors against out, this season against last.'
+			body: 'See how a round has gone over a season, where your arrows really land, and what the wind costs you. Filter by bow, by distance, by kind of session, and the whole page follows.',
+			note: 'Compare anything: this bow against that one, indoors against outdoors, this season against last.'
 		},
 		training: {
 			title: 'Train the muscles the shot uses',
-			body: 'A library of exercises, each one drawn as a figure that moves and mapped onto the muscles it works. The map is the same one the shot itself is drawn on, so you can see what an exercise trains and when in the shot it is used.',
+			body: 'A library of exercises, each one drawn as a moving figure and mapped onto the muscles it works. You see what an exercise trains, and where it fits in your shot.',
 			note: 'Bands, bow, or nothing at all.'
 		},
 		badges: {
 			title: 'Something to shoot for',
-			body: 'The federal progression arrows are tracked from your scorecards, and the milestones count the arrows, the distances and the weather you were willing to stand in. An unearned one still says what it wants and how far along you are.',
+			body: 'Progression arrows are tracked straight from your scorecards. Other badges count your arrows, your distances, and the weather you were willing to stand in. Every badge tells you how close you are.',
 		},
 		private: {
-			title: 'You control the data',
-			body: 'Everything is written to your own device first, and the app works whether or not it ever leaves. Sync is free and entirely optional: turn it on and your outings follow you to your other phone and to the archers you choose to share them with, turn it off and they stay where they were recorded.',
+			title: 'Your data stays yours',
+			body: 'Everything is saved on your own device first, and the app works whether or not it ever leaves. Sync is free and optional: turn it on to follow your shooting onto another phone, or to share it with archers you choose. Turn it off and nothing moves.',
 			note: 'No advertising, no tracking, nothing to pay.',
 			sync: 'Optional sync'
 		},
 		cta: {
 			title: 'Take it to the field.',
-			body: 'It opens in the browser and installs to the home screen from there. Nothing to sign up for.'
+			body: 'Open it in your browser, then add it to your home screen. Nothing to sign up for.'
 		},
 		footer: {
 			licence: 'Free software under the AGPL.',
 			language: 'Language'
 		},
-		// The sample outing drawn in the phone frames, which is made up rather than anybody's real scores.
+		// The sample session drawn in the phone frames, which is made up rather than anybody's real scores.
 		sample: {
 			round: 'WA 720 · 70m',
 			end: 'End 4 of 12',

@@ -1881,54 +1881,54 @@ insetHint:
 		openLong: 'Ouvrir Appchery',
 		hero: {
 			title: 'Tout ce que vous avez fait sur le pas de tir, au même endroit.',
-			body: 'Marquez un tir, réglez un arc, comptez les flèches que personne ne compte, préparez le geste. Appchery garde la sortie entière sur votre appareil et fonctionne sans le moindre réseau.',
-			session: 'Une sortie telle que l’appli l’enregistre',
-			try: 'Cliquez pour plus de détails',
+			body: 'Marquez un tir, réglez votre arc, comptez vos flèches, travaillez votre geste. Appchery garde tout sur votre téléphone, et fonctionne sans le moindre réseau.',
+			session: 'Une séance, telle que l’appli l’enregistre',
+			try: 'Cliquez pour en voir plus',
 			free: 'Gratuit, libre, sans compte',
 			offline: 'Fonctionne hors ligne'
 		},
 		plot: {
-			title: 'Marquez en montrant la cible',
-			body: 'Touchez l’impact et la zone est lue sur la géométrie même qui dessine le blason : ce que vous voyez et ce qui est compté ne peuvent pas diverger. Saisissez les valeurs si c’est plus rapide, la feuille de marque additionne dans les deux cas.',
+			title: 'Marquez en touchant la cible',
+			body: 'Touchez l’impact et l’appli lit la zone pour vous. Ce que vous voyez est ce qui est compté. Ou saisissez les valeurs si c’est plus rapide : la feuille additionne dans les deux cas.',
 			note: 'Groupement, dispersion et centre, calculés volée après volée.',
 			arrows: 'Flèches',
 			score: 'Marqué',
 			spread: 'Dispersion'
 		},
 		camera: {
-			title: 'Laissez la caméra lire le blason',
-			body: 'Visez la cible et les flèches sont trouvées pour vous. Aussi rapide que d’annoncer les scores et de les saisir, plus rapide que de placer six flèches à la main, et vous obtenez quand même ce que le placement donne : où chaque flèche est tombée, et le groupement qui en découle.',
+			title: 'Laissez la caméra marquer pour vous',
+			body: 'Visez la cible avec votre téléphone et les flèches sont trouvées pour vous. Aussi rapide que de saisir les scores, et vous voyez quand même où chaque flèche est tombée et comment elles ont groupé.',
 			note: 'Rien n’est envoyé : la détection tourne sur le téléphone.'
 		},
 		stats: {
 			title: 'Des chiffres qui répondent à une question',
-			body: 'Comment un tir évolue sur une saison, dans quelles zones les flèches tombent vraiment, et ce que le vent vous coûte par flèche. Filtrez par arc, par distance, par type de sortie, et toute la page ne répond plus que pour cette tranche.',
-			note: 'Comparez ce que vous voulez à ce que vous voulez : cet arc contre celui là, en salle contre en extérieur, cette saison contre la précédente.'
+			body: 'Voyez comment un tir évolue sur une saison, où vos flèches tombent vraiment, et ce que le vent vous coûte. Filtrez par arc, par distance, par type de séance, et toute la page suit.',
+			note: 'Comparez ce que vous voulez : cet arc contre celui là, en salle contre en extérieur, cette saison contre la précédente.'
 		},
 		training: {
 			title: 'Travaillez les muscles du geste',
-			body: 'Une bibliothèque d’exercices, chacun dessiné par une silhouette qui bouge et reporté sur les muscles qu’il sollicite. La carte est celle sur laquelle le geste lui même est dessiné : vous voyez ce qu’un exercice entraîne et à quel moment du tir il sert.',
+			body: 'Une bibliothèque d’exercices, chacun dessiné par une silhouette qui bouge et reporté sur les muscles qu’il sollicite. Vous voyez ce qu’un exercice travaille, et où il sert dans votre tir.',
 			note: 'Avec élastique, avec l’arc, ou avec rien du tout.'
 		},
 		badges: {
 			title: 'Quelque chose à viser',
-			body: 'Les flèches de progression fédérales sont suivies depuis vos feuilles de marque, et les jalons comptent les flèches, les distances et le temps que vous avez accepté d’affronter. Un badge non obtenu dit quand même ce qu’il demande et où vous en êtes.',
+			body: 'Les flèches de progression sont suivies directement depuis vos feuilles de marque. Les autres badges comptent vos flèches, vos distances, et le temps que vous avez accepté d’affronter. Chaque badge vous dit où vous en êtes.',
 		},
 		private: {
-			title: 'Vous gardez la main sur vos données',
-			body: 'Tout est écrit sur votre appareil d’abord, et l’appli fonctionne que cela le quitte ou non. La synchronisation est gratuite et entièrement facultative : activez la et vos sorties vous suivent sur votre autre téléphone et chez les archers avec qui vous choisissez de les partager, désactivez la et elles restent là où elles ont été enregistrées.',
+			title: 'Vos données restent les vôtres',
+			body: 'Tout est enregistré sur votre appareil d’abord, et l’appli fonctionne que cela le quitte ou non. La synchronisation est gratuite et facultative : activez la pour retrouver vos tirs sur un autre téléphone, ou les partager avec les archers de votre choix. Désactivez la et rien ne bouge.',
 			note: 'Aucune publicité, aucun pistage, rien à payer.',
 			sync: 'Synchro facultative'
 		},
 		cta: {
 			title: 'Emmenez la sur le pas de tir.',
-			body: 'Elle s’ouvre dans le navigateur et s’installe sur l’écran d’accueil depuis là. Aucune inscription.'
+			body: 'Ouvrez la dans votre navigateur, puis ajoutez la à votre écran d’accueil. Aucune inscription.'
 		},
 		footer: {
 			licence: 'Logiciel libre sous licence AGPL.',
 			language: 'Langue'
 		},
-		// La sortie d'exemple dessinée dans les téléphones, inventée plutôt que tirée de vrais scores.
+		// La séance d'exemple dessinée dans les téléphones, inventée plutôt que tirée de vrais scores.
 		sample: {
 			round: 'WA 720 · 70m',
 			end: 'Volée 4 sur 12',
