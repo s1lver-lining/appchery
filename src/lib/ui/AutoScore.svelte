@@ -2,7 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
-	import { LiveScanner } from '$lib/vision/live';
+	import { DETECT_EVERY_MS, LiveScanner } from '$lib/vision/live';
 import { SteadyFace } from '$lib/vision/steady';
 	import { MotionLog, allowMotion } from '$lib/vision/motion';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
@@ -226,12 +226,6 @@ import { SteadyFace } from '$lib/vision/steady';
 	 * of waiting for a detection to finish. Detection three times a second is far more often than an
 	 * arrow arrives.
 	 */
-	/**
-	 * How often a detection pass is offered. A pass costing more than this does not slow the video
-	 * down, it simply happens less often, so a phone that cannot keep up degrades to its own rate.
-	 * The vote a candidate needs was raised with it, in sweep.ts, so the bar is still in looks.
-	 */
-	const DETECT_EVERY_MS = 150;
 	let lastDetection = 0;
 
 	/** One smoother per face, made on demand, so a three spot's three faces are steadied separately. */

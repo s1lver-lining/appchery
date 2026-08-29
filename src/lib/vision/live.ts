@@ -15,6 +15,17 @@ import type { Frame, FaceLocation, Impact } from './types';
  * same place on the face however far the camera has moved since the frame it was found in, so a
  * result that arrives late is still drawn in the right place rather than in a stale one.
  */
+/**
+ * How often a detection pass is offered, in milliseconds.
+ *
+ * Lives here rather than beside the camera because the replay in `video-entry.ts` drives the same
+ * scanner and has to offer passes just as often. Held apart, the two drifted: the app was offering
+ * one every 150ms while the replay the detector is measured with still offered one every 300, so a
+ * recording replayed as a slower detector than the one it was recorded through, and the vote a
+ * candidate needs had already been raised to suit the faster rate.
+ */
+export const DETECT_EVERY_MS = 150;
+
 export class LiveScanner {
 	private readonly worker: Worker;
 	private faces: FaceLocation[] = [];

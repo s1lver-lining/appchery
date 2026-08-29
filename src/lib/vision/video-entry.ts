@@ -5,6 +5,7 @@
 // This drives the real `Scanner` the same way `AutoScore.svelte` does, at the same detection rate,
 // so what the overlay shows is what an archer would have seen through the phone.
 import { Scanner } from './pipeline';
+export { DETECT_EVERY_MS } from './live';
 import { alignFace, cropToImage, detectFaces, scaleFace, toImageCoords } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';

@@ -22,9 +22,6 @@ import { Canvas, TEXT_HEIGHT } from './lib/raster.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 
-/** How often the app runs the full search. Anything else would measure a detector it does not ship. */
-const DETECT_EVERY_MS = 300;
-
 const GREEN = [0, 230, 118];
 const MAGENTA = [255, 64, 255];
 const AMBER = [255, 193, 7];
@@ -46,7 +43,7 @@ export async function replayVideo({ input, output, watch, model, json, limit, ev
 		throw new Error(`Cannot write ${extname(target)}. Use one of ${Object.keys(CODECS).join(', ')}.`);
 	}
 
-	const { Replay, DRAWN_RINGS } = await load();
+	const { Replay, DRAWN_RINGS, DETECT_EVERY_MS } = await load();
 	paint.rings = DRAWN_RINGS;
 	const replay = new Replay(everyMs || DETECT_EVERY_MS, model ?? null, Boolean(pretty));
 	if (arrows) replay.setLimit(arrows);
