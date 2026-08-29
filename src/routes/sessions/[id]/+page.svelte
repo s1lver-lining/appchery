@@ -2148,6 +2148,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				type="number"
 				inputmode="numeric"
 				min="0"
+				step="1"
 				class="tabular w-full rounded-lg border border-line bg-bg p-3 text-2xl font-bold text-ink"
 				aria-label={$t('session.trainingArrows')}
 				bind:value={countDraft}

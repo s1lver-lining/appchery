@@ -461,6 +461,10 @@ export async function createTuningActivity(sessionId: string, templateKey: strin
 /**
  * Arrows shot without scoring them, kept in one activity per session so the counter has somewhere to
  * live. They count towards volume everywhere and never reach a score, which is the point of them.
+ *
+ * The figure is typed into a plain number field, so it arrives as whatever was typed and is bounded
+ * and rounded like an imported one: half an arrow is not a thing anybody shot, and a billion of them
+ * wins every volume badge at once.
  */
 export async function addTrainingArrows(sessionId: string, delta: number) {
 	await unplan(sessionId);
@@ -477,7 +481,8 @@ export async function addTrainingArrows(sessionId: string, delta: number) {
 
 	const now = Date.now();
 	if (!existing) {
-		if (delta <= 0) return 0;
+		const opening = safeCount(delta, LIMITS.arrows);
+		if (opening <= 0) return 0;
 		const base = stamp();
 		await db()
 			.insert(schema.activity)
@@ -486,14 +491,14 @@ export async function addTrainingArrows(sessionId: string, delta: number) {
 				sessionId,
 				kind: 'training',
 				startedAt: base.createdAt,
-				arrowsShot: delta,
+				arrowsShot: opening,
 				status: 'complete'
 			});
 		await log('activity', base.id, 'insert');
-		return delta;
+		return opening;
 	}
 
-	const next = Math.max(0, existing.arrowsShot + delta);
+	const next = safeCount(existing.arrowsShot + delta, LIMITS.arrows);
 	await db()
 		.update(schema.activity)
 		.set({ arrowsShot: next, updatedAt: now })

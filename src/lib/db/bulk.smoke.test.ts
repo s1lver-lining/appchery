@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/sqlite-proxy';
 import { eq } from 'drizzle-orm';
 import * as schema from './schema';
 import { MIGRATIONS } from './migrations';
+import { LIMITS } from '$lib/import/limits';
 
 /**
  * Working on a selection runs against a real SQLite, because what has to be true of it is a
@@ -40,7 +41,8 @@ vi.stubGlobal('localStorage', {
 	setItem: (key: string, value: string) => void store.set(key, value)
 });
 
-const { deleteSessions, restoreSessions, setSessionsBow, deleteImportedSessions } = await import('./repository');
+const { addTrainingArrows, deleteSessions, restoreSessions, setSessionsBow, deleteImportedSessions } =
+	await import('./repository');
 
 beforeAll(() => {
 	for (const group of MIGRATIONS) for (const statement of group) sqlite.exec(statement);
@@ -63,6 +65,7 @@ const logged = async (op: string) =>
 
 beforeEach(() => {
 	sqlite.exec('DELETE FROM change_log');
+	sqlite.exec('DELETE FROM activity');
 	sqlite.exec('DELETE FROM session');
 });
 
@@ -149,5 +152,32 @@ describe('removing imported sessions', () => {
 
 		const logged = await proxy.select().from(schema.changeLog);
 		expect(logged.map((entry) => entry.op)).toContain('delete');
+	});
+});
+
+/**
+ * The counter's figure is typed into a plain number field, and nothing between the keyboard and the
+ * column rounds it or bounds it. A fractional arrow is a corrupt record, and an enormous one wins
+ * every volume badge and level the app has to give.
+ */
+describe('counting arrows that were never scored', () => {
+	it('records whole arrows, whatever was typed', async () => {
+		await seed(['counting-a']);
+
+		expect(await addTrainingArrows('counting-a', 12.5)).toBe(13);
+		expect(await addTrainingArrows('counting-a', 0.4)).toBe(13);
+	});
+
+	it('refuses a figure past what any archer has ever shot', async () => {
+		await seed(['counting-b']);
+
+		expect(await addTrainingArrows('counting-b', 1e9)).toBe(LIMITS.arrows);
+	});
+
+	it('never counts below nothing', async () => {
+		await seed(['counting-c']);
+		await addTrainingArrows('counting-c', 30);
+
+		expect(await addTrainingArrows('counting-c', -100)).toBe(0);
 	});
 });
