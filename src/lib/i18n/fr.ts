@@ -1212,6 +1212,8 @@ export const fr: Dictionary = {
 			"Prévient quand une flèche numérotée tombe souvent à l'écart des autres. Demande des flèches pointées et numérotées.",
 		hapticsTitle: 'Vibrer au toucher',
 		hapticsHint: 'Une brève vibration quand un appui compte une flèche.',
+		hapticsNoApi: "Ce navigateur ne sait pas vibrer. Safari sur iPhone et iPad en fait partie ; sur un ordinateur, il n'y a pas de moteur à utiliser.",
+		hapticsRefused: "Le navigateur a refusé la vibration. Vérifiez qu'elle est autorisée pour ce site et que le téléphone n'est pas dans un mode qui la coupe.",
 		milliseconds: '{n} ms',
 		display: 'Affichage',
 		recordTitle: 'Enregistrer la vidéo du marquage',

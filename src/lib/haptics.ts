@@ -15,11 +15,22 @@ import { haptics } from './prefs';
 export type Strength = 'light' | 'medium' | 'heavy';
 
 /**
- * How long the web path asks for, per strength. Well above the eight milliseconds this used to ask
- * for: Android rounds a pulse up to the shortest spin its motor can manage and drops anything under
- * roughly fifteen, so the old buzz was being asked for and never arriving.
+ * How long the web path asks for, per strength. Long compared to what the native engine needs,
+ * because the two are not the same instrument. A phone's motor has to spin up before anything is
+ * felt through a case and a grip, and on most Android hardware that takes something like forty
+ * milliseconds; anything shorter is spent entirely on getting the weight moving and arrives as
+ * silence. The taptic engine has no such warm-up, which is why only these numbers are generous.
  */
-const WEB_MS: Record<Strength, number> = { light: 18, medium: 32, heavy: 48 };
+const WEB_MS: Record<Strength, number> = { light: 45, medium: 75, heavy: 110 };
+
+/**
+ * A pulse cancels whatever is still running, so two calls a few milliseconds apart leave one buzz
+ * that is shorter than either asked for. That happens by design in places: a keypad button buzzes
+ * for the press and the handler it calls buzzes for the arrow it wrote. The second call is dropped
+ * rather than allowed to cut the first one short.
+ */
+const COALESCE_MS = 120;
+let lastFired = 0;
 
 /** Resolved once and remembered, including the failure: a missing plugin will not appear later. */
 let loaded: typeof import('@capacitor/haptics') | null | undefined;
@@ -47,6 +58,7 @@ function fire(run: (mod: NonNullable<typeof loaded>) => Promise<unknown>) {
 
 function buzz(strength: Strength) {
 	if (!get(haptics)) return;
+	if (!claim()) return;
 	if (Capacitor.isNativePlatform()) {
 		fire((mod) =>
 			mod.Haptics.impact({
@@ -63,6 +75,26 @@ function buzz(strength: Strength) {
 	navigator.vibrate?.(WEB_MS[strength]);
 }
 
+/**
+ * What this device will actually do, as opposed to what was asked of it. Three things can each
+ * silence the web path on their own and none of them raise anything: the API can be missing, the
+ * call can be refused, or it can be accepted by a browser with no motor behind it. Only the first
+ * two are visible from here, which is why the third is reported as a maybe rather than a yes.
+ */
+export type Support =
+	| { path: 'native' }
+	| { path: 'web'; accepted: boolean }
+	| { path: 'none'; reason: 'no-api' };
+
+export function support(): Support {
+	if (Capacitor.isNativePlatform()) return { path: 'native' };
+	if (typeof navigator === 'undefined' || !navigator.vibrate) return { path: 'none', reason: 'no-api' };
+	// The spec has vibrate return false when the request is refused - no user activation behind it,
+	// a hidden page, a disallowed frame. Asking for zero cancels rather than buzzes, so the probe
+	// costs nothing to run.
+	return { path: 'web', accepted: navigator.vibrate(0) };
+}
+
 /** One arrow, one tap. As short as a key press, so a fast count does not blur into one long buzz. */
 export function tap() {
 	buzz('light');
@@ -73,22 +105,35 @@ export function commit() {
 	buzz('medium');
 }
 
+/**
+ * True at most once per COALESCE_MS, so a moment that reaches the motor twice is felt once and at
+ * full length.
+ */
+function claim() {
+	const now = Date.now();
+	if (now - lastFired < COALESCE_MS) return false;
+	lastFired = now;
+	return true;
+}
+
 /** A record, a badge, a match won. The one buzz allowed to be a pattern rather than a pulse. */
 export function celebrate() {
 	if (!get(haptics)) return;
+	if (!claim()) return;
 	if (Capacitor.isNativePlatform()) {
 		fire((mod) => mod.Haptics.notification({ type: mod.NotificationType.Success }));
 		return;
 	}
-	navigator.vibrate?.([16, 60, 16, 60, 32]);
+	navigator.vibrate?.([45, 60, 45, 60, 90]);
 }
 
 /** A tap that could not do what it asked for, which is worth feeling differently from one that did. */
 export function warn() {
 	if (!get(haptics)) return;
+	if (!claim()) return;
 	if (Capacitor.isNativePlatform()) {
 		fire((mod) => mod.Haptics.notification({ type: mod.NotificationType.Warning }));
 		return;
 	}
-	navigator.vibrate?.([28, 44, 28]);
+	navigator.vibrate?.([70, 50, 70]);
 }

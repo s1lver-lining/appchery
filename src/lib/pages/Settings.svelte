@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
+	import { commit, support } from '$lib/haptics';
 	import { theme, THEMES } from '$lib/theme';
 	import { dbInfo, LATEST_SCHEMA, rebuildDatabase, schemaVersion } from '$lib/db';
 	import {
@@ -46,6 +47,16 @@
 	 * finding it is then the archer's problem.
 	 */
 	let flashing = $state<string | null>(null);
+
+	/** Written only when the haptics switch is turned on, so nobody who is not asking ever sees it. */
+	let hapticsReport = $state<string | null>(null);
+
+	function describeHaptics() {
+		const found = support();
+		if (found.path === 'native') return null;
+		if (found.path === 'none') return $t('settings.hapticsNoApi');
+		return found.accepted ? null : $t('settings.hapticsRefused');
+	}
 	/** Which tab a setting lives on, since being sent to one on another tab is being sent nowhere. */
 	const TAB_OF: Record<string, 'app' | 'shooting' | 'data'> = {
 		location: 'shooting',
@@ -517,11 +528,21 @@
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.hapticsTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.hapticsHint')}</p>
+							{#if hapticsReport}
+								<p class="mt-1 text-sm text-muted">{hapticsReport}</p>
+							{/if}
 						</div>
 						<Toggle
 							checked={$haptics}
 							label={$t('settings.hapticsTitle')}
-							onchange={(v) => haptics.set(v)}
+							onchange={(v) => {
+								haptics.set(v);
+								// Switched on is the one moment the setting can answer for itself, so it does:
+								// the buzz is the test, and the line underneath says what the device offered
+								// when the buzz is not felt and there is nothing else to go on.
+								hapticsReport = v ? describeHaptics() : null;
+								if (v) commit();
+							}}
 						/>
 					</div>
 				</section>

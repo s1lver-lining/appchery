@@ -1210,6 +1210,8 @@ export const en = {
 			'Warns when one numbered arrow keeps landing away from the rest. Needs numbered, plotted arrows.',
 		hapticsTitle: 'Vibrate on a tap',
 		hapticsHint: 'A short buzz when a tap counts an arrow.',
+		hapticsNoApi: 'This browser has no way to buzz. Safari on iPhone and iPad is one of them; on a computer there is no motor to use.',
+		hapticsRefused: 'The browser turned the buzz down. Check that vibration is allowed for this site and that the phone is not in a mode that silences it.',
 		milliseconds: '{n} ms',
 		display: 'Display',
 		recordTitle: 'Record scoring video',
