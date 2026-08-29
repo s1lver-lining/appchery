@@ -24,16 +24,16 @@
 	});
 
 	const SHORTCUTS = $derived<{ href: string; icon: IconName; label: string; alert?: number }[]>([
-		{ href: '/badges', icon: 'medal', label: $t('settings.linkBadges') },
-		{ href: '/experience', icon: 'level', label: $t('experience.title') },
+		{ href: '/ianseo', icon: 'podium', label: $t('ianseo.title'), alert: freshResults },
+		{ href: '/friends', icon: 'friends', label: $t('friends.title') },
 		{ href: '/timer', icon: 'clock', label: $t('timer.title') },
 		{ href: '/share', icon: 'qr', label: $t('settings.linkShare') },
 		{ href: '/tuning', icon: 'wrench', label: $t('tuning.guideTitle') },
 		{ href: '/exercises', icon: 'exercise', label: $t('exercises.title') },
 		{ href: '/muscles', icon: 'muscle', label: $t('settings.linkMuscles') },
 		{ href: '/tricks', icon: 'bulb', label: $t('settings.linkTricks') },
-		{ href: '/friends', icon: 'friends', label: $t('friends.title') },
-		{ href: '/ianseo', icon: 'podium', label: $t('ianseo.title'), alert: freshResults },
+		{ href: '/experience', icon: 'level', label: $t('experience.title') },
+		{ href: '/badges', icon: 'medal', label: $t('settings.linkBadges') },
 		{ href: '/equipment?list=1', icon: 'bow', label: $t('settings.linkEquipment') },
 		{ href: '/plans', icon: 'chart', label: $t('plans.title') }
 	]);
