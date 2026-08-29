@@ -1,6 +1,6 @@
 /// <reference types="@sveltejs/kit" />
 import { build, files, version } from '$service-worker';
-import { SHARE_CACHE, SHARE_KEY } from '$lib/import/incoming';
+import { SHARE_CACHE, SHARE_KEY, encodeFilename } from '$lib/import/incoming';
 import { PROXY_PREFIX } from '$lib/competitions/proxy';
 import { announcements, afterAnnouncing, notices } from '$lib/ianseo/announce';
 import { readWatchState, writeWatchState } from '$lib/ianseo/watch';
@@ -70,7 +70,7 @@ worker.addEventListener('fetch', (event) => {
 						const cache = await caches.open(SHARE_CACHE);
 						await cache.put(
 							SHARE_KEY,
-							new Response(file, { headers: { 'x-filename': file.name } })
+							new Response(file, { headers: { 'x-filename': encodeFilename(file.name) } })
 						);
 					}
 				} catch {

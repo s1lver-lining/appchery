@@ -2,7 +2,7 @@
 	import { goto } from '$app/navigation';
 	import { get } from 'svelte/store';
 	import { t } from '$lib/i18n';
-	import { incomingFile, namedFile, SHARE_CACHE, SHARE_KEY } from '$lib/import/incoming';
+	import { decodeFilename, incomingFile, namedFile, SHARE_CACHE, SHARE_KEY } from '$lib/import/incoming';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 
@@ -29,7 +29,7 @@
 			const response = await cache.match(SHARE_KEY);
 			if (response) {
 				await cache.delete(SHARE_KEY);
-				file = namedFile(await response.blob(), response.headers.get('x-filename') ?? '');
+				file = namedFile(await response.blob(), decodeFilename(response.headers.get('x-filename') ?? ''));
 				return;
 			}
 		} catch {
