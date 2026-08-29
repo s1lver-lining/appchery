@@ -221,6 +221,24 @@
 		}
 	}
 
+	/**
+	 * Android fires its own buzz when a long press turns into a text selection or a context menu, which
+	 * lands on top of the one this component fires when the press becomes an aim - two pulses for one
+	 * gesture, and only when the browser felt like gesturing, so it is not even the same twice. None of
+	 * touch-action, user-select or a cancelled contextmenu reach it: the gesture is recognised from the
+	 * raw touch stream, before any of those are consulted. Refusing the touch itself is what stops it.
+	 *
+	 * The listener has to be attached by hand because Svelte registers ontouchstart as passive, where a
+	 * cancelled default is ignored. Pointer events are unaffected and still carry the whole interaction.
+	 */
+	$effect(() => {
+		const node = svg;
+		if (!node || !interactive) return;
+		const swallow = (event: TouchEvent) => event.preventDefault();
+		node.addEventListener('touchstart', swallow, { passive: false });
+		return () => node.removeEventListener('touchstart', swallow);
+	});
+
 	/** Trackpad and mouse wheel, so the same control works on the desktop build. */
 	function wheel(event: WheelEvent) {
 		if (!interactive) return;

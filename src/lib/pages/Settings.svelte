@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
-	import { commit, support } from '$lib/haptics';
+	import { selfTest } from '$lib/haptics';
 	import { theme, THEMES } from '$lib/theme';
 	import { dbInfo, LATEST_SCHEMA, rebuildDatabase, schemaVersion } from '$lib/db';
 	import {
@@ -51,11 +51,15 @@
 	/** Written only when the haptics switch is turned on, so nobody who is not asking ever sees it. */
 	let hapticsReport = $state<string | null>(null);
 
+	/**
+	 * Nothing to say when the buzz went out, because the buzz has already said it. The line is for
+	 * the cases where the switch is on and nothing will ever come of it, which is otherwise left for
+	 * the archer to discover mid-end.
+	 */
 	function describeHaptics() {
-		const found = support();
-		if (found.path === 'native') return null;
+		const found = selfTest();
 		if (found.path === 'none') return $t('settings.hapticsNoApi');
-		return found.accepted ? null : $t('settings.hapticsRefused');
+		return found.path === 'web' && !found.accepted ? $t('settings.hapticsRefused') : null;
 	}
 	/** Which tab a setting lives on, since being sent to one on another tab is being sent nowhere. */
 	const TAB_OF: Record<string, 'app' | 'shooting' | 'data'> = {
@@ -538,10 +542,9 @@
 							onchange={(v) => {
 								haptics.set(v);
 								// Switched on is the one moment the setting can answer for itself, so it does:
-								// the buzz is the test, and the line underneath says what the device offered
-								// when the buzz is not felt and there is nothing else to go on.
+								// the buzz is the test, and the line underneath speaks only when the buzz
+								// could not be sent and there would otherwise be nothing to go on.
 								hapticsReport = v ? describeHaptics() : null;
-								if (v) commit();
 							}}
 						/>
 					</div>

@@ -76,23 +76,27 @@ function buzz(strength: Strength) {
 }
 
 /**
- * What this device will actually do, as opposed to what was asked of it. Three things can each
+ * What this device did when asked, as opposed to what it claims it can do. Three things can each
  * silence the web path on their own and none of them raise anything: the API can be missing, the
- * call can be refused, or it can be accepted by a browser with no motor behind it. Only the first
- * two are visible from here, which is why the third is reported as a maybe rather than a yes.
+ * call can be refused, or it can be accepted by hardware that stays still. Only a real request
+ * separates the last two, which is why this buzzes rather than probing - asking for zero length
+ * cancels instead of vibrating, and Chrome lets a cancel past the activation check that a genuine
+ * pulse has to clear, so the cheap version of this answered yes to questions it had not asked.
  */
-export type Support =
-	| { path: 'native' }
-	| { path: 'web'; accepted: boolean }
-	| { path: 'none'; reason: 'no-api' };
+export type Support = { path: 'native' } | { path: 'web'; accepted: boolean } | { path: 'none' };
 
-export function support(): Support {
-	if (Capacitor.isNativePlatform()) return { path: 'native' };
-	if (typeof navigator === 'undefined' || !navigator.vibrate) return { path: 'none', reason: 'no-api' };
-	// The spec has vibrate return false when the request is refused - no user activation behind it,
-	// a hidden page, a disallowed frame. Asking for zero cancels rather than buzzes, so the probe
-	// costs nothing to run.
-	return { path: 'web', accepted: navigator.vibrate(0) };
+/** Long enough that nobody has to wonder whether they felt it, and unmistakably not a scoring tap. */
+const TEST_MS = 250;
+
+export function selfTest(): Support {
+	if (Capacitor.isNativePlatform()) {
+		fire((mod) => mod.Haptics.impact({ style: mod.ImpactStyle.Heavy }));
+		return { path: 'native' };
+	}
+	if (typeof navigator === 'undefined' || !navigator.vibrate) return { path: 'none' };
+	// Deliberately outside the coalescing window: a test asked for is a test run.
+	lastFired = 0;
+	return { path: 'web', accepted: navigator.vibrate(TEST_MS) };
 }
 
 /** One arrow, one tap. As short as a key press, so a fast count does not blur into one long buzz. */
