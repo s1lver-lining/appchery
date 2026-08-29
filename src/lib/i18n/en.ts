@@ -651,7 +651,7 @@ export const en = {
 			'is **one thing done inside a session**: a scored round, or a tuning run. A session can hold several. A round records **every arrow**, so a score can be corrected later. Arrows shot without scoring go in the **training counter**, and still count towards your volume.',
 		planTerm: 'A plan',
 		planBody:
-			'is **a week you mean to repeat**: the sessions you intend, on the days you intend them. Plans are **templates, not history** — nothing is written until you actually shoot. A week you skip leaves no trace.',
+			'is **a week you mean to repeat**: the sessions you intend, on the days you intend them. Plans are **templates, not history**: nothing is written until you actually shoot. A week you skip leaves no trace.',
 		bowTerm: 'A bow',
 		bowBody:
 			'is anything you shoot: yours, a club bow, a barebow set up for a weekend. Its **type** decides which settings and tuning procedures you are offered, so a compound is never asked about tiller.',

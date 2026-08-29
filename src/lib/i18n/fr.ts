@@ -652,7 +652,7 @@ export const fr: Dictionary = {
 			"est **une chose faite pendant une séance** : un tir compté, ou un réglage. Une séance peut en contenir plusieurs. Un tir enregistre **chaque flèche**, ce qui permet de corriger un score plus tard. Les flèches tirées sans être comptées vont dans le **compteur d'entraînement** et comptent dans votre volume.",
 		planTerm: 'Un programme',
 		planBody:
-			"est **une semaine que vous comptez répéter** : les sorties prévues, aux jours voulus. Un programme est un **modèle, pas un historique** : rien n'est enregistré tant que vous n'avez pas tiré. Une semaine sautée ne laisse aucune trace.",
+			"est **une semaine que vous comptez répéter** : les séances prévues, aux jours voulus. Un programme est un **modèle, pas un historique** : rien n'est enregistré tant que vous n'avez pas tiré. Une semaine sautée ne laisse aucune trace.",
 		bowTerm: 'Un arc',
 		bowBody:
 			"est tout ce avec quoi vous tirez : le vôtre, celui du club, un arc nu monté pour un week end. Son **type** détermine les réglages demandés et les procédures proposées : on ne demandera jamais le tiller d'une poulies.",
