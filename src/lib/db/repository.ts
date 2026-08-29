@@ -1756,15 +1756,14 @@ export async function loadExperienceInput(): Promise<XpInput> {
 	};
 }
 
+/**
+ * Never logged: a badge is local forever, see doc/sync.md § 2. Every device works its own out from
+ * the shooting record, so an entry naming one is a change no exchange can ever carry off the queue.
+ */
 async function writeBadges(keys: { key: string; earnedAt: number }[]) {
 	const rows = keys.map((entry) => ({ ...stamp(), key: entry.key, earnedAt: entry.earnedAt }));
 	if (rows.length === 0) return;
 	await db().insert(schema.badge).values(rows);
-	await logMany(
-		'badge',
-		rows.map((row) => row.id),
-		'insert'
-	);
 }
 
 /**
@@ -1803,11 +1802,6 @@ export async function recalculateBadges(): Promise<{ awarded: string[]; revoked:
 			.set({ deletedAt: now, updatedAt: now })
 			.where(eq(schema.badge.id, row.id));
 	}
-	await logMany(
-		'badge',
-		stale.map((row) => row.id),
-		'delete'
-	);
 
 	const held = new Set(rows.filter((row) => earned.has(row.key)).map((row) => row.key));
 	const missing = [...earned.entries()]

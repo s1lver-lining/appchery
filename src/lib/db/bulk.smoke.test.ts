@@ -51,6 +51,9 @@ vi.stubGlobal('localStorage', {
 
 const {
 	addTrainingArrows,
+	awardBadges,
+	listBadges,
+	recalculateBadges,
 	createBow,
 	createRevision,
 	listRevisions,
@@ -238,5 +241,37 @@ describe('bow revisions', () => {
 
 		const numbers = (await listRevisions(bowId)).map((row) => row.revisionNo).sort();
 		expect(numbers).toEqual([1, 2]);
+	});
+});
+
+/**
+ * A badge is local forever, see doc/sync.md § 2. A push steps over a table it does not carry without
+ * ever stamping the entry sent, so an entry naming one would sit in the queue for as long as the
+ * archer kept the app and be counted as a change still waiting to go up.
+ */
+describe('badges and the change log', () => {
+	it('logs nothing for a badge, whether it is awarded or taken back', async () => {
+		const now = Date.now();
+		await proxy.insert(schema.session).values({
+			id: 'badge-session',
+			createdAt: now,
+			updatedAt: now,
+			deviceId: 'd',
+			startedAt: now,
+			kind: 'practice'
+		});
+		await addTrainingArrows('badge-session', 1_200);
+		await proxy.delete(schema.changeLog);
+
+		expect(await awardBadges()).not.toHaveLength(0);
+		expect(await listBadges()).not.toHaveLength(0);
+
+		// Nothing is left to shoot for once the outing is gone, so the recheck takes them back.
+		await proxy.delete(schema.activity);
+		await proxy.delete(schema.session);
+		expect((await recalculateBadges()).revoked).not.toHaveLength(0);
+
+		const log = await proxy.select().from(schema.changeLog);
+		expect(log.filter((entry) => entry.tableName === 'badge')).toEqual([]);
 	});
 });

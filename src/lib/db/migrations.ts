@@ -317,5 +317,12 @@ export const MIGRATIONS: string[][] = [
 			found INTEGER NOT NULL,
 			cached_at INTEGER NOT NULL
 		);`
+	],
+	// 0007 the change log stops carrying rows no exchange can send
+	[
+		// A badge is local forever, see doc/sync.md § 2, but every award and every recheck wrote an
+		// entry for one. A push steps over a table it does not carry without ever stamping the entry
+		// sent, so each of them sat in the queue for good and was counted as a change still owed.
+		`DELETE FROM change_log WHERE table_name = 'badge';`
 	]
 ];
