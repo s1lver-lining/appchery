@@ -254,9 +254,11 @@ describe('verifyRings', () => {
 		const check = verifyRings(frame, face);
 
 		expect(check.ok).toBe(true);
-		expect(check.probes.map((p) => p.colour)).toEqual(['gold', 'red', 'blue', 'dark']);
+		// The four rings of the face, and then the surround, which a field face is told by and a
+		// synthetic frame has nothing but background in.
+		expect(check.probes.slice(0, 4).map((p) => p.colour)).toEqual(['gold', 'red', 'blue', 'dark']);
 		// Measured on real photographs of a WA face, every ring agreed on every sample.
-		expect(Math.min(...check.probes.map((p) => p.agreement))).toBeGreaterThan(0.9);
+		expect(Math.min(...check.probes.slice(0, 4).map((p) => p.agreement))).toBeGreaterThan(0.9);
 	});
 
 	it('rejects a bare yellow disc, which is what made every yellow object a target', () => {

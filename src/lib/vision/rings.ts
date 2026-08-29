@@ -99,10 +99,28 @@ export interface RingCheck {
  * dark surround. An arrow shaft crossing a ring costs a few samples, hence the agreement threshold
  * rather than a demand that every point match.
  */
+/**
+ * How much of a field face's rings have to agree, which is less than a coloured face's.
+ *
+ * A field face is black rings separated by thin white lines, so a circle drawn at any one radius
+ * crosses both and no radius reads as one colour the way a broad red or blue band does. The arrows
+ * take their share too: they stand in the middle and cross every ring on their way out, and a field
+ * boss is shot at close range where they are thick in the picture. Measured across nineteen frames
+ * of one, the rings agreed between 0.44 and 0.91 where a coloured face agrees above 0.95.
+ */
+const FIELD_AGREEMENT = 0.45;
+
 export function verifyRings(
 	frame: Frame,
 	face: FaceLocation,
-	options: { gold?: number; red?: number; mid?: number; outer?: number; agreement?: number } = {}
+	options: {
+		gold?: number;
+		red?: number;
+		mid?: number;
+		outer?: number;
+		surround?: number;
+		agreement?: number;
+	} = {}
 ): RingCheck {
 	/**
 	 * Measured. This was 0.55 when the fit was scored on ring interiors alone. Scoring boundaries as
@@ -114,9 +132,11 @@ export function verifyRings(
 		probeRing(frame, face, options.gold ?? 0.15),
 		probeRing(frame, face, options.red ?? 0.25),
 		probeRing(frame, face, options.mid ?? 0.45),
-		probeRing(frame, face, options.outer ?? 0.65)
+		probeRing(frame, face, options.outer ?? 0.65),
+		// Outside the printed face altogether, which is what says the rings stop somewhere.
+		probeRing(frame, face, options.surround ?? 1.25)
 	];
-	const [gold, red, mid, outer] = probes;
+	const [gold, red, mid, outer, surround] = probes;
 
 	const is = (probe: RingProbe, ...colours: RingColour[]) =>
 		probe.colour !== null && colours.includes(probe.colour) && probe.agreement >= minAgreement;
@@ -128,7 +148,25 @@ export function verifyRings(
 	// A two colour face, where the gold sits straight inside a dark surround.
 	const plain = is(red, 'dark') || (is(mid, 'dark') && red.colour === 'gold');
 
-	if (!coloured && !plain) {
+	/*
+	 * A field face: a small gold and nothing but black rings out to the paper.
+	 *
+	 * Printed black comes back mid grey in anything short of full light, and grey is the reading a
+	 * wall gives too, so the rings alone cannot say this is a face. What says it is that they stop.
+	 * A boss has an edge and a wall does not: outside the printed face is white paper, or the butt,
+	 * or the grass, and none of them is more of the same ring. Without that test this would accept
+	 * every yellow bag hung on a grey wall, which is the thing the grey reading exists to refuse.
+	 */
+	const band = (probe: RingProbe) =>
+		(probe.colour === 'dark' || probe.colour === 'grey') && probe.agreement >= FIELD_AGREEMENT;
+	const edged =
+		surround.colour !== null &&
+		surround.colour !== 'dark' &&
+		surround.colour !== 'grey' &&
+		surround.agreement >= 0.5;
+	const field = gold.agreement >= 0.8 && band(red) && band(mid) && band(outer) && edged;
+
+	if (!coloured && !plain && !field) {
 		// Distinguishing these two makes the hint on screen useful rather than generic.
 		const anyRing = probes.slice(1).some((p) => p.colour !== null);
 		return { ok: false, reason: anyRing ? 'notConcentric' : 'noRings', probes };
