@@ -690,3 +690,48 @@ describe('syncNow', () => {
 		expect(server.upserts).toEqual([]);
 	});
 });
+
+describe('the feed and the cache behind it', () => {
+	/**
+	 * Opening a public archer's profile caches what they share, so that page can show it without
+	 * following them first. The feed reads the same table.
+	 */
+	async function cacheStranger() {
+		await proxy.insert(schema.socialProfile).values({
+			userId: 'a-stranger',
+			handle: 'a_stranger',
+			displayName: 'A stranger',
+			isPublic: 1,
+			followStatus: 'none',
+			followsUs: 'none',
+			cachedAt: 1
+		});
+		await proxy.insert(schema.socialActivity).values({
+			id: 'their-round',
+			ownerId: 'a-stranger',
+			sharedAt: 2,
+			payload: '{}',
+			cachedAt: 1
+		});
+	}
+
+	it('leaves out an archer who was only looked at', async () => {
+		await cacheStranger();
+
+		const { sharedFeed } = await import('./social');
+		// Nobody is followed, so there is nothing to read: a profile opened once is not a friend, and
+		// the feed has no name to put on their round.
+		expect(await sharedFeed()).toEqual([]);
+	});
+
+	it('still carries an archer who is followed', async () => {
+		await cacheStranger();
+		await proxy
+			.update(schema.socialProfile)
+			.set({ followStatus: 'approved' })
+			.where(eq(schema.socialProfile.userId, 'a-stranger'));
+
+		const { sharedFeed } = await import('./social');
+		expect((await sharedFeed()).map((shared) => shared.id)).toEqual(['their-round']);
+	});
+});

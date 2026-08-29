@@ -1,4 +1,4 @@
-import { eq, desc, ne, type SQL } from 'drizzle-orm';
+import { eq, desc, inArray, ne, type SQL } from 'drizzle-orm';
 import { get } from 'svelte/store';
 import { db, schema } from '$lib/db';
 import { supabase } from './client';
@@ -389,9 +389,26 @@ export function sharedBy(ownerId: string): Promise<SharedActivity[]> {
 	return sharedWhere(eq(schema.socialActivity.ownerId, ownerId));
 }
 
-/** Everything anybody has shared with this archer, newest first: the feed the friends page opens on. */
-export function sharedFeed(limit = 50): Promise<SharedActivity[]> {
-	return sharedWhere(undefined, limit);
+/**
+ * What the archers this one follows have shared, newest first: the feed the friends page opens on.
+ *
+ * Filtered to the graph rather than read whole, because the cache holds more than the graph.
+ * Browsing a public profile caches what it shares so that page can show it without following first,
+ * and those rounds were landing in the feed as well: somebody looked up once appeared among the
+ * archer's friends, nameless, since the feed has only the graph to draw a name from, and their round
+ * counted towards the unread mark on the home page.
+ */
+export async function sharedFeed(limit = 50): Promise<SharedActivity[]> {
+	const graph = await db()
+		.select({ userId: schema.socialProfile.userId })
+		.from(schema.socialProfile)
+		.where(ne(schema.socialProfile.followStatus, 'none'));
+	if (graph.length === 0) return [];
+
+	return sharedWhere(
+		inArray(schema.socialActivity.ownerId, graph.map(({ userId }) => userId)),
+		limit
+	);
 }
 
 async function profilesWhere(condition: SQL | undefined): Promise<Profile[]> {
