@@ -88,17 +88,22 @@
 		withheld = true;
 		let height = -1;
 		while (scroller && restoring === mine) {
-			const reach = scroller.scrollHeight - scroller.clientHeight;
-			if (reach >= top - 1) {
+			let landed = false;
+			if (scroller.scrollHeight - scroller.clientHeight >= top - 1) {
 				scroller.scrollTop = top;
-				if (Math.abs(scroller.scrollTop - top) < 1) break;
+				landed = Math.abs(scroller.scrollTop - top) < 1;
 			} else if (scroller.scrollTop !== 0) scroller.scrollTop = 0;
+
+			const loading = get(pageLoading);
+			// A page landed on the right row is still held while it says it is reading: a return to the
+			// top of a list is otherwise shown the few rows it starts with before the rest arrive.
+			if (landed && !loading) break;
 			const waited = performance.now() - started;
 			// Shown again well before the wait is out: a slow page is better read than blank.
 			if (waited > HIDE_MS) withheld = false;
-			if (waited > RESTORE_MS) break;
-			const stuck = scroller.scrollHeight === height && !get(pageLoading);
-			if (stuck && waited > SETTLED_MS) break;
+			if (waited > RESTORE_MS || (landed && !withheld)) break;
+			const stuck = scroller.scrollHeight === height && !loading;
+			if (!landed && stuck && waited > SETTLED_MS) break;
 			height = scroller.scrollHeight;
 			await new Promise(requestAnimationFrame);
 		}
@@ -113,7 +118,8 @@
 		const back = returning && to ? scrolledTo.get(to) : undefined;
 		// After the page it is scrolling has been laid out, or the element is still the old height.
 		await tick();
-		if (back) await scrollBackTo(back);
+		// Zero is a place too: a return to the top of a list waits for it like any other offset.
+		if (back !== undefined) await scrollBackTo(back);
 		else if (scroller) {
 			restoring++;
 			withheld = false;
