@@ -323,8 +323,12 @@
 		<EntryCard {entry} />
 	{/if}
 
-	<!-- Only where there is enough to search: three documents are read rather than looked through. -->
-	{#if (competition?.documents.length ?? 0) > 6}
+	<!--
+		On every competition that published anything, however little. The box is no longer only a way
+		past a long list: it is how an archer is looked for, and a club shoot with four documents is
+		one somebody wants to know they are in just as much as a championship with ninety.
+	-->
+	{#if (competition?.documents.length ?? 0) > 0}
 		<PageTools
 			bind:value={search}
 			placeholder={$t('ianseo.findDocument')}
