@@ -101,14 +101,16 @@ describe('the tuning guide', () => {
 		// If this ever empties, the check below would pass by knowing nothing.
 		expect(drawn.size).toBeGreaterThan(5);
 
-		const asked = GUIDE_STEPS.map((step) => step.diagram).filter((name): name is string => !!name);
-		expect([...new Set(asked)].filter((name) => !drawn.has(name))).toEqual([]);
+		const asked = new Set<string>(
+			GUIDE_STEPS.flatMap((step) => (step.diagram ? [step.diagram as string] : []))
+		);
+		expect([...asked].filter((name) => !drawn.has(name))).toEqual([]);
 		// And nothing is drawn that no step ever shows.
-		expect([...drawn].filter((name) => !asked.includes(name))).toEqual([]);
+		expect([...drawn].filter((name) => !asked.has(name))).toEqual([]);
 	});
 
 	it('names handed diagrams that steps actually use', () => {
-		const used = new Set(GUIDE_STEPS.map((step) => step.diagram));
+		const used = new Set<string | undefined>(GUIDE_STEPS.map((step) => step.diagram));
 		expect(HANDED_DIAGRAMS.filter((name) => !used.has(name))).toEqual([]);
 	});
 
