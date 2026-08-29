@@ -916,7 +916,7 @@ export const fr: Dictionary = {
 		searchAll: 'Partout',
 		searchMine: 'Ce que je suis',
 		within: 'À moins de {km} km',
-		nearYou: 'Compétitions à moins de {km} km de vous.',
+		nearYou: 'À moins de {km} km de vous.',
 		locating: 'Recherche de votre position',
 		locatingTowns: 'Localisation de {n} villes',
 		locationDenied: "Votre position a été refusée, la distance ne peut donc pas être calculée.",
