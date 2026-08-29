@@ -2063,13 +2063,20 @@ async function clearImportedActivities(ids: string[]) {
 			.where(inArray(schema.end.activityId, chunk));
 		const endIds = ends.map((row) => row.id);
 		if (endIds.length > 0) {
-			const shots = await db()
-				.select({ id: schema.shot.id })
-				.from(schema.shot)
-				.where(inArray(schema.shot.endId, endIds));
-			await db().delete(schema.shot).where(inArray(schema.shot.endId, endIds));
+			// A hundred activities carry far more than a hundred ends, so the arrows are walked in
+			// chunks of their own rather than named all at once in a single statement.
+			const shotIds: string[] = [];
+			for (let j = 0; j < endIds.length; j += 100) {
+				const ofEnds = endIds.slice(j, j + 100);
+				const shots = await db()
+					.select({ id: schema.shot.id })
+					.from(schema.shot)
+					.where(inArray(schema.shot.endId, ofEnds));
+				shotIds.push(...shots.map((row) => row.id));
+				await db().delete(schema.shot).where(inArray(schema.shot.endId, ofEnds));
+			}
 			await db().delete(schema.end).where(inArray(schema.end.activityId, chunk));
-			await forgetLog('shot', shots.map((row) => row.id));
+			await forgetLog('shot', shotIds);
 			await forgetLog('round_end', endIds);
 		}
 		await db().delete(schema.activity).where(inArray(schema.activity.id, chunk));
