@@ -50,8 +50,19 @@ export function bracePoints(groups: BraceGroup[], faceCm: number): BracePoint[] 
 		.sort((a, b) => a.braceCm - b.braceCm);
 }
 
-/** The brace height whose group was tightest, which is the answer the procedure exists to give. */
+/**
+ * The fewest arrows that make a group rather than a coincidence, as everywhere else that reads one.
+ * One arrow spreads nothing at all, so a height with a single arrow plotted at it would be named the
+ * tightest over a dozen arrows in a ring, and would be named it the moment the arrow went in.
+ */
+export const MIN_GROUP_ARROWS = 3;
+
+/**
+ * The brace height whose group was tightest, which is the answer the procedure exists to give, or
+ * null while no height has been shot enough to answer it.
+ */
 export function tightestBrace(points: BracePoint[]): BracePoint | null {
-	if (points.length === 0) return null;
-	return points.reduce((best, point) => (point.spreadCm < best.spreadCm ? point : best));
+	const grouped = points.filter((point) => point.arrows >= MIN_GROUP_ARROWS);
+	if (grouped.length === 0) return null;
+	return grouped.reduce((best, point) => (point.spreadCm < best.spreadCm ? point : best));
 }
