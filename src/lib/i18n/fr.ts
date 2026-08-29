@@ -230,7 +230,7 @@ export const fr: Dictionary = {
 			alternating: 'Alterné, une flèche'
 		},
 		soundTitle: 'Jouer les signaux',
-		soundHint: 'Deux coups pour venir sur la ligne, un pour commencer, trois pour ramasser. Générés sur l’appareil.',
+		soundHint: 'Deux coups pour venir sur la ligne, un pour commencer, trois pour ramasser.',
 		signal: {
 			lineUp: 'Venir sur la ligne',
 			start: 'Commencer',
@@ -690,7 +690,7 @@ export const fr: Dictionary = {
 		paused: 'En pause',
 		startDate: 'À partir du',
 		endDate: 'Jusqu’au',
-		datesHint: 'Entre ces deux jours, tous deux compris. En dehors, le programme ne demande rien.',
+		datesHint: 'Entre ces deux jours, tous deux compris.',
 		anyDate: 'Non défini',
 		clearDate: 'Effacer cette date',
 		fromDate: 'Dès le {date}',
@@ -803,7 +803,7 @@ export const fr: Dictionary = {
 		},
 		blocks: {
 			title: 'Blocs de cette page',
-			hint: 'Tout ce qui suit le graphique est optionnel. Activez ce que vous voulez regarder.',
+			hint: 'Tout ce qui suit le graphique est optionnel.',
 			noData: 'Rien à afficher pour le moment',
 			kind: 'Score selon le type de séance',
 			bests: 'Records personnels',
@@ -903,13 +903,13 @@ export const fr: Dictionary = {
 		fullClubNames: 'Numéros de club',
 		fullClubNamesHint: "Activé : 0702022 - JUSSY. Désactivé : JUSSY.",
 		columns: 'Colonnes',
-		columnsHint: "Ajoutez les colonnes que vous voulez. Ouvrir une ligne montre tout, de toute façon.",
+		columnsHint: "Ajoutez les colonnes que vous voulez dans la liste.",
 		findDocument: 'Chercher un document',
 		foundDocuments: '{n} documents',
 		noDocumentFound: 'Aucun document de ce nom',
 		noDocumentFoundBody: 'Essayez une catégorie, un type d\'arc, ou le type de tir.',
 		share: 'Partager cette compétition',
-		shareHint: "Visez le code avec un téléphone pour ouvrir cette compétition. Appchery l'ouvre s'il est installé, sinon c'est la version web.",
+		shareHint: "Visez le code avec un téléphone pour ouvrir cette compétition.",
 		shareLink: 'Envoyer le lien',
 		shareCopied: 'Lien copié.',
 		searchScope: 'Recherche',
@@ -958,7 +958,7 @@ export const fr: Dictionary = {
 		chooseClub: 'Choisir un club',
 		clubSearch: 'Club',
 		clubsHere: 'Les clubs organisateurs dans les pays que vous suivez.',
-		clubsEverywhere: 'Tous les clubs ayant une compétition sur ianseo. Cherchez celui que vous voulez.',
+		clubsEverywhere: 'Tous les clubs ayant une compétition sur ianseo.',
 		setMyClub: 'Définir {club} comme mon club',
 		noClubs: 'Aucun club de ce nom.',
 		majorEvents: 'Championnats et jeux',
@@ -1085,7 +1085,7 @@ export const fr: Dictionary = {
 	},
 	backup: {
 		title: 'Sauvegarde',
-		hint: 'Vos données sont sur cet appareil, et sur le serveur de synchronisation dès que vous êtes connecté. Une sauvegarde est un fichier à vous, qu’aucun des deux ne peut perdre.',
+		hint: 'Une sauvegarde est un fichier à vous, que ni cet appareil ni le serveur de synchronisation ne peuvent perdre.',
 		export: 'Exporter',
 		import: 'Importer',
 		exported: '{n} lignes exportées.',
@@ -1211,8 +1211,7 @@ export const fr: Dictionary = {
 		driftHint:
 			"Prévient quand une flèche numérotée tombe souvent à l'écart des autres. Demande des flèches pointées et numérotées.",
 		hapticsTitle: 'Vibrer au toucher',
-		hapticsHint:
-			"Une brève vibration quand un appui compte une flèche ou vise, comme une touche de clavier.",
+		hapticsHint: 'Une brève vibration quand un appui compte une flèche.',
 		milliseconds: '{n} ms',
 		display: 'Affichage',
 		recordTitle: 'Enregistrer la vidéo du marquage',
@@ -1291,7 +1290,7 @@ export const fr: Dictionary = {
 		forgetHint:
 			"Un niveau ou un record n'est annoncé qu'une fois. Réinitialisez pour que le prochain le soit à nouveau.",
 		forgetAction: 'Oublier ce qui a été fêté',
-		forgetResult: 'Oublié. Le prochain tir, match ou compte de flèches ramène le feu d’artifice.',
+		forgetResult: 'Oublié.',
 		recalcTitle: 'Revérifier les badges',
 		recalcHint:
 			'Confronte les badges aux tirs encore enregistrés. Un badge dont les tirs ont disparu est retiré.',
@@ -1426,7 +1425,7 @@ insetHint:
 		effortHint: "L'effort tel que vous l'avez ressenti. Il dit si demain doit être un jour de repos.",
 		efforts: { easy: 'Facile', steady: 'Souple', tempo: 'Tempo', hard: 'Dur', max: 'À fond' },
 		whatItWorks: 'Ce que ça travaille',
-		unfinished: "Enregistré tel quel. Une sortie à moitié notée reste une sortie que vous avez faite."
+		unfinished: "Enregistré tel quel."
 	},
 	// Le tir à une règle plutôt qu'à un tir compté, voir src/lib/domain/drills/types.ts.
 	drill: {
@@ -1939,7 +1938,7 @@ insetHint:
 		},
 		plot: {
 			title: 'Marquez en touchant la cible',
-			body: 'Touchez l’impact et l’appli lit la zone pour vous. Ce que vous voyez est ce qui est compté. Ou saisissez les valeurs si c’est plus rapide : la feuille additionne dans les deux cas.',
+			body: 'Touchez l’impact et l’appli lit la zone pour vous. Ce que vous voyez est ce qui est compté. Ou saisissez les valeurs si c’est plus rapide.',
 			note: 'Groupement, dispersion et centre, calculés volée après volée.',
 			arrows: 'Flèches',
 			score: 'Marqué',

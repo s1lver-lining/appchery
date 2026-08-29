@@ -220,7 +220,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Deux façons de lire la liste.',
-					body: 'La grille d’icônes est l’affichage par défaut ; le menu à trois points la remplace par la liste, chaque règle écrite en toutes lettres, et retient votre choix. Toucher un badge dans la grille ouvre ce qu’il demande et où vous en êtes, dans les deux cas.'
+					body: 'La grille d’icônes est l’affichage par défaut ; le menu à trois points la remplace par la liste, chaque règle écrite en toutes lettres, et retient votre choix. Toucher un badge ouvre ce qu’il demande et où vous en êtes.'
 				},
 				{
 					lead: 'Un badge est daté du tir, pas de l’app.',
@@ -356,7 +356,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Les clubs portent le nom qu\'on leur donne.',
-					body: "Une fédération enregistre un club sous un numéro, et ianseo l'imprime : 0702022 - JUSSY. L'application n'affiche que le nom. Le bouton des colonnes porte l'interrupteur pour qui veut le numéro, et ouvrir une ligne montre tout de toute façon."
+					body: "Une fédération enregistre un club sous un numéro, et ianseo l'imprime : 0702022 - JUSSY. L'application n'affiche que le nom. Le bouton des colonnes porte l'interrupteur pour qui veut le numéro."
 				},
 				{
 					lead: "Choisissez ce qu'affiche un résultat.",

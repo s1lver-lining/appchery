@@ -231,7 +231,7 @@ export const en = {
 			alternating: 'Alternating, one arrow'
 		},
 		soundTitle: 'Sound the signals',
-		soundHint: 'Two blasts to come to the line, one to start, three to collect. Generated on the device.',
+		soundHint: 'Two blasts to come to the line, one to start, three to collect.',
 		signal: {
 			lineUp: 'Come to the line',
 			start: 'Start',
@@ -689,7 +689,7 @@ export const en = {
 		paused: 'Paused',
 		startDate: 'From',
 		endDate: 'Until',
-		datesHint: 'Between these two days, both included. Outside them the plan asks for nothing.',
+		datesHint: 'Between these two days, both included.',
 		anyDate: 'Not set',
 		clearDate: 'Clear this date',
 		fromDate: 'From {date}',
@@ -802,7 +802,7 @@ export const en = {
 		},
 		blocks: {
 			title: 'Blocks on this page',
-			hint: 'Everything below the chart is optional. Turn on what you want to look at.',
+			hint: 'Everything below the chart is optional.',
 			noData: 'Nothing to show yet',
 			kind: 'Score by kind of session',
 			bests: 'Personal bests',
@@ -900,13 +900,13 @@ export const en = {
 		fullClubNames: 'Club numbers',
 		fullClubNamesHint: 'On: 0702022 - JUSSY. Off: JUSSY.',
 		columns: 'Columns',
-		columnsHint: 'Add the columns you want. Opening a row shows everything either way.',
+		columnsHint: 'Add the columns you want to the list.',
 		findDocument: 'Find a document',
 		foundDocuments: '{n} documents',
 		noDocumentFound: 'No document by that name',
 		noDocumentFoundBody: 'Try a class, a bow type, or the round.',
 		share: 'Share this competition',
-		shareHint: 'Point a phone at the code to open this competition. Appchery opens it if it is installed, and the web app if it is not.',
+		shareHint: 'Point a phone at the code to open this competition.',
 		shareLink: 'Send the link',
 		shareCopied: 'Link copied.',
 		searchScope: 'Search',
@@ -955,7 +955,7 @@ export const en = {
 		chooseClub: 'Choose a club',
 		clubSearch: 'Club',
 		clubsHere: 'The clubs organising in the countries you follow.',
-		clubsEverywhere: 'Every club with a competition on ianseo. Search for the one you want.',
+		clubsEverywhere: 'Every club with a competition on ianseo.',
 		setMyClub: 'Set {club} as my club',
 		noClubs: 'No club of that name.',
 		majorEvents: 'Championships and games',
@@ -1082,7 +1082,7 @@ export const en = {
 	},
 	backup: {
 		title: 'Backup',
-		hint: 'Your shooting is on this device, and on the sync server too once you sign in. A backup is a file of your own, that neither of them can lose.',
+		hint: 'A backup is a file of your own, that neither this device nor the sync server can lose.',
 		export: 'Export',
 		import: 'Import',
 		exported: 'Exported {n} rows.',
@@ -1209,7 +1209,7 @@ export const en = {
 		driftHint:
 			'Warns when one numbered arrow keeps landing away from the rest. Needs numbered, plotted arrows.',
 		hapticsTitle: 'Vibrate on a tap',
-		hapticsHint: 'A short buzz when a tap counts an arrow or takes aim, like a key on a keyboard.',
+		hapticsHint: 'A short buzz when a tap counts an arrow.',
 		milliseconds: '{n} ms',
 		display: 'Display',
 		recordTitle: 'Record scoring video',
@@ -1288,7 +1288,7 @@ export const en = {
 		forgetHint:
 			'A level or a record is only announced once. Reset so the next one is announced again.',
 		forgetAction: 'Forget what was celebrated',
-		forgetResult: 'Forgotten. The next round, match or arrow counted brings the fireworks back.',
+		forgetResult: 'Forgotten.',
 		recalcTitle: 'Recheck badges',
 		recalcHint:
 			'Rechecks badges against the shooting still recorded. A badge whose rounds are gone is taken back.',
@@ -1418,7 +1418,7 @@ insetHint:
 		effortHint: 'Effort as you felt it. It tells you whether tomorrow should be a rest day.',
 		efforts: { easy: 'Easy', steady: 'Steady', tempo: 'Tempo', hard: 'Hard', max: 'All out' },
 		whatItWorks: 'What it works',
-		unfinished: 'Saved as it stands. A run with only half its numbers is still a run you did.'
+		unfinished: 'Saved as it stands.'
 	},
 	// Shooting to a rule rather than to a round, see src/lib/domain/drills/types.ts.
 	drill: {
@@ -1924,7 +1924,7 @@ insetHint:
 		},
 		plot: {
 			title: 'Score by tapping the target',
-			body: 'Tap where your arrow landed and the app reads the ring for you. What you see is what you score. Or type the values if that is faster: the card adds up either way.',
+			body: 'Tap where your arrow landed and the app reads the ring for you. What you see is what you score. Or type the values if that is faster.',
 			note: 'Group size, spread and centre, worked out end by end.',
 			arrows: 'Arrows',
 			score: 'Scored',

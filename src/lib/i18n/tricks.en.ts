@@ -225,7 +225,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'Two ways to read the list.',
-					body: 'The grid of icons is the default; the dots menu swaps it for the list with every rule spelled out, and remembers which you chose. Tapping a badge in the grid opens what it wants and how close you are either way.'
+					body: 'The grid of icons is the default; the dots menu swaps it for the list with every rule spelled out, and remembers which you chose. Tapping a badge opens what it wants and how close you are.'
 				},
 				{
 					lead: 'A badge is dated by the shooting, not by the app.',
@@ -361,7 +361,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'Clubs are named the way people say them.',
-					body: 'A federation files a club under a number, and ianseo prints it: 0702022 - JUSSY. The app shows the name alone. The columns button has the switch for anybody who wants the number back, and opening a row shows the whole of it either way.'
+					body: 'A federation files a club under a number, and ianseo prints it: 0702022 - JUSSY. The app shows the name alone. The columns button has the switch for anybody who wants the number back.'
 				},
 				{
 					lead: 'Choose what a result shows.',
