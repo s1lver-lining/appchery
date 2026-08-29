@@ -13,6 +13,10 @@
  *   node scripts/label-arrows.mjs export      # write the training set
  *   node scripts/label-arrows.mjs todo        # what is labelled so far and what is missing
  *
+ * `prepare` reads the corpus one folder deep, so a session dropped in as its own dated directory is
+ * picked up along with the loose files at the top. There is no save: the page writes each label to the
+ * workspace a moment after it is placed.
+ *
  * Three kinds of label, and they are not alike.
  *
  * **Arrows** are where a shaft enters the paper. One click labels the whole recording, because the
@@ -291,7 +295,7 @@ async function serve() {
 
 	server.listen(port, () => {
 		console.log(`Labelling on http://localhost:${port}`);
-		console.log('Click each arrow once on the first frame, then check the propagated ones.');
+		console.log('Click each arrow once on a frame you have fitted. Everything saves itself.');
 	});
 }
 
@@ -591,11 +595,26 @@ async function todo() {
 	let nockFrames = 0;
 	let nocks = 0;
 	let marks = 0;
+	/** Recordings prepared and not yet touched, which is the number worth acting on. */
+	let waiting = 0;
 
 	for (const name of (await readdir(WORK)).sort()) {
 		if (only && !name.includes(only)) continue;
+		if (!existsSync(join(WORK, name, 'frames.json'))) continue;
 		const file = join(WORK, name, 'labels.json');
-		if (!existsSync(file)) continue;
+		/*
+		 * A recording with nothing on it is the one this command exists to report.
+		 *
+		 * It used to be skipped, so the list said what had been labelled and was silent about what had
+		 * not: a session prepared and never touched read exactly like a session that was not there. That
+		 * is the wrong way round for something called todo, and it is how twelve recordings sat unlabelled
+		 * without appearing anywhere.
+		 */
+		if (!existsSync(file)) {
+			waiting += 1;
+			rows.push(`${name.slice(-24)}  nothing labelled yet`);
+			continue;
+		}
 		const label = JSON.parse(await readFile(file, 'utf8'));
 		const frames = Object.entries(label.nocks ?? {}).filter(([, list]) => list.length > 0);
 		const here = frames.reduce((total, [, list]) => total + list.length, 0);
@@ -624,6 +643,9 @@ async function todo() {
 	}
 
 	console.log(rows.join('\n'));
-	console.log(`\n${nockFrames} frames carry nocks, ${nocks} nocks in all, ${marks} not-arrows.`);
+	console.log(
+		`\n${rows.length} recordings prepared, ${waiting} with nothing on them yet. ` +
+			`${nockFrames} frames carry nocks, ${nocks} nocks in all, ${marks} not-arrows.`
+	);
 	console.log('Wanted: five or six nocked frames a recording, taken from as far apart as the sweep goes.');
 }
