@@ -180,8 +180,15 @@
 		if (!country) ianseoCountryAsked.set(true);
 	}
 
+	/**
+	 * Naming a country is asking for that country. The championships the ianseo team run show
+	 * wherever they are held, and left on beside a country the list reads as a filter that does not
+	 * work: narrowed to France and still full of shoots in Korea. Dismissing the offer leaves them,
+	 * because an archer who named no country has not said they want any less.
+	 */
 	function takeOffer(country: { code: string }) {
 		ianseoCountries.set([country.code]);
+		ianseoMajor.set(false);
 		ianseoCountryAsked.set(true);
 		offered = null;
 	}
