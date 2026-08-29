@@ -136,7 +136,7 @@
 		{/if}
 	</div>
 
-	<nav class="mt-3 flex gap-1 rounded-lg bg-sunk p-1" aria-label={$t('stats.metric')}>
+	<nav class="mt-3 flex gap-1 rounded-lg bg-sunk p-1" aria-label={$t('stats.metricLabel')}>
 		{#each METRICS as item (item)}
 			<button
 				class="press flex-1 rounded-md py-1.5 text-xs font-medium

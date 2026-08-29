@@ -742,6 +742,7 @@ export const fr: Dictionary = {
 			monthShort: '30 derniers j.',
 			customShort: 'Choisie'
 		},
+		metricLabel: 'Ce que comptent les barres',
 		metric: {
 			arrows: 'Flèches',
 			perArrow: 'Par flèche',

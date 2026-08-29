@@ -741,6 +741,8 @@ export const en = {
 			monthShort: 'Last 30 d.',
 			customShort: 'Custom'
 		},
+		/** Names the group of buttons below, which is all a screen reader has to go on. */
+		metricLabel: 'What the bars count',
 		metric: {
 			arrows: 'Arrows',
 			perArrow: 'Per arrow',
