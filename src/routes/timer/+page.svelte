@@ -40,6 +40,7 @@
 	let turn = $state(1);
 
 	const total = $derived(preset.seconds);
+	const prep = $derived(Math.max(0, Math.round($timerPrepSeconds)));
 	const remaining = $derived(startedAt === null ? total : remainingAt(startedAt, total, now));
 	const running = $derived(startedAt !== null && remaining > 0);
 	const preparing = $derived(preparingUntil !== null);
@@ -123,7 +124,6 @@
 		}
 
 		// Kept even with the sound off: the pause is time the archers are given, not a gap between noises.
-		const prep = Math.max(0, Math.round($timerPrepSeconds));
 		if (prep > 0) {
 			now = Date.now();
 			preparingUntil = now + prep * 1000;
@@ -187,6 +187,12 @@
 	<section
 		class="flex flex-col items-center justify-center rounded-2xl py-10 transition-colors {BAND[light]}"
 	>
+		<!-- Announced before the clock runs, because the archers are owed the walk up as well as the end. -->
+		{#if startedAt === null && !preparing && prep > 0}
+			<p class="mb-1 text-sm font-medium opacity-80">
+				{$t('timer.prepAhead', { time: formatClock(prep) })}
+			</p>
+		{/if}
 		<p class="tabular text-7xl leading-none font-bold">
 			{formatClock(preparing ? prepLeft : remaining)}
 		</p>

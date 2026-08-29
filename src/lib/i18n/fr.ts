@@ -218,6 +218,7 @@ export const fr: Dictionary = {
 		ruleTime: 'World Archery : {time}',
 		seconds: 'sec',
 		preparation: 'Préparation',
+		prepAhead: 'Préparation {time}',
 		volume: 'Volume',
 		preparationHint: 'Entre l’appel sur la ligne et le départ.',
 		times: 'Temps de tir',
@@ -1215,7 +1216,8 @@ export const fr: Dictionary = {
 			"Prévient quand une flèche numérotée tombe souvent à l'écart des autres. Demande des flèches pointées et numérotées.",
 		hapticsTitle: 'Vibrer au toucher',
 		hapticsHint: 'Une brève vibration quand un appui compte une flèche.',
-		hapticsNoApi: "Ce navigateur ne sait pas vibrer. Safari sur iPhone et iPad en fait partie ; sur un ordinateur, il n'y a pas de moteur à utiliser.",
+		hapticsNoApi:
+			"Ce navigateur ne vibrera pas. Safari sur iPhone et iPad ne le peut jamais, et un ordinateur n'a pas de moteur à utiliser. Ailleurs, c'est le plus souvent un réglage de confidentialité qui le masque, ce qui vaut la peine d'être vérifié avant d'y renoncer.",
 		hapticsRefused: "Le navigateur a refusé la vibration. Vérifiez qu'elle est autorisée pour ce site et que le téléphone n'est pas dans un mode qui la coupe.",
 		milliseconds: '{n} ms',
 		display: 'Affichage',
