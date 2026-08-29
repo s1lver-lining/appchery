@@ -91,9 +91,17 @@ export function originOf<T extends string | null>(
 ): string | T {
   const from = url.searchParams.get("from");
   // Only in app paths, so a crafted link cannot send the back arrow somewhere else entirely.
-  return from && from.startsWith("/") && !from.startsWith("//")
-    ? from
-    : fallback;
+  if (!from || !from.startsWith("/")) return fallback;
+  try {
+    // Resolved rather than read off its first characters: a browser takes `/\elsewhere.example` for
+    // another site altogether, and the back arrow is a link the archer follows precisely because
+    // they believe it stays inside the app. Handed back as it was written, not as the URL parser
+    // rewrites it, so a path carrying a space is still the path the page was opened from.
+    if (new URL(from, url).origin !== url.origin) return fallback;
+  } catch {
+    return fallback;
+  }
+  return from;
 }
 
 export function withOrigin(href: string, from: string): string {

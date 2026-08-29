@@ -42,6 +42,13 @@ describe('originOf', () => {
 		expect(originOf(at('?from=%2F%2Felsewhere.example'), '/settings')).toBe('/settings');
 	});
 
+	it('refuses a path a browser would read as another site', () => {
+		// A backslash is a path separator to a URL parser, so `/\elsewhere.example` opens that site
+		// while reading as an app path to anything that only looks at the first character.
+		expect(originOf(at('?from=%2F%5Celsewhere.example'), '/settings')).toBe('/settings');
+		expect(originOf(at('?from=%2F%5C%5Celsewhere.example'), '/settings')).toBe('/settings');
+	});
+
 	it('round trips through withOrigin, whether or not the link already asks for something', () => {
 		const plain = withOrigin('/tuning', '/equipment/a b');
 		expect(originOf(new URL(`https://app.local${plain}`), '/settings')).toBe('/equipment/a b');
