@@ -60,17 +60,32 @@
 		if (scroller && nav.from?.url) scrolledTo.set(nav.from.url.pathname, scroller.scrollTop);
 	});
 
+	/** Long enough for a list read from the cache to be drawn, short enough not to fight a real scroll. */
+	const RESTORE_MS = 2000;
+	/** How long a page that has stopped growing is still given, in case its rows are one fetch behind. */
+	const SETTLED_MS = 400;
+	let restoring = 0;
+
 	/**
-	 * Put back over the next few frames rather than in one go. A page arriving is not its full height
-	 * yet, and a browser clamps a scroll to what the element can currently reach, so a single
-	 * assignment lands short and stays there. Each frame tries again until it takes, or until the
-	 * page has finished growing and genuinely cannot go that far.
+	 * Put back over the frames that follow rather than in one go. A page arriving is not its full
+	 * height yet, and a browser clamps a scroll to what the element can currently reach, so a single
+	 * assignment lands short and stays there: a competition list that fetches its rows would put the
+	 * archer at the bottom of the empty page it had at that instant. Each frame tries again until it
+	 * takes, and a page still growing keeps its chance until the deadline.
 	 */
 	async function scrollBackTo(top: number) {
-		for (let attempt = 0; attempt < 6; attempt++) {
-			if (!scroller) return;
+		// The scroller is shared, so a restore left running by an earlier page must not move this one.
+		const mine = ++restoring;
+		const started = performance.now();
+		let height = -1;
+		while (scroller && restoring === mine) {
 			scroller.scrollTop = top;
 			if (Math.abs(scroller.scrollTop - top) < 1) return;
+			const now = performance.now();
+			// Given up on: either the wait is over, or the page settled short of where it was left.
+			if (now - started > RESTORE_MS) return;
+			if (scroller.scrollHeight === height && now - started > SETTLED_MS) return;
+			height = scroller.scrollHeight;
 			await new Promise(requestAnimationFrame);
 		}
 	}
@@ -84,7 +99,10 @@
 		// After the page it is scrolling has been laid out, or the element is still the old height.
 		await tick();
 		if (back) await scrollBackTo(back);
-		else if (scroller) scroller.scrollTop = 0;
+		else if (scroller) {
+			restoring++;
+			scroller.scrollTop = 0;
+		}
 	});
 
 	let ready = $state(false);
