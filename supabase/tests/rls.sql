@@ -504,3 +504,72 @@ begin
 	end if;
 end;
 $$;
+
+-- The same for functions, which is the harder half: a function is executable by PUBLIC from the
+-- moment it is created, and revoking it from anon leaves that untouched, so a helper meant for the
+-- rules alone is reachable by whoever holds the anon key printed in the client bundle. Extension
+-- functions are exempt, and a trigger function refuses a direct call whatever its grants say.
+do $$
+declare
+	bad text;
+begin
+	select string_agg(p.proname, ', ') into bad
+	from pg_proc p
+	join pg_namespace n on n.oid = p.pronamespace
+	where n.nspname = 'public'
+		and p.prorettype <> 'trigger'::regtype
+		and not exists (
+			select 1 from pg_depend d
+			where d.objid = p.oid and d.classid = 'pg_proc'::regclass and d.deptype = 'e'
+		)
+		and (p.proacl is null or exists (
+			select 1 from aclexplode(p.proacl) a where a.grantee = 0
+		));
+	if bad is not null then
+		raise exception 'functions executable by PUBLIC: %', bad;
+	end if;
+end;
+$$;
+
+-- is_blocked answers about any pair of accounts it is handed, so a grant on it hands out the block
+-- graph. Every other rule around blocking exists to keep that from being learnable, and they are all
+-- worth nothing while the helper underneath them will say so plainly.
+do $$
+begin
+	begin
+		set local role anon;
+		perform public.is_blocked(
+			'11111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222');
+		raise exception 'the anon key can read whether one archer blocked another';
+	exception when insufficient_privilege then null;
+	end;
+end;
+$$;
+reset role;
+
+-- spend_allowance takes its own window as an argument, so a client that can call it hands in a
+-- negative one and deletes the rows recording what it has already spent. Ungranted, and refusing the
+-- window besides: the reachable path and the argument are separate mistakes.
+set local role authenticated;
+set local request.jwt.claim.sub = '11111111-1111-1111-1111-111111111111';
+do $$
+begin
+	begin
+		perform public.spend_allowance('reset_check', 100, interval '-1 hour');
+		raise exception 'an archer can clear the record of what they have spent';
+	exception when insufficient_privilege then null;
+	end;
+end;
+$$;
+
+reset role;
+do $$
+begin
+	begin
+		perform public.spend_allowance('reset_check', 100, interval '-1 hour');
+		raise exception 'a rate limit window that runs backwards was accepted';
+	exception when others then
+		if sqlerrm <> 'a rate limit window must be positive' then raise; end if;
+	end;
+end;
+$$;

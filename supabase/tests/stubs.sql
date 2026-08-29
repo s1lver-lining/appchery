@@ -65,3 +65,10 @@ as $$
 		else ''
 	end;
 $$;
+
+-- Held to the same rule as the migrated functions, so the assertion that nothing in public is
+-- executable by PUBLIC can be read as being about the schema rather than about an exemption list.
+revoke all on function public.test_extra_columns(text) from public;
+revoke all on function public.test_extra_values(text) from public;
+grant execute on function public.test_extra_columns(text) to authenticated;
+grant execute on function public.test_extra_values(text) to authenticated;
