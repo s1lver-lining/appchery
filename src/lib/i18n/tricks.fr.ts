@@ -73,6 +73,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Les temps du règlement sont le point de départ, et la feuille d’édition met n’importe lequel sur un autre nombre de secondes. Vider un champ rétablit la règle.'
 				},
 				{
+					lead: 'Le chrono tout seul.',
+					body: 'Le bouton à côté de la réinitialisation donne tout l’écran au chrono : le temps, le seul bouton qui le lance, et plus rien à toucher par mégarde. Un téléphone posé qui refuse de pivoter dispose d’un bouton de rotation là-haut, de quoi lire le chrono de travers.'
+				},
+				{
 					lead: 'Le chrono se lit, il ne bat pas.',
 					body: 'Le temps restant est calculé depuis l’instant du départ : un téléphone qui a dormi la moitié d’une volée se réveille avec le bon nombre, et l’écran reste allumé tant qu’il tourne.'
 				}

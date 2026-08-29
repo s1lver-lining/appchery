@@ -78,6 +78,10 @@ export const tricksEn = {
 					body: 'The rules’ times are what the clock starts from, and the edit sheet puts any of them on a different number of seconds. Emptying a field puts the rule back.'
 				},
 				{
+					lead: 'The clock on its own.',
+					body: 'The button beside the reset gives the clock the whole screen: the time, the one button that runs it, and nothing else to touch by accident. A propped phone that will not turn itself has a rotate button up there, so the clock can be read sideways.'
+				},
+				{
 					lead: 'The clock is read, never ticked.',
 					body: 'Time left is worked out from the moment it started, so a phone that slept through half an end wakes up with the right number, and the screen is held awake while it runs.'
 				}

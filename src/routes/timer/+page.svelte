@@ -16,6 +16,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { screenLock } from '$lib/ui/wakeLock';
+	import { fullscreenSupported, isFullscreen, onFullscreenChange, setFullscreen } from '$lib/fullscreen';
 
 	/**
 	 * The shooting clock. It runs the way a line is run: two blasts to come up, one to start, thirty
@@ -166,6 +167,24 @@
 		turn = preset.alternating ? (turn === 1 ? 2 : 1) : 1;
 	}
 
+	/**
+	 * The clock alone, for when the phone is propped up as the line's timer: nothing on the screen but
+	 * the time and the button that runs it. Browser fullscreen is asked for on top of it where it
+	 * exists, and the mode survives on its own where it does not, so iPhone Safari still gets the view.
+	 */
+	let bare = $state(false);
+	/** Turned by hand rather than by the device, because a propped phone is not free to rotate itself. */
+	let rotated = $state(false);
+
+	function showBare(on: boolean) {
+		bare = on;
+		if (fullscreenSupported()) void setFullscreen(on);
+		if (!on) rotated = false;
+	}
+
+	// Escape and the system gesture leave fullscreen without telling the page, so the browser is asked.
+	$effect(() => onFullscreenChange(() => (bare = bare && isFullscreen())));
+
 	const BAND: Record<string, string> = {
 		idle: 'bg-sunk text-muted',
 		green: 'bg-[var(--c-win)] text-white',
@@ -182,10 +201,12 @@
 	{/snippet}
 </PageHeader>
 
-<div class="mx-auto w-full max-w-page space-y-4 p-4">
-	<!-- The clock itself, the size of the screen: it is read from the shooting line, not from a desk. -->
+<!-- Drawn once and shown twice: the page and the bare clock must never disagree about the time. -->
+{#snippet clockFace(sizing: string, digits: string)}
 	<section
-		class="flex flex-col items-center justify-center rounded-2xl py-10 transition-colors {BAND[light]}"
+		class="flex flex-col items-center justify-center rounded-2xl transition-colors {sizing} {BAND[
+			light
+		]}"
 	>
 		<!-- Announced before the clock runs, because the archers are owed the walk up as well as the end. -->
 		{#if startedAt === null && !preparing && prep > 0}
@@ -193,7 +214,7 @@
 				{$t('timer.prepAhead', { time: formatClock(prep) })}
 			</p>
 		{/if}
-		<p class="tabular text-7xl leading-none font-bold">
+		<p class="tabular leading-none font-bold {digits}">
 			{formatClock(preparing ? prepLeft : remaining)}
 		</p>
 		<p class="mt-2 text-sm font-medium opacity-80">
@@ -203,28 +224,45 @@
 			{/if}
 		</p>
 	</section>
+{/snippet}
+
+{#snippet runButton()}
+	{#if running || preparing}
+		<button
+			class="press flex-1 rounded-xl border border-line bg-surface py-3 font-semibold"
+			onclick={stop}
+		>
+			{$t('timer.stop')}
+		</button>
+	{:else}
+		<button
+			class="press flex-1 rounded-xl bg-brand py-3 font-semibold text-brand-ink"
+			onclick={callUp}
+		>
+			{$t('timer.start')}
+		</button>
+	{/if}
+{/snippet}
+
+<div class="mx-auto w-full max-w-page space-y-4 p-4">
+	{@render clockFace('py-10', 'text-7xl')}
 
 	<div class="flex gap-2">
-		{#if running || preparing}
-			<button
-				class="press flex-1 rounded-xl border border-line bg-surface py-3 font-semibold"
-				onclick={stop}
-			>
-				{$t('timer.stop')}
-			</button>
-		{:else}
-			<button
-				class="press flex-1 rounded-xl bg-brand py-3 font-semibold text-brand-ink"
-				onclick={callUp}
-			>
-				{$t('timer.start')}
-			</button>
-		{/if}
+		{@render runButton()}
 		<button
 			class="press rounded-xl border border-line bg-surface px-4 py-3 font-semibold"
 			onclick={reset}
 		>
 			{preset.alternating ? $t('timer.nextTurn') : $t('timer.reset')}
+		</button>
+		<!-- Beside the buttons it hides: one tap from the clock to the clock on its own. -->
+		<button
+			class="press rounded-xl border border-line bg-surface px-4 py-3"
+			aria-label={$t('timer.fullscreen')}
+			title={$t('timer.fullscreen')}
+			onclick={() => showBare(true)}
+		>
+			<Icon name="expand" size={20} />
 		</button>
 	</div>
 
@@ -372,3 +410,35 @@
 		</button>
 	{/snippet}
 </Sheet>
+
+<!-- The clock as the line sees it: no presets, no sound panel, nothing to touch by accident. -->
+{#if bare}
+	<div class="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-bg">
+		<div
+			class="flex flex-col gap-4 p-4 {rotated ? 'h-[100dvw] w-[100dvh] rotate-90' : 'h-full w-full'}"
+		>
+			<div class="flex justify-end gap-2">
+				<button
+					class="press rounded-xl border border-line bg-surface p-3"
+					aria-label={$t('timer.rotate')}
+					title={$t('timer.rotate')}
+					onclick={() => (rotated = !rotated)}
+				>
+					<Icon name="rotate" size={20} />
+				</button>
+				<button
+					class="press rounded-xl border border-line bg-surface p-3"
+					aria-label={$t('timer.exitFullscreen')}
+					title={$t('timer.exitFullscreen')}
+					onclick={() => showBare(false)}
+				>
+					<Icon name="shrink" size={20} />
+				</button>
+			</div>
+			{@render clockFace('min-h-0 flex-1', 'text-[22vmin]')}
+			<div class="flex">
+				{@render runButton()}
+			</div>
+		</div>
+	</div>
+{/if}

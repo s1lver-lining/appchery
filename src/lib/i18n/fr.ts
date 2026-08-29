@@ -220,6 +220,9 @@ export const fr: Dictionary = {
 		preparation: 'Préparation',
 		prepAhead: 'Préparation {time}',
 		volume: 'Volume',
+		fullscreen: 'Plein écran',
+		exitFullscreen: 'Quitter le plein écran',
+		rotate: 'Pivoter l’écran',
 		preparationHint: 'Entre l’appel sur la ligne et le départ.',
 		times: 'Temps de tir',
 		preset: {

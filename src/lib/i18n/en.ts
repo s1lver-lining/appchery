@@ -221,6 +221,9 @@ export const en = {
 		preparation: 'Preparation',
 		prepAhead: 'Preparation {time}',
 		volume: 'Volume',
+		fullscreen: 'Fullscreen',
+		exitFullscreen: 'Leave fullscreen',
+		rotate: 'Rotate the screen',
 		preparationHint: 'Between the call to the line and the start.',
 		times: 'Shooting times',
 		preset: {

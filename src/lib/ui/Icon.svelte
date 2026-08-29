@@ -77,6 +77,22 @@
 			<path d="M3.6 3.6l16.8 16.8" />`,
 		back: `<path d="M15 5l-7 7 7 7" />`,
 		close: `<path d="M6 6l12 12M18 6L6 18" />`,
+		expand: `
+			<path d="M4 9V4.8A.8.8 0 0 1 4.8 4H9" />
+			<path d="M15 4h4.2a.8.8 0 0 1 .8.8V9" />
+			<path d="M20 15v4.2a.8.8 0 0 1-.8.8H15" />
+			<path d="M9 20H4.8a.8.8 0 0 1-.8-.8V15" />`,
+		shrink: `
+			<path d="M9.2 4v4.4a.8.8 0 0 1-.8.8H4" />
+			<path d="M20 9.2h-4.4a.8.8 0 0 1-.8-.8V4" />
+			<path d="M14.8 20v-4.4a.8.8 0 0 1 .8-.8H20" />
+			<path d="M4 14.8h4.4a.8.8 0 0 1 .8.8V20" />`,
+		// A phone turning: the same body twice, upright and on its side, with the sweep between them.
+		rotate: `
+			<rect x="3" y="12.6" width="8" height="8.4" rx="1.4" />
+			<rect x="12.6" y="3" width="8.4" height="8" rx="1.4" />
+			<path d="M3.6 8.6A6.4 6.4 0 0 1 9.6 3.6" />
+			<path d="M3.2 5.2v3.6h3.6" />`,
 		clock: `<circle cx="12" cy="12" r="8.6" /><path d="M12 7.2V12l3.2 2" />`,
 		calendar: `
 			<rect x="3.2" y="5" width="17.6" height="15.8" rx="2.6" />
