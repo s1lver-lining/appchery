@@ -24,6 +24,11 @@ export type Filter = {
 	 * anywhere, and an archer narrowing their own list usually does not.
 	 */
 	searchEverywhere: boolean;
+	/**
+	 * The clubs whose competitions are wanted, by the key `clubKey` puts them under. Empty means every
+	 * club, which is what an archer who has not asked about a club at all means.
+	 */
+	clubs: string[];
 	/** Kilometres from `here`, or null for no distance filter at all. */
 	radiusKm: number | null;
 	/** Where the archer is, which they have to have offered: nothing here asks for it. */
@@ -35,6 +40,7 @@ export const EMPTY_FILTER: Filter = {
 	major: true,
 	search: '',
 	searchEverywhere: true,
+	clubs: [],
 	radiusKm: null,
 	here: null
 };
@@ -84,8 +90,11 @@ export function filterTournaments(
 		return km === null || km === undefined || km <= filter.radiusKm;
 	};
 
+	const clubs = new Set(filter.clubs);
+
 	const mine = (tournament: Tournament) => {
 		if (!near(tournament)) return false;
+		if (clubs.size > 0 && !clubs.has(clubKey(tournament.organiser))) return false;
 		if (wanted.size === 0) return true;
 		if (filter.major && tournament.major) return true;
 		return tournament.country !== null && wanted.has(tournament.country.code);
@@ -117,6 +126,57 @@ function order(a: Tournament, b: Tournament, now: number): number {
 	if (when === 'upcoming') return start(a) - start(b);
 	// Two competitions being shot at once are ordered by which one ianseo published to last.
 	return (b.updatedAt ?? 0) - (a.updatedAt ?? 0);
+}
+
+/**
+ * A club under one name however it wrote itself down. The same club spells itself `GOSIER` on one
+ * competition and `Gosier` on the next, and ianseo takes whatever the organiser typed, so the key is
+ * the name with its case, accents and spacing taken out of the argument.
+ */
+export function clubKey(organiser: string): string {
+	return organiser
+		.toLowerCase()
+		.normalize('NFD')
+		.replace(/[\u0300-\u036f]/g, '')
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+/**
+ * Every club with a competition in the list, under the spelling it uses most often: the archer is
+ * offered the name they would recognise rather than whichever one ianseo happened to publish first.
+ *
+ * Narrowed to the countries being followed where there are any. Ianseo carries two thousand clubs
+ * and one country's worth of them is a list somebody can actually read down.
+ */
+export function clubsOf(
+	list: Tournament[],
+	countries: string[] = []
+): { key: string; name: string; count: number }[] {
+	const wanted = new Set(countries);
+	const found = new Map<string, { key: string; count: number; spellings: Map<string, number> }>();
+
+	for (const tournament of list) {
+		if (!tournament.organiser.trim()) continue;
+		if (wanted.size > 0 && !(tournament.country && wanted.has(tournament.country.code))) continue;
+
+		const key = clubKey(tournament.organiser);
+		// Tidied before it is counted: how a name was spaced is not one of the ways of spelling it.
+		const spelling = tournament.organiser.replace(/\s+/g, ' ').trim();
+		const at = found.get(key) ?? { key, count: 0, spellings: new Map<string, number>() };
+		at.count++;
+		at.spellings.set(spelling, (at.spellings.get(spelling) ?? 0) + 1);
+		found.set(key, at);
+	}
+
+	return [...found.values()]
+		.map((club) => ({
+			key: club.key,
+			name: [...club.spellings].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0],
+			count: club.count
+		}))
+		// Busiest first: a club that runs thirty competitions is the one being looked for.
+		.sort((a, b) => b.count - a.count || a.name.localeCompare(b.name));
 }
 
 /** Every country ianseo currently has a competition in, named, so the filter can offer them. */

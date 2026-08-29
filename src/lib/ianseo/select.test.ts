@@ -1,5 +1,14 @@
 import { describe, it, expect } from 'vitest';
-import { countriesOf, EMPTY_FILTER, filterTournaments, guessedCountry, matches, whenOf } from './select';
+import {
+	clubKey,
+	clubsOf,
+	countriesOf,
+	EMPTY_FILTER,
+	filterTournaments,
+	guessedCountry,
+	matches,
+	whenOf
+} from './select';
 import type { Tournament } from './types';
 
 const NOW = Date.UTC(2026, 7, 25, 12, 0);
@@ -219,5 +228,63 @@ describe('guessedCountry', () => {
 	it('offers nothing rather than a country ianseo has no competitions in', () => {
 		expect(guessedCountry(list, ['ja-JP'])).toBe(null);
 		expect(guessedCountry(list, [])).toBe(null);
+	});
+});
+
+describe('clubsOf', () => {
+	const list = [
+		tournament({ toId: '1', organiser: 'Rennes Cie' }),
+		tournament({ toId: '2', organiser: 'RENNES CIE' }),
+		tournament({ toId: '3', organiser: 'Rennes  Cie ' }),
+		tournament({ toId: '4', organiser: 'Les archers de Boé' }),
+		tournament({ toId: '5', organiser: 'Tokyo club', country: { code: 'JPN', name: 'Japan' } })
+	];
+
+	it('gathers a club that spells itself differently on every competition it runs', () => {
+		const clubs = clubsOf(list);
+		expect(clubs[0]).toMatchObject({ key: 'rennes cie', count: 3 });
+		// The spelling used most often, so the archer is offered the name they would recognise.
+		expect(clubs[0].name).toBe('Rennes Cie');
+	});
+
+	it('puts the busiest club first, which is the one being looked for', () => {
+		expect(clubsOf(list).map((club) => club.count)).toEqual([3, 1, 1]);
+	});
+
+	it('offers only the clubs of the countries being followed, and all of them where none is', () => {
+		expect(clubsOf(list, ['JPN']).map((club) => club.name)).toEqual(['Tokyo club']);
+		expect(clubsOf(list, []).map((club) => club.name)).toContain('Tokyo club');
+	});
+
+	it('leaves out a competition ianseo published with no organiser at all', () => {
+		expect(clubsOf([tournament({ organiser: '  ' })])).toEqual([]);
+	});
+
+	it('reads two spellings of one club as one club', () => {
+		expect(clubKey('LES ARCHERS DE BOÉ')).toBe(clubKey('Les archers de Boé'));
+		expect(clubKey('Rennes  Cie ')).toBe(clubKey('Rennes Cie'));
+	});
+});
+
+describe('filterTournaments by club', () => {
+	const list = [
+		tournament({ toId: '1', organiser: 'Rennes Cie' }),
+		tournament({ toId: '2', organiser: 'RENNES CIE' }),
+		tournament({ toId: '3', organiser: 'Les archers de Boé' })
+	];
+
+	it('keeps every competition a chosen club runs, however it wrote its own name', () => {
+		const filter = { ...EMPTY_FILTER, clubs: ['rennes cie'] };
+		expect(filterTournaments(list, filter, NOW).map((row) => row.toId)).toEqual(['1', '2']);
+	});
+
+	it('keeps every club until one is asked for', () => {
+		expect(filterTournaments(list, EMPTY_FILTER, NOW)).toHaveLength(3);
+	});
+
+	it('narrows to a competition that is in both the club and the country asked for', () => {
+		const abroad = tournament({ toId: '4', organiser: 'Rennes Cie', country: { code: 'JPN', name: 'Japan' } });
+		const filter = { ...EMPTY_FILTER, clubs: ['rennes cie'], countries: ['FRA'], major: false };
+		expect(filterTournaments([...list, abroad], filter, NOW).map((row) => row.toId)).toEqual(['1', '2']);
 	});
 });

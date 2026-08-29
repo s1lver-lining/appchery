@@ -3,10 +3,12 @@
 	import { t, locale } from '$lib/i18n';
 	import { markLoading, originOf, setPageUp, withOrigin } from '$lib/nav';
 	import {
+		ianseoClubs,
 		ianseoCountries,
 		ianseoCountryAsked,
 		ianseoHere,
 		ianseoMajor,
+		ianseoMyClub,
 		ianseoRadiusKm,
 		ianseoSearchEverywhere
 	} from '$lib/prefs';
@@ -20,7 +22,15 @@
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import { loadTournaments } from '$lib/ianseo/client';
 	import { IanseoError } from '$lib/ianseo/fetch';
-	import { countriesOf, filterTournaments, guessedCountry, whenOf, type When } from '$lib/ianseo/select';
+	import {
+		clubKey,
+		clubsOf,
+		countriesOf,
+		filterTournaments,
+		guessedCountry,
+		whenOf,
+		type When
+	} from '$lib/ianseo/select';
 	import { distanceKm } from '$lib/competitions/distance';
 	import { favourites, isNew, notePublished, type Favourite } from '$lib/ianseo/store';
 	import { canBeTold, noteWhatIsFollowed, startTelling, stopTelling, tellingIsOn } from '$lib/ianseo/notify';
@@ -60,8 +70,10 @@
 	/** What is open for entry in France, which is worth showing even where ianseo has never heard of it. */
 	let entries = $state<Entry[]>([]);
 	let countrySheet = $state(false);
+	let clubSheet = $state(false);
 	let radiusSheet = $state(false);
 	let countryTerm = $state('');
+	let clubTerm = $state('');
 	/** The country the device suggests, offered once and only while nothing has been chosen. */
 	let offered = $state<{ code: string; name: string } | null>(null);
 
@@ -204,6 +216,7 @@
 		major: $ianseoMajor,
 		search,
 		searchEverywhere: $ianseoSearchEverywhere,
+		clubs: $ianseoClubs,
 		radiusKm: $ianseoRadiusKm > 0 ? $ianseoRadiusKm : null,
 		here
 	});
@@ -320,6 +333,39 @@
 		).filter((one) => (one.to ?? one.from ?? 0) >= now - 86400_000);
 	});
 
+	/**
+	 * The clubs on offer: those of the countries being followed, or all of them where no country is.
+	 * A club already picked stays on the list whatever the countries say, so the chip that turned it
+	 * on can always be found again next to the one that turns it off.
+	 */
+	const clubs = $derived(clubsOf(list, $ianseoCountries));
+	const clubNames = $derived(new Map(clubsOf(list).map((club) => [club.key, club.name])));
+
+	const offerableClubs = $derived.by(() => {
+		// Against the key rather than the name: half of these clubs are French, and an archer looking
+		// for the archers de Boé types what is on their keyboard.
+		const term = clubKey(clubTerm);
+		const shortlist = term ? clubs.filter((club) => club.key.includes(term)) : clubs.slice(0, 200);
+		// The archer's own club first, wherever it is held and however far down the count would put it.
+		const mine = shortlist.filter((club) => club.key === $ianseoMyClub);
+		return [...mine, ...shortlist.filter((club) => club.key !== $ianseoMyClub)];
+	});
+
+	function dropClub(key: string) {
+		ianseoClubs.set($ianseoClubs.filter((one) => one !== key));
+	}
+
+	function addClub(key: string) {
+		if (!$ianseoClubs.includes(key)) ianseoClubs.set([...$ianseoClubs, key]);
+		clubSheet = false;
+		clubTerm = '';
+	}
+
+	/** Named from the picker rather than from a settings page, which is where the club names are. */
+	function setMyClub(key: string) {
+		ianseoMyClub.set($ianseoMyClub === key ? null : key);
+	}
+
 	const countries = $derived(countriesOf(list));
 	const offerable = $derived(
 		countries.filter(
@@ -430,6 +476,23 @@
 		>
 			<Icon name="plus" size={13} />
 			{$t('ianseo.addCountry')}
+		</button>
+		{#each $ianseoClubs as key (key)}
+			<button
+				class="press flex items-center gap-1 rounded-full border border-brand/40 bg-brand/10 py-1 pr-1.5 pl-2.5 text-xs font-semibold text-brand-text"
+				onclick={() => dropClub(key)}
+			>
+				{#if key === $ianseoMyClub}<Icon name="star" size={11} filled />{/if}
+				<span class="max-w-40 truncate">{clubNames.get(key) ?? key}</span>
+				<Icon name="close" size={13} />
+			</button>
+		{/each}
+		<button
+			class="press flex items-center gap-1 rounded-full border border-line py-1 pr-2.5 pl-1.5 text-xs font-medium text-muted"
+			onclick={() => (clubSheet = true)}
+		>
+			<Icon name="plus" size={13} />
+			{$t('ianseo.addClub')}
 		</button>
 		<button
 			class="press flex items-center gap-1 rounded-full border py-1 pr-2.5 pl-2 text-xs font-medium {$ianseoRadiusKm >
@@ -608,6 +671,50 @@
 				</button>
 			</li>
 		{/each}
+	</ul>
+</Sheet>
+
+<Sheet open={clubSheet} title={$t('ianseo.chooseClub')} onclose={() => (clubSheet = false)}>
+	<p class="mb-2 text-xs text-muted">
+		{$ianseoCountries.length > 0 ? $t('ianseo.clubsHere') : $t('ianseo.clubsEverywhere')}
+	</p>
+	<input
+		class="mb-2 w-full rounded-lg border border-line bg-transparent px-3 py-2 text-sm"
+		bind:value={clubTerm}
+		autocomplete="off"
+		placeholder={$t('ianseo.clubSearch')}
+		aria-label={$t('ianseo.clubSearch')}
+	/>
+	<ul class="space-y-1">
+		{#each offerableClubs as club (club.key)}
+			<li class="flex items-center gap-1">
+				<button
+					class="flex min-w-0 flex-1 items-center gap-2 rounded-lg px-2 py-2 text-left text-sm hover:bg-line/30 {$ianseoClubs.includes(
+						club.key
+					)
+						? 'font-semibold text-brand-text'
+						: ''}"
+					onclick={() => addClub(club.key)}
+				>
+					<span class="min-w-0 flex-1 truncate">{club.name}</span>
+					<span class="tabular shrink-0 text-xs text-muted">{club.count}</span>
+				</button>
+				<!-- Set from here because this is the only list in the app that knows the club names. -->
+				<button
+					class="press shrink-0 rounded-lg p-2 {club.key === $ianseoMyClub
+						? 'text-brand-text'
+						: 'text-muted'}"
+					aria-label={$t('ianseo.setMyClub', { club: club.name })}
+					aria-pressed={club.key === $ianseoMyClub}
+					onclick={() => setMyClub(club.key)}
+				>
+					<Icon name="star" size={16} filled={club.key === $ianseoMyClub} />
+				</button>
+			</li>
+		{/each}
+		{#if offerableClubs.length === 0}
+			<li class="px-2 py-3 text-sm text-muted">{$t('ianseo.noClubs')}</li>
+		{/if}
 	</ul>
 </Sheet>
 

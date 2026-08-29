@@ -458,6 +458,16 @@ export const ianseoCountryAsked = flag('appchery.ianseoCountryAsked', false);
 export const ianseoMajor = flag('appchery.ianseoMajor', true);
 
 /**
+ * The clubs the competitions page is narrowed to, by the key their names are grouped under. A club
+ * is stored by that key rather than by its name because ianseo prints whatever the organiser typed,
+ * and a filter that only matched one spelling of a club would lose half of its own competitions.
+ */
+export const ianseoClubs = storedList('appchery.ianseoClubs');
+
+/** The archer's own club, kept at the top of the picker so it is never scrolled to. */
+export const ianseoMyClub = storedString('appchery.ianseoMyClub');
+
+/**
  * How far the competitions page reaches, in kilometres, or 0 for no distance filter. A town is only
  * ever looked up while this is on, so leaving it off is also leaving the app off the network.
  */
