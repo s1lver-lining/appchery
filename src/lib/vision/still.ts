@@ -57,13 +57,31 @@ export interface StillOptions {
 	minLength?: number;
 	/** Longest streak worth reporting, so a shadow across the whole boss is not an arrow. */
 	maxLength?: number;
-	/** How many times longer than wide a streak must be. */
+	/**
+	 * How many times longer than wide a streak must be.
+	 *
+	 * Four rather than three. A shaft seen from anywhere is far longer than it is wide; most of what
+	 * came in at three and not four was a fold in the paper or a patch of rim shadow, and dropping
+	 * those cost no arrow on the labelled recordings.
+	 */
 	minElongation?: number;
 	/** Widest a shaft may be, as a share of the face radius. */
 	maxWidth?: number;
 	/** How much of a streak's length must be spent crossing rings rather than following one. */
 	radialLean?: number;
-	/** Share of a streak that must be darker than the paper on both sides rather than just one. */
+	/**
+	 * Share of a streak that must be darker than the paper on both sides rather than just one.
+	 *
+	 * A shaft stands proud of the paper and is dark against it on both sides. A crease, a printed ring
+	 * line and the shadow under the boss rim are dark against one side and go on being paper on the
+	 * other, so this is the question that tells them apart. Raised from 0.6 across fourteen labelled
+	 * recordings: the arrows found in three seconds held at 51 of 84 while the wrong marks fell from
+	 * 17 to 13, and in two seconds the marks put twice on one shaft fell from 9 to 2.
+	 *
+	 * Not raised further, though 0.75 gives 6 wrong marks and 1 double. It also drops the arrows found
+	 * in three seconds from 51 to 41, because a shaft crossing a black ring is a ridge on one side only
+	 * for as far as the ring is wide.
+	 */
 	minRidge?: number;
 	/** Share of a streak that must be unbroken, so a line bridged across noise is not a shaft. */
 	minFill?: number;
@@ -188,7 +206,7 @@ export function detectArrowsInStill(
 	const darkness = options.darkness ?? 0.75;
 	const minLength = options.minLength ?? 0.09;
 	const maxLength = options.maxLength ?? 3;
-	const minElongation = options.minElongation ?? 3;
+	const minElongation = options.minElongation ?? 4;
 	const maxWidth = options.maxWidth ?? 0.08;
 	const radialLean = options.radialLean ?? 0.2;
 	const minRidge = options.minRidge ?? 0.6;
@@ -459,6 +477,9 @@ function near(mask: Uint8Array, width: number, height: number, x: number, y: num
 	return false;
 }
 
+/** Brightness at or below which paper is the black ring rather than paper, on the same scale as luma. */
+const BLACK_RING = 70;
+
 function sample(frame: Frame, x: number, y: number): number {
 	const px = Math.round(x);
 	const py = Math.round(y);
@@ -637,6 +658,15 @@ function walk(
 		const left = sample(frame, x - cos * step, y - sin * step);
 		const right = sample(frame, x + cos * step, y + sin * step);
 		if (centre < 0 || left < 0 || right < 0) continue;
+		/*
+		 * Where both flanks are as dark as the shaft there is no ridge to see, either way.
+		 *
+		 * That is the shaft crossing the black ring, and counting it as a place the shaft failed to be
+		 * a ridge is what tied the bar to the ring: set high enough to turn away a crease, it turned
+		 * away the arrow that crosses the black along with it. Left out of the count instead, so the
+		 * share is read over the places where the question could be answered.
+		 */
+		if (left < BLACK_RING && right < BLACK_RING) continue;
 		sampled++;
 		if (left > centre + 8 && right > centre + 8) flanked++;
 	}

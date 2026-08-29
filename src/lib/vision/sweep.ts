@@ -93,7 +93,20 @@ export class SweepTracker {
 		 * setting is that nothing is confirmed for about a second and a half, which is what waiting for
 		 * five genuinely different views of the boss takes.
 		 */
-		this.minVotes = options.minVotes ?? 5;
+		/*
+		 * Raised with the rate the passes come at, not instead of it.
+		 *
+		 * The bar is in looks, and looks are what a sweep gathers, so the way to reach it sooner is to
+		 * look more often rather than to ask for less. Offering passes every 150ms instead of 300 and
+		 * asking seven rather than five puts the floor at about a second instead of a second and a
+		 * half, and measured over fourteen labelled recordings it finds more in two seconds than the
+		 * slower pair did: 45 arrows of 84 against 41, with fewer marks put twice on one shaft.
+		 *
+		 * Lowering it instead was tried and is the wrong trade. Five votes at 150ms finds 45 too and
+		 * takes the wrong marks from 15 to 23, because passes that come faster are the same look taken
+		 * again and looking twice at a thing that is not there sees it twice.
+		 */
+		this.minVotes = options.minVotes ?? 7;
 		this.minAgreement = options.minAgreement ?? 0.4;
 		/**
 		 * Half a ring. One arrow answers from more than one place along its own shaft: the detector reads

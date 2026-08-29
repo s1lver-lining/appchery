@@ -226,7 +226,12 @@ import { SteadyFace } from '$lib/vision/steady';
 	 * of waiting for a detection to finish. Detection three times a second is far more often than an
 	 * arrow arrives.
 	 */
-	const DETECT_EVERY_MS = 300;
+	/**
+	 * How often a detection pass is offered. A pass costing more than this does not slow the video
+	 * down, it simply happens less often, so a phone that cannot keep up degrades to its own rate.
+	 * The vote a candidate needs was raised with it, in sweep.ts, so the bar is still in looks.
+	 */
+	const DETECT_EVERY_MS = 150;
 	let lastDetection = 0;
 
 	/** One smoother per face, made on demand, so a three spot's three faces are steadied separately. */

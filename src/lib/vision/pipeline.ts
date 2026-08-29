@@ -83,6 +83,9 @@ export interface ScannerOptions {
  */
 const ADOPT_MARGIN = 0.04;
 
+/** Arrows past the end's own count that may still be reported, for an end that holds more than it should. */
+const EXTRA_ARROWS = 2;
+
 export class Scanner {
 	private readonly tracker: SweepTracker;
 	private readonly scale: number;
@@ -359,7 +362,16 @@ export class Scanner {
 	 */
 	setLimit(limit: number) {
 		this.maxArrows = Math.max(0, limit);
-		this.tracker.setLimit(this.maxArrows);
+		/*
+		 * The end expects this many arrows and the tracker may confirm a few beyond it.
+		 *
+		 * An end does not always hold the number the round says. One from the end before is still
+		 * standing in the boss, or seven were shot, and stopping the tracker at the count meant the
+		 * extra could not be reported however plainly it was there: the slots were full of the first
+		 * six and nothing else was ever offered. The screen already draws whatever is past the count
+		 * dimmed and says there are too many, so the archer is the one who decides what to do about it.
+		 */
+		this.tracker.setLimit(this.maxArrows + EXTRA_ARROWS);
 		this.tracker.expect(this.maxArrows);
 	}
 
