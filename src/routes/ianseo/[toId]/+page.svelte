@@ -27,6 +27,7 @@
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import ShareSheet from '$lib/ui/ianseo/ShareSheet.svelte';
 	import { terms } from '$lib/ianseo/find';
+	import { groupKey } from '$lib/ianseo/groups';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
 	import type { Entry } from '$lib/inscriptarc/types';
@@ -34,7 +35,9 @@
 	/**
 	 * One competition: what ianseo has published for it, in the panels ianseo publishes it under.
 	 * Nothing here interprets a document's name, which is the organiser's own words in their own
-	 * language, so a federation the app has never heard of reads exactly as its archers expect.
+	 * language, so a federation the app has never heard of reads exactly as its archers expect. The
+	 * panels they sit under are ianseo's own vocabulary rather than the organiser's, and those are
+	 * translated: see `groups.ts`.
 	 */
 
 	const toId = $derived($page.params.toId ?? '');
@@ -156,7 +159,8 @@
 		const wanted = terms(search);
 		if (wanted.length === 0) return competition?.documents ?? [];
 		return (competition?.documents ?? []).filter((document) => {
-			const text = `${document.title} ${document.group}`
+			// The panel's translated name too, so a French archer finds the brackets by typing "tableaux".
+			const text = `${document.title} ${document.group} ${named(document.group)}`
 				.toLowerCase()
 				.normalize('NFD')
 				.replace(/[\u0300-\u036f]/g, '');
@@ -171,6 +175,16 @@
 			found.set(document.group, [...(found.get(document.group) ?? []), document]);
 		}
 		return [...found].map(([group, documents]) => ({ group, documents }));
+	});
+
+	/**
+	 * A panel's heading in the archer's language. ianseo writes these in English whatever the country,
+	 * and unlike the documents inside them they are ianseo's own small vocabulary rather than the
+	 * organiser's words, so they are the one thing on this page worth translating.
+	 */
+	const named = $derived((group: string) => {
+		const key = groupKey(group);
+		return key ? $t(`ianseo.group.${key}`) : group;
 	});
 
 	/** `/TourData/2026/26053/IQRM.php` is opened as `IQRM`: the rest of it is where, not what. */
@@ -284,7 +298,7 @@
 	{#each groups as { group, documents } (group)}
 		<section>
 			<h2 class="mb-2 px-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
-				{group || $t('ianseo.documents')}
+				{named(group) || $t('ianseo.documents')}
 			</h2>
 			<ul class="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
 				<!--
