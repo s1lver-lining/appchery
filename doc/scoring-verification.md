@@ -56,7 +56,11 @@ ASA rulebooks, so both stay flagged.
       scoring pages, but ASA also has a **second 12 ring** the shooter may call, and a **14 ring**
       used in professional shoot-offs. The file models neither.
 - [ ] The position and size of each scoring ring relative to the animal. The current ellipses are
-      **placeholders chosen to be plausible**, not measured from a real target.
+      **placeholders chosen to be plausible**, not measured from a real target. They are at least
+      self consistent now: the 11 and the 12 used to be offset far enough to reach past the ten and
+      into the eight, so an arrow scored eleven where the same file scored eight. Both are pulled
+      back inside the ten, and `field.test.ts` pins the rule that an inner ring sits wholly in one
+      band. The offset that remains is still a guess.
 - [ ] Whether a hit outside the vitals but on the animal always scores 5, and what a non-scoring hit
       on a leg or horn does.
 - [ ] Per-animal variation: real 3D targets differ by species, which the single silhouette in the

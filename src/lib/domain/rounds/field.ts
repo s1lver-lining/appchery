@@ -121,6 +121,13 @@ function animalZones(highest: number, secondary: number): Zone[] {
 	];
 }
 
+/**
+ * The inner ring sits off centre inside the ten, as it does on a real animal, but inside it: the
+ * offset it used to carry took part of the ring out past the ten and into the eight, so an arrow
+ * could score eleven in a place this same file scores eight. See doc/scoring-verification.md.
+ */
+const INNER_OFFSET = 0.08;
+
 export const IBO_3D: ScoreSet = {
 	id: 'ibo-3d',
 	name: 'IBO 3D (11-10-8-5)',
@@ -130,7 +137,7 @@ export const IBO_3D: ScoreSet = {
 		{
 			value: 11,
 			label: '11',
-			shape: { kind: 'ellipse', rx: 0.07, ry: 0.06, cx: -0.19, cy: -0.02 },
+			shape: { kind: 'ellipse', rx: 0.07, ry: 0.06, cx: -0.06 - INNER_OFFSET, cy: -0.02 },
 			countsAsHit: true,
 			color: GOLD,
 			strokeColor: BLACK,
@@ -148,7 +155,7 @@ export const ASA_3D: ScoreSet = {
 		{
 			value: 12,
 			label: '12',
-			shape: { kind: 'ellipse', rx: 0.07, ry: 0.06, cx: 0.06, cy: -0.02 },
+			shape: { kind: 'ellipse', rx: 0.07, ry: 0.06, cx: -0.06 + INNER_OFFSET, cy: -0.02 },
 			countsAsHit: true,
 			color: GOLD,
 			strokeColor: BLACK,
