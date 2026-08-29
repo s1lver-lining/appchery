@@ -50,7 +50,7 @@
 	import DistributionChart from '$lib/ui/DistributionChart.svelte';
 	import BlocksDialog from '$lib/ui/BlocksDialog.svelte';
 	import { timeOfDay } from '$lib/domain/dates';
-	import { getScoreSet, WA_10_RING } from '$lib/domain/rounds/seed';
+	import { knownScoreSet, WA_10_RING } from '$lib/domain/rounds/seed';
 	import { expandedRounds, statsFilter, statsBlocks, dateFormats } from '$lib/prefs';
 
 	let scored = $state<ScoredActivity[]>([]);
@@ -308,7 +308,7 @@
 	 * two charts, and the zone labels of the second would land on the first one's colours.
 	 */
 	const sliceZones = $derived(
-		getScoreSet(windowed.find((a) => a.round)?.round?.scoreSetId ?? WA_10_RING.id).zones
+		(knownScoreSet(windowed.find((a) => a.round)?.round?.scoreSetId) ?? WA_10_RING).zones
 	);
 
 	/**

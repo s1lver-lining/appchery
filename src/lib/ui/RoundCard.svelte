@@ -6,7 +6,7 @@
 	import ScoreScale from './ScoreScale.svelte';
 	import DistributionChart from './DistributionChart.svelte';
 	import { consistency, type RoundSummary, type ValueCount } from '$lib/domain/stats';
-	import { getScoreSet } from '$lib/domain/rounds/seed';
+	import { knownScoreSet } from '$lib/domain/rounds/seed';
 
 	/**
 	 * One kind of round: what it was shot for, how it is going, and where its arrows land. Grouped by
@@ -34,7 +34,7 @@
 
 	/** The zone's own regulated colour, read from the score set the round was shot on. */
 	const zones = $derived(
-		summary.best.round ? getScoreSet(summary.best.round.scoreSetId).zones : []
+		knownScoreSet(summary.best.round?.scoreSetId)?.zones ?? []
 	);
 </script>
 

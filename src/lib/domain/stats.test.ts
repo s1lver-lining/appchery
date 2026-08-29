@@ -20,6 +20,7 @@ import {
 	shootsArrows,
 	toVolume,
 	volumeRoundKey,
+	roundName,
 	VOLUME_KINDS,
 	type ActivityLike,
 	type ScoredActivity
@@ -766,5 +767,19 @@ describe('bandBy with a given order', () => {
 			['cold', 'cool', 'mild', 'hot']
 		);
 		expect(bands.map((band) => band.key)).toEqual(['cold', 'mild', 'tropical']);
+	});
+});
+
+describe('roundName', () => {
+	it('names a round shot on a face this build has never heard of', () => {
+		// A round definition travels: it comes down from another device, out of an export, or off a
+		// build newer than this one. Every list in the app names its rounds, so an unknown face has to
+		// cost the name of the face and nothing else.
+		const round = {
+			...buildCustomRound({ distance: 18, unit: 'm' as const, faceSize: 40, ends: 10, arrowsPerEnd: 3 }),
+			scoreSetId: 'wa-25-ring-from-the-future'
+		};
+		expect(() => roundName(round)).not.toThrow();
+		expect(roundName(round)).toBe('18m · 40cm · 30');
 	});
 });

@@ -1,6 +1,6 @@
 import { isRoundComplete } from './rounds/geometry';
 import { startOfDay, startOfWeek } from './dates';
-import { ROUNDS, WA_10_RING, getScoreSet } from './rounds/seed';
+import { ROUNDS, WA_10_RING, knownScoreSet } from './rounds/seed';
 import type { RoundDefinition } from './rounds/types';
 
 export interface ScoredActivity {
@@ -380,7 +380,10 @@ export function shapeName(round: RoundDefinition | null): string {
 	const shape = [...marked, `${stage.faceSize}cm`, String(arrows)].join(' · ');
 	// The face is named only when it is not the ten ring everything else on the page assumes.
 	if (round.scoreSetId === WA_10_RING.id) return shape;
-	return `${shape} · ${getScoreSet(round.scoreSetId).name}`;
+	// A face this build cannot name is left unnamed: a round is listed under this everywhere, and no
+	// name for the scoring is worth less than every page that says it throwing instead.
+	const set = knownScoreSet(round.scoreSetId);
+	return set ? `${shape} · ${set.name}` : shape;
 }
 
 /**
