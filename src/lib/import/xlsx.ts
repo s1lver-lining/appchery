@@ -398,7 +398,15 @@ function inflate(data: Uint8Array): Uint8Array {
 	};
 
 	const bit = (): number => {
-		const value = (data[bitAt >>> 3] >>> (bitAt & 7)) & 1;
+		const at = bitAt >>> 3;
+		// Past the end of the part there is nothing to read, and reading it anyway gives back a zero
+		// every time: `data[at]` is undefined and `undefined >>> n` is 0. The block header then says
+		// "not the last block, stored, length nothing" for ever, which advances four bytes and writes
+		// none, so the size limit never fires and the loop never ends. A part that stops early has to
+		// stop the reader with it. DecompressionStream throws on a truncated part and this is what
+		// catches it, so every phone reaches here, not only the old ones it was written for.
+		if (at >= data.length) throw new Error('part ended early');
+		const value = (data[at] >>> (bitAt & 7)) & 1;
 		bitAt++;
 		return value;
 	};
@@ -434,6 +442,9 @@ function inflate(data: Uint8Array): Uint8Array {
 			// Stored: skip to the byte boundary, then copy the run verbatim.
 			bitAt = (bitAt + 7) & ~7;
 			const at = bitAt >>> 3;
+			// Its own header and the run it promises, both of which a truncated part can be missing.
+			if (at + 4 > data.length || at + 4 + (data[at] | (data[at + 1] << 8)) > data.length)
+				throw new Error('part ended early');
 			const length = data[at] | (data[at + 1] << 8);
 			grow(length);
 			out.set(data.subarray(at + 4, at + 4 + length), outAt);

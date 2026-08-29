@@ -141,6 +141,82 @@ describe('readWorkbook', () => {
 	});
 });
 
+/**
+ * A part that says it is deflated and then stops in the middle of itself. Every phone reaches the
+ * hand written inflater with one of these, not only the old ones it was written for:
+ * DecompressionStream throws on a truncated stream and the fallback is what catches that.
+ */
+function zipWithBrokenPart(body: Uint8Array): Uint8Array {
+	const encoder = new TextEncoder();
+	const nameBytes = encoder.encode('xl/workbook.xml');
+
+	const local = new Uint8Array(30 + nameBytes.length);
+	const view = new DataView(local.buffer);
+	view.setUint32(0, 0x04034b50, true);
+	view.setUint16(4, 20, true);
+	// Deflated, says the header, and the bytes after it are not a deflate stream that ever ends.
+	view.setUint16(8, 8, true);
+	view.setUint32(18, body.length, true);
+	view.setUint32(22, 1024, true);
+	view.setUint16(26, nameBytes.length, true);
+	local.set(nameBytes, 30);
+
+	const entry = new Uint8Array(46 + nameBytes.length);
+	const entryView = new DataView(entry.buffer);
+	entryView.setUint32(0, 0x02014b50, true);
+	entryView.setUint16(10, 8, true);
+	entryView.setUint32(20, body.length, true);
+	entryView.setUint32(24, 1024, true);
+	entryView.setUint16(28, nameBytes.length, true);
+	entryView.setUint32(42, 0, true);
+	entry.set(nameBytes, 46);
+
+	const end = new Uint8Array(22);
+	const endView = new DataView(end.buffer);
+	endView.setUint32(0, 0x06054b50, true);
+	endView.setUint16(8, 1, true);
+	endView.setUint16(10, 1, true);
+	endView.setUint32(12, entry.length, true);
+	endView.setUint32(16, local.length + body.length, true);
+
+	return concat([local, body, entry, end]);
+}
+
+describe('a workbook that stops in the middle of itself', () => {
+	/**
+	 * Reading past the end of a part used to give back a zero every time, because the byte is
+	 * undefined and `undefined >>> n` is 0. That reads as "not the last block, stored, length
+	 * nothing", which advances four bytes and writes none, so the size limit never fired and the
+	 * reader never returned. The app froze on a file it should simply have refused, and a share sheet
+	 * is enough to hand it one.
+	 */
+	it('is refused rather than read for ever', async () => {
+		await expect(readWorkbook(zipWithBrokenPart(new Uint8Array(8)))).rejects.toThrow(WorkbookError);
+	});
+
+	/**
+	 * Answering is the whole of it. Refusing the file and reading an empty workbook out of it are
+	 * both fine ends; not ending is the bug, and this test finds it by never finishing.
+	 */
+	it('answers, whatever the part stops in the middle of', async () => {
+		const shapes = [
+			new Uint8Array(0),
+			new Uint8Array([0x00]),
+			new Uint8Array([0xff, 0xff]),
+			new Uint8Array([0x03, 0x00]),
+			new Uint8Array([0x78, 0x9c, 0x00]),
+			Uint8Array.from({ length: 64 }, (_, i) => (i * 37) & 0xff)
+		];
+		for (const shape of shapes) {
+			const answered = await readWorkbook(zipWithBrokenPart(shape)).then(
+				() => 'read',
+				(error) => (error instanceof WorkbookError ? 'refused' : `fell over: ${error}`)
+			);
+			expect(answered).toMatch(/^(read|refused)$/);
+		}
+	});
+});
+
 /* A minimal ZIP writer, so the tests can build the files they need. */
 
 async function zip(files: Record<string, string>, deflate: boolean): Promise<Uint8Array> {
