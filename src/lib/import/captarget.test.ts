@@ -421,3 +421,61 @@ describe('normaliseHeader', () => {
 		expect(normaliseHeader(' Total  Score ')).toBe('totalscore');
 	});
 });
+
+describe('a file that carries the same round id twice', () => {
+	const twice = (secondSession: string) => [
+		sheet(
+			'Sessions',
+			['trainingDate', 'distance', 'isCompetition', 'isIndoor', 'totalArrows', 'id'],
+			[
+				['2026-06-19', 50, 0, 0, 6, 'sess-1'],
+				['2026-06-20', 50, 0, 0, 6, 'sess-2']
+			]
+		),
+		sheet(
+			'Counted shoots',
+			['trainingDate', 'total', 'blazon', 'distance', 'id', 'idTraining', 'salves', 'arrows'],
+			[
+				['2026-06-19', 60, 122, 50, 'shoot-1', 'sess-1', 2, 3],
+				['2026-06-20', 30, 122, 50, 'shoot-1', secondSession, 2, 3]
+			]
+		)
+	];
+
+	const keys = (sheets: ReturnType<typeof twice>) =>
+		planCapTargetImport(sheets)
+			.sessions.flatMap((session) => session.activities)
+			.map((activity) => activity.externalId);
+
+	/**
+	 * The id is the key every imported round is written and re-imported under. Handed to two rounds
+	 * it is the primary key twice in one session, which stops the import partway through a file it
+	 * has already begun writing; across two sessions the second quietly clears the first, and the
+	 * archer is told a round was imported that the database does not hold.
+	 */
+	it('gives each round a key of its own, in one session', () => {
+		const found = keys(twice('sess-1'));
+		expect(found).toHaveLength(2);
+		expect(new Set(found).size).toBe(2);
+	});
+
+	it('gives each round a key of its own, across two sessions', () => {
+		const found = keys(twice('sess-2'));
+		expect(found).toHaveLength(2);
+		expect(new Set(found).size).toBe(2);
+	});
+
+	/** Re-importing has to replace rather than duplicate, so the same file has to key the same way. */
+	it('keys the same file the same way every time', () => {
+		expect(keys(twice('sess-2'))).toEqual(keys(twice('sess-2')));
+	});
+
+	/** A file with nothing wrong with it keeps the plain key it always had. */
+	it('leaves a file whose ids are its own alone', () => {
+		const plan = planCapTargetImport([SESSIONS(), SHOOTS(), ARROWS()]);
+		expect(plan.sessions.flatMap((s) => s.activities).map((a) => a.externalId)).toEqual([
+			'shoot-shoot-1',
+			'shoot-shoot-2'
+		]);
+	});
+});

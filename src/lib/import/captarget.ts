@@ -655,6 +655,24 @@ function readShoots(
 	if (!table) return [];
 	const planned: PlannedRound[] = [];
 
+	/*
+	 * The key a round is written under, and found again under on the next import. A file carrying the
+	 * same id on two rows would hand both the same one, and neither end of that is survivable: in one
+	 * session it is the primary key twice, so the import stops partway through a file it had already
+	 * begun writing, and across two sessions the second silently clears the first, leaving a report
+	 * that counts a round the database does not hold.
+	 *
+	 * Only the key moves aside. The id itself is what the arrow lists are filed under, so it stays
+	 * whatever the file said, and both rounds keep the arrows the file gave them.
+	 */
+	const keys = new Set<string>();
+	const uniqueKey = (id: string, index: number): string => {
+		let key = `${prefix}-${id}`;
+		for (let n = index; keys.has(key); n++) key = `${prefix}-${id}-${n}`;
+		keys.add(key);
+		return key;
+	};
+
 	table.rows.forEach((row, index) => {
 		try {
 			if (planned.length >= LIMITS.sessions * 4) return;
@@ -698,7 +716,7 @@ function readShoots(
 				sessionKey: idCell(table, row, 'sessionId'),
 				externalId,
 				activity: {
-					externalId: `${prefix}-${externalId}`,
+					externalId: uniqueKey(externalId, index),
 					// Arrows make it a round; a bare total makes it scoring of a kind that has no ends.
 					kind: ends.length > 0 ? 'scoring' : FREE_SCORE_KIND,
 					startedAt,
