@@ -23,12 +23,13 @@
 		parentPath,
 		runBackGuards
 	} from '$lib/nav';
-	import { t } from '$lib/i18n';
+	import { locale, t } from '$lib/i18n';
 	import { defaultBowId } from '$lib/prefs';
 	import { theme } from '$lib/theme';
 	import { incomingFile, namedFile } from '$lib/import/incoming';
 	import { refreshApp, watchForUpdates } from '$lib/update';
 	import { watchSync } from '$lib/sync/watch';
+	import { noteWhatIsFollowed } from '$lib/ianseo/notify';
 	import { syncAlertUnread, refreshSyncAlert } from '$lib/sync/alert';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
@@ -139,6 +140,17 @@
 	// Only once the database is open, because an exchange reads it. Returns immediately and loads
 	// nothing unless a server is configured and somebody is signed in.
 	$effect(() => (ready ? watchSync() : undefined));
+	/**
+	 * A background notice is raised by the service worker, which wakes without the app and without a
+	 * dictionary, so the words it says are written out in the archer's language and left in storage
+	 * for it. Changing the language has to write them again, or a French app goes on buzzing in
+	 * English until the archer happens to follow or unfollow a competition.
+	 */
+	$effect(() => {
+		void $locale;
+		if (ready) void noteWhatIsFollowed();
+	});
+
 	// Read once the database is open, so a warning raised on the last run is on screen before the
 	// archer goes looking for it.
 	$effect(() => {
