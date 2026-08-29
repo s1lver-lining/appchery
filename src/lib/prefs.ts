@@ -128,6 +128,16 @@ export const arrowDetector = storedString('appchery.arrowDetector');
 export const smoothOverlay = flag('appchery.smoothOverlay', true);
 
 /**
+ * Whether the camera view shows what the detector is doing, beside the arrows it found.
+ *
+ * Off by default and switched from the camera itself rather than from settings, because it is only
+ * ever wanted while standing at the boss watching the detector fail to find something. The same
+ * numbers the replay tool burns into a recording, so a session that went wrong can be described
+ * without having to record it first.
+ */
+export const detectorReadout = flag('appchery.detectorReadout', false);
+
+/**
  * The round cards left open on the stats page. A view preference rather than user data, so it stays
  * on the device that was scrolled rather than following the archer around.
  */

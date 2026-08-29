@@ -8,7 +8,13 @@ import { SteadyFace } from '$lib/vision/steady';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
 	import Icon from './Icon.svelte';
-	import { recordCameraVideo, arrowDetector, smoothOverlay, recordMotion } from '$lib/prefs';
+	import {
+		recordCameraVideo,
+		arrowDetector,
+		smoothOverlay,
+		recordMotion,
+		detectorReadout
+	} from '$lib/prefs';
 	import { storeRecording, storeMotion } from '$lib/files';
 	import { closeOnBack } from './dismiss.svelte';
 	import { overrideStatusBar } from '$lib/theme';
@@ -59,10 +65,14 @@ import { SteadyFace } from '$lib/vision/steady';
 	let notice = $state('');
 
 	// Detection lives in a worker, so a slow pass costs the overlay nothing and the video never stalls.
+	/** What the last pass saw. Only read when the readout is on, and only ever shown. */
+	let readout = $state({ proposals: 0, early: 0, cost: 0, passes: 0 });
+
 	const scanner = new LiveScanner(() => {
 		found = scanner.arrows;
 		steady = scanner.steady;
 		pending = scanner.pending;
+		readout = scanner.readout;
 	});
 
 	/**
@@ -339,6 +349,26 @@ import { SteadyFace } from '$lib/vision/steady';
 			context.arc(point.x * scale, point.y * scale, width / 60, 0, Math.PI * 2);
 			context.stroke();
 			context.setLineDash([]);
+
+			/*
+			 * The score written on the picture, where the arrow is, rather than only in the pills below.
+			 * That is the reading the pills cannot give: which mark on the boss the detector thinks it
+			 * scored. A pill saying 9 is right or wrong depending on which shaft it is about, and only
+			 * the archer looking at the boss can say.
+			 */
+			if (!$detectorReadout) return;
+			// Saved, because the line width and the font here are not the ones the rings are drawn with.
+			context.save();
+			const text = `${label(arrow)}${detail(arrow)}`;
+			context.font = `600 ${Math.max(11, width / 40)}px system-ui, sans-serif`;
+			context.textAlign = 'center';
+			context.textBaseline = 'bottom';
+			context.lineWidth = Math.max(2, width / 300);
+			context.strokeStyle = 'rgba(0,0,0,0.75)';
+			context.strokeText(text, point.x * scale, point.y * scale - width / 45);
+			context.fillStyle = '#ffffff';
+			context.fillText(text, point.x * scale, point.y * scale - width / 45);
+			context.restore();
 		});
 	}
 
@@ -429,6 +459,40 @@ import { SteadyFace } from '$lib/vision/steady';
 
 		{#if error}
 			<p class="absolute inset-x-4 top-4 rounded-lg bg-danger/90 p-3 text-sm text-white">{error}</p>
+		{/if}
+
+		<!--
+			The readout switch. Deliberately tiny and in a corner: it is a diagnostic, wanted only while
+			standing at the boss watching the detector miss something, and it must not compete with the
+			camera for the archer's attention the rest of the time.
+		-->
+		<button
+			class="absolute bottom-2 left-2 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase
+				tracking-wide {$detectorReadout ? 'bg-white/25 text-white' : 'bg-black/40 text-white/40'}"
+			aria-pressed={$detectorReadout}
+			aria-label={$t('auto.readout')}
+			onclick={() => detectorReadout.set(!$detectorReadout)}
+		>
+			{$t('auto.readoutShort')}
+		</button>
+
+		{#if $detectorReadout}
+			<!--
+				The same numbers the replay tool burns into a recording, in the same order, so a session
+				that went wrong on the field can be described without having to record it first.
+			-->
+			<div
+				class="tabular pointer-events-none absolute bottom-2 left-14 right-2 rounded bg-black/55
+					px-2 py-1 text-[9px] leading-relaxed text-white/85"
+			>
+				<span class={steady ? 'text-[#3ddc84]' : 'text-[#ffc107]'}>
+					FACES {faces.length} {steady ? 'STEADY' : 'NOT STEADY'}
+				</span>
+				<span class="ml-2">
+					PROPOSED {readout.proposals} PENDING {pending} EARLY {readout.early} KEPT {found.length}
+				</span>
+				<span class="ml-2">PASS {readout.cost.toFixed(0)}MS x{readout.passes}</span>
+			</div>
 		{/if}
 
 		{#if recording}

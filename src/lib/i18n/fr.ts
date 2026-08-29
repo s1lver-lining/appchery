@@ -847,6 +847,8 @@ export const fr: Dictionary = {
 		watching: 'Recherche des flèches',
 		keep: 'Garder {n}',
 		drop: 'Retirer cette flèche',
+		readout: 'Afficher ce que fait le détecteur',
+		readoutShort: 'Info',
 		tapToDrop: 'Touchez une flèche pour la retirer.',
 		tooMany: 'Il ne reste que {n} flèches dans cette volée. Les autres sont ignorées.',
 		denied: "L'autorisation caméra est nécessaire pour marquer depuis la caméra.",

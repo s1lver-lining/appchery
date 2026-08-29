@@ -847,6 +847,8 @@ export const en = {
 		angle: 'Move so you face the target square on',
 		keep: 'Keep {n}',
 		drop: 'Drop this arrow',
+		readout: 'Show what the detector is doing',
+		readoutShort: 'Info',
 		tapToDrop: 'Tap an arrow to drop it.',
 		tooMany: 'Only {n} arrows are left in this end. The extra ones are ignored.',
 		denied: 'Camera permission is required to score from the camera.',

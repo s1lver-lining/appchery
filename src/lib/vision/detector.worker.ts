@@ -72,13 +72,22 @@ self.onmessage = (event: MessageEvent<Message>) => {
 	if (busy) return;
 	busy = true;
 	try {
+		const started = performance.now();
 		const result = scanner.pushReduced(frameOf(message));
 		self.postMessage({
 			type: 'result',
 			faces: result.faces,
 			steady: result.steady,
 			arrows: result.arrows,
-			pending: result.pending.length
+			pending: result.pending.length,
+			/*
+			 * What the pass saw, for the readout the archer can turn on in the corner of the camera.
+			 * Counted here because this is the only place that knows: by the time the page has the
+			 * arrows, everything the tracker rejected and the time it took are gone.
+			 */
+			proposals: result.detections,
+			early: result.early.length,
+			cost: performance.now() - started
 		});
 	} finally {
 		busy = false;

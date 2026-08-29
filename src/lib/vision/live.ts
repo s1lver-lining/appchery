@@ -26,6 +26,18 @@ import type { Frame, FaceLocation, Impact } from './types';
  */
 export const DETECT_EVERY_MS = 150;
 
+/** What one detection pass saw, which is what the optional readout shows. */
+export interface DetectorReadout {
+	/** Places the pass put forward, before the tracker judged any of them. */
+	proposals: number;
+	/** Places with some evidence behind them but not yet enough to be called an arrow. */
+	early: number;
+	/** Milliseconds the pass took, which is what decides how often one can be offered. */
+	cost: number;
+	/** Passes that have come back at all, so a detector that never answers is visibly different. */
+	passes: number;
+}
+
 export class LiveScanner {
 	private readonly worker: Worker;
 	private faces: FaceLocation[] = [];
@@ -36,6 +48,17 @@ export class LiveScanner {
 	pending = 0;
 	steady = false;
 	readonly scaleFactor = 4;
+
+	/**
+	 * What the last pass saw, for the readout in the corner of the camera view.
+	 *
+	 * Kept because zero arrows on the screen says nothing on its own: it means the same whether the
+	 * face was never found, or was found and never trusted, or was trusted and nothing was proposed,
+	 * or plenty was proposed and none of it agreed for long enough. Those are four different faults
+	 * with four different things to do about them, and the archer standing at the boss is the only
+	 * person who can tell which one is happening.
+	 */
+	readout: DetectorReadout = { proposals: 0, early: 0, cost: 0, passes: 0 };
 
 	constructor(private readonly onresult: () => void) {
 		this.worker = new Worker(new URL('./detector.worker.ts', import.meta.url), { type: 'module' });
@@ -53,6 +76,12 @@ export class LiveScanner {
 			 * every time is what made the rings jump every third of a second.
 			 */
 			if (this.faces.length !== result.faces.length) this.faces = result.faces;
+			this.readout = {
+				proposals: result.proposals ?? 0,
+				early: result.early ?? 0,
+				cost: result.cost ?? 0,
+				passes: this.readout.passes + 1
+			};
 			this.onresult();
 		};
 	}
