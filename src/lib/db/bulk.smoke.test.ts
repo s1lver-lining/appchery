@@ -26,12 +26,20 @@ const proxy = drizzle(
 	{ schema }
 );
 
+let writeLock: Promise<unknown> = Promise.resolve();
+
 vi.mock('./index', async () => {
 	const actual = await import('./schema');
 	return {
 		db: () => proxy,
 		schema: actual,
-		transaction: <T>(work: () => Promise<T>) => work()
+		// Serialised like the real one, because that is the whole of what a transaction buys a
+		// read-then-write here: two of them crossing is exactly what it has to stop.
+		transaction: <T>(work: () => Promise<T>) => {
+			const run = writeLock.then(work);
+			writeLock = run.catch(() => {});
+			return run;
+		}
 	};
 });
 
@@ -43,6 +51,9 @@ vi.stubGlobal('localStorage', {
 
 const {
 	addTrainingArrows,
+	createBow,
+	createRevision,
+	listRevisions,
 	createPlanSlot,
 	listPlanSlots,
 	updatePlanSlot,
@@ -209,5 +220,23 @@ describe('what a plan asks of a week', () => {
 
 		await updatePlanSlot(id, { arrowGoal: 1e9 });
 		expect((await listPlanSlots('plan-a')).find((s) => s.id === id)?.arrowGoal).toBe(LIMITS.arrows);
+	});
+});
+
+/**
+ * A revision is filed under the number after the last one, which means reading before writing. Two
+ * saves crossing would each read the same last revision and each claim to be the one after it.
+ */
+describe('bow revisions', () => {
+	it('numbers two saves made at once one after the other', async () => {
+		const bowId = await createBow('Crossed', 'recurve');
+
+		await Promise.all([
+			createRevision(bowId, { braceHeight: '21' }),
+			createRevision(bowId, { braceHeight: '22' })
+		]);
+
+		const numbers = (await listRevisions(bowId)).map((row) => row.revisionNo).sort();
+		expect(numbers).toEqual([1, 2]);
 	});
 });

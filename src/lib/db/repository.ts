@@ -1155,26 +1155,32 @@ export async function currentRevision(bowId: string): Promise<RevisionRow | null
 /**
  * Appends a revision instead of updating one, so a score recorded last month still resolves to the
  * settings it was actually shot under.
+ *
+ * One commit, because the number it is filed under is read before it is written: two saves crossing
+ * would each find the same last revision and each call itself the one after it, leaving a bow with
+ * two of the same revision and a history that no longer reads in order.
  */
 export async function createRevision(
 	bowId: string,
 	settings: Record<string, unknown>,
 	reason?: string
 ) {
-	const base = stamp();
-	const previous = await currentRevision(bowId);
-	await db()
-		.insert(schema.bowRevision)
-		.values({
-			...base,
-			bowId,
-			revisionNo: (previous?.revisionNo ?? 0) + 1,
-			settings: JSON.stringify(settings),
-			reason: reason?.trim() || null,
-			effectiveFrom: base.createdAt
-		});
-	await log('bow_revision', base.id, 'insert');
-	return base.id;
+	return transaction(async () => {
+		const base = stamp();
+		const previous = await currentRevision(bowId);
+		await db()
+			.insert(schema.bowRevision)
+			.values({
+				...base,
+				bowId,
+				revisionNo: (previous?.revisionNo ?? 0) + 1,
+				settings: JSON.stringify(settings),
+				reason: reason?.trim() || null,
+				effectiveFrom: base.createdAt
+			});
+		await log('bow_revision', base.id, 'insert');
+		return base.id;
+	});
 }
 
 /** Links a tuning activity to the revision it produced, closing the loop from test to change. */
