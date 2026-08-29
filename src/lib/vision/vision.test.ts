@@ -126,6 +126,41 @@ describe('detectFace', () => {
 		expect(face.semiMajor).toBeCloseTo(face.semiMinor, 6);
 	});
 
+	/**
+	 * `rotation` is not the angle the face is drawn at, and is left that way on purpose.
+	 *
+	 * Nothing scores an arrow with it. What it does decide is the square crop the learned arrow
+	 * detector is shown, and scripts/prepare-arrows.mjs cut the crops the detector was trained on with
+	 * this same expression. Correcting the maths here alone would show the model pictures framed
+	 * unlike any it learnt from, and nothing else in the suite would notice.
+	 *
+	 * So this test is a tripwire rather than an approval. If it fails because the angle was corrected,
+	 * the training data and the model have to be redone with it, or the correction has to come out.
+	 */
+	it('reports an angle that is a summary and not the tilt, which the crops depend on', () => {
+		const tilt = 0.6;
+		const face = faceFromEllipse(400, 300, 150, 70, tilt, 1)!;
+
+		// The face itself is drawn correctly: its longest radius really is at the tilt it was built at.
+		let far = -1;
+		let drawn = 0;
+		for (let i = 0; i < 3600; i++) {
+			const a = (i / 3600) * Math.PI;
+			const p = toImageCoords(face, Math.cos(a), Math.sin(a));
+			const d = Math.hypot(p.x - face.cx, p.y - face.cy);
+			if (d > far) {
+				far = d;
+				drawn = Math.atan2(p.y - face.cy, p.x - face.cx);
+			}
+		}
+		expect(drawn).toBeCloseTo(tilt, 2);
+		expect(face.semiMajor).toBeCloseTo(150, 6);
+		expect(face.semiMinor).toBeCloseTo(70, 6);
+
+		// The reported angle is none of that. Pinned, so correcting it cannot pass unnoticed.
+		expect(face.rotation).toBeCloseTo(0, 6);
+	});
+
 	it('returns nothing when there is no gold to find', () => {
 		expect(detectFace(blank(120, 120))).toBeNull();
 		// A grass green field is saturated and bright, but the wrong hue.
