@@ -45,7 +45,11 @@ export function decode(text: string): string {
 		const name = body.replace(/;$/, '');
 		if (name[0] === '#') {
 			const code = name[1] === 'x' || name[1] === 'X' ? parseInt(name.slice(2), 16) : Number(name.slice(1));
-			return Number.isFinite(code) && code > 0 ? String.fromCodePoint(code) : whole;
+			// Bounded at the top of Unicode as well as at nothing, because fromCodePoint throws past it
+			// and a decoder that throws takes the whole page with it: a competition's own name is read
+			// outside the guard that drops one unreadable row, so one bad entity in it closed the page.
+			const real = Number.isFinite(code) && code > 0 && code <= 0x10ffff;
+			return real ? String.fromCodePoint(code) : whole;
 		}
 		// Case matters: &Eacute; and &eacute; are two different letters, one of them a capital.
 		return ENTITIES[name] ?? whole;

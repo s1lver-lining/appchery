@@ -19,6 +19,14 @@ describe('decode', () => {
 		expect(decode('&Eacute;quipe &agrave; M&uuml;nchen')).toBe('Équipe à München');
 	});
 
+	it('leaves a number that is no character alone rather than failing on it', () => {
+		// Past the top of Unicode fromCodePoint throws, and the readers call this on a competition's
+		// own name outside the guard that drops one unreadable row.
+		expect(() => decode('&#x110000;')).not.toThrow();
+		expect(decode('Open de &#999999999; Rennes')).toBe('Open de &#999999999; Rennes');
+		expect(decode('&#x10FFFF;')).toBe(String.fromCodePoint(0x10ffff));
+	});
+
 	it('leaves an ampersand that is not an entity alone', () => {
 		expect(decode('Class & Division')).toBe('Class & Division');
 	});
