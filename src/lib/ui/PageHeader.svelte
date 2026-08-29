@@ -349,28 +349,37 @@
 
 	{#snippet heading()}
 		{#if title}<h1 class="truncate text-2xl font-bold tracking-tight">{title}</h1>{/if}
-		{#if subtitle}<p class="mt-0.5 text-sm text-muted">{subtitle}</p>{/if}
 	{/snippet}
 
-	<div class="relative mx-auto flex w-full max-w-page items-start gap-3 px-4 pt-5 pb-8">
-		<div class="min-w-0 flex-1">
-			<!--
-				A page that brings its own title inside the lead lays itself out; where the header owns the
-				title, the back arrow keeps it company on its line rather than sitting on top of it.
-			-->
-			{#if lead && title}
-				<div class="flex min-w-0 items-start gap-2">
-					<!-- Nudged down so the arrow sits against the title rather than against its cap height. -->
-					<div class="shrink-0 pt-1">{@render lead()}</div>
-					<div class="min-w-0 flex-1">{@render heading()}</div>
-				</div>
-			{:else}
-				{#if lead}{@render lead()}{/if}
-				{@render heading()}
-			{/if}
-			{#if children}{@render children()}{/if}
+	<div class="relative mx-auto w-full max-w-page px-4 pt-5 pb-8">
+		<div class="flex w-full items-start gap-3">
+			<div class="min-w-0 flex-1">
+				<!--
+					A page that brings its own title inside the lead lays itself out; where the header owns the
+					title, the back arrow keeps it company on its line rather than sitting on top of it.
+				-->
+				{#if lead && title}
+					<div class="flex min-w-0 items-start gap-2">
+						<!-- Nudged down so the arrow sits against the title rather than against its cap height. -->
+						<div class="shrink-0 pt-1">{@render lead()}</div>
+						<div class="min-w-0 flex-1">{@render heading()}</div>
+					</div>
+				{:else}
+					{#if lead}{@render lead()}{/if}
+					{@render heading()}
+				{/if}
+			</div>
+			{#if actions}<div class="shrink-0">{@render actions()}</div>{/if}
 		</div>
-		{#if actions}<div class="shrink-0">{@render actions()}</div>{/if}
+		<!--
+			Under the whole header rather than under the title alone: the buttons are one line tall and
+			the subtitle is the page's second line, so a competition's dates and town run the full width
+			instead of wrapping into a narrow column beside them.
+		-->
+		{#if subtitle}
+			<p class="mt-0.5 text-sm text-muted {lead && title ? 'pl-6' : ''}">{subtitle}</p>
+		{/if}
+		{#if children}{@render children()}{/if}
 	</div>
 
 	<HeaderEdge />
