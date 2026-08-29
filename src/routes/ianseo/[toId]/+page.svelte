@@ -177,10 +177,12 @@
 	const nameOf = (path: string) => path.split('/').pop()?.replace(/\.php$/i, '') ?? path;
 </script>
 
+<!-- ianseo prints the venue and the date on one line, so the list's own undated copy of the date is
+	not added to it: the two together said the day twice, once without its year. -->
 <PageHeader
 	motif="ianseo"
 	title={competition?.name || tournament?.name || $t('ianseo.title')}
-	subtitle={[tournament?.dates, competition?.where || tournament?.city].filter(Boolean).join(' · ')}
+	subtitle={competition?.where || [tournament?.dates, tournament?.city].filter(Boolean).join(' · ')}
 >
 	{#snippet lead()}
 		<a href={from} class="-ml-1 inline-flex text-muted" aria-label={$t('common.back')}>
