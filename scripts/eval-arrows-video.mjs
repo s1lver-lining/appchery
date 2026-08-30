@@ -27,6 +27,39 @@ const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
  * Where a recording lives, which is not always at the top of the corpus: a session dropped in as its
  * own dated folder is still one of the recordings this is measuring.
  */
+/**
+ * Frames a second, from the timestamps the recorder wrote rather than from the header it did not.
+ *
+ * Packets, not frames: nothing needs decoding to answer this, and reading them takes a twentieth of a
+ * second on the largest recording here.
+ */
+const rates = new Map();
+async function frameRate(file) {
+	if (rates.has(file)) return rates.get(file);
+	const out = await new Promise((done) => {
+		const child = spawn('ffprobe', [
+			'-v', 'error', '-select_streams', 'v:0',
+			'-show_entries', 'packet=pts_time', '-of', 'csv=p=0', file
+		], { stdio: ['ignore', 'pipe', 'ignore'] });
+		let text = '';
+		child.stdout.on('data', (chunk) => (text += chunk));
+		child.on('close', () => done(text));
+	});
+	// Trimmed before converting: an empty line becomes zero rather than nothing, and the trailing one
+	// would then be the last timestamp, making every recording look like it lasted no time at all.
+	const stamps = out
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line !== '')
+		.map(Number)
+		.filter((n) => Number.isFinite(n));
+	const last = stamps[stamps.length - 1] ?? 0;
+	// Thirty where the file will not say, which is the old assumption and no worse than it was.
+	const rate = stamps.length > 1 && last > 0 ? (stamps.length - 1) / last : 30;
+	rates.set(file, rate);
+	return rate;
+}
+
 async function fileOf(name) {
 	const found = await listRecordings(VIDEOS);
 	return found.find((r) => r.name === name)?.path ?? join(VIDEOS, name);
@@ -48,6 +81,8 @@ const option = (name, fallback) => {
 	return i === -1 ? fallback : args[i + 1];
 };
 const only = option('video', null);
+/** Frames a second, when the real one is to be overridden. Only for comparing against an old reading. */
+const forceFps = Number(option('fps', 0));
 /** Seconds of the recording to use, since an archer will not sweep for a minute. */
 const seconds = Number(option('seconds', 0));
 /**
@@ -97,11 +132,24 @@ for (const name of (await readdir(WORK)).sort()) {
 	const at = meta.chosen[label.arrowFrame];
 	const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
 	// A sweep the archer would actually make: a few seconds either side of the labelled moment.
-	const span = Math.round(seconds * 30);
+	/*
+	 * The rate the recording was actually shot at, read off the frames themselves.
+	 *
+	 * It used to be assumed to be thirty and it is sixty. The header is no help — it claims a thousand
+	 * frames a second — but every frame carries the moment it was captured, and those are the truth: a
+	 * recording of 535 frames ends at 8.926 seconds on every one of the twenty seven in the corpus.
+	 *
+	 * It matters twice over. The window either side of the labelled frame is counted in frames, so at
+	 * half the true rate it covered half the sweep it claimed to. And the scanner is told how much time
+	 * has passed so it can decide when to look again, so at half the true rate it was told two seconds
+	 * had gone by when one had, and given twice the passes the phone would ever have offered it.
+	 */
+	const fps = forceFps || (await frameRate(await fileOf(name)));
+	const span = Math.round(seconds * fps);
 	const first = seconds > 0 ? Math.max(0, at - span) : 0;
 	const limit = seconds > 0 ? at + span : Infinity;
 	// Counted from the first frame fed in, which is what the sweep sees.
-	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, 30, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
+	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, fps, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
 
 	let index = 0;
 	for await (const frame of decode(await fileOf(name), small.width, small.height, small)) {
