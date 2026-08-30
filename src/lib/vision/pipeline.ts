@@ -153,6 +153,11 @@ export class Scanner {
 		return this.tracker.arrows;
 	}
 
+	/** What an accepted end would write down, as against what is being shown while it gathers. */
+	get scored(): Impact[] {
+		return this.tracker.scored;
+	}
+
 	get pending(): Impact[] {
 		return this.tracker.pending;
 	}

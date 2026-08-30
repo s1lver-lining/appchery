@@ -134,6 +134,9 @@ const errors = [];
 const rows = [];
 const wrong = [];
 let doubles = 0;
+/** The same tally over the marks that earned their place, which is what an accepted end writes down. */
+let sureFound = 0;
+let sureSpurious = 0;
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
@@ -267,6 +270,29 @@ for (const name of (await readdir(WORK)).sort()) {
 	wanted += targets.length;
 	spurious += result.arrows.length - taken.size;
 
+	/*
+	 * The same again, over only the marks that earned their place.
+	 *
+	 * Two tiers are shown and they answer different questions. What is drawn is the detector's best
+	 * guess at every moment, unsure marks included, because an archer standing at the boss would rather
+	 * see a guess they can drop than an empty screen. What is scored is what cleared the bar. Reporting
+	 * one number for both would hide whichever of them a change actually moved.
+	 */
+	const sureTaken = new Set();
+	let sureHit = 0;
+	for (const target of targets) {
+		let best = -1;
+		let near = MATCH;
+		result.scored.forEach((arrow, i) => {
+			if (sureTaken.has(i)) return;
+			const d = Math.hypot(arrow.x - target.x, arrow.y - target.y);
+			if (d < near) { near = d; best = i; }
+		});
+		if (best >= 0) { sureTaken.add(best); sureHit += 1; }
+	}
+	sureFound += sureHit;
+	sureSpurious += result.scored.length - sureTaken.size;
+
 	/**
 	 * What the wrong marks actually are, rather than how many. Every threshold in the proposer has been
 	 * swept against the totals without anyone looking at the things being rejected, which is how a whole
@@ -312,6 +338,7 @@ console.log(`\ndetector            ${model ? 'learned' : 'classical'}`);
 console.log(`\narrows found        ${found}/${wanted} (${((found / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`spurious arrows     ${spurious} (${(spurious / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
+console.log(`  of those, scored  ${sureFound}/${wanted} (${((sureFound / wanted) * 100).toFixed(0)}%) right, ${sureSpurious} wrong (${(sureSpurious / Math.max(rows.length,1)).toFixed(1)} per recording)`);
 console.log(`double marks        ${doubles} (${(doubles / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(
 	`impact error        ${sorted.length ? pct(sorted[Math.floor(sorted.length / 2)]) : '--'} median, ` +

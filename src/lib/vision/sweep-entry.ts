@@ -7,8 +7,10 @@ import type { Frame, FaceLocation, Impact } from './types';
 export { DETECT_EVERY_MS } from './live';
 
 export interface SweepResult {
-	/** Arrows confirmed by the end of the recording, in the detector's own face coordinates. */
+	/** Arrows shown by the end of the recording, in the detector's own face coordinates. */
 	arrows: Impact[];
+	/** Of those, the ones that earned their place, which is what an accepted end writes down. */
+	scored: Impact[];
 	/** The fit on the frame the archer placed the labels against, for putting both in one frame. */
 	at: FaceLocation | null;
 	framesWithFace: number;
@@ -16,6 +18,14 @@ export interface SweepResult {
 	proposals: number;
 	/** Every proposal of every pass, to separate what was never seen from what was seen and dropped. */
 	everything: { x: number; y: number; pass: number }[];
+	/**
+	 * The pass at which the face first counted as found, so latency can be measured from that moment.
+	 *
+	 * Which is the moment the archer cares about. Time from the start of the recording mixes up how
+	 * long the detector took with how long the archer spent walking towards the boss with the phone
+	 * pointed at the grass, and those are not the same question at all.
+	 */
+	steadyFrom: number | null;
 	/**
 	 * Where the face was on every single frame, which is a different question from where it ends up.
 	 *
@@ -44,6 +54,7 @@ export class Sweep {
 	private proposals = 0;
 	private everything: { x: number; y: number; pass: number }[] = [];
 	private at: FaceLocation | null = null;
+	private firstSteady: number | null = null;
 	private readonly path: SweepResult['track'] = [];
 
 	constructor(
@@ -103,6 +114,7 @@ export class Sweep {
 			this.last = nowMs;
 			const result = this.scanner.pushReduced(small);
 			this.passes += 1;
+			if (this.firstSteady === null && result.steady) this.firstSteady = this.passes;
 			this.proposals += result.detections;
 			for (const seen of result.proposed) {
 				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes });
@@ -122,11 +134,13 @@ export class Sweep {
 	result(): SweepResult {
 		return {
 			arrows: this.scanner.arrows,
+			scored: this.scanner.scored,
 			at: this.at,
 			framesWithFace: this.withFace,
 			passes: this.passes,
 			proposals: this.proposals,
 			everything: this.everything,
+			steadyFrom: this.firstSteady,
 			track: this.path
 		};
 	}

@@ -42,6 +42,8 @@ export interface SweepOptions {
 	earlyPasses?: number;
 	/** Passes that must have proposed a place before it is worth offering as a guess. */
 	guessVotes?: number;
+	/** Passes that must have proposed a place before it is worth showing as an unsure mark. */
+	fillVotes?: number;
 }
 
 export class SweepTracker {
@@ -74,6 +76,7 @@ export class SweepTracker {
 	private readonly guessAfter: number;
 	private readonly guessVotes: number;
 	private readonly earlyPasses: number;
+	private readonly fillVotes: number;
 
 	constructor(options: SweepOptions = {}) {
 		/**
@@ -158,6 +161,17 @@ export class SweepTracker {
 		 * looking at an empty overlay while the evidence is gathered.
 		 */
 		this.earlyPasses = options.earlyPasses ?? 6;
+		/**
+		 * Looks a place needs before it is worth showing as an unsure mark.
+		 *
+		 * One, because the question it answers is not whether this is an arrow. It is what the detector's
+		 * best guess is right now, on the understanding that it is a guess: the alternative being offered
+		 * is a blank overlay, and a blank overlay is not more truthful, it just says less. Asking for two
+		 * was measured and it trades most of the first half second away, finding nine percent of the
+		 * arrows by then against twenty three, for wrong marks that the archer was going to have to look
+		 * at either way.
+		 */
+		this.fillVotes = options.fillVotes ?? 1;
 	}
 
 	setLimit(limit: number) {
@@ -179,9 +193,49 @@ export class SweepTracker {
 	 * thing as a missing arrow, so this only ever offers guesses when it has been told how many to find.
 	 */
 	get arrows(): Impact[] {
-		const offered = [...this.confirmed, ...this.guesses()];
-		// Nothing believed yet, so show what there is. These go away the moment anything is confirmed.
-		return offered.length > 0 ? offered : this.early;
+		return [...this.confirmed, ...this.filling()];
+	}
+
+	/**
+	 * The best places left over, shown at once and marked unsure, to make the end up to its count.
+	 *
+	 * The archer is asking where the arrows are, and the detector has an opinion from its very first
+	 * look at the boss. It used to keep that opinion to itself. Provisional marks were offered for the
+	 * first six passes and then stopped, and a separate set of guesses began only after eight passes and
+	 * only for places already seen six times, which is one look short of the bar a confirmed arrow has
+	 * to clear. Between those two there was a gap of about a second with nothing on the screen at all,
+	 * and worse, the early marks stopped the instant anything at all was confirmed: find one arrow of
+	 * six and the other five went blank.
+	 *
+	 * So it is one rule now and it runs the whole time. Whatever has been confirmed is shown as
+	 * confirmed; the rest of the count is filled with the best supported places that are not already
+	 * marked, and those are flagged unsure. Measured over the labelled recordings, that puts a right
+	 * mark on nearly a quarter of the arrows within a pass or two of the boss being found, where before
+	 * there was nothing to look at, and it costs about three wrong marks an end which the archer can see
+	 * are unsure and can drop with one tap.
+	 *
+	 * None of this is scored. `scored` is what an accepted end writes down and it asks for the old
+	 * evidence, so a mark shown early has to earn its place before it can become a number.
+	 */
+	private filling(): Impact[] {
+		const room = (this.expected ?? Math.min(this.limit, 6)) - this.confirmed.length;
+		if (!Number.isFinite(room) || room <= 0) return [];
+		const offered: Impact[] = [];
+		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
+			if (offered.length >= room) break;
+			if (candidate.votes < this.fillVotes) continue;
+			// Not a second mark on a shaft already marked, nor on one already scored in an earlier end.
+			if (this.apart(this.confirmed, candidate)) continue;
+			if (this.apart(this.taken, candidate)) continue;
+			if (this.apart(offered, candidate)) continue;
+			offered.push({ ...candidate, unsure: true });
+		}
+		return offered;
+	}
+
+	/** What an accepted end writes down, which is never a mark that has not earned its place. */
+	get scored(): Impact[] {
+		return this.settledArrows;
 	}
 
 	/** What an accepted end actually scores, which never includes the first seconds' provisional marks. */
