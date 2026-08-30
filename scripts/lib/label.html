@@ -313,6 +313,8 @@
 	let lockRotation = false;
 	/** The fit as it stood when the drag began, which is the ring the handles are walked around. */
 	let lockedFit = null;
+	/** Where in the dot the drag took hold of it, so the handle is carried rather than snapped. */
+	let grabOffset = [0, 0];
 
 	/** Whether to draw the line from each impact to its nock, which is the thing that clutters a face. */
 	let showNocks = true;
@@ -1309,6 +1311,15 @@
 			});
 			if (best >= 0) {
 				dragging = best;
+				/*
+				 * How far into the dot the grab landed, kept so the drag moves it rather than teleports it.
+				 *
+				 * The dot is drawn several pixels across and can be taken hold of from anywhere inside it,
+				 * but the handle was being set to wherever the pointer was, so the first movement of the
+				 * mouse snapped its centre under the cursor. On a fit already placed to within a pixel that
+				 * jump is the whole correction, made in the wrong direction, before the drag has begun.
+				 */
+				grabOffset = [s.handles[best][0] - p.x, s.handles[best][1] - p.y];
 				// Frozen now, so the ring the handles walk around cannot drift as they are walked.
 				lockedFit = lockRotation ? homography(s.handles) : null;
 				view.setPointerCapture(event.pointerId);
@@ -1575,10 +1586,13 @@
 		}
 		if (dragging < 0) return;
 		const p = at(event);
+		// Where the handle should be, which is where the pointer is plus wherever inside the dot it was
+		// taken hold of. Locked, the same point is what the handle is walked round the ring towards.
+		const aim = { x: p.x + grabOffset[0], y: p.y + grabOffset[1] };
 		if (lockRotation && lockedFit) {
-			state().handles = turnedHandles(lockedFit, dragging, p);
+			state().handles = turnedHandles(lockedFit, dragging, aim);
 		} else {
-			state().handles[dragging] = [p.x, p.y];
+			state().handles[dragging] = [aim.x, aim.y];
 		}
 		draw();
 	};
@@ -1595,6 +1609,7 @@
 			changed();
 		}
 		lockedFit = null;
+		grabOffset = [0, 0];
 		dragging = -1;
 		draw();
 	};
