@@ -280,6 +280,38 @@ async function serve() {
 				return send(response, 200, 'image/jpeg', await readFile(join(WORK, decodeURIComponent(video), file)));
 			}
 
+			/*
+			 * The detector itself, bundled once and handed to the page.
+			 *
+			 * It runs in the page rather than here because the page already has the picture decoded and on
+			 * a canvas, and because that is where the app runs it: the same code on the same pixels. Sent
+			 * over rather than reimplemented, so what the tool shows cannot drift from what the app does,
+			 * which is the only reason to look at it at all.
+			 */
+			if (url.pathname === '/vision.js') {
+				return send(response, 200, 'text/javascript', await vision());
+			}
+
+			// About a megabyte of weights, so only when the learned detector is actually asked for.
+			if (url.pathname === '/model') {
+				const file = join(ROOT, 'src/lib/vision/arrow-model.json');
+				if (!existsSync(file)) return send(response, 404, 'text/plain', 'no model trained');
+				return send(response, 200, 'application/json', await readFile(file));
+			}
+
+			if (url.pathname === '/photos') {
+				return send(response, 200, 'application/json', JSON.stringify(await photoSets()));
+			}
+
+			if (url.pathname.startsWith('/photo/')) {
+				const [, , set, file] = url.pathname.split('/');
+				const found = (await photoSets()).find((p) => p.set === decodeURIComponent(set));
+				const name = decodeURIComponent(file);
+				// Only the files this server itself listed, so a path cannot be asked for sideways.
+				if (!found || !found.images.includes(name)) return send(response, 404, 'text/plain', 'not found');
+				return send(response, 200, mimeOf(name), await readFile(join(found.at, name)));
+			}
+
 			if (url.pathname.startsWith('/labels/') && request.method === 'POST') {
 				const video = decodeURIComponent(url.pathname.split('/')[2]);
 				const body = await text(request);
@@ -314,6 +346,66 @@ function text(request) {
 
 async function page() {
 	return readFile(join(ROOT, 'scripts/lib/label.html'), 'utf8');
+}
+
+/** The detector, bundled for the browser. Built once and kept, because it does not change while serving. */
+let bundled = null;
+async function vision() {
+	if (bundled) return bundled;
+	const built = await build({
+		entryPoints: [join(ROOT, 'src/lib/vision/still-entry.ts')],
+		bundle: true,
+		format: 'esm',
+		write: false
+	});
+	bundled = built.outputFiles[0].text;
+	return bundled;
+}
+
+const PHOTO = /\.(jpe?g|png|webp|avif|bmp|gif)$/i;
+
+const MIMES = {
+	'.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+	'.webp': 'image/webp', '.avif': 'image/avif', '.bmp': 'image/bmp', '.gif': 'image/gif'
+};
+
+function mimeOf(name) {
+	return MIMES[extname(name).toLowerCase()] ?? 'application/octet-stream';
+}
+
+/**
+ * The photographs in the corpus, as sets to browse.
+ *
+ * Here so the detector can be pointed at a still as easily as at a frame of a recording. The two fail
+ * at different things and a recording cannot show it: every frame of one is the same boss in the same
+ * light, while the photographs are hundreds of different bosses, faces, distances and afternoons, and
+ * that is the set on which a change either generalises or does not.
+ *
+ * Never labelled here. These sets carry ground truth of their own where they have any, and inventing a
+ * second, differently made copy of it beside them would be worse than having none.
+ */
+async function photoSets() {
+	const root = join(ROOT, 'test/datasets');
+	const sets = [];
+	for (const entry of await readdir(root, { withFileTypes: true })) {
+		if (!entry.isDirectory()) continue;
+		for (const at of [join(root, entry.name), join(root, entry.name, 'images')]) {
+			if (!existsSync(at)) continue;
+			const images = (await readdir(at)).filter((f) => PHOTO.test(f)).sort(byNumberThenName);
+			if (images.length === 0) continue;
+			sets.push({ set: entry.name, at, images });
+			break;
+		}
+	}
+	return sets;
+}
+
+/** So a set named 1, 2, 10 reads in that order rather than as 1, 10, 2. */
+function byNumberThenName(a, b) {
+	const left = Number(a.replace(/\D+.*$/, ''));
+	const right = Number(b.replace(/\D+.*$/, ''));
+	if (Number.isFinite(left) && Number.isFinite(right) && left !== right) return left - right;
+	return a < b ? -1 : a > b ? 1 : 0;
 }
 
 /**

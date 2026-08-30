@@ -149,6 +149,17 @@
 		</div>
 
 		<div>
+			<h2>What the detector sees</h2>
+			<div class="row">
+				<button id="detOff">Off</button>
+				<button id="detClassical">Classical</button>
+				<button id="detLearned">Learned</button>
+			</div>
+			<p class="dim" id="detectorNote" style="margin-top:6px"></p>
+			<p class="dim">Drawn dashed in magenta, over the labels. The app's own detector on this picture.</p>
+		</div>
+
+		<div>
 			<h2>View</h2>
 			<div class="row">
 				<button id="out">Zoom &minus;</button><button id="in">Zoom &plus;</button><button id="wide">Fit</button>
@@ -159,7 +170,8 @@
 		<p class="dim" id="status"></p>
 		<p class="dim">
 			<kbd>&larr;</kbd><kbd>&rarr;</kbd> frame &middot; <kbd>F</kbd><kbd>A</kbd><kbd>N</kbd><kbd>M</kbd> mode
-			&middot; <kbd>H</kbd> lines &middot; <kbd>1</kbd>&ndash;<kbd>9</kbd> pick an arrow while nocking
+			&middot; <kbd>H</kbd> lines &middot; <kbd>D</kbd> detector
+			&middot; <kbd>1</kbd>&ndash;<kbd>9</kbd> pick an arrow while nocking
 		</p>
 	</div>
 </aside>
@@ -266,6 +278,17 @@
 	function markProgress() {
 		drawList();
 	}
+
+	for (const [id, which] of [['detOff', 'off'], ['detClassical', 'classical'], ['detLearned', 'learned']]) {
+		el(id).onclick = () => {
+			detector = which;
+			el('detOff').className = detector === 'off' ? 'on' : '';
+			el('detClassical').className = detector === 'classical' ? 'on' : '';
+			el('detLearned').className = detector === 'learned' ? 'on' : '';
+			void runDetector();
+		};
+	}
+	el('detOff').className = 'on';
 
 	el('search').oninput = () => {
 		search = el('search').value.toLowerCase();
@@ -455,6 +478,56 @@
 		show();
 	}
 
+	/**
+	 * The detector, run in the page on the picture being looked at.
+	 *
+	 * The point of it here is comparison. A number saying the detector found four arrows of six does not
+	 * say which two, or whether it put them a ring out or somewhere else entirely, or whether it was the
+	 * arrows it got wrong or the face they are measured against. Drawn over the hand placed labels, all
+	 * of that is one glance.
+	 *
+	 * Fetched rather than reimplemented, and it is the app's own module: anything the tool showed that
+	 * the app would not do is worse than showing nothing, because it would be believed.
+	 */
+	let detector = 'off';
+	let vision = null;
+	let model = null;
+	/** What the last run found, and what it cost, or null when nothing has been run on this picture. */
+	let detected = null;
+	let detecting = false;
+
+	async function runDetector() {
+		detected = null;
+		if (detector === 'off' || !image.width) return;
+		detecting = true;
+		el('detectorNote').textContent = 'Working...';
+		try {
+			vision ??= await import('/vision.js');
+			if (detector === 'learned') model ??= await (await fetch('/model')).json();
+
+			// The picture's own pixels, which is what the detector is given everywhere else.
+			const off = document.createElement('canvas');
+			off.width = image.width;
+			off.height = image.height;
+			const c = off.getContext('2d', { willReadFrequently: true });
+			c.drawImage(image, 0, 0);
+			const pixels = c.getImageData(0, 0, image.width, image.height);
+			const frameData = { width: image.width, height: image.height, data: pixels.data };
+
+			const started = performance.now();
+			const faces =
+				detector === 'learned'
+					? vision.analyseLearned(frameData, 2, model)
+					: vision.analyse(frameData, 2, {});
+			detected = { faces, ms: performance.now() - started };
+		} catch (error) {
+			detected = { faces: [], ms: 0, error: String(error) };
+		} finally {
+			detecting = false;
+			draw();
+		}
+	}
+
 	async function show() {
 		const v = video();
 		image = new Image();
@@ -469,6 +542,8 @@
 		view.width = (image.width + pad * 2) * zoom;
 		view.height = (image.height + pad * 2) * zoom;
 		draw();
+		// After the frame is up, so stepping through frames never waits on a detection.
+		void runDetector();
 	}
 
 	function draw() {
@@ -562,6 +637,8 @@
 			}
 		}
 
+		drawDetected(line);
+
 		el('fitMode').className = mode === 'fit' ? 'on' : '';
 		el('arrowMode').className = mode === 'arrows' ? 'on' : '';
 		el('nockMode').className = mode === 'nocks' ? 'on' : '';
@@ -624,6 +701,79 @@
 			(mode === 'arrows' && v.arrows.length > 0 && v.arrowFrame !== frame
 				? `. These arrows were placed on frame ${(v.arrowFrame ?? 0) + 1}: correcting one here reads it through this frame's fit instead, which moves it relative to the rest. Correct them on frame ${(v.arrowFrame ?? 0) + 1}, or move them all here on purpose.`
 				: '');
+	}
+
+	/**
+	 * What the detector made of this picture, over the top of what was placed by hand.
+	 *
+	 * In magenta throughout and dashed, because everything else on the canvas is ground truth and the
+	 * two must never be mistaken for one another at a glance. The detector's own face is drawn as well
+	 * as its arrows: an arrow in the wrong place is as often a face fitted a little wrong as a shaft
+	 * missed, and the two are indistinguishable from the arrows alone.
+	 */
+	function drawDetected(line) {
+		el('detectorNote').textContent = detecting
+			? 'Working...'
+			: detector === 'off'
+				? ''
+				: detected?.error
+					? detected.error
+					: detected
+						? `${detected.faces.length} faces, ` +
+							`${detected.faces.reduce((n, f) => n + f.arrows.length, 0)} arrows, ` +
+							`${detected.ms.toFixed(0)}ms` +
+							(detected.faces.length === 0 ? '. No face, so no arrows were looked for.' : '')
+						: '';
+		if (!detected || detector === 'off') return;
+
+		context.save();
+		context.setLineDash([line * 4, line * 3]);
+		for (const face of detected.faces) {
+			/*
+			 * Drawn through the four points rather than from the ellipse beside them. A boss seen from
+			 * anywhere but square on is a projection, and the ellipse matching it round the gold does not
+			 * match it at the edge, so an ellipse would show the detector missing rings it did not miss.
+			 */
+			const h = face.anchors && homography(face.anchors);
+			if (h) {
+				for (const r of [0.2, 1.0]) {
+					context.beginPath();
+					for (let i = 0; i <= 96; i++) {
+						const a = (i / 96) * Math.PI * 2;
+						const p = project(h, Math.cos(a) * r, Math.sin(a) * r);
+						i === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y);
+					}
+					context.lineWidth = line * 1.5;
+					context.strokeStyle = 'rgba(255,32,255,0.85)';
+					context.stroke();
+				}
+			}
+
+			context.setLineDash([]);
+			for (const arrow of face.arrows) {
+				// A cross, not a disc: the hand placed arrows are discs, and one must not hide the other.
+				const r = Math.max(6, image.width / 90);
+				context.beginPath();
+				context.moveTo(arrow.imageX - r, arrow.imageY);
+				context.lineTo(arrow.imageX + r, arrow.imageY);
+				context.moveTo(arrow.imageX, arrow.imageY - r);
+				context.lineTo(arrow.imageX, arrow.imageY + r);
+				context.lineWidth = line * 2;
+                context.strokeStyle = '#ff20ff';
+				context.stroke();
+
+				const text = arrow.decimal === null ? arrow.label : arrow.decimal.toFixed(1);
+				context.font = `600 ${Math.max(11, image.width / 55)}px system-ui, sans-serif`;
+				context.textAlign = 'center';
+				context.lineWidth = line * 2.5;
+				context.strokeStyle = 'rgba(0,0,0,0.8)';
+				context.strokeText(text, arrow.imageX, arrow.imageY - r * 1.4);
+				context.fillStyle = '#ff20ff';
+				context.fillText(text, arrow.imageX, arrow.imageY - r * 1.4);
+			}
+			context.setLineDash([line * 4, line * 3]);
+		}
+		context.restore();
 	}
 
 	function at(event) {
@@ -1024,6 +1174,10 @@
 		if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
 		if (event.key.toLowerCase() === 'm') el('markMode').onclick();
 		if (event.key.toLowerCase() === 'h') el('hide').onclick();
+		// Round the three, because the useful thing is flicking between them on one picture.
+		if (event.key.toLowerCase() === 'd') {
+			el(detector === 'off' ? 'detClassical' : detector === 'classical' ? 'detLearned' : 'detOff').onclick();
+		}
 		if (event.key === '+' || event.key === '=') el('in').onclick();
 		if (event.key === '-') el('out').onclick();
 		if (event.key === '0') el('wide').onclick();

@@ -16,6 +16,16 @@ export interface StillFace {
   semiMinor: number;
   rotation: number;
   agreement: number;
+  /**
+   * The four points the fit is really made of, in the original image's pixels.
+   *
+   * Reported beside the ellipse because they are not the same thing and only one of them is the fit. A
+   * boss seen from anywhere but square on is a projection, and the ellipse that matches it round the
+   * gold does not match it at the edge: drawn from the ellipse, the outer ring lands a couple of rings
+   * inside where it belongs. Four points carry the projection itself, so anything drawing the face
+   * rather than summarising it should draw from these.
+   */
+  anchors: [number, number][];
   arrows: {
     x: number;
     y: number;
@@ -82,6 +92,7 @@ export function analyseLearned(
         semiMinor: full.semiMinor,
         rotation: face.rotation,
         agreement: face.support,
+        anchors: full.anchors.map(([x, y]) => [x, y] as [number, number]),
         arrows: detectArrowsLearned(frame, full, model, threshold).map(
           (arrow) => ({
             x: arrow.x,
@@ -131,6 +142,7 @@ export function analyse(
         semiMinor: face.semiMinor * scale,
         rotation: face.rotation,
         agreement: face.support,
+        anchors: face.anchors.map(([x, y]) => [x * scale, y * scale] as [number, number]),
         arrows,
       };
     });
