@@ -183,55 +183,32 @@ for (const name of (await readdir(WORK)).sort()) {
 			const [one, two] = [placed[i], placed[j]];
 			const [da, db] = [seen.get(one.at), seen.get(two.at)];
 			if (!da || !db) continue;
-			const here = [];
-			for (const a of one.arrows) {
-				const b = two.arrows.find((x) => x.n === a.n);
-				if (!b) continue;
+
+			const paired = pairUp(one.arrows, two.arrows);
+			if (!paired) {
+				setAside += Math.min(one.arrows.length, two.arrows.length);
+				aside.push({ video: name.slice(-24), one: one.at, two: two.at, why: 'no clean pairing' });
+				continue;
+			}
+			if (paired.floor > 0.05) {
+				setAside += paired.pairs.length;
+				aside.push({ video: name.slice(-24), one: one.at, two: two.at, off: paired.floor, why: 'labels disagree' });
+				continue;
+			}
+			for (const m of paired.misses) floors.push(m);
+
+			let dcross = 0;
+			let ddot = 0;
+			for (const { a, b } of paired.pairs) {
 				// The same shaft, put back in the picture at each moment, then read by the detector.
 				const pa = project(one.hand, a.x, a.y);
 				const pb = project(two.hand, b.x, b.y);
-				here.push({ a, b, moved: Math.hypot(toFace(db, pb.x, pb.y).x - toFace(da, pa.x, pa.y).x, toFace(db, pb.x, pb.y).y - toFace(da, pa.x, pa.y).y) });
+				const u = toFace(da, pa.x, pa.y);
+				const v = toFace(db, pb.x, pb.y);
+				carried.push(Math.hypot(v.x - u.x, v.y - u.y));
+				dcross += u.x * v.y - u.y * v.x;
+				ddot += u.x * v.x + u.y * v.y;
 			}
-			/*
-			 * What the same measurement says about the labels themselves, which is the floor under it.
-			 *
-			 * The archer's two frames differ by a turn and nothing else, since both describe the same
-			 * boss, so taking the turn out should leave the six arrows sitting exactly on top of each
-			 * other. Whatever is left is the archer's own hand: a shaft clicked a few pixels differently,
-			 * or a fit dropped slightly differently. A detector error is only worth reporting down to
-			 * here, and reading this floor is the difference between measuring the detector and
-			 * measuring the labelling.
-			 */
-			if (here.length < 2) continue;
-			let cross = 0;
-			let dot = 0;
-			for (const { a, b } of here) {
-				cross += a.x * b.y - a.y * b.x;
-				dot += a.x * b.x + a.y * b.y;
-			}
-			const turn = Math.atan2(cross, dot);
-			const [cos, sin] = [Math.cos(turn), Math.sin(turn)];
-			const mine = here.map(({ a, b }) =>
-				Math.hypot(a.x * cos - a.y * sin - b.x, a.x * sin + a.y * cos - b.y)
-			);
-
-			/*
-			 * A pair the labels cannot support is not evidence about the detector.
-			 *
-			 * Two labellings of one set of arrows that do not lie on top of each other once the turn is
-			 * taken out are saying two different things about where the arrows are, and no reading of the
-			 * detector against them means anything. It happens: an arrow numbered differently on the two
-			 * frames, or one clicked on a shaft the wrong side of a crease. Set aside and counted, rather
-			 * than averaged in, because averaging them in reads as detector error and cannot be told from
-			 * it afterwards.
-			 */
-			if (median(mine) > 0.05) {
-				setAside += here.length;
-				aside.push({ video: name.slice(-24), one: one.at, two: two.at, off: median(mine) });
-				continue;
-			}
-			for (const m of mine) floors.push(m);
-			for (const h of here) carried.push(h.moved);
 
 			/*
 			 * How much of the move is a turn, and how big a turn it is.
@@ -241,14 +218,6 @@ for (const name of (await readdir(WORK)).sort()) {
 			 * is the first moves every arrow a quarter turn at once, which for an arrow halfway out is
 			 * over half the face radius. Reported as an angle, the two are unmistakable.
 			 */
-			let dcross = 0;
-			let ddot = 0;
-			for (const { a, b } of here) {
-				const u = toFace(da, project(one.hand, a.x, a.y).x, project(one.hand, a.x, a.y).y);
-				const v = toFace(db, project(two.hand, b.x, b.y).x, project(two.hand, b.x, b.y).y);
-				dcross += u.x * v.y - u.y * v.x;
-				ddot += u.x * v.x + u.y * v.y;
-			}
 			spins.push({ deg: (Math.atan2(dcross, ddot) * 180) / Math.PI, video: name.slice(-24) });
 		}
 	}
@@ -377,8 +346,8 @@ for (const a of aside) byVideo.set(a.video, (byVideo.get(a.video) ?? 0) + 1);
 if (byVideo.size > 0) {
 	console.log('\nlabelled frames whose arrows disagree with another frame of the same recording:');
 	for (const [video, n] of [...byVideo].sort((a, b) => b[1] - a[1])) {
-		const worst = aside.filter((a) => a.video === video).sort((a, b) => b.off - a.off)[0];
-		console.log(`  ${video}  ${String(n).padStart(3)} pairs, worst frames ${worst.one} and ${worst.two} by ${pct(worst.off)}`);
+		const worst = aside.filter((a) => a.video === video).sort((a, b) => (b.off ?? 9) - (a.off ?? 9))[0];
+		console.log(`  ${video}  ${String(n).padStart(3)} pairs, worst frames ${worst.one} and ${worst.two}: ${worst.why}${worst.off ? ` by ${pct(worst.off)}` : ''}`);
 	}
 }
 console.log(`  set aside         ${setAside} arrow pairs whose two labellings disagree by more than 5%`);
@@ -426,6 +395,88 @@ for (const a of [...acquisitions].sort((x, y) => y.resized - x.resized)) {
 const worstTurn = [...turns].sort((a, b) => b.spread - a.spread).slice(0, 5);
 console.log('\nworst turn:');
 for (const t of worstTurn) console.log(`  ${t.video}  ${t.spread.toFixed(1)}°`);
+
+/**
+ * Works out which mark on one frame is which mark on another, and how far apart the two answers are.
+ *
+ * The labels are spots, not shafts with names. Nothing in the tool says that the third arrow clicked
+ * on one frame is the third clicked on another, and nothing should: an archer clicks whichever shaft
+ * they can see clearly. Reading the numbers as a correspondence, which this used to do, compares one
+ * arrow against a different one and calls the distance detector error.
+ *
+ * The correspondence is recoverable because the geometry is nearly rigid. Two hand fits of one boss
+ * describe the same circles and so differ by a turn about the middle and nothing else, and a scatter
+ * of six arrows is not symmetric, so there is exactly one turn that drops them onto each other. Swept
+ * over the whole circle, the right one stands out; at the wrong ones an arrow near the gold might
+ * land on a neighbour but the ones out at the edge cannot.
+ *
+ * Returns nothing where the winning turn does not give a clean one to one pairing, which is the
+ * honest answer for two frames that disagree about how many arrows are on the boss.
+ */
+function pairUp(one, two) {
+	if (one.length < 2 || two.length < 2) return null;
+	const [few, many] = one.length <= two.length ? [one, two] : [two, one];
+	const flipped = one.length > two.length;
+
+	let bestTurn = 0;
+	let bestCost = Infinity;
+	const cost = (turn) => {
+		const [cos, sin] = [Math.cos(turn), Math.sin(turn)];
+		let total = 0;
+		for (const a of few) {
+			const x = a.x * cos - a.y * sin;
+			const y = a.x * sin + a.y * cos;
+			let near = Infinity;
+			for (const b of many) near = Math.min(near, Math.hypot(x - b.x, y - b.y));
+			total += near;
+		}
+		return total / few.length;
+	};
+	// Half a degree over the whole circle, then bisected: the minimum is sharp and there is no start.
+	for (let k = 0; k < 720; k++) {
+		const turn = (k / 720) * Math.PI * 2;
+		const value = cost(turn);
+		if (value < bestCost) {
+			bestCost = value;
+			bestTurn = turn;
+		}
+	}
+	for (let step = (Math.PI * 2) / 720; step > 1e-5; step /= 3) {
+		for (const way of [step, -step]) {
+			let improved = true;
+			while (improved) {
+				improved = false;
+				const value = cost(bestTurn + way);
+				if (value < bestCost - 1e-12) {
+					bestTurn += way;
+					bestCost = value;
+					improved = true;
+				}
+			}
+		}
+	}
+
+	// One to one, or nothing: two marks claiming the same partner is not a correspondence.
+	const [cos, sin] = [Math.cos(bestTurn), Math.sin(bestTurn)];
+	const taken = new Set();
+	const pairs = [];
+	const misses = [];
+	for (const a of few) {
+		const x = a.x * cos - a.y * sin;
+		const y = a.x * sin + a.y * cos;
+		let pick = -1;
+		let near = Infinity;
+		for (let k = 0; k < many.length; k++) {
+			const d = Math.hypot(x - many[k].x, y - many[k].y);
+			if (d < near) { near = d; pick = k; }
+		}
+		if (pick < 0 || taken.has(pick)) return null;
+		taken.add(pick);
+		misses.push(near);
+		pairs.push(flipped ? { a: many[pick], b: a } : { a, b: many[pick] });
+	}
+	return { pairs, misses, floor: median(misses), turn: bestTurn };
+}
 
 function median(list) { return quantile(list, 0.5); }
 function quantile(list, share) {
