@@ -73,6 +73,23 @@
 	button:disabled { opacity: .4; cursor: default; }
 	.row { display: flex; gap: 6px; }
 	.row > * { flex: 1; }
+	/* The player covers the picture area entirely: watching and labelling are not done at once. */
+	#player { position: absolute; inset: 0; z-index: 3; background: #0b0c0e; }
+	#film { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; }
+	/* Positioned from script onto the letterboxed rect the video actually occupies. */
+	#filmOverlay { position: absolute; pointer-events: none; }
+	#transport {
+		position: absolute; left: 12px; right: 12px; bottom: 12px;
+		display: flex; align-items: center; gap: 8px;
+		background: rgba(15, 17, 21, 0.9); border: 1px solid var(--edge); border-radius: 9px; padding: 7px 9px;
+	}
+	#transport button { padding: 5px 10px; }
+	#playPause { min-width: 38px; font-size: 14px; line-height: 1; }
+	#seek {
+		flex: 1; min-width: 0; accent-color: var(--good); height: 4px; cursor: pointer;
+	}
+	.clock { font-variant-numeric: tabular-nums; font-size: 11px; color: var(--dim); white-space: nowrap; }
+
 	/* Over the picture, bottom right, where it is beside the thing it aims. */
 	#placing {
 		position: absolute; right: 14px; bottom: 14px; z-index: 2;
@@ -145,6 +162,24 @@
 		Each button carries its own instructions on hover, because they are a paragraph each and a
 		paragraph that is always on screen stops being read after the first day.
 	-->
+	<!--
+		The recording played back through the live scanner, which is the only way to see what the archer
+		sees. A still frame shows what one pass makes of one picture; everything that decides whether an
+		arrow is found is built up over time — the face followed between passes, the settle counter, the
+		tracker gathering agreement across viewpoints — and none of it exists on a frame considered alone.
+	-->
+	<div id="player" hidden>
+		<video id="film" playsinline preload="metadata"></video>
+		<canvas id="filmOverlay"></canvas>
+		<div id="transport">
+			<button id="playPause" title="Play or pause. While it plays the detector runs exactly as it does on the phone, at the same rate, dropping the passes it has no time for.">&#9654;</button>
+			<input id="seek" type="range" min="0" max="1000" value="0" step="1" aria-label="Timeline" />
+			<span class="clock" id="clock">0:00 / 0:00</span>
+			<button id="scorerToggle" title="Show or hide the scorer's overlay. Off, this is just the recording.">Scorer</button>
+			<button id="closePlayer" title="Back to the labelled frames">&times;</button>
+		</div>
+	</div>
+
 	<div id="placing">
 		<div class="modes">
 			<span class="pair">
@@ -183,6 +218,11 @@
 	</div>
 
 	<div class="work">
+
+		<div id="watch">
+			<h2 title="Plays the recording through the live scanner, at the rate the phone runs it and dropping the passes it has no time for, so what is drawn is what the archer would have seen through the camera.">Watch it</h2>
+			<div class="row"><button id="playRecording">Play the recording</button></div>
+		</div>
 
 		<div id="faceTypes">
 			<!--
@@ -532,6 +572,8 @@
 		 */
 		el('frames').style.display = source === 'photos' ? 'none' : '';
 		el('faceTypes').style.display = source === 'photos' ? 'none' : '';
+		el('watch').style.display = source === 'photos' ? 'none' : '';
+		if (source === 'photos' && !el('player').hidden) closePlayer();
 		el('frameHeading').textContent = source === 'photos' ? 'Photo ' : 'Frame ';
 		el('fitTools').style.display = 'none';
 		el('arrowTools').style.display = 'none';
@@ -719,6 +761,7 @@
 	}
 
 	function load(index) {
+		if (!el('player').hidden) closePlayer();
 		current = index;
 		frame = 0;
 		/*
@@ -821,6 +864,299 @@
 		}
 		drawList();
 		show();
+	}
+
+	/**
+	 * The recording played back through the app's own live scanner.
+	 *
+	 * `Replay` is the class the measuring harness uses, and it drives the real `Scanner` the way the
+	 * camera page drives it: a pass offered on a clock, dropped when the last one has not finished, the
+	 * face followed cheaply in between. Nothing here reimplements any of that. What is added is a video
+	 * element to decode the frames and a canvas to draw what comes back, which is what the camera page
+	 * adds too.
+	 *
+	 * The crop is deliberately not sharpened. `Replay` will cut the learned detector's crop from the
+	 * full resolution frame if asked, and the app cannot: detection there runs in a worker and the
+	 * reduced frame is the only thing handed across. Asking for it would make this a better detector
+	 * than the one being watched.
+	 */
+	let replayLib = null;
+	let replay = null;
+	let motionOf = null;
+	let playing = false;
+	let raf = 0;
+	const filmWork = document.createElement('canvas');
+	/**
+	 * How long the recording has been playing, in milliseconds, counted on the wall clock.
+	 *
+	 * Not read off the video, and that is deliberate. A recording made by the browser's own recorder
+	 * carries no honest frame rate — these claim a thousand frames a second — so its idea of how much
+	 * time has passed is not to be trusted, and it is the one number the detector's pacing turns on. The
+	 * phone has no such problem: frames arrive from the camera and the clock on the wall is the clock.
+	 * Counted the same way here, and only while it is actually playing.
+	 */
+	let playedMs = 0;
+	let lastTick = 0;
+
+	/** Started afresh, because everything the scanner knows it learnt from the frames before this one. */
+	function restartReplay() {
+		if (!replayLib) return;
+		replay = new replayLib.Replay(replayLib.DETECT_EVERY_MS, detector === 'learned' ? model : null, false, false);
+		if (motionOf) replay.setMotion(motionOf);
+		// The clock starts again with it, so a pass is not owed for the time spent somewhere else.
+		playedMs = 0;
+		lastTick = performance.now();
+	}
+
+	async function openPlayer() {
+		const v = video();
+		if (!v) return;
+		replayLib ??= await import('/replay.js');
+		if (detector === 'learned') model ??= await (await fetch('/model')).json();
+		try {
+			motionOf = (await (await fetch(`/motion/${encodeURIComponent(v.video)}`)).json()).samples ?? null;
+		} catch {
+			motionOf = null;
+		}
+		// Opened showing what the scanner makes of it, since that is what there is to see; the toggle in
+		// the transport turns it off for anyone who only wants to watch the recording.
+		if (detector === 'off') el('detClassical').onclick();
+		el('player').hidden = false;
+		const film = el('film');
+		film.src = `/video/${encodeURIComponent(v.video)}`;
+		await settleFilm(film);
+		restartReplay();
+		setPlaying(true);
+		raf = requestAnimationFrame(filmTick);
+	}
+
+	/**
+	 * Gets a length out of the file, and then plays it at the speed it was shot.
+	 *
+	 * These recordings are written by the browser's own recorder and carry no duration: it comes back as
+	 * infinity, which is not a number the timeline can be drawn against and not one anything can be
+	 * seeked to. Asking to go past the end makes the browser work the length out and say so, which is
+	 * the long standing way round it.
+	 *
+	 * What comes back is still not the time the archer spent. The container claims a frame rate of its
+	 * own, usually twice the camera's, so a sweep of eighteen seconds plays in nine. The frames were
+	 * counted when the recording was prepared, so the rate that makes the file last as long as it really
+	 * did is simply the ratio of the two, and playing at it puts both the picture and the detector's
+	 * clock back on the archer's own time.
+	 */
+	async function settleFilm(film) {
+		await new Promise((done) => {
+			if (film.readyState >= 1) return done();
+			film.addEventListener('loadedmetadata', done, { once: true });
+			setTimeout(done, 4000);
+		});
+
+		if (!Number.isFinite(film.duration)) {
+			await new Promise((done) => {
+				const settled = () => {
+					if (!Number.isFinite(film.duration)) return;
+					film.removeEventListener('durationchange', settled);
+					done();
+				};
+				film.addEventListener('durationchange', settled);
+				film.currentTime = 1e101;
+				setTimeout(done, 4000);
+			});
+		}
+		film.currentTime = 0;
+
+		const span = filmSpan();
+		const real = filmSeconds();
+		// Clamped, because a ratio built from two numbers this file was careless with could be anything.
+		film.playbackRate = span > 0 && real > 0 ? Math.min(4, Math.max(0.25, span / real)) : 1;
+	}
+
+	function closePlayer() {
+		setPlaying(false);
+		cancelAnimationFrame(raf);
+		raf = 0;
+		el('film').removeAttribute('src');
+		el('film').load();
+		el('player').hidden = true;
+		replay = null;
+	}
+
+	function setPlaying(on) {
+		const film = el('film');
+		playing = on;
+		el('playPause').innerHTML = on ? '&#10073;&#10073;' : '&#9654;';
+		if (on) void film.play().catch(() => setPlaying(false));
+		else film.pause();
+	}
+
+	/**
+	 * How far into the file the browser thinks it is, and how long the file really is.
+	 *
+	 * Two different questions, and the container answers only the first of them honestly. A recording
+	 * made by the browser's own recorder carries no duration and no sane frame rate, so `duration` comes
+	 * back as nothing, or as a number that would make a twenty second sweep three seconds long. The
+	 * frames were counted when the recording was prepared, and at the rate the camera runs that is the
+	 * length the archer actually spent, so that is what the clock shows.
+	 *
+	 * Seeking still goes through the browser's own timebase, because that is the only one it will take.
+	 */
+	function filmSpan() {
+		const film = el('film');
+		if (Number.isFinite(film.duration) && film.duration > 0) return film.duration;
+		try {
+			// Checked for being a real number as well: a recording with no duration in it reports its
+			// seekable end as infinity, which is not a length and makes every fraction of it zero.
+			const end = film.seekable.length > 0 ? film.seekable.end(film.seekable.length - 1) : 0;
+			if (Number.isFinite(end) && end > 0) return end;
+		} catch {
+			// Asked before anything is buffered, which is not an answer but is not a fault either.
+		}
+		return 0;
+	}
+
+	/** The camera's rate, which is what every other tool here assumes of these recordings. */
+	const FILM_FPS = 30;
+
+	function filmSeconds() {
+		const v = video();
+		return v?.frames ? v.frames / FILM_FPS : filmSpan();
+	}
+
+	/** Where the transport is, as a fraction of the recording. */
+	function filmAt() {
+		const film = el('film');
+		const span = filmSpan();
+		if (span > 0) return Math.min(1, film.currentTime / span);
+		/*
+		 * Some of these files say nothing about their length at all, and then the only thing moving is
+		 * the play head. Read against the length the frames imply, it is close enough to watch by, and
+		 * it is the difference between a clock that ticks and one stuck at zero all the way through.
+		 */
+		const counted = video()?.frames ? video().frames / FILM_FPS : 0;
+		return counted > 0 ? Math.min(1, film.currentTime / counted) : 0;
+	}
+
+	function showTransport() {
+		const length = filmSeconds();
+		el('clock').textContent = `${clock(filmAt() * length)} / ${clock(length)}`;
+		el('seek').disabled = filmSpan() <= 0;
+		if (!seeking) el('seek').value = String(filmAt() * 1000);
+	}
+
+	const clock = (seconds) => {
+		if (!Number.isFinite(seconds)) return '0:00';
+		const m = Math.floor(seconds / 60);
+		return `${m}:${String(Math.floor(seconds - m * 60)).padStart(2, '0')}`;
+	};
+
+	/**
+	 * One frame of playback: reduce it, offer it, draw what comes back.
+	 *
+	 * The reduction is the camera page's own, done by the canvas rather than by a loop over the pixels,
+	 * and at the scanner's own factor. Offered every frame; the scanner decides which ones it has time
+	 * to look at, exactly as it does on the phone.
+	 */
+	function filmTick() {
+		raf = requestAnimationFrame(filmTick);
+		const film = el('film');
+		if (!replay || film.readyState < 2 || !film.videoWidth) return;
+
+		const now = performance.now();
+		// Only while it is playing: a recording left paused is not a sweep the archer is still making.
+		if (playing) playedMs += Math.min(now - lastTick, 250);
+		lastTick = now;
+
+		const overlay = el('filmOverlay');
+		placeOverlay(film, overlay);
+		const context2 = overlay.getContext('2d');
+		if (!context2) return;
+		context2.clearRect(0, 0, overlay.width, overlay.height);
+
+		showTransport();
+		if (detector === 'off') return;
+
+		const factor = replay.scaleFactor;
+		const width = Math.floor(film.videoWidth / factor);
+		const height = Math.floor(film.videoHeight / factor);
+		filmWork.width = width;
+		filmWork.height = height;
+		const work = filmWork.getContext('2d', { willReadFrequently: true });
+		if (!work) return;
+		work.drawImage(film, 0, 0, width, height);
+		const small = { width, height, data: work.getImageData(0, 0, width, height).data };
+		// The full frame is never read: the crop is off, as it is in the app.
+		const state = replay.push(small, small, playedMs);
+		paintFilm(context2, state, film.videoWidth);
+	}
+
+	/** Lays the overlay exactly over the letterboxed picture, so nothing drawn is a pixel out. */
+	function placeOverlay(film, overlay) {
+		const box = el('player').getBoundingClientRect();
+		const scale = Math.min(box.width / film.videoWidth, box.height / film.videoHeight);
+		const w = film.videoWidth * scale;
+		const h = film.videoHeight * scale;
+		overlay.style.left = `${(box.width - w) / 2}px`;
+		overlay.style.top = `${(box.height - h) / 2}px`;
+		overlay.style.width = `${w}px`;
+		overlay.style.height = `${h}px`;
+		if (overlay.width !== film.videoWidth) overlay.width = film.videoWidth;
+		if (overlay.height !== film.videoHeight) overlay.height = film.videoHeight;
+	}
+
+	/**
+	 * What the scanner found, drawn in the video's own pixels.
+	 *
+	 * The rings go through the face's projection rather than as an ellipse, which is what the camera
+	 * page does and for the same reason: a boss seen from anywhere but square on is a projection, and
+	 * the ellipse that matches it round the gold does not match it at the edge.
+	 */
+	function paintFilm(c, state, width) {
+		const line = Math.max(2, width / 400);
+		c.lineWidth = line;
+
+		for (const face of state.faces) {
+			for (const share of replayLib.DRAWN_RINGS) {
+				c.beginPath();
+				for (let i = 0; i <= 96; i++) {
+					const a = (i / 96) * Math.PI * 2;
+					const p = replayLib.toImageCoords(face, Math.cos(a) * share, Math.sin(a) * share);
+					i === 0 ? c.moveTo(p.x, p.y) : c.lineTo(p.x, p.y);
+				}
+				// Green once the face is steady enough to take arrows from, magenta while it is not.
+				c.strokeStyle = state.steady ? 'rgba(0,230,118,0.9)' : 'rgba(255,64,255,0.85)';
+				c.lineWidth = share === 0.2 ? line * 1.5 : line;
+				c.stroke();
+			}
+		}
+
+		// Faint, because a candidate that never becomes an arrow is the thing worth watching.
+		for (const candidate of state.pending) {
+			c.beginPath();
+			c.arc(candidate.imageX, candidate.imageY, line * 3, 0, Math.PI * 2);
+			c.strokeStyle = 'rgba(255,193,7,0.8)';
+			c.lineWidth = line;
+			c.stroke();
+		}
+
+		for (const arrow of state.arrows) {
+			c.beginPath();
+			c.arc(arrow.imageX, arrow.imageY, line * 4, 0, Math.PI * 2);
+			c.strokeStyle = '#3ddc84';
+			c.lineWidth = line * 1.5;
+			c.stroke();
+			const text = arrow.decimal === null ? arrow.label : arrow.decimal.toFixed(1);
+			c.font = `600 ${Math.round(width / 32)}px system-ui, sans-serif`;
+			c.textAlign = 'center';
+			c.lineWidth = line * 2;
+			c.strokeStyle = 'rgba(0,0,0,0.75)';
+			c.strokeText(text, arrow.imageX, arrow.imageY - line * 6);
+			c.fillStyle = '#ffffff';
+			c.fillText(text, arrow.imageX, arrow.imageY - line * 6);
+		}
+
+		el('scorerToggle').textContent =
+			`${detector === 'learned' ? 'Learned' : 'Scorer'} ${state.arrows.length}` +
+			(state.steady ? '' : ' \u00b7 not steady');
 	}
 
 	/**
@@ -1638,6 +1974,32 @@
 		draw();
 	};
 
+	/** Raised while the timeline is being dragged, so playback does not fight the hand holding it. */
+	let seeking = false;
+
+	el('playRecording').onclick = () => void openPlayer();
+	el('closePlayer').onclick = () => closePlayer();
+	el('playPause').onclick = () => setPlaying(!playing);
+	el('seek').oninput = () => {
+		seeking = true;
+		const span = filmSpan();
+		if (span > 0) el('film').currentTime = (Number(el('seek').value) / 1000) * span;
+	};
+	el('seek').onchange = () => {
+		seeking = false;
+		/*
+		 * Everything the scanner knows it learnt from the frames before this one, so a jump has to start
+		 * it again. Kept where it was, a sweep dragged back to the beginning would go on showing arrows
+		 * gathered from a part of the recording that has not been played yet.
+		 */
+		restartReplay();
+	};
+	el('scorerToggle').onclick = () => {
+		el(detector === 'off' ? 'detClassical' : 'detOff').onclick();
+		if (detector !== 'off') restartReplay();
+		if (detector === 'off') el('scorerToggle').textContent = 'Scorer off';
+	};
+
 	el('fitLock').onclick = () => {
 		lockRotation = !lockRotation;
 		// Turning it on is a way of placing the face, so it says so by going there.
@@ -1855,9 +2217,16 @@
 
 	window.onkeydown = (event) => {
 		if (event.code === 'Space') {
+			// The player has the picture, so the space bar has the transport rather than the pan.
+			if (!el('player').hidden) {
+				event.preventDefault();
+				setPlaying(!playing);
+				return;
+			}
 			spaceDown = true;
 			event.preventDefault();
 		}
+		if (!el('player').hidden && event.key === 'Escape') return closePlayer();
 		// The filter box is a text field: every letter in it is a letter, not a shortcut.
 		if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
 		if (event.key === 'ArrowRight') el('next').onclick();

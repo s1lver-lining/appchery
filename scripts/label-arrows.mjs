@@ -44,8 +44,8 @@
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { readFile, writeFile, appendFile, mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
+import { readFile, writeFile, appendFile, mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises';
+import { existsSync, createReadStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename, extname } from 'node:path';
 import { listRecordings, motionPath } from './lib/recordings.mjs';
@@ -335,6 +335,31 @@ async function serve() {
 				return send(response, 200, 'text/javascript', await vision());
 			}
 
+			/*
+			 * The live scanner, for playing a recording back through it.
+			 *
+			 * A different bundle from the still detector because it is a different question. That one asks
+			 * what a photograph holds; this one holds the whole live path — the face followed between
+			 * passes, the settle counter, the tracker gathering agreement over time — which is the thing
+			 * an archer actually meets and which no single frame can show.
+			 */
+			if (url.pathname === '/replay.js') {
+				return send(response, 200, 'text/javascript', await replayBundle());
+			}
+
+			if (url.pathname.startsWith('/video/')) {
+				return await sendVideo(request, response, decodeURIComponent(url.pathname.split('/')[2]));
+			}
+
+			if (url.pathname.startsWith('/motion/')) {
+				const found = await fileOf(decodeURIComponent(url.pathname.split('/')[2]));
+				const motion = motionPath(found);
+				// Absent for every session recorded before the phone's sensors were kept, which is most, so
+				// that is an answer rather than a failure and does not belong in anybody's error log.
+				if (!existsSync(motion)) return send(response, 200, 'application/json', '{}');
+				return send(response, 200, 'application/json', await readFile(motion));
+			}
+
 			// About a megabyte of weights, so only when the learned detector is actually asked for.
 			if (url.pathname === '/model') {
 				const file = join(ROOT, 'src/lib/vision/arrow-model.json');
@@ -414,6 +439,54 @@ async function vision() {
 	});
 	bundled = built.outputFiles[0].text;
 	return bundled;
+}
+
+/** The live scanner, bundled for the browser. Built once and kept, as the still one is. */
+let replayJs = null;
+async function replayBundle() {
+	if (replayJs) return replayJs;
+	const built = await build({
+		entryPoints: [join(ROOT, 'src/lib/vision/video-entry.ts')],
+		bundle: true,
+		format: 'esm',
+		write: false
+	});
+	replayJs = built.outputFiles[0].text;
+	return replayJs;
+}
+
+/**
+ * Streams a recording to a video element, in pieces when it asks for them.
+ *
+ * Range requests are not optional here: without them the browser will play a file from the beginning
+ * and nothing else, so the timeline cannot be dragged and the whole point of a player is gone.
+ */
+async function sendVideo(request, response, name) {
+	const file = await fileOf(name);
+	if (!existsSync(file)) return send(response, 404, 'text/plain', 'not found');
+	const size = (await stat(file)).size;
+	const type = extname(file).toLowerCase() === '.webm' ? 'video/webm' : 'video/mp4';
+	const range = request.headers.range;
+
+	if (!range) {
+		response.writeHead(200, { 'content-type': type, 'content-length': size, 'accept-ranges': 'bytes' });
+		return createReadStream(file).pipe(response);
+	}
+
+	const [, from, to] = /bytes=(\d*)-(\d*)/.exec(range) ?? [];
+	const start = from ? Number(from) : 0;
+	const end = to ? Math.min(Number(to), size - 1) : size - 1;
+	if (start >= size || start > end) {
+		response.writeHead(416, { 'content-range': `bytes */${size}` });
+		return response.end();
+	}
+	response.writeHead(206, {
+		'content-type': type,
+		'content-range': `bytes ${start}-${end}/${size}`,
+		'accept-ranges': 'bytes',
+		'content-length': end - start + 1
+	});
+	return createReadStream(file, { start, end }).pipe(response);
 }
 
 const PHOTO = /\.(jpe?g|png|webp|avif|bmp|gif)$/i;
