@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # Starts the labelling tool: browse the corpus, place the labels, and see what the detector makes of it.
 #
-#   ./scripts/labeller.sh                 # serve the page
-#   ./scripts/labeller.sh --open          # and open a browser at it
-#   ./scripts/labeller.sh --port 9000     # somewhere other than 8787
-#   ./scripts/labeller.sh --prepare       # find the faces in any new recordings first
-#   ./scripts/labeller.sh --prepare --video 2026-08-29   # only that session
+#   ./scripts/labeling_tool.sh                 # serve the page
+#   ./scripts/labeling_tool.sh --open          # and open a browser at it
+#   ./scripts/labeling_tool.sh --port 9000     # somewhere other than 8787
+#   ./scripts/labeling_tool.sh --prepare       # find the faces in any new recordings first
+#   ./scripts/labeling_tool.sh --prepare --video 2026-08-29   # only that session
 #
 # A recording has to be prepared before it can be labelled: the faces are found on every frame and
 # fifteen frames are chosen to label, which takes a couple of minutes a recording and is why it is not

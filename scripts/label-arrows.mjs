@@ -21,7 +21,7 @@
  * corpus, over the top of the labels. Fetched from here as a bundle rather than reimplemented, because
  * anything the tool showed that the app would not do would be worse than showing nothing at all.
  *
- * Start it with ./scripts/labeller.sh.
+ * Start it with ./scripts/labeling_tool.sh.
  *
  * Three kinds of label, and they are not alike.
  *
