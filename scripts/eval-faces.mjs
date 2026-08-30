@@ -23,12 +23,22 @@ import { join } from 'node:path';
 const ROOT = new URL('..', import.meta.url).pathname;
 const WORK = join(ROOT, 'test/datasets/labelling');
 const SCALE = 4;
+/**
+ * The radius the archer's four handles stand at, which is not the same edge on every face.
+ *
+ * Ten equal rings, so the black to white boundary a full face is fitted on is at 0.8. A face printed
+ * only down to the five ring stops at the outside of the blue, at 0.6, and has no black ring on it to
+ * put a handle on at all. Measured against 0.8 regardless, every frame of a five ring recording came
+ * back exactly 20% wrong, which is the difference between the two edges and nothing to do with the
+ * detector: it was the ruler that was misprinted, and it was quietly setting this tool's own p90.
+ */
+const ANCHOR_RADII = { '5-ring': 0.6 };
 const ANCHOR = 0.8;
-const ANCHORS = [
-	[ANCHOR, 0],
-	[0, ANCHOR],
-	[-ANCHOR, 0],
-	[0, -ANCHOR]
+const anchorsAt = (r) => [
+	[r, 0],
+	[0, r],
+	[-r, 0],
+	[0, -r]
 ];
 
 const { locate } = await load();
@@ -44,10 +54,13 @@ for (const name of (await readdir(WORK)).sort()) {
 	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
 	const samples = (await readdir(folder)).filter((f) => f.startsWith('sample-')).sort();
 
+	const anchor = ANCHOR_RADII[label.faceType] ?? ANCHOR;
+	const kind = label.faceType ?? 'unsaid';
+
 	for (const [index, entry] of Object.entries(label.frames ?? {})) {
 		// Only fits the archer actually placed: an untouched automatic seed would be measuring itself.
 		if (entry.skip || !entry.handles || !(entry.touched ?? true)) continue;
-		const truth = homography(entry.handles);
+		const truth = homography(entry.handles, anchor);
 		if (!truth) continue;
 		frames += 1;
 
@@ -74,7 +87,7 @@ for (const name of (await readdir(WORK)).sort()) {
 		let count = 0;
 		for (const [hx, hy] of entry.handles) {
 			const seen = toFace(found, hx, hy);
-			const off = Math.abs(Math.hypot(seen.x, seen.y) - ANCHOR);
+			const off = Math.abs(Math.hypot(seen.x, seen.y) - anchor);
 			sum += off;
 			worst = Math.max(worst, off);
 			count += 1;
@@ -91,7 +104,7 @@ for (const name of (await readdir(WORK)).sort()) {
 		});
 		lopsided.push((Math.max(...radii) - Math.min(...radii)) / 2);
 
-		errors.push({ mean: sum / count, worst, video: name.slice(-24), frame: index });
+		errors.push({ mean: sum / count, worst, video: name.slice(-24), frame: index, kind });
 	}
 }
 
@@ -111,16 +124,29 @@ const sk = (share) => skew[Math.min(skew.length - 1, Math.floor(skew.length * sh
 console.log(`ring radius error   ${pct(at(0.5))} of face radius median, ${pct(at(0.9))} at p90`);
 console.log(`                    a ring is 10% of the radius, so that is ${(at(0.5) * 10).toFixed(2)} rings median`);
 console.log(`off centre by       ${pct(sk(0.5))} median, ${pct(sk(0.9))} at p90`);
+
+/*
+ * Broken out by what is printed on the boss, because they are different problems wearing one number.
+ * A full face is fitted on a black to white edge and a five ring one on the outside of the blue, and a
+ * change that helps one can hurt the other without moving the total at all.
+ */
+console.log('\nby face:');
+for (const kind of [...new Set(errors.map((e) => e.kind))].sort()) {
+	const mine = errors.filter((e) => e.kind === kind).map((e) => e.mean).sort((a, b) => a - b);
+	const q = (share) => mine[Math.min(mine.length - 1, Math.floor(mine.length * share))] ?? 0;
+	console.log(`  ${kind.padEnd(8)} ${String(mine.length).padStart(3)} frames  ${pct(q(0.5))} median, ${pct(q(0.9))} at p90`);
+}
 if (missed.length > 0) console.log(`\nnot found:\n  ${missed.join('\n  ')}`);
 
 const worstFew = [...errors].sort((a, b) => b.mean - a.mean).slice(0, 10);
 console.log('\nworst frames:');
 for (const e of worstFew) console.log(`  ${e.video} frame ${e.frame}  ${pct(e.mean)}`);
 
-function homography(points) {
+function homography(points, radius) {
 	const rows = [];
+	const anchors = anchorsAt(radius);
 	for (let i = 0; i < 4; i++) {
-		const [u, v] = ANCHORS[i];
+		const [u, v] = anchors[i];
 		const [x, y] = points[i];
 		rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
 		rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
