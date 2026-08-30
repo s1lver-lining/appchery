@@ -277,6 +277,14 @@ async function fileOf(name) {
 /** The labelling page, served locally so clicks can be written straight back to the workspace. */
 async function serve() {
 	const port = Number(argument('--port')) || 8787;
+	/**
+	 * Refuses every write, for looking without the risk of touching.
+	 *
+	 * Worth having because there is no save button: every click lands on the disk a moment later, which
+	 * is the right behaviour for labelling and the wrong one for a browse, a demonstration, or anything
+	 * driving the page automatically. A stray click is a lost afternoon and it does not announce itself.
+	 */
+	const readOnly = process.argv.includes('--readonly');
 	const server = createServer(async (request, response) => {
 		const url = new URL(request.url, `http://localhost:${port}`);
 
@@ -336,7 +344,14 @@ async function serve() {
 				return send(response, 200, mimeOf(name), await readFile(join(found.at, name)));
 			}
 
+			if (url.pathname === '/readonly') {
+				return send(response, 200, 'application/json', JSON.stringify({ readOnly }));
+			}
+
 			if (url.pathname.startsWith('/labels/') && request.method === 'POST') {
+				// Refused here rather than only in the page, because the page is not the only thing that
+				// can post to it and the labels are the one thing in this workspace nobody can rebuild.
+				if (readOnly) return send(response, 423, 'application/json', '{"readOnly":true}');
 				const video = decodeURIComponent(url.pathname.split('/')[2]);
 				const body = await text(request);
 				await writeFile(join(WORK, video, 'labels.json'), body);
@@ -351,7 +366,11 @@ async function serve() {
 
 	server.listen(port, () => {
 		console.log(`Labelling on http://localhost:${port}`);
-		console.log('Click each arrow once on a frame you have fitted. Everything saves itself.');
+		console.log(
+			readOnly
+				? 'Read only: nothing you do here will be written.'
+				: 'Click each arrow once on a frame you have fitted. Everything saves itself.'
+		);
 	});
 }
 

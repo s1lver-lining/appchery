@@ -3,6 +3,7 @@
 #
 #   ./scripts/labeling_tool.sh                 # serve the page
 #   ./scripts/labeling_tool.sh --open          # and open a browser at it
+#   ./scripts/labeling_tool.sh --readonly      # look without any risk of writing
 #   ./scripts/labeling_tool.sh --port 9000     # somewhere other than 8787
 #   ./scripts/labeling_tool.sh --prepare       # find the faces in any new recordings first
 #   ./scripts/labeling_tool.sh --prepare --video 2026-08-29   # only that session
@@ -24,12 +25,14 @@ cd "$(dirname "$0")/.."
 PORT="${PORT:-8787}"
 PREPARE=0
 OPEN=0
+READONLY=()
 VIDEO=()
 
 while [ $# -gt 0 ]; do
 	case "$1" in
 	--prepare) PREPARE=1 ;;
 	--open) OPEN=1 ;;
+	--readonly) READONLY=(--readonly) ;;
 	--port)
 		PORT="$2"
 		shift
@@ -45,6 +48,8 @@ while [ $# -gt 0 ]; do
 		echo "             them appear in the tool. Takes a couple of minutes each."
 		echo "  --video    Narrow --prepare to the recordings whose name contains this."
 		echo "  --open     Open a browser at the page once it is serving."
+		echo "  --readonly Refuse every write, for looking without the risk of touching. There is no"
+		echo "             save button, so a stray click would otherwise reach the disk on its own."
 		exit 0
 		;;
 	*)
@@ -75,4 +80,4 @@ if [ "$OPEN" = 1 ]; then
 	(sleep 1 && (xdg-open "http://localhost:$PORT" >/dev/null 2>&1 || true)) &
 fi
 
-exec node scripts/label-arrows.mjs serve --port "$PORT"
+exec node scripts/label-arrows.mjs serve --port "$PORT" "${READONLY[@]+"${READONLY[@]}"}"

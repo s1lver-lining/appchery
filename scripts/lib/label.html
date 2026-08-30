@@ -1531,10 +1531,12 @@
 	let pendingSave = 0;
 	let saving = false;
 	let saveAgain = false;
+	/** Started this way, so nothing is written before the server has been asked whether it may be. */
+	let readOnly = true;
 
 	function changed() {
 		const v = video();
-		if (!v) return;
+		if (!v || readOnly) return;
 		v.dirty = true;
 		clearTimeout(pendingSave);
 		pendingSave = setTimeout(() => void writeNow(v), 400);
@@ -1620,6 +1622,12 @@
 		}
 	};
 	window.onresize = () => show();
+
+	readOnly = (await (await fetch('/readonly')).json()).readOnly;
+	if (readOnly) {
+		el('saved').textContent = 'Read only';
+		el('saved').className = 'saved bad';
+	}
 
 	if (videos.length > 0) load(0);
 </script>
