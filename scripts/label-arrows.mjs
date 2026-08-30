@@ -702,6 +702,14 @@ async function todo() {
 	let marks = 0;
 	/** Recordings prepared and not yet touched, which is the number worth acting on. */
 	let waiting = 0;
+	/**
+	 * What is printed on each boss, counted.
+	 *
+	 * Worth reporting on its own because a corpus that is all one face says nothing about the others,
+	 * and the detector reads colours: a field face is black where a WA face is red and blue, and a three
+	 * spot is backing paper where a full face has rings.
+	 */
+	const faces = {};
 
 	for (const name of (await readdir(WORK)).sort()) {
 		if (only && !name.includes(only)) continue;
@@ -737,8 +745,11 @@ async function todo() {
 		const anchorFit = anchor === null || anchor === undefined ? null : label.frames?.[anchor];
 		const shaky = (label.arrows?.length ?? 0) > 0 && !anchorFit?.touched;
 
+		faces[label.faceType ?? 'unsaid'] = (faces[label.faceType ?? 'unsaid'] ?? 0) + 1;
+
 		rows.push(
-			`${name.slice(-24)}  ${String(label.arrows?.length ?? 0).padStart(2)} arrows` +
+			`${name.slice(-24)}  ${(label.faceType ?? '?').padEnd(8)}` +
+				`${String(label.arrows?.length ?? 0).padStart(2)} arrows` +
 				` on frame ${String((anchor ?? 0) + 1).padStart(2)}  ` +
 				`${String(frames.length).padStart(2)} frames nocked (${here} nocks)  ` +
 				`${String((label.marks ?? []).length).padStart(2)} not-arrows` +
@@ -752,5 +763,9 @@ async function todo() {
 		`\n${rows.length} recordings prepared, ${waiting} with nothing on them yet. ` +
 			`${nockFrames} frames carry nocks, ${nocks} nocks in all, ${marks} not-arrows.`
 	);
+	const kinds = Object.entries(faces).sort((a, b) => b[1] - a[1]);
+	if (kinds.length > 0) {
+		console.log(`Faces: ${kinds.map(([kind, n]) => `${n} ${kind}`).join(', ')}.`);
+	}
 	console.log('Wanted: five or six nocked frames a recording, taken from as far apart as the sweep goes.');
 }

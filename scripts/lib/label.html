@@ -41,6 +41,8 @@
 	.list { overflow-y: auto; padding: 0 6px 8px; }
 	.sets { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 8px; }
 	.sets button { padding: 4px 8px; font-size: 11px; }
+	.faces { display: flex; flex-wrap: wrap; gap: 4px; }
+	.faces button { padding: 5px 8px; font-size: 11px; }
 	.item {
 		display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center;
 		width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px;
@@ -167,6 +169,18 @@
 
 	<div class="work">
 
+		<div id="faceTypes">
+			<!--
+				What is printed on the boss, which the detector has to recognise and cannot be told.
+				Kept per recording because the boss does not change during one, and worth having because
+				the ring check reads colours: a field face is printed in black where a WA face is red and
+				blue, and a three spot has backing paper where a full face has rings. A corpus that cannot
+				say which is which cannot say whether a change helped one and broke another.
+			-->
+			<h2 title="What is printed on the boss in this recording. The detector has to work it out from the colours it finds, so knowing the answer is what lets a change be judged on each kind separately.">This recording&rsquo;s face</h2>
+			<div class="faces" id="faces"></div>
+		</div>
+
 		<div>
 			<h2><span id="frameHeading">Frame </span><span class="count" id="where"></span></h2>
 			<div class="row" style="margin-bottom:6px">
@@ -292,6 +306,25 @@
 		await show();
 	}
 
+	function drawFaces() {
+		const v = video();
+		el('faceTypes').style.display = source === 'photos' || !v ? 'none' : '';
+		if (source === 'photos' || !v) return;
+		el('faces').innerHTML = FACE_TYPES.map(
+			([id, name, why]) =>
+				`<button class="${v.faceType === id ? 'on' : ''}" data-face="${id}" title="${why}">${name}</button>`
+		).join('');
+		for (const button of el('faces').querySelectorAll('button')) {
+			button.onclick = () => {
+				// Pressed again, it is cleared: said wrongly and unsayable is worse than not said.
+				const picked = button.dataset.face;
+				v.faceType = v.faceType === picked ? null : picked;
+				changed();
+				draw();
+			};
+		}
+	}
+
 	function drawSets() {
 		el('sets').style.display = source === 'photos' ? '' : 'none';
 		if (source !== 'photos') return;
@@ -321,12 +354,32 @@
 		const marks = labels?.marks?.length ?? 0;
 		const fits = Object.values(labels?.frames ?? {}).filter((f) => f.touched && !f.skip).length;
 		const empty = labels?.empty ?? false;
+		const faceType = labels?.faceType ?? null;
 		// Done is arrows placed and enough frames nocked to show how a shaft moves, or plainly empty.
 		const done = empty || (arrows > 0 && nocked >= 5);
-		return { arrows, nocked, marks, fits, empty, done, started: arrows > 0 || fits > 0 || marks > 0 || empty };
+		return {
+			arrows, nocked, marks, fits, empty, faceType, done,
+			started: arrows > 0 || fits > 0 || marks > 0 || empty || faceType !== null
+		};
 	}
 
 	/** The recording list, which is how the corpus is browsed rather than merely switched between. */
+	/**
+	 * The faces a boss can be wearing, as the detector has to tell them apart.
+	 *
+	 * Named for what is printed rather than for the round shot on it, because that is what the picture
+	 * shows: a WA 720 and an indoor 300 are different rounds on the same ten ring face, and the detector
+	 * cannot see the difference and does not need to. What it does have to see is where the rings stop
+	 * and what colour they are, which is exactly what separates these.
+	 */
+	const FACE_TYPES = [
+		['10-ring', '10 ring', 'The full WA face: ten rings out to the white, gold at a fifth of the radius. Anything scored on a 40, 60, 80 or 122cm target face.'],
+		['3-spot', '3 spot', 'The triple, printed only down to the 6 ring, so the blue is the outermost colour and everything past half the radius is backing paper. Three of them on one boss.'],
+		['field', 'Field', 'A field face: gold in the middle and the rest printed in black rings rather than in red and blue. Photographs as grey in a shed, which is the same as a wall, so what tells it from one is that the rings stop.'],
+		['8-ring', '8 ring', 'A face whose rings stop at 8, with no 9 or 10 inside them and no rings out to 1.'],
+		['other', 'Other', 'Something none of the rest describes. Worth marking rather than leaving blank, because blank means nobody has looked.']
+	];
+
 	/** How many of a set's images the list will draw at once, which is a scroll and not a wait. */
 	const PHOTO_PAGE = 250;
 
@@ -363,10 +416,15 @@
 		el('list').innerHTML = wanted
 			.map(({ v, i, p }) => {
 				const state = p.done ? 'done' : p.started ? 'some' : '';
-				const sum = p.empty
-					? 'no arrows in this one'
-					: `<b>${p.arrows}</b> arrows &middot; <b>${p.nocked}</b> nocked &middot; ` +
-						`<b>${p.fits}</b> fits${p.marks ? ` &middot; <b>${p.marks}</b> not-arrows` : ''}`;
+				const face = p.faceType
+					? `<b>${FACE_TYPES.find(([id]) => id === p.faceType)?.[1] ?? p.faceType}</b> &middot; `
+					: '';
+				const sum =
+					face +
+					(p.empty
+						? 'no arrows in this one'
+						: `<b>${p.arrows}</b> arrows &middot; <b>${p.nocked}</b> nocked &middot; ` +
+							`<b>${p.fits}</b> fits${p.marks ? ` &middot; <b>${p.marks}</b> not-arrows` : ''}`);
 				return (
 					`<button class="item ${i === current ? 'on' : ''}" data-at="${i}">` +
 					`<span class="who">${v.video.slice(-24)}</span><span class="dot ${state}"></span>` +
@@ -410,6 +468,7 @@
 		 * has no frames and no fits.
 		 */
 		el('frames').style.display = source === 'photos' ? 'none' : '';
+		el('faceTypes').style.display = source === 'photos' ? 'none' : '';
 		el('frameHeading').textContent = source === 'photos' ? 'Photo ' : 'Frame ';
 		el('fitTools').style.display = 'none';
 		el('arrowTools').style.display = 'none';
@@ -588,6 +647,7 @@
 			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
 			v.arrowFrame = v.labels?.arrowFrame ?? null;
 			v.empty = v.labels?.empty ?? false;
+			v.faceType = v.labels?.faceType ?? null;
 			/**
 			 * Nocks are kept per frame and in the picture's own pixels, unlike everything else here.
 			 *
@@ -801,6 +861,7 @@
 		}
 
 		drawDetected(line);
+		drawFaces();
 
 		el('fitMode').className = mode === 'fit' ? 'on' : '';
 		el('arrowMode').className = mode === 'arrows' ? 'on' : '';
@@ -1286,6 +1347,7 @@
 			nocks: v.nocks,
 			marks: v.marks,
 			empty: v.empty,
+			faceType: v.faceType ?? null,
 			arrowFrame: v.arrowFrame ?? null,
 			// Only the frames somebody placed or dismissed. An untouched fit is not a label, it is a guess,
 			// and storing it means a better guess can never replace it.
