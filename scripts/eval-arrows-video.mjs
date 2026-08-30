@@ -17,7 +17,7 @@ import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { listRecordings } from './lib/recordings.mjs';
+import { listRecordings, motionPath } from './lib/recordings.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const WORK = join(ROOT, 'test/datasets/labelling');
@@ -58,6 +58,13 @@ async function frameRate(file) {
 	const rate = stamps.length > 1 && last > 0 ? (stamps.length - 1) / last : 30;
 	rates.set(file, rate);
 	return rate;
+}
+
+/** The motion saved beside a recording, for the sessions that were recorded with any. */
+async function motionOf(file) {
+	const beside = motionPath(file);
+	if (!existsSync(beside)) return null;
+	return JSON.parse(await readFile(beside, 'utf8')).samples ?? null;
 }
 
 async function fileOf(name) {
@@ -109,6 +116,8 @@ const everyMs = Number(option('every', 0));
  * the bar is offered. Measuring only the capped case hid a rise in false positives behind the cap.
  */
 const counted = !args.includes('--uncounted');
+/** Whether to withhold how the phone was held, for measuring what the pin is worth. */
+const blind = args.includes('--no-motion');
 /** Threshold overrides, so a sweep of them needs no code edit. */
 const tune = JSON.parse(option('tune', '{}'));
 /** Weights for the learned detector, measured through the same harness as the written one. */
@@ -161,7 +170,18 @@ for (const name of (await readdir(WORK)).sort()) {
 	const first = seconds > 0 ? Math.max(0, at - span) : 0;
 	const limit = seconds > 0 ? at + span : Infinity;
 	// Counted from the first frame fed in, which is what the sweep sees.
-	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, fps, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model });
+	/*
+	 * How the phone was held, fed in exactly as the app feeds it.
+	 *
+	 * Without it this measures a detector nobody runs. Gravity is the only thing that says which way up
+	 * the boss is, and a fit with nothing outside the picture to hold on to keeps whatever angle it had
+	 * last; the coordinates then turn slowly under the arrows, and the tracker gathers its evidence per
+	 * place on the face, so a real arrow whose coordinates are turning has its votes smeared over an arc
+	 * instead of piling up on one place. Left out here, every reading of the proposer was taken through
+	 * a frame drifting in a way the phone's own is not.
+	 */
+	const motion = blind ? null : await motionOf(await fileOf(name));
+	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, fps, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model, motion });
 
 	let index = 0;
 	for await (const frame of decode(await fileOf(name), small.width, small.height, small)) {
