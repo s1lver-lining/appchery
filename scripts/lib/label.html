@@ -118,6 +118,11 @@
 		content: ''; position: absolute; right: 2px; top: 2px;
 		width: 4px; height: 4px; border-radius: 50%; background: var(--gold);
 	}
+	/* Arrows of its own rather than read off another frame, which is the thing worth finding again. */
+	.frames button.own::before {
+		content: ''; position: absolute; left: 2px; top: 2px;
+		width: 4px; height: 4px; border-radius: 50%; background: var(--good);
+	}
 	kbd {
 		background: #1e2228; border: 1px solid #383d45; border-bottom-width: 2px;
 		border-radius: 4px; padding: 0 4px; font-size: 10px;
@@ -200,6 +205,9 @@
 			<h2>This recording&rsquo;s arrows</h2>
 			<div class="row"><button id="undo">Undo last</button><button id="clear">Clear all</button></div>
 			<div class="row" style="margin-top:6px"><button id="anchor">Read them through this frame</button></div>
+			<div class="row" style="margin-top:6px">
+				<button id="ownArrows" title="Take away the arrows placed on this frame, so it goes back to following the frame the arrows were drawn on. The dashed circles come back.">Follow the other frame again</button>
+			</div>
 			<div class="row" style="margin-top:6px"><button id="noarrows">No arrows in this video</button></div>
 		</div>
 
@@ -657,6 +665,22 @@
 			 * and a single number could not describe it. What is wanted is exactly how it moves.
 			 */
 			v.nocks = v.labels?.nocks ? { ...v.labels.nocks } : {};
+			/**
+			 * Arrows placed on a frame of their own, for the frames where the inferred ones will not do.
+			 *
+			 * An impact does not move, so in principle one set of face coordinates describes it on every
+			 * frame, and that is what the arrows above are. It only holds while every frame agrees which
+			 * way round the face is, and they do not: a target is a set of circles, so nothing in the
+			 * picture fixes the angle, and the fits drift and occasionally sit a quarter turn apart. Read
+			 * through a frame whose fit is turned, the whole pattern of arrows arrives turned with it,
+			 * every radius right and every position wrong.
+			 *
+			 * Nothing here can fix that fit, and it does not have to. What it can do is let the frame be
+			 * labelled directly, so its arrows owe nothing to any other frame's idea of which way up the
+			 * boss is. Kept as a number and a place rather than as a list, so arrow three stays arrow
+			 * three whether or not arrows one and two were placed on this frame at all.
+			 */
+			v.frameArrows = v.labels?.frameArrows ? { ...v.labels.frameArrows } : {};
 			// Things that look like shafts and are not. Flat on the paper, so face coordinates do for them.
 			v.marks = v.labels?.marks ? [...v.labels.marks] : [];
 
@@ -802,27 +826,39 @@
 			context.arc(centre.x, centre.y, line * 2, 0, Math.PI * 2);
 			context.fill();
 
-			// The arrows, projected through this frame's own fit: they check the fit as much as label it.
+			/*
+			 * The arrows, projected through this frame's own fit: they check the fit as much as label it.
+			 *
+			 * Dashed where they were read off another frame and solid where they were placed on this one,
+			 * because those are two quite different claims. A solid circle says somebody looked at this
+			 * picture and put it there. A dashed one says only that it follows from another picture and
+			 * this frame's idea of which way round the face is, which is the thing that goes wrong.
+			 */
 			const nockedHere = v.nocks?.[frame] ?? [];
-			v.arrows.forEach((arrow, i) => {
-				const p = project(h, arrow.x, arrow.y);
+			const here = arrowsHere(h);
+			context.save();
+			for (const [i, p] of here.places) {
 				const chosen = mode === 'nocks' && i === nocking;
 				const done = nockedHere.some((nock) => nock.arrow === i);
+				context.setLineDash(here.derived ? [line * 3, line * 3] : []);
 				context.beginPath();
 				context.arc(p.x, p.y, line * (chosen ? 8 : 5), 0, Math.PI * 2);
 				context.strokeStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.45)' : '#00e676';
 				context.lineWidth = line * (chosen ? 2.5 : 1.5);
 				context.stroke();
+				context.setLineDash([]);
 				context.fillStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.55)' : '#00e676';
+				context.globalAlpha = here.derived ? 0.7 : 1;
 				context.font = `bold ${Math.round(image.width / 30)}px system-ui`;
 				context.fillText(String(i + 1), p.x + line * 6, p.y - line * 6);
-			});
+				context.globalAlpha = 1;
+			}
+			context.restore();
 
 			// The nocks placed on this frame, drawn as the shaft each one implies.
 			(showNocks ? v.nocks[frame] ?? [] : []).forEach((nock) => {
-				const arrow = v.arrows[nock.arrow];
-				if (!arrow) return;
-				const p = project(h, arrow.x, arrow.y);
+				const p = here.places.get(nock.arrow);
+				if (!p) return;
 				context.beginPath();
 				context.moveTo(p.x, p.y);
 				context.lineTo(nock.x, nock.y);
@@ -894,8 +930,9 @@
 		el('frames').innerHTML = v.work
 			.map((w, i) => {
 				const nocked = (v.nocks?.[i]?.length ?? 0) > 0 ? ' nocked' : '';
+				const own = (v.frameArrows?.[i]?.length ?? 0) > 0 || v.arrowFrame === i ? ' own' : '';
 				const how = w.skip ? 'skip' : w.touched ? 'fitted' : '';
-				return `<button class="${how}${nocked}${i === frame ? ' here' : ''}" data-at="${i}">${i + 1}</button>`;
+				return `<button class="${how}${nocked}${own}${i === frame ? ' here' : ''}" data-at="${i}">${i + 1}</button>`;
 			})
 			.join('');
 		for (const button of el('frames').querySelectorAll('button')) {
@@ -917,16 +954,26 @@
 		el('anchor').className = v.arrowFrame === frame ? 'on' : '';
 		el('hide').className = showNocks ? '' : 'on';
 		el('hide').textContent = showNocks ? 'Hide the nock lines' : 'Show the nock lines';
+		const ownHere = v.frameArrows?.[frame]?.length ?? 0;
+		el('ownArrows').style.display = ownHere > 0 ? '' : 'none';
+		const ownFrames = Object.values(v.frameArrows ?? {}).filter((list) => list.length > 0).length;
 		const nocked = Object.values(v.nocks).filter((list) => list.length > 0).length;
 		const anchored = v.arrowFrame === null || v.arrowFrame === undefined ? '' : ` (placed on frame ${v.arrowFrame + 1})`;
 		const summary =
-			`${v.arrows.length} arrows${anchored}, ${nocked} frames with nocks, ${v.marks.length} not-arrows, ` +
+			(ownHere > 0
+				? `This frame carries ${ownHere} arrows of its own. `
+				: v.arrows.length > 0 && v.arrowFrame !== frame
+					? 'The dashed arrows are read off another frame. Place one to give this frame its own. '
+					: '') +
+			`${v.arrows.length} arrows${anchored}` +
+			(ownFrames ? `, ${ownFrames} frames with their own` : '') +
+			`, ${nocked} frames with nocks, ${v.marks.length} not-arrows, ` +
 			`${fitted} of ${v.work.length} faces fitted by hand` +
 			(v.empty ? ', marked as having no arrows' : '') +
 			(fitted === 0 ? '. Fit one face before placing arrows.' : '') +
 			(v.turned ? `. ${v.turned} fits were turned onto a common orientation: save to keep that.` : '') +
-			(mode === 'arrows' && v.arrows.length > 0 && v.arrowFrame !== frame
-				? `. These arrows were placed on frame ${(v.arrowFrame ?? 0) + 1}: correcting one here reads it through this frame's fit instead, which moves it relative to the rest. Correct them on frame ${(v.arrowFrame ?? 0) + 1}, or move them all here on purpose.`
+			(mode === 'arrows' && v.arrows.length > 0 && v.arrowFrame !== frame && ownHere === 0
+				? `. Placing one here starts this frame's own set and the dashed ones stop being shown, which is what to do when the fit has them turned. To change the arrows everywhere instead, go back to frame ${(v.arrowFrame ?? 0) + 1}.`
 				: '');
 		/*
 		 * Clamped to a couple of lines with the whole of it a hover away. What this says is mostly counts,
@@ -1140,17 +1187,19 @@
 			 * the impacts were labelled in. Nobody does: you click the shaft you can see clearly, and every
 			 * nock after the first goes onto the wrong arrow with nothing on screen to say so.
 			 */
-			const onArrow = v.arrows.findIndex((arrow) => {
-				const q = project(h, arrow.x, arrow.y);
-				return Math.hypot(q.x - p.x, q.y - p.y) < Math.max(14, image.width / 40);
-			});
+			let onArrow = -1;
+			const reach = Math.max(14, image.width / 40);
+			// Where this frame draws them, which is not the same as where another frame's arrows are.
+			for (const [n, q] of arrowsHere(h).places) {
+				if (Math.hypot(q.x - p.x, q.y - p.y) < reach) onArrow = n;
+			}
 			if (onArrow >= 0) {
 				nocking = onArrow;
 				draw();
 				return;
 			}
 
-			if (v.arrows[nocking]) {
+			if (arrowsHere(h).places.has(nocking)) {
 				here.push({ arrow: nocking, x: p.x, y: p.y });
 				// On to the next one still wanting a nock, so six clicks in a row does the frame.
 				const next = waiting();
@@ -1177,10 +1226,42 @@
 			return;
 		}
 
+		const grabArrow = Math.max(10, image.width / 50);
+
+		/*
+		 * A frame that is not the one the arrows were drawn on gets its own set as soon as one is placed.
+		 *
+		 * That is the whole point of it. The arrows read off another frame arrive through this frame's
+		 * fit, and when that fit sits a quarter turn from the other one they arrive turned: every radius
+		 * right, every position wrong. Nothing here can put the fit straight, but a frame that has been
+		 * labelled directly owes nothing to any other frame's idea of which way up the boss is.
+		 *
+		 * The first click starts the set and the derived ones stop being shown, because they were never
+		 * a claim about this picture. Take the last one away again and they come back.
+		 */
+		if (v.arrows.length > 0 && v.arrowFrame !== null && v.arrowFrame !== undefined && v.arrowFrame !== frame) {
+			const own = (v.frameArrows[frame] ??= []);
+			const at = own.findIndex((arrow) => {
+				const q = project(h, arrow.x, arrow.y);
+				return Math.hypot(q.x - p.x, q.y - p.y) < grabArrow;
+			});
+			if (at >= 0) {
+				own.splice(at, 1);
+				// Emptied, so this frame goes back to following the frame the arrows were drawn on.
+				if (own.length === 0) delete v.frameArrows[frame];
+			} else {
+				const f = project(inverse, p.x, p.y);
+				own.push({ n: nextNumber(), x: f.x, y: f.y });
+			}
+			changed();
+			draw();
+			return;
+		}
+
 		// Clicking a marker removes it, which is quicker than an undo that only pops the last one.
 		const hit = v.arrows.findIndex((arrow) => {
 			const q = project(h, arrow.x, arrow.y);
-			return Math.hypot(q.x - p.x, q.y - p.y) < Math.max(10, image.width / 50);
+			return Math.hypot(q.x - p.x, q.y - p.y) < grabArrow;
 		});
 		if (hit >= 0) removeArrow(hit);
 		else {
@@ -1203,6 +1284,33 @@
 	};
 
 	/**
+	 * Where each arrow sits on the frame being looked at, and whether that was placed or worked out.
+	 *
+	 * The one place that answers it, because everything else has to agree: what is drawn, what a click
+	 * lands on, which arrows still want a nock, and what the training set is told. Keyed by the arrow's
+	 * number rather than by position in a list, so a frame carrying only arrow four is describing arrow
+	 * four and not a first arrow that happens to be fourth.
+	 */
+	function arrowsHere(h) {
+		const v = video();
+		const own = v.frameArrows?.[frame] ?? [];
+		const places = new Map();
+		if (own.length > 0) {
+			for (const arrow of own) places.set(arrow.n, project(h, arrow.x, arrow.y));
+			return { places, derived: false, own };
+		}
+		v.arrows.forEach((arrow, i) => places.set(i, project(h, arrow.x, arrow.y)));
+		// Not derived on the frame they were drawn on: there they are exactly where somebody put them.
+		return { places, derived: v.arrowFrame !== frame, own: null };
+	}
+
+	/** The lowest arrow number this frame has not placed yet, so six clicks in a row number one to six. */
+	function nextNumber() {
+		const own = video().frameArrows?.[frame] ?? [];
+		for (let i = 0; ; i++) if (!own.some((arrow) => arrow.n === i)) return i;
+	}
+
+	/**
 	 * Takes an arrow out of the recording, and everything that was pointing at it with it.
 	 *
 	 * An arrow is identified by its place in the list, which is also the number drawn beside it, so
@@ -1221,15 +1329,29 @@
 				nock.arrow > at ? { ...nock, arrow: nock.arrow - 1 } : nock
 			);
 		}
+		// A frame's own arrows are numbered the same way, so they move down with everything else.
+		for (const [where, list] of Object.entries(v.frameArrows ?? {})) {
+			const kept = list.filter((arrow) => arrow.n !== at).map((arrow) =>
+				arrow.n > at ? { ...arrow, n: arrow.n - 1 } : arrow
+			);
+			if (kept.length > 0) v.frameArrows[where] = kept;
+			else delete v.frameArrows[where];
+		}
 		if (nocking >= v.arrows.length) nocking = Math.max(0, v.arrows.length - 1);
+	}
+
+	/** The arrow numbers this frame shows, placed here or read off another frame, lowest first. */
+	function numbersHere() {
+		const own = video().frameArrows?.[frame] ?? [];
+		if (own.length > 0) return own.map((arrow) => arrow.n).sort((a, b) => a - b);
+		return video().arrows.map((_, i) => i);
 	}
 
 	/** The lowest numbered arrow with no nock on this frame yet, or -1 when they all have one. */
 	function waiting() {
-		const v = video();
-		const here = v.nocks?.[frame] ?? [];
-		for (let i = 0; i < v.arrows.length; i++) {
-			if (!here.some((nock) => nock.arrow === i)) return i;
+		const here = video().nocks?.[frame] ?? [];
+		for (const n of numbersHere()) {
+			if (!here.some((nock) => nock.arrow === n)) return n;
 		}
 		return -1;
 	}
@@ -1286,6 +1408,13 @@
 	 * frame that is decides where every one of them lands; changing it is a decision about the whole
 	 * recording, not a side effect of correcting one of them.
 	 */
+	el('ownArrows').onclick = () => {
+		const v = video();
+		if (!v.frameArrows?.[frame]) return;
+		delete v.frameArrows[frame];
+		changed();
+		draw();
+	};
 	el('anchor').onclick = () => {
 		const v = video();
 		v.arrowFrame = frame;
@@ -1371,6 +1500,10 @@
 			marks: v.marks,
 			empty: v.empty,
 			faceType: v.faceType ?? null,
+			// Only the frames somebody actually placed arrows on, for the same reason the fits are.
+			frameArrows: Object.fromEntries(
+				Object.entries(v.frameArrows ?? {}).filter(([, list]) => list.length > 0)
+			),
 			arrowFrame: v.arrowFrame ?? null,
 			// Only the frames somebody placed or dismissed. An untouched fit is not a label, it is a guess,
 			// and storing it means a better guess can never replace it.
