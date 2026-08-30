@@ -67,6 +67,8 @@ let floorMark = 0;
 let setAside = 0;
 /** The turn between the detector's two frames, for telling a flip apart from a drift. */
 const spins = [];
+/** The first fit of each sweep, which is the one every later frame is carried from. */
+const acquisitions = [];
 const rows = [];
 let heldFrames = 0;
 let allFrames = 0;
@@ -264,6 +266,45 @@ for (const name of (await readdir(WORK)).sort()) {
 		swims.push(Math.hypot(b.cx - (a.cx + c.cx) / 2, b.cy - (a.cy + c.cy) / 2) / size);
 	}
 
+	/*
+	 * The first fit of the sweep, and how good it was.
+	 *
+	 * Acquisition is the moment everything else is built on. A face taken on while the camera is still
+	 * being swung is fitted to a smear, and the one measured here came out half again too big and a
+	 * third of the picture above the boss; the follow then carries that, and the archer watches the
+	 * rings sit above the target until something knocks it loose. Kept separately from the rest because
+	 * a fault that happens once per sweep vanishes into an average over every frame of it.
+	 */
+	const firstFace = path[0];
+	if (firstFace) {
+		const near = [...truth.entries()].sort(
+			(a, b) => Math.abs(a[0] - (firstFace.frame + first)) - Math.abs(b[0] - (firstFace.frame + first))
+		)[0];
+		const mark = project(near[1].h, 0, 0);
+		const size = Math.hypot(project(near[1].h, anchor, 0).x - mark.x, project(near[1].h, anchor, 0).y - mark.y);
+		/*
+		 * How much the fit had to correct itself once it had been taken on, which needs no truth at all.
+		 *
+		 * A face acquired soundly is refined by pixels over the frames that follow; one acquired on a
+		 * smear is wrong, and the follow spends the next few frames walking it back to the boss. Since a
+		 * hand fit within a few frames of the acquisition exists in only a handful of recordings, and
+		 * comparing against one taken a second later reads a walked camera as a bad fit, this asks the
+		 * question the recording can answer on its own: how far did it move, and how much did it
+		 * resize, over the twentieth of a sweep right after it was first believed.
+		 */
+		const settle = path.filter((s) => s.frame <= firstFace.frame + 20);
+		const last = settle[settle.length - 1];
+		acquisitions.push({
+			video: name.slice(-24),
+			at: firstFace.frame + first,
+			support: firstFace.face.support,
+			off: Math.hypot(mark.x - firstFace.face.cx, mark.y - firstFace.face.cy) / size,
+			gap: Math.abs(near[0] - (firstFace.frame + first)),
+			walked: Math.hypot(last.face.cx - firstFace.face.cx, last.face.cy - firstFace.face.cy) / firstFace.face.semiMajor,
+			resized: Math.abs(last.face.semiMajor - firstFace.face.semiMajor) / firstFace.face.semiMajor
+		});
+	}
+
 	/* A jump: the middle moving more than a fifth of the face in one frame, which no hand can do. */
 	let lost = 0;
 	for (let i = 1; i < path.length; i++) {
@@ -287,6 +328,21 @@ for (const name of (await readdir(WORK)).sort()) {
 		`jumps ${lost}` +
 		`${motion ? '  gravity' : ''}`
 	);
+	if (args.includes('--path')) {
+		// Where the fit sat, every tenth frame, beside the archer's own answer where there is one.
+		const hand = new Map([...truth].map(([at, t]) => [at, project(t.h, 0, 0)]));
+		for (const step of track) {
+			const at = step.frame + first;
+			const mark = hand.get(at);
+			if (!step.face) { if (at % 10 === 0 || mark) console.log(`  ${String(at).padStart(4)}  no face${mark ? '   HAND ' + mark.x.toFixed(0) + ',' + mark.y.toFixed(0) : ''}`); continue; }
+			if (at % 10 !== 0 && !mark) continue;
+			console.log(
+				`  ${String(at).padStart(4)}  at ${step.face.cx.toFixed(0).padStart(4)},${step.face.cy.toFixed(0).padStart(4)}` +
+				`  r ${step.face.semiMajor.toFixed(0).padStart(3)}  support ${step.face.support.toFixed(2)}` +
+				(mark ? `   HAND ${mark.x.toFixed(0)},${mark.y.toFixed(0)}  off ${Math.hypot(mark.x - step.face.cx, mark.y - step.face.cy).toFixed(0)}px` : '')
+			);
+		}
+	}
 	if (verbose && mine.length) {
 		for (const m of mine) console.log(`      frame ${String(m.at).padStart(4)}  ${pct(m.off)}  ${m.angle.toFixed(1)}°`);
 	}
@@ -332,6 +388,27 @@ for (const [low, high] of bands) {
 for (const name of [...new Set(spins.map((s) => s.video))]) {
 	const mine = spins.filter((s) => s.video === name).map((s) => Math.round(s.deg));
 	console.log(`  ${name}  ${mine.join(' ')}`);
+}
+
+/*
+ * Only where a hand fit sits near enough in time to say where the boss really was. Compared against
+ * one taken seconds later, a camera that has since been walked forward would read as a bad fit.
+ */
+const judged = acquisitions.filter((a) => a.gap <= Number(option('gap', 10)));
+console.log(`\nfirst fit of each sweep (${judged.length} with a hand fit within ${option('gap', 10)} frames):`);
+for (const a of [...judged].sort((x, y) => y.off - x.off)) {
+	console.log(
+		`  ${a.video}  frame ${String(a.at).padStart(4)}  support ${a.support.toFixed(2)}  ` +
+		`middle ${pct(a.off).padStart(6)} of a radius out${a.off > 0.2 ? '   MISPLACED' : ''}`
+	);
+}
+
+console.log(`\nhow far the first fit had to be walked back over the twenty frames after it:`);
+for (const a of [...acquisitions].sort((x, y) => y.resized - x.resized)) {
+	console.log(
+		`  ${a.video}  support ${a.support.toFixed(2)}  moved ${pct(a.walked).padStart(6)}  ` +
+		`resized ${pct(a.resized).padStart(6)}${a.resized > 0.15 || a.walked > 0.3 ? '   UNSETTLED' : ''}`
+	);
 }
 
 const worstTurn = [...turns].sort((a, b) => b.spread - a.spread).slice(0, 5);
