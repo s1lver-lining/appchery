@@ -65,12 +65,21 @@ async function fileOf(name) {
 	return found.find((r) => r.name === name)?.path ?? join(VIDEOS, name);
 }
 const SCALE = 4;
+/**
+ * The radius the archer's four handles stand at, which is not the same edge on every face.
+ *
+ * A five ring face is printed only down to the outside of the blue, so its handles are at 0.6 and it
+ * has no black ring to put one on. Read at 0.8 regardless, the frame the labels are turned into is a
+ * third too small, and every arrow in such a recording is compared against a place it was never said
+ * to be. The archer's own tool records which face it is; this reads the same answer.
+ */
+const ANCHOR_RADII = { '5-ring': 0.6 };
 const ANCHOR = 0.8;
-const ANCHORS = [
-	[ANCHOR, 0],
-	[0, ANCHOR],
-	[-ANCHOR, 0],
-	[0, -ANCHOR]
+const anchorsAt = (r) => [
+	[r, 0],
+	[0, r],
+	[-r, 0],
+	[0, -r]
 ];
 /** How close a detection must be to a labelled impact to count as that arrow, in face radii. */
 const MATCH = 0.05;
@@ -125,7 +134,10 @@ for (const name of (await readdir(WORK)).sort()) {
 	if (label.empty || !label.arrows?.length) continue;
 
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
-	const truth = homography(label.frames[String(label.arrowFrame)].handles);
+	const truth = homography(
+		label.frames[String(label.arrowFrame)].handles,
+		ANCHOR_RADII[label.faceType] ?? ANCHOR
+	);
 	if (!truth) continue;
 
 	const { width, height } = meta;
@@ -309,12 +321,11 @@ if (args.includes('--why')) {
 	console.log(`    wrong  ${ring(bad)}`);
 }
 
-function homography(points) {
+function homography(points, radius) {
 	const rows = [];
-const wrong = [];
-let doubles = 0;
+	const anchors = anchorsAt(radius);
 	for (let i = 0; i < 4; i++) {
-		const [u, v] = ANCHORS[i];
+		const [u, v] = anchors[i];
 		const [x, y] = points[i];
 		rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
 		rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
