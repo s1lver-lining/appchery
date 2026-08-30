@@ -867,8 +867,11 @@
 			/*
 			 * Every ring, so the fit is judged against the printed face rather than against one circle.
 			 *
-			 * The one the handles stand on is drawn heavier and green, because that is the edge being
-			 * aimed at, and it is not the same edge on every face.
+			 * Two of them are not just rings. The one the handles stand on is drawn heavier and green,
+			 * because that is the edge being aimed at, and it is not the same edge on every face. The
+			 * outer one is the boundary between a one and a miss, which is the other line worth being
+			 * sure of and the easiest to lose against a pale boss, so it is heavier still and turns green
+			 * with the rest while the face is the thing being placed.
 			 */
 			const edge = anchorRadius();
 			const rings = [...new Set([0.2, 0.4, 0.6, 0.8, 1.0, edge])].sort((a, b) => a - b);
@@ -879,9 +882,15 @@
 					const p = project(h, Math.cos(a) * r, Math.sin(a) * r);
 					i === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y);
 				}
-				context.lineWidth = r === edge ? line * 2 : line;
+				context.lineWidth = r === 1.0 ? line * 3 : r === edge ? line * 2 : line;
 				context.strokeStyle =
-					r === 0.2 ? 'rgba(247,224,60,0.95)' : r === edge ? 'rgba(0,230,118,0.9)' : 'rgba(255,255,255,0.65)';
+					r === 0.2
+						? 'rgba(247,224,60,0.95)'
+						: r === edge
+							? 'rgba(0,230,118,0.9)'
+							: r === 1.0 && mode === 'fit'
+								? 'rgba(0,230,118,0.9)'
+								: 'rgba(255,255,255,0.65)';
 				context.stroke();
 			}
 
