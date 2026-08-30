@@ -534,6 +534,13 @@
 		el('fitTools').style.display = 'none';
 		el('arrowTools').style.display = 'none';
 		el('nockTools').style.display = 'none';
+		// The filter names files in one corpus and means nothing in the other, so it goes with the switch.
+		search = '';
+		el('search').value = '';
+		photo = 0;
+		closer = 1;
+		lookX = 0;
+		lookY = 0;
 		if (source === 'photos') void loadPhotos();
 		else {
 			drawList();
@@ -712,9 +719,30 @@
 	function load(index) {
 		current = index;
 		frame = 0;
+		/*
+		 * Everything below belongs to the recording being left, not to the one being opened.
+		 *
+		 * The arrow being nocked is a number into that recording's arrows, and carried across it named
+		 * an arrow the next recording may not have; the closer look is in the pixels of a picture that is
+		 * about to be replaced, and a portrait recording opened while zoomed into the corner of a
+		 * landscape one showed a blank canvas and no way to tell why.
+		 */
+		nocking = 0;
+		closer = 1;
+		lookX = 0;
+		lookY = 0;
 		const v = video();
 		const turned = [];
 		if (!v.work) {
+			/*
+			 * Read first, because the handles are built against it.
+			 *
+			 * The seeds arrive at the radius the detector fits and are converted to the radius this face
+			 * wants, so a face type read after the fits were made converted them to whatever the last
+			 * recording happened to be. On the first look at a five ring face that put every handle a
+			 * quarter too far out, and it looked like a bad fit rather than a bug.
+			 */
+			v.faceType = v.labels?.faceType ?? null;
 			v.work = v.chosen.map((_, i) => {
 				const saved = v.labels?.frames?.[i];
 				// Older labels predate this flag, and every fit in them was placed by hand.
@@ -736,7 +764,6 @@
 			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
 			v.arrowFrame = v.labels?.arrowFrame ?? null;
 			v.empty = v.labels?.empty ?? false;
-			v.faceType = v.labels?.faceType ?? null;
 			/**
 			 * Nocks are kept per frame and in the picture's own pixels, unlike everything else here.
 			 *
@@ -774,6 +801,19 @@
 			if (anchorTurn) {
 				v.arrows = v.arrows.map((arrow) => turnPoint(arrow, anchorTurn));
 				v.marks = v.marks.map((mark) => turnPoint(mark, anchorTurn));
+			}
+			/*
+			 * And a frame's own arrows turn with their own frame, not with the anchor's.
+			 *
+			 * They are the one thing here expressed in a frame other than the anchor's, so they are the
+			 * one thing that needs its own turn looking up. Left out, a frame whose handles were put back
+			 * in order came back with the arrows placed on it a quarter turn from where they were put,
+			 * which is exactly the fault they were placed to avoid.
+			 */
+			for (const [i, turns] of turned) {
+				const own = v.frameArrows[i];
+				if (!own) continue;
+				v.frameArrows[i] = own.map((arrow) => ({ ...arrow, ...turnPoint(arrow, turns) }));
 			}
 			v.turned = turned.length;
 		}
@@ -858,7 +898,20 @@
 			const v = video();
 			image.src = `/image/${encodeURIComponent(v.video)}/${v.samples[frame]}`;
 		}
-		await image.decode();
+		try {
+			await image.decode();
+		} catch {
+			/*
+			 * A frame that will not decode is a frame whose file is not there, which happens to a
+			 * workspace that has been half cleaned up. Saying so beats leaving the previous picture on
+			 * screen, where every click would land on the wrong one and be saved against it.
+			 */
+			view.width = 0;
+			view.height = 0;
+			detected = null;
+			el('status').textContent = `${image.src.split('/').pop()} would not load. Prepare this recording again.`;
+			return;
+		}
 		pad = Math.round(Math.max(image.width, image.height) * 0.22);
 		// Fitted on both axes separately, or a portrait recording leaves half the window empty.
 		zoom = Math.min(
@@ -876,6 +929,9 @@
 		context.setTransform(1, 0, 0, 1, 0, 0);
 		if (source === 'photos') return drawPhoto();
 		const v = video();
+		// An empty workspace has nothing to draw and nothing to be asked about, and pressing a mode
+		// button in one used to be enough to stop the page dead.
+		if (!v?.work) return;
 		context.setTransform(1, 0, 0, 1, 0, 0);
 		context.fillStyle = '#0b0c0e';
 		context.fillRect(0, 0, view.width, view.height);
@@ -1491,14 +1547,16 @@
 
 	/** The arrow numbers this frame shows, placed here or read off another frame, lowest first. */
 	function numbersHere() {
-		const own = video().frameArrows?.[frame] ?? [];
+		const v = video();
+		if (!v) return [];
+		const own = v.frameArrows?.[frame] ?? [];
 		if (own.length > 0) return own.map((arrow) => arrow.n).sort((a, b) => a - b);
-		return video().arrows.map((_, i) => i);
+		return v.arrows.map((_, i) => i);
 	}
 
 	/** The lowest numbered arrow with no nock on this frame yet, or -1 when they all have one. */
 	function waiting() {
-		const here = video().nocks?.[frame] ?? [];
+		const here = video()?.nocks?.[frame] ?? [];
 		for (const n of numbersHere()) {
 			if (!here.some((nock) => nock.arrow === n)) return n;
 		}
@@ -1696,7 +1754,13 @@
 
 	function changed() {
 		const v = video();
-		if (!v || readOnly) return;
+		if (!v) return;
+		if (readOnly) {
+			// Said every time, because the alternative is an afternoon of labelling that went nowhere.
+			el('saved').textContent = 'Read only: not saved';
+			el('saved').className = 'saved bad';
+			return;
+		}
 		v.dirty = true;
 		clearTimeout(pendingSave);
 		pendingSave = setTimeout(() => void writeNow(v), 400);
@@ -1740,7 +1804,7 @@
 	/** Written before the tab goes, for the one case the timer cannot cover. */
 	window.addEventListener('beforeunload', () => {
 		const v = video();
-		if (!v?.dirty) return;
+		if (!v?.dirty || readOnly) return;
 		navigator.sendBeacon(`/labels/${encodeURIComponent(v.video)}`, JSON.stringify(body(v)));
 	});
 
@@ -1783,7 +1847,12 @@
 	};
 	window.onresize = () => show();
 
-	readOnly = (await (await fetch('/readonly')).json()).readOnly;
+	try {
+		readOnly = (await (await fetch('/readonly')).json()).readOnly;
+	} catch {
+		// Left read only, which is the safe answer, and said out loud rather than guessed at silently.
+		readOnly = true;
+	}
 	if (readOnly) {
 		el('saved').textContent = 'Read only';
 		el('saved').className = 'saved bad';
