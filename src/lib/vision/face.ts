@@ -395,51 +395,27 @@ export function cropToFace(face: FaceLocation, x: number, y: number): { x: numbe
  * A phone that reports gravity can pass the real up here instead and get the true one.
  */
 export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
-	/** Where a turn of `t` puts the first anchor, as an angle about the fit's centre in the picture. */
-	const heading = (t: number) => {
-		const point = apply(fitted.transform, Math.cos(t) * ANCHOR_RADIUS, Math.sin(t) * ANCHOR_RADIUS);
-		return Math.atan2(point.y - fitted.cy, point.x - fitted.cx);
-	};
-
-	/** How far a turn leaves the first anchor from where it is wanted, the short way round. */
-	const miss = (t: number) => {
-		let d = heading(t) - up;
-		while (d > Math.PI) d -= 2 * Math.PI;
-		while (d < -Math.PI) d += 2 * Math.PI;
-		return Math.abs(d);
-	};
-
-	/*
-	 * Coarse over the whole circle, then bisected. The whole circle because there is nothing to start
-	 * from: unlike `alignFace` this is not correcting a small drift, it is choosing the angle outright,
-	 * and it must give the same answer whatever the descent happened to hand it. Four turns a quarter
-	 * apart are all equally right, so the search settles on whichever is nearest and the result is
-	 * continuous everywhere except at the exact diagonals between them.
+	/**
+	 * Which way up is on the paper, rather than which anchor happens to look upright in the picture.
+	 *
+	 * These are not the same question and the difference is what the pin was leaking. Asking where the
+	 * first anchor must go for its chord to run up the screen asks about a point four fifths of the way
+	 * out, which is the part of the face perspective has bent most: walk round the boss without turning
+	 * the phone and the face angle that answers it moves, so a pin meant to hold the coordinates still
+	 * turned them instead, by as much as the drift it was there to stop.
+	 *
+	 * Read at the middle it is a different quantity entirely. A short step up the screen from the
+	 * centre, taken back through the fit, is the direction on the paper that appears upright from here,
+	 * and that is a fact about the boss and the phone rather than about the far side of the face. The
+	 * step is small so that the projection is only ever asked what it does locally, which is the one
+	 * thing about it that does not depend on where the anchors ended up.
 	 */
-	let best = 0;
-	let bestMiss = Infinity;
-	for (let i = 0; i < 72; i++) {
-		const t = (i / 72) * 2 * Math.PI;
-		const value = miss(t);
-		if (value < bestMiss) {
-			bestMiss = value;
-			best = t;
-		}
-	}
-	for (let step = (2 * Math.PI) / 72; step > 0.0005; step /= 3) {
-		for (const way of [step, -step]) {
-			let improved = true;
-			while (improved) {
-				improved = false;
-				const value = miss(best + way);
-				if (value < bestMiss - 1e-12) {
-					best += way;
-					bestMiss = value;
-					improved = true;
-				}
-			}
-		}
-	}
+	const step = Math.max(1, fitted.semiMajor * 0.05);
+	const along = apply(fitted.inverse, fitted.cx + Math.cos(up) * step, fitted.cy + Math.sin(up) * step);
+	const middle = apply(fitted.inverse, fitted.cx, fitted.cy);
+	const measured = Math.atan2(along.y - middle.y, along.x - middle.x);
+
+	const best = measured;
 
 	const turned = ANCHOR_POINTS.map((_, i) => {
 		const angle = (i * Math.PI) / 2 + best;

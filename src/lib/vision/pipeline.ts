@@ -1,5 +1,5 @@
 import { downscale } from './pixels';
-import { alignFace, detectFaces, toFaceCoords } from './face';
+import { alignFace, detectFaces, pinFace, toFaceCoords } from './face';
 import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
@@ -183,6 +183,23 @@ export class Scanner {
 		return this.faces;
 	}
 
+	/**
+	 * Gives a fit an angular origin, by the same rule wherever one is taken on.
+	 *
+	 * A face has no way round of its own, so every fit that arrives has to be told which way round to
+	 * describe itself, and there are two ways to decide. Chained to the frame before, the choice stays
+	 * free and a run of free choices is a walk. Pinned to gravity it is not free at all: the answer is
+	 * the same on every frame whatever the camera has done in between.
+	 *
+	 * The follow path pinned and this one did not, which left the pin mending only the frames between
+	 * detections and leaving the detections themselves to wander. Since a pass lands several times a
+	 * second, and a chain step may turn the fit fifteen degrees, that was most of the drift the pin was
+	 * added to stop, still happening on the other path.
+	 */
+	private settle(previous: FaceLocation, face: FaceLocation): FaceLocation {
+		return this.up === null ? alignFace(previous, face) : pinFace(face, this.up);
+	}
+
 	/** The same as `push`, for a frame the caller has already reduced to `scaleFactor`. */
 	pushReduced(small: Frame): ScanResult {
 
@@ -213,7 +230,7 @@ export class Scanner {
 					// face has no way round of its own, so a fresh answer is turned onto the old origin
 					// before it is adopted. Otherwise every arrow already found jumps at that moment.
 					const moved = Math.hypot(face.cx - followed.cx, face.cy - followed.cy);
-					if (moved >= followed.semiMajor * 0.35) return alignFace(followed, face);
+					if (moved >= followed.semiMajor * 0.35) return this.settle(followed, face);
 
 					/*
 					 * Which of the two explains the picture in front of the camera now.
@@ -231,7 +248,7 @@ export class Scanner {
 					 */
 					const holding = ringAgreement(small, followed);
 					const offered = ringAgreement(small, face);
-					return offered > holding + ADOPT_MARGIN ? alignFace(followed, face) : followed;
+					return offered > holding + ADOPT_MARGIN ? this.settle(followed, face) : followed;
 				});
 				const moved = this.faces.length !== ordered.length || ordered.some((face, i) => {
 					const previous = this.faces[i];
@@ -367,7 +384,7 @@ export class Scanner {
 
 		const refitted = this.faces.map((face) => refineFace(small, face));
 		if (!refitted[0] || !verifyRings(small, refitted[0]).ok) return false;
-		this.faces = refitted.map((face, i) => alignFace(this.faces[i], face));
+		this.faces = refitted.map((face, i) => this.settle(this.faces[i], face));
 		return true;
 	}
 

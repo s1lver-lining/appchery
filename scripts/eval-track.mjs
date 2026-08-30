@@ -57,6 +57,16 @@ const accuracy = [];
 const turns = [];
 const swims = [];
 const jumps = [];
+/** How far an arrow moves in the detector's own frame between two moments it was labelled at. */
+const drifts = [];
+/** The same measure taken on the labels alone, which is as well as any detector could possibly do. */
+const floors = [];
+/** How many floor readings were already in before this recording, so its own can be told apart. */
+let floorMark = 0;
+/** Arrow pairs the labels themselves disagree about, which say nothing either way about the detector. */
+let setAside = 0;
+/** The turn between the detector's two frames, for telling a flip apart from a drift. */
+const spins = [];
 const rows = [];
 let heldFrames = 0;
 let allFrames = 0;
@@ -130,8 +140,116 @@ for (const name of (await readdir(WORK)).sort()) {
 	if (mine.length >= 2) {
 		const angles = mine.map((m) => m.angle);
 		const spread = Math.max(...angles) - Math.min(...angles);
-		turns.push({ spread, video: name.slice(-24), angles });
+		turns.push({ spread, video: name.slice(-24), angles, gravity: Boolean(motion) });
 	}
+
+	/*
+	 * What an arrow does between two moments, which is the whole point of holding the frame still.
+	 *
+	 * The archer labelled the same six arrows on several frames of a sweep, each time in that frame's
+	 * own coordinates, so the same physical shaft is pinned twice over and its image position at each
+	 * moment is known. Read both through the detector's fit at those moments and a detector whose frame
+	 * is nailed to the paper gives the same answer twice. Whatever it does not give is the error, in the
+	 * units the archer cares about: how far round the boss an arrow found early has crept by later.
+	 *
+	 * This is the one rotational measure the labels can actually support. A hand fit says nothing about
+	 * which way round the face is, because nothing in the picture does: the four handles slide freely
+	 * round the ring they are on and describe the identical boss, so comparing the detector's angle to
+	 * the archer's measures how the archer happened to drop the handles. Two frames' worth of the same
+	 * arrows do carry it, because an arrow is a real mark on the paper and is not free to move.
+	 */
+	const carried = [];
+	const marks = label.frameArrows ?? {};
+	const framesWithArrows = Object.keys(marks)
+		.map(Number)
+		.filter((f) => truth.has(meta.chosen[f]) && marks[f].length > 0)
+		.sort((a, b) => a - b);
+	if (label.arrowFrame !== undefined && truth.has(meta.chosen[label.arrowFrame])) {
+		framesWithArrows.unshift(label.arrowFrame);
+	}
+	const placed = framesWithArrows.map((f) => ({
+		at: meta.chosen[f],
+		hand: truth.get(meta.chosen[f]).h,
+		arrows: f === label.arrowFrame && !marks[f]
+			? label.arrows.map((a, n) => ({ n, x: a.x, y: a.y }))
+			: marks[f]
+	}));
+	for (let i = 0; i < placed.length; i++) {
+		for (let j = i + 1; j < placed.length; j++) {
+			const [one, two] = [placed[i], placed[j]];
+			const [da, db] = [seen.get(one.at), seen.get(two.at)];
+			if (!da || !db) continue;
+			const here = [];
+			for (const a of one.arrows) {
+				const b = two.arrows.find((x) => x.n === a.n);
+				if (!b) continue;
+				// The same shaft, put back in the picture at each moment, then read by the detector.
+				const pa = project(one.hand, a.x, a.y);
+				const pb = project(two.hand, b.x, b.y);
+				here.push({ a, b, moved: Math.hypot(toFace(db, pb.x, pb.y).x - toFace(da, pa.x, pa.y).x, toFace(db, pb.x, pb.y).y - toFace(da, pa.x, pa.y).y) });
+			}
+			/*
+			 * What the same measurement says about the labels themselves, which is the floor under it.
+			 *
+			 * The archer's two frames differ by a turn and nothing else, since both describe the same
+			 * boss, so taking the turn out should leave the six arrows sitting exactly on top of each
+			 * other. Whatever is left is the archer's own hand: a shaft clicked a few pixels differently,
+			 * or a fit dropped slightly differently. A detector error is only worth reporting down to
+			 * here, and reading this floor is the difference between measuring the detector and
+			 * measuring the labelling.
+			 */
+			if (here.length < 2) continue;
+			let cross = 0;
+			let dot = 0;
+			for (const { a, b } of here) {
+				cross += a.x * b.y - a.y * b.x;
+				dot += a.x * b.x + a.y * b.y;
+			}
+			const turn = Math.atan2(cross, dot);
+			const [cos, sin] = [Math.cos(turn), Math.sin(turn)];
+			const mine = here.map(({ a, b }) =>
+				Math.hypot(a.x * cos - a.y * sin - b.x, a.x * sin + a.y * cos - b.y)
+			);
+
+			/*
+			 * A pair the labels cannot support is not evidence about the detector.
+			 *
+			 * Two labellings of one set of arrows that do not lie on top of each other once the turn is
+			 * taken out are saying two different things about where the arrows are, and no reading of the
+			 * detector against them means anything. It happens: an arrow numbered differently on the two
+			 * frames, or one clicked on a shaft the wrong side of a crease. Set aside and counted, rather
+			 * than averaged in, because averaging them in reads as detector error and cannot be told from
+			 * it afterwards.
+			 */
+			if (median(mine) > 0.05) {
+				setAside += here.length;
+				continue;
+			}
+			for (const m of mine) floors.push(m);
+			for (const h of here) carried.push(h.moved);
+
+			/*
+			 * How much of the move is a turn, and how big a turn it is.
+			 *
+			 * A drift and a flip look alike in a distance and are not alike at all. Four points a quarter
+			 * apart describe the same face four ways, so a fit that changes its mind about which of them
+			 * is the first moves every arrow a quarter turn at once, which for an arrow halfway out is
+			 * over half the face radius. Reported as an angle, the two are unmistakable.
+			 */
+			let dcross = 0;
+			let ddot = 0;
+			for (const { a, b } of here) {
+				const u = toFace(da, project(one.hand, a.x, a.y).x, project(one.hand, a.x, a.y).y);
+				const v = toFace(db, project(two.hand, b.x, b.y).x, project(two.hand, b.x, b.y).y);
+				dcross += u.x * v.y - u.y * v.x;
+				ddot += u.x * v.x + u.y * v.y;
+			}
+			spins.push({ deg: (Math.atan2(dcross, ddot) * 180) / Math.PI, video: name.slice(-24) });
+		}
+	}
+	for (const c of carried) drifts.push(c);
+	const floorHere = floors.slice(floorMark);
+	floorMark = floors.length;
 
 	/*
 	 * Swim, from the track alone: how far the middle moves against a straight line through its
@@ -164,6 +282,8 @@ for (const name of (await readdir(WORK)).sort()) {
 		`ring ${pct(median(mine.map((m) => m.off)))}  ` +
 		`turn ${spread === undefined ? '   -' : `${spread.toFixed(1)}°`}  ` +
 		`held ${((path.length / Math.max(1, track.length)) * 100).toFixed(0)}%  ` +
+		`carry ${carried.length ? pct(median(carried)).padStart(5) : '    -'}  ` +
+		`floor ${floorHere.length ? pct(median(floorHere)).padStart(5) : '    -'}  ` +
 		`jumps ${lost}` +
 		`${motion ? '  gravity' : ''}`
 	);
@@ -179,11 +299,40 @@ console.log(`  recordings        ${withMotion} with gravity, ${without} without`
 console.log(`  checked on        ${accuracy.length} hand fitted frames`);
 console.log(`  ring error        ${pct(median(accuracy))} median, ${pct(quantile(accuracy, 0.9))} at p90`);
 console.log(`                    a ring is 10% of the radius, so ${(median(accuracy) * 10).toFixed(2)} rings median`);
+/*
+ * Split, because they are two different detectors. A recording with gravity beside it has its frame
+ * pinned to something outside the picture; one without has only the frame before it to hold on to, and
+ * nothing done to the pin can move it either way. Read together, fifteen recordings that cannot
+ * respond drown out nine that can, and every change to the pin reads as no change at all.
+ */
 const spreads = turns.map((t) => t.spread);
+const pinned = turns.filter((t) => t.gravity).map((t) => t.spread);
+const adrift = turns.filter((t) => !t.gravity).map((t) => t.spread);
 console.log(`  turn over a sweep ${median(spreads).toFixed(1)}° median, ${quantile(spreads, 0.9).toFixed(1)}° at p90`);
+console.log(`    with gravity    ${median(pinned).toFixed(1)}° median, ${quantile(pinned, 0.9).toFixed(1)}° at p90  (${pinned.length})`);
+console.log(`    without         ${median(adrift).toFixed(1)}° median, ${quantile(adrift, 0.9).toFixed(1)}° at p90  (${adrift.length})`);
+console.log(`  arrow carried     ${pct(median(drifts))} of the face radius median, ${pct(quantile(drifts, 0.9))} at p90  (${drifts.length} pairs)`);
+console.log(`                    a ring is 10% of the radius, so ${(median(drifts) * 10).toFixed(2)} rings median`);
+console.log(`  set aside         ${setAside} arrow pairs whose two labellings disagree by more than 5%`);
+console.log(`  label floor       ${pct(median(floors))} median, ${pct(quantile(floors, 0.9))} at p90  (the archer's own two answers, turn removed)`);
 console.log(`  face held         ${((heldFrames / Math.max(1, allFrames)) * 100).toFixed(0)}% of frames`);
 console.log(`  swim              ${pct(median(swims))} of the face radius per frame, ${pct(quantile(swims, 0.9))} at p90`);
 console.log(`  jumps             ${jumps.reduce((n, j) => n + j.lost, 0)} in all`);
+
+/*
+ * Grouped by size, because the shape of this list is the diagnosis. A detector that drifts gives a
+ * spread of small angles; one that flips gives a heap at a quarter turn and nothing in between.
+ */
+const bands = [[0, 5], [5, 15], [15, 40], [40, 70], [70, 110], [110, 180]];
+console.log('\nturn between the detector\'s two frames, over the pairs the labels support:');
+for (const [low, high] of bands) {
+	const n = spins.filter((s) => Math.abs(s.deg) >= low && Math.abs(s.deg) < high).length;
+	if (n > 0) console.log(`  ${String(low).padStart(3)} to ${String(high).padStart(3)}°  ${String(n).padStart(3)}  ${'#'.repeat(Math.min(60, n))}`);
+}
+for (const name of [...new Set(spins.map((s) => s.video))]) {
+	const mine = spins.filter((s) => s.video === name).map((s) => Math.round(s.deg));
+	console.log(`  ${name}  ${mine.join(' ')}`);
+}
 
 const worstTurn = [...turns].sort((a, b) => b.spread - a.spread).slice(0, 5);
 console.log('\nworst turn:');

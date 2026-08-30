@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor, nearestTurn, pinFace } from './face';
+import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor, pinFace } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -558,7 +558,7 @@ export function refineFace(
 		 * tracker gathers evidence per place on the face, so an arrow whose coordinates are turning has
 		 * its votes smeared over an arc instead of piling up, and never clears the bar at all.
 		 */
-		return up === null ? alignFace(start, fitted) : nearestTurn(start, pinFace(fitted, up));
+		return up === null ? alignFace(start, fitted) : pinFace(fitted, up);
 	}
 
 	const fitted = descend(frame, start);
