@@ -14,7 +14,7 @@
 		margin: 0; font: 13px/1.45 system-ui, sans-serif; background: #131519; color: var(--ink);
 		display: grid; grid-template-columns: 1fr 320px; height: 100vh; overflow: hidden;
 	}
-	main { overflow: hidden; display: grid; place-items: center; position: relative; }
+	main { overflow: hidden; display: grid; place-items: center; position: relative; padding-bottom: 8px; }
 	canvas { touch-action: none; cursor: crosshair; }
 	canvas.panning { cursor: grabbing; }
 
@@ -61,6 +61,7 @@
 		margin: 0 0 6px; font-weight: 600;
 	}
 	.dim { color: var(--dim); font-size: 12px; margin: 0; }
+	#status { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 	button {
 		font: inherit; padding: 7px 9px; border-radius: 6px; border: 1px solid #383d45;
 		background: #1e2228; color: var(--ink); cursor: pointer;
@@ -70,10 +71,23 @@
 	button:disabled { opacity: .4; cursor: default; }
 	.row { display: flex; gap: 6px; }
 	.row > * { flex: 1; }
-	.modes { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
-	.modes button { padding: 9px 6px; font-weight: 600; }
-	.modes button small { display: block; font-weight: 400; font-size: 10px; color: var(--faint); }
+	/* Over the picture, bottom right, where it is beside the thing it aims. */
+	#placing {
+		position: absolute; right: 14px; bottom: 14px; z-index: 2;
+		background: rgba(15, 17, 21, 0.88); border: 1px solid var(--edge); border-radius: 9px;
+		padding: 7px;
+	}
+	.modes { display: flex; gap: 5px; }
+	.modes button { padding: 7px 9px; font-weight: 600; white-space: nowrap; }
+	.modes button small { margin-left: 5px; font-weight: 400; font-size: 10px; color: var(--faint); }
 	.modes button.on small { color: #9fe8b8; }
+	/* Only ever the part that is about right now. The instructions live on the buttons. */
+	#placing p { margin: 6px 2px 0; font-size: 11px; color: var(--warn); }
+	#placing p:empty { display: none; }
+
+	/* Anything whose full text is a hover away says so with the pointer. */
+	[title] { cursor: help; }
+	button[title], .item[title] { cursor: pointer; }
 	.count { font-variant-numeric: tabular-nums; text-align: center; align-self: center; }
 
 	/* The frames of one recording, so a fit that was never checked is visible without stepping through. */
@@ -82,7 +96,20 @@
 		width: 26px; padding: 3px 0; font-size: 11px; font-variant-numeric: tabular-nums;
 		border-radius: 4px; position: relative;
 	}
-	.frames button.here { border-color: var(--ink); }
+	/*
+	 * The one being looked at, ringed with a gap around it rather than merely outlined.
+	 *
+	 * The same cursor the score scale draws in the app, and for the same reason: these buttons already
+	 * carry their own colour for what has been done to each, so a cursor that works by changing the
+	 * border competes with the state it is standing on and disappears exactly where the state is
+	 * strongest. A halo sitting outside the button owes nothing to the colour inside it.
+	 */
+	.frames button.here {
+		box-shadow: 0 0 0 2px var(--panel), 0 0 0 4px var(--ink);
+		border-color: var(--ink);
+	}
+	/* Room for the halo, or the first row clips it against the one below. */
+	.frames { padding: 3px 0; row-gap: 8px; }
 	.frames button.fitted { background: #14532d; border-color: #1d7a41; }
 	.frames button.skip { background: #3a1d1d; border-color: #6b2d2d; color: var(--dim); }
 	.frames button.nocked::after {
@@ -95,7 +122,25 @@
 	}
 </style>
 
-<main><canvas id="view"></canvas></main>
+<main>
+	<canvas id="view"></canvas>
+	<!--
+		What is being placed, over the picture rather than in the sidebar.
+		Kept here because it is the one choice that changes what a click on the canvas means, so it
+		belongs beside the canvas: the sidebar is where things are looked up, and this is aimed with.
+		Each button carries its own instructions on hover, because they are a paragraph each and a
+		paragraph that is always on screen stops being read after the first day.
+	-->
+	<div id="placing">
+		<div class="modes">
+			<button id="fitMode" title="Drag the four handles onto the black to white edge, in any order round the circle. The gold circle landing on the gold is the check. One good fit per recording is enough.">Face<small>F</small></button>
+			<button id="arrowMode" title="Click where each shaft enters the paper. Click an existing marker to remove it. The arrows belong to the whole recording, so place them on a frame whose fit you have checked: a click is read through this frame's fit, and moving an arrow on a badly fitted frame moves it wrongly on every other one.">Arrows<small>A</small></button>
+			<button id="nockMode" title="Click the nock of the ringed arrow, which is the far end of the shaft, away from the paper. Click another arrow, or press its number, to switch to it. Click a nock to take it back. These are wanted on five or six frames a recording, taken from as far apart as the sweep goes, because how a nock moves with the camera is the one thing about an arrow that nothing flat on the paper can imitate.">Nocks<small>N</small></button>
+			<button id="markMode" title="Click anything that looks like a shaft and is not one: a crease, a fold, a printed line, the rim, a shadow. Click one again to remove it. A handful in total is enough to test a rule against, which is not something aggregate scores can do.">Not arrows<small>M</small></button>
+		</div>
+		<p id="help"></p>
+	</div>
+</main>
 <aside>
 	<header>
 		<h1>Appchery labelling</h1>
@@ -121,20 +166,9 @@
 	</div>
 
 	<div class="work">
-		<div id="label">
-			<h2>What you are placing</h2>
-			<div class="modes">
-				<button id="fitMode">Face <small>F &middot; four handles</small></button>
-				<button id="arrowMode">Arrows <small>A &middot; once per video</small></button>
-				<button id="nockMode">Nocks <small>N &middot; every frame</small></button>
-				<button id="markMode">Not arrows <small>M &middot; once per video</small></button>
-			</div>
-			<p class="dim" id="help" style="margin-top:8px"></p>
-		</div>
-		
 
 		<div>
-			<h2>Frame <span class="count" id="where"></span></h2>
+			<h2><span id="frameHeading">Frame </span><span class="count" id="where"></span></h2>
 			<div class="row" style="margin-bottom:6px">
 				<button id="prev">&larr; Previous</button>
 				<button id="next">Next &rarr;</button>
@@ -162,30 +196,28 @@
 		</div>
 
 		<div>
-			<h2>What the detector sees</h2>
+			<h2 title="The app's own detector, run on the picture in front of you and drawn dashed in magenta over the labels. Its face is drawn as well as its arrows, because an arrow in the wrong place is as often a face fitted slightly wrong as a shaft missed, and the arrows alone cannot tell you which.">What the detector sees</h2>
 			<div class="row">
 				<button id="detOff">Off</button>
 				<button id="detClassical">Classical</button>
 				<button id="detLearned">Learned</button>
 			</div>
 			<p class="dim" id="detectorNote" style="margin-top:6px"></p>
-			<p class="dim">Drawn dashed in magenta, over the labels. The app's own detector on this picture.</p>
 		</div>
 
 		<div>
-			<h2>View</h2>
+			<h2 title="Wheel to zoom about the point under the cursor. Drag with the right button, or hold space and drag with the left, to pan. Zooming in is what makes a shaft clickable at all, so panning is what gets you to the next one without giving that up.">View</h2>
 			<div class="row">
 				<button id="out">Zoom &minus;</button><button id="in">Zoom &plus;</button><button id="wide">Fit</button>
 			</div>
-			<p class="dim" style="margin-top:6px">Wheel to zoom where you point. Drag with the right button, or hold space, to pan.</p>
+
 		</div>
 
 		<p class="dim" id="status"></p>
-		<p class="dim">
-			<kbd>&larr;</kbd><kbd>&rarr;</kbd> frame &middot; <kbd>F</kbd><kbd>A</kbd><kbd>N</kbd><kbd>M</kbd> mode
-			&middot; <kbd>H</kbd> lines &middot; <kbd>D</kbd> detector
-			&middot; <kbd>1</kbd>&ndash;<kbd>9</kbd> pick an arrow while nocking
-		</p>
+		<p
+			class="dim"
+			title="Left and right arrows step through the frames. F, A, N and M choose what you are placing. H shows or hides the lines drawn to the nocks. D turns the detector off, on and to the learned one. 1 to 9 pick which arrow the next nock belongs to. Plus, minus and 0 zoom in, out and back to fitting the window."
+		>Keyboard shortcuts</p>
 	</div>
 </aside>
 
@@ -351,17 +383,6 @@
 		}
 	}
 
-	/**
-	 * Redraws the list after a change, so the corpus view is never behind the work.
-	 *
-	 * The counts come from `v.labels`, which the autosave replaces on every write, so this is called
-	 * from the save rather than from the edit: what the list reports is then what is actually on disk,
-	 * which is the question somebody scanning it is really asking.
-	 */
-	function markProgress() {
-		drawList();
-	}
-
 	for (const [id, which] of [['detOff', 'off'], ['detClassical', 'classical'], ['detLearned', 'learned']]) {
 		el(id).onclick = () => {
 			detector = which;
@@ -380,8 +401,16 @@
 		el('srcPhotos').className = source === 'photos' ? 'on' : '';
 		el('search').placeholder = source === 'photos' ? 'Filter photos' : 'Filter recordings';
 		// Nothing here is labelled on a photograph, so nothing that places a label is offered.
-		el('label').style.display = source === 'photos' ? 'none' : '';
+		el('placing').style.display = source === 'photos' ? 'none' : '';
 		el('onlyTodo').style.display = source === 'photos' ? 'none' : '';
+		/*
+		 * The numbered strip is the frames of one recording, coloured by what has been done to each. A
+		 * photograph has none of that, and left showing it described the recording that happened to be
+		 * open before the switch: fifteen buttons saying which frames were fitted, over a photograph that
+		 * has no frames and no fits.
+		 */
+		el('frames').style.display = source === 'photos' ? 'none' : '';
+		el('frameHeading').textContent = source === 'photos' ? 'Photo ' : 'Frame ';
 		el('fitTools').style.display = 'none';
 		el('arrowTools').style.display = 'none';
 		el('nockTools').style.display = 'none';
@@ -780,16 +809,19 @@
 		el('noface').className = s.skip ? 'on' : '';
 		el('noarrows').className = v.empty ? 'on' : '';
 		const nextNock = waiting();
+		/*
+		 * Only what is true right now. The instructions for each mode are a paragraph each and they sit
+		 * on the buttons as tooltips, because a paragraph that is always on screen stops being read after
+		 * the first day and this line has to be worth looking at when it does say something.
+		 */
 		el('help').textContent =
-			mode === 'fit'
-				? 'Drag the four handles onto the black to white edge, in any order round the circle. The gold circle landing on the gold is the check. One good fit per recording is enough.'
-				: mode === 'arrows'
-					? 'Click where each shaft enters the paper. Click an existing marker to remove it. The arrows belong to the whole recording, so place them on a frame whose fit you have checked: a click is read through this frame\'s fit, and moving an arrow on a badly fitted frame moves it wrongly on every other one.' +
-						(state().touched ? '' : ' THIS FRAME\'S FIT IS NOT CHECKED.')
-					: mode === 'nocks'
-						? `Placing the nock of arrow ${nocking + 1}, ringed in amber. Click its nock — the far end of the shaft, away from the paper. Click another arrow, or press its number, to switch to that one. Click a nock to take it back.` +
-							(nextNock < 0 ? ' Every arrow here has one: move to a frame shot from somewhere else.' : '')
-						: 'Click anything that looks like a shaft and is not one: a crease, a fold, a printed line, the rim, a shadow. Click one again to remove it.';
+			mode === 'arrows' && !state().touched
+				? 'This frame\'s fit is not checked'
+				: mode === 'nocks'
+					? nextNock < 0
+						? 'Every arrow here is nocked: move to a frame shot from somewhere else'
+						: `Nocking arrow ${nocking + 1}, ringed in amber`
+					: '';
 		const fitted = v.work.filter((w) => w.touched && !w.skip).length;
 
 		/*
@@ -826,7 +858,7 @@
 		el('hide').textContent = showNocks ? 'Hide the nock lines' : 'Show the nock lines';
 		const nocked = Object.values(v.nocks).filter((list) => list.length > 0).length;
 		const anchored = v.arrowFrame === null || v.arrowFrame === undefined ? '' : ` (placed on frame ${v.arrowFrame + 1})`;
-		el('status').textContent =
+		const summary =
 			`${v.arrows.length} arrows${anchored}, ${nocked} frames with nocks, ${v.marks.length} not-arrows, ` +
 			`${fitted} of ${v.work.length} faces fitted by hand` +
 			(v.empty ? ', marked as having no arrows' : '') +
@@ -835,6 +867,13 @@
 			(mode === 'arrows' && v.arrows.length > 0 && v.arrowFrame !== frame
 				? `. These arrows were placed on frame ${(v.arrowFrame ?? 0) + 1}: correcting one here reads it through this frame's fit instead, which moves it relative to the rest. Correct them on frame ${(v.arrowFrame ?? 0) + 1}, or move them all here on purpose.`
 				: '');
+		/*
+		 * Clamped to a couple of lines with the whole of it a hover away. What this says is mostly counts,
+		 * which are read at a glance, and occasionally a warning that runs to three sentences; letting the
+		 * long case set the height moved every button below it whenever a label was placed.
+		 */
+		el('status').textContent = summary;
+		el('status').title = summary;
 	}
 
 	/**
@@ -858,7 +897,9 @@
 		el('where').textContent = `${photo + 1} of ${shown.length}`;
 		el('prev').disabled = photo === 0;
 		el('next').disabled = photo >= shown.length - 1;
-		el('status').textContent = set ? `${set.set} / ${shown[photo] ?? ''}` : '';
+		const where = set ? `${set.set} / ${shown[photo] ?? ''}` : '';
+		el('status').textContent = where;
+		el('status').title = where;
 	}
 
 	/**
@@ -1277,7 +1318,6 @@
 		const v = video();
 		if (!v) return;
 		v.dirty = true;
-		markProgress();
 		clearTimeout(pendingSave);
 		pendingSave = setTimeout(() => void writeNow(v), 400);
 	}
@@ -1298,6 +1338,8 @@
 				body: JSON.stringify(sent)
 			});
 			v.labels = sent;
+			// Now, not when the edit was made: what the list reports is what actually reached the disk.
+			drawList();
 			el('saved').textContent = 'Saved';
 			el('saved').className = 'saved on';
 		} catch (error) {
