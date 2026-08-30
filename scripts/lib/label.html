@@ -584,10 +584,26 @@
 			el('detOff').className = detector === 'off' ? 'on' : '';
 			el('detClassical').className = detector === 'classical' ? 'on' : '';
 			el('detLearned').className = detector === 'learned' ? 'on' : '';
+			sayScorer();
 			void runDetector();
 		};
 	}
 	el('detOff').className = 'on';
+
+	/**
+	 * The transport's own scorer button, told what the detector is set to.
+	 *
+	 * There is one detector and two places that turn it on and off, and only one of them was saying so.
+	 * Turned off from the panel the button went on reading "Scorer 4", because what wrote that reading
+	 * was the drawing loop and the drawing loop is exactly what being off stops. The two now say the
+	 * same thing because they are the same thing.
+	 */
+	function sayScorer() {
+		el('scorerToggle').className = detector === 'off' ? '' : 'on';
+		if (detector === 'off') el('scorerToggle').textContent = 'Scorer off';
+		else if (detector === 'learned') el('scorerToggle').textContent = 'Learned';
+		else el('scorerToggle').textContent = 'Scorer';
+	}
 
 	/** Which of the two corpora is showing, and everything that follows from it. */
 	function setSource(which) {
@@ -2028,7 +2044,6 @@
 	el('scorerToggle').onclick = () => {
 		el(detector === 'off' ? 'detClassical' : 'detOff').onclick();
 		if (detector !== 'off') restartReplay();
-		if (detector === 'off') el('scorerToggle').textContent = 'Scorer off';
 	};
 
 	el('fitLock').onclick = () => {
