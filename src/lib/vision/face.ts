@@ -426,39 +426,6 @@ export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
 }
 
 /**
- * Picks, of the four ways a pinned fit can be labelled, the one nearest the fit before it.
- *
- * A pin says which way up the face is. It cannot say which of the four anchors is the one that points
- * that way, because they are interchangeable: the same face turned a quarter is the same face. Left to
- * the pin, the choice flips whenever the camera passes a diagonal, and a flip moves every arrow a
- * quarter turn at once, which is far worse for the tracker than the drift the pin was mending.
- *
- * So the pin fixes the angle and this fixes the labelling, by keeping whichever quarter turn sits
- * closest to where the previous frame had it. Nothing here changes the geometry: all four describe the
- * identical face, and a score reads a radius.
- */
-export function nearestTurn(previous: FaceLocation, pinned: FaceLocation): FaceLocation {
-	let best = pinned;
-	let bestCost = Infinity;
-	for (let quarter = 0; quarter < 4; quarter++) {
-		const turned = ANCHOR_POINTS.map((_, i) => {
-			const angle = ((i + quarter) * Math.PI) / 2;
-			const point = apply(pinned.transform, Math.cos(angle) * ANCHOR_RADIUS, Math.sin(angle) * ANCHOR_RADIUS);
-			return [point.x, point.y] as [number, number];
-		});
-		let cost = 0;
-		for (let i = 0; i < turned.length; i++) {
-			const [x, y] = previous.anchors[i];
-			cost += (turned[i][0] - x) ** 2 + (turned[i][1] - y) ** 2;
-		}
-		if (cost >= bestCost) continue;
-		bestCost = cost;
-		best = { ...(faceFromAnchors(turned, pinned.support) ?? pinned), spot: pinned.spot };
-	}
-	return best;
-}
-
-/**
  * Re-expresses a face with the same angular origin as the one before it.
  *
  * A target face is the same face turned through any angle. The rings say nothing about which way round

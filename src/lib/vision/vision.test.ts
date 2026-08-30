@@ -4,7 +4,6 @@ import {
 	detectFaces,
 	faceFromAnchors,
 	faceFromEllipse,
-	nearestTurn,
 	pinFace,
 	toFaceCoords,
 	toImageCoords
@@ -643,19 +642,23 @@ describe('pinning which way round a face is described', () => {
 		for (const angle of pinned) expect(angle).toBeCloseTo(up, 2);
 	});
 
-	it('keeps the same anchor pointing up as the fit turns', () => {
+	it('keeps the same anchor pointing up as the fit turns, with nothing to chain to', () => {
 		/*
-		 * The pin fixes the angle; it cannot fix which of the four interchangeable anchors sits at it,
-		 * and left alone that choice flips as the camera passes a diagonal. A flip moves every arrow a
-		 * quarter turn at once, which is worse for the tracker than the drift the pin was mending.
+		 * The pin is absolute, and that is the property worth having. Its answer was once handed on to
+		 * be turned onto the previous frame's quarter, to stop the choice of anchor flipping at a
+		 * diagonal, but a rule that keeps the quarter nearest the last one also keeps a wrong quarter
+		 * for as long as the face is held: measured on the recorded sweeps, a fit that flipped once
+		 * stayed flipped for the rest of the sweep, and every arrow in it stayed a quarter turn out.
+		 *
+		 * Nothing is chained here on purpose. Each fit is pinned on its own, in an order that walks most
+		 * of a full turn, and they all have to come back to the same origin regardless.
 		 */
 		const up = -Math.PI / 2;
 		let previous = pinFace(circle(100, 100, 40, 0), up);
 		let worst = 0;
 		for (let step = 1; step <= 40; step++) {
 			// Most of a full turn, in small steps, as a phone rolling in the archer's hand would give.
-			const fitted = pinFace(circle(100, 100, 40, (step / 40) * Math.PI * 1.5), up);
-			const next = nearestTurn(previous, fitted);
+			const next = pinFace(circle(100, 100, 40, (step / 40) * Math.PI * 1.5), up);
 			let moved = origin(next) - origin(previous);
 			while (moved > Math.PI) moved -= 2 * Math.PI;
 			while (moved < -Math.PI) moved += 2 * Math.PI;
