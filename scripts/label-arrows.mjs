@@ -245,8 +245,7 @@ function scaleUp(face, width, height) {
 	 *
 	 * Everything that reads a point off a face goes through the projection the four handles define, and
 	 * the summary written above carries none of it. Handed one of these, the conversion from picture
-	 * pixels to face coordinates reached for a matrix that was not there and stopped the export dead
-	 * on its first frame, so no training set could be written at all.
+	 * pixels to face coordinates reached for a matrix that was not there and stopped the export dead.
 	 */
 	const rebuilt = placed.handles && geometry.faceFromAnchors(placed.handles, face.support);
 	return rebuilt ? { ...placed, ...rebuilt, visible: placed.visible } : placed;
@@ -465,22 +464,52 @@ async function exportSet() {
 		const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 		const { width, height } = meta;
 		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
-		const at = meta.chosen[label.arrowFrame ?? 0];
-
 		/**
+		 * Every frame that can say for itself where the arrows are, as a video frame and a way to read it.
+		 *
 		 * The impacts start in the frame the archer drew them in and have to reach the one the detector
 		 * works in, which is a different frame for the same face: a target is rotationally symmetric, so
-		 * nothing forces the two to agree about which way round it sits. Going through the picture on the
-		 * one frame that has both is what ties them together.
+		 * nothing forces the two to agree about which way round it sits. Going through the picture on a
+		 * frame that has both is what ties them together.
+		 *
+		 * More than one of them now, which is the point. Doing it once and using the answer everywhere
+		 * assumed the detector's own frame means the same thing all through the recording, and it does
+		 * not: its angular origin drifts and occasionally sits a quarter turn away, so arrows tied down
+		 * at one end of a sweep arrive turned at the other. Every hand labelled frame is another place
+		 * the two can be tied together, and each crop takes the nearest one.
 		 */
-		const truth = label.empty ? null : homographyOf(label.frames[String(label.arrowFrame)].handles);
-		if (!label.empty && !truth) {
+		const anchors = [];
+		if (!label.empty) {
+			const own = label.frameArrows ?? {};
+			const claims = [[label.arrowFrame ?? 0, label.arrows]];
+			for (const [sample, list] of Object.entries(own)) {
+				/*
+				 * Only frames carrying the whole set. A frame with two of six labelled describes those two
+				 * and says nothing about the other four, and a crop written from it would put the four it
+				 * omits into the background, teaching the detector that a real arrow is not one.
+				 */
+				if (list.length < label.arrows.length) {
+					console.log(
+						`  ${name.slice(-24)}: frame ${Number(sample) + 1} has ${list.length} of ` +
+							`${label.arrows.length} arrows, so it is not used. Finish it or clear it.`
+					);
+					continue;
+				}
+				claims.push([Number(sample), list]);
+			}
+			for (const [sample, arrows] of claims) {
+				const fit = homographyOf(label.frames?.[String(sample)]?.handles);
+				if (!fit) continue;
+				anchors.push({ at: meta.chosen[sample], fit, arrows, canonical: null });
+			}
+		}
+
+		if (!label.empty && anchors.length === 0) {
 			console.log(`  ${name.slice(-24)}: no hand fit to anchor the arrows to, skipped`);
 			continue;
 		}
 
 		const track = new FaceTrack();
-		let canonical = null;
 		let index = 0;
 		let written = 0;
 		const frames = [];
@@ -492,21 +521,35 @@ async function exportSet() {
 				data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
 			});
 			const placed = face ? scaleUp(face, width, height) : null;
-			if (placed && index === at && truth) {
-				canonical = label.arrows.map((arrow) => {
-					const point = project(truth, arrow.x, arrow.y);
-					return toFace(placed, point.x, point.y);
-				});
+			if (placed) {
+				for (const anchor of anchors) {
+					if (anchor.at !== index) continue;
+					anchor.canonical = anchor.arrows.map((arrow) => {
+						const point = project(anchor.fit, arrow.x, arrow.y);
+						return toFace(placed, point.x, point.y);
+					});
+				}
 			}
 			// Only well fitted frames, and only every few: neighbours are the same picture twice.
 			if (placed && index % every === 0 && quality(placed) >= 0.7) frames.push({ index, face: placed });
 			index += 1;
 		}
 
-		if (!label.empty && !canonical) {
-			console.log(`  ${name.slice(-24)}: the labelled frame was not fitted, skipped`);
+		const tied = anchors.filter((anchor) => anchor.canonical);
+		if (!label.empty && tied.length === 0) {
+			console.log(`  ${name.slice(-24)}: the labelled frames were not fitted, skipped`);
 			continue;
 		}
+
+		/** The arrows as the detector would have to see them here, taken from the nearest tied frame. */
+		const impactsAt = (here) => {
+			if (tied.length === 0) return [];
+			let best = tied[0];
+			for (const anchor of tied) {
+				if (Math.abs(anchor.at - here) < Math.abs(best.at - here)) best = anchor;
+			}
+			return best.canonical;
+		};
 
 		const wanted = new Map(frames.map((f) => [f.index, f.face]));
 		let atFrame = 0;
@@ -522,10 +565,13 @@ async function exportSet() {
 					face
 				)
 			);
-			labels.push({ video: name, frame: here, impacts: canonical ?? [] });
+			labels.push({ video: name, frame: here, impacts: impactsAt(here) });
 			written += 1;
 		}
-		console.log(`  ${name.slice(-24)}: ${written} crops, ${(canonical ?? []).length} arrows each`);
+		console.log(
+			`  ${name.slice(-24)}: ${written} crops, ${label.arrows.length} arrows each, ` +
+				`tied down on ${tied.length} frame${tied.length === 1 ? '' : 's'}`
+		);
 	}
 
 	await writeFile(
