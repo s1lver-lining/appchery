@@ -394,6 +394,23 @@ export function cropToFace(face: FaceLocation, x: number, y: number): { x: numbe
  * tilted with it; what it is, is the same on every frame, which is the property that was missing.
  * A phone that reports gravity can pass the real up here instead and get the true one.
  */
+/**
+ * Where up lies in a fit's own coordinates, as an angle, which is zero for a fit already pinned.
+ *
+ * Read at the middle rather than out at an anchor. Asking where the first anchor must sit for its
+ * chord to run up the screen asks about a point four fifths of the way out, which is the part of the
+ * face perspective has bent most: walk round the boss without turning the phone and the face angle
+ * that answers it moves. A short step up the screen from the middle, taken back through the fit, is
+ * the direction on the paper that appears upright from here, which is a fact about the boss and the
+ * phone rather than about the far side of the face.
+ */
+export function upOffset(face: FaceLocation, up: number): number {
+	const step = Math.max(1, face.semiMajor * 0.05);
+	const along = apply(face.inverse, face.cx + Math.cos(up) * step, face.cy + Math.sin(up) * step);
+	const middle = apply(face.inverse, face.cx, face.cy);
+	return Math.atan2(along.y - middle.y, along.x - middle.x);
+}
+
 export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
 	/**
 	 * Which way up is on the paper, rather than which anchor happens to look upright in the picture.
@@ -410,12 +427,7 @@ export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
 	 * step is small so that the projection is only ever asked what it does locally, which is the one
 	 * thing about it that does not depend on where the anchors ended up.
 	 */
-	const step = Math.max(1, fitted.semiMajor * 0.05);
-	const along = apply(fitted.inverse, fitted.cx + Math.cos(up) * step, fitted.cy + Math.sin(up) * step);
-	const middle = apply(fitted.inverse, fitted.cx, fitted.cy);
-	const measured = Math.atan2(along.y - middle.y, along.x - middle.x);
-
-	const best = measured;
+	const best = upOffset(fitted, up);
 
 	const turned = ANCHOR_POINTS.map((_, i) => {
 		const angle = (i * Math.PI) / 2 + best;

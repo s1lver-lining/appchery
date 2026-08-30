@@ -56,6 +56,17 @@ const rates = new Map();
 const accuracy = [];
 const turns = [];
 const swims = [];
+/** How much the fit's shape changes against its own neighbours, which reads on screen as wobble. */
+const wobbles = [];
+/** The same for its size alone: the rings swelling and shrinking on a boss that is not moving. */
+const breaths = [];
+/** Wobble split by whether the frame got a full search or was only followed from the one before. */
+const onPass = [];
+const between = [];
+/** The wobble of the lines the overlay draws, after its own smoother has had them. */
+const drawnWobbles = [];
+/** How far those lines sit from the fit, which is what the smoothing costs. */
+const lags = [];
 const jumps = [];
 /** How far an arrow moves in the detector's own frame between two moments it was labelled at. */
 const drifts = [];
@@ -226,9 +237,15 @@ for (const name of (await readdir(WORK)).sort()) {
 	floorMark = floors.length;
 
 	/*
-	 * Swim, from the track alone: how far the middle moves against a straight line through its
-	 * neighbours. A camera being panned gives a smooth path and scores nothing; a face that steps
-	 * about while the camera is still is exactly what this picks up.
+	 * Swim and wobble, from the track alone: how much a frame differs from the average of its
+	 * neighbours. A camera being panned or walked forward gives a smooth path and scores nothing on
+	 * either; what is left is the fit changing its mind between one frame and the next.
+	 *
+	 * Two separate faults, because they look different on the screen and have different causes. Swim is
+	 * the whole overlay sliding about while the boss sits still. Wobble is its shape breathing: the
+	 * rings going oval and back, or swelling and shrinking, while the boss neither moves nor changes
+	 * size. Measured on the four anchors taken about the middle and divided by the size, so a face
+	 * genuinely growing as the archer walks in contributes nothing to it.
 	 */
 	const path = track.filter((t) => t.face);
 	for (let i = 1; i < path.length - 1; i++) {
@@ -236,6 +253,31 @@ for (const name of (await readdir(WORK)).sort()) {
 		const [a, b, c] = [path[i - 1].face, path[i].face, path[i + 1].face];
 		const size = b.semiMajor || 1;
 		swims.push(Math.hypot(b.cx - (a.cx + c.cx) / 2, b.cy - (a.cy + c.cy) / 2) / size);
+
+		// The shape alone: the anchors about their own middle, at their own scale, so place and size go.
+		const shape = (f) => f.anchors.map(([x, y]) => [(x - f.cx) / (f.semiMajor || 1), (y - f.cy) / (f.semiMajor || 1)]);
+		const [sa, sb, sc] = [shape(a), shape(b), shape(c)];
+		let worst = 0;
+		for (let k = 0; k < 4; k++) {
+			worst = Math.max(worst, Math.hypot(sb[k][0] - (sa[k][0] + sc[k][0]) / 2, sb[k][1] - (sa[k][1] + sc[k][1]) / 2));
+		}
+		wobbles.push(worst);
+		(path[i].pass ? onPass : between).push(worst);
+
+		// The same, on the lines the overlay actually draws, which is what the archer sees wobbling.
+		if (path[i - 1].shown && path[i].shown && path[i + 1].shown) {
+			const [da, db, dc] = [shape(path[i - 1].shown), shape(path[i].shown), shape(path[i + 1].shown)];
+			let drawnWorst = 0;
+			for (let k = 0; k < 4; k++) {
+				drawnWorst = Math.max(drawnWorst, Math.hypot(db[k][0] - (da[k][0] + dc[k][0]) / 2, db[k][1] - (da[k][1] + dc[k][1]) / 2));
+			}
+			drawnWobbles.push(drawnWorst);
+			// How far the drawn lines sit from the fit, which is the lag the smoothing is paid for with.
+			const off = path[i].shown.anchors.map(([x, y], k) => Math.hypot(x - b.anchors[k][0], y - b.anchors[k][1]));
+			lags.push(Math.max(...off) / size);
+		}
+		// The size on its own, which is the overlay breathing in and out rather than going oval.
+		breaths.push(Math.abs(b.semiMajor - (a.semiMajor + c.semiMajor) / 2) / size);
 	}
 
 	/*
@@ -354,6 +396,21 @@ console.log(`  set aside         ${setAside} arrow pairs whose two labellings di
 console.log(`  label floor       ${pct(median(floors))} median, ${pct(quantile(floors, 0.9))} at p90  (the archer's own two answers, turn removed)`);
 console.log(`  face held         ${((heldFrames / Math.max(1, allFrames)) * 100).toFixed(0)}% of frames`);
 console.log(`  swim              ${pct(median(swims))} of the face radius per frame, ${pct(quantile(swims, 0.9))} at p90`);
+console.log(`  wobble            ${pct(median(wobbles))} of the face radius per frame, ${pct(quantile(wobbles, 0.9))} at p90, ${pct(quantile(wobbles, 0.99))} at p99`);
+console.log(`    on a pass       ${pct(median(onPass))} median, ${pct(quantile(onPass, 0.9))} at p90  (${onPass.length} frames)`);
+console.log(`    as drawn        ${pct(median(drawnWobbles))} median, ${pct(quantile(drawnWobbles, 0.9))} at p90, ${pct(quantile(drawnWobbles, 0.99))} at p99`);
+console.log(`    lines behind    ${pct(median(lags))} median, ${pct(quantile(lags, 0.9))} at p90, ${pct(quantile(lags, 0.99))} at p99  (what the smoothing costs)`);
+/*
+ * Where the big shape changes happen. Passes are about a ninth of the frames, so if the jumps were
+ * the follow's own noise they would fall in that share of them; a heap on the pass frames means the
+ * search is being adopted and the overlay is stepping every time one lands.
+ */
+const bigOnPass = onPass.filter((w) => w > 0.05).length;
+const bigBetween = between.filter((w) => w > 0.05).length;
+console.log(`    jumps over 5%   ${bigOnPass} of ${onPass.length} pass frames (${((bigOnPass / onPass.length) * 100).toFixed(1)}%), ` +
+	`${bigBetween} of ${between.length} between (${((bigBetween / between.length) * 100).toFixed(1)}%)`);
+console.log(`    between passes  ${pct(median(between))} median, ${pct(quantile(between, 0.9))} at p90  (${between.length} frames)`);
+console.log(`  breathing         ${pct(median(breaths))} of its size per frame, ${pct(quantile(breaths, 0.9))} at p90, ${pct(quantile(breaths, 0.99))} at p99`);
 console.log(`  jumps             ${jumps.reduce((n, j) => n + j.lost, 0)} in all`);
 
 /*

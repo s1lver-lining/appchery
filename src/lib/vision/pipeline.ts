@@ -184,20 +184,30 @@ export class Scanner {
 	}
 
 	/**
-	 * Gives a fit an angular origin, by the same rule wherever one is taken on.
+	 * Gives a fit taken on from the search the angular origin the followed one already had.
 	 *
-	 * A face has no way round of its own, so every fit that arrives has to be told which way round to
-	 * describe itself, and there are two ways to decide. Chained to the frame before, the choice stays
-	 * free and a run of free choices is a walk. Pinned to gravity it is not free at all: the answer is
-	 * the same on every frame whatever the camera has done in between.
-	 *
-	 * The follow path pinned and this one did not, which left the pin mending only the frames between
-	 * detections and leaving the detections themselves to wander. Since a pass lands several times a
-	 * second, and a chain step may turn the fit fifteen degrees, that was most of the drift the pin was
-	 * added to stop, still happening on the other path.
+	 * Chained, not pinned. A search knows nothing of which way round the last fit was describing the
+	 * face, and a face has no way round of its own, so a fresh answer has to be turned onto the old
+	 * origin or every arrow already found jumps at that moment. Pinning it to gravity instead does that
+	 * job too, and was tried: it measured worse, because a pass lands several times a second and each
+	 * one then wrote gravity's own error into the coordinates afresh.
 	 */
 	private settle(previous: FaceLocation, face: FaceLocation): FaceLocation {
-		return this.up === null ? alignFace(previous, face) : pinFace(face, this.up);
+		return alignFace(previous, face);
+	}
+
+	/**
+	 * The angular origin for a face with nothing behind it, which is the one place a pin is free.
+	 *
+	 * Everywhere else there is a previous frame to chain to, and chaining adds no noise. Here there is
+	 * not: the face was just found, by a search that had no reason to prefer any of the ways round it
+	 * could describe the boss. Left as the search happened to leave it, a sweep that loses its face and
+	 * finds it again comes back in a different frame, and every arrow already gathered is somewhere
+	 * else. Gravity is not steady enough to be believed frame by frame but it is easily steady enough
+	 * to answer this once.
+	 */
+	private acquire(face: FaceLocation): FaceLocation {
+		return this.up === null ? face : pinFace(face, this.up);
 	}
 
 	/** The same as `push`, for a frame the caller has already reduced to `scaleFactor`. */
@@ -225,7 +235,7 @@ export class Scanner {
 				 */
 				const ordered = fresh.map((face, i) => {
 					const followed = this.faces[i];
-					if (!followed) return face;
+					if (!followed) return this.acquire(face);
 					// A search knows nothing of which way round the last fit was describing the face, and a
 					// face has no way round of its own, so a fresh answer is turned onto the old origin
 					// before it is adopted. Otherwise every arrow already found jumps at that moment.

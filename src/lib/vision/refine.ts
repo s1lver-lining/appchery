@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor, pinFace } from './face';
+import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -558,7 +558,25 @@ export function refineFace(
 		 * tracker gathers evidence per place on the face, so an arrow whose coordinates are turning has
 		 * its votes smeared over an arc instead of piling up, and never clears the bar at all.
 		 */
-		return up === null ? alignFace(start, fitted) : pinFace(fitted, up);
+		/*
+		 * Chained to the frame before, and gravity is not consulted here at all.
+		 *
+		 * It was, and it measured worse. Gravity is the only thing that can say which way up the boss is,
+		 * so pinning every frame to it looks like the answer, but it is not steady enough to be believed
+		 * frame by frame: worked out from the archer's own hand fits, with no detector in it anywhere,
+		 * the up it implies wanders nine to eighteen degrees inside a single recording, drifting over
+		 * seconds rather than jittering. Fed in every frame, that wander became the coordinates' own.
+		 * Measured on the arrows themselves, over nine hundred pairs of moments the archer labelled
+		 * twice, pinning hard carried an arrow further out of place than never pinning at all.
+		 *
+		 * A dead band was tried too, so that gravity would only speak up when the chain had drifted
+		 * further than gravity's own error could explain. Swept, it gave four point two, five point six
+		 * and five point oh percent as the band widened, which is not a trend, it is noise; a knob whose
+		 * setting cannot be read off the evidence is a knob that should not exist.
+		 *
+		 * So the chain does this job, and gravity does the one job the chain cannot: see `acquire`.
+		 */
+		return alignFace(start, fitted);
 	}
 
 	const fitted = descend(frame, start);
