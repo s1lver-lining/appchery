@@ -3,6 +3,8 @@
 import { Scanner } from './pipeline';
 import { toFaceCoords, scaleFace } from './face';
 import { upFromGravity } from './motion';
+import { ringAgreement } from './refine';
+import { SteadyFace } from './steady';
 import type { Frame, FaceLocation, Impact } from './types';
 export { DETECT_EVERY_MS } from './live';
 
@@ -37,7 +39,16 @@ export interface SweepResult {
 	 * in between. An arrow read through a frame that has quietly turned is an arrow in the wrong place,
 	 * so the thing to keep is the whole path rather than its last point.
 	 */
-	track: ({ frame: number } & ({ face: FaceLocation } | { face: null }))[];
+	track: {
+		frame: number;
+		face: FaceLocation | null;
+		/** The same face after the overlay's own smoother, which is what the archer actually sees. */
+		shown: FaceLocation | null;
+		/** Whether this frame got a full search, or was only followed from the frame before it. */
+		pass: boolean;
+		/** How well the fit's rings match the colours under them, which is the check it was let in on. */
+		rings: number;
+	}[];
 }
 
 /**
@@ -58,6 +69,8 @@ export class Sweep {
 	private at: FaceLocation | null = null;
 	private firstSteady: number | null = null;
 	private readonly costs: number[] = [];
+	/** The overlay's own smoother, so the harness can see the lines the archer sees. */
+	private smoother: SteadyFace | null = null;
 	private readonly path: SweepResult['track'] = [];
 
 	constructor(
@@ -113,7 +126,10 @@ export class Sweep {
 	push(small: Frame) {
 		const nowMs = (this.frames / this.fps) * 1000;
 		this.scanner.setUp(this.upAt(nowMs));
+		// Whether this frame got a full search or only a follow, so the two can be told apart after.
+		let pass = false;
 		if (nowMs - this.last >= this.detectEveryMs) {
+			pass = true;
 			this.last = nowMs;
 			const started = performance.now();
 			const result = this.scanner.pushReduced(small);
@@ -130,7 +146,21 @@ export class Sweep {
 
 		const face = this.scanner.located;
 		const factor = this.scanner.scaleFactor;
-		this.path.push({ frame: this.frames, face: face ? scaleFace(face, factor) : null });
+		/*
+		 * What the archer would actually see, which is not what was fitted.
+		 *
+		 * The camera page draws through a smoother and has done all along, so measuring the raw fit
+		 * measures something nobody looks at. Kept beside it rather than instead of it: the raw fit is
+		 * what every coordinate is read through, and the smoothed one is only ever drawn.
+		 */
+		const drawn = face ? (this.smoother ??= new SteadyFace()).show(face) : null;
+		this.path.push({
+			frame: this.frames,
+			face: face ? scaleFace(face, factor) : null,
+			shown: drawn ? scaleFace(drawn, factor) : null,
+			pass,
+			rings: face ? ringAgreement(small, face) : 0
+		});
 		if (face) this.withFace += 1;
 		if (this.frames === this.labelled && face) this.at = scaleFace(face, factor);
 		this.frames += 1;

@@ -312,6 +312,8 @@ for (const name of (await readdir(WORK)).sort()) {
 			video: name.slice(-24),
 			at: firstFace.frame + first,
 			support: firstFace.face.support,
+			rings: firstFace.rings,
+			ringsLater: last.rings,
 			off: Math.hypot(mark.x - firstFace.face.cx, mark.y - firstFace.face.cy) / size,
 			gap: Math.abs(near[0] - (firstFace.frame + first)),
 			walked: Math.hypot(last.face.cx - firstFace.face.cx, last.face.cy - firstFace.face.cy) / firstFace.face.semiMajor,
@@ -444,8 +446,9 @@ for (const a of [...judged].sort((x, y) => y.off - x.off)) {
 console.log(`\nhow far the first fit had to be walked back over the twenty frames after it:`);
 for (const a of [...acquisitions].sort((x, y) => y.resized - x.resized)) {
 	console.log(
-		`  ${a.video}  support ${a.support.toFixed(2)}  moved ${pct(a.walked).padStart(6)}  ` +
-		`resized ${pct(a.resized).padStart(6)}${a.resized > 0.15 || a.walked > 0.3 ? '   UNSETTLED' : ''}`
+		`  ${a.video}  support ${a.support.toFixed(2)}  rings ${a.rings.toFixed(2)} then ${a.ringsLater.toFixed(2)}  ` +
+		`moved ${pct(a.walked).padStart(6)}  resized ${pct(a.resized).padStart(6)}` +
+		`${a.resized > 0.15 || a.walked > 0.3 ? '   UNSETTLED' : ''}`
 	);
 }
 
