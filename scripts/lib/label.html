@@ -1739,6 +1739,15 @@
 			}
 
 			if (arrowsHere(h).places.has(nocking)) {
+				/*
+				 * One nock per arrow per frame, so putting it somewhere else moves it rather than adds it.
+				 *
+				 * A shaft has one far end. Nothing stopped a second one being placed for an arrow that
+				 * already had one, and both stayed: the correction was drawn over the mistake, the frame
+				 * counted as nocked, and what went to disk was two lines from one impact going two ways.
+				 */
+				const already = here.findIndex((nock) => nock.arrow === nocking);
+				if (already >= 0) here.splice(already, 1);
 				here.push({ arrow: nocking, x: p.x, y: p.y });
 				// On to the next one still wanting a nock, so six clicks in a row does the frame.
 				const next = waiting();
