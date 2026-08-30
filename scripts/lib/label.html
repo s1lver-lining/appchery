@@ -1182,7 +1182,7 @@
 			const q = project(h, arrow.x, arrow.y);
 			return Math.hypot(q.x - p.x, q.y - p.y) < Math.max(10, image.width / 50);
 		});
-		if (hit >= 0) v.arrows.splice(hit, 1);
+		if (hit >= 0) removeArrow(hit);
 		else {
 			const f = project(inverse, p.x, p.y);
 			v.arrows.push({ x: f.x, y: f.y });
@@ -1201,6 +1201,28 @@
 		changed();
 		draw();
 	};
+
+	/**
+	 * Takes an arrow out of the recording, and everything that was pointing at it with it.
+	 *
+	 * An arrow is identified by its place in the list, which is also the number drawn beside it, so
+	 * taking one out of the middle moves every arrow after it down one. Nocks are stored against that
+	 * number, in the picture's own pixels, so a splice on its own left every nock past the gap pointing
+	 * one arrow too high: the nocks stayed exactly where they were placed and quietly became somebody
+	 * else's. That is invisible until the frame is drawn again, which is why it looked like a fault that
+	 * appeared on coming back to a frame rather than on the click that caused it.
+	 */
+	function removeArrow(at) {
+		const v = video();
+		v.arrows.splice(at, 1);
+		for (const [where, list] of Object.entries(v.nocks)) {
+			// The nocks of the arrow that has gone go with it; a nock to nothing is not evidence.
+			v.nocks[where] = list.filter((nock) => nock.arrow !== at).map((nock) =>
+				nock.arrow > at ? { ...nock, arrow: nock.arrow - 1 } : nock
+			);
+		}
+		if (nocking >= v.arrows.length) nocking = Math.max(0, v.arrows.length - 1);
+	}
 
 	/** The lowest numbered arrow with no nock on this frame yet, or -1 when they all have one. */
 	function waiting() {
@@ -1325,17 +1347,18 @@
 	};
 	el('noarrows').onclick = () => {
 		video().empty = !video().empty;
-		if (video().empty) video().arrows = [];
+		while (video().empty && video().arrows.length > 0) removeArrow(video().arrows.length - 1);
 		changed();
 		draw();
 	};
 	el('undo').onclick = () => {
-		video().arrows.pop();
+		if (video().arrows.length > 0) removeArrow(video().arrows.length - 1);
 		changed();
 		draw();
 	};
 	el('clear').onclick = () => {
-		video().arrows = [];
+		// Emptied one at a time, so the nocks of each go with it rather than being left pointing at gaps.
+		while (video().arrows.length > 0) removeArrow(video().arrows.length - 1);
 		changed();
 		draw();
 	};
