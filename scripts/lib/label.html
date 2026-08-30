@@ -607,7 +607,15 @@
 
 	async function runDetector() {
 		detected = null;
-		if (detector === 'off' || !image.width) return;
+		/*
+		 * Redrawn on the way out, not only on the way back. Turning the detector off cleared what it had
+		 * found and then returned without repainting, so the last run's crosses and rings stayed on the
+		 * canvas over a picture they were never about, and off looked exactly like on.
+		 */
+		if (detector === 'off' || !image.width) {
+			draw();
+			return;
+		}
 		detecting = true;
 		el('detectorNote').textContent = 'Working...';
 		try {
