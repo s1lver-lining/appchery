@@ -13,6 +13,11 @@
 # not appear until --prepare has seen them, so that is the thing to reach for when one is missing.
 #
 # Nothing here saves: the page writes each label to the workspace a moment after it is placed.
+#
+# The page also runs the app's own detector, over the frame being labelled or over any photograph in
+# the corpus, drawn dashed in magenta on top of the labels. That is the comparison a score cannot make:
+# not how many arrows were found but which ones, how far out, and whether the fault was the arrows or
+# the face they are measured against.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 

@@ -39,6 +39,8 @@
 		background: #12151a; color: var(--ink); border: 1px solid #383d45;
 	}
 	.list { overflow-y: auto; padding: 0 6px 8px; }
+	.sets { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 10px 8px; }
+	.sets button { padding: 4px 8px; font-size: 11px; }
 	.item {
 		display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; align-items: center;
 		width: 100%; text-align: left; padding: 6px 8px; border-radius: 6px;
@@ -101,15 +103,25 @@
 	</header>
 
 	<div class="browse">
+		<!--
+			The two corpora. Recordings are what gets labelled; photographs are what a change has to keep
+			working on, because every frame of one recording is the same boss in the same light while the
+			photographs are hundreds of bosses, distances and afternoons.
+		-->
+		<div class="find" style="padding-bottom:0">
+			<button id="srcVideos">Recordings</button>
+			<button id="srcPhotos">Photos</button>
+		</div>
 		<div class="find">
 			<input id="search" type="search" placeholder="Filter recordings" />
 			<button id="onlyTodo" title="Only the recordings still wanting something">To do</button>
 		</div>
+		<div class="sets" id="sets"></div>
 		<div class="list" id="list"></div>
 	</div>
 
 	<div class="work">
-		<div>
+		<div id="label">
 			<h2>What you are placing</h2>
 			<div class="modes">
 				<button id="fitMode">Face <small>F &middot; four handles</small></button>
@@ -119,6 +131,7 @@
 			</div>
 			<p class="dim" id="help" style="margin-top:8px"></p>
 		</div>
+		
 
 		<div>
 			<h2>Frame <span class="count" id="where"></span></h2>
@@ -222,6 +235,48 @@
 	let search = '';
 
 	/**
+	 * Which corpus is being looked at: the recordings, or the photographs.
+	 *
+	 * Photographs are never labelled here. The sets that carry ground truth carry their own, made when
+	 * they were made, and a second differently made copy of it beside them would be worse than none.
+	 * They are here to be looked at with the detector running, which is the question a recording cannot
+	 * answer: every frame of one is the same boss in the same light.
+	 */
+	let source = 'videos';
+	let photoSets = [];
+	let photoSet = 0;
+	let photo = 0;
+
+	/** The images of the chosen set that match what has been typed, which is what prev and next walk. */
+	function shownPhotos() {
+		const set = photoSets[photoSet];
+		if (!set) return [];
+		return set.images.filter((name) => name.toLowerCase().includes(search));
+	}
+
+	async function loadPhotos() {
+		if (photoSets.length === 0) photoSets = await (await fetch('/photos')).json();
+		drawList();
+		await show();
+	}
+
+	function drawSets() {
+		el('sets').style.display = source === 'photos' ? '' : 'none';
+		if (source !== 'photos') return;
+		el('sets').innerHTML = photoSets
+			.map((s, i) => `<button class="${i === photoSet ? 'on' : ''}" data-at="${i}">${s.set} (${s.images.length})</button>`)
+			.join('');
+		for (const button of el('sets').querySelectorAll('button')) {
+			button.onclick = () => {
+				photoSet = Number(button.dataset.at);
+				photo = 0;
+				drawList();
+				void show();
+			};
+		}
+	}
+
+	/**
 	 * What has been done to a recording, read from what is on disk rather than from what is loaded.
 	 *
 	 * The list has to be able to say this about every recording at once, and only one of them is open,
@@ -240,7 +295,35 @@
 	}
 
 	/** The recording list, which is how the corpus is browsed rather than merely switched between. */
+	/** How many of a set's images the list will draw at once, which is a scroll and not a wait. */
+	const PHOTO_PAGE = 250;
+
 	function drawList() {
+		drawSets();
+		if (source === 'photos') {
+			const shown = shownPhotos();
+			el('list').innerHTML =
+				shown
+					.slice(0, PHOTO_PAGE)
+					.map(
+						(name, i) =>
+							`<button class="item ${i === photo ? 'on' : ''}" data-at="${i}">` +
+							`<span class="who">${name}</span></button>`
+					)
+					.join('') +
+				(shown.length > PHOTO_PAGE
+					? `<p class="dim" style="padding:8px">${shown.length - PHOTO_PAGE} more. Type to narrow them.</p>`
+					: '') +
+				(shown.length === 0 ? '<p class="dim" style="padding:8px">Nothing matches.</p>' : '');
+			for (const button of el('list').querySelectorAll('.item')) {
+				button.onclick = () => {
+					photo = Number(button.dataset.at);
+					void show();
+				};
+			}
+			return;
+		}
+
 		const wanted = videos
 			.map((v, i) => ({ v, i, p: progress(v) }))
 			.filter(({ v, p }) => (!todoOnly || !p.done) && v.video.toLowerCase().includes(search));
@@ -290,9 +373,35 @@
 	}
 	el('detOff').className = 'on';
 
+	/** Which of the two corpora is showing, and everything that follows from it. */
+	function setSource(which) {
+		source = which;
+		el('srcVideos').className = source === 'videos' ? 'on' : '';
+		el('srcPhotos').className = source === 'photos' ? 'on' : '';
+		el('search').placeholder = source === 'photos' ? 'Filter photos' : 'Filter recordings';
+		// Nothing here is labelled on a photograph, so nothing that places a label is offered.
+		el('label').style.display = source === 'photos' ? 'none' : '';
+		el('onlyTodo').style.display = source === 'photos' ? 'none' : '';
+		el('fitTools').style.display = 'none';
+		el('arrowTools').style.display = 'none';
+		el('nockTools').style.display = 'none';
+		if (source === 'photos') void loadPhotos();
+		else {
+			drawList();
+			// A corpus with no prepared recording in it has nothing to show, and asking for one throws.
+			if (videos.length > 0) void show();
+		}
+	}
+
+	el('srcVideos').onclick = () => setSource('videos');
+	el('srcPhotos').onclick = () => setSource('photos');
+	el('srcVideos').className = 'on';
+
 	el('search').oninput = () => {
 		search = el('search').value.toLowerCase();
+		if (source === 'photos') photo = 0;
 		drawList();
+		if (source === 'photos') void show();
 	};
 	el('onlyTodo').onclick = () => {
 		todoOnly = !todoOnly;
@@ -529,9 +638,24 @@
 	}
 
 	async function show() {
-		const v = video();
 		image = new Image();
-		image.src = `/image/${encodeURIComponent(v.video)}/${v.samples[frame]}`;
+		if (source === 'photos') {
+			const set = photoSets[photoSet];
+			const shown = shownPhotos();
+			const name = shown[photo];
+			if (!set || !name) {
+				// Nothing to show, so the canvas is cleared rather than left holding the last picture.
+				view.width = 0;
+				view.height = 0;
+				detected = null;
+				drawList();
+				return;
+			}
+			image.src = `/photo/${encodeURIComponent(set.set)}/${encodeURIComponent(name)}`;
+		} else {
+			const v = video();
+			image.src = `/image/${encodeURIComponent(v.video)}/${v.samples[frame]}`;
+		}
 		await image.decode();
 		pad = Math.round(Math.max(image.width, image.height) * 0.22);
 		// Fitted on both axes separately, or a portrait recording leaves half the window empty.
@@ -547,6 +671,8 @@
 	}
 
 	function draw() {
+		context.setTransform(1, 0, 0, 1, 0, 0);
+		if (source === 'photos') return drawPhoto();
 		const v = video();
 		context.setTransform(1, 0, 0, 1, 0, 0);
 		context.fillStyle = '#0b0c0e';
@@ -704,6 +830,30 @@
 	}
 
 	/**
+	 * A photograph with nothing on it but whatever the detector says.
+	 *
+	 * Its own path rather than a branch through the labelling draw, because almost none of that applies:
+	 * there are no handles to place, no arrows of ours, no fit to check against. What is left is the
+	 * picture and the detector, which is exactly the point of having the photographs here.
+	 */
+	function drawPhoto() {
+		context.fillStyle = '#0b0c0e';
+		context.fillRect(0, 0, view.width, view.height);
+		if (!image.width) return;
+		const k = zoom * closer;
+		context.setTransform(k, 0, 0, k, (pad - lookX) * k, (pad - lookY) * k);
+		context.drawImage(image, 0, 0);
+		drawDetected(Math.max(1.5, image.width / 500));
+
+		const set = photoSets[photoSet];
+		const shown = shownPhotos();
+		el('where').textContent = `${photo + 1} of ${shown.length}`;
+		el('prev').disabled = photo === 0;
+		el('next').disabled = photo >= shown.length - 1;
+		el('status').textContent = set ? `${set.set} / ${shown[photo] ?? ''}` : '';
+	}
+
+	/**
 	 * What the detector made of this picture, over the top of what was placed by hand.
 	 *
 	 * In magenta throughout and dashed, because everything else on the canvas is ground truth and the
@@ -822,6 +972,13 @@
 			view.className = 'panning';
 			return;
 		}
+
+		/*
+		 * A photograph is looked at, never labelled. Without this the click still ran the labelling path
+		 * and placed the mark on whichever recording happened to be open behind it, writing a label onto
+		 * a picture nobody was looking at.
+		 */
+		if (source === 'photos') return;
 
 		const p = at(event);
 		const s = state();
@@ -946,6 +1103,7 @@
 	}
 
 	view.onpointermove = (event) => {
+		if (!panning && source === 'photos') return;
 		if (panning) {
 			const box = view.getBoundingClientRect();
 			const k = zoom * closer;
@@ -1024,11 +1182,13 @@
 		draw();
 	};
 	el('prev').onclick = () => {
-		frame = Math.max(0, frame - 1);
+		if (source === 'photos') photo = Math.max(0, photo - 1);
+		else frame = Math.max(0, frame - 1);
 		show();
 	};
 	el('next').onclick = () => {
-		frame = Math.min(video().samples.length - 1, frame + 1);
+		if (source === 'photos') photo = Math.min(shownPhotos().length - 1, photo + 1);
+		else frame = Math.min(video().samples.length - 1, frame + 1);
 		show();
 	};
 	el('reset').onclick = () => {
@@ -1169,10 +1329,12 @@
 		if (event.target.tagName === 'INPUT' || event.target.tagName === 'SELECT') return;
 		if (event.key === 'ArrowRight') el('next').onclick();
 		if (event.key === 'ArrowLeft') el('prev').onclick();
-		if (event.key.toLowerCase() === 'f') el('fitMode').onclick();
-		if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
-		if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
-		if (event.key.toLowerCase() === 'm') el('markMode').onclick();
+		if (source !== 'photos') {
+			if (event.key.toLowerCase() === 'f') el('fitMode').onclick();
+			if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
+			if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
+			if (event.key.toLowerCase() === 'm') el('markMode').onclick();
+		}
 		if (event.key.toLowerCase() === 'h') el('hide').onclick();
 		// Round the three, because the useful thing is flicking between them on one picture.
 		if (event.key.toLowerCase() === 'd') {

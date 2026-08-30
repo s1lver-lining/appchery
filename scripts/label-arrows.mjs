@@ -17,6 +17,12 @@
  * picked up along with the loose files at the top. There is no save: the page writes each label to the
  * workspace a moment after it is placed.
  *
+ * The page also runs the app's own detector, on the frame being labelled or on any photograph in the
+ * corpus, over the top of the labels. Fetched from here as a bundle rather than reimplemented, because
+ * anything the tool showed that the app would not do would be worse than showing nothing at all.
+ *
+ * Start it with ./scripts/labeller.sh.
+ *
  * Three kinds of label, and they are not alike.
  *
  * **Arrows** are where a shaft enters the paper. One click labels the whole recording, because the
@@ -389,6 +395,13 @@ async function photoSets() {
 	const sets = [];
 	for (const entry of await readdir(root, { withFileTypes: true })) {
 		if (!entry.isDirectory()) continue;
+		/*
+		 * Photographs only, not the things made out of them. The workspace holds frames decoded from the
+		 * recordings, and the prepared sets hold training crops already cut to a face: pointing a face
+		 * detector at one asks a question about the cutting rather than about the detector, and five
+		 * hundred of them standing between here and the real corpora is the opposite of easy to look at.
+		 */
+		if (entry.name === 'labelling' || entry.name.startsWith('prepared')) continue;
 		for (const at of [join(root, entry.name), join(root, entry.name, 'images')]) {
 			if (!existsSync(at)) continue;
 			const images = (await readdir(at)).filter((f) => PHOTO.test(f)).sort(byNumberThenName);
