@@ -80,6 +80,13 @@
 		padding: 7px;
 	}
 	.modes { display: flex; gap: 5px; }
+	/* Face and its lock read as one control, because the lock is a way of placing the face. */
+	.pair { display: flex; }
+	.pair button:first-child { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+	.pair button:last-child {
+		border-top-left-radius: 0; border-bottom-left-radius: 0; border-left-width: 0;
+		padding-left: 8px; padding-right: 8px; font-size: 15px; line-height: 1;
+	}
 	.modes button { padding: 7px 9px; font-weight: 600; white-space: nowrap; }
 	.modes button small { margin-left: 5px; font-weight: 400; font-size: 10px; color: var(--faint); }
 	.modes button.on small { color: #9fe8b8; }
@@ -140,7 +147,10 @@
 	-->
 	<div id="placing">
 		<div class="modes">
-			<button id="fitMode" title="Drag the four handles onto the black to white edge, in any order round the circle. The gold circle landing on the gold is the check. One good fit per recording is enough.">Face<small>F</small></button>
+			<span class="pair">
+				<button id="fitMode" title="Drag the four handles onto the edge where the printed rings stop, in any order round the circle. On a full face that is the black to white boundary; on a five ring face it is the outside of the blue. The gold circle landing on the gold is the check, and the heavy outer ring is the line between a one and a miss. One good fit per recording is enough.">Face<small>F</small></button>
+				<button id="fitLock" title="Lock the fit and turn it instead. The green ring stays exactly where it is and dragging any handle walks all four round it, a quarter turn apart, so the shape and place of the face cannot change and only which way round it is described does. That angle is the one thing the picture cannot decide, and it is what puts arrows read off another frame a quarter turn out.">&#9711;</button>
+			</span>
 			<button id="arrowMode" title="Click where each shaft enters the paper. Click an existing marker to remove it. The arrows belong to the whole recording, so place them on a frame whose fit you have checked: a click is read through this frame's fit, and moving an arrow on a badly fitted frame moves it wrongly on every other one.">Arrows<small>A</small></button>
 			<button id="nockMode" title="Click the nock of the ringed arrow, which is the far end of the shaft, away from the paper. Click another arrow, or press its number, to switch to it. Click a nock to take it back. These are wanted on five or six frames a recording, taken from as far apart as the sweep goes, because how a nock moves with the camera is the one thing about an arrow that nothing flat on the paper can imitate.">Nocks<small>N</small></button>
 			<button id="markMode" title="Click anything that looks like a shaft and is not one: a crease, a fold, a printed line, the rim, a shadow. Click one again to remove it. A handful in total is enough to test a rule against, which is not something aggregate scores can do.">Not arrows<small>M</small></button>
@@ -290,6 +300,20 @@
 	let closer = 1;
 	let lookX = 0;
 	let lookY = 0;
+	/**
+	 * Whether dragging a handle turns the fit rather than reshaping it.
+	 *
+	 * A target is a set of circles, so the picture says nothing at all about which way round the boss is
+	 * and the fit is free to describe it from any angle. That freedom is what puts the arrows of one
+	 * frame a quarter turn out when they are read through another, and until now the only way to correct
+	 * it by hand was to drag all four handles and hope the shape survived. Locked, the shape cannot
+	 * change: the four stay a quarter turn apart on the ring they are already on, so the projection they
+	 * define is exactly the one they defined before and only its angular origin moves.
+	 */
+	let lockRotation = false;
+	/** The fit as it stood when the drag began, which is the ring the handles are walked around. */
+	let lockedFit = null;
+
 	/** Whether to draw the line from each impact to its nock, which is the thing that clutters a face. */
 	let showNocks = true;
 	/** Which arrow the next nock belongs to. Chosen, never guessed: see the click handler. */
@@ -973,6 +997,7 @@
 		drawDetected(line);
 		drawFaces();
 
+		el('fitLock').className = lockRotation ? 'on' : '';
 		el('fitMode').className = mode === 'fit' ? 'on' : '';
 		el('arrowMode').className = mode === 'arrows' ? 'on' : '';
 		el('nockMode').className = mode === 'nocks' ? 'on' : '';
@@ -1228,6 +1253,8 @@
 			});
 			if (best >= 0) {
 				dragging = best;
+				// Frozen now, so the ring the handles walk around cannot drift as they are walked.
+				lockedFit = lockRotation ? homography(s.handles) : null;
 				view.setPointerCapture(event.pointerId);
 				draw();
 			}
@@ -1378,6 +1405,54 @@
 		return { places, derived: v.arrowFrame !== frame, own: null };
 	}
 
+	/**
+	 * The four handles walked round a fixed ring, so the one being dragged sits nearest the pointer.
+	 *
+	 * They stay a quarter turn apart, which is what keeps the projection identical: four points at the
+	 * angles the fit assumes, on the conic the fit already describes, define that same fit again. Let
+	 * them move independently and they would not, because a projection is fixed by four correspondences
+	 * and points slid to angles it does not know about describe a different one.
+	 */
+	function turnedHandles(fit, grabbed, p) {
+		const r = anchorRadius();
+		const on = (t) => project(fit, Math.cos(t) * r, Math.sin(t) * r);
+		const miss = (t) => {
+			const q = on(t);
+			return Math.hypot(q.x - p.x, q.y - p.y);
+		};
+
+		// Coarse over the whole ring, then bisected: the pointer can be anywhere and there is no start.
+		let best = 0;
+		let bestMiss = Infinity;
+		for (let i = 0; i < 180; i++) {
+			const t = (i / 180) * Math.PI * 2;
+			const value = miss(t);
+			if (value < bestMiss) {
+				bestMiss = value;
+				best = t;
+			}
+		}
+		for (let step = Math.PI / 180; step > 1e-5; step /= 3) {
+			for (const way of [step, -step]) {
+				let improved = true;
+				while (improved) {
+					improved = false;
+					const value = miss(best + way);
+					if (value < bestMiss - 1e-12) {
+						best += way;
+						bestMiss = value;
+						improved = true;
+					}
+				}
+			}
+		}
+
+		return [0, 1, 2, 3].map((i) => {
+			const q = on(best + ((i - grabbed) * Math.PI) / 2);
+			return [q.x, q.y];
+		});
+	}
+
 	/** The lowest arrow number this frame has not placed yet, so six clicks in a row number one to six. */
 	function nextNumber() {
 		const own = video().frameArrows?.[frame] ?? [];
@@ -1442,7 +1517,11 @@
 		}
 		if (dragging < 0) return;
 		const p = at(event);
-		state().handles[dragging] = [p.x, p.y];
+		if (lockRotation && lockedFit) {
+			state().handles = turnedHandles(lockedFit, dragging, p);
+		} else {
+			state().handles[dragging] = [p.x, p.y];
+		}
 		draw();
 	};
 
@@ -1457,10 +1536,17 @@
 			state().touched = true;
 			changed();
 		}
+		lockedFit = null;
 		dragging = -1;
 		draw();
 	};
 
+	el('fitLock').onclick = () => {
+		lockRotation = !lockRotation;
+		// Turning it on is a way of placing the face, so it says so by going there.
+		if (lockRotation) mode = 'fit';
+		draw();
+	};
 	el('fitMode').onclick = () => {
 		mode = 'fit';
 		draw();
