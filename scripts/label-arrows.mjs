@@ -53,6 +53,15 @@ import { listRecordings, motionPath } from './lib/recordings.mjs';
 const ROOT = new URL('..', import.meta.url).pathname;
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
 const WORK = join(ROOT, 'test/datasets/labelling');
+/**
+ * The vision module, kept where `scaleUp` can reach it.
+ *
+ * It rebuilds a fit from its four handles, and that is geometry rather than a summary, so it has to be
+ * the app's own: two implementations of a projection are two chances to disagree about where an arrow
+ * is, which is the one thing this tool exists to be right about.
+ */
+let geometry = null;
+
 const SCALE = 4;
 
 /** How much the frame the crops are cut from is reduced first. */
@@ -230,7 +239,17 @@ function scaleUp(face, width, height) {
 		perspectiveY: face.perspectiveY ?? 0
 	};
 	placed.visible = visibility(placed, width, height);
-	return placed;
+
+	/*
+	 * Built back into a real fit, not just a bag of numbers.
+	 *
+	 * Everything that reads a point off a face goes through the projection the four handles define, and
+	 * the summary written above carries none of it. Handed one of these, the conversion from picture
+	 * pixels to face coordinates reached for a matrix that was not there and stopped the export dead
+	 * on its first frame, so no training set could be written at all.
+	 */
+	const rebuilt = placed.handles && geometry.faceFromAnchors(placed.handles, face.support);
+	return rebuilt ? { ...placed, ...rebuilt, visible: placed.visible } : placed;
 }
 
 async function extract(file, indices, into) {
@@ -591,6 +610,7 @@ function cropBytes(frame, face, size = CROP_SIZE, span = CROP_SPAN) {
 }
 
 async function load() {
+	if (geometry) return geometry;
 	const directory = await mkdtemp(join(tmpdir(), 'appchery-vision-'));
 	const outfile = join(directory, 'vision.mjs');
 	await build({
@@ -600,9 +620,9 @@ async function load() {
 		platform: 'node',
 		outfile
 	});
-	const module = await import(outfile);
+	geometry = await import(outfile);
 	setTimeout(() => rm(directory, { recursive: true, force: true }), 0).unref?.();
-	return module;
+	return geometry;
 }
 
 async function* decode(file, width, height, scaleTo = null, stride = 1) {

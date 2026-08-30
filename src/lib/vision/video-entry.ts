@@ -272,4 +272,4 @@ export class FaceTrack {
 	}
 }
 
-export { toFaceCoords as toFace } from './face';
+export { toFaceCoords as toFace, faceFromAnchors } from './face';
