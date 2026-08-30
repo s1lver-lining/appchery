@@ -202,7 +202,7 @@
 	<div id="placing">
 		<div class="modes">
 			<span class="pair">
-				<button id="fitMode" title="Drag the four handles onto the edge where the printed rings stop, in any order round the circle. On a full face that is the black to white boundary; on a five ring face it is the outside of the blue. The gold circle landing on the gold is the check, and the heavy outer ring is the line between a one and a miss. One good fit per recording is enough.">Face<small>F</small></button>
+				<button id="fitMode" title="Drag the four handles onto the edge where the printed rings stop, in any order round the circle. On a full face that is the black to white boundary; on a five ring face it is the outside of the blue. The gold circle landing on the gold is the check, and the heavy outer ring is the line between a one and a miss. One good fit per recording is enough. The pink dot is the middle of the face and can be dragged too: it walks the four round the edge they are already on until the middle lands where you put it, which is the easy way round, since the edge is a thing you can see and the middle is a thing you can only aim at.">Face<small>F</small></button>
 				<button id="fitLock" title="Lock the fit and turn it instead. The green ring stays exactly where it is and dragging any handle walks all four round it, a quarter turn apart, so the shape and place of the face cannot change and only which way round it is described does. That angle is the one thing the picture cannot decide, and it is what puts arrows read off another frame a quarter turn out.">&#9711;</button>
 			</span>
 			<button id="arrowMode" title="Click where each shaft enters the paper. Click an existing marker to remove it. The arrows belong to the whole recording, so place them on a frame whose fit you have checked: a click is read through this frame's fit, and moving an arrow on a badly fitted frame moves it wrongly on every other one.">Arrows<small>A</small></button>
@@ -375,6 +375,8 @@
 	/** Which arrow the next nock belongs to. Chosen, never guessed: see the click handler. */
 	let nocking = 0;
 	let dragging = -1;
+	/** What `dragging` says when it is the face's middle being carried and not one of the four handles. */
+	const CENTRE = -2;
 	let image = new Image();
 	/** Room around the picture, so a handle can be dragged off a face that runs past the edge. */
 	let pad = 0;
@@ -1347,11 +1349,24 @@
 				context.stroke();
 			}
 
+			/*
+			 * The middle of the face, which is a handle of its own while the face is being placed.
+			 *
+			 * Drawn larger then, because that is when it can be taken hold of. Setting the centre by the
+			 * four handles alone is the hard half of fitting: they say where the printed edge runs, and
+			 * whereabouts on that edge they sit is what decides where the middle falls, so getting the
+			 * middle right means sliding all four and watching what it does to a point none of them is on.
+			 */
 			const centre = project(h, 0, 0);
 			context.fillStyle = '#ff2079';
 			context.beginPath();
-			context.arc(centre.x, centre.y, line * 2, 0, Math.PI * 2);
+			context.arc(centre.x, centre.y, line * (mode === 'fit' ? 4 : 2), 0, Math.PI * 2);
 			context.fill();
+			if (mode === 'fit') {
+				context.strokeStyle = 'rgba(255,255,255,0.85)';
+				context.lineWidth = line;
+				context.stroke();
+			}
 
 			/*
 			 * The arrows, projected through this frame's own fit: they check the fit as much as label it.
@@ -1696,6 +1711,21 @@
 					best = i;
 				}
 			});
+			/*
+			 * The middle first, since it sits nowhere near the ring and a click on it is unambiguous.
+			 */
+			const middle = homography(s.handles);
+			if (best < 0 && middle) {
+				const q = project(middle, 0, 0);
+				if (Math.hypot(q.x - p.x, q.y - p.y) < grab) {
+					dragging = CENTRE;
+					grabOffset = [q.x - p.x, q.y - p.y];
+					lockedFit = middle;
+					view.setPointerCapture(event.pointerId);
+					draw();
+					return;
+				}
+			}
 			if (best >= 0) {
 				dragging = best;
 				/*
@@ -1884,6 +1914,64 @@
 	 * them move independently and they would not, because a projection is fixed by four correspondences
 	 * and points slid to angles it does not know about describe a different one.
 	 */
+	/**
+	 * The four handles moved along the ring they are already on, so the face's middle lands on a point.
+	 *
+	 * Nothing new is being recorded. A fit is four handles, and four handles say two things at once:
+	 * which curve the printed edge follows, and where round that curve the quarters sit. Only the second
+	 * decides where the middle of the face comes out, so the middle can be set without touching the
+	 * first, and this slides the handles round the curve until it comes out where it was put. What that
+	 * gives is an order of work: put the four on the edge, then put the middle in the middle, and the
+	 * places on the edge that mean that are worked out rather than hunted for.
+	 *
+	 * The move is the disc's own: on the face, the projection taking the middle to where it was dragged
+	 * and the ring to itself. Composed with the fit it stays a projection, so the curve through the four
+	 * in the picture is the same curve it was, to the pixel, wherever the middle is dragged to.
+	 *
+	 * Written out as the boost it is. The maps of the plane that take the unit circle to itself are the
+	 * ones that leave x squared plus y squared minus one alone, and the one wanted here is the boost
+	 * along the direction of the drag. The conformal formula that first suggests itself is the wrong
+	 * disc: it takes the circle to itself too, but it is not a projection of the plane, and the fit it
+	 * left behind put the middle a third of the way to where it was asked for.
+	 */
+	function centredHandles(fit, p) {
+		const inverse = invert(fit);
+		if (!inverse) return null;
+		const r = anchorRadius();
+		const wanted = project(inverse, p.x, p.y);
+		let ax = wanted.x / r;
+		let ay = wanted.y / r;
+		/*
+		 * Held inside the ring. A middle dragged onto the printed edge or past it is not a face seen from
+		 * anywhere, and the map that would put it there sends the handles off to the horizon.
+		 */
+		const far = Math.hypot(ax, ay);
+		if (far > 0.9) {
+			ax = (ax / far) * 0.9;
+			ay = (ay / far) * 0.9;
+		}
+		const reach = Math.hypot(ax, ay);
+		if (reach < 1e-9) return anchorsAt(r).map(([u, v]) => {
+			const q = project(fit, u, v);
+			return [q.x, q.y];
+		});
+		// The drag's own direction, which is the one the boost runs along; across it nothing moves.
+		const ux = ax / reach;
+		const uy = ay / reach;
+		const stretch = 1 / Math.sqrt(1 - reach * reach);
+		return anchorsAt(r).map(([u, v]) => {
+			const zx = u / r;
+			const zy = v / r;
+			const along = zx * ux + zy * uy;
+			const across = -zx * uy + zy * ux;
+			const under = reach * along + 1;
+			const movedAlong = (along + reach) / under;
+			const movedAcross = across / (stretch * under);
+			const q = project(fit, (movedAlong * ux - movedAcross * uy) * r, (movedAlong * uy + movedAcross * ux) * r);
+			return [q.x, q.y];
+		});
+	}
+
 	function turnedHandles(fit, grabbed, p) {
 		const r = anchorRadius();
 		const on = (t) => project(fit, Math.cos(t) * r, Math.sin(t) * r);
@@ -1988,12 +2076,15 @@
 			draw();
 			return;
 		}
-		if (dragging < 0) return;
+		if (dragging === -1) return;
 		const p = at(event);
 		// Where the handle should be, which is where the pointer is plus wherever inside the dot it was
 		// taken hold of. Locked, the same point is what the handle is walked round the ring towards.
 		const aim = { x: p.x + grabOffset[0], y: p.y + grabOffset[1] };
-		if (lockRotation && lockedFit) {
+		if (dragging === CENTRE) {
+			const moved = lockedFit && centredHandles(lockedFit, aim);
+			if (moved) state().handles = moved;
+		} else if (lockRotation && lockedFit) {
 			state().handles = turnedHandles(lockedFit, dragging, aim);
 		} else {
 			state().handles[dragging] = [aim.x, aim.y];
@@ -2008,7 +2099,7 @@
 			return;
 		}
 		// A fit only becomes ground truth once it has been moved: the seed is a guess, not a label.
-		if (dragging >= 0) {
+		if (dragging !== -1) {
 			state().touched = true;
 			changed();
 		}
