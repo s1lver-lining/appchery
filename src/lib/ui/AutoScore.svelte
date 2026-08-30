@@ -503,7 +503,7 @@ import { SteadyFace } from '$lib/vision/steady';
 					FACES {faces.length} {steady ? 'STEADY' : 'NOT STEADY'}
 				</span>
 				<span class="ml-2">
-					PROPOSED {readout.proposals} PENDING {pending} EARLY {readout.early} KEPT {found.length}
+					PROPOSED {readout.proposals} PENDING {pending} UNSURE {readout.early} KEPT {found.length}
 				</span>
 				<span class="ml-2">PASS {readout.cost.toFixed(0)}MS x{readout.passes}</span>
 			</div>

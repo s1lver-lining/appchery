@@ -26,6 +26,8 @@ export interface SweepResult {
 	 * pointed at the grass, and those are not the same question at all.
 	 */
 	steadyFrom: number | null;
+	/** What each detection pass cost, in milliseconds, which is what decides how often one can run. */
+	costs: number[];
 	/**
 	 * Where the face was on every single frame, which is a different question from where it ends up.
 	 *
@@ -55,6 +57,7 @@ export class Sweep {
 	private everything: { x: number; y: number; pass: number }[] = [];
 	private at: FaceLocation | null = null;
 	private firstSteady: number | null = null;
+	private readonly costs: number[] = [];
 	private readonly path: SweepResult['track'] = [];
 
 	constructor(
@@ -112,7 +115,9 @@ export class Sweep {
 		this.scanner.setUp(this.upAt(nowMs));
 		if (nowMs - this.last >= this.detectEveryMs) {
 			this.last = nowMs;
+			const started = performance.now();
 			const result = this.scanner.pushReduced(small);
+			this.costs.push(performance.now() - started);
 			this.passes += 1;
 			if (this.firstSteady === null && result.steady) this.firstSteady = this.passes;
 			this.proposals += result.detections;
@@ -141,6 +146,7 @@ export class Sweep {
 			proposals: this.proposals,
 			everything: this.everything,
 			steadyFrom: this.firstSteady,
+			costs: this.costs,
 			track: this.path
 		};
 	}

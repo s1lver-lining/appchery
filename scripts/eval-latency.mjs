@@ -86,7 +86,7 @@ for (const name of (await readdir(WORK)).sort()) {
 		const p = project(truth, a.x, a.y);
 		return toFaceCoords(result.at, p.x, p.y);
 	});
-	records.push({ name: name.slice(-24), wanted, seen: result.everything, steadyFrom: result.steadyFrom ?? 0 });
+	records.push({ name: name.slice(-24), wanted, seen: result.everything, steadyFrom: result.steadyFrom ?? 0, costs: result.costs });
 }
 
 /**
@@ -220,6 +220,10 @@ for (const rule of rules) {
 	}
 	console.log(`  ${rule.name.padEnd(22)}${row.join('')}`);
 }
+const allCosts = records.flatMap((r) => r.costs).sort((a, b) => a - b);
+const q = (share) => allCosts[Math.min(allCosts.length - 1, Math.floor(allCosts.length * share))] ?? 0;
+console.log(`\n  a pass costs ${q(0.5).toFixed(0)}ms median, ${q(0.9).toFixed(0)}ms at p90, ${q(0.99).toFixed(0)}ms at p99 on this machine`);
+console.log(`  passes are offered every ${DETECT_EVERY_MS}ms, so the detector is idle ${Math.max(0, 100 - (q(0.5) / DETECT_EVERY_MS) * 100).toFixed(0)}% of the time at the median`);
 console.log('\n  each cell is arrows found, then wrong marks in all, at that many seconds after the boss was found');
 
 function homography(points, radius) {
