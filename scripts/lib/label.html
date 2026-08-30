@@ -942,7 +942,7 @@
 		context.drawImage(image, 0, 0);
 
 		const s = state();
-		const line = Math.max(1.5, image.width / 500) ;
+		const line = ink();
 		const h = s.skip ? null : homography(s.handles);
 
 		if (h) {
@@ -1005,7 +1005,7 @@
 				context.setLineDash([]);
 				context.fillStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.55)' : '#00e676';
 				context.globalAlpha = here.derived ? 0.7 : 1;
-				context.font = `bold ${Math.round(image.width / 30)}px system-ui`;
+				context.font = `bold ${Math.round(image.width / 30 / closer)}px system-ui`;
 				context.fillText(String(i + 1), p.x + line * 6, p.y - line * 6);
 				context.globalAlpha = 1;
 			}
@@ -1155,7 +1155,7 @@
 		const k = zoom * closer;
 		context.setTransform(k, 0, 0, k, (pad - lookX) * k, (pad - lookY) * k);
 		context.drawImage(image, 0, 0);
-		drawDetected(Math.max(1.5, image.width / 500));
+		drawDetected(ink());
 
 		const set = photoSets[photoSet];
 		const shown = shownPhotos();
@@ -1216,7 +1216,7 @@
 			context.setLineDash([]);
 			for (const arrow of face.arrows) {
 				// A cross, not a disc: the hand placed arrows are discs, and one must not hide the other.
-				const r = Math.max(6, image.width / 90);
+				const r = Math.max(6, image.width / 90) / closer;
 				context.beginPath();
 				context.moveTo(arrow.imageX - r, arrow.imageY);
 				context.lineTo(arrow.imageX + r, arrow.imageY);
@@ -1227,7 +1227,7 @@
 				context.stroke();
 
 				const text = arrow.decimal === null ? arrow.label : arrow.decimal.toFixed(1);
-				context.font = `600 ${Math.max(11, image.width / 55)}px system-ui, sans-serif`;
+				context.font = `600 ${Math.max(11, image.width / 55) / closer}px system-ui, sans-serif`;
 				context.textAlign = 'center';
 				context.lineWidth = line * 2.5;
 				context.strokeStyle = 'rgba(0,0,0,0.8)';
@@ -1238,6 +1238,22 @@
 			context.setLineDash([line * 4, line * 3]);
 		}
 		context.restore();
+	}
+
+	/**
+	 * How thick the overlay's ink is, in the picture's own pixels.
+	 *
+	 * Divided by the closer look, so everything drawn keeps the size it has on the screen while the
+	 * picture under it grows. Zooming in is done to place a mark precisely, and a marker that grew with
+	 * the picture covered exactly the detail it was zoomed in to see: at four times in, a circle five
+	 * pixels across was a blot the width of the gold.
+	 *
+	 * Everything measured against a click uses it too. What the archer is aiming at is what is drawn, so
+	 * a marker that can be hit from further away than it looks is a marker that swallows clicks meant
+	 * for the paper beside it.
+	 */
+	function ink() {
+		return Math.max(1.5, image.width / 500) / closer;
 	}
 
 	function at(event) {
@@ -1299,7 +1315,7 @@
 		if (s.skip) return;
 
 		if (mode === 'fit') {
-			const grab = Math.max(12, image.width / 45);
+			const grab = Math.max(12, image.width / 45) / closer;
 			let best = -1;
 			let near = grab;
 			s.handles.forEach((handle, i) => {
@@ -1336,7 +1352,7 @@
 
 		if (mode === 'nocks') {
 			const here = (v.nocks[frame] ??= []);
-			const grab = Math.max(10, image.width / 50);
+			const grab = ink() * 5;
 
 			const onNock = here.findIndex((nock) => Math.hypot(nock.x - p.x, nock.y - p.y) < grab);
 			if (onNock >= 0) {
@@ -1356,7 +1372,7 @@
 			 * nock after the first goes onto the wrong arrow with nothing on screen to say so.
 			 */
 			let onArrow = -1;
-			const reach = Math.max(14, image.width / 40);
+			const reach = Math.max(14, image.width / 40) / closer;
 			// Where this frame draws them, which is not the same as where another frame's arrows are.
 			for (const [n, q] of arrowsHere(h).places) {
 				if (Math.hypot(q.x - p.x, q.y - p.y) < reach) onArrow = n;
@@ -1379,7 +1395,7 @@
 		}
 
 		if (mode === 'marks') {
-			const grab = Math.max(10, image.width / 50);
+			const grab = ink() * 6;
 			const hit = v.marks.findIndex((mark) => {
 				const q = project(h, mark.x, mark.y);
 				return Math.hypot(q.x - p.x, q.y - p.y) < grab;
@@ -1394,7 +1410,15 @@
 			return;
 		}
 
-		const grabArrow = Math.max(10, image.width / 50);
+		/*
+		 * The green circle itself, and no more of the paper around it.
+		 *
+		 * A click near an arrow removed it, from half again as far away as the circle it was aiming at,
+		 * so two arrows a finger's breadth apart could not both be placed: putting the second one down
+		 * took the first one away, and it read as the click having missed. Removing is now a thing done
+		 * to the marker rather than to the neighbourhood, so anywhere the marker is not is free paper.
+		 */
+		const grabArrow = ink() * 6;
 
 		/*
 		 * A frame that is not the one the arrows were drawn on gets its own set as soon as one is placed.
