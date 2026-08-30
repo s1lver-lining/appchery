@@ -228,23 +228,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	for (const target of targets) {
 		let best = -1;
 		let near = MATCH;
-		/**
-	 * Wrong marks that sit on top of a right one: a second reading of a shaft already marked.
-	 *
-	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
-	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
-	 * that matched. Counted apart from the other wrong marks because the two want different work — this
-	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
-	 */
-	result.arrows.forEach((arrow, i) => {
-		if (taken.has(i)) return;
-		const onTopOfOne = result.arrows.some(
-			(other, j) => taken.has(j) && Math.hypot(arrow.x - other.x, arrow.y - other.y) < 0.12
-		);
-		if (onTopOfOne) doubles += 1;
-	});
-
-	result.arrows.forEach((arrow, i) => {
+		result.arrows.forEach((arrow, i) => {
 			if (taken.has(i)) return;
 			const d = Math.hypot(arrow.x - target.x, arrow.y - target.y);
 			if (d < near) {
@@ -258,6 +242,26 @@ for (const name of (await readdir(WORK)).sort()) {
 			errors.push(near);
 		}
 	}
+
+	/**
+	 * Wrong marks that sit on top of a right one: a second reading of a shaft already marked.
+	 *
+	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
+	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
+	 * that matched. Counted apart from the other wrong marks because the two want different work — this
+	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
+	 *
+	 * Counted once for the recording, after every arrow has found its match. It used to sit inside the
+	 * loop that does the matching, so it ran once per labelled arrow and counted the same pair of marks
+	 * six times over, against a set of matches that was still being filled in.
+	 */
+	result.arrows.forEach((arrow, i) => {
+		if (taken.has(i)) return;
+		const onTopOfOne = result.arrows.some(
+			(other, j) => taken.has(j) && Math.hypot(arrow.x - other.x, arrow.y - other.y) < 0.12
+		);
+		if (onTopOfOne) doubles += 1;
+	});
 
 	found += hit;
 	wanted += targets.length;
