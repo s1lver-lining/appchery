@@ -65,6 +65,8 @@ const floors = [];
 let floorMark = 0;
 /** Arrow pairs the labels themselves disagree about, which say nothing either way about the detector. */
 let setAside = 0;
+/** Which pairs those were, so the archer can go and look at the frames that disagree. */
+const aside = [];
 /** The turn between the detector's two frames, for telling a flip apart from a drift. */
 const spins = [];
 /** The first fit of each sweep, which is the one every later frame is carried from. */
@@ -225,6 +227,7 @@ for (const name of (await readdir(WORK)).sort()) {
 			 */
 			if (median(mine) > 0.05) {
 				setAside += here.length;
+				aside.push({ video: name.slice(-24), one: one.at, two: two.at, off: median(mine) });
 				continue;
 			}
 			for (const m of mine) floors.push(m);
@@ -369,6 +372,15 @@ console.log(`    with gravity    ${median(pinned).toFixed(1)}° median, ${quanti
 console.log(`    without         ${median(adrift).toFixed(1)}° median, ${quantile(adrift, 0.9).toFixed(1)}° at p90  (${adrift.length})`);
 console.log(`  arrow carried     ${pct(median(drifts))} of the face radius median, ${pct(quantile(drifts, 0.9))} at p90  (${drifts.length} pairs)`);
 console.log(`                    a ring is 10% of the radius, so ${(median(drifts) * 10).toFixed(2)} rings median`);
+const byVideo = new Map();
+for (const a of aside) byVideo.set(a.video, (byVideo.get(a.video) ?? 0) + 1);
+if (byVideo.size > 0) {
+	console.log('\nlabelled frames whose arrows disagree with another frame of the same recording:');
+	for (const [video, n] of [...byVideo].sort((a, b) => b[1] - a[1])) {
+		const worst = aside.filter((a) => a.video === video).sort((a, b) => b.off - a.off)[0];
+		console.log(`  ${video}  ${String(n).padStart(3)} pairs, worst frames ${worst.one} and ${worst.two} by ${pct(worst.off)}`);
+	}
+}
 console.log(`  set aside         ${setAside} arrow pairs whose two labellings disagree by more than 5%`);
 console.log(`  label floor       ${pct(median(floors))} median, ${pct(quantile(floors, 0.9))} at p90  (the archer's own two answers, turn removed)`);
 console.log(`  face held         ${((heldFrames / Math.max(1, allFrames)) * 100).toFixed(0)}% of frames`);
