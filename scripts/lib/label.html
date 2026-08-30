@@ -248,15 +248,31 @@
 	const context = view.getContext('2d');
 	const el = (id) => document.getElementById(id);
 
-	/** Handles sit on the black to white boundary: ten equal rings, so that edge is at 0.8. */
+	/**
+	 * Where the handles sit, in face coordinates, which is not the same edge on every face.
+	 *
+	 * Ten equal rings, so the black to white boundary a full face is fitted on is at 0.8. A face printed
+	 * only down to the five ring stops at the outside of the blue, which is 0.6, and there is no black
+	 * ring on it to put a handle on at all. The radius has to follow the face or the handles are being
+	 * asked to sit on paper that was never printed.
+	 */
 	const ANCHOR = 0.8;
-	/** Where the four handles live on the face, in face coordinates. */
-	const ANCHORS = [
-		[ANCHOR, 0],
-		[0, ANCHOR],
-		[-ANCHOR, 0],
-		[0, -ANCHOR]
-	];
+	const ANCHOR_RADII = { '5-ring': 0.6 };
+
+	/** The radius the handles of this recording stand at. */
+	function anchorRadius(v = video()) {
+		return ANCHOR_RADII[v?.faceType] ?? ANCHOR;
+	}
+
+	/** Where the four handles live on the face, at a given radius. */
+	function anchorsAt(r) {
+		return [
+			[r, 0],
+			[0, r],
+			[-r, 0],
+			[0, -r]
+		];
+	}
 	const NAMES = ['right', 'bottom', 'left', 'top'];
 
 	let videos = await (await fetch('/manifest')).json();
@@ -326,7 +342,19 @@
 			button.onclick = () => {
 				// Pressed again, it is cleared: said wrongly and unsayable is worse than not said.
 				const picked = button.dataset.face;
+				const was = anchorRadius(v);
 				v.faceType = v.faceType === picked ? null : picked;
+				const now = anchorRadius(v);
+				/*
+				 * The handles are told what they are standing on, so saying the face is a different one
+				 * moves the edge they belong to. Every fit already placed is read back through its own
+				 * projection onto the new radius, which describes the identical boss: without it, calling a
+				 * face a five ring would leave the handles where they were and quietly shrink every fit in
+				 * the recording by a quarter, taking the arrows read through them with it.
+				 */
+				if (was !== now) {
+					for (const w of v.work) w.handles = atRadius(w.handles, was, now);
+				}
 				changed();
 				draw();
 			};
@@ -383,6 +411,7 @@
 	const FACE_TYPES = [
 		['10-ring', '10 ring', 'The full WA face: ten rings out to the white, gold at a fifth of the radius. Anything scored on a 40, 60, 80 or 122cm target face.'],
 		['3-spot', '3 spot', 'The triple, printed only down to the 6 ring, so the blue is the outermost colour and everything past half the radius is backing paper. Three of them on one boss.'],
+		['5-ring', '5 ring', 'Printed down to the 5 ring and no further, which is what compound archers shoot. The blue is the outermost colour, so the handles go on the outside of the blue rather than on a black to white edge there is none of.'],
 		['field', 'Field', 'A field face: gold in the middle and the rest printed in black rings rather than in red and blue. Photographs as grey in a shed, which is the same as a wall, so what tells it from one is that the rings stop.'],
 		['8-ring', '8 ring', 'A face whose rings stop at 8, with no 9 or 10 inside them and no rings out to 1.'],
 		['other', 'Other', 'Something none of the rest describes. Worth marking rather than leaving blank, because blank means nobody has looked.']
@@ -513,10 +542,11 @@
 	 * projection needs, which is what lets a leaning boss be described properly rather than squashed
 	 * into an ellipse that cannot express it.
 	 */
-	function homography(points) {
+	function homography(points, r = anchorRadius()) {
 		const rows = [];
+		const anchors = anchorsAt(r);
 		for (let i = 0; i < 4; i++) {
-			const [u, v] = ANCHORS[i];
+			const [u, v] = anchors[i];
 			const [x, y] = points[i];
 			rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
 			rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
@@ -566,23 +596,50 @@
 	}
 
 	/** The handles the automatic fit implies, which is only ever a place to start dragging from. */
+	/**
+	 * The same four points on the same face, described at a different radius.
+	 *
+	 * Reading them back through their own projection rather than scaling them about a centre, because a
+	 * boss seen from off to one side is a projection and the near and far sides of it do not scale
+	 * alike. This is what keeps the fit exactly where it was when the face type changes what the handles
+	 * are supposed to be standing on.
+	 */
+	function atRadius(handles, from, to) {
+		if (from === to) return handles;
+		const h = homography(handles, from);
+		if (!h) return handles;
+		return anchorsAt(to).map(([u, v]) => {
+			const p = project(h, u, v);
+			return [p.x, p.y];
+		});
+	}
+
 	function seedHandles(seed, width, height) {
+		// The detector fits the black to white edge, so its handles always arrive at the full face radius.
+		const wanted = anchorRadius();
 		if (!seed) {
 			const r = Math.min(width, height) * 0.35;
-			return ANCHORS.map(([u, v]) => [width / 2 + (u / ANCHOR) * r, height / 2 + (v / ANCHOR) * r]);
+			const start = anchorsAt(ANCHOR).map(([u, v]) => [
+				width / 2 + (u / ANCHOR) * r,
+				height / 2 + (v / ANCHOR) * r
+			]);
+			return atRadius(start, ANCHOR, wanted);
 		}
 		// The fit's own four points when it kept them, which is every seed made since it learnt to.
-		if (seed.handles?.length === 4) return seed.handles.map(([x, y]) => [x, y]);
+		if (seed.handles?.length === 4) {
+			return atRadius(seed.handles.map(([x, y]) => [x, y]), ANCHOR, wanted);
+		}
 
 		const cos = Math.cos(seed.rotation);
 		const sin = Math.sin(seed.rotation);
-		return ANCHORS.map(([u, v]) => {
+		const start = anchorsAt(ANCHOR).map(([u, v]) => {
 			const px = u * seed.semiMajor;
 			const py = v * seed.semiMinor;
 			const depth = 1 + (seed.perspectiveX ?? 0) * u + (seed.perspectiveY ?? 0) * v;
 			const k = Math.abs(depth) < 1e-6 ? 1 : 1 / depth;
 			return [seed.cx + (px * cos - py * sin) * k, seed.cy + (px * sin + py * cos) * k];
 		});
+		return atRadius(start, ANCHOR, wanted);
 	}
 
 	/**
@@ -807,16 +864,24 @@
 		const h = s.skip ? null : homography(s.handles);
 
 		if (h) {
-			// Every ring, so the fit is judged against the printed face rather than against one circle.
-			for (const r of [0.2, 0.4, 0.6, 0.8, 1.0]) {
+			/*
+			 * Every ring, so the fit is judged against the printed face rather than against one circle.
+			 *
+			 * The one the handles stand on is drawn heavier and green, because that is the edge being
+			 * aimed at, and it is not the same edge on every face.
+			 */
+			const edge = anchorRadius();
+			const rings = [...new Set([0.2, 0.4, 0.6, 0.8, 1.0, edge])].sort((a, b) => a - b);
+			for (const r of rings) {
 				context.beginPath();
 				for (let i = 0; i <= 96; i++) {
 					const a = (i / 96) * Math.PI * 2;
 					const p = project(h, Math.cos(a) * r, Math.sin(a) * r);
 					i === 0 ? context.moveTo(p.x, p.y) : context.lineTo(p.x, p.y);
 				}
-				context.lineWidth = r === 0.8 ? line * 2 : line;
-				context.strokeStyle = r === 0.2 ? 'rgba(247,224,60,0.95)' : r === 0.8 ? 'rgba(0,230,118,0.9)' : 'rgba(255,255,255,0.65)';
+				context.lineWidth = r === edge ? line * 2 : line;
+				context.strokeStyle =
+					r === 0.2 ? 'rgba(247,224,60,0.95)' : r === edge ? 'rgba(0,230,118,0.9)' : 'rgba(255,255,255,0.65)';
 				context.stroke();
 			}
 

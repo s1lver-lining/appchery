@@ -71,14 +71,25 @@ const CROP_SOURCE = 2;
 const CROP_SIZE = 128;
 const CROP_SPAN = 1.2;
 
-/** The four anchors the archer dragged, as a projection. Mirrors the labelling page exactly. */
+/**
+ * The four anchors the archer dragged, as a projection. Mirrors the labelling page exactly.
+ *
+ * The radius is not the same on every face and has to be read from the label rather than assumed. Ten
+ * equal rings put the black to white edge of a full face at 0.8; a face printed only down to the five
+ * ring ends at the outside of the blue, which is 0.6, and has no black ring to have been fitted on.
+ * Read at the wrong radius the whole fit comes out a quarter too large, and every arrow with it.
+ */
 const ANCHOR = 0.8;
-const ANCHORS = [
-	[ANCHOR, 0],
-	[0, ANCHOR],
-	[-ANCHOR, 0],
-	[0, -ANCHOR]
-];
+const ANCHOR_RADII = { '5-ring': 0.6 };
+
+function anchorsAt(r) {
+	return [
+		[r, 0],
+		[0, r],
+		[-r, 0],
+		[0, -r]
+	];
+}
 
 /** Frames labelled per recording, spread evenly so each is a genuinely different viewpoint. */
 const SAMPLES = 15;
@@ -516,8 +527,9 @@ async function exportSet() {
 				}
 				claims.push([Number(sample), list]);
 			}
+			const radius = ANCHOR_RADII[label.faceType] ?? ANCHOR;
 			for (const [sample, arrows] of claims) {
-				const fit = homographyOf(label.frames?.[String(sample)]?.handles);
+				const fit = homographyOf(label.frames?.[String(sample)]?.handles, radius);
 				if (!fit) continue;
 				anchors.push({ at: meta.chosen[sample], fit, arrows, canonical: null });
 			}
@@ -600,11 +612,12 @@ async function exportSet() {
 	console.log(`\n${labels.length} crops into ${out}`);
 }
 
-function homographyOf(points) {
+function homographyOf(points, r = ANCHOR) {
 	if (!points) return null;
 	const rows = [];
+	const anchors = anchorsAt(r);
 	for (let i = 0; i < 4; i++) {
-		const [u, v] = ANCHORS[i];
+		const [u, v] = anchors[i];
 		const [x, y] = points[i];
 		rows.push([u, v, 1, 0, 0, 0, -u * x, -v * x, x]);
 		rows.push([0, 0, 0, u, v, 1, -u * y, -v * y, y]);
