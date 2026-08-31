@@ -816,6 +816,16 @@ function followOut(
  * The meeting place is fitted from the marks themselves rather than derived from the fit, which needs no
  * lens calibration and no motion sensor. It is a two by two least squares with the outliers weighted
  * down, so the very marks being judged cannot define the answer.
+ *
+ * Kept, but it is a trade rather than a free test, and the numbers are worth writing down. Measured on
+ * the frames the archer labelled outright, turning it off finds 168 arrows of 374 against 151, at the
+ * same precision per frame. End to end it is not the same story: the arrows an accepted end writes down
+ * go from 65 of 146 to 72, and the wrong marks from 2.3 an end to 2.8, so the share of scored marks that
+ * are right falls from 55% to 51%. The tracker is what makes the difference, because a wrong mark that
+ * keeps being proposed from the same place gathers agreement exactly as a real one does.
+ *
+ * It stays on because a wrong mark noticed late is a wrong score, where a missing one is placed by hand.
+ * Anyone who would rather have the arrows can pass `standTolerance` above pi and this stops judging.
  */
 function standingTogether(arrows: StillArrow[], face: FaceLocation, tolerance: number): StillArrow[] {
 	// Three lines is the fewest that can disagree; a meeting place fitted to two is no evidence at all.
