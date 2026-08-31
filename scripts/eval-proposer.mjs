@@ -24,7 +24,8 @@ import { join, resolve } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const WORK = join(ROOT, 'test/datasets/labelling');
-const SCALE = 4;
+/** How much the picture is reduced before detection. Four is what the app uses. */
+const SCALE = Number(process.argv.includes('--scale') ? process.argv[process.argv.indexOf('--scale') + 1] : 4);
 const ANCHOR_RADII = { '5-ring': 0.6 };
 const ANCHOR = 0.8;
 const anchorsAt = (r) => [[r, 0], [0, r], [-r, 0], [0, -r]];
@@ -41,6 +42,7 @@ const tune = JSON.parse(option('tune', '{}'));
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 const verbose = args.includes('--verbose');
+const cropped = args.includes('--crop');
 const pct = (a, b) => `${((a / Math.max(1, b)) * 100).toFixed(0)}%`;
 
 const { propose, downscale } = await load();
@@ -85,17 +87,33 @@ for (const name of (await readdir(WORK)).sort()) {
 		const file = join(folder, samples[index]);
 		if (!existsSync(file)) continue;
 		const pixels = await decode(file, meta.width, meta.height);
-		const small = downscale({ width: meta.width, height: meta.height, data: pixels }, SCALE);
-		// The fit as four anchors at the radius the detector's own frame uses, in the reduced picture.
-		const corners = anchorsAt(ANCHOR).map(([u, v]) => {
+		const whole = { width: meta.width, height: meta.height, data: pixels };
+		// The fit as four anchors at the radius the detector's own frame uses, in the original picture.
+		const full = anchorsAt(ANCHOR).map(([u, v]) => {
 			const p = project(hand, (u / ANCHOR) * radius, (v / ANCHOR) * radius);
-			return [p.x / SCALE, p.y / SCALE];
+			return [p.x, p.y];
 		});
+
+		/*
+		 * Only the boss, at whatever reduction is being tried.
+		 *
+		 * Detection costs one pass over every pixel it is given, and most of the pixels in a frame are
+		 * grass, feet and fence. The face is already known by the time arrows are looked for, so the
+		 * rest of the picture is being searched for arrows that cannot be in it. Cutting to the face
+		 * first is what makes looking at it closely affordable.
+		 */
+		const box = cropped ? boundsOf(hand, radius, meta) : { x: 0, y: 0, width: meta.width, height: meta.height };
+		const cut = cropped ? cutOut(whole, box) : whole;
+		const small = downscale(cut, SCALE);
+		const corners = full.map(([x, y]) => [(x - box.x) / SCALE, (y - box.y) / SCALE]);
 		cache.push({ video: name.slice(-24), index, small, corners, arrows, kind });
 	}
 }
 
 /** One setting, over every cached frame. */
+const byRing = Array.from({ length: 10 }, () => [0, 0]);
+/** Why each missed arrow was missed, which is the question a recall figure cannot answer. */
+const reasons = new Map();
 function run(options, weights) {
 	let found = 0;
 	let wanted = 0;
@@ -103,8 +121,12 @@ function run(options, weights) {
 	const errors = [];
 	const perKind = new Map();
 	const rows = [];
+	const costs = [];
 	for (const shot of cache) {
-		const proposals = propose(shot.small, shot.corners, 1, options, weights);
+		const started = performance.now();
+		const rejected = [];
+		const proposals = propose(shot.small, shot.corners, 1, options, weights, rejected);
+		costs.push(performance.now() - started);
 		offered += proposals.length;
 		const taken = new Set();
 		let hit = 0;
@@ -118,6 +140,18 @@ function run(options, weights) {
 				if (d < near) { near = d; best = i; }
 			});
 			if (best >= 0) { taken.add(best); hit += 1; errors.push(near); }
+			// Where on the face the ones it cannot see are sitting, which is the shape of the problem.
+			byRing[Math.min(9, Math.floor(Math.hypot(arrow.x, arrow.y) * 10))][best >= 0 ? 0 : 1] += 1;
+			if (best < 0) {
+				// What became of it: the nearest run that was found and dropped, or nothing found at all.
+				let why = 'never found';
+				let near = MATCH * 2;
+				for (const r of rejected) {
+					const d = Math.hypot(r.x - arrow.x, r.y - arrow.y);
+					if (d < near) { near = d; why = r.why; }
+				}
+				reasons.set(why, (reasons.get(why) ?? 0) + 1);
+			}
 		}
 		found += hit;
 		wanted += shot.arrows.length;
@@ -129,7 +163,7 @@ function run(options, weights) {
 		perKind.set(shot.kind, k);
 		rows.push(`  ${shot.video} frame ${String(shot.index).padStart(2)}  ${hit}/${shot.arrows.length} found, ${proposals.length} offered`);
 	}
-	return { found, wanted, offered, errors, perKind, rows };
+	return { found, wanted, offered, errors, perKind, rows, costs };
 }
 
 /*
@@ -150,7 +184,7 @@ if (sweep) {
 	process.exit(0);
 }
 
-const { found, wanted, offered, errors, perKind, rows } = run(tune, model);
+const { found, wanted, offered, errors, perKind, rows, costs } = run(tune, model);
 if (verbose) for (const row of rows) console.log(row);
 
 console.log(`\nproposer on single labelled frames, given the archer's own fit`);
@@ -162,9 +196,63 @@ console.log(`  of those, right   ${pct(found, offered)}`);
 const sorted = errors.sort((a, b) => a - b);
 const q = (s) => sorted[Math.min(sorted.length - 1, Math.floor(sorted.length * s))] ?? 0;
 console.log(`  impact error      ${(q(0.5) * 100).toFixed(1)}% median, ${(q(0.9) * 100).toFixed(1)}% at p90, of face radius`);
+const timed = [...costs].sort((a, b) => a - b);
+const t = (share) => timed[Math.min(timed.length - 1, Math.floor(timed.length * share))] ?? 0;
+console.log(`  cost a frame      ${t(0.5).toFixed(1)}ms median, ${t(0.9).toFixed(1)}ms at p90, on this machine`);
+const area = cache.reduce((n, s) => n + s.small.width * s.small.height, 0) / cache.length;
+console.log(`  pixels looked at  ${(area / 1000).toFixed(0)}k a frame${cropped ? ', cropped to the face' : ''}`);
+/*
+ * Missed arrows by where they sit on the paper, in tenths of the radius from the middle out.
+ *
+ * The rings are printed in pairs of colours, and two of those pairs are dark. A shaft is found by
+ * being darker than the paper around it, so where the paper is already black there is nothing to be
+ * darker than. If that is what is happening, the misses will not be spread evenly: they will pile up
+ * at the radii where the black is.
+ */
+console.log('\n  by ring, middle outwards (each tenth of the radius):');
+console.log(`    ring     ${byRing.map((_, i) => String(i + 1).padStart(5)).join('')}`);
+console.log(`    found    ${byRing.map((b) => String(b[0]).padStart(5)).join('')}`);
+console.log(`    missed   ${byRing.map((b) => String(b[1]).padStart(5)).join('')}`);
+console.log(`    seen     ${byRing.map((b) => (b[0] + b[1] > 0 ? `${Math.round((b[0] / (b[0] + b[1])) * 100)}%` : '-').padStart(5)).join('')}`);
+
+console.log('\n  why the missed ones were missed:');
+for (const [why, n] of [...reasons].sort((a, b) => b[1] - a[1])) {
+	console.log(`    ${why.padEnd(24)} ${String(n).padStart(4)}  ${pct(n, wanted - found)}`);
+}
+
 console.log('\n  by face:');
 for (const [kind, k] of [...perKind].sort()) {
 	console.log(`    ${kind.padEnd(8)} ${String(k.frames).padStart(3)} frames  ${k.found}/${k.wanted} (${pct(k.found, k.wanted)})  ${(k.offered / k.frames).toFixed(1)} proposals a frame`);
+}
+
+/** The face's own square of the picture, with a little room round it for a shaft standing proud. */
+function boundsOf(hand, radius, meta) {
+	let left = Infinity, right = -Infinity, top = Infinity, bottom = -Infinity;
+	for (let i = 0; i < 64; i++) {
+		const a = (i / 64) * Math.PI * 2;
+		// Out past the printed edge, because an arrow in the outer ring is still on the paper and a
+		// shaft leaning out of it is the thing the impact point is read from.
+		const p = project(hand, Math.cos(a) * radius * 1.35, Math.sin(a) * radius * 1.35);
+		left = Math.min(left, p.x); right = Math.max(right, p.x);
+		top = Math.min(top, p.y); bottom = Math.max(bottom, p.y);
+	}
+	const x = Math.max(0, Math.floor(left));
+	const y = Math.max(0, Math.floor(top));
+	return {
+		x,
+		y,
+		width: Math.min(meta.width - x, Math.ceil(right) - x),
+		height: Math.min(meta.height - y, Math.ceil(bottom) - y)
+	};
+}
+
+function cutOut(frame, box) {
+	const data = new Uint8ClampedArray(box.width * box.height * 4);
+	for (let row = 0; row < box.height; row++) {
+		const from = ((box.y + row) * frame.width + box.x) * 4;
+		data.set(frame.data.subarray(from, from + box.width * 4), row * box.width * 4);
+	}
+	return { width: box.width, height: box.height, data };
 }
 
 function homography(points, radius) {

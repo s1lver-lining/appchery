@@ -107,8 +107,14 @@ export interface StillOptions {
 	 * rather than an oversight.
 	 */
 	bridge?: number;
-	/** How much thicker or thinner than the best shaft another may be, as a factor. */
-	widthRatio?: number;
+	/**
+	 * Collects the runs that were turned away and why, for a harness asking what became of an arrow.
+	 *
+	 * A recall figure says how many arrows were missed and nothing about why, and the answers want
+	 * completely different work: a shaft no run was ever found along is a failure of the search, and one
+	 * found and then dropped for having no ridge is a failure of a threshold.
+	 */
+	turnedAway?: { x: number; y: number; why: string }[];
 }
 
 export interface StillArrow {
@@ -213,7 +219,6 @@ export function detectArrowsInStill(
 	const minFill = options.minFill ?? 0.85;
 	const reach = options.reach ?? REACH;
 	const bridge = options.bridge ?? 0.08;
-	const widthRatio = options.widthRatio ?? 1.7;
 	const mergeDistance = options.mergeDistance ?? 0.03;
 	/** How far a shaft may lean from where a shaft standing in the paper has to, in radians. */
 	const standTolerance = options.standTolerance ?? 0.35;
@@ -250,18 +255,42 @@ export function detectArrowsInStill(
 	}
 
 	const found: StillArrow[] = [];
+	const turnedAway = options.turnedAway;
+	/** Notes why a run was dropped, and where it was, for a harness asking what became of an arrow. */
+	const drop = (segment: Segment, why: string) => {
+		if (!turnedAway) return;
+		const a = toFaceCoords(face, segment.ax, segment.ay);
+		const b = toFaceCoords(face, segment.bx, segment.by);
+		const inner = Math.hypot(a.x, a.y) <= Math.hypot(b.x, b.y) ? a : b;
+		turnedAway.push({ x: inner.x, y: inner.y, why });
+	};
 	for (const segment of straightRuns(frame, mask, box, minLength * radius, face, bridge * radius)) {
-		if (segment.length < minLength * radius || segment.length > maxLength * radius) continue;
-		if (segment.width > maxWidth * radius) continue;
-		if (segment.length < minElongation * Math.max(segment.width, 1)) continue;
+		if (segment.length < minLength * radius || segment.length > maxLength * radius) {
+			drop(segment, segment.length < minLength * radius ? 'too short' : 'too long');
+			continue;
+		}
+		if (segment.width > maxWidth * radius) {
+			drop(segment, 'too wide');
+			continue;
+		}
+		if (segment.length < minElongation * Math.max(segment.width, 1)) {
+			drop(segment, 'not long for its width');
+			continue;
+		}
 		/**
 		 * A shaft is a dark line with lighter paper on both sides. The edge of a scoreboard graphic, the
 		 * rim of the boss and the shadow it throws are all dark on one side only, and they were what
 		 * survived every test based on shape alone.
 		 */
-		if (segment.ridge < minRidge) continue;
+		if (segment.ridge < minRidge) {
+			drop(segment, 'no ridge');
+			continue;
+		}
 		// A shaft is one unbroken stroke, not a line drawn through scattered marks on the same bearing.
-		if (segment.fill < minFill) continue;
+		if (segment.fill < minFill) {
+			drop(segment, 'broken');
+			continue;
+		}
 
 		// The buried end is the inner one: an arrow leans out of the face towards the lens.
 		const inner =
@@ -277,7 +306,10 @@ export function detectArrowsInStill(
 		const point = toFaceCoords(face, entry.x, entry.y);
 		const tail = inner ? { x: segment.bx, y: segment.by } : { x: segment.ax, y: segment.ay };
 		const far = toFaceCoords(face, tail.x, tail.y);
-		if (Math.hypot(point.x, point.y) >= maxRadius) continue;
+		if (Math.hypot(point.x, point.y) >= maxRadius) {
+			drop(segment, 'off the face');
+			continue;
+		}
 
 		/**
 		 * The printed ring lines are long thin dark streaks too, and they were most of what the shape
@@ -286,7 +318,10 @@ export function detectArrowsInStill(
 		 */
 		const span = Math.hypot(far.x - point.x, far.y - point.y);
 		const climb = Math.hypot(far.x, far.y) - Math.hypot(point.x, point.y);
-		if (span <= 0 || climb < radialLean * span) continue;
+		if (span <= 0 || climb < radialLean * span) {
+			drop(segment, 'follows a ring');
+			continue;
+		}
 
 		const reach = followOut(frame, segment, inner, entry, maxWidth * radius, radius * FOLLOW_OUT);
 
@@ -335,36 +370,24 @@ export function detectArrowsInStill(
 		kept.push(arrow);
 	}
 
-	return standingTogether(likeTheBest(kept, widthRatio), face, standTolerance);
-}
-
-/**
- * Judges the weaker candidates against the strongest one, on thickness alone.
- *
- * The arrows in one picture are the same physical objects seen from one place, so they are the same
- * shaft and the same thickness. A crease, a shadow or the edge of a scoreboard has no reason to be,
- * and comparing widths costs nothing to check.
- *
- * It used to compare bearings too, on the argument that arrows all lean towards the same lens and so
- * appear near parallel. That is true of a boss photographed from across a field and false of one the
- * archer is standing in front of, where each shaft points at the camera from its own side of the face
- * and the six of them fan out. Measured, the bearing test was costing about one arrow in twelve and
- * fully a sixth of the arrows the detector ever saw at all — the ones it threw away were never
- * proposed to the tracker even once, so no amount of agreement could recover them. Worse, it hung
- * everything on whichever run happened to be longest: one bad anchor and the whole frame was judged
- * against a shadow. Removing it took the share of arrows ever proposed from 94% to 100%.
- *
- * The longest run is still the anchor because length is the measure least confused by clutter.
- */
-function likeTheBest(arrows: StillArrow[], widthRatio: number): StillArrow[] {
-	const anchor = arrows[0];
-	if (!anchor) return arrows;
-
-	return arrows.filter((arrow, index) => {
-		if (index === 0) return true;
-		const ratio = arrow.width / Math.max(anchor.width, 0.5);
-		return ratio >= 1 / widthRatio && ratio <= widthRatio;
-	});
+	/*
+	 * Every run that got this far, judged on its own merits and against no other.
+	 *
+	 * There used to be one more test here: each candidate's thickness was compared against the longest
+	 * run in the frame and anything much thicker or thinner was thrown out, on the argument that the
+	 * arrows in one picture are the same physical shafts and so the same thickness. A bearing test went
+	 * the same way before it, for the same reason, and this one had the same fault written into it. It
+	 * hangs the whole frame on one anchor: the longest run is not always a shaft, and when it is a
+	 * shadow or the boss rim every real arrow in the picture is measured against the wrong thing.
+	 *
+	 * Measured on the frames the archer labelled outright, with the fit they drew on those same frames
+	 * so that nothing but the proposer is in the answer, it was costing 44 arrows of 374 — one in eight
+	 * of every arrow present — and buying no precision at all: half the proposals were right with it and
+	 * half without. End to end it is worth more than that, because a proposal the tracker never sees is
+	 * one no amount of agreement across a sweep can recover: the arrows an accepted end writes down went
+	 * from 48 of 146 to 65, and the marks put twice on one shaft fell from 6 to 2.
+	 */
+	return standingTogether(kept, face, standTolerance);
 }
 
 interface Segment {

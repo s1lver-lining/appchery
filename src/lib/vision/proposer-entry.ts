@@ -34,7 +34,9 @@ export function propose(
 	anchors: [number, number][],
 	scale: number,
 	options: StillOptions = {},
-	model: ArrowModel | null = null
+	model: ArrowModel | null = null,
+	/** Filled with the runs that were found and then turned away, and the reason for each. */
+	turnedAway?: { x: number; y: number; why: string }[]
 ): Proposal[] {
 	const small = downscale(frame, scale);
 	const full = faceFromAnchors(anchors, 1);
@@ -49,7 +51,7 @@ export function propose(
 			confidence: arrow.confidence
 		}));
 	}
-	return detectArrowsInStill(small, face, options).map((arrow) => ({
+	return detectArrowsInStill(small, face, { ...options, turnedAway }).map((arrow) => ({
 		x: arrow.x,
 		y: arrow.y,
 		area: arrow.area,
