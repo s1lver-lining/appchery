@@ -114,6 +114,8 @@ for (const name of (await readdir(WORK)).sort()) {
 const byRing = Array.from({ length: 10 }, () => [0, 0]);
 /** Why each missed arrow was missed, which is the question a recall figure cannot answer. */
 const reasons = new Map();
+/** Recall against how big the face is on the screen, in reduced pixels of its radius. */
+const bySize = Array.from({ length: 5 }, () => ({ found: 0, wanted: 0, frames: 0, offered: 0 }));
 /** Real arrow pairs closer than the tracker's own apart distance, and how often one frame sees both. */
 let closePairs = 0;
 let bothSeen = 0;
@@ -175,6 +177,21 @@ function run(options, weights) {
 				else if (hitA || hitB) oneSeen += 1;
 			}
 		}
+
+		/*
+		 * How much of the picture the boss fills, against how much of it the detector sees.
+		 *
+		 * The question an archer asks by walking closer, or by zooming, is whether a bigger face is an
+		 * easier one. It ought to be: the shaft is the same object with more pixels along it. If recall
+		 * does not rise with the face's size on the screen then closing in buys nothing, and that is
+		 * worth knowing, because it is the one thing somebody holding the phone can actually do.
+		 */
+		const across = Math.hypot(shot.corners[0][0] - shot.corners[2][0], shot.corners[0][1] - shot.corners[2][1]) / 2;
+		const band = across < 60 ? 0 : across < 90 ? 1 : across < 120 ? 2 : across < 160 ? 3 : 4;
+		bySize[band].found += hit;
+		bySize[band].wanted += shot.arrows.length;
+		bySize[band].frames += 1;
+		bySize[band].offered += proposals.length;
 
 		found += hit;
 		wanted += shot.arrows.length;
@@ -247,6 +264,13 @@ console.log('\n  why the missed ones were missed:');
 for (const [why, n] of [...reasons].sort((a, b) => b[1] - a[1])) {
 	console.log(`    ${why.padEnd(24)} ${String(n).padStart(4)}  ${pct(n, wanted - found)}`);
 }
+
+console.log('\n  by how big the face is on the screen (radius in the reduced picture):');
+const bands = ['under 60px', '60 to 90', '90 to 120', '120 to 160', 'over 160px'];
+bySize.forEach((b, i) => {
+	if (b.frames === 0) return;
+	console.log(`    ${bands[i].padEnd(11)} ${String(b.frames).padStart(3)} frames  ${b.found}/${b.wanted} (${pct(b.found, b.wanted)})  ${(b.offered / b.frames).toFixed(1)} proposals a frame`);
+});
 
 console.log('\n  by face:');
 for (const [kind, k] of [...perKind].sort()) {
