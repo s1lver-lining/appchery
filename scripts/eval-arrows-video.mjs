@@ -137,6 +137,16 @@ let doubles = 0;
 /** The same tally over the marks that earned their place, which is what an accepted end writes down. */
 let sureFound = 0;
 let sureSpurious = 0;
+/** Wrong marks by how far out they sit, in tenths of the radius; the last bin is past the paper. */
+const wrongAt = new Array(12).fill(0);
+/** Arrows missed although a correct mark sits within the distance two marks must keep apart. */
+let crowdedOut = 0;
+/** Distinct places a mark was ever shown at any moment, which is what the archer actually watches. */
+let everShown = 0;
+let everRight = 0;
+let everWrong = 0;
+let everWrongOut = 0;
+let everFound = 0;
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
@@ -271,6 +281,49 @@ for (const name of (await readdir(WORK)).sort()) {
 	spurious += result.arrows.length - taken.size;
 
 	/*
+	 * Where the wrong marks are sitting, and whether a real arrow was already marked beside them.
+	 *
+	 * Two quite different faults wear one total. A mark out past the printed edge is scored a miss and
+	 * is the detector reading the boss rim, a shadow or the grass; a mark on the paper beside an arrow
+	 * that was already found is the detector reading one shaft twice. And a labelled arrow with a
+	 * correct mark within the distance the tracker insists two marks keep apart was not missed by the
+	 * proposer at all: it was refused a place because its neighbour had one.
+	 */
+	result.arrows.forEach((arrow, i) => {
+		if (taken.has(i)) return;
+		const out = Math.hypot(arrow.x, arrow.y);
+		wrongAt[Math.min(11, Math.floor(out * 10))] += 1;
+	});
+	/*
+	 * Every distinct place a mark was ever shown, gathered so that one mark held for thirty passes
+	 * counts once. This is the overlay as somebody watching it experiences it, rather than the tally
+	 * that is left when the sweep stops.
+	 */
+	const places = [];
+	for (const mark of result.shownEver) {
+		const near = places.find((p) => Math.hypot(p.x - mark.x, p.y - mark.y) < MATCH);
+		if (near) { near.passes += 1; continue; }
+		places.push({ x: mark.x, y: mark.y, passes: 1 });
+	}
+	for (const place of places) {
+		const real = targets.some((t) => Math.hypot(t.x - place.x, t.y - place.y) < MATCH);
+		everShown += 1;
+		if (real) { everRight += 1; continue; }
+		everWrong += 1;
+		if (Math.hypot(place.x, place.y) >= 1) everWrongOut += 1;
+	}
+	for (const target of targets) {
+		if (places.some((p) => Math.hypot(p.x - target.x, p.y - target.y) < MATCH)) everFound += 1;
+	}
+
+	for (const target of targets) {
+		const matched = [...taken].some((i) => Math.hypot(result.arrows[i].x - target.x, result.arrows[i].y - target.y) < MATCH);
+		if (matched) continue;
+		const crowded = [...taken].some((i) => Math.hypot(result.arrows[i].x - target.x, result.arrows[i].y - target.y) < 0.1);
+		if (crowded) crowdedOut += 1;
+	}
+
+	/*
 	 * The same again, over only the marks that earned their place.
 	 *
 	 * Two tiers are shown and they answer different questions. What is drawn is the detector's best
@@ -339,6 +392,14 @@ console.log(`\narrows found        ${found}/${wanted} (${((found / Math.max(want
 console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`spurious arrows     ${spurious} (${(spurious / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(`  of those, scored  ${sureFound}/${wanted} (${((sureFound / wanted) * 100).toFixed(0)}%) right, ${sureSpurious} wrong (${(sureSpurious / Math.max(rows.length,1)).toFixed(1)} per recording)`);
+console.log(`  where they sit   ${wrongAt.map((n, i) => `${i < 11 ? `${i}` : '10+'}:${n}`).join('  ')}`);
+console.log(`  past the edge     ${wrongAt.slice(10).reduce((a, b) => a + b, 0)} of ${spurious} sit at or beyond the printed face`);
+console.log(`\nas the archer watches it, over the whole sweep rather than at the end of it`);
+console.log(`  arrows ever marked ${everFound}/${wanted} (${((everFound / wanted) * 100).toFixed(0)}%) had a right mark on them at some point`);
+console.log(`  wrong marks ever   ${everWrong} distinct places (${(everWrong / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
+console.log(`    past the edge    ${everWrongOut} of those were out beyond the printed face`);
+console.log(`  right of all shown ${((everRight / Math.max(1, everShown)) * 100).toFixed(0)}%\n`);
+console.log(`crowded out         ${crowdedOut} arrows had a right mark within a ring of them and got none`);
 console.log(`double marks        ${doubles} (${(doubles / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(
 	`impact error        ${sorted.length ? pct(sorted[Math.floor(sorted.length / 2)]) : '--'} median, ` +

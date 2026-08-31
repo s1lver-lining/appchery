@@ -13,6 +13,15 @@ export interface SweepResult {
 	arrows: Impact[];
 	/** Of those, the ones that earned their place, which is what an accepted end writes down. */
 	scored: Impact[];
+	/**
+	 * Every mark that was on the screen at the end of any pass, with the pass it was showing in.
+	 *
+	 * What the archer sees is not the end state. A mark that appears for half a second in the grass and
+	 * goes away again is not in the final tally at all, and it is exactly what somebody watching the
+	 * overlay complains about; counted only at the end, the detector looks tidier than it looks to the
+	 * person holding the phone.
+	 */
+	shownEver: { x: number; y: number; pass: number; unsure: boolean }[];
 	/** The fit on the frame the archer placed the labels against, for putting both in one frame. */
 	at: FaceLocation | null;
 	framesWithFace: number;
@@ -69,6 +78,7 @@ export class Sweep {
 	private at: FaceLocation | null = null;
 	private firstSteady: number | null = null;
 	private readonly costs: number[] = [];
+	private readonly everShown: SweepResult['shownEver'] = [];
 	/** The overlay's own smoother, so the harness can see the lines the archer sees. */
 	private smoother: SteadyFace | null = null;
 	private readonly path: SweepResult['track'] = [];
@@ -135,6 +145,9 @@ export class Sweep {
 			const result = this.scanner.pushReduced(small);
 			this.costs.push(performance.now() - started);
 			this.passes += 1;
+			for (const mark of this.scanner.arrows) {
+				this.everShown.push({ x: mark.x, y: mark.y, pass: this.passes, unsure: Boolean(mark.unsure) });
+			}
 			if (this.firstSteady === null && result.steady) this.firstSteady = this.passes;
 			this.proposals += result.detections;
 			for (const seen of result.proposed) {
@@ -170,6 +183,7 @@ export class Sweep {
 		return {
 			arrows: this.scanner.arrows,
 			scored: this.scanner.scored,
+			shownEver: this.everShown,
 			at: this.at,
 			framesWithFace: this.withFace,
 			passes: this.passes,

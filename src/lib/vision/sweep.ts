@@ -156,14 +156,20 @@ export class SweepTracker {
 		/**
 		 * Looks a place needs before it is worth showing as an unsure mark.
 		 *
-		 * One, because the question it answers is not whether this is an arrow. It is what the detector's
-		 * best guess is right now, on the understanding that it is a guess: the alternative being offered
-		 * is a blank overlay, and a blank overlay is not more truthful, it just says less. Asking for two
-		 * was measured and it trades most of the first half second away, finding nine percent of the
-		 * arrows by then against twenty three, for wrong marks that the archer was going to have to look
-		 * at either way.
+		 * One was tried first, on the argument that the alternative is a blank overlay and a blank overlay
+		 * is not more truthful, it merely says less. What that missed is that the list of marks is capped
+		 * at the number of arrows in the end, so a place shown on no evidence is not free: it is holding a
+		 * slot a real arrow could have had, and it churns, so the archer watching sees a different wrong
+		 * mark every few frames.
+		 *
+		 * Counted the way it is actually experienced — every distinct place a mark was ever shown, over a
+		 * whole sweep rather than at the end of one — asking for three looks instead of one takes the
+		 * wrong places from 9.6 an end to 5.4, raises the share of everything shown that is right from
+		 * 24% to 37%, and finds *more* arrows rather than fewer, because the slots stop being wasted. It
+		 * costs about a third of a second before the first mark appears, which is still a third of the
+		 * time a confirmed one takes.
 		 */
-		this.fillVotes = options.fillVotes ?? 1;
+		this.fillVotes = options.fillVotes ?? 3;
 	}
 
 	setLimit(limit: number) {

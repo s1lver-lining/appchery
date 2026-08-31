@@ -114,6 +114,10 @@ for (const name of (await readdir(WORK)).sort()) {
 const byRing = Array.from({ length: 10 }, () => [0, 0]);
 /** Why each missed arrow was missed, which is the question a recall figure cannot answer. */
 const reasons = new Map();
+/** Real arrow pairs closer than the tracker's own apart distance, and how often one frame sees both. */
+let closePairs = 0;
+let bothSeen = 0;
+let oneSeen = 0;
 function run(options, weights) {
 	let found = 0;
 	let wanted = 0;
@@ -153,6 +157,25 @@ function run(options, weights) {
 				reasons.set(why, (reasons.get(why) ?? 0) + 1);
 			}
 		}
+		/*
+		 * Pairs of real arrows sitting closer than the tracker will ever put two marks, and whether the
+		 * proposer told them apart within this one frame. If it did, then one frame is enough evidence
+		 * that there are two arrows there, and the tracker's distance rule is throwing away an answer it
+		 * was given rather than one it never had.
+		 */
+		for (let i = 0; i < shot.arrows.length; i++) {
+			for (let j = i + 1; j < shot.arrows.length; j++) {
+				const a = shot.arrows[i];
+				const b = shot.arrows[j];
+				if (Math.hypot(a.x - b.x, a.y - b.y) >= 0.1) continue;
+				closePairs += 1;
+				const hitA = proposals.some((p) => Math.hypot(p.x - a.x, p.y - a.y) < MATCH);
+				const hitB = proposals.some((p) => Math.hypot(p.x - b.x, p.y - b.y) < MATCH);
+				if (hitA && hitB) bothSeen += 1;
+				else if (hitA || hitB) oneSeen += 1;
+			}
+		}
+
 		found += hit;
 		wanted += shot.arrows.length;
 		const k = perKind.get(shot.kind) ?? { found: 0, wanted: 0, offered: 0, frames: 0 };
@@ -214,6 +237,11 @@ console.log(`    ring     ${byRing.map((_, i) => String(i + 1).padStart(5)).join
 console.log(`    found    ${byRing.map((b) => String(b[0]).padStart(5)).join('')}`);
 console.log(`    missed   ${byRing.map((b) => String(b[1]).padStart(5)).join('')}`);
 console.log(`    seen     ${byRing.map((b) => (b[0] + b[1] > 0 ? `${Math.round((b[0] / (b[0] + b[1])) * 100)}%` : '-').padStart(5)).join('')}`);
+
+console.log(`\n  real arrows closer than a ring apart: ${closePairs} pairs over these frames`);
+console.log(`    both told apart in that one frame  ${bothSeen} (${pct(bothSeen, closePairs)})`);
+console.log(`    only one of the two seen           ${oneSeen} (${pct(oneSeen, closePairs)})`);
+console.log(`    neither seen                       ${closePairs - bothSeen - oneSeen}`);
 
 console.log('\n  why the missed ones were missed:');
 for (const [why, n] of [...reasons].sort((a, b) => b[1] - a[1])) {

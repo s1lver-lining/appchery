@@ -230,8 +230,18 @@ export function detectArrowsInStill(
 	 * reaches well past the printing; but the further out an impact is read, the more of what is read is
 	 * the boss rim, the pins holding the face on and the shadow the rim throws. So runs are followed far
 	 * and impacts are only believed near.
+	 *
+	 * Brought in from 1.1, which was letting the rim through. Counted over a whole sweep rather than at
+	 * the end of one, which is how somebody watching the overlay sees it, 31 of the wrong marks were
+	 * sitting past the printed edge, where every one of them reads as a miss on the scoresheet. At 1.05
+	 * that falls to 8 and nothing else pays for it: the arrows an accepted end writes down go up rather
+	 * than down, because a mark out in the grass was taking a place in a list that only holds so many.
+	 *
+	 * Not brought all the way in to the edge, though that removes them entirely. An arrow really can
+	 * land off the paper — 17 of the 461 the archer has labelled are out there — and a detector that
+	 * cannot report one at all can never be right about a miss.
 	 */
-	const maxRadius = options.maxRadius ?? 1.1;
+	const maxRadius = options.maxRadius ?? 1.05;
 
 	const radius = (face.semiMajor + face.semiMinor) / 2;
 	// One bin per pixel of face radius at most, so every bin holds a ring of real paper to take a median of.
