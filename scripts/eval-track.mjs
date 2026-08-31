@@ -82,6 +82,8 @@ const aside = [];
 const spins = [];
 /** The first fit of each sweep, which is the one every later frame is carried from. */
 const acquisitions = [];
+/** Runs of frames where the drawn face does not match the colours under it, and how long each lasts. */
+const wrongSpells = [];
 const rows = [];
 let heldFrames = 0;
 let allFrames = 0;
@@ -321,6 +323,25 @@ for (const name of (await readdir(WORK)).sort()) {
 		});
 	}
 
+	/*
+	 * Frames where the overlay is drawn somewhere other than where the boss actually is.
+	 *
+	 * Measured against the archer's own fit and nothing else. A first attempt at this asked the ring
+	 * check instead, on the reasoning that a fit sitting on the fence would score near nothing; it does,
+	 * but so does a fit sitting exactly on the boss while half the boss is still below the top of the
+	 * screen, which is the whole of the moment being complained about. It called a correct fit misplaced
+	 * for two seconds together on a recording where it was never more than three pixels out, so it was
+	 * measuring how much of the face was in shot, not where the rings were drawn.
+	 */
+	for (const [at, { h }] of truth) {
+		const face = seen.get(at);
+		if (!face) continue;
+		const mark = project(h, 0, 0);
+		const size = Math.hypot(project(h, anchor, 0).x - mark.x, project(h, anchor, 0).y - mark.y);
+		const out = Math.hypot(mark.x - face.cx, mark.y - face.cy) / size;
+		if (out > 0.25) wrongSpells.push({ out, video: name.slice(-24), at });
+	}
+
 	/* A jump: the middle moving more than a fifth of the face in one frame, which no hand can do. */
 	let lost = 0;
 	for (let i = 1; i < path.length; i++) {
@@ -354,7 +375,7 @@ for (const name of (await readdir(WORK)).sort()) {
 			if (at % 10 !== 0 && !mark) continue;
 			console.log(
 				`  ${String(at).padStart(4)}  at ${step.face.cx.toFixed(0).padStart(4)},${step.face.cy.toFixed(0).padStart(4)}` +
-				`  r ${step.face.semiMajor.toFixed(0).padStart(3)}  support ${step.face.support.toFixed(2)}` +
+				`  r ${step.face.semiMajor.toFixed(0).padStart(3)}  support ${step.face.support.toFixed(2)}  rings ${step.rings.toFixed(2)}` +
 				(mark ? `   HAND ${mark.x.toFixed(0)},${mark.y.toFixed(0)}  off ${Math.hypot(mark.x - step.face.cx, mark.y - step.face.cy).toFixed(0)}px` : '')
 			);
 		}
@@ -414,6 +435,10 @@ console.log(`    jumps over 5%   ${bigOnPass} of ${onPass.length} pass frames ($
 console.log(`    between passes  ${pct(median(between))} median, ${pct(quantile(between, 0.9))} at p90  (${between.length} frames)`);
 console.log(`  breathing         ${pct(median(breaths))} of its size per frame, ${pct(quantile(breaths, 0.9))} at p90, ${pct(quantile(breaths, 0.99))} at p99`);
 console.log(`  jumps             ${jumps.reduce((n, j) => n + j.lost, 0)} in all`);
+console.log(`  overlay misplaced ${wrongSpells.length} of ${accuracy.length} hand fitted frames had the middle more than a quarter of a radius out`);
+for (const w of [...wrongSpells].sort((a, b) => b.out - a.out).slice(0, 6)) {
+	console.log(`    ${w.video} frame ${w.at}  ${pct(w.out)} of a radius out`);
+}
 
 /*
  * Grouped by size, because the shape of this list is the diagnosis. A detector that drifts gives a
