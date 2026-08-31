@@ -82,8 +82,16 @@ export interface ScannerOptions {
  * followed. Enough that two fits of the same boss do not trade places a few times a second, which is
  * what makes an overlay tremble; far below the gap between a fit that describes the face and one
  * that does not, which the annotated set puts at 0.91 against 0.49.
+ *
+ * Raised from 0.04 once the wobble could be measured. The fit's shape changes against its own
+ * neighbouring frames were six times as likely on a frame that got a search as on one that was only
+ * followed, which is a swap being taken that was not worth taking: the two fits describe the same
+ * boss, and the search's is not better, it is merely different. At 0.10 those jumps fall by a third
+ * and nothing else pays for it, which is the unusual case where a knob has a right answer rather than
+ * a trade. Further, at 0.20, the jumps keep falling and the fit starts holding on to answers it should
+ * have let go of: the ninetieth percentile of ring error goes from 4.7 to 7.1.
  */
-const ADOPT_MARGIN = 0.04;
+const ADOPT_MARGIN = 0.10;
 
 /** Arrows past the end's own count that may still be reported, for an end that holds more than it should. */
 const EXTRA_ARROWS = 2;
