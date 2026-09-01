@@ -165,7 +165,8 @@ async function checkResults(): Promise<void> {
 		await worker.registration.showNotification(notice.title, {
 			body: notice.body,
 			icon: '/icon-192.png',
-			badge: '/icon-192.png',
+			// Not the app icon: a badge is reduced to its alpha channel, so an opaque one is a square.
+			badge: '/badge-96.png',
 			// One competition replaces its own earlier notice rather than stacking up beside it.
 			tag: notice.toId ? `ianseo-${notice.toId}` : 'ianseo-several',
 			data: { path: notice.toId ? `/ianseo/${notice.toId}` : '/ianseo' }

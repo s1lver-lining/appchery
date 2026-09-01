@@ -1,0 +1,23 @@
+<!--
+	The mark as a notification badge, which is not an icon and is not drawn like one.
+
+	Chrome throws away the colours and keeps only the alpha channel, painting a flat silhouette from
+	whatever is opaque. So the cream background rect that favicon.svg and icon-maskable.svg both
+	carry has to go: opaque everywhere means a solid white square, which is what pointing `badge` at
+	icon-192.png used to produce. Only coverage survives, so the fill here is a single flat black
+	standing in for "opaque" rather than for a colour.
+
+	Rendered at 96px the three rings of the full mark close up into mush, so this keeps two and the
+	centre dot, struck from the centre and thickened to about 10px at that size, with 5px of clear
+	air between each. Fewer rings, still the same target.
+
+	The PNG beside it is this file, rendered:
+	    rsvg-convert -w 96 -h 96 static/badge.svg -o static/badge-96.png
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+	<g fill="none" stroke="#000" stroke-width="104">
+		<circle cx="512" cy="512" r="400" />
+		<circle cx="512" cy="512" r="244" />
+	</g>
+	<circle cx="512" cy="512" r="140" fill="#000" />
+</svg>
