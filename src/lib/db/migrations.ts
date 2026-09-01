@@ -171,6 +171,7 @@ export const MIGRATIONS: string[][] = [
 			windage TEXT,
 			clicker TEXT,
 			plunger TEXT,
+			position TEXT,
 			interpolated INTEGER NOT NULL DEFAULT 0,
 			user_id TEXT
 		);`,
@@ -324,5 +325,7 @@ export const MIGRATIONS: string[][] = [
 		// entry for one. A push steps over a table it does not carry without ever stamping the entry
 		// sent, so each of them sat in the queue for good and was counted as a change still owed.
 		`DELETE FROM change_log WHERE table_name = 'badge';`
-	]
+	],
+	// 0008 where the sight rod sits on the riser, kept beside the mark it belongs to
+	[`ALTER TABLE sight_mark ADD COLUMN position TEXT;`]
 ];

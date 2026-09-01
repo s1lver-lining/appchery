@@ -240,7 +240,9 @@ export const sightMark = sqliteTable(
 		interpolated: integer('interpolated').notNull().default(0),
 		windage: text('windage'),
 		clicker: text('clicker'),
-		plunger: text('plunger')
+		plunger: text('plunger'),
+		/** Where the sight rod sits on the riser, read off the riser's own scale. */
+		position: text('position')
 	},
 	(t) => [index('idx_sight_mark_bow').on(t.bowId, t.distance)]
 );

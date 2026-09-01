@@ -1501,6 +1501,7 @@ export async function updateSightMark(
 		windage: string | null;
 		clicker: string | null;
 		plunger: string | null;
+		position: string | null;
 	}>
 ) {
 	await db()

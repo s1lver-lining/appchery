@@ -212,17 +212,18 @@
 	 */
 	let marks = $state<SightMarkRow[]>([]);
 	let markUnit = $state<'m' | 'yd'>('m');
-	/** Which shortened caption is spelled out, since four across leaves no room to spell them all. */
+	/** Which shortened caption is spelled out, since several across leave no room to spell them all. */
 	let explained = $state<string | null>(null);
 	let newDistance = $state<number | string>('');
 
 	/** The extra columns, off until asked for: most archers only ever record a height. */
-	const EXTRAS = ['windage', 'clicker', 'plunger'] as const;
+	const EXTRAS = ['windage', 'clicker', 'plunger', 'position'] as const;
 	type Extra = (typeof EXTRAS)[number];
 	const extraLabel = $derived<Record<Extra, string>>({
 		windage: $t('sight.windage'),
 		clicker: $t('sight.clicker'),
-		plunger: $t('sight.plunger')
+		plunger: $t('sight.plunger'),
+		position: $t('sight.position')
 	});
 	/**
 	 * Shown only when asked for. Hiding a column hides it: what was entered stays in the row and

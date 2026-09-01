@@ -176,7 +176,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Les colonnes en plus sont facultatives.',
-					body: 'Dérive, clicker et berger se cachent derrière les pastilles sous la liste des repères. Une colonne qui contient des données reste toujours visible, quoi que disent les pastilles.'
+					body: 'Dérive, clicker, berger et position de viseur se cachent derrière les pastilles sous la liste des repères. Une colonne qui contient des données reste toujours visible, quoi que disent les pastilles.'
 				}
 			]
 		},

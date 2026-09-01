@@ -591,7 +591,8 @@ export const en = {
 		interpolatedHint: 'Estimated from marks you have already shot. Shoot this distance, then enter the real mark.',
 		windage: 'Windage',
 		clicker: 'Clicker',
-		plunger: 'Plunger'
+		plunger: 'Plunger',
+		position: 'Sight position'
 	},
 	feed: {
 		subtitle: 'What the archers you follow chose to share.',

@@ -181,7 +181,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'Extra columns are opt in.',
-					body: 'Windage, clicker and plunger hide behind the chips under the mark list. A column holding data always shows, whatever the chips say.'
+					body: 'Windage, clicker, plunger and sight position hide behind the chips under the mark list. A column holding data always shows, whatever the chips say.'
 				}
 			]
 		},

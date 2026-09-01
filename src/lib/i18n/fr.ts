@@ -593,7 +593,8 @@ export const fr: Dictionary = {
 			'Estimée à partir des repères déjà tirés. Tirez cette distance, puis saisissez le repère réel.',
 		windage: 'Dérive',
 		clicker: 'Clicker',
-		plunger: 'Berger'
+		plunger: 'Berger',
+		position: 'Position de viseur'
 	},
 	feed: {
 		subtitle: 'Ce que les archers que vous suivez ont choisi de partager.',
