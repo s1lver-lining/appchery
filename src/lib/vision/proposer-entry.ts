@@ -4,6 +4,7 @@ import { downscale } from './pixels';
 export { downscale };
 import { faceFromAnchors, scaleFace } from './face';
 import { detectArrowsInStill, type StillOptions } from './still';
+import { detectArrowsFromImpacts, type ImpactOptions } from './impacts';
 import { detectArrowsLearned, type ArrowModel } from './learned';
 import type { Frame } from './types';
 
@@ -33,7 +34,7 @@ export function propose(
 	frame: Frame,
 	anchors: [number, number][],
 	scale: number,
-	options: StillOptions = {},
+	options: StillOptions & ImpactOptions & { proposer?: string } = {},
 	model: ArrowModel | null = null,
 	/** Filled with the runs that were found and then turned away, and the reason for each. */
 	turnedAway?: { x: number; y: number; why: string }[]
@@ -49,6 +50,14 @@ export function propose(
 			area: 0,
 			length: 0,
 			confidence: arrow.confidence
+		}));
+	}
+	if (options.proposer === 'impacts') {
+		return detectArrowsFromImpacts(small, face, options).map((arrow) => ({
+			x: arrow.x,
+			y: arrow.y,
+			area: arrow.area,
+			length: arrow.length
 		}));
 	}
 	return detectArrowsInStill(small, face, { ...options, turnedAway }).map((arrow) => ({

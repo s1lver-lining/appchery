@@ -23,6 +23,14 @@ export interface SweepCandidate extends Impact {
 	first: number;
 	/** The most recent pass that proposed it, so one that stops being seen can be dropped. */
 	last: number;
+	/**
+	 * Which passes proposed it, so two places can be asked whether one pass ever saw both of them.
+	 *
+	 * That is the question the spacing rule has always been guessing at from distance alone. Two
+	 * proposals in one pass that did not merge are two things the proposer told apart in one look at
+	 * the boss, which is evidence about how many arrows are there; distance is not.
+	 */
+	at: number[];
 }
 
 export interface SweepOptions {
@@ -42,6 +50,26 @@ export interface SweepOptions {
 	guessVotes?: number;
 	/** Passes that must have proposed a place before it is worth showing as an unsure mark. */
 	fillVotes?: number;
+	/**
+	 * Passes that must have proposed two close places at once before both are offered as arrows.
+	 *
+	 * Zero goes back to judging by distance alone, which is what this used to do.
+	 */
+	togetherVotes?: number;
+	/**
+	 * Share of the looks at the rarer of two close places that must have seen both of them.
+	 *
+	 * A count alone can be reached by luck over a long sweep. A share asks the question the other way:
+	 * of the passes that saw the fainter of the two at all, how many saw them as two things.
+	 */
+	togetherShare?: number;
+	/**
+	 * How much better supported a place must be than the confirmed mark blocking it to take its slot.
+	 *
+	 * Zero never displaces, which is what this used to do: a mark that cleared the bar kept its place for
+	 * the rest of the sweep however plainly it was wrong.
+	 */
+	displaceRatio?: number;
 }
 
 export class SweepTracker {
@@ -74,6 +102,9 @@ export class SweepTracker {
 	private readonly guessAfter: number;
 	private readonly guessVotes: number;
 	private readonly fillVotes: number;
+	private readonly togetherVotes: number;
+	private readonly togetherShare: number;
+	private readonly displaceRatio: number;
 
 	constructor(options: SweepOptions = {}) {
 		/**
@@ -170,6 +201,45 @@ export class SweepTracker {
 		 * time a confirmed one takes.
 		 */
 		this.fillVotes = options.fillVotes ?? 3;
+		/**
+		 * Three looks, and half the looks either place got, before two close marks are called two arrows.
+		 *
+		 * The spacing rule was the tracker's largest own loss: seven arrows of a hundred and thirty nine
+		 * were missed because a neighbouring *real* arrow was marked first and no second mark was allowed
+		 * that close. Six arrows in a gold are that close, and no distance keeps them apart while still
+		 * stopping one shaft being marked twice, because the two cases are the same distance apart.
+		 *
+		 * Asked of the proposer instead. Two proposals in one pass that did not merge are two things it
+		 * told apart in a single look at the boss, and a single look is where the question belongs: a
+		 * shaft read twice within one pass merges, and two shafts a gold apart do not.
+		 *
+		 * Both a count and a share, because either alone is reachable by luck over a long sweep. Measured
+		 * over 27 labelled sweeps, against judging by distance alone: 109 arrows of 163 rather than 106,
+		 * three fewer wrong marks, two more of them right on the scoresheet and one fewer wrong, for one
+		 * extra mark put twice on one shaft.
+		 *
+		 * Three rather than two because the proposer reads a sharper picture than it used to. The crop
+		 * offers more places a pass, so two of them landing together by chance is likelier, and the bar
+		 * for calling that evidence has to rise with it.
+		 */
+		this.togetherVotes = options.togetherVotes ?? 3;
+		this.togetherShare = options.togetherShare ?? 0.5;
+		/**
+		 * A quarter more support, before a confirmed place gives up its slot to the one it is blocking.
+		 *
+		 * Confirming used to be for ever. Nothing took a mark off the sheet, so a wrong place that cleared
+		 * the bar early held its slot for the rest of the sweep and turned away every real arrow within a
+		 * ring of it, however much evidence arrived afterwards. Measured over the labelled sweeps that was
+		 * the largest thing left in the tracker: nine arrows of 163 missed with a wrong mark sitting on
+		 * the place, against three blocked by a neighbouring real one.
+		 *
+		 * A margin rather than a bare majority, because the two are not symmetrical: the mark being
+		 * displaced has been on the archer's screen and may already have been read, while the one
+		 * displacing it has been refused all along and has had fewer chances to gather anything. Measured,
+		 * anywhere from a tenth more to half again gives the same answer, and it is worth 111 arrows of
+		 * 163 against 109, with three fewer wrong marks and two fewer of those on the scoresheet.
+		 */
+		this.displaceRatio = options.displaceRatio ?? 1.25;
 	}
 
 	setLimit(limit: number) {
@@ -298,6 +368,7 @@ export class SweepTracker {
 			if (candidate) {
 				candidate.votes += 1;
 				candidate.last = this.passes;
+				if (candidate.at[candidate.at.length - 1] !== this.passes) candidate.at.push(this.passes);
 				candidate.area = proposal.area;
 				// Averaged towards each new reading, so the estimate settles rather than trusting the last.
 				candidate.x += (proposal.x - candidate.x) / candidate.votes;
@@ -308,7 +379,8 @@ export class SweepTracker {
 					seen: 1,
 					votes: 1,
 					first: this.passes,
-					last: this.passes
+					last: this.passes,
+					at: [this.passes]
 				});
 			}
 		}
@@ -330,7 +402,14 @@ export class SweepTracker {
 		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
 			if (this.confirmed.length + ready.length >= this.limit) break;
 			if (candidate.votes < this.minVotes || this.agreement(candidate) < this.minAgreement) continue;
-			if (this.apart(this.confirmed, candidate) || this.apart(ready, candidate)) continue;
+			if (this.apart(ready, candidate)) continue;
+			if (this.apart(this.confirmed, candidate)) {
+				const held = this.displaceRatio > 0 ? this.blocker(candidate) : undefined;
+				if (!held || candidate.votes < held.votes * this.displaceRatio) continue;
+				// The better evidence takes the place, and the mark it displaces goes back to gathering.
+				this.confirmed = this.confirmed.filter((mark) => mark !== held);
+				this.candidates.push(held);
+			}
 			ready.push(candidate);
 		}
 
@@ -351,13 +430,53 @@ export class SweepTracker {
 		return chances <= 0 ? 0 : candidate.votes / chances;
 	}
 
+	/** The confirmed mark standing in a candidate's way, which is the one it would have to displace. */
+	private blocker(point: SweepCandidate): SweepCandidate | undefined {
+		return this.confirmed.find(
+			(mark) =>
+				mark.face === point.face &&
+				Math.hypot(mark.x - point.x, mark.y - point.y) < this.apartDistance &&
+				!this.toldApart(mark, point)
+		);
+	}
+
 	/** Whether some place in the list is close enough that this would be a second mark on it. */
 	private apart(list: Impact[], point: { x: number; y: number; face: number }): boolean {
-		return list.some(
-			(item) =>
-				item.face === point.face &&
-				Math.hypot(item.x - point.x, item.y - point.y) < this.apartDistance
-		);
+		return list.some((item) => {
+			if (item.face !== point.face) return false;
+			if (Math.hypot(item.x - point.x, item.y - point.y) >= this.apartDistance) return false;
+			// Unless the proposer has told the two apart within a single look, which settles it.
+			return !this.toldApart(item as Partial<SweepCandidate>, point as Partial<SweepCandidate>);
+		});
+	}
+
+	/**
+	 * Whether some pass proposed both of these places at once, enough times to be believed.
+	 *
+	 * Proposals within `mergeDistance` of each other become one candidate, so two candidates carrying
+	 * the same pass are two things that pass reported separately. Once is not enough: a shaft crossing a
+	 * ring line can be read at two points along itself on one unlucky pass, and that is exactly the
+	 * mistake the spacing rule exists to catch.
+	 */
+	private toldApart(a: Partial<SweepCandidate>, b: Partial<SweepCandidate>): boolean {
+		// Zero asks the question of nothing, which leaves the spacing rule judging by distance alone.
+		if (this.togetherVotes <= 0) return false;
+		const mine = a.at;
+		const theirs = b.at;
+		if (!mine || !theirs) return false;
+		let i = 0;
+		let j = 0;
+		let together = 0;
+		while (i < mine.length && j < theirs.length) {
+			if (mine[i] === theirs[j]) {
+				together += 1;
+				i += 1;
+				j += 1;
+			} else if (mine[i] < theirs[j]) i += 1;
+			else j += 1;
+		}
+		if (together < this.togetherVotes) return false;
+		return together >= this.togetherShare * Math.min(mine.length, theirs.length);
 	}
 
 	private nearest(list: Impact[], point: { x: number; y: number; face: number }): Impact | undefined {

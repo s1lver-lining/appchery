@@ -807,13 +807,22 @@
 		return { handles: handles.map((_, i) => handles[(i + bestTurn) % 4]), turns: bestTurn };
 	}
 
-	/** A quarter turn of the face's own coordinates, for when its handles are put back in order. */
+	/**
+	 * A quarter turn of the face's own coordinates, for when its handles are put back in order.
+	 *
+	 * The turn goes the way it does because putting handle `i + 1` where handle `i` was moves a point's
+	 * coordinates the *other* way round the gold. It used to turn the way the handles did, which is only
+	 * right for a half turn, a half turn being its own opposite: a frame reordered by one or three
+	 * quarters had every arrow on it left exactly half a turn from where it was placed, and no amount of
+	 * dragging the handles could put it right, because the next load reordered them and turned the
+	 * arrows wrongly again.
+	 */
 	function turnPoint(point, turns) {
 		let { x, y } = point;
 		for (let i = 0; i < turns; i++) {
 			const was = x;
-			x = -y;
-			y = was;
+			x = y;
+			y = -was;
 		}
 		return { x, y };
 	}

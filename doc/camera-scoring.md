@@ -291,6 +291,62 @@ The paper it is compared against is modelled per radius *and* per bearing, as a 
 cannot drag down their own baseline and one side of a boss being better lit than the other is not
 mistaken for an arrow.
 
+### 6b. Where the shaft ends (`impacts.ts`)
+
+Shape alone finds shafts well and places them badly, and the second half is where most of the loss
+sits. Measured on the frames the archer labelled outright, with the archer's own fit so that nothing
+but the proposer is in the answer:
+
+| | |
+| --- | --- |
+| a crest of a dark ridge sits on the labelled impact | 96% of arrows |
+| a candidate line passes through the impact | 93% |
+| the run's own extent reaches that far in | 90% |
+| a proposal comes back within a twentieth of a radius | 42% |
+
+So the shaft is nearly always seen, and the mark is nearly always put somewhere else along it. Of the
+runs that do cover an arrow, under a third place the mark on it; the rest stop short of it or walk past
+it, in roughly equal numbers.
+
+The picture is not the ambiguous part. Sampled along the shaft's own line and lined up on the labelled
+impacts, the ridge reads about twenty luma outwards and about minus three one step inwards: a shaft
+does not fade into the paper, it stops, and it stops in one pixel. What is fragile is the grouping,
+because the extent of a Hough run is decided by gap bridging over a mask that speckles.
+
+`impacts.ts` turns the question round. It scores that step everywhere first, proposes an arrow at each
+place the ridge steps up on the way out, and grows a shaft out of the proposal to confirm it. Two
+things fall out of it:
+
+- **A ridge, not a threshold.** The middle against the weaker of its two flanks answers zero at a step
+  between two rings however hard the step is, because one flank is always as dark as the middle. The
+  dark side of a ring frontier is where a threshold on darkness plants its wrong marks.
+- **One shaft, one impact.** A shaft steps up wherever it comes out of something dark, and the black
+  ring is exactly that, so an arrow crossing it answers at the hole *and* at the frontier. The wrong
+  answers are collinear with the right one and further out along it, which is what makes them
+  answerable: the group is the arrow, and its innermost member is where the arrow went in, as long as
+  what lies between them is either shaft or paper too dark to have shown one.
+
+It is not what runs. It sees more and it is noisier, and end to end over the labelled recordings the
+tracker cannot convert the difference:
+
+| proposer | arrows found | ever proposed | scored right | scored wrong | right of all shown |
+| --- | --- | --- | --- | --- | --- |
+| shape (`still.ts`, what runs) | **109/169** | 145/169 (86%) | **103** | **37** | **50%** |
+| impacts | 85/169 | 150/169 (89%) | 84 | 113 | 33% |
+| both pooled | 98/169 | 155/169 (92%) | 98 | 114 | 35% |
+
+All three through the same tracker, so what the rows differ by is the proposer and nothing else.
+
+Pooling the two moves the ceiling from 86% of arrows ever proposed to 92%, and the score falls: three
+times the wrong marks, and ten fewer arrows found. That says where the next work is, and it is not more
+recall. The tracker counts every proposal as one vote, so a wrong place proposed from the same spot
+every pass gathers agreement exactly as a shaft does. Per proposal, length, ridge strength, step size
+and straightness barely separate the right marks from the wrong ones, so the weight would have to come
+from somewhere other than the proposal's own shape, and nothing here has found where.
+
+Turn it on with `proposer: 'impacts'` or `'both'` on the scanner, and measure with
+`node scripts/eval-proposer.mjs --tune '{"proposer":"impacts"}'`.
+
 ### 7. Deciding it is an arrow (`sweep.ts`)
 
 Evidence is gathered per place on the face, not per frame.
@@ -311,6 +367,33 @@ picture twice, so a shadow that reads as an arrow reads as one in both and gathe
 fast as a real shaft does, while the extra passes dilute the share of them each candidate must reach.
 Three times a second is roughly the rate at which a carried camera presents a genuinely new view.
 
+**Two close marks are two arrows when one pass said so.** Whether a second mark may be offered beside
+one already standing used to be decided by distance alone, and no distance is right: six arrows in a
+gold are closer together than one shaft read at two points along itself. It was the tracker's largest
+own loss, seven arrows of a hundred and thirty nine missed because a neighbouring *real* arrow was
+marked first.
+
+The proposer can answer it directly. Two proposals in one pass that did not merge are two things it
+told apart in a single look at the boss, which is evidence about how many arrows are there; distance
+is not. So two places closer than the spacing distance are still both offered once enough passes have
+proposed both of them: at least two, and at least half the looks the fainter of the two got.
+
+Twice rather than once, because a shaft crossing a ring line can be read at two points on one unlucky
+pass, which is exactly the mistake the spacing rule exists to catch. A share as well as a count,
+because a count alone can be reached by luck over a long sweep and the luck is expensive.
+
+Measured over 27 labelled sweeps, against the same recorded proposals:
+
+| | arrows found | wrong marks | scored right | scored wrong | right of all shown | double marks |
+| --- | --- | --- | --- | --- | --- | --- |
+| by distance alone | 106/163 | 60 | 101/163 | 38 | 49% | 3 |
+| **three looks, and half of them** | **109/163** | **57** | **103/163** | **37** | **50%** | **4** |
+
+Three costs one extra mark put twice on one shaft, which is the wrong mark that reads worst, and buys
+an arrow found and scored, an ordinary wrong mark, and a wrong mark off the scoresheet. Two looks was
+right while the proposer read the frame the face was found on; the sharper crop offers more places a
+pass, so two of them landing together by chance is likelier and the bar rose with it.
+
 Promotion is capped at the end's remaining arrows, inside the tracker rather than after it. Sorted by
 evidence, so the best supported candidate takes the last free slot.
 
@@ -325,6 +408,65 @@ It stays optional because the count is not always known: brace height tuning sho
 length, and a team may put two archers' arrows into one boss. Without a count nothing is capped and
 nothing is guessed, because an end has no number to be short of. `-a/--arrows` passes one to the
 replay tool; the app knows it from the round.
+
+### Displacing a mark that turned out to be wrong
+
+Confirming used to be for ever: nothing ever took a mark off the sheet, so a wrong place that cleared
+the bar early held its slot for the whole sweep and turned away every real arrow within a ring of it,
+however much evidence arrived afterwards. It was the largest thing left in the tracker, nine arrows of
+163 against three blocked by a neighbouring real one.
+
+A confirmed mark now gives up its place to the candidate it is blocking once that candidate carries a
+quarter more support. A margin rather than a bare majority, because the two are not symmetrical: the
+mark being displaced has been on the archer's screen and may already have been read, while the one
+displacing it has been refused all along and has had fewer chances to gather anything. Anywhere from a
+tenth more to half again measures the same; it is worth 111 arrows of 163 against 109, with three fewer
+wrong marks and two fewer of those on the scoresheet.
+
+### Where the rest of the loss is
+
+Of 163 arrows over 27 labelled sweeps, 87% are proposed at least once and 76% are proposed five times
+or more. The tracker keeps 111. What is left is mostly not its to keep: 33 arrows were never proposed
+or proposed once or twice, which no tracker can safely use among the several hundred spurious one-offs
+a sweep also produces. Of the rest, a handful are still blocked, a handful never clear the bar, and one
+loses its slot to a full list.
+
+So the tracker is within about fifteen arrows of what its own inbox allows, and the work is upstream of
+it.
+
+### Three things that sound right and are not
+
+Measured, and recorded here so they are not tried again.
+
+**Believing the proposer more.** Lowering the bar is the obvious reading of "the tracker is too strict",
+and it is wrong: at four votes instead of seven the sweeps find 101 arrows rather than 109 and the
+wrong marks go from 57 to 88, most of them onto the scoresheet, because what is seen three times is
+mostly what one flattering viewpoint gives. Raising it trades the other way and no better. The bar is
+close to where it should be; what was wrong was the spacing rule beside it.
+
+**Spending passes on the sharper frames.** A sweep is made by a walking archer, so its frames are not
+equally good, and sharpness is known before a pass is taken. But it barely predicts: keeping the
+sharpest quarter of passes gives 43% of proposals right against 41% for every pass. Only the extreme
+bites, and it is worth knowing for that alone: the blurriest seventh of passes get 19% of their
+proposals right against 44% in the middle, and see a fourteenth of the arrows. A gate on the worst
+frames is arguable; a ranking of the rest is not. Measure with `scripts/eval-passes.mjs`.
+
+**Holding a good frame.** The labelling tool's player goes on scanning after a recording ends, because
+the video element goes on handing out its last frame, and watching it the marks appear to settle and
+improve. They do not. Held for 120 extra passes over the labelled recordings, the arrows found fall
+from 108 of 169 to 103 while the wrong marks on the scoresheet go from 37 to 79: what a held frame does
+is let the tracker confirm everything that one frame supports, right and wrong alike. On a held frame
+the proposals stop moving at all, so nothing it gains can be agreement across viewpoints. What looks
+like settling is faint unsure marks turning into confirmed ones while candidates from earlier
+viewpoints time out. Reproduce with `scripts/eval-arrows-video.mjs --hold 120`, or watch one frame pass
+by pass with `scripts/eval-hold.mjs`.
+
+**Asking a sweep's marks to stand together.** The frame detector keeps only marks that lean the way a
+thing standing in the paper must, and a sweep has far more evidence for that test than one frame does:
+the same place is seen dozens of times, so its direction is an average rather than a single reading,
+and the readings are steady (0.95 of a unit vector, summed and normalised). It still separates nothing.
+Sorting places by how far their lean is from the fitted meeting place puts an arrow below a non arrow
+51.3% of the time, which is chance. The wrong places that survive to three votes lean outwards too.
 
 ### Between ends
 
@@ -434,5 +576,28 @@ set is photographs of a boss across a hall, and says nothing about an archer wal
 for a few seconds, and there were six arrows in the paper: how many came back, how many things came
 back that were not arrows, and would the score have been right.
 
+`scripts/dump-passes.mjs` writes down what the proposer offered on every pass of every labelled sweep,
+and `scripts/eval-tracker.mjs` replays that file through the tracker. Everything the tracker decides is
+downstream of those proposals, so this answers a question about the tracker in milliseconds instead of
+in the eight minutes a full replay costs, and the two agree exactly when given the same settings. Every
+tracker number in this document was found that way and confirmed against the recordings afterwards.
+
+`scripts/eval-passes.mjs` asks whether some frames of a sweep are worth more than others.
+`scripts/eval-hold.mjs` holds one frame in front of the scanner and reports what it makes of it pass by
+pass.
+
 Ground truth for both comes from `scripts/label-arrows.mjs`, where the four anchors are dragged onto
 the black to white edge by hand and each impact is clicked once.
+
+The four anchors may be dragged in any rotational order, so on loading a recording the tool puts each
+frame's hand fit into the same order round the circle as that frame's automatic one, and turns anything
+expressed in that frame's coordinates to match. The turn used to go the wrong way. A half turn is its
+own opposite so it survived, but a frame reordered by one or three quarters had every arrow on it left
+exactly half a turn from where it was clicked, and no amount of dragging could put it right: the next
+load reordered the handles again and turned the arrows wrongly again, so the correction appeared to
+save and came back undone. Four recordings of one session were corrupted that way and were corrected by
+hand once the direction was fixed.
+
+Anything measured against this corpus is worth re-checking after a fix like that. Turning the labels of
+those four back put 21 of their 24 arrows onto the shafts, and every number in this document was taken
+again afterwards.

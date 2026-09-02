@@ -129,15 +129,14 @@ const tune = JSON.parse(option('tune', '{}'));
  */
 const slower = Number(option('slower', 1));
 /**
- * How much the sharper cut the arrows are read from is reduced, when one is used at all.
+ * Whether the proposer gets the sharper cut of the paper that the camera page gives it.
  *
- * Zero means the app's old behaviour: one frame, reduced once, used for finding the face and for
- * reading the arrows off. Set, the face is still searched for at `--scale` and only the proposer gets
- * the finer picture, which is the split the camera page makes. Measured this way the crop is the whole
- * frame rather than the face's neighbourhood, because what is being asked here is what the extra
- * pixels are worth; what the crop saves is time, and time is what `--slower` is for.
+ * On, and cut exactly where `regionBox` says, which is where the camera page cuts it: the face is
+ * searched for on the frame reduced by `--scale` and only the proposer reads the finer picture. Off
+ * with `--no-region`, which is what this used to do and which measures a detector the app does not run:
+ * arrows read off the same frame the face was found on, four times blurrier than the phone's.
  */
-const regionScale = Number(option('region', 0));
+const cutRegion = !args.includes('--no-region');
 /**
  * How much the picture is reduced before detection. Four is what the app hands its worker today.
  *
@@ -147,11 +146,20 @@ const regionScale = Number(option('region', 0));
  * keeps that gain or spends it.
  */
 const SCALE = Number(option('scale', 4));
+/**
+ * Passes to spend on the last frame after the recording has run out, holding it still.
+ *
+ * The labelling tool's player does this by accident: the video ends, the video element goes on handing
+ * out its last frame, and the scanner goes on looking at it. The archer noticed the marks improving
+ * while nothing new was being shown, which the tracker's own argument says should not happen, so it is
+ * worth being able to ask for on purpose.
+ */
+const hold = Number(option('hold', 0));
 /** Weights for the learned detector, measured through the same harness as the written one. */
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 
-const { Sweep, toFaceCoords, downscale, DETECT_EVERY_MS } = await load();
+const { Sweep, toFaceCoords, downscale, regionBox, DETECT_EVERY_MS } = await load();
 
 let found = 0;
 let wanted = 0;
@@ -227,12 +235,14 @@ for (const name of (await readdir(WORK)).sort()) {
 	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, fps, at - first, { ...tune, scale: SCALE, slower, arrows: counted ? label.arrows.length : 0, model, motion });
 
 	let index = 0;
+	/** The last frame fed in, kept so it can be held in front of the scanner after the recording ends. */
+	let lastFrame = null;
 	/*
 	 * Decoded at full size when a region is wanted, because the two reductions have to come from the
 	 * same pixels and neither divides the other. Reduced here rather than by ffmpeg so that what the
 	 * detector is handed is exactly what `downscale` makes of the camera's frame, as in the app.
 	 */
-	const source = regionScale ? { width, height } : small;
+	const source = cutRegion ? { width, height } : small;
 	for await (const frame of decode(await fileOf(name), source.width, source.height, source)) {
 		if (index < first) {
 			index += 1;
@@ -244,14 +254,26 @@ for (const name of (await readdir(WORK)).sort()) {
 			height: source.height,
 			data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
 		};
-		if (regionScale) {
+		if (cutRegion) {
 			const reduced = downscale(decoded, SCALE);
-			const finer = downscale(decoded, regionScale);
-			sweep.push(reduced, { frame: finer, x: 0, y: 0, scale: regionScale });
+			if (hold) lastFrame = { width: reduced.width, height: reduced.height, data: new Uint8ClampedArray(reduced.data) };
+			// Cut from the face the last frame left, as the camera page cuts it from the face it just followed.
+			sweep.push(reduced, () => cut(decoded, sweep.located, SCALE));
 		} else {
+			if (hold) lastFrame = { width: decoded.width, height: decoded.height, data: new Uint8ClampedArray(decoded.data) };
 			sweep.push(decoded);
 		}
 		index += 1;
+	}
+
+	if (hold && lastFrame) {
+		for (let i = 0; i < hold; i++) {
+			sweep.push({
+				width: lastFrame.width,
+				height: lastFrame.height,
+				data: new Uint8ClampedArray(lastFrame.data)
+			});
+		}
 	}
 
 	const result = sweep.result();
@@ -398,22 +420,6 @@ for (const name of (await readdir(WORK)).sort()) {
 	 * class of them can survive every sweep: if they sit in the same part of the shape space as real
 	 * arrows, no threshold separates them and only their placing gives them away.
 	 */
-	/**
-	 * Wrong marks that sit on top of a right one: a second reading of a shaft already marked.
-	 *
-	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
-	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
-	 * that matched. Counted apart from the other wrong marks because the two want different work: this
-	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
-	 */
-	result.arrows.forEach((arrow, i) => {
-		if (taken.has(i)) return;
-		const onTopOfOne = result.arrows.some(
-			(other, j) => taken.has(j) && Math.hypot(arrow.x - other.x, arrow.y - other.y) < 0.12
-		);
-		if (onTopOfOne) doubles += 1;
-	});
-
 	result.arrows.forEach((arrow, i) => {
 		wrong.push({
 			video: name.slice(-24),
@@ -487,6 +493,41 @@ if (args.includes('--why')) {
 	console.log(`\n  by ring, centre outwards (10 bins)`);
 	console.log(`    right  ${ring(right)}`);
 	console.log(`    wrong  ${ring(bad)}`);
+}
+
+/**
+ * The camera page's own crop of the paper, taken from the full frame.
+ *
+ * Averaged over each block rather than sampled, because the page has a canvas do it and canvases
+ * average; nearest neighbour aliases, and a shaft two pixels wide is the first thing aliasing destroys.
+ */
+function cut(full, face, detectScale) {
+	if (!face) return null;
+	const box = regionBox(face, detectScale, full.width, full.height);
+	if (!box) return null;
+	const data = new Uint8ClampedArray(box.width * box.height * 4);
+	for (let y = 0; y < box.height; y++) {
+		for (let x = 0; x < box.width; x++) {
+			let r = 0, g = 0, b = 0;
+			for (let dy = 0; dy < box.scale; dy++) {
+				for (let dx = 0; dx < box.scale; dx++) {
+					const sx = Math.min(full.width - 1, box.x + x * box.scale + dx);
+					const sy = Math.min(full.height - 1, box.y + y * box.scale + dy);
+					const from = (sy * full.width + sx) * 4;
+					r += full.data[from];
+					g += full.data[from + 1];
+					b += full.data[from + 2];
+				}
+			}
+			const n = box.scale * box.scale;
+			const to = (y * box.width + x) * 4;
+			data[to] = r / n;
+			data[to + 1] = g / n;
+			data[to + 2] = b / n;
+			data[to + 3] = 255;
+		}
+	}
+	return { frame: { width: box.width, height: box.height, data }, x: box.x, y: box.y, scale: box.scale };
 }
 
 function homography(points, radius) {

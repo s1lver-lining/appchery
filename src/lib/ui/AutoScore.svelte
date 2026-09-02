@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
-	import { toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
+	import { regionBox, toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
 	import type { LiveImpact } from '$lib/vision/live';
 	import { DETECT_EVERY_MS, LiveScanner } from '$lib/vision/live';
 import { SteadyFace } from '$lib/vision/steady';
@@ -269,69 +269,49 @@ import { SteadyFace } from '$lib/vision/steady';
 		return { width, height, data: context.getImageData(0, 0, width, height).data };
 	}
 
-	/**
-	 * How much the sharper cut around the face is reduced from the camera's own picture.
-	 *
-	 * Three rather than the four the whole frame goes to. Measured end to end over the labelled
-	 * recordings, three finds 91 arrows of 163 against four's 85, gets more of them right, and halves
-	 * neither of those gains away in false marks; two proposes more still and the tracker keeps less of
-	 * it, so this is a peak rather than a direction. It is affordable here only because the cut is the
-	 * face's neighbourhood and not the screen: the search that costs the most still runs on the small
-	 * frame, and this pays for the face's own area alone.
-	 */
-	const REGION_SCALE = 3;
-
 	/** The canvas the sharper cut is taken with, kept beside the one the whole frame is reduced on. */
 	const regionWork = document.createElement('canvas');
 
 	/**
-	 * The paper around the face, cut from the video at `REGION_SCALE` for the proposer to read.
+	 * The paper around the face, cut from the video for the proposer to read.
 	 *
 	 * Cut from the video element rather than from the reduced frame, which is the whole point: taken
-	 * from a picture that has already been shrunk to a quarter, this would be a magnified copy of the
-	 * same information rather than more of it. One resampling, by the GPU, straight from the camera.
+	 * from a picture already shrunk to a quarter, this would be a magnified copy of the same information
+	 * rather than more of it. One resampling, by the GPU, straight from the camera.
 	 *
-	 * Sized generously around the fit. The proposer models the paper out past the printing and follows
-	 * shafts further still, and the face will have moved a little by the time the worker reads this, so
-	 * a crop cut to the ring the fit describes would turn that reach into an edge.
+	 * Where the box goes is `regionBox`, shared with the replay the labelling tool watches and with the
+	 * measuring harness, so the three cannot drift apart. All that differs here is who resamples.
 	 */
 	function cutRegion(): { frame: { width: number; height: number; data: Uint8ClampedArray }; x: number; y: number; scale: number } | null {
 		const face = faces[0];
 		if (!video || !face) return null;
-		const factor = scanner.scaleFactor;
-		// The fit is in the reduced frame's pixels; the crop is taken in the camera's own.
-		const cx = face.cx * factor;
-		const cy = face.cy * factor;
-		const reach = face.semiMajor * factor * 1.8;
+		const box = regionBox(face, scanner.scaleFactor, video.videoWidth, video.videoHeight);
+		if (!box) return null;
 
-		const left = Math.max(0, Math.floor(cx - reach));
-		const top = Math.max(0, Math.floor(cy - reach));
-		const right = Math.min(video.videoWidth, Math.ceil(cx + reach));
-		const bottom = Math.min(video.videoHeight, Math.ceil(cy + reach));
-		const sourceWidth = right - left;
-		const sourceHeight = bottom - top;
-		if (sourceWidth <= 0 || sourceHeight <= 0) return null;
-
-		const width = Math.floor(sourceWidth / REGION_SCALE);
-		const height = Math.floor(sourceHeight / REGION_SCALE);
-		if (width === 0 || height === 0) return null;
-		/*
-		 * Never larger than reducing the whole frame would have been. A boss filling the screen makes
-		 * this the screen, at a finer reduction, which is the one case where the cheap half of the split
-		 * stops being cheap; there the crop is worth nothing and the frame is read instead.
-		 */
-		if (width * height > (video.videoWidth / factor) * (video.videoHeight / factor) * 2) return null;
-
-		regionWork.width = width;
-		regionWork.height = height;
+		regionWork.width = box.width;
+		regionWork.height = box.height;
 		const context = regionWork.getContext('2d', { willReadFrequently: true });
 		if (!context) return null;
-		context.drawImage(video, left, top, sourceWidth, sourceHeight, 0, 0, width, height);
+		context.drawImage(
+			video,
+			box.x,
+			box.y,
+			box.width * box.scale,
+			box.height * box.scale,
+			0,
+			0,
+			box.width,
+			box.height
+		);
 		return {
-			frame: { width, height, data: context.getImageData(0, 0, width, height).data },
-			x: left,
-			y: top,
-			scale: REGION_SCALE
+			frame: {
+				width: box.width,
+				height: box.height,
+				data: context.getImageData(0, 0, box.width, box.height).data
+			},
+			x: box.x,
+			y: box.y,
+			scale: box.scale
 		};
 	}
 

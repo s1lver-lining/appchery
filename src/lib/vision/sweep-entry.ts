@@ -3,6 +3,7 @@
 import { Scanner, type Region } from './pipeline';
 import { toFaceCoords, scaleFace } from './face';
 import { upFromGravity } from './motion';
+import { luma } from './pixels';
 import { ringAgreement } from './refine';
 import { SteadyFace } from './steady';
 import type { Frame, FaceLocation, Impact } from './types';
@@ -30,7 +31,7 @@ export interface SweepResult {
 	dropped: number;
 	proposals: number;
 	/** Every proposal of every pass, to separate what was never seen from what was seen and dropped. */
-	everything: { x: number; y: number; pass: number }[];
+	everything: { x: number; y: number; pass: number; area: number; face: number }[];
 	/**
 	 * The pass at which the face first counted as found, so latency can be measured from that moment.
 	 *
@@ -41,6 +42,14 @@ export interface SweepResult {
 	steadyFrom: number | null;
 	/** What each detection pass cost, in milliseconds, which is what decides how often one can run. */
 	costs: number[];
+	/**
+	 * How sharp the paper looked on each pass, so a harness can ask whether some frames are worth more.
+	 *
+	 * A sweep is made by a walking archer, so the frames it offers are not equally good: some are taken
+	 * mid stride and smeared, and a shaft two pixels wide does not survive that. The tracker spends its
+	 * passes on a clock and has no idea which frames it is spending them on.
+	 */
+	sharpness: number[];
 	/**
 	 * Where the face was on every single frame, which is a different question from where it ends up.
 	 *
@@ -76,10 +85,11 @@ export class Sweep {
 	private withFace = 0;
 	private passes = 0;
 	private proposals = 0;
-	private everything: { x: number; y: number; pass: number }[] = [];
+	private everything: { x: number; y: number; pass: number; area: number; face: number }[] = [];
 	private at: FaceLocation | null = null;
 	private firstSteady: number | null = null;
 	private readonly costs: number[] = [];
+	private readonly sharp: number[] = [];
 	private readonly everShown: SweepResult['shownEver'] = [];
 	/** The overlay's own smoother, so the harness can see the lines the archer sees. */
 	private smoother: SteadyFace | null = null;
@@ -118,6 +128,9 @@ export class Sweep {
 			/** The learned detector's weights, when it is the one being measured. */
 			model?: unknown;
 			combine?: boolean;
+			/** Which written proposer reads the paper, so a harness can compare them end to end. */
+			proposer?: 'shape' | 'impacts' | 'both';
+			impacts?: Record<string, number>;
 			/**
 			 * How the phone was held, as saved beside the recording.
 			 *
@@ -134,7 +147,9 @@ export class Sweep {
 			sweep: options.sweep,
 			still: options.still,
 			model: (options.model ?? null) as never,
-			combine: options.combine
+			combine: options.combine,
+			proposer: options.proposer,
+			impacts: options.impacts
 		});
 		// The end's remaining arrows, exactly as the app sets it: only six are ever going to be offered.
 		if (options.arrows) this.scanner.setLimit(options.arrows);
@@ -172,7 +187,19 @@ export class Sweep {
 		return this.scanner.scaleFactor;
 	}
 
-	push(small: Frame, region: Region | null = null) {
+	/** The face as of the last frame fed in, so a harness can cut the same crop the camera page cuts. */
+	get located(): FaceLocation | null {
+		return this.scanner.located;
+	}
+
+	/**
+	 * A region may be given as a function, and then it is only asked for on the passes that are taken.
+	 *
+	 * Which is what the camera page does: it cuts the crop just before it offers a frame, not on every
+	 * frame it draws. A harness cutting one for every frame pays for forty crops to use one, and the cost
+	 * lands outside what a pass is timed at, so it does not even show up as the thing it is.
+	 */
+	push(small: Frame, region: Region | null | (() => Region | null) = null) {
 		const nowMs = (this.frames / this.fps) * 1000;
 		this.lastNowMs = nowMs;
 		this.scanner.setUp(this.upAt(nowMs));
@@ -182,19 +209,21 @@ export class Sweep {
 			pass = true;
 			this.last = nowMs;
 			const started = performance.now();
-			const result = this.scanner.pushReduced(small, region);
+			const result = this.scanner.pushReduced(small, typeof region === 'function' ? region() : region);
 			const cost = performance.now() - started;
 			this.costs.push(cost);
 			// In the recording's own time, so the next pass is owed from when this one would have ended.
 			this.busyUntil = nowMs + cost * this.slower;
 			this.passes += 1;
+			this.sharp.push(sharpnessOf(small, this.scanner.located));
 			for (const mark of this.scanner.arrows) {
 				this.everShown.push({ x: mark.x, y: mark.y, pass: this.passes, unsure: Boolean(mark.unsure) });
 			}
 			if (this.firstSteady === null && result.steady) this.firstSteady = this.passes;
 			this.proposals += result.detections;
+			this.recent = result.proposed.map((seen) => ({ x: seen.x, y: seen.y }));
 			for (const seen of result.proposed) {
-				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes });
+				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes, area: seen.area ?? 0, face: seen.face });
 			}
 		} else {
 			this.scanner.track(small);
@@ -222,6 +251,18 @@ export class Sweep {
 		this.frames += 1;
 	}
 
+	/** What is on the screen right now, for a harness watching a sweep pass by pass. */
+	scannerArrows(): Impact[] {
+		return this.scanner.arrows;
+	}
+
+	/** What the last pass proposed, before the tracker judged any of it. */
+	lastProposals(): { x: number; y: number }[] {
+		return this.recent;
+	}
+
+	private recent: { x: number; y: number }[] = [];
+
 	result(): SweepResult {
 		return {
 			arrows: this.scanner.arrows,
@@ -241,11 +282,49 @@ export class Sweep {
 			everything: this.everything,
 			steadyFrom: this.firstSteady,
 			costs: this.costs,
+			sharpness: this.sharp,
 			track: this.path
 		};
 	}
 }
 
+/**
+ * How much fine detail the paper is showing, as the mean absolute Laplacian over the face.
+ *
+ * A blurred frame has the same rings in the same places and none of the small structure, and a shaft is
+ * nothing but small structure. Read over the face alone, because the grass and the fence behind it move
+ * differently from the boss and would answer a question nobody asked.
+ */
+function sharpnessOf(frame: Frame, face: FaceLocation | null): number {
+	if (!face) return 0;
+	const radius = (face.semiMajor + face.semiMinor) / 2;
+	const left = Math.max(1, Math.floor(face.cx - radius));
+	const right = Math.min(frame.width - 2, Math.ceil(face.cx + radius));
+	const top = Math.max(1, Math.floor(face.cy - radius));
+	const bottom = Math.min(frame.height - 2, Math.ceil(face.cy + radius));
+	let sum = 0;
+	let n = 0;
+	for (let y = top; y <= bottom; y++) {
+		for (let x = left; x <= right; x++) {
+			if (Math.hypot(x - face.cx, y - face.cy) > radius) continue;
+			const at = (y * frame.width + x) * 4;
+			const up = ((y - 1) * frame.width + x) * 4;
+			const down = ((y + 1) * frame.width + x) * 4;
+			const middle = luma(frame.data[at], frame.data[at + 1], frame.data[at + 2]);
+			sum += Math.abs(
+				luma(frame.data[at - 4], frame.data[at - 3], frame.data[at - 2]) +
+					luma(frame.data[at + 4], frame.data[at + 5], frame.data[at + 6]) +
+					luma(frame.data[up], frame.data[up + 1], frame.data[up + 2]) +
+					luma(frame.data[down], frame.data[down + 1], frame.data[down + 2]) -
+					4 * middle
+			);
+			n += 1;
+		}
+	}
+	return n === 0 ? 0 : sum / n;
+}
+
 export { toFaceCoords };
+export { regionBox, REGION_SCALE } from './pipeline';
 // So a harness can reduce one decoded frame to two scales: the search's and the proposer's.
 export { downscale } from './pixels';

@@ -30,7 +30,7 @@ const ANCHOR_RADII = { '5-ring': 0.6 };
 const ANCHOR = 0.8;
 const anchorsAt = (r) => [[r, 0], [0, r], [-r, 0], [0, -r]];
 /** How close a proposal must be to a labelled impact to count as that arrow, in face radii. */
-const MATCH = 0.05;
+const MATCH = Number(process.env.MATCH ?? 0.05);
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {

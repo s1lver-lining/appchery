@@ -597,6 +597,36 @@ describe('detectArrowsLearned', () => {
 	});
 });
 
+describe('two arrows closer than two marks are usually allowed to be', () => {
+	/** Enough passes for anything to clear the bar, all proposing the same places. */
+	const sweepOf = (places: { x: number; y: number }[][], options = {}) => {
+		const tracker = new SweepTracker(options);
+		tracker.setLimit(8);
+		tracker.expect(6);
+		for (let pass = 0; pass < 20; pass++) {
+			tracker.push(places[pass % places.length].map((p) => ({ ...p, area: 100, face: 0 })));
+		}
+		return tracker.scored;
+	};
+
+	it('offers both when one pass told them apart', () => {
+		// Two places a third of the apart distance from each other, proposed together every pass.
+		const both = [[{ x: 0.1, y: 0 }, { x: 0.16, y: 0 }]];
+		expect(sweepOf(both)).toHaveLength(2);
+	});
+
+	it('offers one when no pass ever saw both, which is one shaft read at two points along it', () => {
+		// The same two places, but never in the same look at the boss.
+		const apart = [[{ x: 0.1, y: 0 }], [{ x: 0.16, y: 0 }]];
+		expect(sweepOf(apart)).toHaveLength(1);
+	});
+
+	it('still refuses both when told to judge by distance alone', () => {
+		const both = [[{ x: 0.1, y: 0 }, { x: 0.16, y: 0 }]];
+		expect(sweepOf(both, { togetherVotes: 0 })).toHaveLength(1);
+	});
+});
+
 describe('an end that holds more arrows than the round says', () => {
 	it('leaves the tracker room for them once the face is steady', () => {
 		const scanner = new Scanner();

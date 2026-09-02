@@ -3,6 +3,7 @@ import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords } from '
 import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
+import { detectArrowsFromImpacts, type ImpactOptions } from './impacts';
 import { detectArrowsLearned, detectArrowsInCrop, type ArrowModel } from './learned';
 import { SweepTracker, type SweepOptions } from './sweep';
 import type { Frame, FaceLocation, Impact } from './types';
@@ -29,7 +30,7 @@ export interface ScanResult {
 	/** Proposals this frame produced, before the tracker judged them. Diagnostic, not used for scoring. */
 	detections: number;
 	/** Those same proposals, so a harness can tell what was never seen from what was seen and dropped. */
-	proposed: { x: number; y: number; face: number }[];
+	proposed: { x: number; y: number; face: number; area: number }[];
 }
 
 /**
@@ -89,6 +90,13 @@ export interface ScannerOptions {
 	 * more than either, and the agreement across viewpoints is what keeps the extra noise out.
 	 */
 	combine?: boolean;
+	/**
+	 * Which written proposer reads the paper: the shape of a shaft, the step where one enters it, or
+	 * both pooled. See `impacts.ts` for why the second one exists.
+	 */
+	proposer?: 'shape' | 'impacts' | 'both';
+	/** Thresholds for the impact proposer, so a harness can sweep them without a code edit. */
+	impacts?: ImpactOptions;
 }
 
 /**
@@ -116,13 +124,15 @@ export interface ScannerOptions {
 const ADOPT_MARGIN = 0.10;
 
 /** Arrows past the end's own count that may still be reported, for an end that holds more than it should. */
-const EXTRA_ARROWS = 2;
+export const EXTRA_ARROWS = 2;
 
 export class Scanner {
 	private readonly tracker: SweepTracker;
 	private readonly scale: number;
 	private readonly faceEvery: number;
 	private readonly still: StillOptions;
+	private readonly proposer: 'shape' | 'impacts' | 'both';
+	private readonly impacts: ImpactOptions;
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -162,6 +172,8 @@ export class Scanner {
 		this.crop = options.crop ?? null;
 		this.combine = options.combine ?? false;
 		this.still = options.still ?? {};
+		this.proposer = options.proposer ?? 'shape';
+		this.impacts = options.impacts ?? {};
 		this.tracker = new SweepTracker(options.sweep);
 	}
 
@@ -373,7 +385,7 @@ export class Scanner {
 			return -1;
 		};
 
-		const shapes = (!this.model || this.combine)
+		const shapes = (!this.model || this.combine) && this.proposer !== 'impacts'
 			? faces.flatMap((face, index) => {
 					/*
 					 * The finer cut where there is one and it holds this face, and the frame otherwise.
@@ -386,6 +398,19 @@ export class Scanner {
 					const local = region ? faceInRegion(face, this.scale, region) : null;
 					const from = local ? region!.frame : small;
 					return detectArrowsInStill(from, local ?? face, this.still).map((arrow) => ({
+						x: arrow.x,
+						y: arrow.y,
+						area: arrow.area,
+						face: index
+					}));
+				})
+			: [];
+
+		const steps = (!this.model || this.combine) && this.proposer !== 'shape'
+			? faces.flatMap((face, index) => {
+					const local = region ? faceInRegion(face, this.scale, region) : null;
+					const from = local ? region!.frame : small;
+					return detectArrowsFromImpacts(from, local ?? face, this.impacts).map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
 						area: arrow.area,
@@ -411,7 +436,7 @@ export class Scanner {
 				})
 			: [];
 
-		const detections = [...shapes, ...learned];
+		const detections = [...shapes, ...steps, ...learned];
 
 		// Capped as `setLimit` caps it, headroom included, so an end holding more than its count can
 		// still report the extra. Set again here because the limit is what stops a misdetection flooding
@@ -500,6 +525,58 @@ export class Scanner {
 	get scaleFactor(): number {
 		return this.scale;
 	}
+}
+
+/**
+ * How much the sharper cut the arrows are read from is reduced from the camera's own picture.
+ *
+ * Three rather than the four the face is searched at. The proposer measures the width of a shaft a
+ * couple of pixels across and every pixel it is given tells, while the search reads shapes and a bigger
+ * picture does not help it, so the two are handed different amounts of the same moment.
+ *
+ * Measured end to end over the labelled recordings, against reading the arrows off the same frame the
+ * face was found on: 108 arrows of 169 against 106, five fewer wrong marks on the scoresheet and nine
+ * fewer wrong places shown at any point, for a pass that costs 40ms instead of 20. A modest gain for
+ * twice the price, and it stays because the price is paid where there is room: the search that costs
+ * the most still runs on the small frame, and this pays for the face's own area alone.
+ *
+ * It is not free of harm. The marks put twice on one shaft go from four to ten, which is the sharper
+ * picture reading one shaft at two points along itself more often.
+ */
+export const REGION_SCALE = 3;
+
+/**
+ * Where to cut the sharper look at the paper, in the source picture's own pixels.
+ *
+ * Written once and shared by everything that cuts one: the camera page, which has a canvas do the
+ * resampling on the GPU, the replay the labelling tool watches, and the measuring harness. What each of
+ * them does with the pixels differs; where the box goes must not, because a replay or a harness reading
+ * the paper at a different sharpness from the phone is measuring a detector nobody has.
+ *
+ * Null where no cut is worth making, which is a face too near the edge of the picture to cut round or a
+ * boss so close that the crop would be the whole screen at a finer reduction. There the frame the face
+ * was found on is read instead, which is a worse answer than the crop but is an answer.
+ */
+export function regionBox(
+	face: FaceLocation,
+	detectScale: number,
+	width: number,
+	height: number
+): { x: number; y: number; width: number; height: number; scale: number } | null {
+	// Room for the paper the proposer reads as well as the face: it follows shafts out past the printing.
+	const reach = face.semiMajor * detectScale * 1.8;
+	const left = Math.max(0, Math.floor(face.cx * detectScale - reach));
+	const top = Math.max(0, Math.floor(face.cy * detectScale - reach));
+	const right = Math.min(width, Math.ceil(face.cx * detectScale + reach));
+	const bottom = Math.min(height, Math.ceil(face.cy * detectScale + reach));
+	if (right <= left || bottom <= top) return null;
+
+	const across = Math.floor((right - left) / REGION_SCALE);
+	const down = Math.floor((bottom - top) / REGION_SCALE);
+	if (across === 0 || down === 0) return null;
+	// Never more pixels than reducing the whole frame would have been, or the cheap half stops being cheap.
+	if (across * down > (width / detectScale) * (height / detectScale) * 2) return null;
+	return { x: left, y: top, width: across, height: down, scale: REGION_SCALE };
 }
 
 /**

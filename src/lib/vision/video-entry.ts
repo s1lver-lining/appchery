@@ -4,7 +4,7 @@
 //
 // This drives the real `Scanner` the same way `AutoScore.svelte` does, at the same detection rate,
 // so what the overlay shows is what an archer would have seen through the phone.
-import { Scanner } from './pipeline';
+import { Scanner, regionBox, type Region } from './pipeline';
 export { DETECT_EVERY_MS } from './live';
 import { upFromGravity } from './motion';
 export { upFromGravity };
@@ -183,7 +183,7 @@ export class Replay {
 		if (nowMs - this.last >= this.detectEveryMs && nowMs >= this.busyUntil) {
 			this.last = nowMs;
 			const before = performance.now();
-			const result = this.scanner.pushReduced(small);
+			const result = this.scanner.pushReduced(small, this.region(full));
 			this.busyUntil = nowMs + (performance.now() - before);
 			this.trusted = result.steady;
 			return this.state(result.faces, result.steady, result.detections, result.arrows, result.pending, started, true);
@@ -192,6 +192,50 @@ export class Replay {
 
 		const faces = this.scanner.track(small);
 		return this.state(faces, this.trusted, 0, this.scanner.arrows, this.scanner.pending, started, false);
+	}
+
+	/**
+	 * The paper around the face, cut from the full frame for the proposer to read, as the page cuts it.
+	 *
+	 * Where the box goes is `regionBox`, the camera page's own, so the two cannot drift apart: what a
+	 * replay is for is showing what the archer would have seen, and one reading the paper at a different
+	 * sharpness from the phone is watching a detector nobody has. This used to be handed nothing at all
+	 * and read arrows off the frame the face was found on, which is blurrier than what the phone gives
+	 * its worker.
+	 */
+	private region(full: Frame): Region | null {
+		const face = this.scanner.located;
+		if (!face) return null;
+		const box = regionBox(face, this.scanner.scaleFactor, full.width, full.height);
+		if (!box) return null;
+
+		const data = new Uint8ClampedArray(box.width * box.height * 4);
+		for (let y = 0; y < box.height; y++) {
+			for (let x = 0; x < box.width; x++) {
+				let r = 0;
+				let g = 0;
+				let b = 0;
+				// Averaged rather than sampled, because the page has a canvas resample it and canvases
+				// average. Nearest neighbour aliases, and a shaft two pixels wide is the first thing to go.
+				for (let dy = 0; dy < box.scale; dy++) {
+					for (let dx = 0; dx < box.scale; dx++) {
+						const sx = Math.min(full.width - 1, box.x + x * box.scale + dx);
+						const sy = Math.min(full.height - 1, box.y + y * box.scale + dy);
+						const from = (sy * full.width + sx) * 4;
+						r += full.data[from];
+						g += full.data[from + 1];
+						b += full.data[from + 2];
+					}
+				}
+				const n = box.scale * box.scale;
+				const to = (y * box.width + x) * 4;
+				data[to] = r / n;
+				data[to + 1] = g / n;
+				data[to + 2] = b / n;
+				data[to + 3] = 255;
+			}
+		}
+		return { frame: { width: box.width, height: box.height, data }, x: box.x, y: box.y, scale: box.scale };
 	}
 
 	/** Passes the detector was too busy to take, which is what a slow detector actually costs. */
