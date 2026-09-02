@@ -148,7 +148,11 @@
 		// The week reads the outings and the month reads the activities, so both are dated by the outing:
 		// recording Saturday's competition on Tuesday put the same arrows in two different months.
 		volume = datedByOuting(toVolume(all), outings);
-		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
+		// Dated the same way, because the record banner below says a thing just happened and means it.
+		scored = datedByOuting(
+			all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity),
+			outings
+		);
 		sessions = outings;
 		slots = planned;
 		plans = allPlans;
