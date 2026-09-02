@@ -1,7 +1,43 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { startOfWeek, endOfWeek, isoWeek, groupByWeek, monthGrid, timeOfDay } from './dates';
+import {
+	startOfWeek,
+	endOfWeek,
+	isoWeek,
+	groupByWeek,
+	monthGrid,
+	timeOfDay,
+	startOfMonth,
+	startOfYear
+} from './dates';
 
 const at = (iso: string) => new Date(iso).getTime();
+
+describe('startOfMonth and startOfYear', () => {
+	it('start on the first, so a figure headed "this month" is not the last thirty days', () => {
+		const start = new Date(startOfMonth(at('2026-09-02T09:00')));
+		expect([start.getFullYear(), start.getMonth(), start.getDate()]).toEqual([2026, 8, 1]);
+		// The 31st of August is the month before, however few days ago it was.
+		expect(at('2026-08-31T23:00') >= startOfMonth(at('2026-09-02T09:00'))).toBe(false);
+		expect(at('2026-09-01T00:00') >= startOfMonth(at('2026-09-02T09:00'))).toBe(true);
+	});
+
+	it('start the year on the first of January rather than twelve months back', () => {
+		const start = new Date(startOfYear(at('2026-09-02T09:00')));
+		expect([start.getFullYear(), start.getMonth(), start.getDate()]).toEqual([2026, 0, 1]);
+		expect(at('2025-12-31T23:00') >= startOfYear(at('2026-09-02T09:00'))).toBe(false);
+	});
+
+	it('land on midnight even where the clocks turn at midnight', () => {
+		const zone = process.env.TZ;
+		process.env.TZ = 'America/Santiago';
+		try {
+			// Santiago moved its clocks forward at midnight on the first of September 2016.
+			expect(new Date(startOfMonth(at('2016-09-15T12:00'))).getDate()).toBe(1);
+		} finally {
+			process.env.TZ = zone;
+		}
+	});
+});
 
 describe('startOfWeek', () => {
 	it('starts weeks on Monday, so a Sunday belongs to the week that just ended', () => {

@@ -28,7 +28,6 @@
 	} from '$lib/domain/plans';
 	import {
 		overview,
-		inRange,
 		isComplete,
 		summariseByRound,
 		toVolume,
@@ -49,7 +48,7 @@
 		formatTime,
 		dateFormats
 	} from '$lib/prefs';
-	import { startOfDay, startOfWeek } from '$lib/domain/dates';
+	import { startOfDay, startOfMonth, startOfWeek, startOfYear } from '$lib/domain/dates';
 	import { defaultNameKey, hasHappened } from '$lib/domain/sessions';
 	import Icon from '$lib/ui/Icon.svelte';
 	import AppGrid from '$lib/ui/AppGrid.svelte';
@@ -254,10 +253,18 @@
 			.find(({ best }) => Date.now() - best.startedAt < PB_WINDOW && best.id !== $dismissedBest)
 	);
 
-	// Every arrow, not only the scored ones: a header that leaves out a tuning session undercounts
-	// the month against the week's own total, which counts them.
-	const month = $derived(overview(inRange(volume, 'month')));
-	const year = $derived(overview(inRange(volume, 'year')));
+	/**
+	 * Every arrow, not only the scored ones: a header that leaves out a tuning session undercounts
+	 * the month against the week's own total, which counts them.
+	 *
+	 * Calendar periods, because that is what the labels beside them say and what the week above them
+	 * already is. These read a rolling thirty days and twelve months, so on the second of September a
+	 * card headed "this month" answered with the whole of August: 109 arrows for a month holding 3.
+	 */
+	const monthStart = $derived(startOfMonth(Date.now()));
+	const yearStart = $derived(startOfYear(Date.now()));
+	const month = $derived(overview(volume.filter((a) => a.startedAt >= monthStart)));
+	const year = $derived(overview(volume.filter((a) => a.startedAt >= yearStart)));
 	const allTime = $derived(overview(volume));
 	/**
 	 * The three latest, oldest first, so the page reads in the same direction as the sessions list.

@@ -24,6 +24,17 @@ export function timeOfDay(at: number): 'morning' | 'afternoon' | 'evening' | 'ni
 	return 'night';
 }
 
+/** Midnight on the first of the month, which is what a calendar means by "this month". */
+export function startOfMonth(at: number): number {
+	const date = new Date(at);
+	return new Date(date.getFullYear(), date.getMonth(), 1).getTime();
+}
+
+/** Midnight on the first of January, the year as a calendar reads it rather than the last twelve months. */
+export function startOfYear(at: number): number {
+	return new Date(new Date(at).getFullYear(), 0, 1).getTime();
+}
+
 export function startOfWeek(at: number): number {
 	const date = new Date(startOfDay(at));
 	// getDay is Sunday based, so Sunday counts back six days rather than none.
