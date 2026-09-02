@@ -1658,7 +1658,10 @@ export async function loadBadgeInput(): Promise<BadgeInput> {
 			return {
 				id: activity.id,
 				sessionId: activity.sessionId,
-				startedAt: activity.startedAt,
+				// The outing's date, like every other field here. A badge counting distinct days or a
+				// week's arrows asks when the shooting happened, and an activity is stamped when its row
+				// was written: a week of outings entered in one sitting read as a single day.
+				startedAt: session?.startedAt ?? activity.startedAt,
 				totalScore: activity.totalScore,
 				arrowsShot: activity.arrowsShot,
 				count10s: activity.count10s,
