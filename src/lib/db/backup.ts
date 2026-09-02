@@ -28,10 +28,10 @@ const TABLES = [
 ] as const;
 
 /**
- * Wiped by a restore and never written to a file. The log and the cursors describe a sync that
- * happened on another device, and the social cache is other archers' rows on their way out anyway.
+ * Wiped by a restore and never written to a file. The log describes a sync that happened on another
+ * device, and the social cache is other archers' rows on their way out anyway.
  */
-const NOT_BACKED_UP = [schema.changeLog, schema.syncState, schema.socialActivity, schema.socialProfile];
+const NOT_BACKED_UP = [schema.changeLog, schema.socialActivity, schema.socialProfile];
 
 export interface Backup {
 	format: typeof BACKUP_FORMAT;
@@ -97,6 +97,7 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
 			await db().delete(table);
 		}
 		for (const table of NOT_BACKED_UP) await db().delete(table);
+		await resetSyncCursors();
 
 		for (const [name, table] of TABLES) {
 			const list = backup.tables[name];
@@ -117,6 +118,17 @@ export async function importBackup(backup: Backup): Promise<RestoreReport> {
 
 		return { rows, tables: restored };
 	});
+}
+
+/**
+ * The cursors describe a history this device no longer has, so the next pull has to start over. The
+ * row itself stays, as it does when the device is erased: where the server is is a setting rather
+ * than data, and this device's id is what breaks a tie in the merge and is not the restore's to change.
+ */
+async function resetSyncCursors(): Promise<void> {
+	await db()
+		.update(schema.syncState)
+		.set({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
 }
 
 /**

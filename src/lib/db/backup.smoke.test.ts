@@ -106,7 +106,16 @@ describe('restoring a backup', () => {
 		expect(log[0].syncedAt).toBeNull();
 	});
 
-	it('does not inherit the cursors the file was written with', async () => {
+	it('clears the cursors, which describe a history this device no longer has', async () => {
+		await proxy.insert(schema.syncState).values({
+			id: 'local',
+			deviceId: 'device-here',
+			lastPullCursor: '2020-01-01',
+			lastPushCursor: '12',
+			endpoint: 'https://self.hosted|key',
+			lastSyncAt: 5
+		});
+
 		await importBackup(
 			backupOf({
 				session: [SESSION],
@@ -114,7 +123,24 @@ describe('restoring a backup', () => {
 			})
 		);
 
-		expect(await proxy.select().from(schema.syncState)).toEqual([]);
+		const [state] = await proxy.select().from(schema.syncState);
+		expect(state).toMatchObject({ lastPullCursor: null, lastPushCursor: null, lastSyncAt: null });
+	});
+
+	it('keeps where the server is and which device this is, neither of them being data', async () => {
+		await proxy.insert(schema.syncState).values({
+			id: 'local',
+			deviceId: 'device-here',
+			lastPullCursor: null,
+			lastPushCursor: null,
+			endpoint: 'https://self.hosted|key',
+			lastSyncAt: null
+		});
+
+		await importBackup(backupOf({ session: [SESSION] }));
+
+		const [state] = await proxy.select().from(schema.syncState);
+		expect(state).toMatchObject({ deviceId: 'device-here', endpoint: 'https://self.hosted|key' });
 	});
 
 	it('leaves the history alone when the file turns out to be unreadable part way through', async () => {
