@@ -40,9 +40,27 @@ test/datasets/prepared/
 __pycache__/
 
 # Per environment Supabase settings, one file per Pages project. .env.example is the template.
+# These hold the database password the deploy script reads, not only the public anon key.
 .env
 .env.*
 !.env.example
+
+# Anything that signs a build or an account, kept out by name rather than by care.
+#
+# The Capacitor templates ship the keystore lines commented out, and the Supabase config file says in
+# its own words not to commit a signing key, so the only thing standing between a release key and a
+# public history was remembering. A leaked upload key cannot be rotated the way a password can: it is
+# the identity the store checks a build against.
+*.jks
+*.keystore
+*.p12
+*.pfx
+*.mobileprovision
+*.cer
+*.certSigningRequest
+signing_keys.json
+google-services.json
+GoogleService-Info.plist
 
 # The landing page build, the same as build/ but for appchery.com.
 build-site/
