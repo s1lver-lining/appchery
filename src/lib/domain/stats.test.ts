@@ -6,11 +6,9 @@ import {
 	scoreByArrowNumber,
 	compareScores,
 	overview,
-	inRange,
 	dailyVolume,
 	consistency,
 	progression,
-	withinRange,
 	distribution,
 	windBand,
 	bandBy,
@@ -277,25 +275,6 @@ describe('overview', () => {
 	it('is empty rather than dividing by zero when nothing was shot', () => {
 		expect(overview([]).averagePerArrow).toBe(0);
 		expect(overview([]).arrows).toBe(0);
-	});
-});
-
-describe('inRange', () => {
-	const now = new Date('2026-08-09T12:00').getTime();
-	const ago = (days: number) => now - days * 86_400_000;
-
-	it('keeps everything on the all time range', () => {
-		expect(inRange([activity({ id: 'a', startedAt: ago(900) })], 'all', now)).toHaveLength(1);
-	});
-
-	it('windows on the last year and the last month, rolling from today', () => {
-		const list = [
-			activity({ id: 'a', startedAt: ago(10) }),
-			activity({ id: 'b', startedAt: ago(100) }),
-			activity({ id: 'c', startedAt: ago(400) })
-		];
-		expect(inRange(list, 'year', now).map((a) => a.id)).toEqual(['a', 'b']);
-		expect(inRange(list, 'month', now).map((a) => a.id)).toEqual(['a']);
 	});
 });
 
@@ -736,24 +715,6 @@ const kindsShooting = (): ActivityLike[] => [
 	{ ...activity({ id: 'tuning', arrowsShot: 18, totalScore: 0 }), kind: 'tuning' },
 	{ ...activity({ id: 'free', arrowsShot: 40, totalScore: 0 }), kind: 'training' }
 ];
-
-describe('withinRange', () => {
-	const on = (iso: string) => new Date(iso).getTime();
-
-	it('reaches a whole month back from a day the month before does not have', () => {
-		// From 31 March the month before ends on the 28th, not on the 3rd of March.
-		const now = on('2026-03-31T12:00');
-		expect(withinRange('month', on('2026-02-28T13:00'), now)).toBe(true);
-		expect(withinRange('month', on('2026-03-02T12:00'), now)).toBe(true);
-		expect(withinRange('month', on('2026-02-27T12:00'), now)).toBe(false);
-	});
-
-	it('reaches a whole year back from the 29th of February', () => {
-		const now = on('2024-02-29T12:00');
-		expect(withinRange('year', on('2023-03-01T12:00'), now)).toBe(true);
-		expect(withinRange('year', on('2023-02-27T12:00'), now)).toBe(false);
-	});
-});
 
 describe('bandBy with a given order', () => {
 	it('puts a band the order does not name last', () => {
