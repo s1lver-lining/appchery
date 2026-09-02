@@ -59,6 +59,24 @@ export function toVolume(activities: ActivityLike[]): ActivityLike[] {
 		);
 }
 
+/**
+ * Arrows dated by the outing that holds them rather than by the moment the row was written.
+ *
+ * An activity is stamped when it is created; a session carries the date the archer gave it, and that
+ * date is editable. So an outing recorded days later lands its activities on the day they were typed
+ * in, and two figures reading the same arrows disagree about which week or month they fall in.
+ */
+export function datedByOuting<T extends { sessionId: string; startedAt: number }>(
+	activities: T[],
+	outings: { id: string; startedAt: number }[]
+): T[] {
+	const on = new Map(outings.map((outing) => [outing.id, outing.startedAt]));
+	return activities.map((activity) => ({
+		...activity,
+		startedAt: on.get(activity.sessionId) ?? activity.startedAt
+	}));
+}
+
 /** What the round chip calls the arrows that belong to no round, in the order it offers them. */
 export const VOLUME_KINDS = ['match', 'tuning', 'freeScore', 'drill', 'training'] as const;
 

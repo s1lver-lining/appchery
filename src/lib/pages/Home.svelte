@@ -28,7 +28,9 @@
 	} from '$lib/domain/plans';
 	import {
 		overview,
+		datedByOuting,
 		isComplete,
+		shootsArrows,
 		summariseByRound,
 		toVolume,
 		type ActivityLike,
@@ -123,7 +125,10 @@
 					round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 				})
 		);
+		// Only the kinds that shoot, as everywhere else: an hour of bandwork carries no arrows today, and
+		// a kind added later without being thought about must stay out rather than quietly join in.
 		counts = activities.reduce<Record<string, number>>((acc, a) => {
+			if (!shootsArrows(a.kind)) return acc;
 			acc[a.sessionId] = (acc[a.sessionId] ?? 0) + a.arrowsShot;
 			return acc;
 		}, {});
@@ -140,7 +145,9 @@
 			roundDefinitionId: a.roundDefinitionId,
 			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 		}));
-		volume = toVolume(all);
+		// The week reads the outings and the month reads the activities, so both are dated by the outing:
+		// recording Saturday's competition on Tuesday put the same arrows in two different months.
+		volume = datedByOuting(toVolume(all), outings);
 		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
 		sessions = outings;
 		slots = planned;

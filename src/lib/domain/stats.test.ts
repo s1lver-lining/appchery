@@ -6,6 +6,7 @@ import {
 	scoreByArrowNumber,
 	compareScores,
 	overview,
+	datedByOuting,
 	dailyVolume,
 	consistency,
 	progression,
@@ -275,6 +276,27 @@ describe('overview', () => {
 	it('is empty rather than dividing by zero when nothing was shot', () => {
 		expect(overview([]).averagePerArrow).toBe(0);
 		expect(overview([]).arrows).toBe(0);
+	});
+});
+
+describe('datedByOuting', () => {
+	it('dates an activity by the outing that holds it, not by when the row was written', () => {
+		const saturday = new Date('2026-08-08T10:00').getTime();
+		const tuesday = new Date('2026-08-11T21:00').getTime();
+
+		const [dated] = datedByOuting([activity({ id: 'a', sessionId: 's', startedAt: tuesday })], [
+			{ id: 's', startedAt: saturday }
+		]);
+
+		expect(dated.startedAt).toBe(saturday);
+	});
+
+	it('leaves an activity whose outing is not in the list where it is', () => {
+		const at = new Date('2026-08-11T21:00').getTime();
+
+		const [dated] = datedByOuting([activity({ id: 'a', sessionId: 'gone', startedAt: at })], []);
+
+		expect(dated.startedAt).toBe(at);
 	});
 });
 
