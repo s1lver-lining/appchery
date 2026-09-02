@@ -67,6 +67,17 @@ export function parseFreeScore(measurements: string | null): FreeScoreSetup {
 	}
 }
 
+/**
+ * A figure held to the bounds declared beside it, for the two the archer types or taps in rather
+ * than the app deriving. Both reach the volume every other figure is summed from, so a fumbled paste
+ * or a counter that ran away must not be able to put an impossible number there, and a field cleared
+ * to nothing arrives as NaN rather than as zero.
+ */
+export function clampFreeScore(value: number, bound: { min: number; max: number }): number {
+	if (!Number.isFinite(value)) return bound.min;
+	return Math.min(bound.max, Math.max(bound.min, Math.round(value)));
+}
+
 export function validateFreeScoreSetup(setup: FreeScoreSetup): string[] {
 	const errors: string[] = [];
 	const { faceSize, distance } = FREE_SCORE_LIMITS;

@@ -27,7 +27,13 @@ import {
 	type StrengthPlan
 } from '$lib/domain/strength';
 import { RUNNING_KIND, isRunDone, parseRun, serialiseRun, type RunRecord } from '$lib/domain/running';
-import { FREE_SCORE_KIND, serialiseFreeScore, type FreeScoreSetup } from '$lib/domain/freeScore';
+import {
+	FREE_SCORE_KIND,
+	FREE_SCORE_LIMITS,
+	clampFreeScore,
+	serialiseFreeScore,
+	type FreeScoreSetup
+} from '$lib/domain/freeScore';
 import {
 	DRILL_KIND,
 	countsOwnArrows,
@@ -308,8 +314,12 @@ export async function updateFreeScore(
 	await db()
 		.update(schema.activity)
 		.set({
-			...(patch.arrowsShot === undefined ? {} : { arrowsShot: Math.max(0, Math.round(patch.arrowsShot)) }),
-			...(patch.totalScore === undefined ? {} : { totalScore: Math.max(0, Math.round(patch.totalScore)) }),
+			...(patch.arrowsShot === undefined
+				? {}
+				: { arrowsShot: clampFreeScore(patch.arrowsShot, FREE_SCORE_LIMITS.arrows) }),
+			...(patch.totalScore === undefined
+				? {}
+				: { totalScore: clampFreeScore(patch.totalScore, FREE_SCORE_LIMITS.score) }),
 			...(patch.setup === undefined ? {} : { measurements: serialiseFreeScore(patch.setup) }),
 			// Complete the moment it holds anything: there is no last arrow to wait for.
 			status: 'complete',

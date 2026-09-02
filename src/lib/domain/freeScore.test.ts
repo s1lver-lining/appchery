@@ -1,6 +1,8 @@
 import { describe, it, expect } from 'vitest';
 import {
 	parseFreeScore,
+	clampFreeScore,
+	FREE_SCORE_LIMITS,
 	serialiseFreeScore,
 	validateFreeScoreSetup,
 	freeScoreLabel,
@@ -70,5 +72,20 @@ describe('free score in the stats', () => {
 
 	it('is filed under its own kind rather than under a round shape', () => {
 		expect(volumeRoundKey(activity)).toBe('kind:freeScore');
+	});
+});
+
+describe('clampFreeScore', () => {
+	it('holds a figure to the bounds declared beside it', () => {
+		expect(clampFreeScore(999_999, FREE_SCORE_LIMITS.arrows)).toBe(FREE_SCORE_LIMITS.arrows.max);
+		expect(clampFreeScore(-5, FREE_SCORE_LIMITS.arrows)).toBe(FREE_SCORE_LIMITS.arrows.min);
+		expect(clampFreeScore(36.4, FREE_SCORE_LIMITS.arrows)).toBe(36);
+	});
+
+	it('reads a cleared field as the lowest the figure may be, never as NaN', () => {
+		expect(clampFreeScore(Number.NaN, FREE_SCORE_LIMITS.score)).toBe(FREE_SCORE_LIMITS.score.min);
+		expect(clampFreeScore(Number.POSITIVE_INFINITY, FREE_SCORE_LIMITS.score)).toBe(
+			FREE_SCORE_LIMITS.score.min
+		);
 	});
 });
