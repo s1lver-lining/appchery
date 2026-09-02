@@ -12,7 +12,7 @@ function walk(dir: string, out: string[] = []): string[] {
 	for (const entry of readdirSync(dir)) {
 		const path = join(dir, entry);
 		if (statSync(path).isDirectory()) walk(path, out);
-		else if (/\.(ts|js|svelte|json|html)$/.test(entry)) out.push(path);
+		else if (/\.(ts|js|mjs|svelte|json|toml|html|sh)$/.test(entry)) out.push(path);
 	}
 	return out;
 }
@@ -31,22 +31,47 @@ describe('the client never carries a service role key', () => {
 	 * reading the variable name never would.
 	 */
 	it('has only anon keys in the environment files', () => {
-		for (const file of ['.env', '.env.preprod', '.env.production', '.env.example']) {
-			if (!existsSync(file)) continue;
-
+		for (const file of readdirSync('.').filter((name) => name.startsWith('.env'))) {
 			for (const line of readFileSync(file, 'utf8').split('\n')) {
-				const value = line.split('=').slice(1).join('=').trim();
-				const segments = value.split('.');
-				if (segments.length !== 3) continue;
-
-				let claims: { role?: string };
-				try {
-					claims = JSON.parse(Buffer.from(segments[1], 'base64').toString());
-				} catch {
-					continue;
+				for (const claims of tokensIn(line)) {
+					expect(`${file}: ${claims.role}`).not.toContain('service_role');
 				}
-				expect(`${file}: ${claims.role}`).not.toContain('service_role');
 			}
 		}
 	});
+
+	/**
+	 * The word check above is about the client bundle, where `service_role` has no business appearing
+	 * at all. This one is about the rest of the repository, which is going public: the deployed
+	 * function, the deploy and evaluation scripts, and the server configuration are all places a key
+	 * is easier to paste than into `src`, and the Cloudflare function is where one would actually work.
+	 *
+	 * Decoded rather than matched, because a key is a JWT and nothing about it says "secret": the
+	 * server configuration names the role in a comment, which is not a key and must not read as one.
+	 */
+	it('carries no privileged key anywhere else that ships', () => {
+		const roots = ['functions', 'scripts', 'supabase', 'static'].filter((dir) => existsSync(dir));
+		const files = [
+			...roots.flatMap((dir) => walk(dir)),
+			...readdirSync('.').filter((name) => /\.(ts|js|mjs|json|toml|html|sh)$/.test(name))
+		];
+
+		const offenders = files.filter((path) =>
+			tokensIn(readFileSync(path, 'utf8')).some((claims) => claims.role && claims.role !== 'anon')
+		);
+		expect(offenders).toEqual([]);
+	});
 });
+
+/** Every JWT payload in a piece of text, so a key is judged by what it grants rather than by where it sits. */
+function tokensIn(text: string): { role?: string }[] {
+	const found: { role?: string }[] = [];
+	for (const match of text.matchAll(/eyJ[A-Za-z0-9_-]+\.(eyJ[A-Za-z0-9_-]+)\./g)) {
+		try {
+			found.push(JSON.parse(Buffer.from(match[1], 'base64url').toString()));
+		} catch {
+			// Three dot separated words that are not a token. Nothing to judge.
+		}
+	}
+	return found;
+}
