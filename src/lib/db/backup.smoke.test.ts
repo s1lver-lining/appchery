@@ -81,7 +81,8 @@ beforeAll(() => {
 });
 
 beforeEach(async () => {
-	for (const table of [schema.session, schema.changeLog, schema.syncState]) await proxy.delete(table);
+	for (const table of [schema.session, schema.changeLog, schema.syncState, schema.ianseoFavourite])
+		await proxy.delete(table);
 });
 
 describe('restoring a backup', () => {
@@ -151,6 +152,26 @@ describe('restoring a backup', () => {
 		).rejects.toThrow();
 
 		expect((await proxy.select().from(schema.session)).map((row) => row.id)).toEqual(['session-a']);
+	});
+
+	it('carries the competitions being followed, which nothing else moves off the device', async () => {
+		await proxy.insert(schema.ianseoFavourite).values({
+			id: 'stale',
+			kind: 'competition',
+			label: 'Somewhere else',
+			addedAt: 1
+		});
+
+		await importBackup(
+			backupOf({
+				ianseoFavourite: [{ id: 'comp-a', kind: 'competition', label: 'Nîmes', addedAt: 2 }]
+			})
+		);
+
+		const rows = await proxy.select().from(schema.ianseoFavourite);
+		expect(rows.map((row) => row.id)).toEqual(['comp-a']);
+		// Local forever, like a badge: enqueueing it would leave an entry no exchange can ever send.
+		expect(await proxy.select().from(schema.changeLog)).toEqual([]);
 	});
 
 	it('enqueues a deleted row too, so the delete reaches the server as well', async () => {

@@ -24,7 +24,9 @@ const TABLES = [
 	['plan', schema.plan],
 	['planSlot', schema.planSlot],
 	['sightMark', schema.sightMark],
-	['badge', schema.badge]
+	['badge', schema.badge],
+	// Which competitions are followed. Nothing syncs them, so a backup is the only way they move.
+	['ianseoFavourite', schema.ianseoFavourite]
 ] as const;
 
 /**
