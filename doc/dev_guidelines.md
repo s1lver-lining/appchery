@@ -12,7 +12,7 @@ Write what the change does, not what files it touches.
 
 ## Comments
 
-One line. Two only when a single line genuinely cannot carry the meaning. No block comments, no
+One line ONLY. Two only when a single line genuinely cannot carry the meaning. No block comments, no
 banner headers above every function.
 
 Explain **why**, never **how**. The code already says how, and a comment restating it goes stale the

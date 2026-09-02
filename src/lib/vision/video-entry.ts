@@ -69,8 +69,15 @@ export class Replay {
 	}
 
 	private readonly detectEveryMs: number;
-	/** Whether to steady the drawn lines. Drawing only, and never what anything is measured from. */
-	private readonly pretty: boolean;
+	/**
+	 * Whether to steady the drawn lines. Drawing only, and never what anything is measured from.
+	 *
+	 * The app smooths by default, so a replay that never did was watching a steadier overlay than the
+	 * archer had. What it must not do is smooth the arrows: the smoother lags the fit it is given, and
+	 * a mark drawn a fraction of a ring from the shaft is the difference between a 9 and a 10 to look
+	 * at. So `faces` is what arrows are placed through and this only ever reaches the rings.
+	 */
+	private pretty: boolean;
 	private readonly steady = [new SteadyFace(), new SteadyFace(), new SteadyFace()];
 	/** Video time the detector is busy until, so a slow pass costs passes rather than frames. */
 	private busyUntil = -Infinity;
@@ -115,6 +122,17 @@ export class Replay {
 
 	setLimit(limit: number) {
 		this.scanner.setLimit(limit);
+	}
+
+	/**
+	 * Turns the drawn lines' smoothing on and off while the recording plays.
+	 *
+	 * Live rather than at construction, because the alternative is restarting the replay to see the
+	 * difference, and a restart throws away every arrow the sweep has gathered. Nothing the scanner
+	 * knows depends on this, so it is safe to change at any moment.
+	 */
+	setSmoothing(on: boolean) {
+		this.pretty = on;
 	}
 
 	get scaleFactor(): number {

@@ -2,6 +2,7 @@
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
+	import type { LiveImpact } from '$lib/vision/live';
 	import { DETECT_EVERY_MS, LiveScanner } from '$lib/vision/live';
 import { SteadyFace } from '$lib/vision/steady';
 	import { MotionLog, allowMotion } from '$lib/vision/motion';
@@ -59,7 +60,7 @@ import { SteadyFace } from '$lib/vision/steady';
 
 	let faces = $state<FaceLocation[]>([]);
 	let steady = $state(false);
-	let found = $state<Impact[]>([]);
+	let found = $state<LiveImpact[]>([]);
 	let pending = $state(0);
 	/** Something worth telling the archer that is not about the arrows, such as a file not written. */
 	let notice = $state('');
@@ -86,7 +87,6 @@ import { SteadyFace } from '$lib/vision/steady';
 			.then((module) => {
 				if (cancelled) return;
 				scanner.setModel((module.default ?? module) as never);
-				scanner.setLimit(remaining);
 			})
 			.catch(() => {
 				// No weights shipped means the classical detector, which is the default anyway.
@@ -95,6 +95,7 @@ import { SteadyFace } from '$lib/vision/steady';
 			cancelled = true;
 		};
 	});
+
 	const work = document.createElement('canvas');
 	let stream: MediaStream | null = null;
 	let raf = 0;
@@ -268,6 +269,72 @@ import { SteadyFace } from '$lib/vision/steady';
 		return { width, height, data: context.getImageData(0, 0, width, height).data };
 	}
 
+	/**
+	 * How much the sharper cut around the face is reduced from the camera's own picture.
+	 *
+	 * Three rather than the four the whole frame goes to. Measured end to end over the labelled
+	 * recordings, three finds 91 arrows of 163 against four's 85, gets more of them right, and halves
+	 * neither of those gains away in false marks; two proposes more still and the tracker keeps less of
+	 * it, so this is a peak rather than a direction. It is affordable here only because the cut is the
+	 * face's neighbourhood and not the screen: the search that costs the most still runs on the small
+	 * frame, and this pays for the face's own area alone.
+	 */
+	const REGION_SCALE = 3;
+
+	/** The canvas the sharper cut is taken with, kept beside the one the whole frame is reduced on. */
+	const regionWork = document.createElement('canvas');
+
+	/**
+	 * The paper around the face, cut from the video at `REGION_SCALE` for the proposer to read.
+	 *
+	 * Cut from the video element rather than from the reduced frame, which is the whole point: taken
+	 * from a picture that has already been shrunk to a quarter, this would be a magnified copy of the
+	 * same information rather than more of it. One resampling, by the GPU, straight from the camera.
+	 *
+	 * Sized generously around the fit. The proposer models the paper out past the printing and follows
+	 * shafts further still, and the face will have moved a little by the time the worker reads this, so
+	 * a crop cut to the ring the fit describes would turn that reach into an edge.
+	 */
+	function cutRegion(): { frame: { width: number; height: number; data: Uint8ClampedArray }; x: number; y: number; scale: number } | null {
+		const face = faces[0];
+		if (!video || !face) return null;
+		const factor = scanner.scaleFactor;
+		// The fit is in the reduced frame's pixels; the crop is taken in the camera's own.
+		const cx = face.cx * factor;
+		const cy = face.cy * factor;
+		const reach = face.semiMajor * factor * 1.8;
+
+		const left = Math.max(0, Math.floor(cx - reach));
+		const top = Math.max(0, Math.floor(cy - reach));
+		const right = Math.min(video.videoWidth, Math.ceil(cx + reach));
+		const bottom = Math.min(video.videoHeight, Math.ceil(cy + reach));
+		const sourceWidth = right - left;
+		const sourceHeight = bottom - top;
+		if (sourceWidth <= 0 || sourceHeight <= 0) return null;
+
+		const width = Math.floor(sourceWidth / REGION_SCALE);
+		const height = Math.floor(sourceHeight / REGION_SCALE);
+		if (width === 0 || height === 0) return null;
+		/*
+		 * Never larger than reducing the whole frame would have been. A boss filling the screen makes
+		 * this the screen, at a finer reduction, which is the one case where the cheap half of the split
+		 * stops being cheap; there the crop is worth nothing and the frame is read instead.
+		 */
+		if (width * height > (video.videoWidth / factor) * (video.videoHeight / factor) * 2) return null;
+
+		regionWork.width = width;
+		regionWork.height = height;
+		const context = regionWork.getContext('2d', { willReadFrequently: true });
+		if (!context) return null;
+		context.drawImage(video, left, top, sourceWidth, sourceHeight, 0, 0, width, height);
+		return {
+			frame: { width, height, data: context.getImageData(0, 0, width, height).data },
+			x: left,
+			y: top,
+			scale: REGION_SCALE
+		};
+	}
+
 	function tick(now: number) {
 		raf = requestAnimationFrame(tick);
 		if (!video || video.readyState < 2 || !overlay) return;
@@ -291,22 +358,27 @@ import { SteadyFace } from '$lib/vision/steady';
 		 */
 		faces = scanner.follow(small);
 		/**
-		 * What is drawn, which is not quite what was fitted. Everything read off the picture is read off
-		 * `faces`; this only stops the lines trembling between frames.
+		 * What the rings are drawn with, which is not quite what was fitted. Nothing is ever read off
+		 * this: it exists to stop the lines trembling between frames, and it is handed to `draw` for the
+		 * rings alone. The arrows go through `faces`, the fit itself, because a mark on the boss is an
+		 * answer and answers are not worth smoothing.
 		 */
 		const shown = $smoothOverlay ? faces.map((face, i) => smoother(i).show(face)) : faces;
 		if (now - lastDetection >= DETECT_EVERY_MS) {
 			lastDetection = now;
-			// Offered last, because the frame's buffer is given away rather than copied.
-			scanner.offer(small);
+			// Cut before the offer and after the follow: it is framed on the fit this frame just made.
+			const region = cutRegion();
+			// Offered last, because both buffers are given away rather than copied.
+			scanner.offer(small, region);
 		}
 
-		draw(shown, found, overlay, video.videoWidth, video.videoHeight);
+		draw(shown, faces, found, overlay, video.videoWidth, video.videoHeight);
 	}
 
 	/** The overlay is drawn in the small image's pixels, so every coordinate scales back up. */
 	function draw(
 		located: FaceLocation[],
+		fitted: FaceLocation[],
 		arrows: Impact[],
 		canvas: HTMLCanvasElement,
 		width: number,
@@ -352,7 +424,9 @@ import { SteadyFace } from '$lib/vision/steady';
 		}
 
 		arrows.forEach((arrow, index) => {
-			const face = located[arrow.face];
+			// The fit, not the smoothed line. Smoothing lags the fit by up to a tenth of a ring, and a
+			// ring drawn a tenth of a ring from the shaft is the difference between a 9 and a 10 to look at.
+			const face = fitted[arrow.face] ?? located[arrow.face];
 			if (!face) return;
 			const point = toImageCoords(face, arrow.x, arrow.y);
 			context.strokeStyle = index < remaining ? '#3ddc84' : 'rgba(255,255,255,0.4)';
@@ -396,7 +470,7 @@ import { SteadyFace } from '$lib/vision/steady';
 		scanner.accept();
 	}
 
-	function drop(arrow: Impact) {
+	function drop(arrow: LiveImpact) {
 		scanner.reject(arrow);
 		found = found.filter((a) => a !== arrow);
 	}

@@ -10,11 +10,31 @@
  * about it; whatever comes back is in face coordinates, which stay true however much the camera has
  * moved since, so the overlay projects them through the geometry it is following right now.
  */
-import { Scanner } from './pipeline';
+import { Scanner, type Region } from './pipeline';
 import type { ArrowModel } from './learned';
 import type { Frame, Impact } from './types';
 
-let scanner = new Scanner();
+/**
+ * What the page has told the detector about the session, kept apart from the scanner itself.
+ *
+ * The scanner is replaced outright when the model changes or the end is cleared, and a replacement
+ * knows only its defaults. Everything the page said before that moment would go with the old one:
+ * the end's arrow count, so a six arrow end silently went back to holding twelve, and which way up
+ * the boss is, so the next face acquired was pinned to nothing. The page has no reason to know that
+ * a new scanner was made and no way to notice, so the settings are held here and put back on.
+ */
+let limit: number | null = null;
+let up: number | null = null;
+let model: ArrowModel | null = null;
+
+function fresh(): Scanner {
+	const made = new Scanner({ model });
+	if (limit !== null) made.setLimit(limit);
+	made.setUp(up);
+	return made;
+}
+
+let scanner = fresh();
 /** Dropped frames are the point: a frame offered while the last one is still going is not queued. */
 let busy = false;
 
@@ -23,6 +43,21 @@ interface FrameMessage {
 	width: number;
 	height: number;
 	data: ArrayBuffer;
+	/**
+	 * A sharper cut of the same moment, around the face, for reading arrows off.
+	 *
+	 * Cut by the page because only the page has the camera's own pixels: by the time a frame reaches
+	 * here it has already been reduced, and a crop taken from it would be a magnified copy of the same
+	 * information rather than more of it. Optional, so a caller that has not got one still works.
+	 */
+	region?: {
+		width: number;
+		height: number;
+		data: ArrayBuffer;
+		x: number;
+		y: number;
+		scale: number;
+	};
 }
 
 type Message =
@@ -42,26 +77,44 @@ function frameOf(message: FrameMessage): Frame {
 	};
 }
 
+function regionOf(message: FrameMessage): Region | null {
+	const region = message.region;
+	if (!region) return null;
+	return {
+		frame: {
+			width: region.width,
+			height: region.height,
+			data: new Uint8ClampedArray(region.data)
+		},
+		x: region.x,
+		y: region.y,
+		scale: region.scale
+	};
+}
+
 self.onmessage = (event: MessageEvent<Message>) => {
 	const message = event.data;
 
 	if (message.type === 'model') {
-		scanner = new Scanner({ model: message.model });
+		model = message.model;
+		scanner = fresh();
 		return;
 	}
 
 	if (message.type === 'up') {
-		scanner.setUp(message.up);
+		up = message.up;
+		scanner.setUp(up);
 		return;
 	}
 
 	if (message.type === 'limit') {
-		scanner.setLimit(message.limit);
+		limit = message.limit;
+		scanner.setLimit(limit);
 		return;
 	}
 
 	if (message.type === 'clear') {
-		scanner = new Scanner();
+		scanner = fresh();
 		return;
 	}
 
@@ -79,7 +132,7 @@ self.onmessage = (event: MessageEvent<Message>) => {
 	busy = true;
 	try {
 		const started = performance.now();
-		const result = scanner.pushReduced(frameOf(message));
+		const result = scanner.pushReduced(frameOf(message), regionOf(message));
 		self.postMessage({
 			type: 'result',
 			faces: result.faces,

@@ -1,6 +1,6 @@
 // Entry point for scripts/eval-arrows-video.mjs, which replays a recording and asks what it found.
 // Not imported by the app.
-import { Scanner } from './pipeline';
+import { Scanner, type Region } from './pipeline';
 import { toFaceCoords, scaleFace } from './face';
 import { upFromGravity } from './motion';
 import { ringAgreement } from './refine';
@@ -26,6 +26,8 @@ export interface SweepResult {
 	at: FaceLocation | null;
 	framesWithFace: number;
 	passes: number;
+	/** Passes the clock called for and the detector was too busy to take, which is what cost buys. */
+	dropped: number;
 	proposals: number;
 	/** Every proposal of every pass, to separate what was never seen from what was seen and dropped. */
 	everything: { x: number; y: number; pass: number }[];
@@ -91,6 +93,27 @@ export class Sweep {
 		options: {
 			sweep?: Record<string, number>;
 			still?: Record<string, number>;
+			/**
+			 * How much the caller reduced the frames it is about to push, so the fit can be put back.
+			 *
+			 * Has to be told rather than assumed. Everything this reports is read against labels placed
+			 * on the full sized picture, and the way back is the scanner's own factor; left at its
+			 * default while a harness fed frames reduced by some other amount, the fit came back a
+			 * third too large and every arrow was compared against a place it was never at. That does
+			 * not look like a bad measurement, it looks like a detector that has stopped working.
+			 */
+			scale?: number;
+			/**
+			 * What one pass costs on the device being measured, as a multiple of what it costs here.
+			 *
+			 * A pass is offered on a clock and dropped when the detector is still working, so what a
+			 * detector costs decides how many looks a sweep gets. This runs on a developer's machine and
+			 * the archer's phone is several times slower, so measuring the drops at the speed of the
+			 * machine doing the measuring says a setting is affordable that on a phone is not. One means
+			 * this machine; three or four is the honest range for a phone against a laptop, and the
+			 * number wants measuring on a real device rather than guessing.
+			 */
+			slower?: number;
 			arrows?: number;
 			/** The learned detector's weights, when it is the one being measured. */
 			model?: unknown;
@@ -107,6 +130,7 @@ export class Sweep {
 		} = {}
 	) {
 		this.scanner = new Scanner({
+			scale: options.scale,
 			sweep: options.sweep,
 			still: options.still,
 			model: (options.model ?? null) as never,
@@ -115,7 +139,22 @@ export class Sweep {
 		// The end's remaining arrows, exactly as the app sets it: only six are ever going to be offered.
 		if (options.arrows) this.scanner.setLimit(options.arrows);
 		this.motion = options.motion ?? null;
+		this.slower = Math.max(0, options.slower ?? 1);
 	}
+
+	/** How much slower than this machine the device being modelled is. */
+	private readonly slower: number;
+	/**
+	 * The moment in the recording the detector is busy until, so a slow pass costs passes and not frames.
+	 *
+	 * The app runs detection in a worker and throws away any frame offered while the last one is still
+	 * going; without that here, every setting gets every pass it asks for however long it takes, and an
+	 * expensive detector is measured as though it were free. That is not a small distortion: it is the
+	 * whole argument for one setting over another when the settings differ in cost.
+	 */
+	private busyUntil = -Infinity;
+	/** The last moment of the recording fed in, so the passes the clock called for can be counted. */
+	private lastNowMs = 0;
 
 	private readonly motion: { at: number; gravity: { x: number; y: number; z: number } | null }[] | null;
 	private motionAt = 0;
@@ -133,17 +172,21 @@ export class Sweep {
 		return this.scanner.scaleFactor;
 	}
 
-	push(small: Frame) {
+	push(small: Frame, region: Region | null = null) {
 		const nowMs = (this.frames / this.fps) * 1000;
+		this.lastNowMs = nowMs;
 		this.scanner.setUp(this.upAt(nowMs));
 		// Whether this frame got a full search or only a follow, so the two can be told apart after.
 		let pass = false;
-		if (nowMs - this.last >= this.detectEveryMs) {
+		if (nowMs - this.last >= this.detectEveryMs && nowMs >= this.busyUntil) {
 			pass = true;
 			this.last = nowMs;
 			const started = performance.now();
-			const result = this.scanner.pushReduced(small);
-			this.costs.push(performance.now() - started);
+			const result = this.scanner.pushReduced(small, region);
+			const cost = performance.now() - started;
+			this.costs.push(cost);
+			// In the recording's own time, so the next pass is owed from when this one would have ended.
+			this.busyUntil = nowMs + cost * this.slower;
 			this.passes += 1;
 			for (const mark of this.scanner.arrows) {
 				this.everShown.push({ x: mark.x, y: mark.y, pass: this.passes, unsure: Boolean(mark.unsure) });
@@ -187,6 +230,13 @@ export class Sweep {
 			at: this.at,
 			framesWithFace: this.withFace,
 			passes: this.passes,
+			/*
+			 * Counted from the clock rather than tallied frame by frame. A frame arriving while the
+			 * detector is busy is not a dropped pass, and counting it as one said two thirds of the
+			 * passes were being lost where the truth was a fifth: at sixty frames a second there are
+			 * several frames inside every pass, and every one of them looked like a fresh refusal.
+			 */
+			dropped: Math.max(0, Math.floor(this.lastNowMs / this.detectEveryMs) - this.passes),
 			proposals: this.proposals,
 			everything: this.everything,
 			steadyFrom: this.firstSteady,
@@ -197,3 +247,5 @@ export class Sweep {
 }
 
 export { toFaceCoords };
+// So a harness can reduce one decoded frame to two scales: the search's and the proposer's.
+export { downscale } from './pixels';

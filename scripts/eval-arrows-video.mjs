@@ -71,7 +71,7 @@ async function fileOf(name) {
 	const found = await listRecordings(VIDEOS);
 	return found.find((r) => r.name === name)?.path ?? join(VIDEOS, name);
 }
-const SCALE = 4;
+
 /**
  * The radius the archer's four handles stand at, which is not the same edge on every face.
  *
@@ -120,14 +120,44 @@ const counted = !args.includes('--uncounted');
 const blind = args.includes('--no-motion');
 /** Threshold overrides, so a sweep of them needs no code edit. */
 const tune = JSON.parse(option('tune', '{}'));
+/**
+ * How much slower the device being modelled is than this machine, so dropped passes are modelled.
+ *
+ * One measures this laptop. A phone is several times slower, and since a pass offered while the last
+ * is still running is thrown away rather than queued, the cost of a setting turns into how many looks
+ * the sweep gets. Left unmodelled, every expensive setting is measured as though it were free.
+ */
+const slower = Number(option('slower', 1));
+/**
+ * How much the sharper cut the arrows are read from is reduced, when one is used at all.
+ *
+ * Zero means the app's old behaviour: one frame, reduced once, used for finding the face and for
+ * reading the arrows off. Set, the face is still searched for at `--scale` and only the proposer gets
+ * the finer picture, which is the split the camera page makes. Measured this way the crop is the whole
+ * frame rather than the face's neighbourhood, because what is being asked here is what the extra
+ * pixels are worth; what the crop saves is time, and time is what `--slower` is for.
+ */
+const regionScale = Number(option('region', 0));
+/**
+ * How much the picture is reduced before detection. Four is what the app hands its worker today.
+ *
+ * Here as a switch because it is the one number that changes what the proposer can see at all rather
+ * than what it makes of what it sees, and the still harness already shows it moving recall, precision
+ * and impact error together. Measuring it end to end is the only way to learn whether the tracker
+ * keeps that gain or spends it.
+ */
+const SCALE = Number(option('scale', 4));
 /** Weights for the learned detector, measured through the same harness as the written one. */
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 
-const { Sweep, toFaceCoords, DETECT_EVERY_MS } = await load();
+const { Sweep, toFaceCoords, downscale, DETECT_EVERY_MS } = await load();
 
 let found = 0;
 let wanted = 0;
+let passesTaken = 0;
+let passesDropped = 0;
+const costsAll = [];
 let spurious = 0;
 let proposedEver = 0;
 const errors = [];
@@ -194,24 +224,40 @@ for (const name of (await readdir(WORK)).sort()) {
 	 * a frame drifting in a way the phone's own is not.
 	 */
 	const motion = blind ? null : await motionOf(await fileOf(name));
-	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, fps, at - first, { ...tune, arrows: counted ? label.arrows.length : 0, model, motion });
+	const sweep = new Sweep(everyMs || DETECT_EVERY_MS, fps, at - first, { ...tune, scale: SCALE, slower, arrows: counted ? label.arrows.length : 0, model, motion });
 
 	let index = 0;
-	for await (const frame of decode(await fileOf(name), small.width, small.height, small)) {
+	/*
+	 * Decoded at full size when a region is wanted, because the two reductions have to come from the
+	 * same pixels and neither divides the other. Reduced here rather than by ffmpeg so that what the
+	 * detector is handed is exactly what `downscale` makes of the camera's frame, as in the app.
+	 */
+	const source = regionScale ? { width, height } : small;
+	for await (const frame of decode(await fileOf(name), source.width, source.height, source)) {
 		if (index < first) {
 			index += 1;
 			continue;
 		}
 		if (index > limit) break;
-		sweep.push({
-			width: small.width,
-			height: small.height,
+		const decoded = {
+			width: source.width,
+			height: source.height,
 			data: new Uint8ClampedArray(frame.buffer, frame.byteOffset, frame.length)
-		});
+		};
+		if (regionScale) {
+			const reduced = downscale(decoded, SCALE);
+			const finer = downscale(decoded, regionScale);
+			sweep.push(reduced, { frame: finer, x: 0, y: 0, scale: regionScale });
+		} else {
+			sweep.push(decoded);
+		}
 		index += 1;
 	}
 
 	const result = sweep.result();
+	passesTaken += result.passes;
+	passesDropped += result.dropped;
+	for (const c of result.costs) costsAll.push(c);
 	if (!result.at) {
 		rows.push(`${name.slice(-24)}  no face on the labelled frame`);
 		wanted += label.arrows.length;
@@ -388,6 +434,16 @@ const sorted = errors.sort((a, b) => a - b);
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
 console.log(rows.join('\n'));
 console.log(`\ndetector            ${model ? 'learned' : 'classical'}`);
+{
+	const sorted = [...costsAll].sort((a, b) => a - b);
+	const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+	const offered = passesTaken + passesDropped;
+	console.log(
+		`passes              ${passesTaken} taken, ${passesDropped} dropped ` +
+			`(${((passesDropped / Math.max(offered, 1)) * 100).toFixed(0)}% of those the clock called for)`
+	);
+	console.log(`  a pass costs      ${median.toFixed(1)}ms median here, modelled at ${slower}x for the device`);
+}
 console.log(`\narrows found        ${found}/${wanted} (${((found / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`spurious arrows     ${spurious} (${(spurious / Math.max(rows.length, 1)).toFixed(1)} per recording)`);

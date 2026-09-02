@@ -1,5 +1,5 @@
 import { downscale } from './pixels';
-import { alignFace, detectFaces, pinFace, toFaceCoords } from './face';
+import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords } from './face';
 import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
@@ -30,6 +30,28 @@ export interface ScanResult {
 	detections: number;
 	/** Those same proposals, so a harness can tell what was never seen from what was seen and dropped. */
 	proposed: { x: number; y: number; face: number }[];
+}
+
+/**
+ * A sharper look at the paper, cut from the source around the face and reduced less than the frame.
+ *
+ * The proposer reads pixels; the face detector reads shapes. Those want different amounts of picture,
+ * and tying them to one reduction means paying the detector's price to get the proposer's resolution.
+ * The face is found on the small frame as before, and the arrows are read off this: the cost of the
+ * finer look is then the face's own area rather than the whole screen's, and the pixels have been
+ * resampled once from the camera instead of twice.
+ *
+ * Nothing downstream changes, because `detectArrowsInStill` answers in face coordinates, which are
+ * normalised to the face and so say the same thing whatever pixels they were read from.
+ */
+export interface Region {
+	/** The pixels, cut around the face and reduced by `scale` from the source picture. */
+	frame: Frame;
+	/** Where the crop's top left corner sits in the source picture's own pixels. */
+	x: number;
+	y: number;
+	/** How much the crop was reduced from the source picture. */
+	scale: number;
 }
 
 export interface ScannerOptions {
@@ -223,8 +245,15 @@ export class Scanner {
 		return this.up === null ? face : pinFace(face, this.up);
 	}
 
-	/** The same as `push`, for a frame the caller has already reduced to `scaleFactor`. */
-	pushReduced(small: Frame): ScanResult {
+	/**
+	 * The same as `push`, for a frame the caller has already reduced to `scaleFactor`.
+	 *
+	 * A `region` is a sharper cut of the same moment, used for reading arrows and nothing else. Faces
+	 * are still found on `small`: the search is the expensive half and a bigger picture does not help
+	 * it, while the proposer is measuring the width of a shaft a few pixels across and every pixel it
+	 * is given tells.
+	 */
+	pushReduced(small: Frame, region: Region | null = null): ScanResult {
 
 		if (this.frames % this.faceEvery === 0 || this.faces.length === 0) {
 			const candidates = detectFaces(small);
@@ -345,14 +374,24 @@ export class Scanner {
 		};
 
 		const shapes = (!this.model || this.combine)
-			? faces.flatMap((face, index) =>
-					detectArrowsInStill(small, face, this.still).map((arrow) => ({
+			? faces.flatMap((face, index) => {
+					/*
+					 * The finer cut where there is one and it holds this face, and the frame otherwise.
+					 *
+					 * Falling back rather than failing, because a region is an optimisation and not a
+					 * promise: a face found near the edge of a sweep can sit outside a crop that was cut
+					 * around where the face was a moment ago, and reading it from the small frame is a
+					 * worse answer than reading it from the crop, but it is an answer.
+					 */
+					const local = region ? faceInRegion(face, this.scale, region) : null;
+					const from = local ? region!.frame : small;
+					return detectArrowsInStill(from, local ?? face, this.still).map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
 						area: arrow.area,
 						face: index
-					}))
-				)
+					}));
+				})
 			: [];
 
 		const learned = this.model
@@ -461,6 +500,41 @@ export class Scanner {
 	get scaleFactor(): number {
 		return this.scale;
 	}
+}
+
+/**
+ * The same face, written in a region's pixels instead of the detection frame's.
+ *
+ * Only the four anchors need moving: they are what the fit is, and everything else about a
+ * `FaceLocation` is derived from them. Null when the face does not sit inside the crop, which is the
+ * caller's signal to read from the frame instead.
+ */
+function faceInRegion(face: FaceLocation, detectScale: number, region: Region): FaceLocation | null {
+	const anchors = face.anchors.map(
+		([x, y]) =>
+			[(x * detectScale - region.x) / region.scale, (y * detectScale - region.y) / region.scale] as [
+				number,
+				number
+			]
+	);
+	const moved = faceFromAnchors(anchors, face.support);
+	if (!moved) return null;
+	/*
+	 * Room for the paper the proposer reads as well as for the face itself: it models the paper and
+	 * follows shafts out past the printing, and a crop cut too tight turns that reach into an edge.
+	 */
+	const margin = moved.semiMajor * 1.3;
+	if (
+		moved.cx - margin < 0 ||
+		moved.cy - margin < 0 ||
+		moved.cx + margin > region.frame.width ||
+		moved.cy + margin > region.frame.height
+	) {
+		return null;
+	}
+	// Carried over rather than decided again: a fit does not change its mind about the printed layout.
+	moved.spot = face.spot;
+	return moved;
 }
 
 /**

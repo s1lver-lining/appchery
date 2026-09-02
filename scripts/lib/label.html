@@ -195,6 +195,7 @@
 				<option value="4">4&times;</option>
 			</select>
 			<button id="scorerToggle" title="Show or hide the scorer's overlay. Off, this is just the recording.">Scorer</button>
+			<button id="smoothToggle" title="Steady the drawn rings between frames, as the app does by default. It changes only the lines: the arrows are placed through the fit itself either way, so nothing measured here moves when you turn it off. Off is the honest view of how much the fit trembles frame to frame.">Smooth</button>
 			<button id="closePlayer" title="Back to the labelled frames">&times;</button>
 		</div>
 	</div>
@@ -607,6 +608,12 @@
 		else el('scorerToggle').textContent = 'Scorer';
 	}
 
+	/** The smoothing button, wearing whether it is on, as every other toggle in the transport does. */
+	function saySmoothing() {
+		el('smoothToggle').className = smoothOverlay ? 'on' : '';
+		el('smoothToggle').textContent = smoothOverlay ? 'Smooth' : 'Raw';
+	}
+
 	/** Which of the two corpora is showing, and everything that follows from it. */
 	function setSource(which) {
 		source = which;
@@ -933,6 +940,14 @@
 	 */
 	let replayLib = null;
 	let replay = null;
+	/**
+	 * Whether the drawn rings are steadied, matching `smoothOverlay` in the app, which is on by default.
+	 *
+	 * Here for the same reason the app has the switch: smoothing halves the tremble of a fit measured
+	 * afresh every frame, and hides exactly how much of it there is. Watching a recording is when
+	 * somebody actually wants to see that, so it can be turned off without leaving the player.
+	 */
+	let smoothOverlay = true;
 	let motionOf = null;
 	let playing = false;
 	let raf = 0;
@@ -954,7 +969,12 @@
 	/** Started afresh, because everything the scanner knows it learnt from the frames before this one. */
 	function restartReplay() {
 		if (!replayLib) return;
-		replay = new replayLib.Replay(replayLib.DETECT_EVERY_MS, detector === 'learned' ? model : null, false, false);
+		replay = new replayLib.Replay(
+			replayLib.DETECT_EVERY_MS,
+			detector === 'learned' ? model : null,
+			smoothOverlay,
+			false
+		);
 		if (motionOf) replay.setMotion(motionOf);
 		// The clock starts again with it, so a pass is not owed for the time spent somewhere else.
 		playedMs = 0;
@@ -974,6 +994,7 @@
 		// Opened showing what the scanner makes of it, since that is what there is to see; the toggle in
 		// the transport turns it off for anyone who only wants to watch the recording.
 		if (detector === 'off') el('detClassical').onclick();
+		saySmoothing();
 		el('player').hidden = false;
 		const film = el('film');
 		film.src = `/video/${encodeURIComponent(v.video)}`;
@@ -2136,6 +2157,16 @@
 		el(detector === 'off' ? 'detClassical' : 'detOff').onclick();
 		if (detector !== 'off') restartReplay();
 	};
+	/*
+	 * Taken by the replay where it stands rather than by restarting it. Nothing the scanner has
+	 * gathered depends on how the lines are drawn, and a restart would throw away the arrows the sweep
+	 * has agreed on so far, which is most of what there is to look at.
+	 */
+	el('smoothToggle').onclick = () => {
+		smoothOverlay = !smoothOverlay;
+		if (replay) replay.setSmoothing(smoothOverlay);
+		saySmoothing();
+	};
 
 	el('fitLock').onclick = () => {
 		lockRotation = !lockRotation;
@@ -2157,13 +2188,6 @@
 		mode = 'marks';
 		draw();
 	};
-	/**
-	 * Re-reads the arrows against this frame instead of the one they were placed on.
-	 *
-	 * Only ever on purpose. The arrows are one set of coordinates read through one frame's fit, and which
-	 * frame that is decides where every one of them lands; changing it is a decision about the whole
-	 * recording, not a side effect of correcting one of them.
-	 */
 	el('ownArrows').onclick = () => {
 		const v = video();
 		if (!v.frameArrows?.[frame]) return;
@@ -2171,8 +2195,48 @@
 		changed();
 		draw();
 	};
+	/**
+	 * Re-reads the arrows against this frame instead of the one they were placed on.
+	 *
+	 * Only ever on purpose. The arrows are one set of coordinates read through one frame's fit, and which
+	 * frame that is decides where every one of them lands; changing it is a decision about the whole
+	 * recording, not a side effect of correcting one of them.
+	 *
+	 * What moves is the set every unlabelled frame reads, and nothing else. A frame that carries arrows
+	 * of its own placed them on its own picture, against its own fit, and that is a better claim about
+	 * that frame than anything worked out from somewhere else could be; re-anchoring is a statement
+	 * about where the arrows are to be read *from*, not permission to overwrite what was read directly.
+	 * So the frames with their own sets keep them untouched, and only the frames that were following
+	 * along start following this one.
+	 *
+	 * The arrows this frame shows are what it becomes anchored on, whether they were placed here or
+	 * derived here. Taking the derived ones was the whole point of the button before a frame could have
+	 * a set of its own, and taking the placed ones is what makes it useful now: a frame the archer has
+	 * labelled directly is exactly the frame worth reading the rest of the recording through.
+	 */
 	el('anchor').onclick = () => {
 		const v = video();
+		const s = state();
+		const h = s.skip ? null : homography(s.handles);
+		if (!h) return;
+		const inverse = invert(h);
+		if (!inverse) return;
+
+		/*
+		 * This frame's own set becomes the recording's, in this frame's coordinates, and stops being a
+		 * frame set: it is now the thing the others follow, and holding it in both places would leave
+		 * two copies to disagree the next time either is edited.
+		 */
+		const own = v.frameArrows?.[frame] ?? [];
+		if (own.length > 0) {
+			// Kept in the numbering the rest of the recording uses, so the nocks still point at the
+			// arrow they were placed for. A frame carrying only arrow four describes arrow four.
+			const byNumber = [...v.arrows];
+			for (const arrow of own) byNumber[arrow.n] = { x: arrow.x, y: arrow.y };
+			v.arrows = byNumber.filter(Boolean);
+			delete v.frameArrows[frame];
+		}
+
 		v.arrowFrame = frame;
 		changed();
 		draw();
