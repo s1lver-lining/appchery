@@ -476,6 +476,10 @@ $$;
 reset role;
 
 -- The table behind those limits answers only "how many recently", so it must not grow for ever.
+--
+-- Run here as the superuser this harness connects as, which bypasses row level security whatever the
+-- policies say. That is why the assertion below exists beside it: this proves the statement prunes,
+-- and that one proves the definer is allowed to run it.
 do $$
 declare
 	held integer;
@@ -487,6 +491,30 @@ begin
 	select count(*) into held from public.rate_limit where action = 'prune_check';
 	if held <> 1 then
 		raise exception 'the rate limit table keeps % rows it will never read', held;
+	end if;
+end;
+$$;
+
+/*
+ * A forced table subjects its owner to its policies, and a security definer function runs as the
+ * owner, so every verb such a function uses needs a policy or the statement is filtered rather than
+ * refused. A delete that matches nothing raises nothing: rate_limit had select and insert and no
+ * delete, the prune above silently removed no rows, and the count that followed it read every row
+ * the account had ever written. Each allowance quietly became a lifetime total.
+ */
+do $$
+declare
+	missing text;
+begin
+	-- The three spend_allowance performs. It never updates a row, so nothing here asks for that one.
+	select string_agg(verb, ', ') into missing
+	from unnest(array['r', 'a', 'd']) as verb
+	where not exists (
+		select 1 from pg_policy p
+		where p.polrelid = 'public.rate_limit'::regclass and p.polcmd in (verb, '*')
+	);
+	if missing is not null then
+		raise exception 'rate_limit has no policy for: % (r select, a insert, d delete)', missing;
 	end if;
 end;
 $$;
