@@ -223,7 +223,7 @@
 
 	/**
 	 * Android fires its own buzz when a long press turns into a text selection or a context menu, which
-	 * lands on top of the one this component fires when the press becomes an aim - two pulses for one
+	 * lands on top of the one this component fires when the press becomes an aim: two pulses for one
 	 * gesture, and only when the browser felt like gesturing, so it is not even the same twice. None of
 	 * touch-action, user-select or a cancelled contextmenu reach it: the gesture is recognised from the
 	 * raw touch stream, before any of those are consulted. Refusing the touch itself is what stops it.

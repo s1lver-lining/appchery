@@ -49,7 +49,7 @@ describe('the muscle figure', () => {
 			/**
 			 * A shape whose outline doubles back on itself. It happens when a muscle is written as one
 			 * edge and then the other, and the second edge is listed in the direction it was measured
-			 * rather than the direction the outline travels — the two ends swap and the shape draws an
+			 * rather than the direction the outline travels: the two ends swap and the shape draws an
 			 * X. It still fills, it still contains points, and every other check here passes it, which
 			 * is exactly why it needs one of its own.
 			 */

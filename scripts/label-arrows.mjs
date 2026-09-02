@@ -165,7 +165,7 @@ async function prepare() {
 			 * The tracker is fed along the way, not only at the frames being kept.
 			 *
 			 * It holds one idea of which way round the face is by turning each fit back onto the last one,
-			 * and it can only do that over a small turn — which is all a frame or two of a carried camera
+			 * and it can only do that over a small turn, which is all a frame or two of a carried camera
 			 * amounts to, and nothing like the two seconds between the frames worth labelling. Fed only
 			 * those, it lost the thread every few frames and the seeds came back turned a quarter or a half
 			 * from each other. In the tool that looks like the arrows rotating about the gold and swapping
@@ -339,9 +339,9 @@ async function serve() {
 			 * The live scanner, for playing a recording back through it.
 			 *
 			 * A different bundle from the still detector because it is a different question. That one asks
-			 * what a photograph holds; this one holds the whole live path — the face followed between
-			 * passes, the settle counter, the tracker gathering agreement over time — which is the thing
-			 * an archer actually meets and which no single frame can show.
+			 * what a photograph holds; this one holds the whole live path: the face followed between
+			 * passes, the settle counter, and the tracker gathering agreement over time, which is the
+			 * thing an archer actually meets and which no single frame can show.
 			 */
 			if (url.pathname === '/replay.js') {
 				return send(response, 200, 'text/javascript', await replayBundle());
@@ -862,9 +862,9 @@ function capture(command, args) {
 /**
  * Says what is labelled and what is not, per recording.
  *
- * Worth having because the three kinds of label are wanted in very different amounts — one arrow set
- * per recording, nocks on a handful of frames, a few not-arrows in total — and there is no way to see
- * that from the tool itself without opening every video in turn.
+ * Worth having because the three kinds of label are wanted in very different amounts, one arrow set
+ * per recording, nocks on a handful of frames and a few not-arrows in total, and there is no way to
+ * see that from the tool itself without opening every video in turn.
  */
 async function todo() {
 	const rows = [];

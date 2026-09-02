@@ -14,7 +14,7 @@ import { proxyHeaders, targetOf } from './src/lib/competitions/proxy.ts';
  *
  * Production needs the same two headers from whatever serves the build, or the
  * web app silently falls back to an in-memory database. The native builds are
- * unaffected — they use platform SQLite, not OPFS.
+ * unaffected: they use platform SQLite, not OPFS.
  */
 function crossOriginIsolation(): Plugin {
 	const headers = {

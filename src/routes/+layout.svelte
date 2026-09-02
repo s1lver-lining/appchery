@@ -279,7 +279,7 @@
 	 *
 	 * So while anything dismissable is open, a spare history entry for the same URL is parked on top
 	 * of the page. Popping it navigates nowhere, which gives the guards the chance the hardware key
-	 * gives them on Android — back closes the dialog, and the page underneath stays put.
+	 * gives them on Android: back closes the dialog, and the page underneath stays put.
 	 *
 	 * Only for things that are open, never for a cursor sitting in a text field. Tapping a search
 	 * result blurs the field and navigates in the same gesture, and the blur asked for the entry back

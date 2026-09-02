@@ -6,7 +6,7 @@ import type { MuscleId } from '$lib/domain/muscles';
  * Each shape is a handful of control points rather than a traced curve, and the curve is worked out
  * from them: a closed Catmull-Rom spline, which passes through every point it is given and rounds
  * off what lies between. That buys the soft anatomical edges without a thousand hand-tuned bézier
- * handles, and it leaves the geometry as numbers a test can read — which matters, because two
+ * handles, and it leaves the geometry as numbers a test can read, which matters, because two
  * regions that overlap steal each other's taps. The one drawn later wins and the one under it
  * becomes unreachable however carefully an archer aims a thumb.
  */
@@ -161,7 +161,7 @@ export const BACK: Region[] = [
 	{ id: 'teresMajor', points: [...CUFF_SEAM, [138, 124], [132, 135], [126, 147]], corners: new Set([0, 1, 2]) },
 	/*
 	 * The rhomboids as the plate draws them: a broad band that is tall where it holds the spine and
-	 * shallower where it reaches the shoulder blade, and it runs downhill on the way — so the two
+	 * shallower where it reaches the shoulder blade, and it runs downhill on the way, so the two
 	 * ends are square-ish and the shape between them is a leaning rectangle rather than an oval.
 	 */
 	{ id: 'rhomboids', points: [[102, 96], [118, 101], [133, 107], [133, 117], [117, 115], [102, 120]] },
@@ -335,7 +335,7 @@ export const HAND_LINES = [
 /**
  * The tendons the finger flexors pull on, running from the forearm across the palm into the fingers.
  * They are the reason the release is a relaxation: these let go, and nothing on the back of the arm
- * has to do anything for the string to leave. Not tappable — a tendon is not a muscle.
+ * has to do anything for the string to leave. Not tappable: a tendon is not a muscle.
  */
 export const FLEXOR_TENDONS = [
 	'M158 200 Q160 224 166 250',
@@ -457,7 +457,7 @@ export const bodyEdge = () => sample(BODY_LOOP, 10, CORNERS);
 /**
  * The same archer with the arms left off, for the figure that poses them somewhere else: drawn with
  * the hanging arms still on, it grows a second pair. It is cut from the same outline rather than
- * drawn again, so the head, the trunk and the legs stay the body the muscle map draws — only the
+ * drawn again, so the head, the trunk and the legs stay the body the muscle map draws: only the
  * walk out along the arm is replaced by a shoulder rounding off into the armpit.
  */
 const TRUNK_HALF = [

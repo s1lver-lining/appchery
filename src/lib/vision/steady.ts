@@ -5,8 +5,8 @@ import type { FaceLocation } from './types';
  * Smooths the four points a face is drawn from, for the overlay only.
  *
  * The fit is measured against the picture afresh every frame, so what it reports is the truth plus
- * whatever that frame's noise was worth. That last part is small — a fiftieth of a ring, well under a
- * pixel of the reduced frame it is fitted on — but it is different every frame and the eye is far
+ * whatever that frame's noise was worth. That last part is small, a fiftieth of a ring and well under
+ * a pixel of the reduced frame it is fitted on, but it is different every frame and the eye is far
  * better at seeing a line move than at seeing where a line is. So the overlay shimmers while being,
  * on any single frame, as right as it can be.
  *

@@ -162,8 +162,8 @@ export class SweepTracker {
 		 * slot a real arrow could have had, and it churns, so the archer watching sees a different wrong
 		 * mark every few frames.
 		 *
-		 * Counted the way it is actually experienced — every distinct place a mark was ever shown, over a
-		 * whole sweep rather than at the end of one — asking for three looks instead of one takes the
+		 * Counted the way it is actually experienced, as every distinct place a mark was ever shown over a
+		 * whole sweep rather than at the end of one: asking for three looks instead of one takes the
 		 * wrong places from 9.6 an end to 5.4, raises the share of everything shown that is right from
 		 * 24% to 37%, and finds *more* arrows rather than fewer, because the slots stop being wasted. It
 		 * costs about a third of a second before the first mark appears, which is still a third of the

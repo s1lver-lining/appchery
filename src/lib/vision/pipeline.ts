@@ -398,7 +398,7 @@ export class Scanner {
 	 *
 	 * Verified first as it stands, and if that fails, refitted properly rather than merely followed. A
 	 * frame that defeats the search is usually one where the face moved further than a follow's small
-	 * steps reach — the archer's stride, a stumble, a quick turn — and the fit is then left trailing
+	 * steps reach, such as the archer's stride, a stumble or a quick turn, and the fit is then trailing
 	 * somewhere that no longer checks out. Starting a full descent from roughly the right place still
 	 * finds it, where starting from a gold blob that the same frame has smeared does not.
 	 */

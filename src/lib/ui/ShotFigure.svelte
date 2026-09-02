@@ -23,7 +23,7 @@
 	/**
 	 * Where the arms are at each named moment, in the map's coordinates: the head is around y 30, the
 	 * shoulders y 86, the hips y 210. The anchor puts the string hand under the jaw and against the
-	 * face, because that is where an anchor is — a hand floating behind the head is nobody's shot.
+	 * face, because that is where an anchor is: a hand floating behind the head is nobody's shot.
 	 */
 	const POSES: Record<ShotPhase, Pose> = {
 		stance: { bowHand: [138, 232], elbow: [56, 150], drawHand: [76, 220] },
@@ -51,13 +51,13 @@
 	const REST = 12;
 
 	/**
-	 * A recurve, drawn the way one is built rather than as a single arc. The riser is rigid — a
+	 * A recurve, drawn the way one is built rather than as a single arc. The riser is rigid: a
 	 * machined bar that does not bend however hard the bow is pulled, and the only part the hand ever
 	 * touches. The limbs bolt onto its ends and are the only part that moves.
 	 *
 	 * Which way round they go is the whole thing. A limb leaves the riser bellying out towards the
 	 * target, sweeps back past the riser's line towards the archer, and then at the very tip turns
-	 * forward again — that last reversal is the recurve, and it is what the string lies against. Run
+	 * forward again. That last reversal is the recurve, and it is what the string lies against. Run
 	 * the curve the other way and you have drawn a bow with its limbs bolted on backwards.
 	 *
 	 * `bend` runs from nothing at brace to one at full draw, and swings the tips back and in.
@@ -236,8 +236,8 @@
 	 *
 	 * A string does not ease the arrow away and then hurry: it comes forward hard from the moment the
 	 * fingers open, drives the arrow the length of the draw, and reaches brace still travelling. The
-	 * arrow leaves at exactly that instant — not before, or the bow is still bent when the arrow has
-	 * gone — and carries on at the speed it already had. So there is one number here, a distance
+	 * arrow leaves at exactly that instant, not before, or the bow is still bent when the arrow has
+	 * gone, and carries on at the speed it already had. So there is one number here, a distance
 	 * travelled along the shooting line, and the same rate applies either side of the separation.
 	 */
 	const ARROW = 126;

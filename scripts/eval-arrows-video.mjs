@@ -169,8 +169,8 @@ for (const name of (await readdir(WORK)).sort()) {
 	/*
 	 * The rate the recording was actually shot at, read off the frames themselves.
 	 *
-	 * It used to be assumed to be thirty and it is sixty. The header is no help — it claims a thousand
-	 * frames a second — but every frame carries the moment it was captured, and those are the truth: a
+	 * It used to be assumed to be thirty and it is sixty. The header is no help, claiming a thousand
+	 * frames a second, but every frame carries the moment it was captured, and those are the truth: a
 	 * recording of 535 frames ends at 8.926 seconds on every one of the twenty seven in the corpus.
 	 *
 	 * It matters twice over. The window either side of the labelled frame is counted in frames, so at
@@ -261,7 +261,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	 *
 	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
 	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
-	 * that matched. Counted apart from the other wrong marks because the two want different work — this
+	 * that matched. Counted apart from the other wrong marks because the two want different work: this
 	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
 	 *
 	 * Counted once for the recording, after every arrow has found its match. It used to sit inside the
@@ -357,7 +357,7 @@ for (const name of (await readdir(WORK)).sort()) {
 	 *
 	 * Distance between two marks cannot say this on its own, because six arrows in a gold really are
 	 * that close together. What says it is the labels: a mark that matched no arrow, sitting beside one
-	 * that matched. Counted apart from the other wrong marks because the two want different work — this
+	 * that matched. Counted apart from the other wrong marks because the two want different work: this
 	 * one is the detector reading one shaft twice, not seeing something that is not a shaft.
 	 */
 	result.arrows.forEach((arrow, i) => {

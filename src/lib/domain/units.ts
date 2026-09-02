@@ -32,7 +32,7 @@ export function formatBraceHeight(mm: number): string {
 	return `${inches}"`;
 }
 
-/** Distances keep the unit the round defines them in — a Portsmouth is 20yd, not 18.29m. */
+/** Distances keep the unit the round defines them in: a Portsmouth is 20yd, not 18.29m. */
 export function formatDistance(value: number, unit: 'm' | 'yd'): string {
 	return `${value}${unit}`;
 }

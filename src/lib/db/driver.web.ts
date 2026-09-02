@@ -14,7 +14,7 @@ import type { SqlDriver } from './driver';
  */
 /**
  * The worker rejects with its plain response object, not an Error, so `.message` is undefined and
- * `String(reason)` renders "[object Object]" — which is what the failure banner used to show.
+ * `String(reason)` renders "[object Object]", which is what the failure banner used to show.
  */
 function workerMessage(reason: unknown): string {
 	if (reason instanceof Error) return reason.message;

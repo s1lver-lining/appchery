@@ -4,8 +4,8 @@
 
 	/**
 	 * Group height and group size against brace height, on one pair of axes. They share the x axis
-	 * because they are read together — a height that centres the group and opens it up is not the
-	 * answer — and they keep their own y scales, because a group two centimetres high and a group
+	 * because they are read together: a height that centres the group and opens it up is not the
+	 * answer. They keep their own y scales, because a group two centimetres high and a group
 	 * eight centimetres wide are not comparable quantities.
 	 */
 	let { points, height = 180 }: { points: BracePoint[]; height?: number } = $props();

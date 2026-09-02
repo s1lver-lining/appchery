@@ -5,7 +5,7 @@ import type { SqlDriver } from './driver';
  * iOS / Android driver: real native SQLite through Capacitor.
  *
  * Unlike the web driver this is always persistent, and it is not subject to the
- * storage-eviction rules that make browser persistence unreliable on iOS — which
+ * storage-eviction rules that make browser persistence unreliable on iOS, which
  * is the main reason the app ships as a Capacitor shell rather than a plain PWA.
  */
 export async function createNativeDriver(dbName = 'appchery'): Promise<SqlDriver> {

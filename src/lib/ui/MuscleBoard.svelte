@@ -4,8 +4,8 @@
 	import MuscleMap from './MuscleMap.svelte';
 
 	/**
-	 * Both figures at once, back beside front. The shot works the two sides against each other — the
-	 * back pulls while the front holds the bow out — so seeing them apart hides the half of the
+	 * Both figures at once, back beside front. The shot works the two sides against each other, the
+	 * back pulling while the front holds the bow out, so seeing them apart hides the half of the
 	 * picture that makes the other half make sense. Narrow enough for a phone in one column, and it
 	 * splits the moment there is room for two.
 	 */

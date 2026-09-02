@@ -12,13 +12,13 @@
 
 	/**
 	 * The shoulder blade, close up. Four muscles wrap it and one lies against its far side, and on a
-	 * silhouette every one of them is under something else — so this is the only place they can be
+	 * silhouette every one of them is under something else, so this is the only place they can be
 	 * pointed at. It is also the only close up left: a panel showing one muscle on its own was a
 	 * caption with a picture stuck to it, and those muscles are picked from the list instead.
 	 *
 	 * Both blades are drawn, and both are labelled. A single blade forces the reader to work out
 	 * which shoulder they are looking at, and the answer changes depending on whether the archer is
-	 * facing them — which is exactly the confusion a diagram is supposed to remove.
+	 * facing them, which is exactly the confusion a diagram is supposed to remove.
 	 */
 	let {
 		selected = [],

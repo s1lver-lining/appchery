@@ -7,9 +7,9 @@ import { MIGRATIONS } from './migrations';
 import type { CapTargetPlan } from '$lib/import/captarget';
 
 /**
- * Importing runs against a real SQLite, because what has to be true of it — that running the same
- * file twice leaves one copy of everything, and that it never touches what the archer typed in
- * himself — is a statement about rows, not about the plan the reader built.
+ * Importing runs against a real SQLite, because what has to be true of it, that running the same
+ * file twice leaves one copy of everything and that it never touches what the archer typed in
+ * himself, is a statement about rows rather than about the plan the reader built.
  */
 
 const sqlite = new DatabaseSync(':memory:');

@@ -79,7 +79,7 @@ function buzz(strength: Strength) {
  * What this device did when asked, as opposed to what it claims it can do. Three things can each
  * silence the web path on their own and none of them raise anything: the API can be missing, the
  * call can be refused, or it can be accepted by hardware that stays still. Only a real request
- * separates the last two, which is why this buzzes rather than probing - asking for zero length
+ * separates the last two, which is why this buzzes rather than probing: asking for zero length
  * cancels instead of vibrating, and Chrome lets a cancel past the activation check that a genuine
  * pulse has to clear, so the cheap version of this answered yes to questions it had not asked.
  */

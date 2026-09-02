@@ -15,7 +15,7 @@ export const theme = writable<Theme>(stored());
 
 /**
  * The Android status bar takes its colour from this tag, and it sits directly above the page
- * header, so it is the header's colour it has to match — the page background leaves a band, which
+ * header, so it is the header's colour it has to match: the page background leaves a band, which
  * in dark theme reads as a black bar above the app rather than part of it.
  *
  * Blended here from the same two variables the header uses, rather than written out as two more

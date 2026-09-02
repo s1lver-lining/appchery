@@ -105,8 +105,8 @@ export const recordCameraVideo = flag('appchery.recordCameraVideo', false);
  *
  * Separate from the recording itself, and separately switchable, because the sensors behind it are the
  * part most likely to misbehave: they need a permission on some devices, are absent on others, and a
- * browser that has them may still deliver nothing at all. Turned off, none of it runs — no permission
- * is asked for and no listener is attached — so a device that dislikes them is simply never asked.
+ * browser that has them may still deliver nothing at all. Turned off, none of it runs: no permission
+ * is asked for and no listener is attached, so a device that dislikes them is simply never asked.
  *
  * Which is why it governs more than the file. Gravity is also the only thing that can say which way up
  * the boss is, and the camera pins the face's angular origin to it so the found arrows do not creep

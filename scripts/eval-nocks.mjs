@@ -3,15 +3,15 @@
  * Asks whether a shaft standing in the paper can be recognised by the way it leans.
  *
  * This is the one thing an arrow does that a crease, a fold, a printed line or a rim shadow cannot: it
- * comes out of the paper towards the archer. Everything else the detector measures — dark, thin,
- * straight, unbroken, lighter on both sides — a fold in the face has too, which is why every test built
- * on appearance has stalled at about two wrong marks an end.
+ * comes out of the paper towards the archer. Everything else the detector measures, being dark, thin,
+ * straight, unbroken and lighter on both sides, a fold in the face has too, which is why every test
+ * built on appearance has stalled at about two wrong marks an end.
  *
  * The geometry says it should be checkable with no lens calibration and no motion sensor. A point at
  * height h above the face images at `H(x, y, 1) + h·v`, where H is the face fit and v is where the
  * plane's normal vanishes. Read back through the fit into face coordinates, the nock of a standing
- * shaft therefore lies on the line from its own impact towards a single point — where the camera is
- * standing, written in the face's own coordinates — and that point is shared by every arrow in the
+ * shaft therefore lies on the line from its own impact towards a single point, where the camera is
+ * standing, written in the face's own coordinates, and that point is shared by every arrow in the
  * frame. Arrows near a boss do not lean in parallel; their lines meet.
  *
  * Whether that holds well enough to be worth using is a question about real arrows, and it cannot be
@@ -52,7 +52,7 @@ const only = process.argv.includes('--video') ? process.argv[process.argv.indexO
  * and worth being careful about because the geometry is the thing under test: a frame repaired this way
  * cannot then be evidence that the geometry works. So repaired frames are marked as such and counted
  * separately, the evidence stays with the ones clicked by hand, and nothing is touched unless the best
- * matching beats every other by a wide margin — which is a fact about the numbers, not about the model.
+ * matching beats every other by a wide margin, which is a fact about the numbers, not about the model.
  */
 
 const residuals = [];

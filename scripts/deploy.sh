@@ -219,8 +219,8 @@ fi
 
 # Each project's production branch is set to the branch deployed here, so these land as production
 # deployments and answer on the project root. Deploy a branch that is not the production branch and
-# Cloudflare makes it a preview instead, reachable only at <branch>.<project>.pages.dev — a
-# different origin, and so a different OPFS database.
+# Cloudflare makes it a preview instead, reachable only at <branch>.<project>.pages.dev, which is a
+# different origin and so a different OPFS database.
 BRANCH="$([ "$TARGET" = prod ] && echo main || echo preprod)"
 
 # Not exec'd: wrangler reports the per-deployment hostname, which is a fresh origin every time and

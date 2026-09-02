@@ -3,7 +3,7 @@
  * installing. Not a preference: the browser owns the state, drops it on reload, and takes it back
  * on a system gesture, so this reads the browser rather than storing an answer of its own.
  *
- * Safari on iPhone has no element fullscreen at all — only video goes fullscreen there — so
+ * Safari on iPhone has no element fullscreen at all, only video goes fullscreen there, so
  * `fullscreenSupported` is false and the setting hides itself rather than offering a dead switch.
  * Installing the app is the iPhone answer, and the manifest already covers it.
  */
@@ -28,7 +28,7 @@ export const isFullscreen = () =>
 
 /**
  * Must be called from a user gesture: browsers reject a fullscreen request that no tap asked for.
- * Rejection is not worth surfacing — the toggle reads the browser back, so a refused request simply
+ * Rejection is not worth surfacing: the toggle reads the browser back, so a refused request simply
  * leaves the switch where it was.
  */
 export async function setFullscreen(on: boolean): Promise<void> {

@@ -5,8 +5,8 @@ import { writable } from 'svelte/store';
  * qualifies and leaves the asking to the page. The event arrives once, early, and is spent when
  * used, so it is caught at import and held until something asks for it.
  *
- * Firefox and Safari never fire it — their install lives in the browser's own share menu — so the
- * store simply stays false there and the button that reads it never appears.
+ * Firefox and Safari never fire it, since their install lives in the browser's own share menu, so
+ * the store simply stays false there and the button that reads it never appears.
  */
 
 type InstallPromptEvent = Event & {

@@ -238,7 +238,7 @@ export function detectArrowsInStill(
 	 * than down, because a mark out in the grass was taking a place in a list that only holds so many.
 	 *
 	 * Not brought all the way in to the edge, though that removes them entirely. An arrow really can
-	 * land off the paper — 17 of the 461 the archer has labelled are out there — and a detector that
+	 * land off the paper, 17 of the 461 the archer has labelled are out there, and a detector that
 	 * cannot report one at all can never be right about a miss.
 	 */
 	const maxRadius = options.maxRadius ?? 1.05;
@@ -391,8 +391,8 @@ export function detectArrowsInStill(
 	 * shadow or the boss rim every real arrow in the picture is measured against the wrong thing.
 	 *
 	 * Measured on the frames the archer labelled outright, with the fit they drew on those same frames
-	 * so that nothing but the proposer is in the answer, it was costing 44 arrows of 374 — one in eight
-	 * of every arrow present — and buying no precision at all: half the proposals were right with it and
+	 * so that nothing but the proposer is in the answer, it was costing 44 arrows of 374, one in eight
+	 * of every arrow present, and buying no precision at all: half the proposals were right with it and
 	 * half without. End to end it is worth more than that, because a proposal the tracker never sees is
 	 * one no amount of agreement across a sweep can recover: the arrows an accepted end writes down went
 	 * from 48 of 146 to 65, and the marks put twice on one shaft fell from 6 to 2.
@@ -728,7 +728,7 @@ function walk(
  * Only ever an extension of a run already found, never a way to find one: outside the boss there is no
  * paper to compare against and no telling what the background will do, so nothing here may propose an
  * arrow. What it may do is keep walking one, which is safe because it only continues while the picture
- * goes on showing the same thing — a dark line with lighter surroundings on both sides.
+ * goes on showing the same thing: a dark line with lighter surroundings on both sides.
  *
  * It tracks rather than extrapolates, and that is the whole point of it. Walking on in the direction the
  * short run happened to have only moves the far end further along a line that was already off; the
@@ -809,8 +809,8 @@ function followOut(
  * Keeps the marks that lean the way a thing standing in the paper has to lean from where the camera is.
  *
  * This is the one property an arrow has and a crease, a printed line, a tear or a rim shadow does not:
- * it comes out of the paper. Everything else the detector measures — dark, thin, straight, unbroken,
- * lighter on both sides — a fold in the face has too.
+ * it comes out of the paper. Everything else the detector measures, being dark, thin, straight,
+ * unbroken and lighter on both sides, a fold in the face has too.
  *
  * What makes it checkable without knowing anything about the camera is that the face already says where
  * the camera is. A point at height h above the face images at `H(x, y, 1) + h·v`, where H is the fit and
