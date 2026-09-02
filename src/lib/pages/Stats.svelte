@@ -20,6 +20,7 @@
 		roundKey,
 		roundName,
 		toVolume,
+		datedByOuting,
 		volumeRoundKey,
 		VOLUME_KINDS,
 		volumeSeries,
@@ -95,8 +96,14 @@
 			roundDefinitionId: a.roundDefinitionId,
 			round: a.roundDefinition ? (JSON.parse(a.roundDefinition) as RoundDefinition) : null
 		}));
-		volume = toVolume(all);
-		scored = all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity);
+		// Dated by the outing, as the home page counts them: everything else on this page already reads
+		// the conditions, the bow and the kind off the session, so the date has no business coming from
+		// the row instead. See datedByOuting.
+		volume = datedByOuting(toVolume(all), outings);
+		scored = datedByOuting(
+			all.filter((a) => a.kind === 'scoring').map(({ kind, ...activity }) => activity),
+			outings
+		);
 		favourites = new Set(rounds);
 		sessions = outings;
 		bows = allBows;
