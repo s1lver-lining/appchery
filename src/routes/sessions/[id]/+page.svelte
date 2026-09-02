@@ -11,6 +11,7 @@
 		SCORE_SETS
 	} from '$lib/domain/rounds/seed';
 	import { maxScore, totalArrows } from '$lib/domain/rounds/geometry';
+	import { shootsArrows } from '$lib/domain/stats';
 	import {
 		BOW_TYPES,
 		templatesForBowType,
@@ -173,9 +174,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	const weather = $derived(session?.weather ? JSON.parse(session.weather) : null);
 	/** Arrows tapped in but not yet written, counted everywhere at once so the page never lags a tap. */
 	let pending = $state(0);
-	/** The point of the page: every arrow entered in this session, whatever it was shot at. */
+	/**
+	 * The point of the page: every arrow entered in this session, whatever it was shot at. Filtered to
+	 * the kinds that shoot, like every other arrow figure, so a kind added later without being thought
+	 * about cannot count here while the statistics leave it out.
+	 */
 	const sessionArrows = $derived(
-		activities.reduce((sum, a) => sum + a.arrowsShot, 0) + pending
+		activities.filter((a) => shootsArrows(a.kind)).reduce((sum, a) => sum + a.arrowsShot, 0) + pending
 	);
 	/** Arrows shot without scoring them. They live in one activity, shown as a counter, not a row. */
 	const training = $derived(activities.find((a) => a.kind === 'training'));
