@@ -1223,15 +1223,22 @@ async function checkBracketViews(browser) {
 
 	await page.getByRole('button', { name: /Whole draw/i }).click();
 	await page.waitForTimeout(400);
-	const columns = await page.locator('.overflow-x-auto .w-44').count();
+	const columns = await page.locator('.overflow-x-auto .w-32').count();
 	check('the whole draw is every round side by side', columns > 3, `${columns} rounds`);
+	const twoFull = await page.evaluate(() => {
+		const track = document.querySelector('.scroll-flip');
+		const cols = [...track.querySelectorAll('.w-32')];
+		const right = track.getBoundingClientRect().right;
+		return cols.slice(0, 2).every((col) => col.getBoundingClientRect().right <= right + 1);
+	});
+	check('at least two columns of the whole draw are fully on screen', twoFull);
 	await shot(page, 'bracket-tree');
 
 	// A drag across the cards is the same move as a tap on the strip above them.
 	await strip.nth(3).click();
 	await page.waitForTimeout(400);
 	const from = await pressed();
-	const track = page.locator('div.relative.min-h-\\[55dvh\\][data-noswipe]');
+	const track = page.locator('div.relative.grid[data-noswipe]');
 	const cards = await track.boundingBox();
 	const touch = await context.newCDPSession(page);
 	/** Held down and moved, so what the track is doing can be read before the finger is lifted. */
@@ -1325,20 +1332,51 @@ async function checkBracketViews(browser) {
 	await lift();
 	check('landing back on the round before it', (await pressed()) !== 'Whole draw', await pressed());
 
-	/**
-	 * A match nobody has shot carries where it will be shot rather than a score, and `1` drawn in the
-	 * column a score of `6` goes in reads as one archer having beaten another one to nothing.
-	 */
+	// A match nobody has shot carries where it will be shot rather than a score.
 	await page.getByRole('button', { name: /^Finals/ }).click();
 	await page.waitForTimeout(400);
 	const targets = await page.locator('span[title^="On target"]').allInnerTexts();
 	check('a target is drawn as a target rather than as a score', targets.length > 0, JSON.stringify(targets));
-	// Nobody is through a match nobody has shot, so neither name in it is anybody's winner.
 	check(
-		'and neither side of it is marked as having won',
+		'and neither side of an unplayed match is marked as having won',
 		(await page.locator('div.font-semibold:has(> p)').count()) === 0
 	);
 	await shot(page, 'bracket-targets');
+
+	/**
+	 * The bug this bracket was chosen for: the round after a semi-final holds two matches, the real
+	 * final and the bronze one, and a semi-final's loser reappears there too, in the bronze match. A
+	 * winner read off "is this name drawn again later" cannot tell the two apart, and marked the
+	 * loser of this exact semi as though they had won it.
+	 */
+	await strip.nth(4).click();
+	await page.waitForTimeout(400);
+	const wonRow = (name) =>
+		page.evaluate((needle) => {
+			const label = [...document.querySelectorAll('p')].find((p) => p.textContent?.trim() === needle);
+			return label?.closest('.gap-2')?.classList.contains('font-semibold') ?? null;
+		}, name);
+	check('the semi-final winner is marked', await wonRow('Ghanusan Nuwilah Khamana Bin Nasyah Tinuna'));
+	check(
+		'and the semi-final loser is not, even though they go on to win the bronze match',
+		(await wonRow('Labadi Ladina Bin Kitihan Rihato')) === false
+	);
+
+	// The final has nobody drawn after it, and used to be the one round this never highlighted.
+	await page.getByRole('button', { name: /^Finals/ }).click();
+	await page.waitForTimeout(400);
+	check('the bronze match played inside that same round is marked too', await wonRow('Labadi Ladina Bin Kitihan Rihato'));
+
+	// A round of two matches is well short of a full screen, and the page should not scroll past it.
+	const short = await page.evaluate(() => {
+		const main = document.querySelector('main');
+		return { scroll: main.scrollHeight, client: main.clientHeight };
+	});
+	check(
+		'a short round leaves no unnecessary vertical scrollbar',
+		short.scroll <= short.client + 4,
+		`${short.scroll}px of ${short.client}px shown`
+	);
 
 	await context.close();
 }

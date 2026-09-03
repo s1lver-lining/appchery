@@ -163,6 +163,13 @@ The documents carry stamps of their own, and they are close to the list's but no
 that noted one and cleared the other would light on nothing having happened and never go out again.
 `scripts/check-ianseo.mjs` drives the whole cycle through the real screens for that reason.
 
+`src/lib/ianseo/published.ts` runs the same rule one level down, for which of a competition's own
+documents are the ones that changed: one stamp a competition rather than one a document, the newest
+of its documents seen last time, so anything stamped later is new. A competition this device has no
+record for (opened for the first time, or followed since before this shipped) falls back to the
+newest stamp already sitting in its cached copy, so a follower does not go one whole round of
+publishing with nothing marked.
+
 ## 7. What is shown
 
 Everything read from ianseo says when it was read. It is somebody else's server, the app is used at a
@@ -180,6 +187,26 @@ The result tables are redrawn rather than embedded. ianseo's own stylesheet mark
 drops on a narrow screen, and the app folds away exactly those, giving them back when a row is
 opened. The brackets are drawn a round at a time: the wall chart ianseo prints is unreadable on a
 phone at any zoom, and what is wanted from it is who beat whom.
+
+Who beat whom, `winnerOf` in `src/lib/ianseo/brackets.ts`, is decided by comparing the two scores
+directly rather than by looking at who is drawn again in a later round. The round after a semi-final
+often holds two matches at once, the real final and the bronze one, and both the semi's winner and
+its loser can reappear there, one in each: nothing in the draw itself says which is which. Score
+comparison needs no such lookup and no knowledge of the format either, since ianseo prints the same
+two things in this cell for every discipline: a target and a time before the match is shot, a plain
+number once it is, on whatever scale that format keeps, from set points to a raw arrow total in the
+hundreds. Higher wins, whatever the number.
+
+The round of cards and the wall chart, `src/lib/ui/ianseo/BracketBoard.svelte`, ride on one track
+that works the way the main pager's swipe does: the round follows the finger, the one being swiped
+to rides in beside it on a gutter of its own width (the two are only as wide as their own column,
+so without a gap they would ride touching), and letting go carries it the rest of the way or puts it
+back. The whole draw is one more stop on that same track, past the final. Leaving the chart happens
+only at its own left edge: dragging further right there hands the same gesture to the track, decided
+once at the moment a touch begins rather than re-read as the finger moves, because reading the
+chart's own scroll position again mid-gesture races the browser's own scrolling of it. A few pixels
+of dead zone keep a drag that only meant to nudge the chart back to its edge from being read as
+leaving it.
 
 ## 8. Distance
 

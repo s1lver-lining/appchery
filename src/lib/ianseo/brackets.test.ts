@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
-import { furthestRounds, readAssignment, winnerOf } from './brackets';
-import type { BracketMatch, BracketRound } from './types';
+import { readAssignment, winnerOf } from './brackets';
+import type { BracketMatch } from './types';
 
 describe('readAssignment', () => {
 	it('reads a match that has been shot as the score it was', () => {
@@ -57,50 +57,31 @@ const match = (a: [string, string | null], b: [string, string | null]): BracketM
 	entries: [side(...a), side(...b)],
 	sets: []
 });
-const round = (title: string, matches: BracketMatch[]): BracketRound => ({ title, matches });
 
 /**
- * Who won, as against who is ahead. A draw is read to find out who went through, and a match still
- * being shot has a leader who is nobody's winner yet.
+ * Who won, read from the two scores alone. Individual matches count sets, team matches sometimes
+ * count sets and sometimes count arrows, and this asks none of that: whichever number is higher won,
+ * on whatever scale the two of them share.
  */
 describe('winnerOf', () => {
-	const draw = [
-		round('1/2', [
-			match(['Dupont', '6'], ['Martin', '2']),
-			match(['Bernard', '4'], ['Petit', '2'])
-		]),
-		round('Finals', [match(['Dupont', '6'], ['Bernard', '4'])])
-	];
-	const furthest = furthestRounds(draw);
-
-	it('gives the match to whoever is drawn again in a later round', () => {
-		expect(winnerOf(draw[0].matches[0], 0, furthest)).toBe(0);
-		expect(winnerOf(draw[0].matches[1], 0, furthest)).toBe(0);
-	});
-
-	it('settles the final, which has nobody drawn after it, on the set the system ends at', () => {
-		expect(winnerOf(draw[1].matches[0], 1, furthest)).toBe(0);
-	});
-
-	it('says nothing about a match still being shot', () => {
-		const live = [round('Finals', [match(['Dupont', '4'], ['Bernard', '2'])])];
-		expect(winnerOf(live[0].matches[0], 0, furthestRounds(live))).toBe(null);
-	});
-
-	it('says nothing about a format it does not know the end of', () => {
-		// Totals rather than set points, which carry no mark of the match being over.
-		const scored = [round('Finals', [match(['Dupont', '146'], ['Bernard', '143'])])];
-		expect(winnerOf(scored[0].matches[0], 0, furthestRounds(scored))).toBe(null);
+	it('gives the match to the higher score, whatever the scale', () => {
+		expect(winnerOf(match(['Dupont', '6'], ['Martin', '2']))).toBe(0);
+		expect(winnerOf(match(['Dupont', '4'], ['Bernard', '6']))).toBe(1);
+		// A compound team total, three digits and nowhere near a set-play threshold.
+		expect(winnerOf(match(['Team A', '226'], ['Team B', '215']))).toBe(0);
+		// A recurve team match that did not reach the score an individual match would stop at.
+		expect(winnerOf(match(['Team A', '5'], ['Team B', '4']))).toBe(0);
 	});
 
 	it('says nothing about a match nobody has shot', () => {
-		const drawn = [round('Finals', [match(['Dupont', 'T# 1A 05-09-2026 14:00'], ['Bernard', 'T# 1B'])])];
-		expect(winnerOf(drawn[0].matches[0], 0, furthestRounds(drawn))).toBe(null);
+		expect(winnerOf(match(['Dupont', 'T# 1A 05-09-2026 14:00'], ['Bernard', 'T# 1B']))).toBe(null);
 	});
 
-	it('is not fooled by a name carried forward that lost later', () => {
-		// Bernard reaches the final and loses it: he won his half, and lost the one after.
-		expect(winnerOf(draw[1].matches[0], 1, furthest)).toBe(0);
-		expect(furthest.get('bernard')).toBe(1);
+	it('says nothing where the two sides tie', () => {
+		expect(winnerOf(match(['Dupont', '5'], ['Bernard', '5']))).toBe(null);
+	});
+
+	it('says nothing about a bye, which is a word rather than a score', () => {
+		expect(winnerOf(match(['Dupont', 'Bye'], ['', null]))).toBe(null);
 	});
 });
