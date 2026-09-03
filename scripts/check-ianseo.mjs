@@ -1231,7 +1231,7 @@ async function checkBracketViews(browser) {
 	await strip.nth(3).click();
 	await page.waitForTimeout(400);
 	const from = await pressed();
-	const track = page.locator('div.relative.overflow-hidden[data-noswipe]');
+	const track = page.locator('div.relative.min-h-\\[55dvh\\][data-noswipe]');
 	const cards = await track.boundingBox();
 	const touch = await context.newCDPSession(page);
 	/** Held down and moved, so what the track is doing can be read before the finger is lifted. */
@@ -1261,21 +1261,31 @@ async function checkBracketViews(browser) {
 	 */
 	await hold(-160);
 	const riding = await page.evaluate(() => {
-		const rail = document.querySelector('div.relative.overflow-hidden[data-noswipe]');
+		const rail = document.querySelector('div.relative[data-noswipe]');
 		const panes = [...rail.children];
-		return { panes: panes.length, x: panes.map((pane) => Math.round(pane.getBoundingClientRect().x)) };
+		return {
+			panes: panes.length,
+			x: panes.map((pane) => Math.round(pane.getBoundingClientRect().x)),
+			// The two never touch: a round has to be seen to end before the next one begins.
+			gutter: panes.length === 2 ? Math.round(Math.abs(panes[0].getBoundingClientRect().x - panes[1].getBoundingClientRect().x)) : 0
+		};
 	});
 	check(
 		'a drag carries the round off and brings the next one on',
 		riding.panes === 2 && riding.x[0] < riding.x[1],
 		JSON.stringify(riding)
 	);
+	check(
+		'with a gutter between them rather than stuck together',
+		riding.gutter > cards.width,
+		`${riding.gutter}px across a ${Math.round(cards.width)}px page`
+	);
 	await shot(page, 'bracket-swipe');
 	await lift();
 	check(
 		'and leaves nothing behind once it lands',
 		(await page.evaluate(() => {
-			const rail = document.querySelector('div.relative.overflow-hidden[data-noswipe]');
+			const rail = document.querySelector('div.relative[data-noswipe]');
 			return { panes: rail.children.length, height: rail.style.height || 'auto' };
 		})).panes === 1
 	);
@@ -1298,6 +1308,22 @@ async function checkBracketViews(browser) {
 	await page.waitForSelector('div.w-max > button[aria-pressed]');
 	await page.waitForTimeout(600);
 	check('a bracket opens on the round it was left on', (await pressed()) === left, `${left} -> ${await pressed()}`);
+
+	/**
+	 * The chart is read by dragging across it, so the drag is only the page's once the chart has run
+	 * out: scrolled to its left edge and still going, it hands the gesture over and turns back.
+	 */
+	await page.getByRole('button', { name: /Whole draw/i }).click();
+	await page.waitForTimeout(500);
+	check('the whole draw opens at its own left edge', (await page.evaluate(() => document.querySelector('.scroll-flip').scrollLeft)) === 0);
+	await hold(200);
+	const handed = await page.evaluate(() => {
+		const rail = document.querySelector('div.relative[data-noswipe]');
+		return { panes: rail.children.length, x: Math.round(rail.children[0].getBoundingClientRect().x) };
+	});
+	check('and hands the drag on at its edge', handed.panes === 2 && handed.x > 0, JSON.stringify(handed));
+	await lift();
+	check('landing back on the round before it', (await pressed()) !== 'Whole draw', await pressed());
 
 	/**
 	 * A match nobody has shot carries where it will be shot rather than a score, and `1` drawn in the

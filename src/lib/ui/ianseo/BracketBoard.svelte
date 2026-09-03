@@ -5,7 +5,7 @@
 	import { readAssignment } from '$lib/ianseo/brackets';
 	import { ianseoFullClubNames } from '$lib/prefs';
 	import { readSession, writeSession } from '$lib/ui/sessionState';
-	import { swipe, COMMIT_RATIO, SNAP_EASE, SNAP_MS } from '$lib/ui/swipe';
+	import { swipe, AXIS_BIAS, COMMIT_RATIO, SNAP_EASE, SNAP_MS } from '$lib/ui/swipe';
 	import type { BracketDocument, BracketMatch, BracketRound } from '$lib/ianseo/types';
 
 	/**
@@ -26,6 +26,8 @@
 		key?: string;
 	} = $props();
 
+	const shown = $derived(document.rounds.filter((round) => round.matches.length > 0));
+
 	/** The higher score takes the match. A match nobody has shot has no winner, and says nothing. */
 	function winner(match: BracketMatch): number | null {
 		const scores = match.entries.map((entry) => Number(readAssignment(entry.score).score));
@@ -33,8 +35,6 @@
 		if (scores.length < 2 || scores[0] === scores[1]) return null;
 		return scores[0] > scores[1] ? 0 : 1;
 	}
-
-	const shown = $derived(document.rounds.filter((round) => round.matches.length > 0));
 
 	/**
 	 * The side of a match that has somebody on it. A bye is drawn as one archer against an empty
@@ -92,6 +92,13 @@
 	 * two gestures that look the same are the same.
 	 */
 	let width = $state(1);
+	/**
+	 * The gap between one round and the next while the drag is carrying them past each other. The
+	 * main pages get theirs for nothing, being a screen wide with their own margins inside; a round
+	 * is only as wide as the column it is read in, so without this the two are stuck together.
+	 */
+	const GUTTER = 24;
+	const span = $derived(width + GUTTER);
 	let offset = $state(0);
 	let duration = $state(0);
 	let settling = $state(false);
@@ -109,7 +116,7 @@
 	 */
 	const height = $derived.by(() => {
 		if (coming === null || comingHigh === 0 || hereHigh === 0) return null;
-		const progress = Math.min(1, Math.abs(offset) / width);
+		const progress = Math.min(1, Math.abs(offset) / span);
 		return Math.round(hereHigh + (comingHigh - hereHigh) * progress);
 	});
 
@@ -118,9 +125,86 @@
 		return stepTo(dx < 0 ? 1 : -1) === undefined ? dx * 0.25 : dx;
 	}
 
+	/**
+	 * The chart is read by dragging across it, so the same drag cannot also turn the page: until it
+	 * runs out of chart. Scrolled to either end and still going, the drag becomes the page's, after a
+	 * few pixels of nothing so that arriving at the end is not the same as being taken off it.
+	 */
+	const EDGE_DEAD = 24;
+
+	let chartScroller: HTMLElement | null = null;
+	let pulling: { from: number; y: number } | null = null;
+
+	function edgePull(node: HTMLElement, live: boolean) {
+		const bind = () => {
+			chartScroller = node;
+			node.addEventListener('touchstart', chartStart, { passive: true });
+			node.addEventListener('touchmove', chartMove, { passive: false });
+			node.addEventListener('touchend', chartEnd);
+			node.addEventListener('touchcancel', chartEnd);
+		};
+		const unbind = () => {
+			if (chartScroller === node) chartScroller = null;
+			node.removeEventListener('touchstart', chartStart);
+			node.removeEventListener('touchmove', chartMove);
+			node.removeEventListener('touchend', chartEnd);
+			node.removeEventListener('touchcancel', chartEnd);
+		};
+		// The copy riding in beside the one being read is a picture of a chart, not a chart to read.
+		let on = live;
+		if (on) bind();
+		return {
+			update(next: boolean) {
+				if (next === on) return;
+				on = next;
+				if (on) bind();
+				else unbind();
+			},
+			destroy: unbind
+		};
+	}
+
+	function chartStart(event: TouchEvent) {
+		pulling = event.touches.length === 1 ? { from: NaN, y: event.touches[0].clientY } : null;
+		duration = 0;
+	}
+
+	function chartMove(event: TouchEvent) {
+		if (!pulling || !chartScroller) return;
+		const touch = event.touches[0];
+		const dx = touch.clientX - (Number.isNaN(pulling.from) ? touch.clientX : pulling.from);
+		// A drag that is mostly down the page is the page being scrolled, and never a page turn.
+		if (Math.abs(touch.clientY - pulling.y) > Math.abs(dx) * AXIS_BIAS && offset === 0) return;
+
+		const room = chartScroller.scrollWidth - chartScroller.clientWidth;
+		const spent =
+			(chartScroller.scrollLeft >= room - 1 && touch.clientX < (pulling.from || touch.clientX)) ||
+			(chartScroller.scrollLeft <= 1 && touch.clientX > (pulling.from || touch.clientX));
+		if (Number.isNaN(pulling.from)) {
+			// Where the chart ran out, which is where the page starts being dragged from.
+			if (chartScroller.scrollLeft >= room - 1 || chartScroller.scrollLeft <= 1) pulling.from = touch.clientX;
+			return;
+		}
+		if (!spent) {
+			pulling.from = touch.clientX;
+			offset = 0;
+			return;
+		}
+		const past = dx - Math.sign(dx) * EDGE_DEAD;
+		if (Math.sign(past) !== Math.sign(dx)) return;
+		event.preventDefault();
+		offset = damp(past);
+	}
+
+	function chartEnd() {
+		const dragged = offset;
+		pulling = null;
+		if (dragged !== 0) release(dragged, false);
+	}
+
 	function release(dx: number, flicked: boolean) {
 		const target = stepTo(dx < 0 ? 1 : -1);
-		const far = Math.abs(offset) > width * COMMIT_RATIO;
+		const far = Math.abs(offset) > span * COMMIT_RATIO;
 		duration = SNAP_MS;
 
 		if (target === undefined || !(far || flicked)) {
@@ -128,7 +212,9 @@
 			return;
 		}
 		settling = true;
-		offset = Math.sign(dx) * -width;
+		// The way the finger was already going. Run the other way and the round that rides in for the
+		// last quarter second is the one on the far side, which is not the one that then appears.
+		offset = Math.sign(dx) * span;
 		setTimeout(() => {
 			duration = 0;
 			offset = 0;
@@ -137,6 +223,17 @@
 		}, SNAP_MS);
 	}
 </script>
+
+{#snippet chartPane(live: boolean)}
+	<!--
+		Turned over and its contents turned back, which puts the scrollbar above the chart rather than
+		under it: a rule across the bottom of a phone reads as the end of the page, and this is the one
+		thing here meant to be dragged sideways.
+	-->
+	<div class="-mx-4 scroll-flip overflow-x-auto px-4" data-noswipe use:edgePull={live}>
+		<div>{@render chart()}</div>
+	</div>
+{/snippet}
 
 {#snippet chart()}
 			<div class="flex w-max items-stretch gap-3">
@@ -197,7 +294,7 @@
 {/snippet}
 
 {#snippet cards(round: BracketRound)}
-		{#each round.matches as match, index (index)}
+		{#each round.matches as match, place (place)}
 			{@const won = winner(match)}
 			<div class="overflow-hidden rounded-2xl border border-line bg-surface">
 				{#if dueAt(match)}
@@ -338,58 +435,65 @@
 		</div>
 	</div>
 
-	{#if at === TREE}
-		<!--
-			The whole draw, a column a round, scrolled across rather than folded down. Unreadable on a
-			phone as a wall chart, which is why it is not what the page opens on, but it is the one view
-			that answers who is still in and who they meet next without walking back through the rounds.
-			Marked off the page's own back swipe: dragging across a chart is reading it, not leaving.
-		-->
-		<div class="-mx-4 overflow-x-auto px-4 pb-1" data-noswipe>
-			{@render chart()}
-		</div>
-	{:else}
-		<!--
-			The rounds ride on a track, so a drag carries this one off and brings the next one on rather
-			than replacing it once the finger is lifted. The same move as the swipe between the main
-			pages of the app, and the same numbers behind it, because it is the same gesture.
-		-->
-		<div
-			class="relative overflow-hidden"
-			data-noswipe
-			bind:clientWidth={width}
-			style={height === null ? '' : `height: ${height}px; transition: height ${duration}ms ${SNAP_EASE}`}
-			use:swipe={{
-				enabled: () => !settling,
-				onMove: (dx) => {
-					duration = 0;
-					offset = damp(dx);
-				},
-				onEnd: release
-			}}
-		>
-			<div
-				bind:clientHeight={hereHigh}
-				style="transform: translate3d({offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
-			>
-				{@render cards(current)}
-			</div>
+	<!--
+		Both views ride on one track, so a drag carries this one off and brings the next one on rather
+		than replacing it once the finger is lifted. The same move as the swipe between the main pages
+		of the app, and the same numbers behind it, because it is the same gesture.
 
-			{#if coming !== null}
-				<!-- Off to the side until the drag brings it in, and out of the flow so it sets no height. -->
-				<div
-					class="absolute inset-x-0 top-0"
-					bind:clientHeight={comingHigh}
-					style="transform: translate3d({towards * width + offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
-					inert
-				>
-					{#if coming === TREE}
-						<div class="-mx-4 overflow-hidden px-4 pb-1">{@render chart()}</div>
-					{:else}
-						{@render cards(shown[coming])}
-					{/if}
-				</div>
+		Tall enough to be worth swiping even on a final of two matches: the gesture is the page's, so
+		the empty half of the screen under it has to answer to it as much as the cards do.
+	-->
+	<div
+		class="relative min-h-[55dvh] overflow-hidden"
+		data-noswipe
+		bind:clientWidth={width}
+		style={height === null ? '' : `height: ${height}px; transition: height ${duration}ms ${SNAP_EASE}`}
+		use:swipe={{
+			// The chart is read by dragging across it, so there the drag is handed over at its edges.
+			enabled: () => !settling && at !== TREE,
+			onMove: (dx) => {
+				duration = 0;
+				offset = damp(dx);
+			},
+			onEnd: release
+		}}
+	>
+		<div
+			class="space-y-2"
+			bind:clientHeight={hereHigh}
+			style="transform: translate3d({offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
+		>
+			{#if at === TREE}
+				{@render chartPane(true)}
+			{:else}
+				{@render cards(current)}
 			{/if}
 		</div>
-	{/if}
+
+		{#if coming !== null}
+			<!-- Off to the side until the drag brings it in, and out of the flow so it sets no height. -->
+			<div
+				class="absolute inset-x-0 top-0 space-y-2"
+				bind:clientHeight={comingHigh}
+				style="transform: translate3d({towards * span + offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
+				inert
+			>
+				{#if coming === TREE}
+					{@render chartPane(false)}
+				{:else}
+					{@render cards(shown[coming])}
+				{/if}
+			</div>
+		{/if}
+	</div>
 {/if}
+
+<style>
+	/* Both turns together leave the chart the right way up with its scrollbar over it, not under. */
+	.scroll-flip {
+		transform: rotateX(180deg);
+	}
+	.scroll-flip > :global(div) {
+		transform: rotateX(180deg);
+	}
+</style>

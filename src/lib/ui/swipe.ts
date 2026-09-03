@@ -15,7 +15,7 @@ export interface SwipeOptions {
 /** Below this the gesture has no direction yet, and reading one from it would fight the scroll. */
 const AXIS_LOCK = 8;
 /** Across has to beat down by this much, otherwise a slanted scroll would count as a swipe. */
-const AXIS_BIAS = 1.4;
+export const AXIS_BIAS = 1.4;
 const FLICK_MS = 300;
 const FLICK_MIN = 50;
 
