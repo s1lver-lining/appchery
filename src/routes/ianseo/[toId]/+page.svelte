@@ -33,6 +33,7 @@
 	import ShareSheet from '$lib/ui/ianseo/ShareSheet.svelte';
 	import { namesFound, terms } from '$lib/ianseo/find';
 	import { groupKey } from '$lib/ianseo/groups';
+	import { scheduleDocument } from '$lib/ianseo/schedule';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
 	import type { Entry } from '$lib/inscriptarc/types';
@@ -263,6 +264,9 @@
 
 	/** `/TourData/2026/26053/IQRM.php` is opened as `IQRM`: the rest of it is where, not what. */
 	const nameOf = (path: string) => path.split('/').pop()?.replace(/\.php$/i, '') ?? path;
+
+	/** The timetable, which ianseo publishes as a PDF and the app reads out of it: see `schedule.ts`. */
+	const timetable = $derived(scheduleDocument(competition));
 </script>
 
 <!--
@@ -408,9 +412,12 @@
 					archer wants before the competition rather than after it, so it is not left off the page.
 				-->
 				{#each documents as document (document.path ?? document.pdfPath ?? document.url)}
-					{@const inApp = document.path
-						? withOrigin(`/ianseo/${toId}/${nameOf(document.path)}`, $page.url.pathname)
-						: null}
+					{@const opens = document.path
+						? `/ianseo/${toId}/${nameOf(document.path)}`
+						: document === timetable
+							? `/ianseo/${toId}/schedule`
+							: null}
+					{@const inApp = opens ? withOrigin(opens, $page.url.pathname) : null}
 					<!-- A file on ianseo, or the competition's own website, which is where the hotels are. -->
 					{@const away = fileLink(document.pdfPath, IANSEO) ?? webLink(document.url)}
 					<li class="relative flex items-center gap-2">

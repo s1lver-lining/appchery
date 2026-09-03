@@ -1,4 +1,5 @@
 import { wrappingColumn } from './columns';
+import type { ScheduleDay } from './schedule';
 import type { BracketRound, DocumentSection, ResultDocument } from './types';
 
 /**
@@ -41,6 +42,22 @@ export function findInSections(sections: DocumentSection[], search: string): Doc
 			)
 		}))
 		.filter((section) => section.rows.length > 0);
+}
+
+/** The days of a schedule, keeping only the lines that answer and only the days that keep one. */
+export function findInSchedule(days: ScheduleDay[], search: string): ScheduleDay[] {
+	const wanted = terms(search);
+	if (wanted.length === 0) return days;
+
+	return days
+		.map((day) => ({
+			...day,
+			// A day answering by its own heading answers whole: somebody typing Sunday wants Sunday.
+			lines: holds(day.title, wanted)
+				? day.lines
+				: day.lines.filter((line) => holds(`${line.time ?? ''} ${line.text}`, wanted))
+		}))
+		.filter((day) => day.lines.length > 0);
 }
 
 /** The same for a bracket, where a line is a match and either side of it may be the one wanted. */

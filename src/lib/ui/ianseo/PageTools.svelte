@@ -13,7 +13,8 @@
 		placeholder,
 		settings,
 		settingsLabel,
-		count
+		count,
+		children
 	}: {
 		value: string;
 		placeholder: string;
@@ -22,6 +23,7 @@
 		settingsLabel?: string;
 		/** What the search has left, said only while something is being searched for. */
 		count?: string;
+		/** Whatever else belongs on the line, such as the PDF the page was redrawn from. */
 		children?: Snippet;
 	} = $props();
 </script>
@@ -49,6 +51,8 @@
 			</button>
 		{/if}
 	</div>
+
+	{@render children?.()}
 
 	{#if settings}
 		<button

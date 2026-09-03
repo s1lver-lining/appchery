@@ -55,3 +55,41 @@ export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<s
 	if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
 	return await response.text();
 }
+
+/**
+ * The same, for the one thing ianseo publishes that is not a page: the schedule, which it prints as
+ * a PDF and never renders. Native HTTP hands bytes back as base64, having no other way to carry
+ * them across the bridge.
+ */
+export async function fetchIanseoBytes(path: string, signal?: AbortSignal): Promise<Uint8Array> {
+	if (!path.startsWith('/')) throw new IanseoError('missing', `not an ianseo path: ${path}`);
+
+	if (Capacitor.isNativePlatform()) {
+		let response;
+		try {
+			response = await CapacitorHttp.get({ url: `${IANSEO}${path}`, responseType: 'arraybuffer' });
+		} catch (error) {
+			throw new IanseoError('offline', String(error));
+		}
+		if (response.status === 404) throw new IanseoError('missing', path);
+		if (response.status >= 400) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
+		return fromBase64(String(response.data ?? ''));
+	}
+
+	let response: Response;
+	try {
+		response = await fetch(`${PROXY}${path}`, { signal });
+	} catch (error) {
+		throw new IanseoError('offline', String(error));
+	}
+	if (response.status === 404) throw new IanseoError('missing', path);
+	if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
+	return new Uint8Array(await response.arrayBuffer());
+}
+
+function fromBase64(data: string): Uint8Array {
+	const binary = atob(data);
+	const bytes = new Uint8Array(binary.length);
+	for (let at = 0; at < binary.length; at++) bytes[at] = binary.charCodeAt(at);
+	return bytes;
+}

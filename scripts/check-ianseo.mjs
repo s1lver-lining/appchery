@@ -64,7 +64,9 @@ function serveIanseo(context, state = {}) {
 						? fixture('Details-28536')
 						: toId === '29418'
 							? fixture('Details-29418')
-							: fixture('Details');
+							: toId === '29887'
+								? fixture('Details-29887')
+								: fixture('Details');
 			// A class that has just finished, which is what ianseo rebuilding a competition means.
 			if (state.late) {
 				body = body.replace(
@@ -74,6 +76,18 @@ function serveIanseo(context, state = {}) {
 						<div class="results-link"><a href="/TourData/2026/26053/LATE.php">Late Class Result</a></div>
 					</div><div class="results-item-container">`
 				);
+			}
+		} else if (path.endsWith('.pdf')) {
+			// The schedule, which ianseo prints and never renders: the app reads the PDF itself.
+			const name = { 29418: 'SCHEDULE-3D', 28536: 'SCHEDULE-BEURSAULT' }[path.split('/')[3]] ?? path.split('/').pop().replace('.pdf', '');
+			try {
+				return route.fulfill({
+					status: 200,
+					contentType: 'application/pdf',
+					body: readFileSync(`test/ianseo/${name}.pdf`)
+				});
+			} catch {
+				return route.fulfill({ status: 404, body: 'no fixture' });
 			}
 		} else if (path.includes('/28536/ENA.php')) {
 			// A French competition, whose columns ianseo heads in French and folds none of.
@@ -873,6 +887,69 @@ async function checkSearchResultOpens(browser) {
  * Looking for one archer in a list of three hundred, and deciding what a result shows. Both live on
  * the line above the table, which scrolls away with it rather than sitting over it.
  */
+/**
+ * The schedule, which is the one thing in this feature read out of a PDF rather than out of a page.
+ *
+ * Two competitions, because the two of them break the report differently: one heads its second page
+ * with the day it is carrying over, and the other simply goes on printing. Both have to come back
+ * whole, and the PDF has to be on the page either way.
+ */
+async function checkSchedule(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+
+	await page.goto(`${BASE}/ianseo/29887`, { waitUntil: 'networkidle' });
+	const opens = page.locator('a[href*="/29887/schedule"]');
+	check('the schedule opens in the app rather than as a PDF', (await opens.count()) > 0);
+	await opens.first().click();
+	// Waited for by address: the competition page heads its own panels with the same tag.
+	await page.waitForURL(/\/schedule/);
+	await page.waitForSelector('section h2');
+
+	const days = await page.locator('section h2').allInnerTexts();
+	check('a day of the competition is a block of its own', days.length === 4, days.join(' / '));
+	check('and is headed as the organiser wrote it', days[0].trim() === '1 Sep 2026, Mardi', days[0]);
+
+	const text = await page.locator('main').innerText();
+	check('a session is shown with the time it starts', /09:30-11:45/.test(text));
+	check("the report's own signature is left off", !/Report Created|Powered by/.test(text));
+	check('the PDF is offered beside the search box', await page.getByRole('link', { name: 'PDF' }).first().isVisible());
+	await shot(page, 'schedule');
+
+	await page.getByPlaceholder(/Find in the schedule/i).fill('tournoi 4');
+	await page.waitForTimeout(400);
+	const narrowed = await page.locator('section h2').count();
+	check('the schedule can be searched', narrowed > 0 && narrowed < days.length, `${narrowed} of ${days.length}`);
+	await page.getByPlaceholder(/Find in the schedule/i).fill('');
+	await page.waitForTimeout(300);
+
+	// This one carries Saturday onto its second page without heading it again.
+	await page.goto(`${BASE}/ianseo/29418/schedule`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('section h2');
+	const carried = await page.locator('main').innerText();
+	check(
+		'a day split over two pages of the report is one day here',
+		(await page.locator('section h2').allInnerTexts()).filter((one) => one.includes('15 Aou')).length === 1
+	);
+	check('and keeps the sessions printed after the break', /08:00-15:10/.test(carried));
+	check('the schedule stays inside the screen', !(await overflows(page)).wide, JSON.stringify((await overflows(page)).culprits));
+
+	// A report this build cannot read is a report the archer is handed as ianseo printed it.
+	await context.route('**/competitions-api/ianseo/**/SCHEDULE.pdf*', (route) =>
+		route.fulfill({ status: 200, contentType: 'application/pdf', body: 'not a PDF at all' })
+	);
+	await page.goto(`${BASE}/ianseo/28536/schedule`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(600);
+	check(
+		'a schedule that cannot be read hands over the PDF instead',
+		await page.getByText(/cannot be read here/i).isVisible()
+	);
+	await shot(page, 'schedule-unreadable');
+
+	await context.close();
+}
+
 async function checkDocumentTools(browser) {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 	await serveIanseo(context);
@@ -1142,6 +1219,7 @@ async function run() {
 	await checkCompetitionSearch(browser);
 	await checkShareAndClubs(browser);
 	await checkPaperwork(browser);
+	await checkSchedule(browser);
 
 	await browser.close();
 

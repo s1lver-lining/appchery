@@ -102,7 +102,41 @@ waiting fixes one and never fixes the other, and a competition that has simply p
 is neither. Whatever was read before the change stays on screen, dated, and the PDF on ianseo still
 has everything.
 
-## 4. What the app keeps
+## 4. The schedule, which is a PDF and nothing else
+
+ianseo prints a competition's timetable as a report and never renders it as a page, so the one
+document in the feature that cannot be read as HTML is the one an archer wants before the
+competition rather than after it.
+
+`src/lib/pdf/text.ts` reads a PDF far enough to answer where each run of words was printed, and no
+further. It inflates the content streams through `DecompressionStream`, walks the text operators for
+the matrices and the strings, and decodes WinAnsi. It lays nothing out, resolves no cross reference
+table, and knows nothing of embedded fonts: the reports in question come out of one generator, in
+the standard Latin faces, under one filter. Anything else comes back empty.
+
+`src/lib/ianseo/schedule.ts` turns those runs into days and lines. The report is a table: a day
+across the whole width, then a line a session with the times on the left. Three things about it are
+worth knowing, because each of them lost a page before it was handled:
+
+- **A page ends, and an HTML page does not.** A day split over two pages is headed again on the
+  second by some competitions and simply continued by others. Both halves belong to the same day, so
+  the day is matched on its printed date, and the top of the table is taken from where the headings
+  sit rather than from the first one on each page.
+- **The report signs every page.** The competition's name above the table and `AR_C08 … Page 1/2`
+  below it are reprinted on each one, and neither is part of the schedule.
+- **Columns are read by what they say.** The time and the duration are recognised as times, not as
+  positions, so a report that moves them is still read.
+
+A report this cannot find a single day in comes back as null, which the client raises as
+`unreadable`. That is the whole point of the exercise: the screen keeps the PDF beside the search
+box from the moment it opens, and hands it over whenever the reading fails.
+
+The one document name the app reads is this one. `SCHEDULE.pdf` is ianseo's own, filed under a name
+it chooses, while the title printed beside it is the organiser's words in the organiser's language.
+Nothing depends on the guess being right: a competition whose schedule is filed elsewhere simply
+opens the PDF, as it did before.
+
+## 5. What the app keeps
 
 Two tables, both local to the device and neither synced (`migration 0004`):
 
@@ -115,7 +149,7 @@ Two tables, both local to the device and neither synced (`migration 0004`):
 Favourites are deliberately not pushed to the sync server. They are a reading list, not shooting, and
 they carry other people's names.
 
-## 5. When a result is new
+## 6. When a result is new
 
 One clock, and only one: the tournament list's own "Updated" column.
 
@@ -129,7 +163,7 @@ The documents carry stamps of their own, and they are close to the list's but no
 that noted one and cleared the other would light on nothing having happened and never go out again.
 `scripts/check-ianseo.mjs` drives the whole cycle through the real screens for that reason.
 
-## 6. What is shown
+## 7. What is shown
 
 Everything read from ianseo says when it was read. It is somebody else's server, the app is used at a
 shooting line, and a result from an hour ago clearly dated is worth more than a spinner. Cache first,
@@ -140,7 +174,7 @@ drops on a narrow screen, and the app folds away exactly those, giving them back
 opened. The brackets are drawn a round at a time: the wall chart ianseo prints is unreadable on a
 phone at any zoom, and what is wanted from it is who beat whom.
 
-## 7. Distance
+## 8. Distance
 
 Neither source publishes coordinates: ianseo prints a town, the FFTA prints a town and a postcode.
 Towns are turned into points through Open-Meteo's geocoder, which needs no key and no account, the
@@ -155,7 +189,7 @@ A competition whose town has not been located yet is **kept** in the list rather
 list narrows as the answers arrive, which is the honest behaviour for a filter waiting on knowledge
 it has not got yet.
 
-## 8. The FFTA, and why it is not wired up
+## 9. The FFTA, and why it is not wired up
 
 The French federation runs the half of French archery ianseo never sees: club, departmental and
 regional shoots, published at `www.ffta.fr/competitions` with a town, a discipline, the organising
@@ -176,7 +210,7 @@ The results PDFs themselves are public and fetch cleanly, so a link to one alway
 What would unblock it is permission rather than cleverness: an interface the federation offers, or
 an agreement to let a named client through. The parsers are ready for the day there is one.
 
-## 9. Entering a competition
+## 10. Entering a competition
 
 ianseo publishes what was shot; it says nothing about how to enter anything. Most French clubs take
 their entries through **Inscript'Arc**, which lists every competition in the country currently open
@@ -198,7 +232,7 @@ because those are the local shoots ianseo never hears about and they are most of
 
 Only the one listing page is proxied. The rest of the platform is where archers' own details are.
 
-## 10. Handing a competition over
+## 11. Handing a competition over
 
 The code button on a competition draws `https://app.appchery.com/ianseo/{toId}` as a QR code, so an
 archer beside you can point a phone at it and land on the same page.
@@ -211,7 +245,7 @@ this app's signing certificate, and iOS needs an `apple-app-site-association` fi
 domains entitlement. Until then a scan opens the web app, which is the same page and the right answer
 for anybody who has not installed anything.
 
-## 11. What is not built
+## 12. What is not built
 
 - **No push.** A followed competition is compared against the list when the list is read. Notifying a
   closed app would need a scheduled poller, a subscription table and store credentials on both

@@ -50,7 +50,7 @@ function ianseoProxy(): Plugin {
 		response: {
 			statusCode: number;
 			setHeader(key: string, value: string): void;
-			end(body?: string): void;
+			end(body?: string | Uint8Array): void;
 		},
 		next: () => void
 	) => {
@@ -70,7 +70,8 @@ function ianseoProxy(): Plugin {
 			response.statusCode = answer.status;
 			for (const [key, value] of Object.entries(proxyHeaders(answer.headers.get('Content-Type'))))
 				response.setHeader(key, value);
-			response.end(await answer.text());
+			// Bytes rather than text: ianseo prints a competition's schedule as a PDF, and the app reads it.
+			response.end(new Uint8Array(await answer.arrayBuffer()));
 		} catch (error) {
 			response.statusCode = 502;
 			response.end(String(error));

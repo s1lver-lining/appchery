@@ -1,8 +1,10 @@
+import { readPdfText } from '$lib/pdf/text';
 import { parseCompetition } from './parse/details';
 import { parseDocument } from './parse/document';
 import { parseTournaments, TOURNAMENT_LIST } from './parse/list';
 import { looksLike } from './parse/reading';
-import { fetchIanseo, IanseoError } from './fetch';
+import { fetchIanseo, fetchIanseoBytes, IanseoError } from './fetch';
+import { parseSchedule, type Schedule } from './schedule';
 import { readCache, writeCache } from './store';
 import type { Competition, ResultDocument, Tournament } from './types';
 
@@ -49,7 +51,7 @@ export type LoadOptions = {
 
 async function load<T>(
 	path: string,
-	parse: (html: string) => T,
+	read: (signal?: AbortSignal) => Promise<T>,
 	ttl: number,
 	options: LoadOptions = {}
 ): Promise<Loaded<T>> {
@@ -62,7 +64,7 @@ async function load<T>(
 	}
 
 	try {
-		const value = parse(await fetchIanseo(path, options.signal));
+		const value = await read(options.signal);
 		await writeCache(path, value);
 		return { value, cachedAt: Date.now(), problem: null };
 	} catch (error) {
@@ -77,7 +79,8 @@ async function load<T>(
 export function loadTournaments(options?: LoadOptions): Promise<Loaded<Tournament[]>> {
 	return load(
 		TOURNAMENT_LIST,
-		(html) => {
+		async (signal) => {
+			const html = await fetchIanseo(TOURNAMENT_LIST, signal);
 			const list = parseTournaments(html);
 			// A page with competitions on it out of which none could be read is a page that has changed.
 			if (list.length === 0 && looksLike.tournamentList(html)) {
@@ -97,7 +100,8 @@ export function competitionPath(toId: string): string {
 export function loadCompetition(toId: string, options?: LoadOptions): Promise<Loaded<Competition>> {
 	return load(
 		competitionPath(toId),
-		(html) => {
+		async (signal) => {
+			const html = await fetchIanseo(competitionPath(toId), signal);
 			const competition = parseCompetition(toId, html);
 			// A competition that has published documents, none of which could be read, has changed shape.
 			if (competition.documents.length === 0 && looksLike.competition(html)) {
@@ -113,7 +117,8 @@ export function loadCompetition(toId: string, options?: LoadOptions): Promise<Lo
 export function loadResultDocument(path: string, options?: LoadOptions): Promise<Loaded<ResultDocument>> {
 	return load(
 		path,
-		(html) => {
+		async (signal) => {
+			const html = await fetchIanseo(path, signal);
 			const document = parseDocument(html);
 			// ianseo answers with a page either way, so an empty one is the only sign a document is gone.
 			if (!document) throw new IanseoError('missing', path);
@@ -127,6 +132,27 @@ export function loadResultDocument(path: string, options?: LoadOptions): Promise
 			return document;
 		},
 		DOCUMENT_TTL,
+		options
+	);
+}
+
+/**
+ * The competition's timetable, read out of the PDF ianseo prints it as.
+ *
+ * A schedule this build cannot make sense of raises `unreadable` like any other page that has
+ * changed shape, and the screen answers it the way the rest of the feature does: by handing the
+ * archer the PDF, which has everything and always did.
+ */
+export function loadSchedule(path: string, options?: LoadOptions): Promise<Loaded<Schedule>> {
+	return load(
+		path,
+		async (signal) => {
+			const schedule = parseSchedule(await readPdfText(await fetchIanseoBytes(path, signal)));
+			if (!schedule) throw new IanseoError('unreadable', path);
+			return schedule;
+		},
+		// A timetable is settled days before it is shot and changes about as often as the paperwork.
+		COMPETITION_TTL,
 		options
 	);
 }
