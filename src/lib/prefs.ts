@@ -517,6 +517,15 @@ export const ianseoShownColumns = storedList('appchery.ianseoShownColumns');
 export const ianseoHiddenColumns = storedList('appchery.ianseoHiddenColumns');
 
 /**
+ * What ianseo had published for a competition when the archer last opened it, as `{toId}|{stamp}`.
+ *
+ * One number a competition rather than one a document: it is the newest stamp on the page, and
+ * anything stamped later than it was published since the archer last looked. Kept here rather than
+ * beside what is followed, because a competition is worth opening whether it is followed or not.
+ */
+export const ianseoDocumentsSeen = storedList('appchery.ianseoDocumentsSeen');
+
+/**
  * The days of a schedule the archer has folded away, as `{toId}|{day as the report heads it}`.
  *
  * The closed ones rather than the open ones, so a schedule opened for the first time is open: a

@@ -35,6 +35,8 @@
 	import { namesFound, terms } from '$lib/ianseo/find';
 	import { groupKey } from '$lib/ianseo/groups';
 	import { scheduleDocument } from '$lib/ianseo/schedule';
+	import { newDocuments, notePublished, seenPublished } from '$lib/ianseo/published';
+	import { lastPublished } from '$lib/ianseo/parse/details';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
 	import type { Entry } from '$lib/inscriptarc/types';
@@ -60,6 +62,12 @@
 	let pinned = $state<Favourite[]>([]);
 	/** The entry form, where one can be matched to this competition beyond doubt. */
 	let entry = $state<Entry | null>(null);
+	/**
+	 * What ianseo had published here when this device last opened the competition, read once on the
+	 * way in and never again: the marks have to survive the visit that earned them, so noting what is
+	 * here now must not clear what the archer is being shown while they are still looking at it.
+	 */
+	let seen = $state<number | null>(null);
 
 	const id = $derived(favouriteId('competition', toId));
 	const followed = $derived(pinned.some((one) => one.id === id));
@@ -85,6 +93,7 @@
 
 		pinned = known;
 		tournament = list?.value.find((row) => row.toId === id) ?? null;
+		seen = seenPublished(id);
 		await read(false, mine);
 		await findEntry(mine);
 	}
@@ -100,7 +109,9 @@
 			competition = loaded.value;
 			cachedAt = loaded.cachedAt;
 			problem = loaded.problem;
-			await seen();
+			// Noted now, so the next visit marks what arrives after this one and nothing that is on screen.
+			notePublished(toId, lastPublished(loaded.value.documents));
+			await markSeen();
 		} catch (error) {
 			if (mine !== request) return;
 			failed = error instanceof IanseoError && error.kind === 'unreadable' ? 'unreadable' : 'offline';
@@ -109,7 +120,7 @@
 	}
 
 	/** Opening the competition is reading it, so nothing already on screen is offered as new again. */
-	async function seen() {
+	async function markSeen() {
 		if (!followed) return;
 		await markCompetitionSeen(toId);
 		pinned = await favourites();
@@ -243,6 +254,9 @@
 		await Promise.all(readers);
 		if (mine === scan) scanning = false;
 	}
+
+	/** The documents ianseo has published here since the archer last looked, which is what is worth a mark. */
+	const fresh = $derived(newDocuments(competition?.documents ?? [], seen));
 
 	/** The panels in the order ianseo publishes them, which is the order a competition is shot in. */
 	const groups = $derived.by(() => {
@@ -431,7 +445,15 @@
 						>
 							<!-- The whole row opens the document; the PDF beside it is lifted over that link. -->
 							<span class="absolute inset-0" aria-hidden="true"></span>
-							<span class="block font-medium break-words">{document.title}</span>
+							<span class="block font-medium break-words">
+								{document.title}
+								<!-- Beside the name rather than under it: what is new is a property of the document. -->
+								{#if fresh.has(document)}
+									<span class="ml-1 align-middle rounded-full bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold text-brand-text">
+										{$t('ianseo.newResults')}
+									</span>
+								{/if}
+							</span>
 							<!-- Who was found, because a surname in a big competition is three different people. -->
 							{#if document.path && scanCurrent && scanned.has(document.path)}
 								<span class="mt-0.5 block text-xs font-medium text-brand-text">

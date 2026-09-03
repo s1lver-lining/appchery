@@ -1147,6 +1147,57 @@ async function checkScheduleDays(browser) {
 	await context.close();
 }
 
+/**
+ * Which of a competition's ninety documents is the one that just changed.
+ *
+ * The list already says a whole competition has published; this is the same question one level down,
+ * and it is the one an archer at the notice board actually asks. Driven over three visits, because
+ * the whole of it is about what happened between two of them: nothing is new the first time, the
+ * class published since is new the second, and it is not new again the third.
+ */
+async function checkNewDocuments(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	const state = {};
+	await serveIanseo(context, state);
+	const page = await context.newPage();
+	const marks = () => page.locator('li span.text-brand-text').allInnerTexts();
+
+	await page.goto(`${BASE}/ianseo/26053`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('li a');
+	await page.waitForTimeout(600);
+	check(
+		'a competition opened for the first time has nothing new in it',
+		(await marks()).length === 0,
+		JSON.stringify(await marks())
+	);
+
+	// ianseo publishes a class, and the archer comes back to the competition.
+	state.late = true;
+	await page.goto(`${BASE}/ianseo/26053`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('li a');
+	await page.waitForTimeout(500);
+	await page.getByRole('button', { name: /^Refresh$/i }).click();
+	await page.waitForTimeout(1200);
+	check(
+		'a document published since the last visit is marked',
+		(await marks()).length === 1,
+		JSON.stringify(await marks())
+	);
+	check(
+		'and it is the one that was published',
+		/New/.test(await page.locator('li:has-text("Late Class Result")').first().innerText())
+	);
+	await shot(page, 'new-documents');
+
+	// Having been shown once, it is not news any more.
+	await page.goto(`${BASE}/ianseo/26053`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('li a');
+	await page.waitForTimeout(800);
+	check('and is not marked again on the next visit', (await marks()).length === 0, JSON.stringify(await marks()));
+
+	await context.close();
+}
+
 async function checkDocumentTools(browser) {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 	await serveIanseo(context);
@@ -1418,6 +1469,7 @@ async function run() {
 	await checkPaperwork(browser);
 	await checkSchedule(browser);
 	await checkScheduleDays(browser);
+	await checkNewDocuments(browser);
 	await checkPull(browser);
 
 	await browser.close();
