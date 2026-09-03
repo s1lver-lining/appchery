@@ -1,13 +1,34 @@
 # Appchery
 
-**Archery Scoring & Tuning** — offline-first, on mobile and in the browser.
+**Archery Scoring & Training**  
+Offline, on your phone or in a browser.
 
-- **Sessions hold activities.** One outing, many things done in it: score a round, then tune.
-- **Score on a sheet** that reads like paper, with every arrow editable after the fact.
-- **Custom rounds** by entering ends, arrows, face size, and distance.
-- **Document your bows** and launch tuning procedures against them.
-- **Live camera scoring** (planned): sweep the camera over the target and confirm what it found.
-- **Follow competitions** published on ianseo, with the results kept for reading at the range.
+### → [appchery.com](https://appchery.com)
+
+Score a round, tune your bow, count your arrows, train for the shot. Appchery keeps it all on your phone, and works with no signal at all.
+
+<table>
+  <tr>
+    <td width="33%"><img src="doc/screenshots/home.jpg" alt="Home screen"></td>
+    <td width="33%"><img src="doc/screenshots/statistics.jpg" alt="Statistics"></td>
+    <td width="33%"><img src="doc/screenshots/session.jpg" alt="A session and its activities"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Home</b><br>Weekly goal, levels, everything one tap away</td>
+    <td align="center"><b>Statistics</b><br>Per arrow, per round, per conditions</td>
+    <td align="center"><b>Sessions</b><br>Rounds, matches and tuning in one outing</td>
+  </tr>
+  <tr>
+    <td><img src="doc/screenshots/scoring.jpg" alt="Scoring a round"></td>
+    <td><img src="doc/screenshots/share.jpg" alt="Shareable score card"></td>
+    <td><img src="doc/screenshots/competitions.jpg" alt="Competitions from ianseo"></td>
+  </tr>
+  <tr>
+    <td align="center"><b>Scoring</b><br>By number or on the face, every arrow editable</td>
+    <td align="center"><b>Share</b><br>A score card worth posting</td>
+    <td align="center"><b>Competitions</b><br>Every ianseo event, kept for offline reading</td>
+  </tr>
+</table>
 
 Design and rationale live in [doc/architecture.md](doc/architecture.md) and
 [doc/data-model.md](doc/data-model.md). Read those before making structural changes. Shipping is
@@ -68,11 +89,17 @@ Environments, first time setup, the database side, and the release order live in
 
 ```bash
 ./scripts/adb_install.sh   # build, sync, assemble the debug APK, install over adb
+./scripts/build_apk.sh     # the same, stopping at the APK — no device needed
 ```
 
-It expects an SDK at `$ANDROID_HOME` (defaulting to `~/Android/Sdk`) with platform 36 and
-build-tools 36, a device with USB debugging enabled, and a JDK Gradle supports. Set `JAVA_HOME` if
-21 is not where the script looks.
+Both expect an SDK at `$ANDROID_HOME` (defaulting to `~/Android/Sdk`) with platform 36 and
+build-tools 36, and a JDK Gradle supports; `adb_install.sh` also wants a device with USB debugging
+enabled. Set `JAVA_HOME` if 21 is not where the scripts look, `APPCHERY_ANDROID_HOME` to force a particular
+SDK, and — for `build_apk.sh` — `APPCHERY_JAVA_HOME` to force a particular JDK.
+
+`build_apk.sh` checks everything it needs before it starts and lists whatever is missing in one go,
+then prints the path it wrote. The APK it produces is debug-signed rather than release-signed:
+installable by hand or over adb, not something to publish.
 
 iOS needs Xcode:
 
@@ -91,12 +118,25 @@ app but will not offer to install it.
 ## Project layout
 
 ```
-src/lib/domain/    pure scoring, round, tuning and unit logic, no I/O, fully unit-tested
-src/lib/db/        schema, bundled migrations, platform drivers, repository
-src/lib/i18n/      en (reference) and fr dictionaries
-src/lib/ui/        shared components
-src/routes/        pages
-doc/               architecture, data model, development guidelines
+src/lib/domain/         pure scoring, round, tuning and unit logic, no I/O, fully unit-tested
+src/lib/db/             schema, bundled migrations, platform drivers, repository
+src/lib/pages/          the screens, one Svelte component each
+src/lib/ui/             shared components
+src/lib/i18n/           en (reference) and fr dictionaries
+src/lib/vision/         camera scoring: face detection, arrow impacts, worker and model
+src/lib/sync/           optional account sync and shared score cards
+src/lib/ianseo/         competition listings, results and brackets from ianseo
+src/lib/competitions/   competition dates, distances and links, independent of the source
+src/lib/ffta/           French federation listings
+src/lib/inscriptarc/    inscriptarc entry lists
+src/lib/import/         importing scores from other apps
+src/lib/pdf/            PDF text extraction for published result sheets
+src/routes/             thin SvelteKit routes over src/lib/pages
+site/                   the marketing site, built separately (vite.site.config.ts)
+functions/              Cloudflare Pages functions (competitions API)
+supabase/               sync database schema, migrations and tests
+test/                   fixtures and datasets for the parsers and for vision
+doc/                    architecture, data model, development guidelines
 ```
 
 The `domain/` layer imports nothing from the database or the UI. Scoring rules are the part that
