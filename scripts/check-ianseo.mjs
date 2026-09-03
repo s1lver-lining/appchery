@@ -434,6 +434,34 @@ async function checkOffline(browser) {
 	check('and does not sit on an empty page', await empty.getByText(/could not be reached/i).first().isVisible());
 	await shot(empty, 'offline-cold');
 	await cold.close();
+
+	/*
+	 * The timetable is read out of a PDF, and what the device keeps is the timetable rather than the
+	 * PDF: at a field with no signal the schedule has to open as a schedule, not as a link to one.
+	 */
+	const kept = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(kept);
+	const timetable = await kept.newPage();
+	await timetable.goto(`${BASE}/ianseo/29887/schedule`, { waitUntil: 'networkidle' });
+	await timetable.waitForSelector('section h2');
+	const online = await timetable.locator('section h2').allInnerTexts();
+
+	await kept.unroute('**/competitions-api/ianseo/**');
+	await kept.route('**/competitions-api/ianseo/**', (route) => route.abort());
+	await timetable.reload({ waitUntil: 'networkidle' });
+	const offline = await timetable
+		.waitForSelector('section h2', { timeout: 20000 })
+		.then(() => timetable.locator('section h2').allInnerTexts())
+		.catch(() => []);
+	check(
+		'a schedule already read opens with no signal, as a timetable and not as a PDF',
+		offline.length === online.length && offline.length > 0,
+		`${online.length} online -> ${offline.length} offline`
+	);
+	const sessions = await timetable.locator('main').innerText();
+	check('and still carries the times it was read with', /09:30-11:45/.test(sessions));
+	await shot(timetable, 'schedule-offline');
+	await kept.close();
 }
 
 /**
