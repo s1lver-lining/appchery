@@ -1,5 +1,5 @@
 import { wrappingColumn } from './columns';
-import type { ScheduleDay } from './schedule';
+import type { ScheduleDay, ScheduleLine } from './schedule';
 import type { BracketRound, DocumentSection, ResultDocument } from './types';
 
 /**
@@ -55,9 +55,53 @@ export function findInSchedule(days: ScheduleDay[], search: string): ScheduleDay
 			// A day answering by its own heading answers whole: somebody typing Sunday wants Sunday.
 			lines: holds(day.title, wanted)
 				? day.lines
-				: day.lines.filter((line) => holds(`${line.time ?? ''} ${line.text}`, wanted))
+				: day.lines
+						.map((line, at) => ({ line, at }))
+						// Answered on what was printed, and only then given the time: a session's own time is
+						// full of digits, and a line matched on one of them is a line nobody asked for.
+						.filter(({ line }) => holds(`${line.time ?? ''} ${line.text}`, wanted))
+						.map(({ line, at }) => (line.time ? line : timed(day.lines, at)))
 		}))
 		.filter((day) => day.lines.length > 0);
+}
+
+/**
+ * A line of a schedule with the time of the session it belongs to, for one that prints none of its
+ * own. ianseo names a session on the line above its time and again on the line below, so a search
+ * that answers with those lines and nothing else answered "when" with nothing at all.
+ */
+function timed(lines: ScheduleLine[], at: number): ScheduleLine {
+	const session = sessionOf(lines, at);
+	return session ? { ...lines[at], time: session.time, duration: session.duration } : lines[at];
+}
+
+/**
+ * The nearest timed line on either side, without crossing the blank line that opens the next block.
+ * A tie goes upwards, because a session printed under its own time is the commoner of the two.
+ */
+function sessionOf(lines: ScheduleLine[], at: number): ScheduleLine | null {
+	let up: number | null = null;
+	// A line set off by a blank one opens its own block, so nothing above it is its session.
+	for (let index = lines[at].spaced ? -1 : at - 1; index >= 0; index--) {
+		if (lines[index].time) {
+			up = index;
+			break;
+		}
+		if (lines[index].spaced) break;
+	}
+
+	let down: number | null = null;
+	for (let index = at + 1; index < lines.length; index++) {
+		if (lines[index].spaced) break;
+		if (lines[index].time) {
+			down = index;
+			break;
+		}
+	}
+
+	if (up === null) return down === null ? null : lines[down];
+	if (down === null) return lines[up];
+	return at - up <= down - at ? lines[up] : lines[down];
 }
 
 /** The same for a bracket, where a line is a match and either side of it may be the one wanted. */

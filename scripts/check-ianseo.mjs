@@ -922,8 +922,33 @@ async function checkSchedule(browser) {
 	await page.waitForTimeout(400);
 	const narrowed = await page.locator('section h2').count();
 	check('the schedule can be searched', narrowed > 0 && narrowed < days.length, `${narrowed} of ${days.length}`);
+	/**
+	 * A session is named on the line above its time and again on the line below, so the lines an
+	 * archer searches for are the ones printed with no time at all. Pulled out of the block they have
+	 * to keep the one thing they were being asked about.
+	 */
+	await page.getByPlaceholder(/Find in the schedule/i).fill('match 5-6');
+	await page.waitForTimeout(400);
+	const timed = await page.evaluate(() =>
+		[...document.querySelectorAll('section h2 + div > div')]
+			.filter((node, at) => at % 2 === 0)
+			.map((node) => node.textContent.trim())
+	);
+	check(
+		"a line pulled out of its session keeps that session's own time",
+		timed.length > 0 && timed.every((one) => /\d{1,2}:\d{2}/.test(one)),
+		timed.join(' / ')
+	);
 	await page.getByPlaceholder(/Find in the schedule/i).fill('');
 	await page.waitForTimeout(300);
+
+	// Set smaller than what it is the time of, so the two line up on the writing and not on the box.
+	const sits = await page.evaluate(() => {
+		const row = document.querySelector('section h2 + div');
+		const top = (node) => node.getBoundingClientRect().top;
+		return { time: top(row.children[0]), said: top(row.children[1]) };
+	});
+	check('a time sits on the same line as what it is the time of', sits.time > sits.said, JSON.stringify(sits));
 
 	// This one carries Saturday onto its second page without heading it again.
 	await page.goto(`${BASE}/ianseo/29418/schedule`, { waitUntil: 'networkidle' });

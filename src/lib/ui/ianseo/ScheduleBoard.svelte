@@ -16,9 +16,10 @@
 		<!--
 			One grid a day rather than one a line, so every time in the day lines up under the last. The
 			second track is told it may be narrower than what it holds, or an organiser's own link to
-			their timings runs the whole day off the side of the phone.
+			their timings runs the whole day off the side of the phone. A time is set smaller than what
+			it is the time of, so the two are lined up on the writing rather than on the top of the box.
 		-->
-		<div class="grid grid-cols-[auto_minmax(0,1fr)] gap-x-3 px-3 py-2 text-sm">
+		<div class="grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-3 px-3 py-2 text-sm">
 			{#each day.lines as line, at (at)}
 				<div class="tabular pt-1 text-right text-xs whitespace-nowrap text-muted {line.spaced ? 'mt-2' : ''}">
 					{line.time ?? ''}

@@ -1,5 +1,8 @@
 import { describe, it, expect } from 'vitest';
-import { countRows, findInRounds, findInSections, namesFound, terms } from './find';
+import { readFileSync } from 'node:fs';
+import { readPdfText } from '$lib/pdf/text';
+import { countRows, findInRounds, findInSchedule, findInSections, namesFound, terms } from './find';
+import { parseSchedule } from './schedule';
 import type { BracketRound, DocumentSection } from './types';
 
 const row = (...cells: string[]) => ({
@@ -172,5 +175,66 @@ describe('namesFound', () => {
 			]
 		};
 		expect(namesFound(bracket as never, 'marie')).toEqual(['DUPONT Marie']);
+	});
+});
+
+/**
+ * Searching a schedule, where the answer is nearly always "when". ianseo names a session on the
+ * line above its time and again on the line below, so the lines an archer searches for are the ones
+ * printed with no time at all, and pulling them out of the block loses the only thing they were
+ * being asked about.
+ */
+describe('findInSchedule', () => {
+	const read = async (name: string) =>
+		parseSchedule(await readPdfText(new Uint8Array(readFileSync(`test/ianseo/${name}.pdf`))))!.days;
+
+	it('keeps only the lines that answer, and only the days that keep one', async () => {
+		const all = await read('SCHEDULE');
+		const days = findInSchedule(all, 'fclt4');
+		expect(days.length).toBeGreaterThan(0);
+		expect(days.length).toBeLessThan(all.length);
+		expect(days.flatMap((day) => day.lines).every((line) => /fclt4/i.test(line.text))).toBe(true);
+	});
+
+	it('answers a day by its own heading with the whole of that day', async () => {
+		const all = await read('SCHEDULE');
+		const days = findInSchedule(all, 'mercredi');
+		expect(days).toHaveLength(1);
+		expect(days[0].lines).toEqual(all[1].lines);
+	});
+
+	it('gives a line the time of the session it was printed inside', async () => {
+		const [day] = findInSchedule(await read('SCHEDULE'), 'match 5-6');
+		// Printed under the match before it, with nothing else timed before the next block opens.
+		expect(day.lines.map((line) => `${line.time} ${line.text}`)).toEqual([
+			'10:10-10:45 Match 5-6: FCLT1B, HCLT1B',
+			'12:10-12:45 Match 5-6: FCLT2B, HCLT2B',
+			'15:30-16:05 Match 5-6: FCLT3B, HCLT3B',
+			'17:30-18:05 Match 5-6: FCLT4B, HCLT4B'
+		]);
+		expect(day.lines.every((line) => line.duration === '00:35')).toBe(true);
+	});
+
+	it('answers on what was printed, never on the time it hands back', async () => {
+		const [day] = findInSchedule(await read('SCHEDULE'), '12:00');
+		// The one line that prints it. The rest of its session would otherwise come with it.
+		expect(day.lines.map((line) => line.text)).toEqual(['Pause déjeuner']);
+	});
+
+	it('reaches downwards as readily as upwards, whichever is nearer', async () => {
+		const [day] = findInSchedule(await read('SCHEDULE-3D'), 'distance 1');
+		expect(day.lines.map((line) => `${line.time} ${line.text}`)).toEqual([
+			'08:00-15:50 Distance 1'
+		]);
+
+		// This one is named on the line before its time, with another session's line above it.
+		const [also] = findInSchedule(await read('SCHEDULE-3D'), 'parcours 2 - tir libre');
+		expect(also.lines.map((line) => line.time)).toEqual(['08:00-16:00', '08:00-16:00']);
+	});
+
+	it('never borrows across the blank line that opens the next block', async () => {
+		const [day] = findInSchedule(await read('SCHEDULE'), 'tours de qualifications');
+		// The block heading itself, which nothing above it in the block gives a time to.
+		expect(day.lines.map((line) => line.time)).toEqual(['09:30-11:45']);
 	});
 });
