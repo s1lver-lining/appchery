@@ -450,13 +450,12 @@
 							<!-- The whole row opens the document; the PDF beside it is lifted over that link. -->
 							<span class="absolute inset-0" aria-hidden="true"></span>
 							<span class="block font-medium break-words">
-								{document.title}
-								<!-- Beside the name rather than under it: what is new is a property of the document. -->
 								{#if fresh.has(document)}
-									<span class="ml-1 align-middle rounded-full bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold text-brand-text">
+									<span class="mr-1 align-middle rounded-full bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold text-brand-text">
 										{$t('ianseo.newResults')}
 									</span>
 								{/if}
+								{document.title}
 							</span>
 							<!-- Who was found, because a surname in a big competition is three different people. -->
 							{#if document.path && scanCurrent && scanned.has(document.path)}
