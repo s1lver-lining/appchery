@@ -146,7 +146,8 @@
 	}
 </script>
 
-<div class="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur" use:lockScroll>
+<!-- The card fills the screen in near black, so the bar goes dark with it rather than staying beige. -->
+<div class="fixed inset-0 z-[70] flex flex-col bg-black/90 backdrop-blur" use:scrim={0.9} use:lockScroll>
 	<header class="safe-top flex items-center justify-between px-4 py-3 pt-6">
 		<h2 class="text-lg font-bold text-white">{$t('share.title')}</h2>
 		<button class="text-white/70" aria-label={$t('common.close')} onclick={onclose}>
