@@ -12,11 +12,13 @@
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import ScheduleBoard from '$lib/ui/ianseo/ScheduleBoard.svelte';
 	import { findInSchedule } from '$lib/ianseo/find';
-	import { loadCompetition, loadSchedule } from '$lib/ianseo/client';
-	import { scheduleDocument, type Schedule } from '$lib/ianseo/schedule';
+	import { loadCompetition, loadSchedule, TOURNAMENT_LIST } from '$lib/ianseo/client';
+	import { dayToday, scheduleDocument, type Schedule } from '$lib/ianseo/schedule';
+	import { whenOf } from '$lib/ianseo/select';
+	import { readCache } from '$lib/ianseo/store';
 	import { ianseoClosedDays } from '$lib/prefs';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
-	import type { Competition, CompetitionDocument } from '$lib/ianseo/types';
+	import type { Competition, CompetitionDocument, Tournament } from '$lib/ianseo/types';
 
 	/**
 	 * The competition's timetable, redrawn from the PDF ianseo prints it as.
@@ -32,6 +34,7 @@
 	$effect(() => setPageUp(from));
 
 	let competition = $state<Competition | null>(null);
+	let tournament = $state<Tournament | null>(null);
 	let entry = $state<CompetitionDocument | null>(null);
 	let schedule = $state<Schedule | null>(null);
 	let cachedAt = $state<number | null>(null);
@@ -53,6 +56,8 @@
 		entry = null;
 		loading = true;
 
+		// From the device only: this page must not wait on the six megabytes the whole list is.
+		const list = await readCache<Tournament[]>(TOURNAMENT_LIST);
 		let found: Competition | null = null;
 		try {
 			found = (await loadCompetition(id, { refresh })).value;
@@ -61,6 +66,7 @@
 		}
 		if (mine !== request) return;
 
+		tournament = list?.value.find((row) => row.toId === id) ?? null;
 		competition = found;
 		entry = scheduleDocument(found);
 		await read(refresh, mine);
@@ -116,6 +122,17 @@
 
 	/** How many folded days are remembered at once, so a reading habit never becomes a store to clear. */
 	const REMEMBERED = 200;
+
+	/**
+	 * Today, on a competition being shot. A schedule is four days of which one is the one being read
+	 * at the shooting line, and it is never the first once the competition is under way. Not while
+	 * anything is being searched for: the archer has already said what they are looking for.
+	 */
+	const focus = $derived(
+		search.trim() || !tournament || whenOf(tournament, Date.now()) !== 'running'
+			? null
+			: dayToday(days)
+	);
 
 	function toggleDay(title: string) {
 		const key = `${toId}|${title}`;
@@ -195,6 +212,7 @@
 		-->
 		<ScheduleBoard
 			{days}
+			{focus}
 			closed={search.trim() ? new Set() : closed}
 			ontoggle={search.trim() ? undefined : toggleDay}
 		/>

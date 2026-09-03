@@ -169,6 +169,13 @@ Everything read from ianseo says when it was read. It is somebody else's server,
 shooting line, and a result from an hour ago clearly dated is worth more than a spinner. Cache first,
 then the network, and what is on the device is kept if ianseo cannot be reached.
 
+A schedule is drawn as the report prints it, a block a day. The blocks fold away and stay folded,
+because a five day championship is read one day at a time, and a competition being shot opens at
+today with a few pixels of the day before still showing: the archer is at the shooting line looking
+for the next session, not reading the week from the beginning. Which day is today is worked out from
+the number the report heads it with, that being the one part of the heading that is not in the
+organiser's language, and only for a competition the list says is running.
+
 The result tables are redrawn rather than embedded. ianseo's own stylesheet marks the columns it
 drops on a narrow screen, and the app folds away exactly those, giving them back when a row is
 opened. The brackets are drawn a round at a time: the wall chart ianseo prints is unreadable on a

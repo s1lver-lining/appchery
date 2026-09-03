@@ -165,3 +165,17 @@ export function scheduleDocument(competition: Competition | null): CompetitionDo
 function scheduleName(path: string | null): string {
 	return (path ?? '').split(/[?#]/)[0].split('/').pop()?.replace(/\.pdf$/i, '').toLowerCase() ?? '';
 }
+
+/**
+ * Which of the days is today's, or null where none of them is.
+ *
+ * Matched on the number the day is headed with, which is the one part of the heading that is not in
+ * somebody's language: `19 Aou 2026, Mercredi` and `1 Sep 2026, Mardi` both start with the day of
+ * the month and nothing else does. Only ever asked of a competition being shot, so a number that
+ * comes round again the following month is not a question this has to answer.
+ */
+export function dayToday(days: ScheduleDay[], now = Date.now()): number | null {
+	const today = new Date(now).getDate();
+	const at = days.findIndex((day) => Number(day.title.match(/^\s*(\d{1,2})\b/)?.[1]) === today);
+	return at < 0 ? null : at;
+}

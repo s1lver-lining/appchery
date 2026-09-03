@@ -12,17 +12,60 @@
 	let {
 		days,
 		closed = new Set<string>(),
-		ontoggle
+		ontoggle,
+		focus = null
 	}: {
 		days: ScheduleDay[];
 		/** The days the archer has folded away, by the heading the report gives them. */
 		closed?: Set<string>;
 		/** Absent where the days are not the archer's to fold, which is while something is searched for. */
 		ontoggle?: (title: string) => void;
+		/**
+		 * The day to open the page at, which is today on a competition being shot. Acted on once and
+		 * only from the top of the page: putting a page back where it was left always wins over this.
+		 */
+		focus?: number | null;
 	} = $props();
+
+	let board = $state<HTMLElement | null>(null);
+	let opened = false;
+
+	/** How much of the day before is left showing, so it is plain that this is not the first of them. */
+	const SLIVER = 10;
+
+	/** What is actually scrolling, which is not this: every page of the app shares one scroller. */
+	function scrollerOf(node: HTMLElement): HTMLElement {
+		for (let at: HTMLElement | null = node; at; at = at.parentElement) {
+			const overflow = getComputedStyle(at).overflowY;
+			if (overflow === 'auto' || overflow === 'scroll') return at;
+		}
+		return (document.scrollingElement as HTMLElement | null) ?? document.body;
+	}
+
+	$effect(() => {
+		// Read here so the effect runs again as the days arrive, rather than once against nothing.
+		const at = focus;
+		const drawn = days.length;
+		// The first day is where the page already opens, and there is nothing above it to show.
+		if (opened || at === null || at < 1 || at >= drawn || !board) return;
+
+		const scroller = scrollerOf(board);
+		// Anywhere but the top is the page being put back where it was left, and that is the archer's.
+		if (scroller.scrollTop !== 0) return;
+
+		const day = board.children[at] as HTMLElement | undefined;
+		const before = board.children[at - 1] as HTMLElement | undefined;
+		if (!day || !before) return;
+
+		opened = true;
+		// Measured off the day before rather than off this one, because the gap between two blocks is
+		// wider than the sliver: taken from this one's own top, all that shows above it is the page.
+		const edge = before.getBoundingClientRect().bottom - SLIVER;
+		scroller.scrollTop += edge - scroller.getBoundingClientRect().top;
+	});
 </script>
 
-<div class="space-y-4">
+<div bind:this={board} class="space-y-4">
 	<!--
 		Keyed by where it sits rather than by what it says. A report that headed the same day twice
 		would otherwise be two rows under one name, which is a page that will not draw at all: a

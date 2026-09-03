@@ -1071,16 +1071,43 @@ async function checkPull(browser) {
 }
 
 /**
- * The day blocks, which are how a whole schedule is read: folded away one at a time so the days
- * that matter are the ones on screen, and left that way for the next time it is opened.
+ * The day blocks, which are how a whole schedule is read: opened at the day being shot, and folded
+ * away one at a time so the days that matter are the ones on screen.
  */
 async function checkScheduleDays(browser) {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 	await serveIanseo(context);
 	const page = await context.newPage();
+	// The third day of a competition running from the 17th to the 30th. Fixed, because what follows
+	// is two answers about what day it is, and a check that only held during one competition is none.
+	await page.clock.setFixedTime(new Date('2026-08-21T10:00:00'));
+
+	// The list first: what says a competition is being shot is its dates, and only that carries them.
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(800);
 	await page.goto(`${BASE}/ianseo/28536/schedule`, { waitUntil: 'networkidle' });
 	await page.waitForSelector('section h2');
-	await page.waitForTimeout(600);
+	await page.waitForTimeout(700);
+
+	const opened = await page.evaluate(() => {
+		const days = [...document.querySelectorAll('section')];
+		const at = days.findIndex((day) => day.querySelector('h2').textContent.trim().startsWith('21 Aou'));
+		return {
+			at,
+			scrolled: Math.round(document.querySelector('main').scrollTop),
+			top: Math.round(days[at].getBoundingClientRect().top),
+			// What is left of the day before, which is how the archer knows there is one.
+			sliver: Math.round(days[at - 1].getBoundingClientRect().bottom)
+		};
+	});
+	check('a competition being shot opens at today', opened.at > 0 && opened.scrolled > 0, JSON.stringify(opened));
+	check('with today at the top of the page', opened.top >= 0 && opened.top < 60, `${opened.top}px`);
+	check(
+		'and a sliver of the day before it still showing',
+		opened.sliver > 0 && opened.sliver < opened.top,
+		`${opened.sliver}px`
+	);
+	await shot(page, 'schedule-today');
 
 	// Folded away, a day is its date and the way back to it and nothing else.
 	const first = page.locator('section h2 button').first();

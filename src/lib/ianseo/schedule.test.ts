@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { readPdfText } from '$lib/pdf/text';
-import { parseSchedule, scheduleDocument } from './schedule';
+import { dayToday, parseSchedule, scheduleDocument } from './schedule';
 import type { Competition } from './types';
 
 const read = async (name: string) =>
@@ -107,5 +107,34 @@ describe('scheduleDocument', () => {
 	it('offers nothing where the competition published no schedule', () => {
 		expect(scheduleDocument(competition([document({ pdfPath: '/TourData/2026/29887/STE.pdf' })]))).toBe(null);
 		expect(scheduleDocument(null)).toBe(null);
+	});
+});
+
+/**
+ * Which block a competition being shot should open at. The heading is in the organiser's language
+ * and the day of the month is not, which is the whole of why this reads a number and nothing else.
+ */
+describe('dayToday', () => {
+	const days = async (name: string) =>
+		parseSchedule(await readPdfText(new Uint8Array(readFileSync(`test/ianseo/${name}.pdf`))))!.days;
+
+	it('finds the day by the number it is headed with', async () => {
+		const all = await days('SCHEDULE-BEURSAULT');
+		const at = dayToday(all, new Date('2026-08-21T10:00:00').getTime());
+		expect(at).toBe(2);
+		expect(all[at!].title).toBe('21 Aou 2026, Vendredi');
+	});
+
+	it('reads a heading in a language it has never seen', async () => {
+		const all = await days('SCHEDULE');
+		expect(all[dayToday(all, new Date('2026-09-03T08:00:00').getTime())!].title).toBe(
+			'3 Sep 2026, Jeudi'
+		);
+	});
+
+	it('answers nothing on a day the competition does not shoot', async () => {
+		// This one runs from the 17th to the 30th and shoots nothing at all on the 23rd.
+		const all = await days('SCHEDULE-BEURSAULT');
+		expect(dayToday(all, new Date('2026-08-23T10:00:00').getTime())).toBe(null);
 	});
 });
