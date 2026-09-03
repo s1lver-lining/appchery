@@ -364,12 +364,12 @@
 
 	<!-- The two panes share one grid cell, auto height; `grid-cols-1` bounds it, or a row overflows. -->
 	<div
-		class="relative grid grid-cols-1 min-h-[30dvh] overflow-hidden"
+		class="relative grid min-h-[30dvh] flex-1 grid-cols-1 overflow-hidden"
 		data-noswipe
 		bind:clientWidth={width}
 		use:swipe={{
-			// The chart is read by dragging across it, so there the drag is handed over at its edges.
-			enabled: () => !settling && at !== TREE,
+			// The chart carries `data-noswipe`, so a drag begun on it belongs to the chart and not to this.
+			enabled: () => !settling,
 			onMove: (dx) => {
 				duration = 0;
 				offset = damp(dx);

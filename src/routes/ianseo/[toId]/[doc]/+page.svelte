@@ -236,7 +236,7 @@
 	<PageSkeleton title={false} cards={4} />
 {:else}
 <PullToRefresh onrefresh={() => read(true)}>
-<div class="mx-auto w-full max-w-4xl space-y-4 p-4">
+<div class="mx-auto flex w-full max-w-4xl flex-1 flex-col space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
 	{#if error === 'missing'}

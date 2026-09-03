@@ -511,7 +511,7 @@
 			-->
 			<main
 				bind:this={scroller}
-				class="flex-1 overflow-y-auto [overflow-anchor:none]"
+				class="flex flex-1 flex-col overflow-y-auto [overflow-anchor:none]"
 				style={withheld ? 'visibility: hidden' : ''}
 				ontouchstart={(e) => {
 					// A page that drags, such as a target face, opts out so a shot is never read as a swipe.

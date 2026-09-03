@@ -45,7 +45,11 @@
 	}
 </script>
 
-<div class="relative" use:pull={{ onMove: moved, onEnd: released, enabled: () => !reading }}>
+<!-- Grows into whatever the scroller has left, so a page inside can reach the foot of the screen. -->
+<div
+	class="relative flex flex-1 flex-col"
+	use:pull={{ onMove: moved, onEnd: released, enabled: () => !reading }}
+>
 	<!--
 		Drawn inside the band the page has been pulled off, rather than above it: what is above the top
 		of a scrolling element is cut off, and a spinner nobody can see is no answer at all.
@@ -67,6 +71,7 @@
 	</div>
 
 	<div
+		class="flex flex-1 flex-col"
 		style="transform: translateY({shown}px);
 			transition: {settling ? `transform ${PULL_SNAP_MS}ms ${PULL_EASE}` : 'none'}"
 	>
