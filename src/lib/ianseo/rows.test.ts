@@ -81,3 +81,37 @@ describe('marked', () => {
 		expect(marked(row('1', 'DUCROCQ Tanguy'), new Set())).toBe(false);
 	});
 });
+
+/*
+ * ianseo prints each competition's headings in the organiser's own language, so the column holding
+ * the archer is only found where that language is known. These are the accented spellings as they
+ * are actually published, which is what `plain` has to get through before a match is possible.
+ */
+describe('columns in the languages ianseo ships in', () => {
+	const found = (person: string, body: string) => {
+		const headings = columns('#', person, body, 'Score');
+		return [personColumn(headings), bodyColumn(headings)];
+	};
+
+	it('finds the archer and their club whatever the heading is written in', () => {
+		expect(found('Athlète', 'Société')).toEqual([1, 2]);
+		expect(found('Atleta', 'Società')).toEqual([1, 2]);
+		expect(found('Nombre', 'País')).toEqual([1, 2]);
+		expect(found('Sportler', 'Verein')).toEqual([1, 2]);
+		expect(found('Zawodnik', 'Drużyna')).toEqual([1, 2]);
+		expect(found('Jméno', 'Země')).toEqual([1, 2]);
+		expect(found('Sporcu', 'Kulüp')).toEqual([1, 2]);
+		expect(found('Név', 'Egyesület')).toEqual([1, 2]);
+		expect(found('Nimi', 'Seura')).toEqual([1, 2]);
+		expect(found('Vārds', 'Klubs')).toEqual([1, 2]);
+		expect(found('Αθλητής', 'Σύλλογος')).toEqual([1, 2]);
+		expect(found('Спортсмен', 'Клуб')).toEqual([1, 2]);
+		expect(found('Ime', 'Država')).toEqual([1, 2]);
+		expect(found('氏名', '所属')).toEqual([1, 2]);
+		expect(found('이름', '클럽')).toEqual([1, 2]);
+	});
+
+	it('offers nothing for a heading it has never been taught', () => {
+		expect(found('Kolonne', 'Spalte')).toEqual([null, null]);
+	});
+});
