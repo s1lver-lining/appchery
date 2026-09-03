@@ -56,6 +56,7 @@
 	const current = $derived(shown[at === TREE ? 0 : at]);
 
 	function remembered(): number {
+		if (!key) return 0;
 		const saved = Number(readSession(`appchery.bracketRound.${key}`));
 		return Number.isInteger(saved) ? saved : 0;
 	}
