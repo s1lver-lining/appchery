@@ -2,7 +2,7 @@
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
 	import { clubName } from '$lib/ianseo/clubs';
-	import { readAssignment } from '$lib/ianseo/brackets';
+	import { furthestRounds, readAssignment, winnerOf } from '$lib/ianseo/brackets';
 	import { ianseoFullClubNames } from '$lib/prefs';
 	import { readSession, writeSession } from '$lib/ui/sessionState';
 	import { swipe, AXIS_BIAS, COMMIT_RATIO, SNAP_EASE, SNAP_MS } from '$lib/ui/swipe';
@@ -28,13 +28,9 @@
 
 	const shown = $derived(document.rounds.filter((round) => round.matches.length > 0));
 
-	/** The higher score takes the match. A match nobody has shot has no winner, and says nothing. */
-	function winner(match: BracketMatch): number | null {
-		const scores = match.entries.map((entry) => Number(readAssignment(entry.score).score));
-		if (scores.some((score) => !Number.isFinite(score))) return null;
-		if (scores.length < 2 || scores[0] === scores[1]) return null;
-		return scores[0] > scores[1] ? 0 : 1;
-	}
+	/** How far each name is drawn, which is what says a match is over rather than merely in progress. */
+	const furthest = $derived(furthestRounds(shown));
+	const winner = (match: BracketMatch, round: number) => winnerOf(match, round, furthest);
 
 	/**
 	 * The side of a match that has somebody on it. A bye is drawn as one archer against an empty
@@ -245,7 +241,7 @@
 						<!-- Spread down the column, so a match sits between the two that feed it. -->
 						<div class="flex flex-1 flex-col justify-around gap-2">
 							{#each one.matches as match, place (place)}
-								{@const won = winner(match)}
+								{@const won = winner(match, index)}
 								<div class="rounded-xl border border-line bg-surface">
 									{#each sidesOf(match) as { entry, at: side }, row (side)}
 										{@const mine = followedLabels.has(entry.name.trim().toLowerCase())}
@@ -293,9 +289,9 @@
 			</div>
 {/snippet}
 
-{#snippet cards(round: BracketRound)}
+{#snippet cards(round: BracketRound, index: number)}
 		{#each round.matches as match, place (place)}
-			{@const won = winner(match)}
+			{@const won = winner(match, index)}
 			<div class="overflow-hidden rounded-2xl border border-line bg-surface">
 				{#if dueAt(match)}
 					<p class="border-b border-line bg-line/15 px-3 py-1 text-[11px] text-muted">
@@ -466,7 +462,7 @@
 			{#if at === TREE}
 				{@render chartPane(true)}
 			{:else}
-				{@render cards(current)}
+				{@render cards(current, at)}
 			{/if}
 		</div>
 
@@ -481,7 +477,7 @@
 				{#if coming === TREE}
 					{@render chartPane(false)}
 				{:else}
-					{@render cards(shown[coming])}
+					{@render cards(shown[coming], coming)}
 				{/if}
 			</div>
 		{/if}

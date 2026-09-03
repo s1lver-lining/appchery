@@ -1333,6 +1333,11 @@ async function checkBracketViews(browser) {
 	await page.waitForTimeout(400);
 	const targets = await page.locator('span[title^="On target"]').allInnerTexts();
 	check('a target is drawn as a target rather than as a score', targets.length > 0, JSON.stringify(targets));
+	// Nobody is through a match nobody has shot, so neither name in it is anybody's winner.
+	check(
+		'and neither side of it is marked as having won',
+		(await page.locator('div.font-semibold:has(> p)').count()) === 0
+	);
 	await shot(page, 'bracket-targets');
 
 	await context.close();
