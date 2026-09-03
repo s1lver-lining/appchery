@@ -429,7 +429,9 @@
 {#if bare}
 	<div class="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-bg" use:ownsStatusBar>
 		<div
-			class="flex flex-col gap-4 p-4 {rotated ? 'h-[100dvw] w-[100dvh] rotate-90' : 'h-full w-full'}"
+			class="flex flex-col gap-4 p-4 {rotated
+				? 'absolute top-1/2 left-1/2 h-[100dvw] w-[100dvh] -translate-x-1/2 -translate-y-1/2 rotate-90'
+				: 'h-full w-full'}"
 		>
 			<div class="flex justify-end gap-2">
 				<button
