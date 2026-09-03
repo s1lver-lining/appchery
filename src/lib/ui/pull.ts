@@ -1,17 +1,7 @@
 import { get } from 'svelte/store';
 import { noAnimations } from '$lib/prefs';
 
-/**
- * Pulling a page down to read it again.
- *
- * Bound by hand rather than through Svelte's handlers, for the same reason the horizontal drag is:
- * a pull has to preempt the scroll it starts inside, and Svelte registers touch handlers as passive,
- * where preventDefault does nothing.
- *
- * The gesture only ever starts at the very top of whatever is scrolling. Below that, a finger moving
- * down is somebody scrolling back up the page, and taking that gesture would make the app feel like
- * it was fighting them.
- */
+// Pulling a page down to read it again. Bound by hand, like the horizontal drag, to preempt the scroll.
 
 export interface PullOptions {
 	onMove: (distance: number) => void;

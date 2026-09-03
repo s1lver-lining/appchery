@@ -3,19 +3,7 @@ import { ianseoDocumentsSeen } from '$lib/prefs';
 import { lastPublished } from './parse/details';
 import type { Competition, CompetitionDocument } from './types';
 
-/**
- * Which of a competition's documents have been published since the archer last opened it.
- *
- * The list already says a whole competition has something new, which is what lights the chip beside
- * it and the dot on the home page. This is the same question one level down, and it is the one an
- * archer standing at the notice board actually asks: not "has anything happened" but "which of
- * these ninety is the one that happened".
- *
- * One stamp a competition rather than one a document, because that is all it takes: the documents
- * carry their own publishing times, so anything stamped later than the newest one seen last time is
- * new, and nothing else is. A competition opened for the first time has nothing new in it, since
- * nothing can have happened since a moment this device had not read yet.
- */
+// Which of a competition's documents were published since it was last opened: see doc/ianseo.md, "When a result is new".
 
 const KEY = (toId: string) => `${toId}|`;
 /** How many competitions are remembered, so reading around ianseo never becomes a store to clear. */
@@ -37,23 +25,12 @@ export function notePublished(toId: string, published: number | null): void {
 	ianseoDocumentsSeen.set([...rest, `${toId}|${published}`].slice(-REMEMBERED));
 }
 
-/**
- * What this device had already read of a competition it holds no record for.
- *
- * A record is only written from the moment this was built, so without a fallback every competition
- * the archer already followed would go one whole round of publishing with nothing marked. The pages
- * read before are still on the device, and the newest thing in the copy it kept is by definition
- * the newest thing it has been shown. Same clock on both sides of that comparison: ianseo's own.
- */
+/** What this device already held of a competition it has no record of, as a fallback for `seenPublished`. */
 export function seenInCache(kept: Competition | null | undefined): number | null {
 	return kept ? lastPublished(kept.documents) : null;
 }
 
-/**
- * The documents published since `seen`. Empty where this device has never read the competition,
- * which is an archer opening it for the first time rather than a competition that has just
- * published everything it holds.
- */
+/** The documents published since `seen`. Empty where this device has never read the competition. */
 export function newDocuments(
 	documents: CompetitionDocument[],
 	seen: number | null

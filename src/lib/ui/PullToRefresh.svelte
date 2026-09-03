@@ -3,18 +3,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import { pull, PULL_EASE, PULL_READY, PULL_SNAP_MS } from '$lib/ui/pull';
 
-	/**
-	 * Pull the page down and it reads itself again.
-	 *
-	 * The gesture the archer already knows from every other app on the phone, and the one worth
-	 * having here above all: these pages are somebody else's server read at a shooting line, where
-	 * the answer to almost everything is asking ianseo again. The button in the header does the same
-	 * thing, and stays: a pull is a shortcut, never the only way.
-	 *
-	 * A pull that is let go short of the mark springs back and reads nothing, which is what makes it
-	 * safe to try. The page follows the finger the whole way, in both directions, so what is about to
-	 * happen is visible before it is committed to.
-	 */
+	// Pull the page down and it reads itself again; a shortcut beside the header's own refresh button.
 	let {
 		onrefresh,
 		children
