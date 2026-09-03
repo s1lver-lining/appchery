@@ -45,15 +45,16 @@
 		void open(toId);
 	});
 
-	async function open(id: string) {
+	async function open(id: string, refresh = false) {
 		if (!id) return;
 		const mine = ++request;
 		schedule = null;
 		entry = null;
+		loading = true;
 
 		let found: Competition | null = null;
 		try {
-			found = (await loadCompetition(id)).value;
+			found = (await loadCompetition(id, { refresh })).value;
 		} catch {
 			found = null;
 		}
@@ -61,14 +62,24 @@
 
 		competition = found;
 		entry = scheduleDocument(found);
-		await read(false, mine);
+		await read(refresh, mine);
+	}
+
+	/**
+	 * Reading it again. Where the competition itself never arrived there is no schedule to ask for
+	 * yet, so the whole page is read again rather than the archer being left with a button that has
+	 * nothing to press: coming back into signal has to be enough to fix it.
+	 */
+	function again() {
+		return entry ? read(true) : open(toId, true);
 	}
 
 	async function read(refresh: boolean, mine = ++request) {
 		const path = entry?.pdfPath;
 		if (!path) {
 			loading = false;
-			error = 'missing';
+			// A competition that could not be read at all is not a competition that published nothing.
+			error = competition ? 'missing' : 'offline';
 			return;
 		}
 		loading = true;
@@ -113,8 +124,8 @@
 		<button
 			class="press rounded-lg border border-line bg-surface p-2 text-muted disabled:opacity-50"
 			aria-label={$t('ianseo.refresh')}
-			disabled={loading || !entry}
-			onclick={() => read(true)}
+			disabled={loading}
+			onclick={again}
 		>
 			<span class="block {loading ? 'animate-spin' : ''}"><Icon name="refresh" size={18} /></span>
 		</button>
@@ -154,7 +165,7 @@
 			body={$t(error === 'unreadable' ? 'ianseo.scheduleUnreadableBody' : 'ianseo.errorBody')}
 			action={pdf
 				? { label: $t('ianseo.openPdf'), href: pdf }
-				: { label: $t('ianseo.retry'), onclick: () => read(true) }}
+				: { label: $t('ianseo.retry'), onclick: again }}
 		/>
 	{:else if days.length > 0}
 		<ScheduleBoard {days} />

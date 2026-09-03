@@ -94,7 +94,8 @@
 		const path = entry?.path;
 		if (!path) {
 			loading = false;
-			error = 'missing';
+			// A competition that could not be read at all is not a document ianseo has stopped publishing.
+			error = competition ? 'missing' : 'offline';
 			return;
 		}
 		loading = true;

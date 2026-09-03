@@ -972,8 +972,36 @@ async function checkSchedule(browser) {
 		await page.getByText(/cannot be read here/i).isVisible()
 	);
 	await shot(page, 'schedule-unreadable');
-
 	await context.close();
+
+	/**
+	 * Opened with no signal at all, before this device has ever read the competition. There is no
+	 * schedule to ask for yet, and saying so as "this competition published no timetable" was the app
+	 * blaming the organiser for the archer's own reception.
+	 */
+	const dark = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	let down = true;
+	// The fixtures first: a later handler is asked before an earlier one, and this one cuts the wire.
+	await serveIanseo(dark);
+	await dark.route('**/competitions-api/ianseo/**', (route) =>
+		down ? route.abort('failed') : route.fallback()
+	);
+	const alone = await dark.newPage();
+	await alone.goto(`${BASE}/ianseo/29887/schedule`, { waitUntil: 'domcontentloaded' });
+	await alone.waitForTimeout(1200);
+	check(
+		'a schedule nothing could be read for blames the signal, not the organiser',
+		await alone.getByText(/could not be reached/i).isVisible()
+	);
+
+	down = false;
+	await alone.getByRole('button', { name: /Try again/i }).click();
+	await alone.waitForSelector('section h2', { timeout: 5000 }).catch(() => {});
+	check(
+		'and reading it again once there is signal is the whole of the fix',
+		(await alone.locator('section h2').count()) > 0
+	);
+	await dark.close();
 }
 
 /**
