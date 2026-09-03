@@ -63,6 +63,18 @@ export function parseTournaments(html: string, now = Date.now()): Tournament[] {
 }
 
 /**
+ * How many competitions the page plainly holds, whatever came of reading its rows.
+ *
+ * Counted from the links rather than from the rows, because the rows are what changes: the list
+ * repeats each competition for the narrow layout, so the same identifier appears more than once and
+ * only the distinct ones are competitions.
+ */
+export function countTournaments(html: string): number {
+	const found = html.matchAll(/Details\.php\?toId=(\d+)/g);
+	return new Set([...found].map((one) => one[1])).size;
+}
+
+/**
  * `27 Feb`, `25-28 Aug`, `11 Jul - 11 Nov`, `31 Oct 2026 - 20 Feb 2027`. Where no year is printed
  * the list means the nearest one, which is what a rolling window of competitions is.
  */

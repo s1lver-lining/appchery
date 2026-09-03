@@ -82,7 +82,8 @@ describe('scheduleDocument', () => {
 		name: 'A competition',
 		organiser: 'A club',
 		where: 'Somewhere',
-		documents
+		documents,
+		skipped: 0
 	});
 	const document = (over: Partial<Competition['documents'][number]>) => ({
 		path: null,

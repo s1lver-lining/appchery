@@ -55,6 +55,8 @@ export type Competition = {
 	/** Venue and date, as the competition's own header prints them on one line. */
 	where: string;
 	documents: CompetitionDocument[];
+	/** Lines this build could not read, so an index missing a document says so instead of looking whole. */
+	skipped: number;
 };
 
 export type DocumentCell = {

@@ -41,7 +41,8 @@ describe('parseCompetition', () => {
 			name: '',
 			organiser: '',
 			where: '',
-			documents: []
+			documents: [],
+			skipped: 0
 		});
 	});
 });

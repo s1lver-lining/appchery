@@ -58,7 +58,8 @@ describe('what the device already held', () => {
 		name: 'A competition',
 		organiser: 'A club',
 		where: 'Somewhere',
-		documents: stamps.map((at, index) => document(`D${index}`, at))
+		documents: stamps.map((at, index) => document(`D${index}`, at)),
+		skipped: 0
 	});
 
 	it('is the newest thing in the copy it kept', () => {

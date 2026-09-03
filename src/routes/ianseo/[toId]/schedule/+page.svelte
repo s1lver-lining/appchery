@@ -12,10 +12,9 @@
 	import PageTools from '$lib/ui/ianseo/PageTools.svelte';
 	import ScheduleBoard from '$lib/ui/ianseo/ScheduleBoard.svelte';
 	import { findInSchedule } from '$lib/ianseo/find';
-	import { loadCompetition, loadSchedule, TOURNAMENT_LIST } from '$lib/ianseo/client';
+	import { heldValue, loadCompetition, loadSchedule, TOURNAMENT_LIST } from '$lib/ianseo/client';
 	import { dayToday, scheduleDocument, type Schedule } from '$lib/ianseo/schedule';
 	import { whenOf } from '$lib/ianseo/select';
-	import { readCache } from '$lib/ianseo/store';
 	import { ianseoClosedDays } from '$lib/prefs';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import type { Competition, CompetitionDocument, Tournament } from '$lib/ianseo/types';
@@ -57,7 +56,7 @@
 		loading = true;
 
 		// From the device only: this page must not wait on the six megabytes the whole list is.
-		const list = await readCache<Tournament[]>(TOURNAMENT_LIST);
+		const list = await heldValue<Tournament[]>(TOURNAMENT_LIST);
 		let found: Competition | null = null;
 		try {
 			found = (await loadCompetition(id, { refresh })).value;

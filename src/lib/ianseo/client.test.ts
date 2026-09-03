@@ -141,3 +141,48 @@ describe('a page ianseo has published since it was read', () => {
 		expect(again.problem).toBe(null);
 	});
 });
+
+/**
+ * A page ianseo has rearranged half of. Reading none of it is already caught; reading some of it
+ * used to pass for the whole, so a list quietly a hundred competitions short looked complete.
+ */
+describe('a page only half of which could be read', () => {
+	it('keeps every competition it did read, and says the rest are missing', async () => {
+		const whole = pages.get(TOURNAMENT_LIST)!;
+		const all = await loadTournaments();
+		expect(all.skipped).toBe(0);
+
+		// One row rewritten the way a change to ianseo would rewrite it: the app can no longer see it.
+		const broken = whole.replace(/onclick="[^"]*toId=(\d+)[^"]*"/, 'data-to="$1"');
+		pages.set(TOURNAMENT_LIST, broken);
+		cache.clear();
+
+		const some = await loadTournaments();
+		expect(some.value.length).toBe(all.value.length - 1);
+		expect(some.skipped).toBe(1);
+	});
+
+	it('counts the documents of a competition it could not read', async () => {
+		const whole = await loadCompetition('26053');
+		expect(whole.skipped).toBe(0);
+		cache.clear();
+
+		// One document's links rewritten: with no href left, the index can no longer navigate to it.
+		const broken = pages
+			.get('/Details.php?toId=26053')!
+			.replace(/href="([^"]*IQRM[^"]*)"/g, 'data-was="$1"');
+		pages.set('/Details.php?toId=26053', broken);
+
+		const some = await loadCompetition('26053');
+		expect(some.value.documents.length).toBeLessThan(whole.value.documents.length);
+		expect(some.skipped).toBeGreaterThan(0);
+	});
+
+	it('reads a row cached before pages counted what they could not read', async () => {
+		// The old shape: the value on its own, with nothing wrapped around it.
+		cache.set(TOURNAMENT_LIST, { value: [{ toId: '1', name: 'Kept' }], cachedAt: Date.now() });
+		const loaded = await loadTournaments();
+		expect(loaded.value).toEqual([{ toId: '1', name: 'Kept' }]);
+		expect(loaded.skipped).toBe(0);
+	});
+});

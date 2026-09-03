@@ -65,6 +65,8 @@
 	let listRead = $state(false);
 	let cachedAt = $state<number | null>(null);
 	let problem = $state<'offline' | 'unreadable' | null>(null);
+	/** Competitions ianseo plainly listed and this build could not read: the rest are still here. */
+	let skipped = $state(0);
 	let loading = $state(true);
 	let failed = $state<'offline' | 'unreadable' | null>(null);
 	let search = $state('');
@@ -147,6 +149,7 @@
 			listRead = true;
 			cachedAt = loaded.cachedAt;
 			problem = loaded.problem;
+			skipped = loaded.skipped;
 			offer();
 			await note();
 		} catch (error) {
@@ -420,7 +423,7 @@
 
 <PullToRefresh onrefresh={() => read(true)}>
 <div class="mx-auto w-full max-w-page space-y-4 p-4">
-	<ReadNote {loading} {problem} {cachedAt} banner />
+	<ReadNote {loading} {problem} {cachedAt} {skipped} banner />
 
 	<!-- The search sits above the filters because it overrides them: a name is asked of all of ianseo. -->
 	<PageTools bind:value={search} placeholder={$t('ianseo.searchPlaceholder')} />

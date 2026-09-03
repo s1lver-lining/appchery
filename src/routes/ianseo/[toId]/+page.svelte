@@ -10,6 +10,7 @@
 	import PullToRefresh from '$lib/ui/PullToRefresh.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import {
+		heldValue,
 		loadCompetition,
 		loadResultDocument,
 		loadTournaments,
@@ -17,7 +18,6 @@
 	} from '$lib/ianseo/client';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import { fileLink, webLink } from '$lib/competitions/links';
-	import { readCache } from '$lib/ianseo/store';
 	import { competitionPath } from '$lib/ianseo/client';
 	import { noteWhatIsFollowed } from '$lib/ianseo/notify';
 	import {
@@ -58,6 +58,8 @@
 	let tournament = $state<Tournament | null>(null);
 	let cachedAt = $state<number | null>(null);
 	let problem = $state<'offline' | 'unreadable' | null>(null);
+	/** Documents ianseo plainly listed and this build could not read: the rest are still here. */
+	let skipped = $state(0);
 	let loading = $state(true);
 	let failed = $state<'offline' | 'unreadable' | null>(null);
 	let pinned = $state<Favourite[]>([]);
@@ -89,9 +91,9 @@
 
 		const known = await favourites();
 		// The list is only read from what is already on the device: this page must not wait on it.
-		const list = await readCache<Tournament[]>(TOURNAMENT_LIST);
+		const list = await heldValue<Tournament[]>(TOURNAMENT_LIST);
 		// Read before the page is, or refreshing it would overwrite the copy being asked about.
-		const kept = await readCache<Competition>(competitionPath(id));
+		const kept = await heldValue<Competition>(competitionPath(id));
 		if (mine !== request) return;
 
 		pinned = known;
@@ -113,6 +115,7 @@
 			competition = loaded.value;
 			cachedAt = loaded.cachedAt;
 			problem = loaded.problem;
+			skipped = loaded.skipped;
 			// Noted now, so the next visit marks what arrives after this one and nothing that is on screen.
 			notePublished(toId, lastPublished(loaded.value.documents));
 			await markSeen();
@@ -337,7 +340,7 @@
 {:else}
 <PullToRefresh onrefresh={() => read(true)}>
 <div class="mx-auto w-full max-w-page space-y-4 p-4">
-	<ReadNote {loading} {problem} {cachedAt} banner />
+	<ReadNote {loading} {problem} {cachedAt} {skipped} banner />
 
 	{#if competition?.organiser}
 		<p class="px-1 text-sm text-muted">{competition.organiser}</p>

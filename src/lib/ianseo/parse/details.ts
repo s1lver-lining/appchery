@@ -19,6 +19,7 @@ export function parseCompetition(toId: string, html: string): Competition {
 
 	// Document by document: one line ianseo has written oddly must not lose the archer the others.
 	const documents: CompetitionDocument[] = [];
+	let skipped = 0;
 	const panels = tags(html, 'div').filter((tag) => /results-panel"/.test(tag.attrs));
 	for (const panel of panels) {
 		const inside = tags(panel.html, 'div');
@@ -35,7 +36,9 @@ export function parseCompetition(toId: string, html: string): Competition {
 		if (holds) continue;
 
 		const group = inside.find((tag) => /results-panel-head/.test(tag.attrs));
-		documents.push(...readEach(items, (item) => readDocument(item.html, text(group?.html ?? ''))));
+		const read = readEach(items, (item) => readDocument(item.html, text(group?.html ?? '')));
+		skipped += items.length - read.length;
+		documents.push(...read);
 	}
 
 	return {
@@ -43,7 +46,8 @@ export function parseCompetition(toId: string, html: string): Competition {
 		name: lines[0] ?? '',
 		organiser: lines[1] ?? '',
 		where: lines.slice(2).join(', '),
-		documents
+		documents,
+		skipped
 	};
 }
 

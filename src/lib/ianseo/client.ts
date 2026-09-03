@@ -1,7 +1,7 @@
 import { readPdfText } from '$lib/pdf/text';
 import { parseCompetition } from './parse/details';
 import { parseDocument } from './parse/document';
-import { parseTournaments, TOURNAMENT_LIST } from './parse/list';
+import { countTournaments, parseTournaments, TOURNAMENT_LIST } from './parse/list';
 import { looksLike } from './parse/reading';
 import { fetchIanseo, fetchIanseoBytes, IanseoError } from './fetch';
 import { parseSchedule, type Schedule } from './schedule';
@@ -35,7 +35,31 @@ export type Loaded<T> = {
 	 * its own words rather than blaming a network that is working perfectly well.
 	 */
 	problem: 'offline' | 'unreadable' | null;
+	/**
+	 * Lines ianseo plainly published that this build could not read. A page half of which has changed
+	 * shape is still worth showing: what was read stays reachable, and the screen says the rest is
+	 * missing rather than quietly presenting a short list as the whole of one.
+	 */
+	skipped: number;
 };
+
+/** What a read came back with, before it is known whether it came from ianseo or from the device. */
+type Parsed<T> = { value: T; skipped: number };
+
+/**
+ * A cache row, whether or not it was written before pages counted what they could not read. The old
+ * rows hold the value on its own, and a value of that shape is never a `Parsed` itself.
+ */
+function unwrap<T>(payload: Parsed<T> | T): Parsed<T> {
+	const held = payload as Parsed<T>;
+	const wrapped =
+		held !== null &&
+		typeof held === 'object' &&
+		!Array.isArray(held) &&
+		'value' in held &&
+		typeof held.skipped === 'number';
+	return wrapped ? held : { value: payload as T, skipped: 0 };
+}
 
 export type LoadOptions = {
 	refresh?: boolean;
@@ -51,29 +75,40 @@ export type LoadOptions = {
 
 async function load<T>(
 	path: string,
-	read: (signal?: AbortSignal) => Promise<T>,
+	read: (signal?: AbortSignal) => Promise<Parsed<T>>,
 	ttl: number,
 	options: LoadOptions = {}
 ): Promise<Loaded<T>> {
-	const cached = await readCache<T>(path);
+	const cached = await readCache<Parsed<T> | T>(path);
+	const held = cached ? unwrap<T>(cached.value) : null;
 	// Age is only a guess at whether this has changed. A publishing time is knowledge, and wins.
 	const published = options.since ?? 0;
 	const current = cached && Date.now() - cached.cachedAt < ttl && cached.cachedAt >= published;
-	if (cached && current && !options.refresh) {
-		return { value: cached.value, cachedAt: cached.cachedAt, problem: null };
+	if (cached && held && current && !options.refresh) {
+		return { ...held, cachedAt: cached.cachedAt, problem: null };
 	}
 
 	try {
-		const value = await read(options.signal);
-		await writeCache(path, value);
-		return { value, cachedAt: Date.now(), problem: null };
+		const parsed = await read(options.signal);
+		await writeCache(path, parsed);
+		return { ...parsed, cachedAt: Date.now(), problem: null };
 	} catch (error) {
 		const problem =
 			error instanceof IanseoError && error.kind === 'unreadable' ? 'unreadable' : 'offline';
 		// What the device already has is worth more than the reason it could not be refreshed.
-		if (cached) return { value: cached.value, cachedAt: cached.cachedAt, problem };
+		if (cached && held) return { ...held, cachedAt: cached.cachedAt, problem };
 		throw error;
 	}
+}
+
+/**
+ * What the device already holds for a page, without asking ianseo for it at all. For a screen that
+ * has to paint before the six megabytes the whole list is could possibly have been read.
+ */
+export async function heldValue<T>(path: string): Promise<Loaded<T> | null> {
+	const cached = await readCache<Parsed<T> | T>(path);
+	if (!cached) return null;
+	return { ...unwrap<T>(cached.value), cachedAt: cached.cachedAt, problem: null };
 }
 
 export function loadTournaments(options?: LoadOptions): Promise<Loaded<Tournament[]>> {
@@ -86,7 +121,8 @@ export function loadTournaments(options?: LoadOptions): Promise<Loaded<Tournamen
 			if (list.length === 0 && looksLike.tournamentList(html)) {
 				throw new IanseoError('unreadable', TOURNAMENT_LIST);
 			}
-			return list;
+			// Some read and some not is the same change caught earlier, and the ones read still stand.
+			return { value: list, skipped: Math.max(0, countTournaments(html) - list.length) };
 		},
 		LIST_TTL,
 		options
@@ -107,7 +143,7 @@ export function loadCompetition(toId: string, options?: LoadOptions): Promise<Lo
 			if (competition.documents.length === 0 && looksLike.competition(html)) {
 				throw new IanseoError('unreadable', competitionPath(toId));
 			}
-			return competition;
+			return { value: competition, skipped: competition.skipped };
 		},
 		COMPETITION_TTL,
 		options
@@ -129,7 +165,7 @@ export function loadResultDocument(path: string, options?: LoadOptions): Promise
 					: document.rounds.every((round) => round.matches.length === 0);
 			// A table this app could not read a single row out of is not an empty table.
 			if (empty && looksLike.document(html)) throw new IanseoError('unreadable', path);
-			return document;
+			return { value: document, skipped: document.skipped };
 		},
 		DOCUMENT_TTL,
 		options
@@ -149,7 +185,8 @@ export function loadSchedule(path: string, options?: LoadOptions): Promise<Loade
 		async (signal) => {
 			const schedule = parseSchedule(await readPdfText(await fetchIanseoBytes(path, signal)));
 			if (!schedule) throw new IanseoError('unreadable', path);
-			return schedule;
+			// A day the parser could not place sends the whole timetable to the PDF, so none is partly read.
+			return { value: schedule, skipped: 0 };
 		},
 		// A timetable is settled days before it is shot and changes about as often as the paperwork.
 		COMPETITION_TTL,

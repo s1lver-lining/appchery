@@ -12,6 +12,7 @@
 		loading,
 		problem,
 		cachedAt,
+		skipped = 0,
 		banner = false,
 		children
 	}: {
@@ -23,6 +24,8 @@
 		 */
 		problem: 'offline' | 'unreadable' | null;
 		cachedAt: number | null;
+		/** Lines ianseo published that this build could not read, said rather than quietly left out. */
+		skipped?: number;
 		/**
 		 * Shown at the top of the page and only while it is stale. The quiet line belongs at the
 		 * bottom, where a page that is current is read out; a page that is not has to say so where the
@@ -37,6 +40,13 @@
 </script>
 
 {#if banner}
+	{#if skipped > 0}
+		<!-- Said rather than hidden: a page quietly missing a line is worse than one that admits it. -->
+		<p class="flex items-center gap-2 rounded-xl border border-line bg-line/25 px-3 py-2 text-xs text-muted">
+			<span class="shrink-0"><Icon name="bulb" size={16} /></span>
+			{$t('ianseo.partial')}
+		</p>
+	{/if}
 	{#if problem && cachedAt}
 		<p class="flex items-center gap-2 rounded-xl border border-line bg-line/25 px-3 py-2 text-xs text-muted">
 			<span class="shrink-0"><Icon name={problem === 'unreadable' ? 'bulb' : 'cloud'} size={16} /></span>
