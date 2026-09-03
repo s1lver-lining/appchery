@@ -409,6 +409,31 @@ length, and a team may put two archers' arrows into one boss. Without a count no
 nothing is guessed, because an end has no number to be short of. `-a/--arrows` passes one to the
 replay tool; the app knows it from the round.
 
+### Counting a look rather than a mention, which is worse
+
+The loop that gathers evidence adds a vote per proposal, and a pass can propose the same place twice: a
+shaft read at two points along itself lands as two. That looks like a plain fault, since the bar a
+candidate has to clear is counted in looks and those are one look. Counted once a pass, the sweeps find
+110 arrows of 169 rather than 111 and write down 103 right rather than 105.
+
+So it stays as it is. A place a single pass puts forward twice is a place that pass was surer of, and
+counting it twice turns out to be evidence rather than an accident.
+
+Worth recording because it is the sort of change that is obviously right and is not, and because the
+first measurement said it was: a replay against recorded proposals had it a point ahead, and a replay
+whose recording predates a change to the proposer is measuring last week's detector. The real harness
+disagreed and the real harness was right.
+
+**Two proposers agreeing is the only weight available that is not the proposal's own shape.** Nothing
+about a proposal by itself separates the right marks from the wrong ones, but the shape detector and
+the impact detector fail on different things, and over the labelled sweeps both speak for 72% of the
+arrows and for 10% of everything else. Asked as a bar, it is worth a great deal to the pooled proposer:
+requiring three passes of agreement takes it from 98 arrows of 163 with 113 wrong marks to 108 with 68.
+
+That is still not as good as the shape detector alone, so pooling stays off. It is `agreeVotes` when it
+is wanted, and it is the shape of the answer if the proposer work resumes: weight from a second opinion
+rather than from a better threshold.
+
 ### Displacing a mark that turned out to be wrong
 
 Confirming used to be for ever: nothing ever took a mark off the sheet, so a wrong place that cleared
@@ -490,6 +515,55 @@ What comes back is in face coordinates, and that is what makes the split safe. A
 place on the face however far the camera has moved since the frame it was found in, so a result that
 arrives late is still drawn in the right place. Inline, a pass taking 600ms was 600ms in which the
 video did not repaint.
+
+### Which of the two fits a number is read through
+
+The split costs one thing, and it took a while to see because nothing measured it. There are two fits
+of the face, not one. The worker keeps its own, and the page follows a second on every frame for the
+overlay; the page takes the worker's only when the *number* of faces changes, which after the first
+acquisition is almost never. So the page's fit is a chain hundreds of frames long, and unlike the
+worker's it never searches for the face again, never checks the rings against it, and never refits from
+a blob. It walks.
+
+Measured at the moment the page actually rebases, against the worker's fit of the frame it was given:
+
+| the worker answers after | a mark moves by, median | p90 |
+| --- | --- | --- |
+| 40ms, this laptop | 1.6% of a face radius | 13.2% |
+| 120ms, a phone three times slower | 4.0% | 24.2% |
+
+A ring is 10% of a radius, and the impact error the detector is measured to have is 1.7%. So on a phone
+the frame a mark is read through mattered more than the detector's own accuracy did.
+
+Put in the unit the archer cares about, read through the page's fit instead of the worker's:
+
+| the worker answers after | the scored ring changes on | by two rings or more |
+| --- | --- | --- |
+| 40ms, this laptop | **14.2%** of readings | 1.8% |
+| 120ms, a phone three times slower | **29.9%** | 4.6% |
+
+About one arrow in seven on a laptop, and nearly one in three on a phone, written down a ring out for
+no reason to do with seeing it. The replay never pays any of this, because it drives one fit.
+
+Three things follow, and all three now hold.
+
+**A mark is scored in the frame it was found in.** Every harness in this document measures the worker's
+frame; the page's is the one the archer's overlay is drawn in. Those are different questions and they
+had one answer. `LiveImpact` already carried `source`, the worker's own coordinates, and `reject`
+already used it for exactly this reason; scoring did not. It does now, and the mark is still *drawn*
+through the page's fit so that it lands where the drawn rings say.
+
+**The rebase reads the fit the frame was offered under.** Converting out of one fit into the picture and
+back into another is a change of coordinates only if both describe the same frame. The page's had moved
+on by however long the pass took. It keeps its fit at the moment of offering and reads the answer back
+through that.
+
+**The page takes the worker's fit back when it has plainly lost the boss.** Adopting every pass is what
+made the rings jump and stays out, but a fifth of a radius apart is not drift, it is one of the two
+being somewhere else, and the worker is the half that searches.
+
+Measure with `scripts/eval-split.mjs`, which drives the page's side by `LiveScanner`'s own rules
+alongside a real sweep. It is the only harness here that exercises the split at all.
 
 ## Multiple faces at once
 
@@ -577,7 +651,10 @@ for a few seconds, and there were six arrows in the paper: how many came back, h
 back that were not arrows, and would the score have been right.
 
 `scripts/dump-passes.mjs` writes down what the proposer offered on every pass of every labelled sweep,
-and `scripts/eval-tracker.mjs` replays that file through the tracker. Everything the tracker decides is
+and `scripts/eval-tracker.mjs` replays that file through the tracker. Record it again after anything
+that touches the proposer, and check the two still agree before believing either: a recording that
+predates a change is measuring the detector as it was, and it says so in numbers that look exactly like
+numbers about the tracker. That has already sent one change the wrong way. Everything the tracker decides is
 downstream of those proposals, so this answers a question about the tracker in milliseconds instead of
 in the eight minutes a full replay costs, and the two agree exactly when given the same settings. Every
 tracker number in this document was found that way and confirmed against the recordings afterwards.

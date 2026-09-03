@@ -64,6 +64,8 @@ export class LiveScanner {
 	private readonly worker: Worker;
 	private faces: FaceLocation[] = [];
 	private offered = false;
+	/** This page's fit as of the frame the worker is working on, so its answer can be read back. */
+	private offeredFaces: FaceLocation[] | null = null;
 
 	/**
 	 * Arrows the detector has confirmed, in the coordinates of the face this page is following.
@@ -100,14 +102,24 @@ export class LiveScanner {
 			this.pending = result.pending;
 			this.steady = result.steady;
 			/**
-			 * Only taken when the page has nothing of its own, or when the count changed and a face has
-			 * appeared or gone. Otherwise the geometry the page is following stays authoritative: a
-			 * detection computed from an older frame lands somewhere slightly different, and adopting it
-			 * every time is what made the rings jump every third of a second.
+			 * Taken when a face has appeared or gone, and when this page's own fit has plainly lost the
+			 * boss. Otherwise the geometry the page is following stays authoritative: a detection computed
+			 * from an older frame lands somewhere slightly different, and adopting it every time is what
+			 * made the rings jump every third of a second.
 			 */
-			if (this.faces.length !== result.faces.length) this.faces = result.faces;
+			if (this.faces.length !== result.faces.length || this.lost(result.faces)) {
+				this.faces = result.faces;
+				/*
+				 * Taking the worker's fit makes it this page's fit, so there is nothing left to convert
+				 * and the fit this frame was offered under is no longer what anything is drawn in.
+				 * Cleared here rather than after, or the arrows would be rebased into the frame that was
+				 * just given up and drawn against rings that have moved.
+				 */
+				this.offeredFaces = null;
+			}
 			// After the adoption above, so a result that brought a new face is read in that face's frame.
 			this.arrows = this.rebase(result.arrows, result.faces);
+			this.offeredFaces = null;
 			this.readout = {
 				proposals: result.proposals ?? 0,
 				early: result.early ?? 0,
@@ -134,10 +146,42 @@ export class LiveScanner {
 	 * Done afresh on every result rather than accumulated, so nothing here can drift: the tracker sends
 	 * its whole list each time and each list is converted once, from the fit it was actually made in.
 	 */
+	/**
+	 * Whether this page's fit has wandered far enough from the worker's to be called lost.
+	 *
+	 * The page only ever follows. It never searches for the face again, never checks the rings against
+	 * it and never refits from a blob, so its fit is one long chain with nothing to correct it, and a
+	 * stride or a hand across the lens can walk it off the boss for the rest of the end. The worker does
+	 * all three of those things several times a second, so where the two disagree by more than a fit
+	 * ever should, the worker is the one to believe.
+	 *
+	 * Far enough that ordinary disagreement never reaches it. The two are a chain and a search of the
+	 * same boss and they part company by a couple of percent of a radius in the ordinary way; a fifth of
+	 * a radius is not drift, it is one of them being somewhere else.
+	 */
+	private lost(theirs: FaceLocation[]): boolean {
+		return this.faces.some((ours, i) => {
+			const other = theirs[i];
+			if (!other) return false;
+			const radius = Math.max(1, (ours.semiMajor + ours.semiMinor) / 2);
+			return Math.hypot(ours.cx - other.cx, ours.cy - other.cy) / radius > 0.2;
+		});
+	}
+
 	private rebase(arrows: Impact[], from: FaceLocation[]): LiveImpact[] {
+		/*
+		 * Read through the fit this page held when the frame was handed over, not the one it holds now.
+		 *
+		 * The conversion goes out of the worker's fit into the picture and back into this one, and a
+		 * pixel only means the same thing in both if both describe the same frame. The worker's describes
+		 * the frame it was given; ours has moved on by however long the pass took, and the boss has moved
+		 * in the picture with it. Kept at the moment of offering, the two agree about the frame again and
+		 * the conversion is what it claims to be: a change of coordinates, not a guess about motion.
+		 */
+		const mine = this.offeredFaces ?? this.faces;
 		return arrows.map((arrow) => {
 			const theirs = from[arrow.face];
-			const ours = this.faces[arrow.face];
+			const ours = mine[arrow.face];
 			// Nothing to convert between, so it is left as it came: wrong is possible, invented is not.
 			if (!theirs || !ours || theirs === ours) return arrow;
 			const pixel = toImageCoords(theirs, arrow.x, arrow.y);
@@ -192,6 +236,8 @@ export class LiveScanner {
 	offer(small: Frame, region: LiveRegion | null = null) {
 		if (this.offered) return;
 		this.offered = true;
+		// The fit this frame was seen through, kept for the answer that will come back about it.
+		this.offeredFaces = this.faces;
 		const message: Record<string, unknown> = {
 			type: 'frame',
 			width: small.width,

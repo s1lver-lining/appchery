@@ -31,6 +31,8 @@ export interface SweepCandidate extends Impact {
 	 * the boss, which is evidence about how many arrows are there; distance is not.
 	 */
 	at: number[];
+	/** Passes on which more than one proposer put this place forward, which is agreement of a second kind. */
+	agreed: number;
 }
 
 export interface SweepOptions {
@@ -70,6 +72,13 @@ export interface SweepOptions {
 	 * the rest of the sweep however plainly it was wrong.
 	 */
 	displaceRatio?: number;
+	/**
+	 * Passes on which two proposers must have agreed on a place before it can be confirmed.
+	 *
+	 * Only meaningful when more than one proposer is running. Zero asks nothing, which is what a single
+	 * proposer has to be judged by anyway.
+	 */
+	agreeVotes?: number;
 }
 
 export class SweepTracker {
@@ -105,6 +114,7 @@ export class SweepTracker {
 	private readonly togetherVotes: number;
 	private readonly togetherShare: number;
 	private readonly displaceRatio: number;
+	private readonly agreeVotes: number;
 
 	constructor(options: SweepOptions = {}) {
 		/**
@@ -240,6 +250,7 @@ export class SweepTracker {
 		 * 163 against 109, with three fewer wrong marks and two fewer of those on the scoresheet.
 		 */
 		this.displaceRatio = options.displaceRatio ?? 1.25;
+		this.agreeVotes = options.agreeVotes ?? 0;
 	}
 
 	setLimit(limit: number) {
@@ -354,10 +365,29 @@ export class SweepTracker {
 	}
 
 	/** Feeds one pass of proposals and returns whatever that pass was enough to confirm. */
-	push(proposals: { x: number; y: number; area: number; face: number }[]): Impact[] {
+	push(proposals: { x: number; y: number; area: number; face: number; from?: string }[]): Impact[] {
 		this.passes += 1;
 
-		for (const proposal of proposals) {
+		/*
+		 * Which places this one pass had more than one proposer speak for.
+		 *
+		 * Two proposers that fail on different things agreeing inside a single look is evidence of a
+		 * different kind from the same proposer saying it again, and it is the only weight available that
+		 * is not the proposal's own shape, which separates nothing. Measured over the labelled sweeps,
+		 * both speak for 72% of the arrows and for 10% of everything else.
+		 */
+		const together = proposals.map((proposal) => {
+			if (this.agreeVotes <= 0) return false;
+			return proposals.some(
+				(other) =>
+					other !== proposal &&
+					other.face === proposal.face &&
+					(other.from ?? '') !== (proposal.from ?? '') &&
+					Math.hypot(other.x - proposal.x, other.y - proposal.y) < this.mergeDistance
+			);
+		});
+
+		for (const [index, proposal] of proposals.entries()) {
 			// Already scored: not a new arrow, and not evidence about anything either.
 			if (this.nearest(this.taken, proposal)) continue;
 
@@ -368,7 +398,9 @@ export class SweepTracker {
 			if (candidate) {
 				candidate.votes += 1;
 				candidate.last = this.passes;
-				if (candidate.at[candidate.at.length - 1] !== this.passes) candidate.at.push(this.passes);
+				const fresh = candidate.at[candidate.at.length - 1] !== this.passes;
+				if (fresh) candidate.at.push(this.passes);
+				if (together[index] && candidate.agreed < candidate.at.length) candidate.agreed += 1;
 				candidate.area = proposal.area;
 				// Averaged towards each new reading, so the estimate settles rather than trusting the last.
 				candidate.x += (proposal.x - candidate.x) / candidate.votes;
@@ -380,7 +412,8 @@ export class SweepTracker {
 					votes: 1,
 					first: this.passes,
 					last: this.passes,
-					at: [this.passes]
+					at: [this.passes],
+					agreed: together[index] ? 1 : 0
 				});
 			}
 		}
@@ -402,6 +435,7 @@ export class SweepTracker {
 		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
 			if (this.confirmed.length + ready.length >= this.limit) break;
 			if (candidate.votes < this.minVotes || this.agreement(candidate) < this.minAgreement) continue;
+			if (candidate.agreed < this.agreeVotes) continue;
 			if (this.apart(ready, candidate)) continue;
 			if (this.apart(this.confirmed, candidate)) {
 				const held = this.displaceRatio > 0 ? this.blocker(candidate) : undefined;

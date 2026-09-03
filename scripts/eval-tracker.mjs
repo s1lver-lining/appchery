@@ -26,7 +26,9 @@ const MATCH = Number(option('match', 0.05));
 
 const { replay } = await load();
 const data = JSON.parse(await readFile(file, 'utf8'));
-const recordings = data.recordings;
+/** One kind of printed face only, for asking how the detector does on the one it meets most. */
+const face = option('face', null);
+const recordings = data.recordings.filter((r) => !face || (r.faceType ?? 'unsaid') === face);
 
 function score(options) {
 	let found = 0;
@@ -42,7 +44,7 @@ function score(options) {
 
 	for (const shot of recordings) {
 		const targets = shot.targets.map(([x, y]) => ({ x, y }));
-		const passes = shot.passes.map((pass) => pass.map(([x, y, area, face]) => ({ x, y, area, face })));
+		const passes = shot.passes.map((pass) => pass.map(([x, y, area, face, from]) => ({ x, y, area, face, from })));
 		const out = replay(passes, shot.expected, options);
 
 		const taken = new Set();

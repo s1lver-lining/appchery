@@ -31,7 +31,7 @@ export interface SweepResult {
 	dropped: number;
 	proposals: number;
 	/** Every proposal of every pass, to separate what was never seen from what was seen and dropped. */
-	everything: { x: number; y: number; pass: number; area: number; face: number }[];
+	everything: { x: number; y: number; pass: number; area: number; face: number; from: string }[];
 	/**
 	 * The pass at which the face first counted as found, so latency can be measured from that moment.
 	 *
@@ -85,7 +85,7 @@ export class Sweep {
 	private withFace = 0;
 	private passes = 0;
 	private proposals = 0;
-	private everything: { x: number; y: number; pass: number; area: number; face: number }[] = [];
+	private everything: { x: number; y: number; pass: number; area: number; face: number; from: string }[] = [];
 	private at: FaceLocation | null = null;
 	private firstSteady: number | null = null;
 	private readonly costs: number[] = [];
@@ -187,6 +187,21 @@ export class Sweep {
 		return this.scanner.scaleFactor;
 	}
 
+	/** Every face as of the last frame fed in, so a harness can model what the page would adopt. */
+	locatedAll() {
+		return this.scanner.locatedAll;
+	}
+
+	/** Which way is up as of the last frame, so a harness following a second fit can agree with this one. */
+	upNow(): number | null {
+		return this.upAt(this.lastNowMs);
+	}
+
+	/** Passes taken so far, so a harness can tell a frame that got one from a frame that did not. */
+	passesTaken(): number {
+		return this.passes;
+	}
+
 	/** The face as of the last frame fed in, so a harness can cut the same crop the camera page cuts. */
 	get located(): FaceLocation | null {
 		return this.scanner.located;
@@ -223,7 +238,7 @@ export class Sweep {
 			this.proposals += result.detections;
 			this.recent = result.proposed.map((seen) => ({ x: seen.x, y: seen.y }));
 			for (const seen of result.proposed) {
-				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes, area: seen.area ?? 0, face: seen.face });
+				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes, area: seen.area ?? 0, face: seen.face, from: seen.from ?? 'shape' });
 			}
 		} else {
 			this.scanner.track(small);
@@ -326,5 +341,12 @@ function sharpnessOf(frame: Frame, face: FaceLocation | null): number {
 
 export { toFaceCoords };
 export { regionBox, REGION_SCALE } from './pipeline';
+export { toImageCoords } from './face';
+// So a harness can model the camera page's own side of the split, which follows without searching.
+export { refineFace } from './refine';
+export { upFromGravity } from './motion';
+// So a harness can ask what ring a mark would be scored in, which is the question the archer asks.
+export { scoreAt } from '../domain/rounds/geometry';
+export { WA_10_RING } from '../domain/rounds/seed';
 // So a harness can reduce one decoded frame to two scales: the search's and the proposer's.
 export { downscale } from './pixels';

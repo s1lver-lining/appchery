@@ -115,11 +115,28 @@ import { SteadyFace } from '$lib/vision/steady';
 	 */
 	const motion = new MotionLog();
 
+	/**
+	 * Where a mark is for the purpose of scoring it, which is not where it is drawn.
+	 *
+	 * The detector found it in the worker's fit of the face, and the worker is the half that searches:
+	 * it looks for the face afresh a few times a second, checks the rings agree with it, and refits from
+	 * a blob when a stride throws the follow off. The page never does any of that. It takes the worker's
+	 * faces only when their number changes and follows them from there, so its fit is a chain hundreds
+	 * of frames long with nothing to correct it, and over a sweep it walks: measured against the
+	 * worker's, half the readings are within 1.6% of a face radius and a tenth are more than a ring out.
+	 *
+	 * A mark is rebased into the page's fit so that it is drawn where the drawn rings say, which is the
+	 * right thing to draw and the wrong thing to score. Every number this page writes down is read here
+	 * instead, in the frame the arrow was actually found in, which is also the only frame anything has
+	 * ever been measured in.
+	 */
+	const scored = (arrow: LiveImpact) => arrow.source ?? arrow;
+
 	/** Highest first, as a scoresheet reads, so the pills are checked in a predictable order. */
 	const ranked = $derived(
 		[...found].sort((a, b) => {
-			const left = scoreAt(scoreSet, a.x, a.y);
-			const right = scoreAt(scoreSet, b.x, b.y);
+			const left = scoreAt(scoreSet, scored(a).x, scored(a).y);
+			const right = scoreAt(scoreSet, scored(b).x, scored(b).y);
 			return right.value - left.value || Number(right.isInner ?? false) - Number(left.isInner ?? false);
 		})
 	);
@@ -140,15 +157,15 @@ import { SteadyFace } from '$lib/vision/steady';
 	});
 
 	/** A pill wears the colour of the ring it scored, exactly as the keypad and the sheet do. */
-	function pillStyle(arrow: Impact): string {
-		const zone = scoreAt(scoreSet, arrow.x, arrow.y);
+	function pillStyle(arrow: LiveImpact): string {
+		const zone = scoreAt(scoreSet, scored(arrow).x, scored(arrow).y);
 		if (!zone.countsAsHit) return 'background-color: var(--c-sunk); color: var(--c-muted);';
 		return `background-color: ${zone.color}; color: ${zone.strokeColor}; box-shadow: inset 0 0 0 1px ${zone.strokeColor}59;`;
 	}
 
 	/** Just the tenth, as a suffix: the ring is what matters, the depth is a detail beside it. */
-	function detail(arrow: Impact): string {
-		const decimal = decimalScore(scoreSet, arrow.x, arrow.y);
+	function detail(arrow: LiveImpact): string {
+		const decimal = decimalScore(scoreSet, scored(arrow).x, scored(arrow).y);
 		return decimal === null ? '' : `.${Math.round((decimal % 1) * 10)}`;
 	}
 
@@ -440,12 +457,12 @@ import { SteadyFace } from '$lib/vision/steady';
 		});
 	}
 
-	function label(arrow: Impact): string {
-		return scoreAt(scoreSet, arrow.x, arrow.y).label;
+	function label(arrow: LiveImpact): string {
+		return scoreAt(scoreSet, scored(arrow).x, scored(arrow).y).label;
 	}
 
 	function accept() {
-		onaccept(kept.map((a) => ({ x: a.x, y: a.y })));
+		onaccept(kept.map((a) => ({ x: scored(a).x, y: scored(a).y })));
 		// The arrows stay in the boss, so the detector is told they are scored rather than new.
 		scanner.accept();
 	}

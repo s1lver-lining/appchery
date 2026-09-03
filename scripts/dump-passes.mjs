@@ -147,11 +147,13 @@ for (const name of (await readdir(WORK)).sort()) {
 	for (let i = 0; i < result.passes; i++) byPass.push([]);
 	for (const p of result.everything) {
 		if (p.pass < 1 || p.pass > result.passes) continue;
-		byPass[p.pass - 1].push([round(p.x), round(p.y), Math.round(p.area), p.face]);
+		byPass[p.pass - 1].push([round(p.x), round(p.y), Math.round(p.area), p.face, p.from]);
 	}
 
 	recordings.push({
 		video: name.slice(-24),
+		// Kept so a harness can ask about one kind of face without opening the labels again.
+		faceType: label.faceType ?? 'unsaid',
 		expected: label.arrows.length,
 		targets,
 		sharpness: result.sharpness.map((s) => round(s)),

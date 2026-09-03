@@ -30,7 +30,7 @@ export interface ScanResult {
 	/** Proposals this frame produced, before the tracker judged them. Diagnostic, not used for scoring. */
 	detections: number;
 	/** Those same proposals, so a harness can tell what was never seen from what was seen and dropped. */
-	proposed: { x: number; y: number; face: number; area: number }[];
+	proposed: { x: number; y: number; face: number; area: number; from: string }[];
 }
 
 /**
@@ -401,7 +401,8 @@ export class Scanner {
 						x: arrow.x,
 						y: arrow.y,
 						area: arrow.area,
-						face: index
+						face: index,
+						from: 'shape'
 					}));
 				})
 			: [];
@@ -414,7 +415,8 @@ export class Scanner {
 						x: arrow.x,
 						y: arrow.y,
 						area: arrow.area,
-						face: index
+						face: index,
+						from: 'impacts'
 					}));
 				})
 			: [];
@@ -431,7 +433,8 @@ export class Scanner {
 						y: arrow.y,
 						// No blob to measure, so confidence stands in where the UI wants a size.
 						area: Math.round(arrow.confidence * 100),
-						face: index
+						face: index,
+						from: 'learned'
 					}));
 				})
 			: [];
