@@ -916,6 +916,10 @@ async function checkSchedule(browser) {
 	check('a session is shown with the time it starts', /09:30-11:45/.test(text));
 	check("the report's own signature is left off", !/Report Created|Powered by/.test(text));
 	check('the PDF is offered beside the search box', await page.getByRole('link', { name: 'PDF' }).first().isVisible());
+	check(
+		'and again at the foot of the page, as every other document keeps it',
+		(await page.getByRole('link', { name: 'PDF' }).count()) === 2
+	);
 	await shot(page, 'schedule');
 
 	await page.getByPlaceholder(/Find in the schedule/i).fill('tournoi 4');

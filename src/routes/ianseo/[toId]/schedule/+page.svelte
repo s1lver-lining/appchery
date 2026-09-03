@@ -220,7 +220,19 @@
 		<EmptyState title={$t('ianseo.noLineFound')} body={$t('ianseo.noLineFoundBody')} />
 	{/if}
 
-	<ReadNote {loading} {problem} {cachedAt} />
+	<!-- Where the page came from, in the same place every other kind of document keeps it. -->
+	<ReadNote {loading} {problem} {cachedAt}>
+		{#if pdf}
+			<a
+				class="press rounded-lg border border-line px-2 py-1 font-medium"
+				href={pdf}
+				target={externalTarget()}
+				rel="noreferrer"
+			>
+				{$t('ianseo.pdf')}
+			</a>
+		{/if}
+	</ReadNote>
 </div>
 </PullToRefresh>
 {/if}
