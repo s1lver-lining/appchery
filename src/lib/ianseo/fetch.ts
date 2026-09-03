@@ -28,6 +28,34 @@ export class IanseoError extends Error {
 	}
 }
 
+/**
+ * How long a page is waited for before the app gives up on it and says so.
+ *
+ * A phone at a shooting range holds a signal it cannot use: the request is accepted and then never
+ * answered, and without a deadline the screen waits on it for as long as the app is open. Reading
+ * ianseo again costs a second, so waiting a third of a minute buys nothing a retry would not.
+ */
+const TIMEOUT_MS = 12_000;
+
+/**
+ * The caller's own signal, if it gave one, with the deadline added. `AbortSignal.any` is not
+ * everywhere yet and this runs inside whatever webview the phone ships with, so it is done by hand.
+ */
+function deadline(signal?: AbortSignal): { signal: AbortSignal; done: () => void } {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(new Error('timeout')), TIMEOUT_MS);
+	const passOn = () => controller.abort(signal?.reason);
+	signal?.addEventListener('abort', passOn);
+	if (signal?.aborted) passOn();
+	return {
+		signal: controller.signal,
+		done: () => {
+			clearTimeout(timer);
+			signal?.removeEventListener('abort', passOn);
+		}
+	};
+}
+
 /** `path` is ianseo's own, such as `/TourList.php` or `/TourData/2026/26053/IQRM.php`. */
 export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<string> {
 	if (!path.startsWith('/')) throw new IanseoError('missing', `not an ianseo path: ${path}`);
@@ -35,7 +63,12 @@ export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<s
 	if (Capacitor.isNativePlatform()) {
 		let response;
 		try {
-			response = await CapacitorHttp.get({ url: `${IANSEO}${path}`, responseType: 'text' });
+			response = await CapacitorHttp.get({
+				url: `${IANSEO}${path}`,
+				responseType: 'text',
+				connectTimeout: TIMEOUT_MS,
+				readTimeout: TIMEOUT_MS
+			});
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}
@@ -44,16 +77,28 @@ export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<s
 		return String(response.data ?? '');
 	}
 
-	let response: Response;
+	// The deadline covers reading the body too: a page whose headers arrive and whose rows never do
+	// is the same wait as one that never answered at all.
+	const waiting = deadline(signal);
 	try {
-		response = await fetch(`${PROXY}${path}`, { signal });
-	} catch (error) {
-		// A proxy that is not there and a phone with no signal fail the same way, and read the same.
-		throw new IanseoError('offline', String(error));
+		let response: Response;
+		try {
+			response = await fetch(`${PROXY}${path}`, { signal: waiting.signal });
+		} catch (error) {
+			// A proxy that is not there, a phone with no signal and one that answers nothing all read
+			// the same on screen, and all three are fixed by the same thing: asking again in a moment.
+			throw new IanseoError('offline', String(error));
+		}
+		if (response.status === 404) throw new IanseoError('missing', path);
+		if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
+		try {
+			return await response.text();
+		} catch (error) {
+			throw new IanseoError('offline', String(error));
+		}
+	} finally {
+		waiting.done();
 	}
-	if (response.status === 404) throw new IanseoError('missing', path);
-	if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
-	return await response.text();
 }
 
 /**
@@ -67,7 +112,12 @@ export async function fetchIanseoBytes(path: string, signal?: AbortSignal): Prom
 	if (Capacitor.isNativePlatform()) {
 		let response;
 		try {
-			response = await CapacitorHttp.get({ url: `${IANSEO}${path}`, responseType: 'arraybuffer' });
+			response = await CapacitorHttp.get({
+				url: `${IANSEO}${path}`,
+				responseType: 'arraybuffer',
+				connectTimeout: TIMEOUT_MS,
+				readTimeout: TIMEOUT_MS
+			});
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}
@@ -76,15 +126,24 @@ export async function fetchIanseoBytes(path: string, signal?: AbortSignal): Prom
 		return fromBase64(String(response.data ?? ''));
 	}
 
-	let response: Response;
+	const waiting = deadline(signal);
 	try {
-		response = await fetch(`${PROXY}${path}`, { signal });
-	} catch (error) {
-		throw new IanseoError('offline', String(error));
+		let response: Response;
+		try {
+			response = await fetch(`${PROXY}${path}`, { signal: waiting.signal });
+		} catch (error) {
+			throw new IanseoError('offline', String(error));
+		}
+		if (response.status === 404) throw new IanseoError('missing', path);
+		if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
+		try {
+			return new Uint8Array(await response.arrayBuffer());
+		} catch (error) {
+			throw new IanseoError('offline', String(error));
+		}
+	} finally {
+		waiting.done();
 	}
-	if (response.status === 404) throw new IanseoError('missing', path);
-	if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
-	return new Uint8Array(await response.arrayBuffer());
 }
 
 function fromBase64(data: string): Uint8Array {
