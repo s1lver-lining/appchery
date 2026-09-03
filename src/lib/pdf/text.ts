@@ -59,8 +59,8 @@ function streams(bytes: Uint8Array, raw: string): Uint8Array[] {
 	const opens = raw.matchAll(/stream\r?\n/g);
 
 	for (const open of opens) {
-		// The word is inside `endstream` as well, and the byte after that one is the next object.
-		if (raw.slice(open.index - 3, open.index) === 'end') continue;
+		// The word is inside `endstream` as well, and what follows that one is the next object.
+		if (raw.slice(Math.max(0, open.index - 3), open.index) === 'end') continue;
 		const from = open.index + open[0].length;
 		const close = raw.indexOf('endstream', from);
 		if (close < 0) continue;
@@ -147,6 +147,20 @@ function decode(bytes: string): string {
 type Token = { kind: 'number' | 'string' | 'name' | 'operator' | 'open' | 'close'; value: string };
 
 /**
+ * Matched from where the scan has got to rather than against the rest of the stream: a content
+ * stream is twenty thousand characters and a token is one or two, so cutting the tail off at every
+ * one of them copied the page a few thousand times over to read it once.
+ */
+const NAME = /\/([^\s/[\]<>(){}%]*)/y;
+const NUMBER = /[-+]?[\d.]+/y;
+const OPERATOR = /[^\s/[\]<>(){}%]+/y;
+
+function take(pattern: RegExp, content: string, at: number): RegExpExecArray {
+	pattern.lastIndex = at;
+	return pattern.exec(content)!;
+}
+
+/**
  * A content stream as its operands and operators. Strings are taken whole here rather than by a
  * pattern, because a bracket inside one is written as a bracket and a pattern reading to the first
  * closing one cuts a competition's own words in half.
@@ -186,18 +200,18 @@ function* tokens(content: string): Generator<Token> {
 			at++;
 			yield { kind: character === '[' ? 'open' : 'close', value: character };
 		} else if (character === '/') {
-			const match = /^\/([^\s/[\]<>(){}%]*)/.exec(content.slice(at))!;
+			const match = take(NAME, content, at);
 			at += match[0].length;
 			yield { kind: 'name', value: match[1] };
 		} else if (/[-+.\d]/.test(character)) {
-			const match = /^[-+]?[\d.]+/.exec(content.slice(at))!;
+			const match = take(NUMBER, content, at);
 			at += match[0].length;
 			yield { kind: 'number', value: match[0] };
 		} else if (character === '<' || character === '>') {
 			// A dictionary, which nothing here reads into: stepped over so its contents are not operands.
 			at += 2;
 		} else {
-			const match = /^[^\s/[\]<>(){}%]+/.exec(content.slice(at))!;
+			const match = take(OPERATOR, content, at);
 			at += match[0].length;
 			yield { kind: 'operator', value: match[0] };
 		}
