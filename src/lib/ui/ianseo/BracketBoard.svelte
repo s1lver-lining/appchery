@@ -230,9 +230,9 @@
 				{#each sidesOf(match) as { entry, at: side }, index (side)}
 					{@const mine = followedLabels.has(entry.name.trim().toLowerCase())}
 					{@const drawn = readAssignment(entry.score)}
-					<!-- Score and club share the second line, so a wrapped name is not two lines of blank beside a single-line score. -->
+					{@const hasClub = Boolean(entry.club || entry.country)}
 					<div
-						class="flex items-start gap-2 px-3 py-2 {index === 1
+						class="flex items-center gap-2 px-3 py-2 {index === 1
 							? 'border-t border-line'
 							: ''} {mine ? 'bg-brand/10' : ''} {won === side ? 'font-semibold' : ''} {won !== null &&
 						won !== side
@@ -240,25 +240,26 @@
 							: ''}"
 					>
 						{#if entry.seed}
-							<span class="tabular w-6 shrink-0 pt-0.5 text-[11px] text-muted">{entry.seed}</span>
+							<span class="tabular w-6 shrink-0 text-[11px] text-muted">{entry.seed}</span>
 						{/if}
 						<div class="min-w-0 flex-1">
+							<!-- The star follows the name rather than holding a column of its own: it is about the archer. -->
 							<p class="flex items-center gap-1 break-words">
 								{#if mine}
 									<span class="shrink-0 text-brand-text"><Icon name="star" size={12} filled /></span>
 								{/if}
 								{entry.name || '—'}
 							</p>
-							<div class="mt-0.5 flex items-center gap-2">
-								{#if entry.club || entry.country}
-									<p class="min-w-0 flex-1 truncate text-xs text-muted">
-										{entry.country?.name ?? clubName(entry.club ?? '', $ianseoFullClubNames)}
-									</p>
-								{/if}
-								<div class="ml-auto flex shrink-0 items-center gap-1.5">
+							{#if hasClub || match.sets[side]?.length}
+								<!-- The set-by-set score sits beside the club it belongs beside; a lone archer keeps it under their name instead. -->
+								<div class="mt-0.5 flex items-center gap-2">
+									{#if hasClub}
+										<p class="min-w-0 flex-1 truncate text-xs text-muted">
+											{entry.country?.name ?? clubName(entry.club ?? '', $ianseoFullClubNames)}
+										</p>
+									{/if}
 									{#if match.sets[side]?.length}
-										<!-- What each set was shot for, which is the whole story of a match won 6 to 4. -->
-										<div class="hidden gap-1 min-[380px]:flex">
+										<div class="hidden gap-1 min-[380px]:flex {hasClub ? 'ml-auto shrink-0' : ''}">
 											{#each match.sets[side] as value, at (at)}
 												<span class="tabular w-7 rounded bg-line/40 py-0.5 text-center text-[11px] text-muted">
 													{value}
@@ -266,28 +267,32 @@
 											{/each}
 										</div>
 									{/if}
-									{#if drawn.target}
-										<!-- `19D` in the score column reads as a score; a target chip says it is not one. -->
-										<span
-											class="tabular flex items-center gap-1 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted"
-											title={$t('ianseo.onTarget', { target: drawn.target })}
-										>
-											<Icon name="target" size={11} />
-											{drawn.target}
-										</span>
-									{:else if drawn.score && !isNumber(drawn.score)}
-										<!-- Room for what it says: a bye is a word rather than a number of points. -->
-										<span class="tabular rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted">
-											{scoreLabel(drawn.score)}
-										</span>
-									{:else}
-										<span class="tabular text-right text-base leading-none {won === side ? 'text-brand-text' : ''}">
-											{drawn.score ?? ''}
-										</span>
-									{/if}
 								</div>
-							</div>
+							{/if}
 						</div>
+						{#if drawn.target}
+							<!-- `19D` in the score column reads as a score; a target chip says it is not one. -->
+							<span
+								class="tabular flex shrink-0 items-center gap-1 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted"
+								title={$t('ianseo.onTarget', { target: drawn.target })}
+							>
+								<Icon name="target" size={11} />
+								{drawn.target}
+							</span>
+						{:else if drawn.score && !isNumber(drawn.score)}
+							<!-- Room for what it says: a bye is a word rather than a number of points. -->
+							<span class="tabular shrink-0 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted">
+								{scoreLabel(drawn.score)}
+							</span>
+						{:else}
+							<span
+								class="tabular w-7 shrink-0 text-right text-lg leading-none {won === side
+									? 'text-brand-text'
+									: ''}"
+							>
+								{drawn.score ?? ''}
+							</span>
+						{/if}
 						{#if entry.name}
 							<button
 								class="shrink-0 rounded p-1 {mine ? 'text-brand-text' : 'text-muted/50'}"
@@ -357,9 +362,9 @@
 		</div>
 	</div>
 
-	<!-- The two panes share one grid cell, auto height, no JS measuring; see doc/ianseo.md, "What is shown". -->
+	<!-- The two panes share one grid cell, auto height; `grid-cols-1` bounds it, or a row overflows. -->
 	<div
-		class="relative grid min-h-[30dvh] overflow-hidden"
+		class="relative grid grid-cols-1 min-h-[30dvh] overflow-hidden"
 		data-noswipe
 		bind:clientWidth={width}
 		use:swipe={{
