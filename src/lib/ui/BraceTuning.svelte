@@ -18,6 +18,7 @@
 	import AutoScore from './AutoScore.svelte';
 	import BraceCurves from './BraceCurves.svelte';
 	import Icon from './Icon.svelte';
+	import { closeOnBack } from './dismiss.svelte';
 	import { ownsStatusBar } from './statusBar';
 	import { lockScroll } from './scrollLock';
 
@@ -53,6 +54,12 @@
 	});
 	/** The height an end is being plotted for, in millimetres, and the arrows placed so far. */
 	let plotting = $state<{ braceMm: number; shots: Omit<Shot, 'ordinal'>[] } | null>(null);
+	// The plot pane is a page in its own right to the archer, so the back key closes it first.
+	closeOnBack(
+		() => plotting !== null,
+		() => (plotting = null)
+	);
+
 	let adding = $state(false);
 	let scanning = $state(false);
 	/** A number input binds a number, and an empty field binds null, so the value is not a string. */
