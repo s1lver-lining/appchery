@@ -244,11 +244,23 @@
 						{/if}
 						<div class="min-w-0 flex-1">
 							<!-- The star follows the name rather than holding a column of its own: it is about the archer. -->
-							<p class="flex items-center gap-1 break-words">
-								{#if mine}
-									<span class="shrink-0 text-brand-text"><Icon name="star" size={12} filled /></span>
-								{/if}
+							<!-- Inline rather than a flex row, so the star follows the last word instead of dropping below it. -->
+							<p class="break-words">
 								{entry.name || '—'}
+								{#if entry.name}
+									<button
+										class="inline-flex rounded p-0.5 align-text-bottom {mine
+											? 'text-brand-text'
+											: 'text-muted/40'}"
+										aria-pressed={mine}
+										aria-label={mine
+											? $t('ianseo.unfollowName', { name: entry.name })
+											: $t('ianseo.followName', { name: entry.name })}
+										onclick={() => onfollow('archer', entry.name)}
+									>
+										<Icon name="star" size={13} filled={mine} />
+									</button>
+								{/if}
 							</p>
 							{#if hasClub || match.sets[side]?.length}
 								<!-- The set-by-set score sits beside the club it belongs beside; a lone archer keeps it under their name instead. -->
@@ -292,18 +304,6 @@
 							>
 								{drawn.score ?? ''}
 							</span>
-						{/if}
-						{#if entry.name}
-							<button
-								class="shrink-0 rounded p-1 {mine ? 'text-brand-text' : 'text-muted/50'}"
-								aria-pressed={mine}
-								aria-label={mine
-									? $t('ianseo.unfollowName', { name: entry.name })
-									: $t('ianseo.followName', { name: entry.name })}
-								onclick={() => onfollow('archer', entry.name)}
-							>
-								<Icon name="star" size={14} filled={mine} />
-							</button>
 						{/if}
 					</div>
 				{/each}
