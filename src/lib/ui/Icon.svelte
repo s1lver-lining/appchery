@@ -182,6 +182,8 @@
 			<rect x="3.6" y="13.4" width="7" height="7" rx="1.4" />
 			<rect x="13.4" y="13.4" width="7" height="7" rx="1.4" />`,
 		list: `<path d="M4 6.5h16M4 12h16M4 17.5h16" />`,
+		// Two matches feeding one, which is the whole of what an elimination draw is.
+		bracket: `<path d="M3.5 5.5h5.5v13H3.5" /><path d="M9 12h5.5v-5h6" /><path d="M14.5 12h6" />`,
 		chevronUp: `<path d="M6 14.5L12 8.5l6 6" />`,
 		check: `<path d="M5 12.5l4.5 4.5L19 7" />`,
 		// A circle that does not quite close, with the arrow that carries it round.

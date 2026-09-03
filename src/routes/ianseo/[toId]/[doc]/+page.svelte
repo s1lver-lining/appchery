@@ -273,7 +273,12 @@
 
 	{#if !error}
 		{#if document?.kind === 'bracket'}
-			<BracketBoard document={{ ...document, rounds }} {followedLabels} onfollow={follow} />
+			<BracketBoard
+				document={{ ...document, rounds }}
+				{followedLabels}
+				onfollow={follow}
+				key="{toId}/{name}"
+			/>
 		{:else if sections.length > 0}
 			{#each sections as section, index (index)}
 				<ResultTable {section} {choice} {followedLabels} onfollow={follow} />

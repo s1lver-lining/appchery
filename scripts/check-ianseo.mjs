@@ -66,7 +66,9 @@ function serveIanseo(context, state = {}) {
 							? fixture('Details-29418')
 							: toId === '29887'
 								? fixture('Details-29887')
-								: fixture('Details');
+								: toId === '29742'
+									? fixture('Details-29742')
+									: fixture('Details');
 			// A class that has just finished, which is what ianseo rebuilding a competition means.
 			if (state.late) {
 				body = body.replace(
@@ -1202,6 +1204,67 @@ async function checkNewDocuments(browser) {
 	await context.close();
 }
 
+/**
+ * The three ways a bracket is read: a round at a time, the whole chart at once, and a drag across
+ * the cards to turn from one round to the next. One order, so the chart sits at the end of it and a
+ * swipe past the final arrives there, and the round being read survives leaving the page.
+ */
+async function checkBracketViews(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+	await serveIanseo(context);
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo/29742/IBRM`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('div.w-max > button[aria-pressed]');
+	await page.waitForTimeout(500);
+
+	const strip = page.locator('div.w-max > button[aria-pressed]');
+	const pressed = async () =>
+		(await page.locator('button[aria-pressed="true"]').first().innerText()).replace(/\s+/g, ' ').trim();
+
+	await page.getByRole('button', { name: /Whole draw/i }).click();
+	await page.waitForTimeout(400);
+	const columns = await page.locator('.overflow-x-auto .w-44').count();
+	check('the whole draw is every round side by side', columns > 3, `${columns} rounds`);
+	await shot(page, 'bracket-tree');
+
+	// A drag across the cards is the same move as a tap on the strip above them.
+	await strip.nth(3).click();
+	await page.waitForTimeout(400);
+	const from = await pressed();
+	const cards = await page.locator('div.space-y-2[data-noswipe]').boundingBox();
+	const touch = await context.newCDPSession(page);
+	async function drag(dx) {
+		const y = cards.y + 50;
+		const x = cards.x + cards.width / 2;
+		await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+		for (let step = 1; step <= 8; step++) {
+			await touch.send('Input.dispatchTouchEvent', {
+				type: 'touchMove',
+				touchPoints: [{ x: x + (dx * step) / 8, y }]
+			});
+		}
+		await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+		await page.waitForTimeout(350);
+	}
+	await drag(-140);
+	const forwards = await pressed();
+	check('a swipe across the cards turns to the next round', forwards !== from, `${from} -> ${forwards}`);
+	await drag(140);
+	check('and back to the one before it', (await pressed()) === from, `${forwards} -> ${await pressed()}`);
+
+	// Left on a round, come back to that round.
+	await drag(-140);
+	const left = await pressed();
+	await page.goto(`${BASE}/ianseo/29742`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(500);
+	await page.goto(`${BASE}/ianseo/29742/IBRM`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('div.w-max > button[aria-pressed]');
+	await page.waitForTimeout(600);
+	check('a bracket opens on the round it was left on', (await pressed()) === left, `${left} -> ${await pressed()}`);
+
+	await context.close();
+}
+
 async function checkDocumentTools(browser) {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 	await serveIanseo(context);
@@ -1474,6 +1537,7 @@ async function run() {
 	await checkSchedule(browser);
 	await checkScheduleDays(browser);
 	await checkNewDocuments(browser);
+	await checkBracketViews(browser);
 	await checkPull(browser);
 
 	await browser.close();
