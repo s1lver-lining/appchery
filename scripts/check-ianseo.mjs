@@ -980,7 +980,8 @@ async function checkCompetitionSearch(browser) {
 	await page.waitForTimeout(400);
 	const found = await page.locator('a[href*="/ianseo/26053/"]').count();
 	check('a competition can be searched for a class', found > 0 && found < all, `${found} of ${all}`);
-	check('and says how many documents it left', await page.getByText(/\d+ documents/).isVisible());
+	// The first of them: the offer to read the documents for a name counts them in the same words.
+	check('and says how many documents it left', await page.getByText(/\d+ documents/).first().isVisible());
 	await context.close();
 }
 
