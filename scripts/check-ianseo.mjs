@@ -1262,6 +1262,16 @@ async function checkBracketViews(browser) {
 	await page.waitForTimeout(600);
 	check('a bracket opens on the round it was left on', (await pressed()) === left, `${left} -> ${await pressed()}`);
 
+	/**
+	 * A match nobody has shot carries where it will be shot rather than a score, and `1` drawn in the
+	 * column a score of `6` goes in reads as one archer having beaten another one to nothing.
+	 */
+	await page.getByRole('button', { name: /^Finals/ }).click();
+	await page.waitForTimeout(400);
+	const targets = await page.locator('span[title^="On target"]').allInnerTexts();
+	check('a target is drawn as a target rather than as a score', targets.length > 0, JSON.stringify(targets));
+	await shot(page, 'bracket-targets');
+
 	await context.close();
 }
 

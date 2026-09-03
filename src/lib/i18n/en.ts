@@ -948,6 +948,7 @@ export const en = {
 		noPersonFound: 'Nobody of that name',
 		noPersonFoundBody: 'No document of this competition names them. They may not have entered it.',
 		bye: 'Bye',
+		onTarget: 'On target {target}',
 		wholeDraw: 'Whole draw',
 		group: {
 			individual: 'Individual',

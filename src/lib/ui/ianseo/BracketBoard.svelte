@@ -169,11 +169,21 @@
 													</span>
 												{/if}{entry.name || '—'}
 											</span>
-											<span class="tabular shrink-0 {won === side ? 'text-brand-text' : 'text-muted'}">
-												{drawn.score && !isNumber(drawn.score)
-													? scoreLabel(drawn.score)
-													: (drawn.score ?? '')}
-											</span>
+											{#if drawn.target}
+												<span
+													class="tabular flex shrink-0 items-center gap-0.5 rounded bg-line/40 px-1 text-[10px] text-muted"
+													title={$t('ianseo.onTarget', { target: drawn.target })}
+												>
+													<Icon name="target" size={9} />
+													{drawn.target}
+												</span>
+											{:else}
+												<span class="tabular shrink-0 {won === side ? 'text-brand-text' : 'text-muted'}">
+													{drawn.score && !isNumber(drawn.score)
+														? scoreLabel(drawn.score)
+														: (drawn.score ?? '')}
+												</span>
+											{/if}
 										</div>
 									{/each}
 								</div>
@@ -244,10 +254,23 @@
 								{/each}
 							</div>
 						{/if}
-						{#if drawn.target || (drawn.score && !isNumber(drawn.score))}
-							<!-- Room for what it says: a target is `19D` and a bye is a word, neither of which is a digit. -->
+						{#if drawn.target}
+							<!--
+								A target carries the target face beside it. `19D` in the column a score of `6` is
+								drawn in reads as a score, and a match nobody has shot yet reading as a nineteen
+								to nothing is the one thing a bracket must never say.
+							-->
+							<span
+								class="tabular flex shrink-0 items-center gap-1 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted"
+								title={$t('ianseo.onTarget', { target: drawn.target })}
+							>
+								<Icon name="target" size={11} />
+								{drawn.target}
+							</span>
+						{:else if drawn.score && !isNumber(drawn.score)}
+							<!-- Room for what it says: a bye is a word rather than a number of points. -->
 							<span class="tabular shrink-0 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted">
-								{drawn.target ?? scoreLabel(drawn.score!)}
+								{scoreLabel(drawn.score)}
 							</span>
 						{:else}
 							<span

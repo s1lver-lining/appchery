@@ -950,6 +950,7 @@ export const fr: Dictionary = {
 		noPersonFound: 'Personne de ce nom',
 		noPersonFoundBody: "Aucun document de cette compétition ne le mentionne. Il n'y est peut-être pas inscrit.",
 		bye: 'Exempt',
+		onTarget: 'Sur la cible {target}',
 		wholeDraw: 'Tableau complet',
 		group: {
 			individual: 'Individuel',
