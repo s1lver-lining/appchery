@@ -284,3 +284,64 @@ describe('parseDocument, on a table left open', () => {
 		]);
 	});
 });
+
+/**
+ * A qualification too wide for the page, which ianseo wraps onto a second line under the same
+ * columns: eight distances printed as five and three, with the last three headed by nothing at all.
+ */
+describe('parseDocument, on a row ianseo wrapped', () => {
+	const document = table('IQHCL');
+
+	it('names every distance, not only the ones the header had room for', () => {
+		expect(document.sections[0].columns.map((column) => column.label)).toEqual([
+			'Pos.',
+			'Athlète',
+			'Clubs / Pays',
+			'70m-1',
+			'70m-2',
+			'70m-3',
+			'70m-4',
+			'70m-5',
+			'70m-6',
+			'70m-7',
+			'70m-8',
+			'Tot.',
+			'10+X',
+			'X'
+		]);
+	});
+
+	it('folds the wrapped distances as the archer may fold the printed ones', () => {
+		const secondary = new Map(
+			document.sections[0].columns.map((column) => [column.label, column.secondary])
+		);
+		expect(secondary.get('70m-8')).toBe(secondary.get('70m-1'));
+	});
+
+	it('keeps the wrapped half on the row it belongs to rather than as a row of its own', () => {
+		const first = document.sections[0].rows[0];
+		expect(first.cells.map((cell) => cell.text)).toEqual([
+			'1',
+			'CORMIER Boaz',
+			'0163151 - Clermont Ferrand Cie',
+			'340/ 2',
+			'346/ 1',
+			'346/ 1',
+			'337/ 3',
+			'341/ 2',
+			'338/ 1',
+			'341/ 1',
+			'342/ 1',
+			'2731',
+			'156',
+			'50'
+		]);
+		// ianseo's own unfolded line says the same eight scores, which is what makes this checkable.
+		expect(first.detail.at(-1)).toContain('70m-8: 342');
+		expect(document.skipped).toBe(0);
+	});
+
+	it('reads every archer, none of them eaten by the line above', () => {
+		expect(document.sections[0].rows).toHaveLength(19);
+	});
+});

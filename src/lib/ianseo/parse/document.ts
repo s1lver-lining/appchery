@@ -5,11 +5,12 @@ import type {
 	BracketRound,
 	DocumentCell,
 	DocumentColumn,
+	DocumentRow,
 	DocumentSection,
 	ResultDocument,
 	TableDocument
 } from '../types';
-import { cells, flagOf, hasClass, rows, tags, text, type Cell } from './html';
+import { attr, cells, flagOf, hasClass, rows, tags, text, type Cell, type Tag } from './html';
 import { readEach } from './reading';
 
 /**
@@ -61,10 +62,14 @@ function parseTable(html: string): TableDocument {
 	let heading: string | null = null;
 	let section: DocumentSection | null = null;
 	const sections: DocumentSection[] = [];
+	/** How many lines the row being read has already wrapped onto, which is what names their columns. */
+	let continued = 0;
+	/** The columns the header declared, which stay the measure of the series a wrapped line continues. */
+	let declared: DocumentColumn[] = [];
 
 	for (const group of blocks(html)) {
 		if (group.name === 'thead') {
-			for (const row of rows(group.html)) {
+			for (const row of tableRows(group.html)) {
 				const only = headingOf(row.html);
 				if (only !== null) {
 					// The first cell reaching across the table names the document; later ones open a section.
@@ -84,7 +89,7 @@ function parseTable(html: string): TableDocument {
 		}
 
 		// Row by row, so an archer's line that cannot be read costs that line and not the whole table.
-		for (const row of rows(group.html)) {
+		for (const row of tableRows(group.html)) {
 			try {
 				// The secondary lines are the same row again, unfolded for a narrow screen: its detail.
 				if (hasClass(row.attrs, 'results-secondary-lines')) {
@@ -99,8 +104,16 @@ function parseTable(html: string): TableDocument {
 					if (text(row.html)) skipped++;
 					continue;
 				}
+				const above = section?.rows.at(-1);
+				// ianseo wraps a row too wide for the page onto the line below it, under the same columns.
+				if (section && above && wrapped(values)) {
+					section.columns = unwrap(section.columns, declared, above, values, ++continued);
+					continue;
+				}
+				continued = 0;
 				if (!section) {
 					section = { heading, columns, rows: [] };
+					declared = columns;
 					sections.push(section);
 				}
 				// A line narrower than the table it is in has lost something the markup no longer says.
@@ -122,22 +135,174 @@ function parseTable(html: string): TableDocument {
 		kind: 'table',
 		title,
 		skipped,
-		sections: sections.filter((one) => one.rows.length > 0).map(trim)
+		sections: sections.filter((one) => one.rows.length > 0).map(regroup).map(trim)
 	};
 }
 
-/** ianseo ends several of its tables with a spacer column, which is a blank one wherever it is redrawn. */
+/** ianseo pads its tables with spacer columns, and a blank one is a blank one wherever it sits. */
 function trim(section: DocumentSection): DocumentSection {
-	let width = Math.max(section.columns.length, ...section.rows.map((row) => row.cells.length));
-	const empty = (at: number) =>
-		!section.columns[at]?.label && section.rows.every((row) => !row.cells[at]?.text);
-	while (width > 0 && empty(width - 1)) width--;
+	const width = Math.max(section.columns.length, ...section.rows.map((row) => row.cells.length));
+	const kept: number[] = [];
+	for (let at = 0; at < width; at++) {
+		const empty = !section.columns[at]?.label && section.rows.every((row) => !row.cells[at]?.text);
+		if (!empty) kept.push(at);
+	}
 
 	return {
 		...section,
-		columns: section.columns.slice(0, width),
-		rows: section.rows.map((row) => ({ ...row, cells: row.cells.slice(0, width) }))
+		columns: kept.map((at) => section.columns[at] ?? { label: '', secondary: false }),
+		rows: section.rows.map((row) => ({
+			...row,
+			cells: kept.map((at) => row.cells[at] ?? { text: '', flag: null })
+		}))
 	};
+}
+
+/** How many columns a cell reaches across, which is how a wrapped line says which one it belongs under. */
+function span(cell: Cell): number {
+	const found = Number(attr(cell.attrs, 'colspan') ?? 1);
+	return Number.isFinite(found) && found > 0 ? Math.floor(found) : 1;
+}
+
+/**
+ * Whether this line is the rest of the one above it rather than a line of its own. A row too wide
+ * for the page is wrapped by ianseo onto a second line that opens with one blank cell reaching
+ * across the columns naming the archer, so that what follows sits under the columns it continues.
+ */
+function wrapped(values: Cell[]): boolean {
+	const [first, ...rest] = values;
+	if (!first || first.header || span(first) < 2 || text(first.html)) return false;
+	return rest.some((cell) => text(cell.html) !== '');
+}
+
+/**
+ * Everything before the number a column's heading ends with, or null where there is nothing before
+ * it. A heading that is only a figure, which is how ianseo heads its count of tens, names no series:
+ * `10` and `9` beside each other are two counts and not the tenth and ninth of anything.
+ */
+function stemOf(label: string): string | null {
+	return label.match(/^(.+?)(\d+)$/)?.[1] ?? null;
+}
+
+/**
+ * What to call a column carried onto a wrapped line. ianseo wraps a numbered series and nothing
+ * else, so the heading is the one the same position carries above, counted on by the length of the
+ * series: five distances printed and three wrapped are 70m-1 to 70m-5 and then 70m-6 to 70m-8.
+ */
+function continuedLabel(columns: DocumentColumn[], at: number, line: number): string | null {
+	const label = columns[at]?.label ?? '';
+	const stem = stemOf(label);
+	if (stem === null) return null;
+
+	const number = Number(label.slice(stem.length));
+	let run = 0;
+	for (let index = at; index < columns.length && stemOf(columns[index].label) === stem; index++) run++;
+	for (let index = at - 1; index >= 0 && stemOf(columns[index].label) === stem; index--) run++;
+	return `${stem}${number + run * line}`;
+}
+
+/**
+ * The wrapped half of a row folded back onto it, as columns of its own. Naming them is the whole of
+ * the work: the values are already there, and without a heading over them nobody could say which
+ * distance they are. A line this cannot name is kept as one of the row's own detail lines instead,
+ * because a value read off ianseo is never worth throwing away for want of a word for it.
+ */
+function unwrap(
+	columns: DocumentColumn[],
+	declared: DocumentColumn[],
+	row: DocumentRow,
+	values: Cell[],
+	line: number
+): DocumentColumn[] {
+	let grown = columns;
+	let at = 0;
+	for (const cell of values) {
+		const from = at;
+		at += span(cell);
+		const value = text(cell.html);
+		if (!value) continue;
+
+		const label = continuedLabel(declared, from, line);
+		const under = declared[from]?.label ?? '';
+		if (label === null || label === under) {
+			row.detail.push(under ? `${under}: ${value}` : value);
+			continue;
+		}
+		let index = grown.findIndex((column) => column.label === label);
+		if (index < 0) {
+			index = grown.length;
+			// As foldable as the column it continues: a distance nobody had room for is still a distance.
+			grown = [...grown, { label, secondary: declared[from]?.secondary ?? false }];
+		}
+		row.cells[index] = { text: value, flag: flagOf(cell.html) };
+	}
+	return grown;
+}
+
+/**
+ * One numbered series read as one run of columns. A wrapped line is read after the whole of the
+ * printed row, so its distances arrive at the end of the table behind the totals; put back beside
+ * the ones they continue they read as ianseo means them, first shot to last.
+ *
+ * Left alone unless a series really has been split, so nothing is moved in a table that never wrapped.
+ */
+function regroup(section: DocumentSection): DocumentSection {
+	const home = new Map<string, number>();
+	section.columns.forEach((column, at) => {
+		const stem = stemOf(column.label);
+		if (stem !== null && !home.has(stem)) home.set(stem, at);
+	});
+
+	const place = (at: number) => {
+		const stem = stemOf(section.columns[at].label);
+		return (stem === null ? undefined : home.get(stem)) ?? at;
+	};
+	const number = (at: number) => Number(section.columns[at].label.match(/(\d+)$/)?.[1] ?? 0);
+	const split = section.columns.some((_, at) => at > 0 && place(at) < place(at - 1));
+	if (!split) return section;
+
+	const order = section.columns
+		.map((_, at) => at)
+		.sort((a, b) => place(a) - place(b) || number(a) - number(b) || a - b);
+	return {
+		...section,
+		columns: order.map((at) => section.columns[at]),
+		rows: section.rows.map((row) => ({
+			...row,
+			cells: order.map((at) => row.cells[at] ?? { text: '', flag: null })
+		}))
+	};
+}
+
+/**
+ * The `<tr>` of a table, each ending at the next one where ianseo never closed it.
+ *
+ * A wrapped line is written without a closing tag, and a reader that waited for one swallowed every
+ * archer below it: the whole of a qualification round came back five distances wide and nobody
+ * could see that the other three had been eaten. Rows inside a cell's own table are stepped over,
+ * for the same reason `cells` steps over the tables themselves.
+ */
+function tableRows(html: string): Tag[] {
+	const found: Tag[] = [];
+	const token = /<(\/?)(table|tr)\b([^>]*?)(\/?)>/gi;
+
+	let depth = 0;
+	let open: { attrs: string; from: number } | null = null;
+	let match: RegExpExecArray | null;
+	while ((match = token.exec(html)) !== null) {
+		const [whole, closing, name, attrs, selfClosing] = match;
+		if (selfClosing === '/') continue;
+		if (name.toLowerCase() === 'table') {
+			depth = closing ? Math.max(0, depth - 1) : depth + 1;
+			continue;
+		}
+		if (depth > 0) continue;
+
+		if (open) found.push({ attrs: open.attrs, html: html.slice(open.from, match.index) });
+		open = closing ? null : { attrs, from: match.index + whole.length };
+	}
+	if (open) found.push({ attrs: open.attrs, html: html.slice(open.from) });
+	return found;
 }
 
 /** A section's own labels win where it has one, and fall back to the table's where it prints a blank. */
