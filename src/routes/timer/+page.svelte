@@ -17,6 +17,7 @@
 	import Toggle from '$lib/ui/Toggle.svelte';
 	import { screenLock } from '$lib/ui/wakeLock';
 	import { fullscreenSupported, isFullscreen, onFullscreenChange, setFullscreen } from '$lib/fullscreen';
+	import { ownsStatusBar } from '$lib/ui/statusBar';
 
 	/**
 	 * The shooting clock. It runs the way a line is run: two blasts to come up, one to start, thirty
@@ -426,7 +427,7 @@
 
 <!-- The clock as the line sees it: no presets, no sound panel, nothing to touch by accident. -->
 {#if bare}
-	<div class="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-bg">
+	<div class="fixed inset-0 z-50 grid place-items-center overflow-hidden bg-bg" use:ownsStatusBar>
 		<div
 			class="flex flex-col gap-4 p-4 {rotated ? 'h-[100dvw] w-[100dvh] rotate-90' : 'h-full w-full'}"
 		>
