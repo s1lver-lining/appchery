@@ -68,7 +68,14 @@ export const formatNumber = derived(locale, ($locale) => {
 export const formatSince = derived(locale, ($locale) => {
 	const relative = new Intl.RelativeTimeFormat($locale, { numeric: 'auto' });
 	return (at: number, now = Date.now()) => {
-		const seconds = Math.round((at - now) / 1000);
+		/*
+		 * Never the future. Everything said this way is a moment something already happened at, and
+		 * half of those moments are stamped by somebody else's server: ianseo publishes in UTC and the
+		 * device keeps its own clock, so a result published a minute ago on a phone running slightly
+		 * behind arrives ahead of now and was read out as "in 2 hours". Two clocks disagreeing is not
+		 * something this can settle, but of the two answers available the future is the wrong one.
+		 */
+		const seconds = Math.min(0, Math.round((at - now) / 1000));
 		const size = Math.abs(seconds);
 		if (size < 60) return relative.format(Math.round(seconds), 'second');
 		if (size < 3600) return relative.format(Math.round(seconds / 60), 'minute');

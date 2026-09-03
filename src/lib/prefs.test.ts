@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { get } from 'svelte/store';
-import { dateFormats } from './prefs';
+import { dateFormats, formatSince } from './prefs';
 import { locale } from './i18n';
 
 /**
@@ -31,5 +31,32 @@ describe('dateFormats', () => {
 
 	it('shows a 24 hour time when that preference is on', () => {
 		expect(get(dateFormats).time(at)).toContain('14');
+	});
+});
+
+/**
+ * Two clocks, neither of them ours. ianseo stamps what it publishes in UTC off its own server and
+ * the device keeps its own time, so a result published a moment ago can arrive a little ahead of
+ * now. Whatever the gap is, "in two hours" is the one answer that is certainly wrong.
+ */
+describe('formatSince', () => {
+	const now = new Date('2026-09-03T09:45:00Z').getTime();
+
+	it('says how long ago something happened', () => {
+		locale.set('en');
+		expect(get(formatSince)(now - 5 * 60_000, now)).toBe('5 minutes ago');
+		expect(get(formatSince)(now - 26 * 3600_000, now)).toBe('yesterday');
+	});
+
+	it('never puts something that has already happened in the future', () => {
+		locale.set('en');
+		expect(get(formatSince)(now + 2 * 3600_000, now)).toBe('now');
+		expect(get(formatSince)(now + 30_000, now)).toBe('now');
+	});
+
+	it('says it in the app language', () => {
+		locale.set('fr');
+		expect(get(formatSince)(now + 2 * 3600_000, now)).toBe('maintenant');
+		locale.set('en');
 	});
 });
