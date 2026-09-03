@@ -1701,7 +1701,7 @@ async function run() {
  * answers in a line where nothing has changed. The saving is the archer's own data, and the app has
  * to carry on as if it had read the page: a refresh answered short must not empty the screen.
  */
-async function checkNotModified(browser) {
+async function checkNotModified(browser, header) {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 
 	let sent = 0;
@@ -1717,13 +1717,13 @@ async function checkNotModified(browser) {
 		// What the app says it already holds, which on a first read it does not say at all.
 		if (route.request().headers()['if-none-match'] === stamp) {
 			short++;
-			return route.fulfill({ status: 304, headers: { ETag: stamp } });
+			return route.fulfill({ status: 304, headers: { [header]: stamp } });
 		}
 		sent++;
 		return route.fulfill({
 			status: 200,
 			contentType: 'text/html; charset=UTF-8',
-			headers: { ETag: stamp },
+			headers: { [header]: stamp },
 			body: fixture('TourList')
 		});
 	});
@@ -1732,7 +1732,7 @@ async function checkNotModified(browser) {
 	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
 	await page.waitForSelector('a[href*="/ianseo/"]');
 	const before = await page.locator('a[href*="/ianseo/"]').count();
-	check('a page is read in full the first time, nothing being held yet', sent === 1 && short === 0, `${sent} sent, ${short} short`);
+	check(`a page stamped with ${header} is read in full the first time`, sent === 1 && short === 0, `${sent} sent, ${short} short`);
 
 	await page.getByRole('button', { name: /Refresh/i }).click();
 	await page.waitForTimeout(1200);
@@ -1749,7 +1749,9 @@ async function checkNotModified(browser) {
 	await context.close();
 }
 
-await checkNotModified(browser);
+// Both, because a host that compresses the page drops the ETag and only the other one arrives.
+await checkNotModified(browser, 'ETag');
+await checkNotModified(browser, 'X-Page-Tag');
 await checkPull(browser);
 
 	await browser.close();

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { proxied, tagOf } from './proxy';
+import { PAGE_TAG, proxied, tagOf } from './proxy';
 
 /**
  * ianseo stamps nothing it builds with PHP, so a page an archer refreshes is sent again in full
@@ -10,6 +10,10 @@ const answerOf = (body: string, headers: Record<string, string> = {}, status = 2
 	new Response(status === 304 ? null : body, { status, headers });
 
 describe('the stamp the proxy puts on a page', () => {
+	it('is weak, since the edge compresses a page on its way out', async () => {
+		expect(await tagOf(new TextEncoder().encode('a page'))).toMatch(/^W\/"[0-9a-f]{32}"$/);
+	});
+
 	it('is the same for the same bytes and different for different ones', async () => {
 		expect(await tagOf(new TextEncoder().encode('a page'))).toBe(
 			await tagOf(new TextEncoder().encode('a page'))
@@ -24,6 +28,11 @@ describe('the stamp the proxy puts on a page', () => {
 		expect(passed.status).toBe(200);
 		expect(passed.headers.ETag).toBeTruthy();
 		expect(new TextDecoder().decode(passed.body!)).toBe('<html>list</html>');
+	});
+
+	it('says it twice, since a host that compresses the page drops the ETag off it', async () => {
+		const passed = await proxied(answerOf('<html>list</html>'), null);
+		expect(passed.headers[PAGE_TAG]).toBe(passed.headers.ETag);
 	});
 
 	it('answers in a line when the app already holds that very page', async () => {

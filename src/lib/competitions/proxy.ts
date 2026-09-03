@@ -9,6 +9,9 @@
 
 export const PROXY_PREFIX = '/competitions-api';
 
+/** Where the page's stamp is repeated, for hosts that strip an ETag off a page they compressed. */
+export const PAGE_TAG = 'X-Page-Tag';
+
 export const IANSEO_ORIGIN = 'https://www.ianseo.net';
 export const FFTA_ORIGIN = 'https://www.ffta.fr';
 export const INSCRIPTARC_ORIGIN = 'https://www.inscriptarc.fr';
@@ -100,7 +103,12 @@ export function proxyHeaders(contentType: string | null, tag?: string | null): R
 		'Cache-Control': 'public, max-age=60',
 		// The app is served cross-origin isolated, which every subresource has to opt into.
 		'Cross-Origin-Resource-Policy': 'same-origin',
-		...(tag ? { ETag: tag } : {})
+		/*
+		 * Twice, because Cloudflare compresses a page on its way out and drops the ETag off what it
+		 * compressed, weak or not. The app reads whichever of the two reaches it; the request side
+		 * stays the ordinary `If-None-Match`, which arrives untouched.
+		 */
+		...(tag ? { ETag: tag, [PAGE_TAG]: tag } : {})
 	};
 }
 
@@ -119,7 +127,10 @@ export async function tagOf(body: BufferSource): Promise<string> {
 	const hex = [...new Uint8Array(digest).slice(0, 16)]
 		.map((byte) => byte.toString(16).padStart(2, '0'))
 		.join('');
-	return `"${hex}"`;
+	// Weak, because the edge compresses a page on its way out: a strong stamp would no longer be
+	// true of the bytes that arrive, and Cloudflare drops one rather than let it lie. What is being
+	// identified is the page ianseo sent, which compressing does not change.
+	return `W/"${hex}"`;
 }
 
 /** What the proxy answers with, given what ianseo said and what the app already had. */

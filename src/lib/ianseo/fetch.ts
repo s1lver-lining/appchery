@@ -1,5 +1,5 @@
 import { Capacitor, CapacitorHttp } from '@capacitor/core';
-import { IANSEO_ORIGIN, PROXY_PREFIX } from '$lib/competitions/proxy';
+import { IANSEO_ORIGIN, PAGE_TAG, PROXY_PREFIX } from '$lib/competitions/proxy';
 
 /**
  * ianseo publishes pages, not an interface, and it sends no header that would let a browser read
@@ -76,6 +76,11 @@ function headerOf(headers: Record<string, string> | undefined, name: string): st
 	return found?.[1] ?? null;
 }
 
+/** Whichever of the two reached us: a host that compresses the page drops the ETag off it. */
+const tagIn = (headers: Headers) => headers.get('ETag') ?? headers.get(PAGE_TAG);
+const nativeTagIn = (headers: Record<string, string> | undefined) =>
+	headerOf(headers, 'ETag') ?? headerOf(headers, PAGE_TAG);
+
 const asking = (tag?: string | null): Record<string, string> =>
 	tag ? { 'If-None-Match': tag } : {};
 
@@ -103,7 +108,7 @@ export async function fetchIanseo(path: string, asked: Asked = {}): Promise<Fetc
 		return {
 			unchanged: false,
 			body: String(response.data ?? ''),
-			tag: headerOf(response.headers, 'ETag')
+			tag: nativeTagIn(response.headers)
 		};
 	}
 
@@ -129,7 +134,7 @@ export async function fetchIanseo(path: string, asked: Asked = {}): Promise<Fetc
 			return {
 				unchanged: false,
 				body: await response.text(),
-				tag: response.headers.get('ETag')
+				tag: tagIn(response.headers)
 			};
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
@@ -167,7 +172,7 @@ export async function fetchIanseoBytes(path: string, asked: Asked = {}): Promise
 		return {
 			unchanged: false,
 			body: fromBase64(String(response.data ?? '')),
-			tag: headerOf(response.headers, 'ETag')
+			tag: nativeTagIn(response.headers)
 		};
 	}
 
@@ -189,7 +194,7 @@ export async function fetchIanseoBytes(path: string, asked: Asked = {}): Promise
 			return {
 				unchanged: false,
 				body: new Uint8Array(await response.arrayBuffer()),
-				tag: response.headers.get('ETag')
+				tag: tagIn(response.headers)
 			};
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
