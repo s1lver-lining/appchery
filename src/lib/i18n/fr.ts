@@ -1017,6 +1017,8 @@ export const fr: Dictionary = {
 		pdf: 'PDF',
 		schedule: 'Programme',
 		findInSchedule: 'Chercher dans le programme',
+		openDay: 'Afficher ce jour',
+		closeDay: 'Masquer ce jour',
 		noLineFound: 'Rien à cette heure là',
 		noLineFoundBody: 'Chaque mot doit apparaître quelque part dans la ligne. Essayez une catégorie, ou un jour.',
 		noScheduleTitle: 'Aucun programme publié',

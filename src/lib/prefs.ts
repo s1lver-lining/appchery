@@ -510,6 +510,15 @@ export const ianseoShownColumns = storedList('appchery.ianseoShownColumns');
 export const ianseoHiddenColumns = storedList('appchery.ianseoHiddenColumns');
 
 /**
+ * The days of a schedule the archer has folded away, as `{toId}|{day as the report heads it}`.
+ *
+ * The closed ones rather than the open ones, so a schedule opened for the first time is open: a
+ * competition is four days and reading all of them is the usual reason for being here. Kept per
+ * competition, because folding Thursday away at one says nothing about Thursday at the next.
+ */
+export const ianseoClosedDays = storedList('appchery.ianseoClosedDays');
+
+/**
  * Whether a club is named the way its federation files it, number and all: `0702022 - JUSSY`. Off,
  * because the number is how a federation finds a club rather than how anybody says its name, and a
  * column of them is a column of noise. Opening a row shows the whole of it either way.

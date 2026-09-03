@@ -1015,6 +1015,8 @@ export const en = {
 		pdf: 'PDF',
 		schedule: 'Schedule',
 		findInSchedule: 'Find in the schedule',
+		openDay: 'Show this day',
+		closeDay: 'Hide this day',
 		noLineFound: 'Nothing on at that time',
 		noLineFoundBody: 'Every word has to appear somewhere in the line. Try a class, or a day.',
 		noScheduleTitle: 'No schedule published',

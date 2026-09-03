@@ -1070,6 +1070,56 @@ async function checkPull(browser) {
 	await context.close();
 }
 
+/**
+ * The day blocks, which are how a whole schedule is read: folded away one at a time so the days
+ * that matter are the ones on screen, and left that way for the next time it is opened.
+ */
+async function checkScheduleDays(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+	await serveIanseo(context);
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo/28536/schedule`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('section h2');
+	await page.waitForTimeout(600);
+
+	// Folded away, a day is its date and the way back to it and nothing else.
+	const first = page.locator('section h2 button').first();
+	await first.click();
+	await page.waitForTimeout(300);
+	const sections = await page.locator('section').count();
+	const grids = await page.locator('section h2 + div').count();
+	check('a day folds away to its heading', grids === sections - 1, `${grids} of ${sections}`);
+	check('and says it is shut', (await first.getAttribute('aria-expanded')) === 'false');
+
+	await page.reload({ waitUntil: 'networkidle' });
+	await page.waitForSelector('section h2');
+	await page.waitForTimeout(600);
+	check(
+		'and is still shut on the way back',
+		(await page.locator('section h2 button').first().getAttribute('aria-expanded')) === 'false'
+	);
+
+	/**
+	 * A search answers with lines, and a line inside a folded day is still a line: the count above
+	 * the page would otherwise say seven while the page itself showed none of them.
+	 */
+	await page.getByPlaceholder(/Find in the schedule/i).fill('mercredi 19');
+	await page.waitForTimeout(400);
+	const found = await page.locator('section h2 + div > div').count();
+	check('a search reaches inside a folded day', found > 0, `${found / 2} lines`);
+	check('and leaves the folding out of it', (await page.locator('section h2 button').count()) === 0);
+
+	await page.getByPlaceholder(/Find in the schedule/i).fill('');
+	await page.waitForTimeout(400);
+	check(
+		'the folded day comes back folded once the search is over',
+		(await page.locator('section h2 button').first().getAttribute('aria-expanded')) === 'false'
+	);
+	await shot(page, 'schedule-folded');
+
+	await context.close();
+}
+
 async function checkDocumentTools(browser) {
 	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
 	await serveIanseo(context);
@@ -1340,6 +1390,7 @@ async function run() {
 	await checkShareAndClubs(browser);
 	await checkPaperwork(browser);
 	await checkSchedule(browser);
+	await checkScheduleDays(browser);
 	await checkPull(browser);
 
 	await browser.close();

@@ -14,6 +14,7 @@
 	import { findInSchedule } from '$lib/ianseo/find';
 	import { loadCompetition, loadSchedule } from '$lib/ianseo/client';
 	import { scheduleDocument, type Schedule } from '$lib/ianseo/schedule';
+	import { ianseoClosedDays } from '$lib/prefs';
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import type { Competition, CompetitionDocument } from '$lib/ianseo/types';
 
@@ -103,6 +104,26 @@
 	let search = $state('');
 	const days = $derived(findInSchedule(schedule?.days ?? [], search));
 	const pdf = $derived(fileLink(entry?.pdfPath, IANSEO));
+
+	/** Folded away by the archer, kept per competition: the same weekday elsewhere is another day. */
+	const closed = $derived(
+		new Set(
+			$ianseoClosedDays
+				.filter((one) => one.startsWith(`${toId}|`))
+				.map((one) => one.slice(toId.length + 1))
+		)
+	);
+
+	/** How many folded days are remembered at once, so a reading habit never becomes a store to clear. */
+	const REMEMBERED = 200;
+
+	function toggleDay(title: string) {
+		const key = `${toId}|${title}`;
+		const all = $ianseoClosedDays;
+		const next = all.includes(key) ? all.filter((one) => one !== key) : [...all, key];
+		ianseoClosedDays.set(next.slice(-REMEMBERED));
+	}
+
 	const found = $derived(
 		search.trim()
 			? $t('ianseo.foundRows', { n: days.reduce((all, day) => all + day.lines.length, 0) })
@@ -168,7 +189,15 @@
 				: { label: $t('ianseo.retry'), onclick: again }}
 		/>
 	{:else if days.length > 0}
-		<ScheduleBoard {days} />
+		<!--
+			A folded day is how the whole schedule is read, never how a search answers: a line found
+			inside one has to be on screen, or the count above says six and the page shows none.
+		-->
+		<ScheduleBoard
+			{days}
+			closed={search.trim() ? new Set() : closed}
+			ontoggle={search.trim() ? undefined : toggleDay}
+		/>
 	{:else if search.trim()}
 		<EmptyState title={$t('ianseo.noLineFound')} body={$t('ianseo.noLineFoundBody')} />
 	{/if}
