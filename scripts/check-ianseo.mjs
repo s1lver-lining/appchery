@@ -1323,6 +1323,18 @@ async function checkBracketViews(browser) {
 	await page.getByRole('button', { name: /Whole draw/i }).click();
 	await page.waitForTimeout(500);
 	check('the whole draw opens at its own left edge', (await page.evaluate(() => document.querySelector('.scroll-flip').scrollLeft)) === 0);
+
+	// Run to the end and the last column still clears the page margin rather than hiding under it.
+	const tail = await page.evaluate(() => {
+		const chart = document.querySelector('.scroll-flip');
+		chart.scrollLeft = chart.scrollWidth;
+		const columns = chart.querySelectorAll('.w-32');
+		const right = Math.round(columns[columns.length - 1].getBoundingClientRect().right);
+		chart.scrollLeft = 0;
+		return { right, width: window.innerWidth };
+	});
+	check('and scrolls clear of the page margin at its far end', tail.width - tail.right >= 12, JSON.stringify(tail));
+
 	await hold(200);
 	const handed = await page.evaluate(() => {
 		const rail = document.querySelector('div.relative[data-noswipe]');

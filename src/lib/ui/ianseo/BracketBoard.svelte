@@ -163,8 +163,9 @@
 
 {#snippet chartPane()}
 	<!-- Flipped twice to put the scrollbar above the chart rather than under it; edgePull is inert on the incoming copy. -->
-	<div class="-mx-4 scroll-flip overflow-x-auto px-4" data-noswipe use:edgePull>
-		<div>{@render chart()}</div>
+	<div class="-mx-4 scroll-flip overflow-x-auto" data-noswipe use:edgePull>
+		<!-- The margin belongs to the chart, not to the scroller: a scroller's own right padding is not scrolled to. -->
+		<div class="w-max px-4">{@render chart()}</div>
 	</div>
 {/snippet}
 
