@@ -14,6 +14,7 @@
 	} from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import PullToRefresh from '$lib/ui/PullToRefresh.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import Sheet from '$lib/ui/Sheet.svelte';
 	import Toggle from '$lib/ui/Toggle.svelte';
@@ -417,6 +418,7 @@
 	{/snippet}
 </PageHeader>
 
+<PullToRefresh onrefresh={() => read(true)}>
 <div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
@@ -660,6 +662,7 @@
 		<span>· {$t('ianseo.byline')}</span>
 	</ReadNote>
 </div>
+</PullToRefresh>
 
 <Sheet open={radiusSheet} title={$t('ianseo.nearMe')} onclose={() => (radiusSheet = false)}>
 	<p class="mb-2 text-xs text-muted">{$t('ianseo.nearMeHint')}</p>

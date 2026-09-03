@@ -7,6 +7,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
+	import PullToRefresh from '$lib/ui/PullToRefresh.svelte';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import {
 		loadCompetition,
@@ -316,6 +317,7 @@
 {#if loading && !competition && !failed}
 	<PageSkeleton title={false} cards={4} />
 {:else}
+<PullToRefresh onrefresh={() => read(true)}>
 <div class="mx-auto w-full max-w-page space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
@@ -484,6 +486,7 @@
 		</a>
 	</p>
 </div>
+</PullToRefresh>
 {/if}
 
 <ShareSheet

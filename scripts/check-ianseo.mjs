@@ -901,6 +901,7 @@ async function checkSchedule(browser) {
 
 	await page.goto(`${BASE}/ianseo/29887`, { waitUntil: 'networkidle' });
 	const opens = page.locator('a[href*="/29887/schedule"]');
+	await opens.first().waitFor({ timeout: 5000 }).catch(() => {});
 	check('the schedule opens in the app rather than as a PDF', (await opens.count()) > 0);
 	await opens.first().click();
 	// Waited for by address: the competition page heads its own panels with the same tag.
@@ -946,6 +947,72 @@ async function checkSchedule(browser) {
 		await page.getByText(/cannot be read here/i).isVisible()
 	);
 	await shot(page, 'schedule-unreadable');
+
+	await context.close();
+}
+
+/**
+ * Pulling a page down to read it again, which is the gesture and not the button beside it.
+ *
+ * Driven through real touch events rather than by calling anything: the whole of this feature is
+ * that a finger travelling far enough commits and a finger that turns back does not, and neither of
+ * those is visible from the code that would be called either way.
+ */
+async function checkPull(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
+	const state = { read: 0 };
+	await serveIanseo(context, state);
+	// Counted here rather than in the fixture server, which answers more than the page being pulled.
+	await context.route('**/competitions-api/ianseo/Details.php*', async (route) => {
+		state.read++;
+		await route.fallback();
+	});
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo/29887`, { waitUntil: 'networkidle' });
+	await page.waitForTimeout(400);
+
+	const touch = await context.newCDPSession(page);
+	/** One finger, down the middle of the page, moving through each offset in turn. */
+	async function drag(offsets) {
+		const x = 195;
+		const y = 300;
+		await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
+		for (const dy of offsets) {
+			await touch.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ x, y: y + dy }] });
+			await page.waitForTimeout(16);
+		}
+		const shown = await page.evaluate(() => {
+			const root = [...document.querySelectorAll('main div.relative')].find((node) =>
+				node.querySelector(':scope > .pointer-events-none')
+			);
+			if (!root) return null;
+			const spinner = root.querySelector(':scope > .pointer-events-none');
+			const body = root.querySelector(':scope > div:not(.pointer-events-none)');
+			const offset = (node) => new DOMMatrix(getComputedStyle(node).transform).m42;
+			return { opacity: Number(getComputedStyle(spinner).opacity), page: offset(body) };
+		});
+		await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+		return shown;
+	}
+
+	const before = state.read;
+	const short = await drag([10, 25, 40, 55, 60]);
+	check('a short pull moves the page under the finger', short.page > 10, `${short.page}px`);
+	check('and shows the spinner coming up', short.opacity > 0 && short.opacity < 1, String(short.opacity));
+	await page.waitForTimeout(700);
+	check('but reads nothing again', state.read === before, `${before} -> ${state.read}`);
+
+	const armed = await drag([20, 50, 90, 130, 170, 200, 220]);
+	check('a long pull arms the spinner', armed.opacity === 1, String(armed.opacity));
+	await page.waitForTimeout(900);
+	check('and reads the competition again on release', state.read > before, `${before} -> ${state.read}`);
+
+	// The point of the elastic: gone far enough to commit, then thought better of.
+	const now = state.read;
+	const back = await drag([40, 100, 160, 200, 160, 90, 20, 0]);
+	check('a pull swung back brings the page home', back.page === 0, `${back.page}px`);
+	await page.waitForTimeout(900);
+	check('and reads nothing again', state.read === now, `${now} -> ${state.read}`);
 
 	await context.close();
 }
@@ -1220,6 +1287,7 @@ async function run() {
 	await checkShareAndClubs(browser);
 	await checkPaperwork(browser);
 	await checkSchedule(browser);
+	await checkPull(browser);
 
 	await browser.close();
 

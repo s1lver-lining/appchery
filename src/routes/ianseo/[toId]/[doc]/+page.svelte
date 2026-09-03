@@ -6,6 +6,7 @@
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
+	import PullToRefresh from '$lib/ui/PullToRefresh.svelte';
 	import { fileLink } from '$lib/competitions/links';
 	import ReadNote from '$lib/ui/ianseo/ReadNote.svelte';
 	import ResultTable from '$lib/ui/ianseo/ResultTable.svelte';
@@ -233,6 +234,7 @@
 	<!-- The same wait the rest of the app shows, rather than an empty page that fills itself in. -->
 	<PageSkeleton title={false} cards={4} />
 {:else}
+<PullToRefresh onrefresh={() => read(true)}>
 <div class="mx-auto w-full max-w-4xl space-y-4 p-4">
 	<ReadNote {loading} {problem} {cachedAt} banner />
 
@@ -295,6 +297,7 @@
 		{/if}
 	</ReadNote>
 </div>
+</PullToRefresh>
 {/if}
 
 <Sheet open={columnSheet} title={$t('ianseo.columns')} onclose={() => (columnSheet = false)}>
