@@ -10,25 +10,41 @@ import { readFileSync } from 'node:fs';
  */
 
 const pages = new Map<string, string>();
+/** What each page is stamped with, where anything stamps it at all. */
+const tags = new Map<string, string>();
+/** Every read that was made, and what it said it already held. */
+let asks: { path: string; tag: string | null }[] = [];
 let thrown: Error | null = null;
 
 vi.mock('./fetch', async () => {
 	const actual = await vi.importActual<typeof import('./fetch')>('./fetch');
 	return {
 		...actual,
-		fetchIanseo: async (path: string) => {
+		fetchIanseo: async (path: string, asked: { tag?: string | null } = {}) => {
 			if (thrown) throw thrown;
 			const page = pages.get(path);
 			if (page === undefined) throw new actual.IanseoError('missing', path);
-			return page;
+			asks.push({ path, tag: asked.tag ?? null });
+			// ianseo, or the proxy in front of it, answering that the page is the one already held.
+			const tag = tags.get(path) ?? null;
+			if (tag && asked.tag === tag) return { unchanged: true };
+			return { unchanged: false, body: page, tag };
 		}
 	};
 });
 
 const cache = new Map<string, { value: unknown; cachedAt: number }>();
+let written = 0;
 vi.mock('./store', () => ({
 	readCache: async (path: string) => cache.get(path) ?? null,
-	writeCache: async (path: string, value: unknown) => void cache.set(path, { value, cachedAt: Date.now() })
+	writeCache: async (path: string, value: unknown) => {
+		written++;
+		cache.set(path, { value, cachedAt: Date.now() });
+	},
+	touchCache: async (path: string) => {
+		const row = cache.get(path);
+		if (row) cache.set(path, { ...row, cachedAt: Date.now() });
+	}
 }));
 
 const { loadTournaments, loadCompetition, loadResultDocument, TOURNAMENT_LIST } = await import('./client');
@@ -39,6 +55,9 @@ const DOC = '/TourData/2026/26053/IQRM.php';
 beforeEach(() => {
 	cache.clear();
 	pages.clear();
+	tags.clear();
+	asks = [];
+	written = 0;
 	thrown = null;
 	pages.set(TOURNAMENT_LIST, readFileSync('test/ianseo/TourList.html', 'utf8'));
 	pages.set('/Details.php?toId=26053', readFileSync('test/ianseo/Details.html', 'utf8'));
@@ -184,5 +203,75 @@ describe('a page only half of which could be read', () => {
 		const loaded = await loadTournaments();
 		expect(loaded.value).toEqual([{ toId: '1', name: 'Kept' }]);
 		expect(loaded.skipped).toBe(0);
+	});
+});
+
+/**
+ * Asking ianseo whether a page is still the one already held.
+ *
+ * ianseo stamps none of the pages it builds with PHP, so the proxy in front of it stamps them from
+ * the bytes it read; the PDFs it serves off disk carry a stamp of their own. Either way the app says
+ * what it holds and is answered in a line where nothing has changed, which is most of the time.
+ */
+describe('a page that has not changed', () => {
+	it('says what it holds on the second read', async () => {
+		tags.set(TOURNAMENT_LIST, '"abc"');
+		await loadTournaments();
+		expect(asks.at(-1)).toEqual({ path: TOURNAMENT_LIST, tag: null });
+
+		await loadTournaments({ refresh: true });
+		expect(asks.at(-1)).toEqual({ path: TOURNAMENT_LIST, tag: '"abc"' });
+	});
+
+	it('keeps what it had rather than reading it again', async () => {
+		tags.set(TOURNAMENT_LIST, '"abc"');
+		const first = await loadTournaments();
+		const wrote = written;
+
+		const again = await loadTournaments({ refresh: true });
+		expect(again.value).toEqual(first.value);
+		expect(again.problem).toBe(null);
+		// Nothing was parsed and nothing was written: only the hour it was current at moved.
+		expect(written).toBe(wrote);
+		expect(again.cachedAt).toBeGreaterThanOrEqual(first.cachedAt!);
+	});
+
+	it('reads the page again once the stamp on it changes', async () => {
+		tags.set(TOURNAMENT_LIST, '"abc"');
+		await loadTournaments();
+		const wrote = written;
+
+		tags.set(TOURNAMENT_LIST, '"def"');
+		pages.set(TOURNAMENT_LIST, pages.get(TOURNAMENT_LIST)!);
+		const again = await loadTournaments({ refresh: true });
+		expect(again.value.length).toBeGreaterThan(0);
+		expect(written).toBe(wrote + 1);
+	});
+
+	it('asks nothing where it holds nothing, so a first read is never answered short', async () => {
+		tags.set(TOURNAMENT_LIST, '"abc"');
+		const first = await loadTournaments();
+		expect(first.value.length).toBeGreaterThan(0);
+	});
+
+	it('still reads a page ianseo stamps with nothing at all', async () => {
+		const first = await loadTournaments();
+		const again = await loadTournaments({ refresh: true });
+		expect(again.value).toEqual(first.value);
+		expect(written).toBe(2);
+	});
+
+	it('carries the stamp through a competition and a document too', async () => {
+		tags.set('/Details.php?toId=26053', '"one"');
+		tags.set(DOC, '"two"');
+		await loadCompetition('26053');
+		await loadCompetition('26053', { refresh: true });
+		expect(asks.at(-1)).toEqual({ path: '/Details.php?toId=26053', tag: '"one"' });
+
+		await loadResultDocument(DOC);
+		const wrote = written;
+		const again = await loadResultDocument(DOC, { refresh: true });
+		expect(again.value.kind).toBe('table');
+		expect(written).toBe(wrote);
 	});
 });

@@ -3,9 +3,9 @@ import { parseCompetition } from './parse/details';
 import { parseDocument } from './parse/document';
 import { countTournaments, parseTournaments, TOURNAMENT_LIST } from './parse/list';
 import { looksLike } from './parse/reading';
-import { fetchIanseo, fetchIanseoBytes, IanseoError } from './fetch';
+import { fetchIanseo, fetchIanseoBytes, IanseoError, type Asked } from './fetch';
 import { parseSchedule, type Schedule } from './schedule';
-import { readCache, writeCache } from './store';
+import { readCache, touchCache, writeCache } from './store';
 import type { Competition, ResultDocument, Tournament } from './types';
 
 /**
@@ -44,7 +44,12 @@ export type Loaded<T> = {
 };
 
 /** What a read came back with, before it is known whether it came from ianseo or from the device. */
-type Parsed<T> = { value: T; skipped: number };
+type Parsed<T> = {
+	value: T;
+	skipped: number;
+	/** What ianseo called this version of the page, so the next read can ask whether it is still it. */
+	tag?: string | null;
+};
 
 /**
  * A cache row, whether or not it was written before pages counted what they could not read. The old
@@ -73,9 +78,13 @@ export type LoadOptions = {
 	since?: number | null;
 };
 
+/**
+ * Reading a page, where `null` back from the read means ianseo answered that it has not changed and
+ * what the device holds still stands.
+ */
 async function load<T>(
 	path: string,
-	read: (signal?: AbortSignal) => Promise<Parsed<T>>,
+	read: (asked: Asked) => Promise<Parsed<T> | null>,
 	ttl: number,
 	options: LoadOptions = {}
 ): Promise<Loaded<T>> {
@@ -89,7 +98,16 @@ async function load<T>(
 	}
 
 	try {
-		const parsed = await read(options.signal);
+		// Asked only where there is something to keep: an answer of "still that one" is no use otherwise.
+		const parsed = await read({ signal: options.signal, tag: held ? (held.tag ?? null) : null });
+		if (!parsed) {
+			// Nothing has changed, so nothing is parsed and nothing is written but the hour.
+			if (held) {
+				await touchCache(path);
+				return { ...held, cachedAt: Date.now(), problem: null };
+			}
+			throw new IanseoError('unreadable', path);
+		}
 		await writeCache(path, parsed);
 		return { ...parsed, cachedAt: Date.now(), problem: null };
 	} catch (error) {
@@ -114,15 +132,21 @@ export async function heldValue<T>(path: string): Promise<Loaded<T> | null> {
 export function loadTournaments(options?: LoadOptions): Promise<Loaded<Tournament[]>> {
 	return load(
 		TOURNAMENT_LIST,
-		async (signal) => {
-			const html = await fetchIanseo(TOURNAMENT_LIST, signal);
+		async (asked) => {
+			const page = await fetchIanseo(TOURNAMENT_LIST, asked);
+			if (page.unchanged) return null;
+			const html = page.body;
 			const list = parseTournaments(html);
 			// A page with competitions on it out of which none could be read is a page that has changed.
 			if (list.length === 0 && looksLike.tournamentList(html)) {
 				throw new IanseoError('unreadable', TOURNAMENT_LIST);
 			}
 			// Some read and some not is the same change caught earlier, and the ones read still stand.
-			return { value: list, skipped: Math.max(0, countTournaments(html) - list.length) };
+			return {
+				value: list,
+				skipped: Math.max(0, countTournaments(html) - list.length),
+				tag: page.tag
+			};
 		},
 		LIST_TTL,
 		options
@@ -136,14 +160,16 @@ export function competitionPath(toId: string): string {
 export function loadCompetition(toId: string, options?: LoadOptions): Promise<Loaded<Competition>> {
 	return load(
 		competitionPath(toId),
-		async (signal) => {
-			const html = await fetchIanseo(competitionPath(toId), signal);
+		async (asked) => {
+			const page = await fetchIanseo(competitionPath(toId), asked);
+			if (page.unchanged) return null;
+			const html = page.body;
 			const competition = parseCompetition(toId, html);
 			// A competition that has published documents, none of which could be read, has changed shape.
 			if (competition.documents.length === 0 && looksLike.competition(html)) {
 				throw new IanseoError('unreadable', competitionPath(toId));
 			}
-			return { value: competition, skipped: competition.skipped };
+			return { value: competition, skipped: competition.skipped, tag: page.tag };
 		},
 		COMPETITION_TTL,
 		options
@@ -153,8 +179,10 @@ export function loadCompetition(toId: string, options?: LoadOptions): Promise<Lo
 export function loadResultDocument(path: string, options?: LoadOptions): Promise<Loaded<ResultDocument>> {
 	return load(
 		path,
-		async (signal) => {
-			const html = await fetchIanseo(path, signal);
+		async (asked) => {
+			const page = await fetchIanseo(path, asked);
+			if (page.unchanged) return null;
+			const html = page.body;
 			const document = parseDocument(html);
 			// ianseo answers with a page either way, so an empty one is the only sign a document is gone.
 			if (!document) throw new IanseoError('missing', path);
@@ -165,7 +193,7 @@ export function loadResultDocument(path: string, options?: LoadOptions): Promise
 					: document.rounds.every((round) => round.matches.length === 0);
 			// A table this app could not read a single row out of is not an empty table.
 			if (empty && looksLike.document(html)) throw new IanseoError('unreadable', path);
-			return { value: document, skipped: document.skipped };
+			return { value: document, skipped: document.skipped, tag: page.tag };
 		},
 		DOCUMENT_TTL,
 		options
@@ -182,11 +210,14 @@ export function loadResultDocument(path: string, options?: LoadOptions): Promise
 export function loadSchedule(path: string, options?: LoadOptions): Promise<Loaded<Schedule>> {
 	return load(
 		path,
-		async (signal) => {
-			const schedule = parseSchedule(await readPdfText(await fetchIanseoBytes(path, signal)));
+		async (asked) => {
+			// The one thing ianseo stamps itself, so this is the one page it can answer for.
+			const file = await fetchIanseoBytes(path, asked);
+			if (file.unchanged) return null;
+			const schedule = parseSchedule(await readPdfText(file.body));
 			if (!schedule) throw new IanseoError('unreadable', path);
 			// A day the parser could not place sends the whole timetable to the PDF, so none is partly read.
-			return { value: schedule, skipped: 0 };
+			return { value: schedule, skipped: 0, tag: file.tag };
 		},
 		// A timetable is settled days before it is shot and changes about as often as the paperwork.
 		COMPETITION_TTL,

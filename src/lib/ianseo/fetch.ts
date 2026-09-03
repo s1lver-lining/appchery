@@ -56,8 +56,32 @@ function deadline(signal?: AbortSignal): { signal: AbortSignal; done: () => void
 	};
 }
 
+/**
+ * What a read came back with, or that it did not have to: `unchanged` is ianseo, or the proxy in
+ * front of it, saying the page is still the one the app already holds. Answered in a couple of
+ * hundred bytes rather than a couple of hundred kilobytes, which at a field is the whole point.
+ */
+export type Fetched<T> =
+	| { unchanged: true }
+	| { unchanged: false; body: T; tag: string | null };
+
+/** What the app holds for this page, offered so the answer can be that it is still current. */
+export type Asked = { signal?: AbortSignal; tag?: string | null };
+
+/** Headers come back cased however the platform felt like casing them. */
+function headerOf(headers: Record<string, string> | undefined, name: string): string | null {
+	const found = Object.entries(headers ?? {}).find(
+		([key]) => key.toLowerCase() === name.toLowerCase()
+	);
+	return found?.[1] ?? null;
+}
+
+const asking = (tag?: string | null): Record<string, string> =>
+	tag ? { 'If-None-Match': tag } : {};
+
 /** `path` is ianseo's own, such as `/TourList.php` or `/TourData/2026/26053/IQRM.php`. */
-export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<string> {
+export async function fetchIanseo(path: string, asked: Asked = {}): Promise<Fetched<string>> {
+	const { signal, tag } = asked;
 	if (!path.startsWith('/')) throw new IanseoError('missing', `not an ianseo path: ${path}`);
 
 	if (Capacitor.isNativePlatform()) {
@@ -66,15 +90,21 @@ export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<s
 			response = await CapacitorHttp.get({
 				url: `${IANSEO}${path}`,
 				responseType: 'text',
+				headers: asking(tag),
 				connectTimeout: TIMEOUT_MS,
 				readTimeout: TIMEOUT_MS
 			});
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}
+		if (response.status === 304) return { unchanged: true };
 		if (response.status === 404) throw new IanseoError('missing', path);
 		if (response.status >= 400) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
-		return String(response.data ?? '');
+		return {
+			unchanged: false,
+			body: String(response.data ?? ''),
+			tag: headerOf(response.headers, 'ETag')
+		};
 	}
 
 	// The deadline covers reading the body too: a page whose headers arrive and whose rows never do
@@ -83,16 +113,24 @@ export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<s
 	try {
 		let response: Response;
 		try {
-			response = await fetch(`${PROXY}${path}`, { signal: waiting.signal });
+			response = await fetch(`${PROXY}${path}`, {
+				signal: waiting.signal,
+				headers: asking(tag)
+			});
 		} catch (error) {
 			// A proxy that is not there, a phone with no signal and one that answers nothing all read
 			// the same on screen, and all three are fixed by the same thing: asking again in a moment.
 			throw new IanseoError('offline', String(error));
 		}
+		if (response.status === 304) return { unchanged: true };
 		if (response.status === 404) throw new IanseoError('missing', path);
 		if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
 		try {
-			return await response.text();
+			return {
+				unchanged: false,
+				body: await response.text(),
+				tag: response.headers.get('ETag')
+			};
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}
@@ -106,7 +144,8 @@ export async function fetchIanseo(path: string, signal?: AbortSignal): Promise<s
  * a PDF and never renders. Native HTTP hands bytes back as base64, having no other way to carry
  * them across the bridge.
  */
-export async function fetchIanseoBytes(path: string, signal?: AbortSignal): Promise<Uint8Array> {
+export async function fetchIanseoBytes(path: string, asked: Asked = {}): Promise<Fetched<Uint8Array>> {
+	const { signal, tag } = asked;
 	if (!path.startsWith('/')) throw new IanseoError('missing', `not an ianseo path: ${path}`);
 
 	if (Capacitor.isNativePlatform()) {
@@ -115,29 +154,43 @@ export async function fetchIanseoBytes(path: string, signal?: AbortSignal): Prom
 			response = await CapacitorHttp.get({
 				url: `${IANSEO}${path}`,
 				responseType: 'arraybuffer',
+				headers: asking(tag),
 				connectTimeout: TIMEOUT_MS,
 				readTimeout: TIMEOUT_MS
 			});
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}
+		if (response.status === 304) return { unchanged: true };
 		if (response.status === 404) throw new IanseoError('missing', path);
 		if (response.status >= 400) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
-		return fromBase64(String(response.data ?? ''));
+		return {
+			unchanged: false,
+			body: fromBase64(String(response.data ?? '')),
+			tag: headerOf(response.headers, 'ETag')
+		};
 	}
 
 	const waiting = deadline(signal);
 	try {
 		let response: Response;
 		try {
-			response = await fetch(`${PROXY}${path}`, { signal: waiting.signal });
+			response = await fetch(`${PROXY}${path}`, {
+				signal: waiting.signal,
+				headers: asking(tag)
+			});
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}
+		if (response.status === 304) return { unchanged: true };
 		if (response.status === 404) throw new IanseoError('missing', path);
 		if (!response.ok) throw new IanseoError('unavailable', `ianseo answered ${response.status}`);
 		try {
-			return new Uint8Array(await response.arrayBuffer());
+			return {
+				unchanged: false,
+				body: new Uint8Array(await response.arrayBuffer()),
+				tag: response.headers.get('ETag')
+			};
 		} catch (error) {
 			throw new IanseoError('offline', String(error));
 		}

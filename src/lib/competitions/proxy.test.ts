@@ -1,86 +1,61 @@
 import { describe, it, expect } from 'vitest';
-import { PROXY_PREFIX, proxyHeaders, targetOf } from './proxy';
+import { proxied, tagOf } from './proxy';
 
-const at = (path: string) => targetOf(new URL(`https://appchery.com${PROXY_PREFIX}${path}`));
+/**
+ * ianseo stamps nothing it builds with PHP, so a page an archer refreshes is sent again in full
+ * however little of it changed. The proxy stamps it from the bytes it read, so the app can say what
+ * it holds and be answered in a line. ianseo is still asked every time: this saves the phone's data.
+ */
+const answerOf = (body: string, headers: Record<string, string> = {}, status = 200) =>
+	new Response(status === 304 ? null : body, { status, headers });
 
-describe('targetOf, for ianseo', () => {
-	it('points a proxied path at ianseo', () => {
-		expect(at('/ianseo/TourList.php')).toBe('https://www.ianseo.net/TourList.php');
-		expect(at('/ianseo/TourData/2026/26053/IQRM.php')).toBe(
-			'https://www.ianseo.net/TourData/2026/26053/IQRM.php'
+describe('the stamp the proxy puts on a page', () => {
+	it('is the same for the same bytes and different for different ones', async () => {
+		expect(await tagOf(new TextEncoder().encode('a page'))).toBe(
+			await tagOf(new TextEncoder().encode('a page'))
+		);
+		expect(await tagOf(new TextEncoder().encode('a page'))).not.toBe(
+			await tagOf(new TextEncoder().encode('another page'))
 		);
 	});
 
-	it('carries the one query ianseo is asked anything with', () => {
-		expect(at('/ianseo/Details.php?toId=26053')).toBe(
-			'https://www.ianseo.net/Details.php?toId=26053'
-		);
-	});
-});
-
-describe('targetOf, for the FFTA', () => {
-	it('points a proxied path at the federation', () => {
-		expect(at('/ffta/epreuve/27617')).toBe('https://www.ffta.fr/epreuve/27617');
+	it('stamps a page ianseo stamped with nothing', async () => {
+		const passed = await proxied(answerOf('<html>list</html>'), null);
+		expect(passed.status).toBe(200);
+		expect(passed.headers.ETag).toBeTruthy();
+		expect(new TextDecoder().decode(passed.body!)).toBe('<html>list</html>');
 	});
 
-	it('carries the calendar query, including the départements, which repeat', () => {
-		const target = at('/ffta/competitions?start=2026-08-25&end=2026-11-25&dep%5B%5D=36&dep%5B%5D=1&page=2');
-		expect(target).toContain('https://www.ffta.fr/competitions?');
-		expect(target).toContain('start=2026-08-25');
-		expect(target).toContain('end=2026-11-25');
-		expect(target).toContain('page=2');
-		expect(target?.match(/dep%5B%5D=/g)).toHaveLength(2);
+	it('answers in a line when the app already holds that very page', async () => {
+		const first = await proxied(answerOf('<html>list</html>'), null);
+		const again = await proxied(answerOf('<html>list</html>'), first.headers.ETag);
+		expect(again.status).toBe(304);
+		expect(again.body).toBe(null);
+		expect(again.headers.ETag).toBe(first.headers.ETag);
 	});
 
-	it('drops a query neither source was asked for', () => {
-		expect(at('/ffta/competitions?destination=http://evil.example.com')).toBe(
-			'https://www.ffta.fr/competitions'
-		);
-	});
-});
-
-describe('targetOf, for Inscript\'Arc', () => {
-	it('points at the one page that lists what is open for entry', () => {
-		expect(at('/inscriptarc/competitions/resultats')).toBe(
-			'https://www.inscriptarc.fr/competitions/resultats'
-		);
+	it('sends the page when it is no longer the one the app holds', async () => {
+		const first = await proxied(answerOf('<html>list</html>'), null);
+		const again = await proxied(answerOf('<html>a longer list</html>'), first.headers.ETag);
+		expect(again.status).toBe(200);
+		expect(again.headers.ETag).not.toBe(first.headers.ETag);
 	});
 
-	it('reaches nothing else on the platform, which is where archers’ own details are', () => {
-		expect(at('/inscriptarc/competitions')).toBe(null);
-		expect(at('/inscriptarc/identification')).toBe(null);
-	});
-});
-
-describe('targetOf, on anything else', () => {
-	it('answers for no path either source does not publish', () => {
-		expect(at('/ianseo/Admin.php')).toBe(null);
-		expect(at('/ffta/user/login')).toBe(null);
-		expect(at('/ffta/epreuve/../../etc/passwd')).toBe(null);
-		expect(at('/other/TourList.php')).toBe(null);
+	it("keeps a PDF's own stamp rather than inventing one over it", async () => {
+		const passed = await proxied(answerOf('%PDF-1.4', { ETag: '"f1fa-65a9"' }), null);
+		expect(passed.headers.ETag).toBe('"f1fa-65a9"');
 	});
 
-	it('answers for nothing outside its own prefix', () => {
-		expect(targetOf(new URL('https://appchery.com/TourList.php'))).toBe(null);
-		expect(targetOf(new URL(`https://appchery.com${PROXY_PREFIX}`))).toBe(null);
+	it('passes on ianseo answering for itself that a PDF has not changed', async () => {
+		const passed = await proxied(answerOf('', { ETag: '"f1fa-65a9"' }, 304), '"f1fa-65a9"');
+		expect(passed.status).toBe(304);
+		expect(passed.body).toBe(null);
+		expect(passed.headers.ETag).toBe('"f1fa-65a9"');
 	});
 
-	it('never lets one source’s path be asked of the other', () => {
-		expect(at('/ffta/TourList.php')).toBe(null);
-		expect(at('/ianseo/competitions')).toBe(null);
-	});
-});
-
-describe('proxyHeaders', () => {
-	it('hands a page over in an origin of its own, with no script', () => {
-		const headers = proxyHeaders('text/html; charset=UTF-8');
-		// Somebody else's markup on the app's own origin would reach the archer's stored session.
-		expect(headers['Content-Security-Policy']).toBe('sandbox');
-		expect(headers['X-Content-Type-Options']).toBe('nosniff');
-	});
-
-	it('calls a page a page when the source did not say what it was', () => {
-		expect(proxyHeaders(null)['Content-Type']).toBe('text/html; charset=UTF-8');
-		expect(proxyHeaders('application/pdf')['Content-Type']).toBe('application/pdf');
+	it('stamps nothing on a page ianseo refused, so a failure is never held as one', async () => {
+		const passed = await proxied(answerOf('gone', {}, 404), null);
+		expect(passed.status).toBe(404);
+		expect(passed.headers.ETag).toBe(undefined);
 	});
 });

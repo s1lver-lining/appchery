@@ -56,15 +56,49 @@ describe('fetchIanseo', () => {
 		await failed;
 	});
 
-	it('hands back a page that answers in time', async () => {
-		vi.stubGlobal('fetch', async () => ({ status: 200, ok: true, text: async () => '<html>ok</html>' }));
-		expect(await fetchIanseo('/TourList.php')).toBe('<html>ok</html>');
+	it('hands back a page that answers in time, with what ianseo called it', async () => {
+		vi.stubGlobal('fetch', async () => ({
+			status: 200,
+			ok: true,
+			headers: { get: () => '"abc"' },
+			text: async () => '<html>ok</html>'
+		}));
+		expect(await fetchIanseo('/TourList.php')).toEqual({
+			unchanged: false,
+			body: '<html>ok</html>',
+			tag: '"abc"'
+		});
+	});
+
+	it('says a page is unchanged rather than handing back nothing', async () => {
+		let sent: Record<string, string> | undefined;
+		vi.stubGlobal('fetch', async (_url: string, init: { headers: Record<string, string> }) => {
+			sent = init.headers;
+			return { status: 304, ok: false, headers: { get: () => null }, text: async () => '' };
+		});
+		expect(await fetchIanseo('/TourList.php', { tag: '"abc"' })).toEqual({ unchanged: true });
+		expect(sent?.['If-None-Match']).toBe('"abc"');
+	});
+
+	it('says nothing about what it holds where it holds nothing', async () => {
+		let sent: Record<string, string> | undefined;
+		vi.stubGlobal('fetch', async (_url: string, init: { headers: Record<string, string> }) => {
+			sent = init.headers;
+			return { status: 200, ok: true, headers: { get: () => null }, text: async () => 'x' };
+		});
+		await fetchIanseo('/TourList.php');
+		expect(sent?.['If-None-Match']).toBe(undefined);
 	});
 
 	it('leaves nothing waiting once a page has been read', async () => {
 		vi.useFakeTimers();
-		vi.stubGlobal('fetch', async () => ({ status: 200, ok: true, text: async () => 'done' }));
-		expect(await fetchIanseo('/TourList.php')).toBe('done');
+		vi.stubGlobal('fetch', async () => ({
+			status: 200,
+			ok: true,
+			headers: { get: () => null },
+			text: async () => 'done'
+		}));
+		expect(await fetchIanseo('/TourList.php')).toMatchObject({ body: 'done' });
 		expect(vi.getTimerCount()).toBe(0);
 	});
 });

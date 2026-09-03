@@ -1694,7 +1694,63 @@ async function run() {
 	await checkScheduleDays(browser);
 	await checkNewDocuments(browser);
 	await checkBracketViews(browser);
-	await checkPull(browser);
+	/**
+ * Asking ianseo whether a page is still the one already held.
+ *
+ * ianseo stamps none of the pages it builds, so the proxy stamps them from the bytes it read and
+ * answers in a line where nothing has changed. The saving is the archer's own data, and the app has
+ * to carry on as if it had read the page: a refresh answered short must not empty the screen.
+ */
+async function checkNotModified(browser) {
+	const context = await browser.newContext({ viewport: { width: 390, height: 844 } });
+
+	let sent = 0;
+	let short = 0;
+	const stamp = '"a-competition-list"';
+	// Registered first, because a later handler is the one Playwright runs: this one has to be it.
+	await serveIanseo(context);
+	await context.route('**/competitions-api/ianseo/**', (route) => {
+		const url = new URL(route.request().url());
+		const path = url.pathname.replace('/competitions-api/ianseo', '');
+		if (path !== '/TourList.php') return route.fallback();
+
+		// What the app says it already holds, which on a first read it does not say at all.
+		if (route.request().headers()['if-none-match'] === stamp) {
+			short++;
+			return route.fulfill({ status: 304, headers: { ETag: stamp } });
+		}
+		sent++;
+		return route.fulfill({
+			status: 200,
+			contentType: 'text/html; charset=UTF-8',
+			headers: { ETag: stamp },
+			body: fixture('TourList')
+		});
+	});
+
+	const page = await context.newPage();
+	await page.goto(`${BASE}/ianseo`, { waitUntil: 'networkidle' });
+	await page.waitForSelector('a[href*="/ianseo/"]');
+	const before = await page.locator('a[href*="/ianseo/"]').count();
+	check('a page is read in full the first time, nothing being held yet', sent === 1 && short === 0, `${sent} sent, ${short} short`);
+
+	await page.getByRole('button', { name: /Refresh/i }).click();
+	await page.waitForTimeout(1200);
+	check('and is only asked about on the next read', short > 0, `${sent} sent, ${short} short`);
+	check(
+		'a refresh answered short leaves every competition on the screen',
+		(await page.locator('a[href*="/ianseo/"]').count()) === before,
+		`${before} -> ${await page.locator('a[href*="/ianseo/"]').count()}`
+	);
+	check(
+		'and reads as current rather than as something that could not be refreshed',
+		!(await page.getByText(/could not be reached/i).first().isVisible())
+	);
+	await context.close();
+}
+
+await checkNotModified(browser);
+await checkPull(browser);
 
 	await browser.close();
 

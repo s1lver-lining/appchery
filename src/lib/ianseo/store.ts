@@ -143,6 +143,18 @@ export async function readCache<T>(path: string): Promise<Cached<T> | null> {
 }
 
 /**
+ * The page is still the one that was kept, so only its age moves. Written without the payload: the
+ * whole list is megabytes of it, and rewriting that to record that nothing changed is the cost this
+ * is here to avoid.
+ */
+export async function touchCache(path: string): Promise<void> {
+	await db()
+		.update(schema.ianseoCache)
+		.set({ cachedAt: Date.now() })
+		.where(eq(schema.ianseoCache.path, path));
+}
+
+/**
  * How many ianseo pages the device keeps. A competition has a document per class per round, so a
  * season of browsing runs into thousands of them, and none of it is the archer's own record: what
  * has not been looked at in a while is cheaper to read again than to carry.

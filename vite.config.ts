@@ -3,7 +3,7 @@ import basicSsl from '@vitejs/plugin-basic-ssl';
 import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
-import { proxyHeaders, targetOf } from './src/lib/competitions/proxy.ts';
+import { proxied, targetOf } from './src/lib/competitions/proxy.ts';
 
 /**
  * SQLite's OPFS backend requires the page to be cross-origin isolated.
@@ -46,7 +46,7 @@ function crossOriginIsolation(): Plugin {
  */
 function ianseoProxy(): Plugin {
 	const middleware = async (
-		request: { url?: string; method?: string },
+		request: { url?: string; method?: string; headers?: Record<string, string | string[] | undefined> },
 		response: {
 			statusCode: number;
 			setHeader(key: string, value: string): void;
@@ -64,14 +64,18 @@ function ianseoProxy(): Plugin {
 		}
 
 		try {
+			const asked = (request.headers?.['if-none-match'] as string | undefined) ?? null;
 			const answer = await fetch(target, {
-				headers: { 'User-Agent': 'Mozilla/5.0 (compatible; Appchery/1.0; +https://appchery.com)' }
+				headers: {
+					'User-Agent': 'Mozilla/5.0 (compatible; Appchery/1.0; +https://appchery.com)',
+					...(asked ? { 'If-None-Match': asked } : {})
+				}
 			});
-			response.statusCode = answer.status;
-			for (const [key, value] of Object.entries(proxyHeaders(answer.headers.get('Content-Type'))))
-				response.setHeader(key, value);
 			// Bytes rather than text: ianseo prints a competition's schedule as a PDF, and the app reads it.
-			response.end(new Uint8Array(await answer.arrayBuffer()));
+			const passed = await proxied(answer, asked);
+			response.statusCode = passed.status;
+			for (const [key, value] of Object.entries(passed.headers)) response.setHeader(key, value);
+			response.end(passed.body ? passed.body : undefined);
 		} catch (error) {
 			response.statusCode = 502;
 			response.end(String(error));
