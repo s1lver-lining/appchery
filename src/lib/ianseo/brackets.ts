@@ -39,8 +39,11 @@ export function readAssignment(value: string | null | undefined): Assignment {
 
 /** Who won a match, by score alone rather than by the draw: see doc/ianseo.md, "What is shown". */
 export function winnerOf(match: BracketMatch): number | null {
-	const scores = match.entries.map((entry) => Number(readAssignment(entry.score).score));
-	if (scores.length < 2 || scores.some((score) => !Number.isFinite(score))) return null;
+	// Read before counting: an unshot side scores nothing, and `Number(null)` is a perfectly finite 0.
+	const written = match.entries.map((entry) => readAssignment(entry.score).score);
+	if (written.length < 2 || written.some((score) => !score?.trim())) return null;
+	const scores = written.map(Number);
+	if (scores.some((score) => !Number.isFinite(score))) return null;
 	if (scores[0] === scores[1]) return null;
 	return scores[0] > scores[1] ? 0 : 1;
 }

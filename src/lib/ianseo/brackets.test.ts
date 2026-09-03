@@ -81,6 +81,13 @@ describe('winnerOf', () => {
 		expect(winnerOf(match(['Dupont', '5'], ['Bernard', '5']))).toBe(null);
 	});
 
+	it('waits for both sides before naming a winner', () => {
+		// Mid-match, or a row ianseo has half filled: one score is not a result.
+		expect(winnerOf(match(['Dupont', '6'], ['Bernard', null]))).toBe(null);
+		expect(winnerOf(match(['Dupont', '6'], ['Bernard', '']))).toBe(null);
+		expect(winnerOf(match(['Dupont', '6'], ['Bernard', 'T# 1B']))).toBe(null);
+	});
+
 	it('says nothing about a bye, which is a word rather than a score', () => {
 		expect(winnerOf(match(['Dupont', 'Bye'], ['', null]))).toBe(null);
 	});
