@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { get } from 'svelte/store';
 import { ianseoDocumentsSeen } from '$lib/prefs';
-import { newDocuments, notePublished, seenPublished } from './published';
-import type { CompetitionDocument } from './types';
+import { newDocuments, notePublished, seenInCache, seenPublished } from './published';
+import type { Competition, CompetitionDocument } from './types';
 
 const document = (title: string, updatedAt: number | null): CompetitionDocument => ({
 	path: `/TourData/2026/1/${title}.php`,
@@ -44,5 +44,35 @@ describe('what a competition has published since it was last opened', () => {
 	it('remembers nothing about a competition that has published nothing', () => {
 		notePublished('29887', null);
 		expect(get(ianseoDocumentsSeen)).toEqual([]);
+	});
+});
+
+/**
+ * A competition the archer already follows, first opened after this was built. Without a fallback
+ * it would go one whole round of publishing marking nothing, which reads as a feature that does not
+ * work rather than as one waiting its turn.
+ */
+describe('what the device already held', () => {
+	const kept = (stamps: (number | null)[]): Competition => ({
+		toId: '29742',
+		name: 'A competition',
+		organiser: 'A club',
+		where: 'Somewhere',
+		documents: stamps.map((at, index) => document(`D${index}`, at))
+	});
+
+	it('is the newest thing in the copy it kept', () => {
+		expect(seenInCache(kept([3000, 7000, 5000]))).toBe(7000);
+	});
+
+	it('is nothing at all for a competition it has never read', () => {
+		expect(seenInCache(null)).toBe(null);
+		expect(seenInCache(kept([null]))).toBe(null);
+	});
+
+	it('marks what has arrived since that copy was taken', () => {
+		const before = seenInCache(kept([3000, 7000]));
+		const now = [document('D0', 3000), document('D1', 7000), document('D2', 9000)];
+		expect([...newDocuments(now, before)].map((one) => one.title)).toEqual(['D2']);
 	});
 });

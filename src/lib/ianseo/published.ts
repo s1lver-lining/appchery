@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import { ianseoDocumentsSeen } from '$lib/prefs';
-import type { CompetitionDocument } from './types';
+import { lastPublished } from './parse/details';
+import type { Competition, CompetitionDocument } from './types';
 
 /**
  * Which of a competition's documents have been published since the archer last opened it.
@@ -34,6 +35,18 @@ export function notePublished(toId: string, published: number | null): void {
 	if ((seenPublished(toId, saved) ?? 0) >= published) return;
 	const rest = saved.filter((one) => !one.startsWith(KEY(toId)));
 	ianseoDocumentsSeen.set([...rest, `${toId}|${published}`].slice(-REMEMBERED));
+}
+
+/**
+ * What this device had already read of a competition it holds no record for.
+ *
+ * A record is only written from the moment this was built, so without a fallback every competition
+ * the archer already followed would go one whole round of publishing with nothing marked. The pages
+ * read before are still on the device, and the newest thing in the copy it kept is by definition
+ * the newest thing it has been shown. Same clock on both sides of that comparison: ianseo's own.
+ */
+export function seenInCache(kept: Competition | null | undefined): number | null {
+	return kept ? lastPublished(kept.documents) : null;
 }
 
 /**

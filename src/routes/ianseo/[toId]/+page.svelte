@@ -18,6 +18,7 @@
 	import { IANSEO, IanseoError } from '$lib/ianseo/fetch';
 	import { fileLink, webLink } from '$lib/competitions/links';
 	import { readCache } from '$lib/ianseo/store';
+	import { competitionPath } from '$lib/ianseo/client';
 	import { noteWhatIsFollowed } from '$lib/ianseo/notify';
 	import {
 		addFavourite,
@@ -35,7 +36,7 @@
 	import { namesFound, terms } from '$lib/ianseo/find';
 	import { groupKey } from '$lib/ianseo/groups';
 	import { scheduleDocument } from '$lib/ianseo/schedule';
-	import { newDocuments, notePublished, seenPublished } from '$lib/ianseo/published';
+	import { newDocuments, notePublished, seenInCache, seenPublished } from '$lib/ianseo/published';
 	import { lastPublished } from '$lib/ianseo/parse/details';
 	import { loadEntries } from '$lib/inscriptarc/client';
 	import { entryFor } from '$lib/inscriptarc/match';
@@ -89,11 +90,14 @@
 		const known = await favourites();
 		// The list is only read from what is already on the device: this page must not wait on it.
 		const list = await readCache<Tournament[]>(TOURNAMENT_LIST);
+		// Read before the page is, or refreshing it would overwrite the copy being asked about.
+		const kept = await readCache<Competition>(competitionPath(id));
 		if (mine !== request) return;
 
 		pinned = known;
 		tournament = list?.value.find((row) => row.toId === id) ?? null;
-		seen = seenPublished(id);
+		// A competition with no record of its own falls back to whatever this device already holds.
+		seen = seenPublished(id) ?? seenInCache(kept?.value);
 		await read(false, mine);
 		await findEntry(mine);
 	}
