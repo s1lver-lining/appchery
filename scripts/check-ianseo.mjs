@@ -1231,10 +1231,12 @@ async function checkBracketViews(browser) {
 	await strip.nth(3).click();
 	await page.waitForTimeout(400);
 	const from = await pressed();
-	const cards = await page.locator('div.space-y-2[data-noswipe]').boundingBox();
+	const track = page.locator('div.relative.overflow-hidden[data-noswipe]');
+	const cards = await track.boundingBox();
 	const touch = await context.newCDPSession(page);
-	async function drag(dx) {
-		const y = cards.y + 50;
+	/** Held down and moved, so what the track is doing can be read before the finger is lifted. */
+	async function hold(dx) {
+		const y = cards.y + 40;
 		const x = cards.x + cards.width / 2;
 		await touch.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x, y }] });
 		for (let step = 1; step <= 8; step++) {
@@ -1243,9 +1245,44 @@ async function checkBracketViews(browser) {
 				touchPoints: [{ x: x + (dx * step) / 8, y }]
 			});
 		}
-		await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
-		await page.waitForTimeout(350);
 	}
+	async function lift() {
+		await touch.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+		await page.waitForTimeout(400);
+	}
+	const drag = async (dx) => {
+		await hold(dx);
+		await lift();
+	};
+
+	/**
+	 * The round follows the finger and the next one rides in beside it, which is the whole point of
+	 * doing this the way the swipe between the main pages is done rather than acting on the release.
+	 */
+	await hold(-160);
+	const riding = await page.evaluate(() => {
+		const rail = document.querySelector('div.relative.overflow-hidden[data-noswipe]');
+		const panes = [...rail.children];
+		return { panes: panes.length, x: panes.map((pane) => Math.round(pane.getBoundingClientRect().x)) };
+	});
+	check(
+		'a drag carries the round off and brings the next one on',
+		riding.panes === 2 && riding.x[0] < riding.x[1],
+		JSON.stringify(riding)
+	);
+	await shot(page, 'bracket-swipe');
+	await lift();
+	check(
+		'and leaves nothing behind once it lands',
+		(await page.evaluate(() => {
+			const rail = document.querySelector('div.relative.overflow-hidden[data-noswipe]');
+			return { panes: rail.children.length, height: rail.style.height || 'auto' };
+		})).panes === 1
+	);
+
+	// Back where it started, and this time let go of it.
+	await strip.nth(3).click();
+	await page.waitForTimeout(400);
 	await drag(-140);
 	const forwards = await pressed();
 	check('a swipe across the cards turns to the next round', forwards !== from, `${from} -> ${forwards}`);

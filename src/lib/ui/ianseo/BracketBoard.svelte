@@ -5,8 +5,8 @@
 	import { readAssignment } from '$lib/ianseo/brackets';
 	import { ianseoFullClubNames } from '$lib/prefs';
 	import { readSession, writeSession } from '$lib/ui/sessionState';
-	import { swipe } from '$lib/ui/swipe';
-	import type { BracketDocument, BracketMatch } from '$lib/ianseo/types';
+	import { swipe, COMMIT_RATIO, SNAP_EASE, SNAP_MS } from '$lib/ui/swipe';
+	import type { BracketDocument, BracketMatch, BracketRound } from '$lib/ianseo/types';
 
 	/**
 	 * An elimination bracket. Drawn as a round at a time rather than as the wall chart ianseo prints:
@@ -82,61 +82,63 @@
 	 * is read round by round and the rounds are in an order. The whole draw sits at the end of that
 	 * order rather than outside it: swiping past the final arrives at the chart it is drawn on.
 	 */
-	function step(by: number) {
-		const order = [...shown.map((_, index) => index), TREE];
-		const here = order.indexOf(at);
-		const next = order[here + by];
-		if (next !== undefined) show(next);
+	const order = $derived([...shown.map((_, index) => index), TREE]);
+	const stepTo = (by: number) => order[order.indexOf(at) + by];
+
+	/**
+	 * The drag itself, worked the way the swipe between the main pages of the app is worked: the
+	 * round follows the finger, the one being swiped to rides in beside it, and letting go either
+	 * carries it the rest of the way or puts it back. Sharing the numbers as well as the shape, so
+	 * two gestures that look the same are the same.
+	 */
+	let width = $state(1);
+	let offset = $state(0);
+	let duration = $state(0);
+	let settling = $state(false);
+	let hereHigh = $state(0);
+	let comingHigh = $state(0);
+
+	/** Which way the drag is going, and what is over there. Nothing while the track is at rest. */
+	const towards = $derived(offset === 0 ? 0 : offset < 0 ? 1 : -1);
+	const coming = $derived(towards === 0 ? null : (stepTo(towards) ?? null));
+
+	/**
+	 * The track is as tall as what is on it, and what is on it is changing: a round of sixteen
+	 * matches sliding onto the screen of a final has to bring its own height with it, or it arrives
+	 * cut off and snaps open once it lands.
+	 */
+	const height = $derived.by(() => {
+		if (coming === null || comingHigh === 0 || hereHigh === 0) return null;
+		const progress = Math.min(1, Math.abs(offset) / width);
+		return Math.round(hereHigh + (comingHigh - hereHigh) * progress);
+	});
+
+	/** A swipe off either end of the order pulls against a rubber band rather than dead stopping. */
+	function damp(dx: number) {
+		return stepTo(dx < 0 ? 1 : -1) === undefined ? dx * 0.25 : dx;
 	}
 
-	/** How far across the cards a drag has to travel before it counts as turning a page. */
-	const TURN = 60;
+	function release(dx: number, flicked: boolean) {
+		const target = stepTo(dx < 0 ? 1 : -1);
+		const far = Math.abs(offset) > width * COMMIT_RATIO;
+		duration = SNAP_MS;
+
+		if (target === undefined || !(far || flicked)) {
+			offset = 0;
+			return;
+		}
+		settling = true;
+		offset = Math.sign(dx) * -width;
+		setTimeout(() => {
+			duration = 0;
+			offset = 0;
+			settling = false;
+			show(target);
+		}, SNAP_MS);
+	}
 </script>
 
-{#if shown.length === 0}
-	<p class="rounded-2xl border border-dashed border-line p-5 text-center text-sm text-muted">
-		{$t('ianseo.bracketEmpty')}
-	</p>
-{:else}
-	<!-- The rounds as a strip of tabs: the final is the one worth landing on, so it sits at the end. -->
-	<div class="-mx-4 mb-3 overflow-x-auto px-4">
-		<div class="flex w-max min-w-full gap-1.5">
-			{#each shown as one, index (one.title + index)}
-				<button
-					class="press rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap {index === at
-						? 'border-brand/40 bg-brand/10 text-brand-text'
-						: 'border-line text-muted'}"
-					aria-pressed={index === at}
-					onclick={() => show(index)}
-				>
-					{one.title || `${index + 1}`}
-					<span class="ml-1 font-normal opacity-70">{one.matches.length}</span>
-				</button>
-			{/each}
-
-			<!-- Kept to the end of the strip, past the final: it is every round at once, not another one. -->
-			<button
-				class="press ml-auto flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap {at ===
-				TREE
-					? 'border-brand/40 bg-brand/10 text-brand-text'
-					: 'border-line text-muted'}"
-				aria-pressed={at === TREE}
-				onclick={() => show(TREE)}
-			>
-				<Icon name="bracket" size={13} />
-				{$t('ianseo.wholeDraw')}
-			</button>
-		</div>
-	</div>
-
-	{#if at === TREE}
-		<!--
-			The whole draw, a column a round, scrolled across rather than folded down. Unreadable on a
-			phone as a wall chart, which is why it is not what the page opens on, but it is the one view
-			that answers who is still in and who they meet next without walking back through the rounds.
-		-->
-		<!-- Marked off the page's own back swipe: dragging across a chart is reading it, not leaving. -->
-		<div class="-mx-4 overflow-x-auto px-4 pb-1" data-noswipe>
+{#snippet chart()}
 			<div class="flex w-max items-stretch gap-3">
 				{#each shown as one, index (one.title + index)}
 					<div class="flex w-44 shrink-0 flex-col">
@@ -192,24 +194,10 @@
 					</div>
 				{/each}
 			</div>
-		</div>
-	{:else}
-		<!--
-			A drag across the cards turns the page, because a bracket is read round by round and the
-			rounds are in an order. Marked off the page's own back swipe, which is the same gesture.
-		-->
-		<div
-			class="space-y-2"
-			data-noswipe
-			use:swipe={{
-				onMove: () => {},
-				onEnd: (dx, flicked) => {
-					if (Math.abs(dx) < TURN && !flicked) return;
-					step(dx < 0 ? 1 : -1);
-				}
-			}}
-		>
-		{#each current.matches as match, index (index)}
+{/snippet}
+
+{#snippet cards(round: BracketRound)}
+		{#each round.matches as match, index (index)}
 			{@const won = winner(match)}
 			<div class="overflow-hidden rounded-2xl border border-line bg-surface">
 				{#if dueAt(match)}
@@ -312,6 +300,96 @@
 				{/if}
 			</div>
 		{/each}
+{/snippet}
+
+{#if shown.length === 0}
+	<p class="rounded-2xl border border-dashed border-line p-5 text-center text-sm text-muted">
+		{$t('ianseo.bracketEmpty')}
+	</p>
+{:else}
+	<!-- The rounds as a strip of tabs: the final is the one worth landing on, so it sits at the end. -->
+	<div class="-mx-4 mb-3 overflow-x-auto px-4">
+		<div class="flex w-max min-w-full gap-1.5">
+			{#each shown as one, index (one.title + index)}
+				<button
+					class="press rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap {index === at
+						? 'border-brand/40 bg-brand/10 text-brand-text'
+						: 'border-line text-muted'}"
+					aria-pressed={index === at}
+					onclick={() => show(index)}
+				>
+					{one.title || `${index + 1}`}
+					<span class="ml-1 font-normal opacity-70">{one.matches.length}</span>
+				</button>
+			{/each}
+
+			<!-- Kept to the end of the strip, past the final: it is every round at once, not another one. -->
+			<button
+				class="press ml-auto flex items-center gap-1 rounded-full border px-3 py-1 text-xs font-semibold whitespace-nowrap {at ===
+				TREE
+					? 'border-brand/40 bg-brand/10 text-brand-text'
+					: 'border-line text-muted'}"
+				aria-pressed={at === TREE}
+				onclick={() => show(TREE)}
+			>
+				<Icon name="bracket" size={13} />
+				{$t('ianseo.wholeDraw')}
+			</button>
+		</div>
+	</div>
+
+	{#if at === TREE}
+		<!--
+			The whole draw, a column a round, scrolled across rather than folded down. Unreadable on a
+			phone as a wall chart, which is why it is not what the page opens on, but it is the one view
+			that answers who is still in and who they meet next without walking back through the rounds.
+			Marked off the page's own back swipe: dragging across a chart is reading it, not leaving.
+		-->
+		<div class="-mx-4 overflow-x-auto px-4 pb-1" data-noswipe>
+			{@render chart()}
+		</div>
+	{:else}
+		<!--
+			The rounds ride on a track, so a drag carries this one off and brings the next one on rather
+			than replacing it once the finger is lifted. The same move as the swipe between the main
+			pages of the app, and the same numbers behind it, because it is the same gesture.
+		-->
+		<div
+			class="relative overflow-hidden"
+			data-noswipe
+			bind:clientWidth={width}
+			style={height === null ? '' : `height: ${height}px; transition: height ${duration}ms ${SNAP_EASE}`}
+			use:swipe={{
+				enabled: () => !settling,
+				onMove: (dx) => {
+					duration = 0;
+					offset = damp(dx);
+				},
+				onEnd: release
+			}}
+		>
+			<div
+				bind:clientHeight={hereHigh}
+				style="transform: translate3d({offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
+			>
+				{@render cards(current)}
+			</div>
+
+			{#if coming !== null}
+				<!-- Off to the side until the drag brings it in, and out of the flow so it sets no height. -->
+				<div
+					class="absolute inset-x-0 top-0"
+					bind:clientHeight={comingHigh}
+					style="transform: translate3d({towards * width + offset}px, 0, 0); transition: transform {duration}ms {SNAP_EASE}"
+					inert
+				>
+					{#if coming === TREE}
+						<div class="-mx-4 overflow-hidden px-4 pb-1">{@render chart()}</div>
+					{:else}
+						{@render cards(shown[coming])}
+					{/if}
+				</div>
+			{/if}
 		</div>
 	{/if}
 {/if}
