@@ -89,16 +89,22 @@
 
 	// Leaving the chart at its left edge turns the page; see doc/ianseo.md, "What is shown".
 	const EDGE_DEAD = 24;
-	let edge: { x: number; y: number; leaving: boolean } | null = null;
+	let edge: { x: number; y: number; leaving: boolean; dragging: boolean } | null = null;
 
 	function edgePull(node: HTMLElement) {
 		const onStart = (event: TouchEvent) => {
-			if (event.touches.length !== 1) {
+			// A track already snapping parks the offset off centre, where a second release would fight it.
+			if (event.touches.length !== 1 || settling) {
 				edge = null;
 				return;
 			}
 			const touch = event.touches[0];
-			edge = { x: touch.clientX, y: touch.clientY, leaving: node.scrollLeft <= 1 };
+			edge = {
+				x: touch.clientX,
+				y: touch.clientY,
+				leaving: node.scrollLeft <= 1,
+				dragging: false
+			};
 		};
 		const onMove = (event: TouchEvent) => {
 			if (!edge?.leaving) return;
@@ -107,14 +113,16 @@
 			const dy = touch.clientY - edge.y;
 			// Short, or mostly down the page, or pulling the wrong way: the chart's own scroll keeps it.
 			if (dx < EDGE_DEAD || Math.abs(dx) < Math.abs(dy) * AXIS_BIAS) return;
+			edge.dragging = true;
 			duration = 0;
 			event.preventDefault();
 			offset = damp(dx - EDGE_DEAD);
 		};
 		const onEnd = () => {
-			const dragged = offset;
+			// Only a gesture that moved the track releases it; a tap on the chart is not a swipe of one.
+			const dragging = edge?.dragging ?? false;
 			edge = null;
-			if (dragged !== 0) release(dragged, false);
+			if (dragging) release(offset, false);
 		};
 		node.addEventListener('touchstart', onStart, { passive: true });
 		node.addEventListener('touchmove', onMove, { passive: false });
