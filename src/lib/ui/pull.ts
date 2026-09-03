@@ -90,11 +90,13 @@ export function pull(node: HTMLElement, options: PullOptions) {
 		current.onMove(distance);
 	};
 
-	const onEnd = () => {
+	const onEnd = (event: TouchEvent) => {
 		const began = start;
 		start = null;
 		if (!began || axis !== 'y') return;
-		current.onEnd(distance);
+		// A gesture the browser took back is not a gesture the archer finished: the page settles and
+		// reads nothing, which is what a cancelled pull looks like everywhere else.
+		current.onEnd(event.type === 'touchcancel' ? 0 : distance);
 		distance = 0;
 	};
 
