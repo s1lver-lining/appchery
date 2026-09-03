@@ -52,6 +52,37 @@ What may be proxied is a named list, not a pass through: `src/lib/ianseo/proxy.t
 kinds of path above and refuses everything else, and carries over only `toId`. An open proxy is a
 gift to whoever finds it.
 
+### Asking whether a page has changed
+
+Reading the tournament list is 6.2 MB, and an archer refreshing at a field pays for every byte of it.
+So the app says what it already holds and is answered in a line where nothing has changed.
+
+The obstacle is that **ianseo stamps nothing it builds itself**. Measured against the live site: its
+PHP pages — the list, a competition, every result document — carry no `ETag`, no `Last-Modified` and
+no `Cache-Control`, and an `If-Modified-Since` against one is answered with the whole page regardless.
+Only the files it serves off disk, the PDFs, carry a validator of their own, and those honour a
+conditional request properly.
+
+So the proxy stamps the rest itself, in `proxied` in `src/lib/competitions/proxy.ts`: it hashes the
+bytes it has just read and hands that back as the page's `ETag`. ianseo is still asked every time and
+still sends the whole page every time. What this saves is the archer's own connection, which is the
+one that costs; the proxy's link to ianseo is somebody else's problem and a cheap one.
+
+Two details that are not obvious and cost an afternoon each:
+
+- **The stamp is repeated on `X-Page-Tag`.** Cloudflare compresses a page on the way out and strips
+  the `ETag` off what it compressed — weak or strong, it makes no difference. Our own headers survive;
+  that one does not. The request side stays the ordinary `If-None-Match`, which arrives untouched.
+  The app reads whichever of the two reaches it (`tagIn` in `fetch.ts`).
+- **Test it cache-busted.** The proxy answers `Cache-Control: public, max-age=60`, so a plain repeat
+  request is served by the edge and tells you nothing about the function. Add an ignored query
+  parameter, and note that `targetOf` drops it before ianseo ever sees it.
+
+Nothing depends on any of this working. A page that arrives with no stamp is read in full, which is
+what happened everywhere before this existed, and what still happens on a phone: `CapacitorHttp` goes
+straight to ianseo, so a native build gets a real `304` on the schedule PDF and reads the PHP pages in
+full. A `304` costs no parse and no cache write either, only `touchCache` to move the hour.
+
 The service worker skips `/ianseo-api` entirely. It caches every other same origin GET, and a cached
 result would freeze at whatever was read first while the app went on dating it as fresh.
 
