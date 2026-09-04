@@ -74,6 +74,23 @@ try {
 					/<meta\s+name="description"[\s\S]*?\/>/,
 					`<meta name="description" content="${escape(translate(`${meta}.description`))}" />`
 				)
+				// The share card says the same thing as the page it is on, in the same language.
+				.replace(
+					/<meta property="og:title"[^>]*\/>/,
+					`<meta property="og:title" content="${escape(translate(`${meta}.title`))}" />`
+				)
+				.replace(
+					/<meta property="og:description"[^>]*\/>/,
+					`<meta property="og:description" content="${escape(translate(`${meta}.description`))}" />`
+				)
+				.replace(
+					/<meta property="og:url"[^>]*\/>/,
+					`<meta property="og:url" content="${ORIGIN}${path(code, page)}" />`
+				)
+				.replace(
+					/<meta property="og:locale"[^>]*\/>/,
+					`<meta property="og:locale" content="${code}" />`
+				)
 				.replace(
 					/<link rel="canonical"[^>]*\/>/,
 					`<link rel="canonical" href="${ORIGIN}${path(code, page)}" />\n${alternates}\n\t\t<link rel="alternate" hreflang="x-default" href="${ORIGIN}${path('en', page)}" />`

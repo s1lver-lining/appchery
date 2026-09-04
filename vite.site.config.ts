@@ -4,9 +4,9 @@ import { defineConfig, type Plugin } from 'vite';
 import { copyFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
-/** The app's own icons, taken from static/ rather than copied into the repository a second time. */
+/** The app's own icons and the share card, taken from static/ rather than kept here a second time. */
 function appIcons(): Plugin {
-	const files = ['favicon.svg', 'icon-192.png', 'icon-512.png'];
+	const files = ['favicon.svg', 'icon-192.png', 'icon-512.png', 'og.png'];
 	return {
 		name: 'appchery-site-icons',
 		closeBundle() {
