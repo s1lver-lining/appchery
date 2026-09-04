@@ -12,7 +12,19 @@
 	 */
 	const dark = () =>
 		typeof window !== 'undefined' && window.matchMedia('(prefers-color-scheme: dark)').matches;
-	const showing = $derived($theme === 'system' ? (dark() ? 'dark' : 'light') : $theme);
+
+	/**
+	 * The page is rendered at build time, where there is no system preference to read, so the first
+	 * client pass has to draw what the build drew or hydration claims the wrong nodes. It corrects
+	 * itself once mounted, which is a frame later and only ever swaps one glyph.
+	 */
+	let mounted = $state(false);
+	$effect(() => {
+		mounted = true;
+	});
+	const showing = $derived(
+		!mounted ? 'light' : $theme === 'system' ? (dark() ? 'dark' : 'light') : $theme
+	);
 </script>
 
 <button

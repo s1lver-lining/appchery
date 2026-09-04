@@ -1,5 +1,5 @@
-import { mount } from 'svelte';
+import { hydrate } from 'svelte';
 import '../styles.css';
 import Terms from './Terms.svelte';
 
-export default mount(Terms, { target: document.getElementById('site')! });
+export default hydrate(Terms, { target: document.getElementById('site')! });

@@ -1,5 +1,6 @@
-import { mount } from 'svelte';
+import { hydrate } from 'svelte';
 import './styles.css';
 import App from './App.svelte';
 
-export default mount(App, { target: document.getElementById('site')! });
+// Hydrated rather than mounted: the markup is already in the file, written by scripts/prerender-site.mjs.
+export default hydrate(App, { target: document.getElementById('site')! });

@@ -25,7 +25,7 @@
     "ianseo:check": "node scripts/check-ianseo.mjs",
     "deploy:prod": "./scripts/deploy.sh prod",
     "dev:site": "vite dev --config vite.site.config.ts",
-    "build:site": "vite build --config vite.site.config.ts",
+    "build:site": "vite build --config vite.site.config.ts && node scripts/prerender-site.mjs",
     "preview:site": "vite preview --config vite.site.config.ts",
     "deploy:site": "./scripts/deploy-site.sh",
     "predev": "./scripts/sync-sqlite.sh",
