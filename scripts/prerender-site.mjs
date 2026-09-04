@@ -15,6 +15,9 @@
  * Each language gets its own address, and the head of every page is rewritten to say so: the title
  * and description in the language of the page, a canonical pointing at itself, and the alternates
  * that tell a search engine the two are the same page rather than duplicates of each other.
+ *
+ * The robots and sitemap files are written here too, from the same list of pages: a sitemap kept by
+ * hand is one that still names a page after the page is gone.
  */
 import { createServer } from 'vite';
 import { render } from 'svelte/server';
@@ -45,6 +48,9 @@ const vite = await createServer({
 try {
 	const { LOCALES, locale, t } = await vite.ssrLoadModule('$lib/i18n');
 	const { ORIGIN, path } = await vite.ssrLoadModule('/lib/routes.ts');
+
+	/** The paths actually written, which is what the sitemap lists. */
+	const written = [];
 
 	for (const [page, { module, shell, meta }] of Object.entries(PAGES)) {
 		const { default: Component } = await vite.ssrLoadModule(module);
@@ -81,8 +87,25 @@ try {
 			await mkdir(dirname(file), { recursive: true });
 			await writeFile(file, html);
 			console.log(`  prerendered ${file.slice(OUT.length + 1)}`);
+			written.push(path(code, page));
 		}
 	}
+
+	// No lastmod: it would be the day of the build rather than the day the page changed, and a date
+	// that moves every deploy is one a crawler learns to ignore.
+	const urls = written
+		.map((at) => `\t<url>\n\t\t<loc>${ORIGIN}${at}</loc>\n\t</url>`)
+		.join('\n');
+	await writeFile(
+		`${OUT}/sitemap.xml`,
+		`<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${urls}\n</urlset>\n`
+	);
+	console.log('  wrote sitemap.xml');
+
+	// Everything on this host is the landing page, so there is nothing to disallow. The file is here
+	// to carry the sitemap: without it a crawler only ever finds the pages it is linked to.
+	await writeFile(`${OUT}/robots.txt`, `User-agent: *\nAllow: /\n\nSitemap: ${ORIGIN}/sitemap.xml\n`);
+	console.log('  wrote robots.txt');
 } finally {
 	await vite.close();
 }
