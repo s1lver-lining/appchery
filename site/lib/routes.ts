@@ -8,9 +8,9 @@ import type { Locale } from '$lib/i18n';
  * copy has nowhere to be found, which is half the page's words invisible to anybody searching in
  * French. English keeps the bare paths, since those are the addresses already in the wild.
  */
-export type Page = 'home' | 'terms';
+export type Page = 'home' | 'faq' | 'terms';
 
-const PATHS: Record<Page, string> = { home: '/', terms: '/terms/' };
+const PATHS: Record<Page, string> = { home: '/', faq: '/faq/', terms: '/terms/' };
 
 export function path(locale: Locale, page: Page): string {
 	return locale === 'en' ? PATHS[page] : `/${locale}${PATHS[page]}`;

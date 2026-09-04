@@ -31,6 +31,7 @@ const OUT = `${root}build-site`;
 /** The components to render, and the file the client build left as each one's shell. */
 const PAGES = {
 	home: { module: '/App.svelte', shell: `${OUT}/index.html`, meta: 'site.meta' },
+	faq: { module: '/faq/Faq.svelte', shell: `${OUT}/faq/index.html`, meta: 'faq.meta' },
 	terms: { module: '/terms/Terms.svelte', shell: `${OUT}/terms/index.html`, meta: 'terms.meta' }
 };
 
@@ -49,6 +50,7 @@ try {
 	const { LOCALES, locale, t } = await vite.ssrLoadModule('$lib/i18n');
 	const { ORIGIN, path } = await vite.ssrLoadModule('/lib/routes.ts');
 	const { APP_URL } = await vite.ssrLoadModule('/lib/app.ts');
+	const { QUESTIONS: questions } = await vite.ssrLoadModule('/faq/questions.ts');
 
 	/** The paths actually written, which is what the sitemap lists. */
 	const written = [];
@@ -96,7 +98,7 @@ try {
 					/<link rel="canonical"[^>]*\/>/,
 					`<link rel="canonical" href="${ORIGIN}${path(code, page)}" />\n${alternates}\n\t\t<link rel="alternate" hreflang="x-default" href="${ORIGIN}${path('en', page)}" />`
 				)
-				.replace('</head>', `${schema({ code, page, translate, ORIGIN, path, APP_URL })}\t</head>`)
+				.replace('</head>', `${schema({ code, page, translate, ORIGIN, path, APP_URL, questions })}\t</head>`)
 				.replace('<div id="site"></div>', `<div id="site">${body}</div>`)
 				.replace('</head>', `${head}</head>`);
 
@@ -140,7 +142,8 @@ try {
  * Only the home page carries it. Repeating it on the terms page would describe the app twice from
  * two addresses, and leave a search engine to pick which one it is really about.
  */
-function schema({ code, page, translate, ORIGIN, path, APP_URL }) {
+function schema({ code, page, translate, ORIGIN, path, APP_URL, questions }) {
+	if (page === 'faq') return tag(faqSchema({ code, translate, ORIGIN, path, questions }));
 	if (page !== 'home') return '';
 	const json = {
 		'@context': 'https://schema.org',
@@ -157,6 +160,31 @@ function schema({ code, page, translate, ORIGIN, path, APP_URL }) {
 		license: 'https://www.gnu.org/licenses/agpl-3.0.html',
 		offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' }
 	};
+	return tag(json);
+}
+
+/**
+ * The questions and their answers, in the form a search engine reads them.
+ *
+ * This is the point of the page as far as search is concerned. The answers are short, factual and
+ * about the software rather than about archery, which is exactly what a result card can quote and
+ * what an assistant asked "is there a free offline archery scoring app" can answer from.
+ */
+function faqSchema({ code, translate, ORIGIN, path, questions }) {
+	return {
+		'@context': 'https://schema.org',
+		'@type': 'FAQPage',
+		url: `${ORIGIN}${path(code, 'faq')}`,
+		inLanguage: code,
+		mainEntity: questions.map((key) => ({
+			'@type': 'Question',
+			name: translate(`faq.items.${key}.q`),
+			acceptedAnswer: { '@type': 'Answer', text: translate(`faq.items.${key}.a`) }
+		}))
+	};
+}
+
+function tag(json) {
 	// `</script>` inside the JSON would close the tag it is written in; nothing else needs escaping.
 	const text = JSON.stringify(json, null, '\t').replace(/<\//g, '<\\/');
 	return `\t<script type="application/ld+json">\n${text}\n\t\t</script>\n`;

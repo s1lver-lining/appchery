@@ -14,6 +14,7 @@
 		</div>
 		<div class="flex flex-wrap items-center gap-4 sm:ml-auto">
 			<a class="font-medium text-brand-text" href={APP_URL}>app.appchery.com</a>
+			<a class="font-medium" href={path($locale, 'faq')}>{$t('faq.title')}</a>
 			<a class="font-medium" href={SOURCE_URL} rel="noopener">{$t('site.footer.source')}</a>
 			<a class="font-medium" href={path($locale, 'terms')}>{$t('terms.title')}</a>
 			<span class="flex gap-2">

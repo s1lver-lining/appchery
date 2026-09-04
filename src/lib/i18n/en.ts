@@ -1921,6 +1921,61 @@ insetHint:
 		}
 	},
 	// The landing page on appchery.com, which is a separate build: see site/ and vite.site.config.ts.
+	faq: {
+		meta: {
+			title: 'Questions about Appchery',
+			description:
+				'What Appchery costs, what it does without a signal, where your arrows are stored, and what the camera does with what it sees.'
+		},
+		title: 'Questions',
+		intro: 'The things people ask before they open the app.',
+		items: {
+			cost: {
+				q: 'What does it cost?',
+				a: 'Nothing. There is no paid version, no trial, and nothing held back until you pay. The app is free software under the AGPL, and the sync server is free to use as well.'
+			},
+			account: {
+				q: 'Do I need an account?',
+				a: 'No. Open the app and start scoring. An account is only needed for sync, which copies your shooting between your own devices. If you shoot on one phone, you never need one.'
+			},
+			offline: {
+				q: 'Does it work without a signal?',
+				a: 'Yes. Everything is saved on your phone, so scoring, tuning and training all work with no network at all. That is the normal case: most ranges have poor reception, and the app is built for that rather than around it.'
+			},
+			data: {
+				q: 'Where is my shooting stored?',
+				a: 'On the device that recorded it. Nothing leaves your phone unless you turn sync on. If you do, your sessions are copied to the sync server so your other devices, and the archers you choose, can read them. Turn it off and nothing moves.'
+			},
+			camera: {
+				q: 'What does the camera do with what it sees?',
+				a: 'It finds your arrows on the target and nothing else. The detection runs on the phone, so no image is uploaded and none is kept. The app stores where each arrow landed, not the picture it was found in.'
+			},
+			tracking: {
+				q: 'Is there advertising or tracking?',
+				a: 'No. There are no adverts, no analytics and no third parties reading what you do. There is nothing to sell, because the app costs nothing to run for anyone but you.'
+			},
+			install: {
+				q: 'How do I install it?',
+				a: 'Open app.appchery.com in your browser and add it to your home screen. It then opens like any other app and works the same offline. There is no store download to wait for.'
+			},
+			devices: {
+				q: 'Which phones does it run on?',
+				a: 'Any phone with a recent browser, on Android or iOS, and any desktop browser as well. The app is the same on all of them.'
+			},
+			official: {
+				q: 'Do the scores count?',
+				a: 'Not officially. The app records your shooting for you, and the scorecard your competition organiser holds is the one that counts. Records and badges here are your own.'
+			},
+			backup: {
+				q: 'What happens if I lose my phone?',
+				a: 'Shooting saved only on that phone is gone with it. Sync is what protects against this: with it on, your sessions are on the server as well and come back when you sign in on another device.'
+			},
+			source: {
+				q: 'Can I see how it works?',
+				a: 'Yes. The whole app is open source, so you can read exactly what it does with your shooting rather than take our word for it.'
+			}
+		}
+	},
 	terms: {
 		meta: {
 			title: 'Terms of use \u00b7 Appchery',

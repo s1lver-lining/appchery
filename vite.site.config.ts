@@ -32,13 +32,14 @@ export default defineConfig({
 	resolve: {
 		alias: { $lib: fileURLToPath(new URL('./src/lib', import.meta.url)) }
 	},
-	// Two entries so /terms/ is a real page on a static host, with no rewrite rule to configure.
+	// One entry per page, so each is a real file on a static host with no rewrite rule to configure.
 	build: {
 		outDir: '../build-site',
 		emptyOutDir: true,
 		rollupOptions: {
 			input: {
 				main: fileURLToPath(new URL('./site/index.html', import.meta.url)),
+				faq: fileURLToPath(new URL('./site/faq/index.html', import.meta.url)),
 				terms: fileURLToPath(new URL('./site/terms/index.html', import.meta.url))
 			}
 		}

@@ -1934,6 +1934,61 @@ insetHint:
 		}
 	},
 	// La page d’accueil sur appchery.com, qui est une compilation à part : voir site/ et vite.site.config.ts.
+	faq: {
+		meta: {
+			title: 'Questions sur Appchery',
+			description:
+				'Ce que coûte Appchery, ce qu’il fait sans réseau, où vos flèches sont enregistrées, et ce que la caméra fait de ce qu’elle voit.'
+		},
+		title: 'Questions',
+		intro: 'Ce qu’on demande avant d’ouvrir l’application.',
+		items: {
+			cost: {
+				q: 'Combien ça coûte ?',
+				a: 'Rien. Il n’y a pas de version payante, pas d’essai, et rien qui soit gardé de côté en attendant que vous payiez. L’application est un logiciel libre sous licence AGPL, et le serveur de synchronisation est gratuit lui aussi.'
+			},
+			account: {
+				q: 'Faut-il un compte ?',
+				a: 'Non. Ouvrez l’application et commencez à marquer. Un compte ne sert qu’à la synchronisation, qui recopie vos tirs d’un de vos appareils à l’autre. Si vous tirez avec un seul téléphone, vous n’en avez jamais besoin.'
+			},
+			offline: {
+				q: 'Est-ce que ça marche sans réseau ?',
+				a: 'Oui. Tout est enregistré sur votre téléphone : marquer, régler et s’entraîner fonctionnent sans la moindre connexion. C’est le cas normal, car la plupart des terrains captent mal, et l’application est faite pour ça plutôt qu’autour de ça.'
+			},
+			data: {
+				q: 'Où mes tirs sont-ils enregistrés ?',
+				a: 'Sur l’appareil qui les a enregistrés. Rien ne quitte votre téléphone tant que vous n’activez pas la synchronisation. Si vous l’activez, vos séances sont recopiées sur le serveur pour que vos autres appareils, et les archers que vous choisissez, puissent les lire. Désactivez-la et plus rien ne bouge.'
+			},
+			camera: {
+				q: 'Que fait la caméra de ce qu’elle voit ?',
+				a: 'Elle repère vos flèches sur la cible, et rien d’autre. La détection tourne sur le téléphone : aucune image n’est envoyée ni conservée. L’application retient l’endroit où chaque flèche s’est plantée, pas la photo dans laquelle elle a été trouvée.'
+			},
+			tracking: {
+				q: 'Y a-t-il de la publicité ou du pistage ?',
+				a: 'Non. Pas de publicité, pas de mesure d’audience, aucun tiers qui lit ce que vous faites. Il n’y a rien à vendre, parce que l’application ne coûte rien à personne d’autre que vous.'
+			},
+			install: {
+				q: 'Comment l’installer ?',
+				a: 'Ouvrez app.appchery.com dans votre navigateur et ajoutez la page à votre écran d’accueil. Elle s’ouvre ensuite comme n’importe quelle application et fonctionne pareil hors ligne. Il n’y a pas de téléchargement à attendre.'
+			},
+			devices: {
+				q: 'Sur quels téléphones ça tourne ?',
+				a: 'Sur tout téléphone doté d’un navigateur récent, Android ou iOS, et sur un ordinateur également. L’application est la même partout.'
+			},
+			official: {
+				q: 'Les scores comptent-ils ?',
+				a: 'Pas officiellement. L’application enregistre vos tirs pour vous, et c’est la feuille de marque de l’organisateur qui fait foi. Les records et les badges d’ici sont les vôtres.'
+			},
+			backup: {
+				q: 'Que se passe-t-il si je perds mon téléphone ?',
+				a: 'Les tirs enregistrés uniquement sur ce téléphone disparaissent avec lui. C’est ce contre quoi la synchronisation protège : activée, vos séances sont aussi sur le serveur et reviennent dès que vous vous connectez sur un autre appareil.'
+			},
+			source: {
+				q: 'Peut-on voir comment ça marche ?',
+				a: 'Oui. Toute l’application est open source : vous pouvez lire exactement ce qu’elle fait de vos tirs plutôt que de nous croire sur parole.'
+			}
+		}
+	},
 	terms: {
 		meta: {
 			title: 'Conditions d\u2019utilisation \u00b7 Appchery',
