@@ -48,6 +48,7 @@ const vite = await createServer({
 try {
 	const { LOCALES, locale, t } = await vite.ssrLoadModule('$lib/i18n');
 	const { ORIGIN, path } = await vite.ssrLoadModule('/lib/routes.ts');
+	const { APP_URL } = await vite.ssrLoadModule('/lib/app.ts');
 
 	/** The paths actually written, which is what the sitemap lists. */
 	const written = [];
@@ -95,6 +96,7 @@ try {
 					/<link rel="canonical"[^>]*\/>/,
 					`<link rel="canonical" href="${ORIGIN}${path(code, page)}" />\n${alternates}\n\t\t<link rel="alternate" hreflang="x-default" href="${ORIGIN}${path('en', page)}" />`
 				)
+				.replace('</head>', `${schema({ code, page, translate, ORIGIN, path, APP_URL })}\t</head>`)
 				.replace('<div id="site"></div>', `<div id="site">${body}</div>`)
 				.replace('</head>', `${head}</head>`);
 
@@ -125,6 +127,39 @@ try {
 	console.log('  wrote robots.txt');
 } finally {
 	await vite.close();
+}
+
+/**
+ * What the page is, said in the vocabulary a search engine already parses.
+ *
+ * Free, offline and open source are the three things that set this app apart, and each has a field
+ * of its own here: a price of zero, a licence, and the platforms it runs on. Prose in the page says
+ * the same, but only as sentences somebody has to read; this is the version a result card, and an
+ * assistant answering a question about archery apps, can quote without guessing.
+ *
+ * Only the home page carries it. Repeating it on the terms page would describe the app twice from
+ * two addresses, and leave a search engine to pick which one it is really about.
+ */
+function schema({ code, page, translate, ORIGIN, path, APP_URL }) {
+	if (page !== 'home') return '';
+	const json = {
+		'@context': 'https://schema.org',
+		'@type': 'SoftwareApplication',
+		name: 'Appchery',
+		url: `${ORIGIN}${path(code, 'home')}`,
+		description: translate('site.meta.description'),
+		applicationCategory: 'SportsApplication',
+		operatingSystem: 'Android, iOS, Web',
+		inLanguage: code,
+		image: `${ORIGIN}/og.png`,
+		installUrl: APP_URL,
+		isAccessibleForFree: true,
+		license: 'https://www.gnu.org/licenses/agpl-3.0.html',
+		offers: { '@type': 'Offer', price: '0', priceCurrency: 'EUR' }
+	};
+	// `</script>` inside the JSON would close the tag it is written in; nothing else needs escaping.
+	const text = JSON.stringify(json, null, '\t').replace(/<\//g, '<\\/');
+	return `\t<script type="application/ld+json">\n${text}\n\t\t</script>\n`;
 }
 
 /** The value a Svelte store holds right now, outside a component that could subscribe to it. */
