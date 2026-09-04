@@ -6,10 +6,10 @@
 </script>
 
 <div class="min-h-full bg-bg text-ink">
-	<Nav />
+	<Nav page="terms" />
 	<main class="mx-auto max-w-3xl space-y-4 px-4 py-10 sm:px-6">
 		<h1 class="text-3xl font-black tracking-tight sm:text-4xl">{$t('terms.title')}</h1>
 		<TermsText />
 	</main>
-	<Footer />
+	<Footer page="terms" />
 </div>

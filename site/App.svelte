@@ -11,7 +11,7 @@
 </script>
 
 <div class="min-h-full bg-bg text-ink">
-	<Nav />
+	<Nav page="home" />
 	<main>
 		<Hero />
 		<Camera />
@@ -21,5 +21,5 @@
 		<Privacy />
 		<Cta />
 	</main>
-	<Footer />
+	<Footer page="home" />
 </div>

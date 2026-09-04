@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { LOCALES, LOCALE_NAMES, locale, t } from '$lib/i18n';
 	import { APP_URL } from './app';
+	import { path, type Page } from './routes';
+
+	let { page }: { page: Page } = $props();
 </script>
 
 <footer class="border-t border-line bg-surface">
@@ -11,12 +14,13 @@
 		</div>
 		<div class="flex flex-wrap items-center gap-4 sm:ml-auto">
 			<a class="font-medium text-brand-text" href={APP_URL}>app.appchery.com</a>
-			<a class="font-medium" href="/terms/">{$t('terms.title')}</a>
+			<a class="font-medium" href={path($locale, 'terms')}>{$t('terms.title')}</a>
 			<span class="flex gap-2">
 				{#each LOCALES as code (code)}
-					<button
+					<a
 						class={$locale === code ? 'font-semibold text-ink' : ''}
-						onclick={() => locale.set(code)}>{LOCALE_NAMES[code]}</button
+						href={path(code, page)}
+						hreflang={code}>{LOCALE_NAMES[code]}</a
 					>
 				{/each}
 			</span>

@@ -4,6 +4,9 @@
 	import Rings from './Rings.svelte';
 	import Language from './Language.svelte';
 	import Theme from './Theme.svelte';
+	import type { Page } from './routes';
+
+	let { page }: { page: Page } = $props();
 </script>
 
 <!-- The bar stays: the address of the app is the point of the page, so it is never scrolled away. -->
@@ -15,7 +18,7 @@
 		<span class="text-lg font-black tracking-tight">{$t('app.name')}</span>
 		<span class="ml-auto"></span>
 		<Theme />
-		<Language />
+		<Language {page} />
 		<OpenApp />
 	</nav>
 </header>

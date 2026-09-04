@@ -1922,6 +1922,11 @@ insetHint:
 	},
 	// The landing page on appchery.com, which is a separate build: see site/ and vite.site.config.ts.
 	terms: {
+		meta: {
+			title: 'Terms of use \u00b7 Appchery',
+			description:
+				'The terms under which Appchery is offered: your shooting and your bow are your own responsibility, and the app carries no liability.'
+		},
 		title: 'Terms of use',
 		intro: 'Appchery is a free tool for recording and training your archery. Using it means accepting what follows.',
 		shootingTitle: 'Shooting is your responsibility',
@@ -1940,6 +1945,11 @@ insetHint:
 		changesBody: 'These terms may change as the app does. The current version is always the one published here.'
 	},
 	site: {
+		meta: {
+			title: 'Appchery \u00b7 Archery Scoring & Training',
+			description:
+				'Score, tune and train, on your own phone. Appchery keeps every arrow on the device that shot it, works with no signal, and costs nothing.'
+		},
 		open: 'Open the app',
 		openLong: 'Open Appchery',
 		hero: {

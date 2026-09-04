@@ -1935,6 +1935,11 @@ insetHint:
 	},
 	// La page d’accueil sur appchery.com, qui est une compilation à part : voir site/ et vite.site.config.ts.
 	terms: {
+		meta: {
+			title: 'Conditions d\u2019utilisation \u00b7 Appchery',
+			description:
+				'Les conditions dans lesquelles Appchery est propos\u00e9\u00a0: votre tir et votre arc rel\u00e8vent de votre seule responsabilit\u00e9, et l\u2019application n\u2019assume aucune obligation.'
+		},
 		title: "Conditions d'utilisation",
 		intro: "Appchery est un outil gratuit pour enregistrer vos tirs et préparer votre pratique. L'utiliser vaut acceptation de ce qui suit.",
 		shootingTitle: 'Votre tir est votre responsabilité',
@@ -1953,6 +1958,11 @@ insetHint:
 		changesBody: "Ces conditions peuvent évoluer avec l'application. La version en vigueur est toujours celle publiée ici."
 	},
 	site: {
+		meta: {
+			title: 'Appchery \u00b7 Marquer, r\u00e9gler et s\u2019entra\u00eener au tir \u00e0 l\u2019arc',
+			description:
+				'Marquez vos vol\u00e9es, r\u00e9glez votre arc et entra\u00eenez-vous depuis votre t\u00e9l\u00e9phone. Appchery garde chaque fl\u00e8che sur l\u2019appareil qui l\u2019a tir\u00e9e, fonctionne sans r\u00e9seau, et ne co\u00fbte rien.'
+		},
 		open: 'Ouvrir l’appli',
 		openLong: 'Ouvrir Appchery',
 		hero: {

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Renders the landing page's HTML at build time, into the files the client build just wrote.
+ * Renders the landing page's HTML at build time, once per language, into build-site/.
  *
  * The page is a Svelte app with an empty `<div id="site">`, which is all a crawler that does not
  * run JavaScript ever sees: no headline, no copy, nothing to index. Google renders JS on a second
@@ -11,20 +11,25 @@
  * to render on, and the site is a plain Vite project rather than SvelteKit. Vite's own SSR module
  * loader compiles the same components a second time for the server, so the markup is generated
  * from the components themselves rather than kept as a copy that would drift from them.
+ *
+ * Each language gets its own address, and the head of every page is rewritten to say so: the title
+ * and description in the language of the page, a canonical pointing at itself, and the alternates
+ * that tell a search engine the two are the same page rather than duplicates of each other.
  */
 import { createServer } from 'vite';
 import { render } from 'svelte/server';
-import { readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = fileURLToPath(new URL('..', import.meta.url));
 const OUT = `${root}build-site`;
 
-/** The pages to write, each named by the component it renders and the file the build left for it. */
-const PAGES = [
-	{ module: '/App.svelte', html: `${OUT}/index.html` },
-	{ module: '/terms/Terms.svelte', html: `${OUT}/terms/index.html` }
-];
+/** The components to render, and the file the client build left as each one's shell. */
+const PAGES = {
+	home: { module: '/App.svelte', shell: `${OUT}/index.html`, meta: 'site.meta' },
+	terms: { module: '/terms/Terms.svelte', shell: `${OUT}/terms/index.html`, meta: 'terms.meta' }
+};
 
 // Production, so the components compile without Svelte's dev-time instrumentation: it expects a
 // component context that only exists inside a running app, and there is none out here. The plugin
@@ -38,19 +43,57 @@ const vite = await createServer({
 });
 
 try {
-	for (const page of PAGES) {
-		const { default: Component } = await vite.ssrLoadModule(page.module);
-		const { body, head } = render(Component);
+	const { LOCALES, locale, t } = await vite.ssrLoadModule('$lib/i18n');
+	const { ORIGIN, path } = await vite.ssrLoadModule('/lib/routes.ts');
 
-		const shell = await readFile(page.html, 'utf8');
-		const written = shell
-			.replace('<div id="site"></div>', `<div id="site">${body}</div>`)
-			.replace('</head>', `${head}</head>`);
+	for (const [page, { module, shell, meta }] of Object.entries(PAGES)) {
+		const { default: Component } = await vite.ssrLoadModule(module);
+		const source = await readFile(shell, 'utf8');
 
-		if (written === shell) throw new Error(`${page.html}: no <div id="site"> to render into`);
-		await writeFile(page.html, written);
-		console.log(`  prerendered ${page.html.slice(OUT.length + 1)}`);
+		for (const code of LOCALES) {
+			// The store is read as the components render, so it is set first and the render below is
+			// synchronous: nothing else can be rendering between the two.
+			locale.set(code);
+			const translate = get(t);
+			const { body, head } = render(Component);
+
+			const alternates = LOCALES.map(
+				(other) => `\t\t<link rel="alternate" hreflang="${other}" href="${ORIGIN}${path(other, page)}" />`
+			).join('\n');
+
+			const html = source
+				.replace('<html lang="en"', `<html lang="${code}"`)
+				.replace(/<title>[^<]*<\/title>/, `<title>${escape(translate(`${meta}.title`))}</title>`)
+				.replace(
+					/<meta\s+name="description"[\s\S]*?\/>/,
+					`<meta name="description" content="${escape(translate(`${meta}.description`))}" />`
+				)
+				.replace(
+					/<link rel="canonical"[^>]*\/>/,
+					`<link rel="canonical" href="${ORIGIN}${path(code, page)}" />\n${alternates}\n\t\t<link rel="alternate" hreflang="x-default" href="${ORIGIN}${path('en', page)}" />`
+				)
+				.replace('<div id="site"></div>', `<div id="site">${body}</div>`)
+				.replace('</head>', `${head}</head>`);
+
+			if (html === source) throw new Error(`${shell}: nothing to rewrite`);
+
+			const file = `${OUT}${path(code, page)}index.html`;
+			await mkdir(dirname(file), { recursive: true });
+			await writeFile(file, html);
+			console.log(`  prerendered ${file.slice(OUT.length + 1)}`);
+		}
 	}
 } finally {
 	await vite.close();
+}
+
+/** The value a Svelte store holds right now, outside a component that could subscribe to it. */
+function get(store) {
+	let value;
+	store.subscribe((current) => (value = current))();
+	return value;
+}
+
+function escape(text) {
+	return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/"/g, '&quot;');
 }
