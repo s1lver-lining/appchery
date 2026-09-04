@@ -1999,7 +1999,8 @@ insetHint:
 		},
 		footer: {
 			licence: 'Free software under the AGPL.',
-			language: 'Language'
+			language: 'Language',
+			source: 'Source code'
 		},
 		// The sample session drawn in the phone frames, which is made up rather than anybody's real scores.
 		sample: {

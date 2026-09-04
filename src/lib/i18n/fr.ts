@@ -2012,7 +2012,8 @@ insetHint:
 		},
 		footer: {
 			licence: 'Logiciel libre sous licence AGPL.',
-			language: 'Langue'
+			language: 'Langue',
+			source: 'Code source'
 		},
 		// La séance d'exemple dessinée dans les téléphones, inventée plutôt que tirée de vrais scores.
 		sample: {
