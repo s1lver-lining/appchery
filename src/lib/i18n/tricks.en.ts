@@ -18,14 +18,6 @@ export const tricksEn = {
 				{
 					lead: 'Change what the two figures count.',
 					body: 'Press and hold either figure in the header, or right click it, and pick from several options.'
-				},
-				{
-					lead: 'Ring the target.',
-					body: 'Tap the rings in the top right corner of the home header to play the ripple again.'
-				},
-				{
-					lead: 'Dismiss a record.',
-					body: 'The new personal best card carries a small cross. Dismissing it is saying "I know": the card comes back for the next record, on a different round.'
 				}
 			]
 		},
@@ -50,10 +42,6 @@ export const tricksEn = {
 					body: 'The toggle at the top of a plan stops it filling the sessions list and stops its arrows counting towards the weekly goal, without deleting anything it already produced.'
 				},
 				{
-					lead: 'The new session button has two shapes.',
-					body: 'The display section of the settings turns the round plus button in the corner into the full width bar.'
-				},
-				{
 					lead: 'Work on several sessions at once.',
 					body: 'Hold a session down, or right click it, and the list turns into a selection: tapping picks rows instead of opening them. The bar at the foot then changes the bow of everything picked, or deletes it all, and the same hold works on the activities inside a session.'
 				},
@@ -72,16 +60,8 @@ export const tricksEn = {
 					body: 'The timer sits behind the clock icon in any activity header and in the sessions menu. It holds the World Archery times: four minutes for six arrows, two for three, two for a team’s six, eighty seconds for a mixed team, twenty for alternating shooting.'
 				},
 				{
-					lead: 'Two blasts, one blast, three blasts.',
-					body: 'Calling the line sounds two whistles, then one, then starts the clock; zero sounds three. The sounds are synthesised on the device rather than recorded, so nothing is shipped that belongs to somebody else, and they can be turned off.'
-				},
-				{
 					lead: 'The times are yours to change.',
 					body: 'The rules’ times are what the clock starts from, and the edit sheet puts any of them on a different number of seconds. Emptying a field puts the rule back.'
-				},
-				{
-					lead: 'The clock on its own.',
-					body: 'The button beside the reset gives the clock the whole screen: the time, the one button that runs it, and nothing else to touch by accident. A propped phone that will not turn itself has a rotate button up there, so the clock can be read sideways.'
 				},
 				{
 					lead: 'The clock is read, never ticked.',
@@ -120,10 +100,6 @@ export const tricksEn = {
 				{
 					lead: 'Every name field remembers every name.',
 					body: 'Our side, the opponent and each teammate all offer everybody named on a card before, whichever side they were on. An archer met as an opponent one week and shot beside the next is one name in the history rather than three spellings of it.'
-				},
-				{
-					lead: 'A match shares as a picture too.',
-					body: 'The share button builds the same card a round does: the scoreline where the score would be, and a sheet with a column for each side.'
 				},
 				{
 					lead: 'Two equal shoot-off arrows are the judge’s call.',
@@ -204,10 +180,6 @@ export const tricksEn = {
 			title: 'Statistics',
 			tricks: [
 				{
-					lead: 'Pin the rounds you care about.',
-					body: 'The star on a round card keeps it at the top of the page.'
-				},
-				{
 					lead: 'Through the round.',
 					body: 'This block averages your score per arrow at each end position. It appears once a single round is chosen in the filters, because a six arrow end and a three arrow end are different questions: it is the figure that says whether you fall apart at end nine.'
 				},
@@ -229,22 +201,6 @@ export const tricksEn = {
 			key: 'badges',
 			title: 'Badges',
 			tricks: [
-				{
-					lead: 'They find you.',
-					body: 'Badges are awarded as you shoot, with the same fireworks a personal best gets: on finishing a round, winning a match, counting arrows, or going up a level. Everything won at one moment is shown together. The list is behind the dots menu on the stats page, or the medal in the app grid.'
-				},
-				{
-					lead: 'A card in the sky opens the page behind it.',
-					body: 'Tap a badge card while the fireworks are up and the badge list opens; tap a level up card and the experience page opens. The back arrow returns to the round you were shooting.'
-				},
-				{
-					lead: 'Untargeted arrows count.',
-					body: 'The arrow counter on the session page feeds the volume and habit badges like any scored round, and a badge one of those arrows earns goes up over the session page.'
-				},
-				{
-					lead: 'Two ways to read the list.',
-					body: 'The grid of icons is the default; the dots menu swaps it for the list with every rule spelled out, and remembers which you chose. Tapping a badge opens what it wants and how close you are.'
-				},
 				{
 					lead: 'A badge is dated by the shooting, not by the app.',
 					body: 'Score an old session and any badge it earns appears with the date of that session, wherever it lands in the list.'
@@ -328,20 +284,6 @@ export const tricksEn = {
 			]
 		},
 		{
-			key: 'exercises',
-			title: 'Exercises',
-			tricks: [
-				{
-					lead: 'The diagram opens where the work is.',
-					body: 'An exercise shows the side of the body it actually trains, and both sides when it trains both. The other views are still there to be tapped, close ups included, but none of them is where the page starts.'
-				},
-				{
-					lead: 'A hold is drawn shorter than it is asked for.',
-					body: 'The figure pauses at the held position for a moment whatever the exercise asks for, because a sixty second pause would look like a broken drawing rather than a long hold. The time to work to is the one under Where to start.'
-				}
-			]
-		},
-		{
 			key: 'ianseo',
 			title: 'Competitions',
 			tricks: [
@@ -354,28 +296,12 @@ export const tricksEn = {
 					body: 'Open any row of a result list, or tap the star beside a name in a bracket, and that archer is followed for that competition. Their line is then marked wherever it appears in it, and the competition is followed too.'
 				},
 				{
-					lead: 'The way in, where there is one.',
-					body: 'A French competition taking entries through Inscript’Arc carries its entry form, the club’s announcement and the list of who has entered. Competitions the app cannot match to one are gathered under Open for entry at the foot of the list.'
-				},
-				{
-					lead: 'A result you have not read says so.',
-					body: 'A followed competition that ianseo has rebuilt since you last opened it is marked New in the list, and the competitions tile on the home page carries the number of them. Opening the competition is what clears it.'
-				},
-				{
-					lead: 'Told about a result while the app is shut.',
-					body: 'Under the competitions you follow there is a switch to be told when one of them publishes. It runs on the device: the browser wakes the app now and then, asks ianseo the same question the list asks, and raises the notice itself. No account, nothing sent anywhere, and nothing to pay for. A phone saving power may check rarely, or not at all, which is the price of there being no server behind it.'
-				},
-				{
 					lead: 'Everything read is kept for the range.',
 					body: 'Every competition and result you open is stored on the device, so it reads again with no signal. What is shown always says when it was read, and refuses to pass itself off as live.'
 				},
 				{
-					lead: 'Look for one archer in a list of three hundred.',
-					body: 'A result list, an entry list and a bracket all carry a search above them. Every word typed has to appear somewhere in the line, in any order, and accents are ignored: the surname alone usually does it. A competition with more than a handful of documents can be searched the same way, by class or by bow.'
-				},
-				{
-					lead: 'Hand a competition to somebody beside you.',
-					body: 'The code button on a competition draws it as a QR code. Whoever points a phone at it lands on the same page: in Appchery if they have it, in the web app if they do not.'
+					lead: 'Told about a result while the app is shut.',
+					body: 'Under the competitions you follow there is a switch to be told when one of them publishes. It runs on the device: the browser wakes the app now and then, asks ianseo the same question the list asks, and raises the notice itself. No account, nothing sent anywhere, and nothing to pay for. A phone saving power may check rarely, or not at all, which is the price of there being no server behind it.'
 				},
 				{
 					lead: 'Clubs are named the way people say them.',
@@ -384,10 +310,6 @@ export const tricksEn = {
 				{
 					lead: 'Choose what a result shows.',
 					body: 'The button beside that search picks the columns. They are remembered by their heading rather than by the competition, so switching the tens and the nines off once switches them off in every result that has them.'
-				},
-				{
-					lead: 'Opening a row gives back the columns.',
-					body: 'A narrow screen shows the placing, the archer and the score. The distances, the club and everything else are behind the arrow at the end of the row, which is also where the offer to follow them is.'
 				}
 			]
 		},

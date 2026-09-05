@@ -13,14 +13,6 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: 'Changer ce que comptent les deux chiffres.',
 					body: 'Appuyez longuement sur l’un des deux chiffres de l’en-tête, ou faites un clic droit, et choisissez parmi plusieurs options.'
-				},
-				{
-					lead: 'Faire vibrer la cible.',
-					body: 'Touchez les anneaux en haut à droite de l’en-tête de l’accueil pour rejouer l’onde.'
-				},
-				{
-					lead: 'Écarter un record.',
-					body: 'La carte du nouveau record porte une petite croix. L’écarter revient à dire « je sais » : la carte revient au prochain record, sur un autre tir.'
 				}
 			]
 		},
@@ -45,10 +37,6 @@ export const tricksFr: TricksDictionary = {
 					body: 'L’interrupteur en haut d’un programme l’empêche de remplir la liste des séances et de compter ses flèches dans l’objectif hebdomadaire, sans rien supprimer de ce qu’il a déjà produit.'
 				},
 				{
-					lead: 'Le bouton de nouvelle séance a deux formes.',
-					body: 'La section affichage des paramètres transforme le bouton plus rond du coin en barre pleine largeur.'
-				},
-				{
 					lead: 'Travailler sur plusieurs séances à la fois.',
 					body: 'Maintenez une séance appuyée, ou faites un clic droit, et la liste passe en sélection : une touche coche la ligne au lieu de l’ouvrir. La barre du bas change alors l’arc de tout ce qui est coché, ou supprime le tout, et le même appui long fonctionne sur les activités d’une séance.'
 				},
@@ -67,16 +55,8 @@ export const tricksFr: TricksDictionary = {
 					body: 'Le chronomètre se cache derrière l’icône d’horloge de tout en-tête d’activité et dans le menu des séances. Il connaît les temps World Archery : quatre minutes pour six flèches, deux pour trois, deux pour les six d’une équipe, quatre-vingts secondes pour une équipe mixte, vingt en tir alterné.'
 				},
 				{
-					lead: 'Deux coups, un coup, trois coups.',
-					body: 'Appeler la ligne sonne deux coups de sifflet, puis un, puis lance le chrono ; zéro en sonne trois. Les sons sont synthétisés sur l’appareil plutôt qu’enregistrés, donc rien n’est livré qui appartienne à quelqu’un d’autre, et ils peuvent être coupés.'
-				},
-				{
 					lead: 'Les temps vous appartiennent.',
 					body: 'Les temps du règlement sont le point de départ, et la feuille d’édition met n’importe lequel sur un autre nombre de secondes. Vider un champ rétablit la règle.'
-				},
-				{
-					lead: 'Le chrono tout seul.',
-					body: 'Le bouton à côté de la réinitialisation donne tout l’écran au chrono : le temps, le seul bouton qui le lance, et plus rien à toucher par mégarde. Un téléphone posé qui refuse de pivoter dispose d’un bouton de rotation là-haut, de quoi lire le chrono de travers.'
 				},
 				{
 					lead: 'Le chrono se lit, il ne bat pas.',
@@ -115,10 +95,6 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: 'Chaque champ de nom se souvient de tous les noms.',
 					body: 'Notre côté, l’adversaire et chaque coéquipier proposent tous ceux déjà inscrits sur une carte, quel que soit leur côté. Un archer affronté une semaine et tiré à vos côtés la suivante reste un seul nom dans l’historique plutôt que trois orthographes.'
-				},
-				{
-					lead: 'Un match se partage aussi en image.',
-					body: 'Le bouton de partage construit la même carte qu’un tir : le score du match là où irait le score, et une feuille avec une colonne par côté.'
 				},
 				{
 					lead: 'Deux flèches de barrage à égalité, c’est au juge de trancher.',
@@ -199,10 +175,6 @@ export const tricksFr: TricksDictionary = {
 			title: 'Statistiques',
 			tricks: [
 				{
-					lead: 'Épingler les tirs qui comptent pour vous.',
-					body: 'L’étoile d’une carte de tir la maintient en haut de la page.'
-				},
-				{
 					lead: 'Au fil du tir.',
 					body: 'Ce bloc fait la moyenne de votre score par flèche à chaque position de volée. Il apparaît dès qu’un seul tir est choisi dans les filtres, parce qu’une volée de six flèches et une de trois sont deux questions différentes : c’est le chiffre qui dit si vous lâchez à la neuvième volée.'
 				},
@@ -224,22 +196,6 @@ export const tricksFr: TricksDictionary = {
 			key: 'badges',
 			title: 'Badges',
 			tricks: [
-				{
-					lead: 'Ils vous trouvent.',
-					body: 'Les badges sont décernés au fil du tir, et ils s’annoncent avec le feu d’artifice d’un record. Le ciel s’illumine à quatre moments: la fin d’un tir, un match gagné, des flèches ajoutées à l’un ou l’autre compteur, et un niveau franchi. Tout ce qu’un même instant a gagné passe sous une seule salve: une dernière flèche qui bat un record, gagne deux badges et fait monter d’un niveau montre les quatre cartes ensemble. La liste est derrière le menu à trois points de la page de stats, ou la médaille de la grille de l’app.'
-				},
-				{
-					lead: 'Une carte dans le ciel ouvre la page qui va avec.',
-					body: 'Touchez une carte de badge pendant le feu d’artifice et la liste des badges s’ouvre ; touchez une carte de niveau et c’est la page d’expérience qui s’ouvre. La flèche de retour ramène au tir en cours.'
-				},
-				{
-					lead: 'Les flèches hors cible comptent.',
-					body: 'Le compteur de flèches de la page de séance alimente les badges de volume et d’assiduité comme n’importe quel tir compté, et un badge gagné par ces flèches s’affiche par-dessus la page de séance.'
-				},
-				{
-					lead: 'Deux façons de lire la liste.',
-					body: 'La grille d’icônes est l’affichage par défaut ; le menu à trois points la remplace par la liste, chaque règle écrite en toutes lettres, et retient votre choix. Toucher un badge ouvre ce qu’il demande et où vous en êtes.'
-				},
 				{
 					lead: 'Un badge est daté du tir, pas de l’app.',
 					body: 'Saisissez une vieille séance et tout badge qu’elle gagne apparaît à la date de cette séance, où qu’elle tombe dans la liste.'
@@ -323,20 +279,6 @@ export const tricksFr: TricksDictionary = {
 			]
 		},
 		{
-			key: 'exercises',
-			title: 'Exercices',
-			tricks: [
-				{
-					lead: 'Le schéma s\'ouvre là où le travail se fait.',
-					body: "Un exercice montre la face du corps qu'il travaille vraiment, et les deux quand il travaille les deux. Les autres vues restent accessibles d'un geste, gros plans compris, mais aucune n'est celle où la page commence."
-				},
-				{
-					lead: 'Un maintien est dessiné plus court qu\'il n\'est demandé.',
-					body: "La silhouette marque un temps d'arrêt sur la position tenue quel que soit le maintien demandé, parce qu'une pause de soixante secondes ressemblerait à un dessin figé plutôt qu'à un long maintien. La durée à respecter est celle indiquée sous Par où commencer."
-				}
-			]
-		},
-		{
 			key: 'ianseo',
 			title: 'Compétitions',
 			tricks: [
@@ -349,28 +291,12 @@ export const tricksFr: TricksDictionary = {
 					body: "Ouvrez une ligne d'une liste de résultats, ou touchez l'étoile à côté d'un nom dans un tableau, et cet archer est suivi pour cette compétition. Sa ligne est alors marquée partout où elle apparaît, et la compétition est suivie elle aussi."
 				},
 				{
-					lead: "L'accès aux inscriptions, quand il existe.",
-					body: "Une compétition française qui prend ses inscriptions par Inscript'Arc porte son formulaire, le mandat du club et la liste des inscrits. Celles que l'application ne peut rattacher à aucune compétition sont regroupées sous Inscriptions ouvertes, en bas de la liste."
-				},
-				{
-					lead: "Un résultat que vous n'avez pas lu le dit.",
-					body: "Une compétition suivie que ianseo a reconstruite depuis votre dernière visite est marquée Nouveau dans la liste, et la tuile des compétitions sur l'accueil en porte le nombre. C'est l'ouverture de la compétition qui l'efface."
-				},
-				{
-					lead: "Être averti d'un résultat, application fermée.",
-					body: "Sous les compétitions suivies se trouve un interrupteur pour être averti quand l'une d'elles publie. Tout se passe sur l'appareil : le navigateur réveille l'application de temps en temps, pose à ianseo la question que pose déjà la liste, et affiche l'avis lui même. Sans compte, sans rien envoyer nulle part et sans rien à payer. Un téléphone en économie d'énergie peut vérifier rarement, voire pas du tout : c'est le prix de l'absence de serveur."
-				},
-				{
 					lead: 'Tout ce qui est lu est gardé pour le pas de tir.',
 					body: "Chaque compétition et chaque résultat ouvert est stocké sur l'appareil et se relit sans réseau. Ce qui est affiché indique toujours quand il a été lu, et ne se fait jamais passer pour du direct."
 				},
 				{
-					lead: 'Trouvez un archer dans une liste de trois cents.',
-					body: "Une liste de résultats, une liste d'inscrits et un tableau portent tous une recherche au dessus d'eux. Chaque mot tapé doit apparaître quelque part dans la ligne, dans n'importe quel ordre, et les accents sont ignorés : le nom de famille seul suffit en général. Une compétition qui publie plus de quelques documents se cherche de la même façon, par catégorie ou par type d'arc."
-				},
-				{
-					lead: "Passez une compétition à quelqu'un à côté de vous.",
-					body: "Le bouton code sur une compétition la dessine en QR code. Qui le vise avec un téléphone arrive sur la même page : dans Appchery s'il l'a, sur la version web sinon."
+					lead: "Être averti d'un résultat, application fermée.",
+					body: "Sous les compétitions suivies se trouve un interrupteur pour être averti quand l'une d'elles publie. Tout se passe sur l'appareil : le navigateur réveille l'application de temps en temps, pose à ianseo la question que pose déjà la liste, et affiche l'avis lui même. Sans compte, sans rien envoyer nulle part et sans rien à payer. Un téléphone en économie d'énergie peut vérifier rarement, voire pas du tout : c'est le prix de l'absence de serveur."
 				},
 				{
 					lead: 'Les clubs portent le nom qu\'on leur donne.',
@@ -379,10 +305,6 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: "Choisissez ce qu'affiche un résultat.",
 					body: "Le bouton à côté de cette recherche choisit les colonnes. Elles sont retenues par leur intitulé plutôt que par la compétition : masquer les dix et les neuf une fois les masque dans tous les résultats qui les portent."
-				},
-				{
-					lead: 'Ouvrir une ligne rend les colonnes.',
-					body: "Un écran étroit montre le classement, l'archer et le score. Les distances, le club et le reste sont derrière la flèche en bout de ligne, là où se trouve aussi la proposition de les suivre."
 				}
 			]
 		},
