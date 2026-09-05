@@ -126,7 +126,7 @@
 		view = { scale: 1, x: 0, y: 0 };
 	}
 
-	/** Zooms about a point of the window, so whatever is under the fingers stays under them. */
+	/** Zooms about a point of the window in one step, which is what a wheel tick asks for. */
 	function zoomAbout(point: { x: number; y: number }, scale: number) {
 		const s = Math.min(MAX_VIEW, Math.max(1, scale));
 		const anchorX = (point.x - view.x) / view.scale;
@@ -172,7 +172,13 @@
 	 * an archer pinching mid placement is asking to see the ring better, not to move the face.
 	 */
 	let pinch: { kind: 'magnify'; distance: number; zoom: number } | null = null;
-	let viewPinch: { distance: number; scale: number } | null = null;
+	/**
+	 * The anchor is taken once, at the moment the second finger lands, and not read again: recomputed
+	 * each frame it would always describe where the fingers already are, and the face would zoom
+	 * without ever following them. Held still, it is what carries the face along under the drag.
+	 */
+	let viewPinch: { distance: number; scale: number; anchor: { x: number; y: number } } | null =
+		null;
 	/** Ctrl and a mouse: the desktop hands for a face that two fingers move on a phone. */
 	let panning: { from: { x: number; y: number }; at: { x: number; y: number } } | null = null;
 
@@ -241,7 +247,17 @@
 				return;
 			}
 			// Otherwise the two fingers move the face itself, which nothing else on it does.
-			viewPinch = { distance: spread(), scale: view.scale };
+			const grabbed = midpoint();
+			viewPinch = grabbed
+				? {
+						distance: spread(),
+						scale: view.scale,
+						anchor: {
+							x: (grabbed.x - view.x) / view.scale,
+							y: (grabbed.y - view.y) / view.scale
+						}
+					}
+				: null;
 			cursor = null;
 			tap = null;
 			stopHold();
@@ -285,8 +301,19 @@
 			return;
 		}
 		if (active.size >= 2 && viewPinch) {
+			// The point of the face the fingers took hold of stays between them, however they move.
 			const centre = midpoint();
-			if (centre) zoomAbout(centre, viewPinch.scale * (spread() / (viewPinch.distance || 1)));
+			if (centre) {
+				const scale = Math.min(
+					MAX_VIEW,
+					Math.max(1, viewPinch.scale * (spread() / (viewPinch.distance || 1)))
+				);
+				view = clampView(
+					scale,
+					centre.x - viewPinch.anchor.x * scale,
+					centre.y - viewPinch.anchor.y * scale
+				);
+			}
 			return;
 		}
 		if (!interactive) return;
