@@ -1280,6 +1280,9 @@ export const en = {
 		fullscreenTitle: 'Fullscreen',
 		fullscreenHint:
 			'Hides the browser bars until you leave the page or reload. Installing the app does this for good.',
+		halfBreakTitle: 'Mark the halves of a round',
+		halfBreakHint:
+			'Leaves a gap in the sheet where a round shot in two halves breaks, as on a WA 720 or a WA Indoor 600.',
 		noAnimationsTitle: 'Turn off animations',
 		noAnimationsHint:
 			'Stops the decorative animations. Progress indicators keep moving.',

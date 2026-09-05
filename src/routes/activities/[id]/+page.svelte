@@ -17,6 +17,7 @@
 		celebratedBests,
 		sortArrowsDescending,
 		showArrowNumbers,
+		showHalfBreak,
 		arrowDriftWarning,
 		arrowDriftIgnored
 	} from '$lib/prefs';
@@ -1309,8 +1310,7 @@
 				{#each sheetRows as row, i (row.key)}
 					<!-- The break the rules put in the middle of the round, where the archers change ends. -->
 					<div
-						class="flex items-center gap-1 px-2 py-1
-							{i + 1 === halfEnds ? 'border-b-2 border-brand/60' : 'border-b border-line'}"
+						class="flex items-center gap-1 border-b border-line px-2 py-1"
 						data-cursor={editing?.endId === row.endId ? '' : undefined}
 					>
 						<!-- Drawn as a key rather than as a number, because it opens the end and nothing else
@@ -1376,6 +1376,12 @@
 						<span class="tabular w-8 text-right text-sm font-semibold">{row.subtotal}</span>
 						<span class="tabular w-9 text-right text-sm text-muted">{runningTotals[i]}</span>
 					</div>
+					<!-- The break the rules put in the middle of the round, where the archers change ends.
+						Half a row of empty sheet rather than a heavier rule: what separates the two halves on
+						paper is the gap between them, and a line among fifteen other lines is not read. -->
+					{#if i + 1 === halfEnds && $showHalfBreak}
+						<div class="h-[calc(var(--chip)/2)] border-b border-line bg-sunk"></div>
+					{/if}
 				{/each}
 
 				{#if currentSlot}

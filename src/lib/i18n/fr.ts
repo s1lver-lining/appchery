@@ -1281,6 +1281,9 @@ export const fr: Dictionary = {
 		fullscreenTitle: 'Plein écran',
 		fullscreenHint:
 			"Masque les barres du navigateur jusqu'à ce que vous quittiez la page ou la rechargiez. Installer l'application le fait définitivement.",
+		halfBreakTitle: 'Marquer les deux moitiés d’un tir',
+		halfBreakHint:
+			'Laisse un espace dans la feuille là où un tir en deux moitiés se coupe, comme sur un WA 720 ou un WA Indoor 600.',
 		noAnimationsTitle: 'Désactiver les animations',
 		noAnimationsHint:
 			"Arrête les animations décoratives. Les indicateurs de progression continuent de tourner.",

@@ -25,6 +25,7 @@
 		competitionColour,
 		COMPETITION_COLOURS,
 		noAnimations,
+		showHalfBreak,
 		celebratedLevel,
 		celebratedBests,
 		dismissedBest
@@ -457,6 +458,18 @@
 								checked={$noAnimations}
 								label={$t('settings.noAnimationsTitle')}
 								onchange={(v) => noAnimations.set(v)}
+							/>
+						</div>
+
+						<div class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.halfBreakTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.halfBreakHint')}</p>
+							</div>
+							<Toggle
+								checked={$showHalfBreak}
+								label={$t('settings.halfBreakTitle')}
+								onchange={(v) => showHalfBreak.set(v)}
 							/>
 						</div>
 

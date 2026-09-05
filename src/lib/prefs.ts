@@ -102,6 +102,13 @@ export const sortArrowsDescending = flag('appchery.sortArrows', false);
 export const showArrowNumbers = flag('appchery.showArrowNumbers', false);
 
 /**
+ * Whether the sheet draws the break between the two halves of a round shot in halves. On by default:
+ * the break is part of how those rounds are shot, and the archer who does not want it is the
+ * exception. Only the rounds the rules split have one at all, so nothing else changes with it.
+ */
+export const showHalfBreak = flag('appchery.showHalfBreak', true);
+
+/**
  * Keeps the video of each camera scoring session. Off by default: it is a debugging aid for improving
  * detection, not something an archer needs, and video is large. Recordings never leave the device.
  */
