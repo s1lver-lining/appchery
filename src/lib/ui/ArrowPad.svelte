@@ -134,7 +134,7 @@
 			</button>
 		{/if}
 
-		<span class="min-w-0 flex-1 truncate text-[11px] text-muted">
+		<span class="min-w-0 flex-1 truncate text-[0.6875rem] text-muted">
 			{#if title}{@render title()}{/if}
 		</span>
 
@@ -143,7 +143,7 @@
 		<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
 			{#each [{ key: 'number' as const, label: $t('score.byNumber') }, { key: 'face' as const, label: $t('score.plotMode') }] as option (option.key)}
 				<button
-					class="press rounded-md px-2 py-1 text-[11px] font-medium disabled:opacity-40
+					class="press rounded-md px-2 py-1 text-[0.6875rem] font-medium disabled:opacity-40
 						{shown === option.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 					disabled={plotOnly}
 					onclick={() => (mode = option.key)}

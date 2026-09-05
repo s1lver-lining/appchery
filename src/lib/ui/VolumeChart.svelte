@@ -150,7 +150,7 @@
 	</nav>
 
 	<div class="mt-4 flex gap-2">
-		<div class="tabular flex w-8 shrink-0 flex-col justify-between text-right text-[10px] text-muted"
+		<div class="tabular flex w-8 shrink-0 flex-col justify-between text-right text-[0.625rem] text-muted"
 			style="height: {PLOT}px">
 			{#each ticks as value, index (index)}
 				<span class="leading-none">{tick(value)}</span>
@@ -232,7 +232,7 @@
 						{@const at = ((index + 0.5) / buckets.length) * 100}
 						<!-- Shifted by where it sits, so the end labels tuck inside instead of off the page. -->
 						<span
-							class="absolute text-[10px] leading-none whitespace-nowrap text-muted"
+							class="absolute text-[0.625rem] leading-none whitespace-nowrap text-muted"
 							style="left: {at}%; transform: translateX(-{at}%)"
 						>
 							{label}
@@ -246,7 +246,7 @@
 	{#if metric !== 'perArrow' && present.length > 1}
 		<ul class="mt-3 flex flex-wrap gap-x-4 gap-y-1">
 			{#each present as key (key)}
-				<li class="flex items-center gap-1.5 text-[11px] text-muted">
+				<li class="flex items-center gap-1.5 text-[0.6875rem] text-muted">
 					<span class="h-2.5 w-2.5 rounded-sm" style="background: {colourOf(key)}"></span>
 					{labelOf(key)}
 				</li>
@@ -258,15 +258,15 @@
 		<dl class="mt-3 grid grid-cols-3 gap-2 rounded-lg bg-sunk p-2 text-center">
 			<div>
 				<dd class="tabular text-sm font-semibold">{shown.arrows}</dd>
-				<dt class="text-[10px] text-muted">{$t('stats.totalArrows')}</dt>
+				<dt class="text-[0.625rem] text-muted">{$t('stats.totalArrows')}</dt>
 			</div>
 			<div>
 				<dd class="tabular text-sm font-semibold">{shown.rounds}</dd>
-				<dt class="text-[10px] text-muted">{$t('stats.roundsShot')}</dt>
+				<dt class="text-[0.625rem] text-muted">{$t('stats.roundsShot')}</dt>
 			</div>
 			<div>
 				<dd class="tabular text-sm font-semibold">{shown.perArrow?.toFixed(2) ?? '—'}</dd>
-				<dt class="text-[10px] text-muted">{$t('stats.perArrow')}</dt>
+				<dt class="text-[0.625rem] text-muted">{$t('stats.perArrow')}</dt>
 			</div>
 		</dl>
 	{/if}

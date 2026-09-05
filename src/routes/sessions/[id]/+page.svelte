@@ -1005,7 +1005,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 				{#if round.governingBody}
 					<!-- The body in the app's own type rather than its mark: a logo is somebody's property. -->
 					<span
-						class="shrink-0 rounded border border-line px-1 py-px text-[10px] font-semibold tracking-wide text-muted uppercase"
+						class="shrink-0 rounded border border-line px-1 py-px text-[0.625rem] font-semibold tracking-wide text-muted uppercase"
 					>
 						{round.governingBody}
 					</span>
@@ -1013,7 +1013,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			</span>
 
 			<!-- One line rather than two: the record reads beside what it was scored on. -->
-			<span class="mt-1 flex flex-wrap items-center gap-1 text-[11px] text-muted">
+			<span class="mt-1 flex flex-wrap items-center gap-1 text-[0.6875rem] text-muted">
 				{#each round.stages as stage, i (i)}
 					{@const distance = stageDistance(stage)}
 					{#if distance}
@@ -1154,11 +1154,11 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 											</p>
 										</div>
 										{#if formatWind(weather)}
-											<p class="tabular text-[11px] leading-tight text-muted">{formatWind(weather)}</p>
+											<p class="tabular text-[0.6875rem] leading-tight text-muted">{formatWind(weather)}</p>
 										{/if}
 									{/if}
 									{#if session.location}
-										<p class="mt-0.5 w-full truncate text-[11px] leading-tight text-muted">
+										<p class="mt-0.5 w-full truncate text-[0.6875rem] leading-tight text-muted">
 											{session.location}
 										</p>
 									{/if}
@@ -1215,7 +1215,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 										{@const config = matchOf(a)}
 										<li class="flex items-center gap-2">
 											<span class="relative flex w-16 shrink-0 items-center">
-												<span class="text-[11px] font-semibold tracking-wide text-muted uppercase">
+												<span class="text-[0.6875rem] font-semibold tracking-wide text-muted uppercase">
 													{$t(`match.stage.${config?.stage ?? 'none'}`)}
 												</span>
 												<!-- The rungs are joined, because a bracket is one climb and not four outings. -->
@@ -1481,7 +1481,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 										onclick={() => setBow(type)}
 									>
 										<Icon name={BOW_ICONS[type]} size={28} />
-										<span class="block w-full truncate text-[10px] text-muted">{$t(`bow.${type}`)}</span>
+										<span class="block w-full truncate text-[0.625rem] text-muted">{$t(`bow.${type}`)}</span>
 									</button>
 								{/each}
 							</div>
@@ -1555,7 +1555,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 											onclick={() => setSky(icon)}
 										>
 											<Icon name={icon ?? 'unknown'} size={26} />
-											<span class="block w-full truncate text-[10px] text-muted">
+											<span class="block w-full truncate text-[0.625rem] text-muted">
 												{$t(icon ? `weather.${icon}` : 'weather.unspecified')}
 											</span>
 										</button>
@@ -1943,7 +1943,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							<span class="block aspect-square w-full">
 								<TargetFace scoreSet={set} />
 							</span>
-							<span class="mt-1 block truncate text-[10px] text-muted">{set.name}</span>
+							<span class="mt-1 block truncate text-[0.625rem] text-muted">{set.name}</span>
 						</button>
 					{/each}
 				</div>

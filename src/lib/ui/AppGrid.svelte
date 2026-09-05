@@ -53,12 +53,12 @@
 					archer following six are being told different things, and the tile has room to say so.
 				-->
 				<span
-					class="tabular absolute top-1 right-1 min-w-4 rounded-full bg-brand px-1 text-[10px] leading-4 font-bold text-brand-ink"
+					class="tabular absolute top-1 right-1 min-w-4 rounded-full bg-brand px-1 text-[0.625rem] leading-4 font-bold text-brand-ink"
 				>
 					{item.alert}
 				</span>
 			{/if}
-			<span class="text-[11px] leading-tight text-muted">{item.label}</span>
+			<span class="text-[0.6875rem] leading-tight text-muted">{item.label}</span>
 		</a>
 	{/each}
 </nav>

@@ -106,7 +106,7 @@
 							>
 								<BadgeGlyph {badge} size={30} />
 								<span
-									class="text-[11px] leading-tight {badge.earnedAt !== null ? '' : 'text-muted'}"
+									class="text-[0.6875rem] leading-tight {badge.earnedAt !== null ? '' : 'text-muted'}"
 								>
 									{$t(`badges.list.${badge.definition.key}.name`)}
 								</span>

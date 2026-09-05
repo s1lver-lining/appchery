@@ -41,7 +41,7 @@
 			></span>
 		{/each}
 	</div>
-	<div class="tabular flex justify-between text-[10px] text-muted">
+	<div class="tabular flex justify-between text-[0.625rem] text-muted">
 		<span>{low}</span>
 		<span>{$t('stats.scaleHint')}</span>
 		<span>{high}</span>

@@ -82,6 +82,13 @@ export const SETTINGS: SettingEntry[] = [
 		section: 'settings.display'
 	},
 	{
+		key: 'textScale',
+		tab: 'app',
+		title: 'settings.textScaleTitle',
+		hint: 'settings.textScaleHint',
+		section: 'settings.display'
+	},
+	{
 		key: 'weekStart',
 		tab: 'app',
 		title: 'settings.weekStartTitle',

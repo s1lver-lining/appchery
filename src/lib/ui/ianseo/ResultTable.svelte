@@ -53,7 +53,7 @@
 	<div class="overflow-x-auto">
 		<table class="w-full text-sm">
 			<thead>
-				<tr class="border-b border-line text-[10px] tracking-wide text-muted uppercase">
+				<tr class="border-b border-line text-[0.625rem] tracking-wide text-muted uppercase">
 					{#each section.columns as column, at (at)}
 						{#if visible[at]}
 						<!--

@@ -1337,7 +1337,7 @@
 				</button>
 				<div class="shrink-0 text-right">
 					<p class="tabular text-xl leading-none font-bold">{shownTotal}</p>
-					<p class="text-[10px] text-muted">{$t('score.total')}</p>
+					<p class="text-[0.625rem] text-muted">{$t('score.total')}</p>
 				</div>
 			</header>
 
@@ -1359,7 +1359,7 @@
 			style="--chip: clamp(1.75rem, 1.441rem + 1.373vw, 2.1rem)"
 		>
 			<div
-				class="flex shrink-0 items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[11px] font-semibold text-muted"
+				class="flex shrink-0 items-center gap-1 border-b border-line bg-sunk px-2 py-1.5 text-[0.6875rem] font-semibold text-muted"
 			>
 				<span class="w-6 shrink-0">{$t('score.endColumn')}</span>
 				<span class="flex-1">{$t('score.arrowsColumn')}</span>
@@ -1522,7 +1522,7 @@
 		{#if currentSlot || editing || complete}
 			<section class="shrink-0 overflow-hidden rounded-2xl border border-line bg-surface shadow-sm">
 				<header
-					class="flex items-center gap-2 border-b border-line bg-sunk/60 px-3 py-2 text-[11px] text-muted"
+					class="flex items-center gap-2 border-b border-line bg-sunk/60 px-3 py-2 text-[0.6875rem] text-muted"
 				>
 					{#if currentSlot}
 						<span class="min-w-0 flex-1 truncate">
@@ -1545,7 +1545,7 @@
 					<div class="flex shrink-0 gap-0.5 rounded-lg bg-bg p-0.5">
 						{#each [{ plot: false, label: $t('score.byNumber') }, { plot: true, label: $t('score.plotMode') }] as mode (mode.label)}
 							<button
-								class="press rounded-md px-2 py-1 text-[11px] font-medium
+								class="press rounded-md px-2 py-1 text-[0.6875rem] font-medium
 									{plotting === mode.plot ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
 								onclick={() => (plotting = mode.plot)}
 							>
@@ -1579,7 +1579,7 @@
 								wraps it onto still fit inside that height rather than shifting the row. -->
 							<p
 								class="flex h-8 min-w-0 flex-1 items-center rounded-lg border border-line
-									bg-sunk/60 px-2 text-[11px] leading-[13px]
+									bg-sunk/60 px-2 text-[0.6875rem] leading-[0.8125rem]
 									{selecting ? 'text-brand-text' : 'text-muted'}"
 							>
 								{selecting

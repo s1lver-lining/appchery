@@ -561,7 +561,7 @@ import { SteadyFace } from '$lib/vision/steady';
 			camera for the archer's attention the rest of the time.
 		-->
 		<button
-			class="absolute bottom-2 left-2 rounded px-1.5 py-0.5 text-[9px] font-semibold uppercase
+			class="absolute bottom-2 left-2 rounded px-1.5 py-0.5 text-[0.5625rem] font-semibold uppercase
 				tracking-wide {$detectorReadout ? 'bg-white/25 text-white' : 'bg-black/40 text-white/40'}"
 			aria-pressed={$detectorReadout}
 			aria-label={$t('auto.readout')}
@@ -577,7 +577,7 @@ import { SteadyFace } from '$lib/vision/steady';
 			-->
 			<div
 				class="tabular pointer-events-none absolute bottom-2 left-14 right-2 rounded bg-black/55
-					px-2 py-1 text-[9px] leading-relaxed text-white/85"
+					px-2 py-1 text-[0.5625rem] leading-relaxed text-white/85"
 			>
 				<span class={steady ? 'text-[#3ddc84]' : 'text-[#ffc107]'}>
 					FACES {faces.length} {steady ? 'STEADY' : 'NOT STEADY'}
@@ -595,7 +595,7 @@ import { SteadyFace } from '$lib/vision/steady';
 				class="absolute right-3 top-3 flex items-center gap-1.5 rounded-full bg-black/60 px-2.5 py-1"
 			>
 				<span class="pulse block h-2.5 w-2.5 rounded-full bg-danger"></span>
-				<span class="text-[11px] font-semibold uppercase tracking-wide text-white">
+				<span class="text-[0.6875rem] font-semibold uppercase tracking-wide text-white">
 					{$t('auto.recording')}
 				</span>
 			</div>
@@ -634,7 +634,7 @@ import { SteadyFace } from '$lib/vision/steady';
 							aria-label={$t('auto.drop')}
 							onclick={() => drop(arrow)}
 						>
-							{label(arrow)}<span class="ml-0.5 text-[10px] font-semibold opacity-70">
+							{label(arrow)}<span class="ml-0.5 text-[0.625rem] font-semibold opacity-70">
 								{detail(arrow)}
 							</span>
 						</button>
@@ -646,7 +646,7 @@ import { SteadyFace } from '$lib/vision/steady';
 
 
 		<!-- Fixed height as well, so the hint and the warning swapping does not move anything either. -->
-		<p class="flex h-4 items-center justify-center text-center text-[11px]">
+		<p class="flex h-4 items-center justify-center text-center text-[0.6875rem]">
 			{#if notice}
 				<span class="text-muted">{notice} <SettingLink setting="motion" /></span>
 			{:else if found.length > remaining}

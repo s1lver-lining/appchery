@@ -233,7 +233,7 @@
 						onclick={() => pickType(option)}
 					>
 						<Icon name={BOW_ICONS[option]} size={30} />
-						<span class="block w-full truncate text-[10px] text-muted">{$t(`bow.${option}`)}</span>
+						<span class="block w-full truncate text-[0.625rem] text-muted">{$t(`bow.${option}`)}</span>
 					</button>
 				{/each}
 			</div>

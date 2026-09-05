@@ -462,7 +462,7 @@
 <!-- One rule for the whole page: every block sits under a heading that says what it is. -->
 {#snippet heading(text: string, link?: { href: string; label: string })}
 	<div class="mb-2 flex items-baseline justify-between px-1">
-		<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">{text}</h2>
+		<h2 class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">{text}</h2>
 		{#if link}<a class="text-xs font-medium text-brand-text" href={link.href}>{link.label}</a>{/if}
 	</div>
 {/snippet}
@@ -483,7 +483,7 @@
 					<Icon name="medal" size={24} filled />
 				</span>
 				<div class="min-w-0 flex-1">
-					<p class="text-[11px] font-semibold tracking-wide text-accent uppercase">
+					<p class="text-[0.6875rem] font-semibold tracking-wide text-accent uppercase">
 						{$t('home.newBest')}
 					</p>
 					<p class="truncate font-semibold">{freshBest.name}</p>
@@ -514,7 +514,7 @@
 					<Icon name="friends" size={22} />
 					<!-- The count on the icon rather than in the sentence: it is a badge, and reads as one. -->
 					<span
-						class="tabular absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[11px] font-bold text-brand-ink"
+						class="tabular absolute -top-1 -right-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-brand px-1 text-[0.6875rem] font-bold text-brand-ink"
 					>
 						{unread}
 					</span>
@@ -549,7 +549,7 @@
 		{#if next || earned}
 			<div class="mb-2 flex items-baseline justify-between px-1">
 				{#if next}
-					<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+					<h2 class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 						{$t('home.upNext')}
 					</h2>
 				{/if}
@@ -695,7 +695,7 @@
 						transition:fade={{ duration: listMs() }}
 					>
 						<div class="w-9 shrink-0 text-center">
-							<p class="text-[11px] leading-none text-muted">{shortDay(s.startedAt)}</p>
+							<p class="text-[0.6875rem] leading-none text-muted">{shortDay(s.startedAt)}</p>
 							<p
 								class="tabular mt-0.5 text-lg leading-none font-bold
 									{startOfDay(s.startedAt) === today
@@ -715,7 +715,7 @@
 							</div>
 							<div class="text-right">
 								<p class="tabular text-lg leading-none font-bold">{counts[s.id] ?? 0}</p>
-								<p class="text-[11px] text-muted">{$t('sessions.arrows')}</p>
+								<p class="text-[0.6875rem] text-muted">{$t('sessions.arrows')}</p>
 							</div>
 						</a>
 					</li>

@@ -152,4 +152,4 @@
 	{/each}
 </div>
 
-<p class="mt-2 text-[11px] text-muted">{$t('muscles.insetHint')}</p>
+<p class="mt-2 text-[0.6875rem] text-muted">{$t('muscles.insetHint')}</p>

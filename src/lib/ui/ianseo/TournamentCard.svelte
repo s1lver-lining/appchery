@@ -45,19 +45,19 @@
 			? 'bg-brand/15 text-brand-text'
 			: 'bg-line/40 text-muted'}"
 	>
-		<span class="text-[11px] leading-tight font-semibold break-words">{days}</span>
+		<span class="text-[0.6875rem] leading-tight font-semibold break-words">{days}</span>
 	</span>
 
 	<span class="min-w-0 flex-1">
 		<span class="flex flex-wrap items-center gap-1.5">
 			{#if tournament.country}
 				<!-- The code, not the flag: ianseo draws flags as images, and a code is legible at any size. -->
-				<span class="tabular rounded bg-line/50 px-1 text-[10px] font-bold text-muted">
+				<span class="tabular rounded bg-line/50 px-1 text-[0.625rem] font-bold text-muted">
 					{tournament.country.code}
 				</span>
 			{/if}
 			{#if tournament.major}
-				<span class="rounded bg-brand/15 px-1 text-[10px] font-bold text-brand-text">
+				<span class="rounded bg-brand/15 px-1 text-[0.625rem] font-bold text-brand-text">
 					<Icon name="podium" size={11} />
 				</span>
 			{/if}
@@ -65,7 +65,7 @@
 				<span class="text-brand-text"><Icon name="star" size={13} filled /></span>
 			{/if}
 			{#if fresh}
-				<span class="rounded-full bg-brand px-1.5 text-[10px] font-bold text-brand-ink">
+				<span class="rounded-full bg-brand px-1.5 text-[0.625rem] font-bold text-brand-ink">
 					{$t('ianseo.newResults')}
 				</span>
 			{/if}

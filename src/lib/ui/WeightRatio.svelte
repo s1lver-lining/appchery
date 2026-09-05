@@ -175,7 +175,7 @@
 				></span>
 			{/if}
 
-			<div class="tabular absolute inset-x-0 bottom-0 flex justify-between text-[11px] text-muted">
+			<div class="tabular absolute inset-x-0 bottom-0 flex justify-between text-[0.6875rem] text-muted">
 				<span>{RATIO_MIN}</span>
 				<span>{IDEAL_RATIO}</span>
 				<span>{RATIO_MAX}</span>

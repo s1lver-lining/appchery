@@ -25,13 +25,13 @@
 			class="flex flex-1 flex-col items-center gap-1"
 			title={$t('score.arrowNumberOf', { n: position.ordinal, arrows: position.arrows })}
 		>
-			<span class="tabular text-[10px] leading-none text-muted">{position.mean.toFixed(1)}</span>
+			<span class="tabular text-[0.625rem] leading-none text-muted">{position.mean.toFixed(1)}</span>
 			<div
 				class="w-full rounded-t bg-brand"
 				style="height: {Math.max(2, bar(position.mean))}px"
 			></div>
-			<span class="tabular text-[10px] leading-none font-medium">{position.ordinal}</span>
+			<span class="tabular text-[0.625rem] leading-none font-medium">{position.ordinal}</span>
 		</div>
 	{/each}
 </div>
-<p class="mt-1 text-[11px] text-muted">{$t('score.arrowNumberFloor', { n: floor })}</p>
+<p class="mt-1 text-[0.6875rem] text-muted">{$t('score.arrowNumberFloor', { n: floor })}</p>

@@ -104,7 +104,7 @@
 					<li class="flex items-center gap-2 rounded-lg bg-sunk px-2 py-1.5">
 						<span class="min-w-0 flex-1">
 							<span class="block truncate text-sm font-medium">{$t(`muscles.name.${id}`)}</span>
-							<span class="block text-[11px] text-muted">
+							<span class="block text-[0.6875rem] text-muted">
 								{$t(`muscles.role.${entry.role}`)}
 								·
 								{$t('muscles.peak', {
@@ -160,7 +160,7 @@
 						 tapping a muscle is a way of asking its name rather than a change to a diagram. -->
 					{#each [null, ...SHOT_PHASES] as entry (entry ?? 'none')}
 						<button
-							class="press rounded-lg border px-2 py-1 text-[11px] leading-tight
+							class="press rounded-lg border px-2 py-1 text-[0.6875rem] leading-tight
 								{phase === entry && !playing
 								? 'border-brand bg-brand/10 font-semibold'
 								: 'border-line'}"
@@ -219,7 +219,7 @@
 				loading="lazy"
 				class="mx-auto w-full max-w-sm rounded-lg"
 			/>
-			<figcaption class="mt-2 text-[11px] leading-tight text-muted">
+			<figcaption class="mt-2 text-[0.6875rem] leading-tight text-muted">
 				{$t('muscles.plateCaption')}
 			</figcaption>
 		</figure>
@@ -237,13 +237,13 @@
 					>
 						<span class="min-w-0 flex-1">
 							<span class="block truncate text-sm">{$t(`muscles.name.${entry.id}`)}</span>
-							<span class="block text-[11px] text-muted">
+							<span class="block text-[0.6875rem] text-muted">
 								{$t(`muscles.roleShort.${entry.role}`)}
 								{#if entry.side}· {$t(`muscles.side.${entry.side}`)}{/if}
 							</span>
 						</span>
 						{#if phase && loadAt(phase, entry.id) > 0}
-							<span class="shrink-0 text-[11px] font-semibold text-accent">
+							<span class="shrink-0 text-[0.6875rem] font-semibold text-accent">
 								{loadAt(phase!, entry.id)}
 							</span>
 						{/if}

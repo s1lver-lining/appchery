@@ -117,13 +117,13 @@
 					x={x(point.braceCm)}
 					y={height - 8}
 					text-anchor="middle"
-					class="fill-current text-[9px] text-muted"
+					class="fill-current text-[0.5625rem] text-muted"
 				>
 					{point.braceCm.toFixed(1)}
 				</text>
 			{/each}
 		</svg>
-		<p class="text-center text-[11px] text-muted">{$t('brace.chartAxis')}</p>
-		<p class="text-center text-[11px] text-muted">{$t('brace.chart')}</p>
+		<p class="text-center text-[0.6875rem] text-muted">{$t('brace.chartAxis')}</p>
+		<p class="text-center text-[0.6875rem] text-muted">{$t('brace.chart')}</p>
 	</div>
 {/if}

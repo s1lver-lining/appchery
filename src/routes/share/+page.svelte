@@ -67,7 +67,7 @@
 		<p class="max-w-sm text-sm leading-relaxed text-muted">{$t('invite.body')}</p>
 	</main>
 
-	<p class="px-6 pb-6 text-center text-[11px] text-muted">{$t('invite.free')}</p>
+	<p class="px-6 pb-6 text-center text-[0.6875rem] text-muted">{$t('invite.free')}</p>
 </div>
 
 <style>

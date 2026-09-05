@@ -265,7 +265,7 @@
 						onclick={() => tick(index, setIndex)}
 					>
 						<span>{set.holdSeconds !== null ? `${set.holdSeconds}s` : set.reps}</span>
-						<span class="text-[10px] font-medium opacity-70">{setIndex + 1}</span>
+						<span class="text-[0.625rem] font-medium opacity-70">{setIndex + 1}</span>
 					</button>
 				{/each}
 				<div class="flex flex-col justify-center gap-1">
@@ -356,7 +356,7 @@
 			{/each}
 		</ul>
 		{#if offered.length < EXERCISES.length}
-			<p class="text-[11px] text-muted">{$t('strength.runningElsewhere')}</p>
+			<p class="text-[0.6875rem] text-muted">{$t('strength.runningElsewhere')}</p>
 		{/if}
 	</div>
 </Sheet>

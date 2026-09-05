@@ -392,7 +392,7 @@
 			{#each [{ value: daysShot, label: $t('stats.daysShot') }, { value: totals.rounds, label: $t('stats.roundsShot') }, { value: totals.averagePerArrow.toFixed(2), label: $t('stats.perArrow') }] as tile (tile.label)}
 				<div class="rounded-xl border border-line bg-surface p-3 text-center">
 					<dd class="tabular text-xl font-semibold">{tile.value}</dd>
-					<dt class="mt-0.5 text-[11px] text-muted">{tile.label}</dt>
+					<dt class="mt-0.5 text-[0.6875rem] text-muted">{tile.label}</dt>
 				</div>
 			{/each}
 		</dl>

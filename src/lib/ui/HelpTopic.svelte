@@ -34,7 +34,7 @@
 <div class="mx-auto w-full max-w-page space-y-3 p-4">
 	{#each terms as item (item.term)}
 		<section class="rounded-xl border border-line bg-surface p-4">
-			<p class="text-[15px] leading-relaxed">
+			<p class="text-[0.9375rem] leading-relaxed">
 				<!-- The word being defined leads the paragraph, so the page can be read by scanning. -->
 				<strong class="font-bold text-brand-text">{item.term}</strong>
 				{#each parts(item.body) as part, i (i)}{#if i % 2 === 1}<strong class="font-semibold"

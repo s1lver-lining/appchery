@@ -245,23 +245,23 @@
 		<div class="grid grid-cols-7 gap-1">
 			{#each weekdays as name, day (day)}
 				<div class="flex flex-col gap-1">
-					<span class="text-center text-[11px] font-semibold text-muted">{name}</span>
+					<span class="text-center text-[0.6875rem] font-semibold text-muted">{name}</span>
 
 					{#each byDay(day) as slot (slot.id)}
 						<button
 							class="press rounded-lg border border-line bg-surface px-1 py-1.5 text-center"
 							onclick={() => openSlot(slot)}
 						>
-							<span class="tabular block text-[11px] leading-tight font-semibold">
+							<span class="tabular block text-[0.6875rem] leading-tight font-semibold">
 								{clock(slot.minuteOfDay)}
 							</span>
 							{#if slot.arrowGoal}
-								<span class="tabular block text-[11px] leading-tight text-muted">
+								<span class="tabular block text-[0.6875rem] leading-tight text-muted">
 									{slot.arrowGoal}
 								</span>
 							{/if}
 							{#if slot.label}
-								<span class="block truncate text-[10px] leading-tight text-muted">{slot.label}</span>
+								<span class="block truncate text-[0.625rem] leading-tight text-muted">{slot.label}</span>
 							{/if}
 						</button>
 					{/each}

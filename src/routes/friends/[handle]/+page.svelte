@@ -113,12 +113,12 @@
 				<dl class="mt-3 grid grid-cols-4 gap-2 text-center">
 					{#each [[$t('friends.cardArrows'), card.arrows], [$t('friends.cardSessions'), card.sessions], [$t('friends.cardBadges'), card.badges], [$t('friends.cardLevel'), card.level]] as [label, value] (label)}
 						<div class="rounded-lg bg-sunk p-2">
-							<dt class="text-[11px] text-muted">{label}</dt>
+							<dt class="text-[0.6875rem] text-muted">{label}</dt>
 							<dd class="tabular text-sm font-semibold">{value}</dd>
 						</div>
 					{/each}
 				</dl>
-				<p class="mt-1 text-[11px] text-muted">{$t('friends.cardStale')}</p>
+				<p class="mt-1 text-[0.6875rem] text-muted">{$t('friends.cardStale')}</p>
 			{/if}
 
 			<!-- Your own profile offers neither: following yourself is refused by the server and blocking

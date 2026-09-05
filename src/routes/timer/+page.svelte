@@ -365,7 +365,7 @@
 		<li class="flex items-center gap-2 border-b border-line pb-2">
 			<span class="min-w-0 flex-1">
 				<span class="block truncate text-sm">{$t('timer.preparation')}</span>
-				<span class="block text-[11px] text-muted">{$t('timer.preparationHint')}</span>
+				<span class="block text-[0.6875rem] text-muted">{$t('timer.preparationHint')}</span>
 			</span>
 			<input
 				type="number"
@@ -387,7 +387,7 @@
 			<li class="flex items-center gap-2">
 				<span class="min-w-0 flex-1">
 					<span class="block truncate text-sm">{$t(`timer.preset.${entry.key}`)}</span>
-					<span class="block text-[11px] text-muted">
+					<span class="block text-[0.6875rem] text-muted">
 						{$t('timer.ruleTime', { time: formatClock(rule.seconds) })}
 					</span>
 				</span>

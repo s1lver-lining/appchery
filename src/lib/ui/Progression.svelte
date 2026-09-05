@@ -62,7 +62,7 @@
 		{/each}
 	</svg>
 
-	<div class="mt-1 flex justify-between text-[10px] text-muted">
+	<div class="mt-1 flex justify-between text-[0.625rem] text-muted">
 		<span>{lowLabel}</span>
 		<span class="tabular">{Math.round(low)} – {Math.round(high)}</span>
 		<span>{highLabel}</span>

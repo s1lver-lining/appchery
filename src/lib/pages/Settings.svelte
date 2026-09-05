@@ -31,6 +31,7 @@
 		weekStartsOnSunday,
 		plotBadgeSide,
 		sheetHeight,
+		textScale,
 		celebratedLevel,
 		celebratedBests,
 		dismissedBest
@@ -488,6 +489,30 @@
 						</div>
 
 						<!-- A short palette: every option has to stay readable on the surface, in both themes. -->
+						<!-- A slider: readable is a different number for every pair of eyes and every phone. -->
+						<div id="setting-textScale" class:flash={flashing === 'textScale'}>
+							<div class="flex items-baseline justify-between gap-3">
+								<p class="font-medium">{$t('settings.textScaleTitle')}</p>
+								<p class="tabular shrink-0 text-sm font-semibold text-brand-text">{$textScale}%</p>
+							</div>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.textScaleHint')}</p>
+							<input
+								data-noswipe
+								type="range"
+								min="85"
+								max="130"
+								step="5"
+								class="mt-3 w-full accent-brand"
+								aria-label={$t('settings.textScaleTitle')}
+								value={$textScale}
+								oninput={(e) => textScale.set(Number(e.currentTarget.value))}
+							/>
+							<div class="tabular flex justify-between text-[0.6875rem] text-muted">
+								<span>{$t('settings.textScaleSmall')}</span>
+								<span>{$t('settings.textScaleLarge')}</span>
+							</div>
+						</div>
+
 						<div id="setting-weekStart" class:flash={flashing === 'weekStart'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.weekStartTitle')}</p>
@@ -561,7 +586,7 @@
 							value={$plotTapMs}
 							oninput={(e) => plotTapMs.set(Number(e.currentTarget.value))}
 						/>
-						<div class="tabular flex justify-between text-[11px] text-muted">
+						<div class="tabular flex justify-between text-[0.6875rem] text-muted">
 							<span>{$t('settings.tapWindowShort')}</span>
 							<span>{$t('settings.tapWindowLong')}</span>
 						</div>

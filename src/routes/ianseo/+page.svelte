@@ -560,12 +560,12 @@
 					just followed something is the one who wants telling about it, and they are here.
 				-->
 				<div class="mb-2 flex items-center justify-between gap-3 px-1">
-					<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+					<h2 class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 						{$t('ianseo.following')}
 					</h2>
 					{#if canTell}
 						<div class="flex items-center gap-2">
-							<span class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+							<span class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 								{$t('ianseo.notifications')}
 							</span>
 							<Toggle checked={telling} label={$t('ianseo.toldTitle')} onchange={setTelling} />
@@ -595,7 +595,7 @@
 								<span class="text-brand-text"><Icon name="star" size={16} filled /></span>
 								<span class="min-w-0 flex-1 truncate font-semibold">{one.favourite.label}</span>
 								{#if isNew(one.favourite)}
-									<span class="rounded-full bg-brand px-1.5 text-[10px] font-bold text-brand-ink">
+									<span class="rounded-full bg-brand px-1.5 text-[0.625rem] font-bold text-brand-ink">
 										{$t('ianseo.newResults')}
 									</span>
 								{/if}
@@ -609,10 +609,10 @@
 		{#each groups as group (group.when)}
 			<section>
 				<h2 class="mb-2 flex items-baseline justify-between gap-2 px-1">
-					<span class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+					<span class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 						{$t(`ianseo.${group.when}`)}
 					</span>
-					<span class="tabular text-[11px] text-muted">{group.rows.length}</span>
+					<span class="tabular text-[0.6875rem] text-muted">{group.rows.length}</span>
 				</h2>
 				<div class="space-y-2">
 					{#each group.rows.slice(0, group.when === 'finished' ? 40 : 200) as tournament (tournament.toId)}
@@ -631,7 +631,7 @@
 
 		{#if spare.length > 0 && !search.trim()}
 			<section>
-				<h2 class="mb-1 px-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
+				<h2 class="mb-1 px-1 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 					{$t('ianseo.entrySection')}
 				</h2>
 				<!-- Said once for the section rather than on every card, which is where it was noise. -->

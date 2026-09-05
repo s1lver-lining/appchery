@@ -30,7 +30,7 @@
 			class="flex flex-1 flex-col items-center gap-1"
 			title="{zone.count} · {((zone.count / total) * 100).toFixed(0)}%"
 		>
-			<span class="tabular text-[10px] leading-none text-muted">{zone.count}</span>
+			<span class="tabular text-[0.625rem] leading-none text-muted">{zone.count}</span>
 			<!-- Outlined as well as filled, or the white ring disappears into a light theme. -->
 			<div
 				class="w-full rounded-t"
@@ -38,7 +38,7 @@
 					background: {colourOf(zone.label)};
 					box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--color-ink) 30%, transparent)"
 			></div>
-			<span class="tabular text-[10px] leading-none font-medium">{zone.label}</span>
+			<span class="tabular text-[0.625rem] leading-none font-medium">{zone.label}</span>
 		</div>
 	{/each}
 </div>

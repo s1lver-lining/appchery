@@ -95,7 +95,7 @@
 			>
 				<span class="text-accent"><Icon name="medal" size={30} filled /></span>
 				<span class="min-w-0 flex-1 text-left">
-					<span class="block text-[11px] font-semibold tracking-wide text-accent uppercase">
+					<span class="block text-[0.6875rem] font-semibold tracking-wide text-accent uppercase">
 						{award.title}
 					</span>
 					<span class="block truncate text-base font-bold">{award.subtitle}</span>

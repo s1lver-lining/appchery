@@ -386,7 +386,7 @@
 
 	{#if people.length > 0}
 		<section class="rounded-2xl border border-line bg-surface p-3">
-			<h2 class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+			<h2 class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 				{$t('ianseo.peopleHere')}
 			</h2>
 			<div class="mt-2 flex flex-wrap gap-1.5">
@@ -426,7 +426,7 @@
 
 	{#each groups as { group, documents } (group)}
 		<section>
-			<h2 class="mb-2 px-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
+			<h2 class="mb-2 px-1 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 				{named(group) || $t('ianseo.documents')}
 			</h2>
 			<ul class="divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface">
@@ -454,7 +454,7 @@
 							<span class="absolute inset-0" aria-hidden="true"></span>
 							<span class="block font-medium break-words">
 								{#if fresh.has(document)}
-									<span class="mr-1 align-middle rounded-full bg-brand/15 px-1.5 py-0.5 text-[10px] font-bold text-brand-text">
+									<span class="mr-1 align-middle rounded-full bg-brand/15 px-1.5 py-0.5 text-[0.625rem] font-bold text-brand-text">
 										{$t('ianseo.newResults')}
 									</span>
 								{/if}
@@ -477,7 +477,7 @@
 						</a>
 						{#if document.pdfPath}
 							<a
-								class="press relative mr-2 shrink-0 rounded-lg border border-line px-2 py-1 text-[10px] font-bold text-muted"
+								class="press relative mr-2 shrink-0 rounded-lg border border-line px-2 py-1 text-[0.625rem] font-bold text-muted"
 								href={fileLink(document.pdfPath, IANSEO)}
 								target={externalTarget()}
 								rel="noreferrer"

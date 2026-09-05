@@ -91,7 +91,7 @@
 					{#each Array.from({ length: entry.steps }, (_, i) => i + 1) as step (step)}
 						<li class="flex gap-2.5">
 							<span
-								class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[11px] font-semibold text-brand-text"
+								class="mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full bg-brand/15 text-[0.6875rem] font-semibold text-brand-text"
 							>
 								{step}
 							</span>
@@ -162,7 +162,7 @@
 						</span>
 					{/each}
 				</div>
-				<p class="mt-2 text-[11px] text-muted">{$t(`exercises.activity.${entry.activity}`)}</p>
+				<p class="mt-2 text-[0.6875rem] text-muted">{$t(`exercises.activity.${entry.activity}`)}</p>
 			</section>
 
 			<section class="rounded-2xl border border-line bg-surface p-4">
@@ -170,7 +170,7 @@
 				<dl class="grid grid-cols-2 gap-2">
 					{#each params as item (item.label)}
 						<div class="rounded-lg bg-sunk px-2 py-1.5">
-							<dt class="text-[11px] text-muted">{$t(`exercises.${item.label}`)}</dt>
+							<dt class="text-[0.6875rem] text-muted">{$t(`exercises.${item.label}`)}</dt>
 							<dd class="text-sm font-semibold">
 								{#if item.unit === 'seconds'}
 									{$t('exercises.seconds', { n: item.value })}
@@ -185,7 +185,7 @@
 						</div>
 					{/each}
 				</dl>
-				<p class="mt-2 text-[11px] leading-snug text-muted">{$t('exercises.startLead')}</p>
+				<p class="mt-2 text-[0.6875rem] leading-snug text-muted">{$t('exercises.startLead')}</p>
 			</section>
 		</div>
 	</div>

@@ -109,7 +109,7 @@
 
 {#snippet heading(item: { label: string; alert?: boolean })}
 	<h2
-		class="mb-2.5 flex items-center gap-1.5 border-b border-line pb-1.5 text-[11px] font-semibold tracking-wider text-muted uppercase"
+		class="mb-2.5 flex items-center gap-1.5 border-b border-line pb-1.5 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase"
 	>
 		{item.label}
 		{#if item.alert}

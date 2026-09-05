@@ -240,7 +240,7 @@
 		</header>
 
 		<div class="mx-auto w-full max-w-page flex-1 space-y-4 overflow-y-auto p-4">
-			<p class="text-[15px] leading-relaxed">{openText.why}</p>
+			<p class="text-[0.9375rem] leading-relaxed">{openText.why}</p>
 
 			{#if mustAsk}
 				<!-- Asked, not guessed: half of what follows reads backwards on the other bow. -->

@@ -1287,6 +1287,11 @@ export const en = {
 		searchLead: 'Type a word from a setting\u2019s name or from what it does.',
 		searchEmpty: 'Nothing here matches {q}.',
 		searchAction: 'Search',
+		textScaleTitle: 'Text size',
+		textScaleHint:
+			'Draws the whole app larger or smaller: the text and the rows and buttons around it together. The scoresheet keeps its share of the screen whatever you choose.',
+		textScaleSmall: 'Smaller',
+		textScaleLarge: 'Larger',
 		weekStartTitle: 'Start the week on Sunday',
 		weekStartHint:
 			'Moves where the calendar and the separators down the sessions list break a week. Badges, weekly statistics and the arrows counted for a week stay on Monday, so no figure already recorded changes.',

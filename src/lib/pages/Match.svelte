@@ -639,7 +639,7 @@
 			type="number"
 			inputmode="numeric"
 			min="0"
-			class="tabular w-8 shrink-0 rounded border border-line bg-bg px-0.5 py-1 text-center text-[13px] font-bold text-ink"
+			class="tabular w-8 shrink-0 rounded border border-line bg-bg px-0.5 py-1 text-center text-[0.8125rem] font-bold text-ink"
 			aria-label={side === 'us' ? ourLabel : theirLabel}
 			value={total ?? ''}
 			onfocus={() => (cursor = null)}
@@ -737,7 +737,7 @@
 				class="flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-line bg-surface"
 				style="--chip: clamp(1.45rem, 5.6vw, 1.75rem)"
 			>
-				<div class="flex items-center gap-0.5 border-b border-line px-1.5 py-1 text-[10px] text-muted">
+				<div class="flex items-center gap-0.5 border-b border-line px-1.5 py-1 text-[0.625rem] text-muted">
 					<span class="w-4 shrink-0"></span>
 					<span class="min-w-0 flex-1 truncate">{ourLabel}</span>
 					<span class="w-7 shrink-0 text-center">
@@ -763,7 +763,7 @@
 
 							{@render sideCells(entry.endNo, 'us', entry.row, entry.shootOff, false)}
 
-							<span class="tabular w-7 shrink-0 text-center text-[11px] font-semibold">
+							<span class="tabular w-7 shrink-0 text-center text-[0.6875rem] font-semibold">
 								{#if points(entry.endNo, 'us') !== null}
 									<span class="text-brand-text">{points(entry.endNo, 'us')}</span>
 									<span class="text-line">·</span>

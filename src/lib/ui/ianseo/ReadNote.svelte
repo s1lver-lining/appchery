@@ -56,7 +56,7 @@
 		</p>
 	{/if}
 {:else}
-<div class="flex flex-wrap items-center justify-center gap-2 pb-2 text-center text-[11px] text-muted">
+<div class="flex flex-wrap items-center justify-center gap-2 pb-2 text-center text-[0.6875rem] text-muted">
 	<span>
 		{#if loading}
 			{$t('ianseo.reading')}

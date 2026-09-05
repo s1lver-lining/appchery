@@ -103,7 +103,7 @@
 						<div class="tabular text-right text-xs whitespace-nowrap text-muted {line.spaced ? 'mt-2' : ''}">
 							{line.time ?? ''}
 							{#if line.duration}
-								<span class="block text-[10px] opacity-70">{line.duration}</span>
+								<span class="block text-[0.625rem] opacity-70">{line.duration}</span>
 							{/if}
 						</div>
 						<div class="[overflow-wrap:anywhere] {line.strong ? 'font-semibold' : ''} {line.spaced ? 'mt-2' : ''}">

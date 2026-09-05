@@ -192,7 +192,7 @@
 					<div class="flex items-center gap-2">
 						{#if best && point && point.braceCm === best.braceCm && points.length > 1}
 							<span
-								class="rounded-full px-2 py-0.5 text-[11px] font-semibold"
+								class="rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold"
 								style="background: color-mix(in srgb, var(--c-band-good) 18%, transparent); color: var(--c-band-good)"
 							>
 								{$t('brace.tightest')}

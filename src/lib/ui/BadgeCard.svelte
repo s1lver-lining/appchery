@@ -63,7 +63,7 @@
 				<div class="h-1.5 flex-1 overflow-hidden rounded-full bg-sunk">
 					<div class="h-full rounded-full bg-brand" style="width: {share * 100}%"></div>
 				</div>
-				<span class="tabular shrink-0 text-[11px] text-muted">
+				<span class="tabular shrink-0 text-[0.6875rem] text-muted">
 					{$t('badges.progress', {
 						current: Math.round(badge.progress.current),
 						target: badge.progress.target

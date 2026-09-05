@@ -413,14 +413,14 @@
 							>
 								<p class="tabular text-lg leading-none font-bold">{stat.value}</p>
 								<p
-									class="mt-1 truncate text-[10px] leading-tight whitespace-nowrap text-muted first-letter:uppercase"
+									class="mt-1 truncate text-[0.625rem] leading-tight whitespace-nowrap text-muted first-letter:uppercase"
 								>
 									{stat.label}
 								</p>
 
 								{#if explained === stat.full}
 									<span
-										class="absolute top-full z-10 mt-1.5 rounded-lg bg-ink px-2 py-1 text-[11px] whitespace-nowrap text-bg shadow-lg
+										class="absolute top-full z-10 mt-1.5 rounded-lg bg-ink px-2 py-1 text-[0.6875rem] whitespace-nowrap text-bg shadow-lg
 											{i === 0 ? 'left-0' : i === 3 ? 'right-0' : 'left-1/2 -translate-x-1/2'}"
 									>
 										{stat.full}

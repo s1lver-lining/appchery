@@ -658,7 +658,7 @@
 		{#if s.kind === 'planned'}
 			<div class="shrink-0 text-center text-muted">
 				<span class="flex justify-center"><Icon name="calendar" size={20} /></span>
-				<p class="mt-1 text-[10px] tracking-wide uppercase">{$t('sessions.planned')}</p>
+				<p class="mt-1 text-[0.625rem] tracking-wide uppercase">{$t('sessions.planned')}</p>
 			</div>
 		{:else}
 			<div class="shrink-0 text-right">
@@ -671,7 +671,7 @@
 				>
 					{counts[s.id]?.arrows ?? 0}
 				</p>
-				<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+				<p class="text-[0.625rem] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
 			</div>
 		{/if}
 	</a>
@@ -689,7 +689,7 @@
 			</p>
 			<p class="mt-1 flex items-center gap-1.5 text-xs text-muted">
 				<span
-					class="inline-flex shrink-0 items-center rounded-full border border-brand/40 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-brand-text uppercase"
+					class="inline-flex shrink-0 items-center rounded-full border border-brand/40 px-1.5 py-0.5 text-[0.625rem] font-semibold tracking-wide text-brand-text uppercase"
 				>
 					{plans.find((plan) => plan.id === occurrence.planId)?.name ?? $t('plans.slot')}
 				</span>
@@ -701,11 +701,11 @@
 		<div class="shrink-0 text-center text-muted">
 			<span class="flex justify-center"><Icon name="calendar" size={20} /></span>
 			{#if occurrence.arrowGoal}
-				<p class="tabular mt-1 text-[10px] tracking-wide uppercase">
+				<p class="tabular mt-1 text-[0.625rem] tracking-wide uppercase">
 					{$t('sessions.arrowGoal', { n: occurrence.arrowGoal })}
 				</p>
 			{:else}
-				<p class="mt-1 text-[10px] tracking-wide uppercase">{$t('sessions.planned')}</p>
+				<p class="mt-1 text-[0.625rem] tracking-wide uppercase">{$t('sessions.planned')}</p>
 			{/if}
 		</div>
 	</a>
@@ -799,7 +799,7 @@
 							<!-- The shape of a week in this list: a day in the margin, an outing beside it. -->
 							<div class="flex items-start gap-3">
 								<div class="w-9 shrink-0 text-center">
-									<p class="text-[11px] leading-none text-muted">{shortDay(today)}</p>
+									<p class="text-[0.6875rem] leading-none text-muted">{shortDay(today)}</p>
 									<p class="tabular mt-0.5 text-lg leading-none font-bold">
 										{dayNumber(today)}
 									</p>
@@ -830,7 +830,7 @@
 								<!-- The week's volume, quiet enough that the dates still read as the header. Against
 									the plan when asked for, and said out loud only once the week is done. -->
 								<span
-									class="tabular rounded-full px-2 py-0.5 text-[11px] leading-none
+									class="tabular rounded-full px-2 py-0.5 text-[0.6875rem] leading-none
 										{$showWeekGoal && reached
 										? 'bg-brand/20 font-semibold text-brand-text'
 										: 'bg-sunk text-muted'}"
@@ -855,7 +855,7 @@
 										<div class="w-9 shrink-0 text-center">
 											<!-- The weekday joins the pill on today, so the margin says it twice over. -->
 											<p
-												class="text-[11px] leading-none {onToday
+												class="text-[0.6875rem] leading-none {onToday
 													? 'font-semibold text-brand-text'
 													: 'text-muted'}"
 											>
@@ -926,7 +926,7 @@
 
 					<div class="grid grid-cols-7 gap-1 text-center">
 						{#each weekdayHeads as head, i (i)}
-							<span class="text-[11px] font-semibold text-muted">{head}</span>
+							<span class="text-[0.6875rem] font-semibold text-muted">{head}</span>
 						{/each}
 
 						{#each grid as day (day.at)}

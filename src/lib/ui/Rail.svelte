@@ -70,7 +70,7 @@
 	{/each}
 
 	<!-- Everywhere else, which on a phone lives behind the home page and here simply fits. -->
-	<p class="mt-5 mb-1 px-3 text-[11px] font-semibold tracking-wider text-muted uppercase">
+	<p class="mt-5 mb-1 px-3 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 		{$t('home.elsewhere')}
 	</p>
 

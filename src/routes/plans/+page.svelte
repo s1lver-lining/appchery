@@ -68,7 +68,7 @@
 					</div>
 					<div class="shrink-0 text-right">
 						<p class="tabular text-lg leading-none font-bold">230</p>
-						<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+						<p class="text-[0.625rem] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
 					</div>
 				</div>
 			{/snippet}
@@ -95,11 +95,11 @@
 					<!-- The season above the figure: when the plan runs, then what it asks for while it does. -->
 					<div class="shrink-0 text-right">
 						{#if season}
-							<p class="mb-0.5 text-[11px] leading-none text-muted">{season}</p>
+							<p class="mb-0.5 text-[0.6875rem] leading-none text-muted">{season}</p>
 						{/if}
 						{#if total > 0}
 							<p class="tabular text-lg leading-none font-bold">{total}</p>
-							<p class="text-[10px] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
+							<p class="text-[0.625rem] tracking-wide text-muted uppercase">{$t('sessions.arrows')}</p>
 						{/if}
 					</div>
 				{/if}

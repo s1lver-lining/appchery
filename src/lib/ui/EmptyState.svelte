@@ -30,7 +30,7 @@
 		<!-- Faded and named: it is an example of the page, never a thing that can be opened. -->
 		<div class="relative mb-4" aria-hidden="true">
 			<span
-				class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full border border-line bg-bg px-2 py-0.5 text-[10px] font-semibold tracking-wide text-muted uppercase"
+				class="absolute -top-2 left-1/2 z-10 -translate-x-1/2 rounded-full border border-line bg-bg px-2 py-0.5 text-[0.625rem] font-semibold tracking-wide text-muted uppercase"
 			>
 				{$t('empty.sample')}
 			</span>

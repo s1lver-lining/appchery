@@ -54,7 +54,7 @@
 			autocomplete="off"
 			autocapitalize="none"
 			spellcheck="false"
-			class="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
+			class="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-muted"
 			placeholder={$tricks.search}
 			aria-label={$tricks.search}
 		/>
@@ -77,13 +77,13 @@
 
 	{#each groups as group (group.key)}
 		<section>
-			<h2 class="mb-2 px-1 text-[11px] font-semibold tracking-wider text-muted uppercase">
+			<h2 class="mb-2 px-1 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 				{group.title}
 			</h2>
 			<div class="space-y-2">
 				{#each group.tricks as trick (trick.lead)}
 					<article class="rounded-xl border border-line bg-surface p-4">
-						<p class="text-[15px] leading-relaxed">
+						<p class="text-[0.9375rem] leading-relaxed">
 							<strong class="font-bold text-brand-text">{trick.lead}</strong>
 							{trick.body}
 						</p>

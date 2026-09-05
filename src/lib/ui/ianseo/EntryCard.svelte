@@ -39,7 +39,7 @@
 		<p class="font-semibold break-words">{entry.name}</p>
 		<p class="text-xs text-muted">{when} · {entry.club}</p>
 	{:else}
-		<p class="flex items-center gap-1.5 text-[11px] font-semibold tracking-wider text-brand-text uppercase">
+		<p class="flex items-center gap-1.5 text-[0.6875rem] font-semibold tracking-wider text-brand-text uppercase">
 			<Icon name="edit" size={13} />
 			{$t('ianseo.entryOpen')}
 		</p>
@@ -60,6 +60,6 @@
 		{/each}
 	</div>
 	{#if !compact}
-		<p class="mt-2 text-[11px] text-muted">{$t('ianseo.entryBy')}</p>
+		<p class="mt-2 text-[0.6875rem] text-muted">{$t('ianseo.entryBy')}</p>
 	{/if}
 </div>

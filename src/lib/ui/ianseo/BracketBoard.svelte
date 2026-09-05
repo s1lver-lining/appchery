@@ -174,7 +174,7 @@
 			<div class="flex w-max items-stretch gap-2">
 				{#each shown as one, index (one.title + index)}
 					<div class="flex w-32 shrink-0 flex-col">
-						<p class="mb-1.5 truncate text-[11px] font-semibold tracking-wide text-muted uppercase">
+						<p class="mb-1.5 truncate text-[0.6875rem] font-semibold tracking-wide text-muted uppercase">
 							{one.title || `${index + 1}`}
 						</p>
 						<!-- Spread down the column, so a match sits between the two that feed it. -->
@@ -194,7 +194,7 @@
 												: ''}"
 										>
 											{#if entry.seed}
-												<span class="tabular w-4 shrink-0 text-[10px] text-muted">{entry.seed}</span>
+												<span class="tabular w-4 shrink-0 text-[0.625rem] text-muted">{entry.seed}</span>
 											{/if}
 											<span class="min-w-0 flex-1 truncate">
 												{#if mine}
@@ -205,7 +205,7 @@
 											</span>
 											{#if drawn.target}
 												<span
-													class="tabular flex shrink-0 items-center gap-0.5 rounded bg-line/40 px-1 text-[10px] text-muted"
+													class="tabular flex shrink-0 items-center gap-0.5 rounded bg-line/40 px-1 text-[0.625rem] text-muted"
 													title={$t('ianseo.onTarget', { target: drawn.target })}
 												>
 													<Icon name="target" size={9} />
@@ -233,7 +233,7 @@
 			{@const won = winner(match)}
 			<div class="overflow-hidden rounded-2xl border border-line bg-surface">
 				{#if dueAt(match)}
-					<p class="border-b border-line bg-line/15 px-3 py-1 text-[11px] text-muted">
+					<p class="border-b border-line bg-line/15 px-3 py-1 text-[0.6875rem] text-muted">
 						{dueAt(match)}
 					</p>
 				{/if}
@@ -250,7 +250,7 @@
 							: ''}"
 					>
 						{#if entry.seed}
-							<span class="tabular w-6 shrink-0 text-[11px] text-muted">{entry.seed}</span>
+							<span class="tabular w-6 shrink-0 text-[0.6875rem] text-muted">{entry.seed}</span>
 						{/if}
 						<div class="min-w-0 flex-1">
 							<!-- The star follows the name rather than holding a column of its own: it is about the archer. -->
@@ -283,7 +283,7 @@
 									{#if match.sets[side]?.length}
 										<div class="hidden gap-1 min-[380px]:flex {hasClub ? 'ml-auto shrink-0' : ''}">
 											{#each match.sets[side] as value, at (at)}
-												<span class="tabular w-7 rounded bg-line/40 py-0.5 text-center text-[11px] text-muted">
+												<span class="tabular w-7 rounded bg-line/40 py-0.5 text-center text-[0.6875rem] text-muted">
 													{value}
 												</span>
 											{/each}
@@ -295,7 +295,7 @@
 						{#if drawn.target}
 							<!-- `19D` in the score column reads as a score; a target chip says it is not one. -->
 							<span
-								class="tabular flex shrink-0 items-center gap-1 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted"
+								class="tabular flex shrink-0 items-center gap-1 rounded bg-line/40 px-1.5 py-0.5 text-[0.6875rem] whitespace-nowrap text-muted"
 								title={$t('ianseo.onTarget', { target: drawn.target })}
 							>
 								<Icon name="target" size={11} />
@@ -303,7 +303,7 @@
 							</span>
 						{:else if drawn.score && !isNumber(drawn.score)}
 							<!-- Room for what it says: a bye is a word rather than a number of points. -->
-							<span class="tabular shrink-0 rounded bg-line/40 px-1.5 py-0.5 text-[11px] whitespace-nowrap text-muted">
+							<span class="tabular shrink-0 rounded bg-line/40 px-1.5 py-0.5 text-[0.6875rem] whitespace-nowrap text-muted">
 								{scoreLabel(drawn.score)}
 							</span>
 						{:else}
@@ -324,7 +324,7 @@
 						{#each match.sets as line, side (side)}
 							<div class="flex gap-1">
 								{#each line as value, at (at)}
-									<span class="tabular w-7 rounded bg-surface py-0.5 text-center text-[11px] text-muted">
+									<span class="tabular w-7 rounded bg-surface py-0.5 text-center text-[0.6875rem] text-muted">
 										{value}
 									</span>
 								{/each}

@@ -203,7 +203,7 @@
 					<span class="truncate text-sm font-medium">{title(shared)}</span>
 					{#if best}
 						<span
-							class="flex shrink-0 items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[10px] font-semibold text-accent"
+							class="flex shrink-0 items-center gap-0.5 rounded-full bg-accent/15 px-1.5 py-0.5 text-[0.625rem] font-semibold text-accent"
 						>
 							<Icon name="medal" size={10} filled />
 							{$t('feed.bestShared')}

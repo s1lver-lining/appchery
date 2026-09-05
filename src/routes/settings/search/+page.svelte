@@ -54,7 +54,7 @@
 			autocomplete="off"
 			autocapitalize="none"
 			spellcheck="false"
-			class="min-w-0 flex-1 bg-transparent text-[15px] outline-none placeholder:text-muted"
+			class="min-w-0 flex-1 bg-transparent text-[0.9375rem] outline-none placeholder:text-muted"
 			placeholder={$t('settings.searchPlaceholder')}
 			aria-label={$t('settings.searchTitle')}
 		/>
@@ -82,7 +82,7 @@
 					onclick={() => open(entry)}
 				>
 					<div class="min-w-0 flex-1">
-						<p class="text-[11px] font-semibold tracking-wider text-muted uppercase">
+						<p class="text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 							{$t(entry.section)}
 						</p>
 						<p class="mt-0.5 font-medium">{$t(entry.title)}</p>

@@ -132,7 +132,7 @@
 
 		<div class="grid grid-cols-7 gap-1 text-center">
 			{#each weekdayHeads as head, i (i)}
-				<span class="text-[11px] font-semibold text-muted">{head}</span>
+				<span class="text-[0.6875rem] font-semibold text-muted">{head}</span>
 			{/each}
 
 			{#each grid as cell (cell.at)}

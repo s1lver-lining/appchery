@@ -143,7 +143,7 @@
 		</section>
 
 		<section class="rounded-2xl border border-line bg-surface p-4">
-			<h2 class="mb-3 text-[11px] font-semibold tracking-wider text-muted uppercase">
+			<h2 class="mb-3 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 				{$t('experience.sources')}
 			</h2>
 
@@ -161,13 +161,13 @@
 							{#snippet centre()}
 								{#if spills}
 									<p
-										class="max-w-[7rem] text-[11px] leading-tight font-semibold tracking-wider text-muted uppercase"
+										class="max-w-[7rem] text-[0.6875rem] leading-tight font-semibold tracking-wider text-muted uppercase"
 									>
 										{$t('experience.total')}
 									</p>
 								{:else}
 									<p class="tabular text-2xl leading-none font-bold">{$formatNumber(earned!.total)}</p>
-									<p class="mt-1 text-[11px] text-muted">{$t('experience.total')}</p>
+									<p class="mt-1 text-[0.6875rem] text-muted">{$t('experience.total')}</p>
 								{/if}
 							{/snippet}
 						</ShareDonut>
@@ -213,7 +213,7 @@
 
 		<!-- The rates in full, so the total is something that can be checked rather than trusted. -->
 		<section class="rounded-2xl border border-line bg-surface p-4">
-			<h2 class="mb-3 text-[11px] font-semibold tracking-wider text-muted uppercase">
+			<h2 class="mb-3 text-[0.6875rem] font-semibold tracking-wider text-muted uppercase">
 				{$t('experience.rates')}
 			</h2>
 

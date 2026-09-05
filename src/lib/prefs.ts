@@ -493,6 +493,23 @@ if (typeof document !== 'undefined') {
 }
 
 /**
+ * How large the app draws itself, as a percentage of the size it was built at.
+ *
+ * Set on the root, which every size in the app is expressed against, so the type, the rows it sits
+ * in and the space around it all grow together: text alone growing inside boxes that did not would
+ * be worse than leaving it. The scoresheet is the exception and is measured against the screen, so
+ * it keeps its share of it whatever this says.
+ */
+export const textScale = storedNumber('appchery.textScale', 100);
+
+if (typeof document !== 'undefined') {
+	// Left unset at a hundred, so a reader who never touched this is on the browser's own base size.
+	textScale.subscribe((value) => {
+		document.documentElement.style.fontSize = value === 100 ? '' : `${value}%`;
+	});
+}
+
+/**
  * How the last match was set up: the face and its size, the distance, and how it was won. A club
  * shoots the same match over and over, so the second one should ask for nothing the first answered.
  * Held per device rather than on the match, which keeps its own copy of all of this.

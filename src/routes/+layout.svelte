@@ -558,7 +558,7 @@
 							<span class="absolute -top-0.5 -right-1 size-2 rounded-full bg-danger"></span>
 						{/if}
 					</span>
-					<span class="text-[11px] leading-none font-medium">{$t(tab.key)}</span>
+					<span class="text-[0.6875rem] leading-none font-medium">{$t(tab.key)}</span>
 				</a>
 			{/each}
 		</nav>

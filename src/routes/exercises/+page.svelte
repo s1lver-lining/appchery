@@ -72,7 +72,7 @@
 					>
 						<div class="flex items-start justify-between gap-2">
 							<h2 class="font-semibold">{$t(`exercises.item.${entry.key}.name`)}</h2>
-							<span class="shrink-0 rounded-full bg-sunk px-2 py-0.5 text-[11px] text-muted">
+							<span class="shrink-0 rounded-full bg-sunk px-2 py-0.5 text-[0.6875rem] text-muted">
 								{$t(`exercises.kit.${entry.kit}`)}
 							</span>
 						</div>
@@ -84,13 +84,13 @@
 						<!-- What it is for, said in muscles: the reason to pick this one over the next. -->
 						<div class="flex flex-wrap gap-1">
 							{#each primary(entry) as id (id)}
-								<span class="rounded-md bg-accent/15 px-1.5 py-0.5 text-[11px] text-accent">
+								<span class="rounded-md bg-accent/15 px-1.5 py-0.5 text-[0.6875rem] text-accent">
 									{$t(`muscles.name.${id}`)}
 								</span>
 							{/each}
 						</div>
 
-						<p class="text-[11px] text-muted">
+						<p class="text-[0.6875rem] text-muted">
 							{$t(`exercises.measure.${entry.measure}`)}
 							·
 							{$t(`exercises.level.${entry.level}`)}

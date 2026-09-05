@@ -28,7 +28,7 @@
 	{#each ['back', 'front'] as const as side (side)}
 		<figure class="min-w-0">
 			<MuscleMap view={side} {selected} {phase} {load} class={className} {onpick} />
-			<figcaption class="mt-1 text-center text-[11px] text-muted">
+			<figcaption class="mt-1 text-center text-[0.6875rem] text-muted">
 				{$t(`muscles.view.${side}`)}
 			</figcaption>
 		</figure>
