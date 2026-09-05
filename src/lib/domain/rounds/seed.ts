@@ -55,6 +55,7 @@ export const ROUNDS: RoundDefinition[] = [
 		discipline: 'target',
 		governingBody: 'WA',
 		scoreSetId: WA_10_RING.id,
+		halfEnds: 6,
 		isBuiltin: true,
 		stages: [{ distance: { value: 70, unit: 'm' }, faceSize: 122, ends: 12, arrowsPerEnd: 6 }]
 	},
@@ -64,6 +65,7 @@ export const ROUNDS: RoundDefinition[] = [
 		discipline: 'target',
 		governingBody: 'WA',
 		scoreSetId: WA_10_RING.id,
+		halfEnds: 10,
 		isBuiltin: true,
 		stages: [{ distance: { value: 18, unit: 'm' }, faceSize: 40, ends: 20, arrowsPerEnd: 3 }]
 	},

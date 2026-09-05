@@ -1276,7 +1276,11 @@
 			<!-- The cap is what keeps the keypad on screen once the sheet has more ends than fit. -->
 			<div bind:this={sheetScroller} class="max-h-[42dvh] overflow-y-auto overscroll-y-contain">
 				{#each sheetRows as row, i (row.key)}
-					<div class="flex items-center gap-1 border-b border-line px-2 py-1">
+					<!-- The break the rules put in the middle of the round, where the archers change ends. -->
+					<div
+						class="flex items-center gap-1 px-2 py-1
+							{i + 1 === round?.halfEnds ? 'border-b-2 border-brand/40' : 'border-b border-line'}"
+					>
 						<!-- Drawn as a key rather than as a number, because it opens the end and nothing else
 							on the row looks like it does anything. -->
 						<button

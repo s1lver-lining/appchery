@@ -58,6 +58,11 @@ export interface RoundDefinition {
 	stages: RoundStage[];
 	scoreSetId: string;
 	governingBody?: string;
+	/**
+	 * Ends shot before the break, on the rounds the rules split into two halves. Set only where the
+	 * rulebook says so: a round of an even number of ends is not thereby shot in halves.
+	 */
+	halfEnds?: number;
 	isBuiltin: boolean;
 }
 
