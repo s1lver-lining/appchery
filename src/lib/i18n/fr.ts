@@ -373,6 +373,7 @@ export const fr: Dictionary = {
 		showCentre: 'Centre du groupement',
 		showGroup: 'Contour du groupement',
 		showOtherEnds: 'Autres volées',
+		clearZoom: 'Revenir du zoom',
 		groupSize: 'Taille du groupement',
 		arrowNumbers: 'Numéroter les flèches',
 		arrowNumbersHint: 'Numérote chaque flèche dans votre ordre de saisie, pour les distinguer même une fois triées.',

@@ -374,6 +374,7 @@ export const en = {
 		showCentre: 'Group centre',
 		showGroup: 'Group outline',
 		showOtherEnds: 'Other ends',
+		clearZoom: 'Back out of the zoom',
 		groupSize: 'Group size',
 		arrowNumbers: 'Use arrow number',
 		arrowNumbersHint: 'Numbers each arrow in the order you entered it, so you can still tell them apart once sorted.',

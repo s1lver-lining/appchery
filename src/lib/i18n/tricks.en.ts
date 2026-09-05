@@ -146,6 +146,10 @@ export const tricksEn = {
 					body: 'Tap any arrow already entered to retap its value; tap an end’s row number to open the whole end, plotted arrows and group size included.'
 				},
 				{
+					lead: 'The face zooms.',
+					body: 'Pinch any target face with two fingers to move in on it, and drag with both to move around. Hold ctrl and use the wheel, or drag, on a computer. A button appears in the corner to come back out. Zoomed in, arrows are picked more precisely, and pressing to place one still magnifies on top of it.'
+				},
+				{
 					lead: 'Pick the arrow off the face.',
 					body: 'Inside an end, tapping an arrow where it landed selects it just as tapping its square does. The selected one is ringed, and every tap after that moves it. Tap it again to let it go.'
 				},
