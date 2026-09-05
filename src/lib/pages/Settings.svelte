@@ -28,6 +28,7 @@
 		showHalfBreak,
 		showCelebrations,
 		keepScreenAwake,
+		weekStartsOnSunday,
 		celebratedLevel,
 		celebratedBests,
 		dismissedBest
@@ -485,6 +486,18 @@
 						</div>
 
 						<!-- A short palette: every option has to stay readable on the surface, in both themes. -->
+						<div id="setting-weekStart" class:flash={flashing === 'weekStart'} class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.weekStartTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.weekStartHint')}</p>
+							</div>
+							<Toggle
+								checked={$weekStartsOnSunday}
+								label={$t('settings.weekStartTitle')}
+								onchange={(v) => weekStartsOnSunday.set(v)}
+							/>
+						</div>
+
 						<div id="setting-celebrations" class:flash={flashing === 'celebrations'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.celebrationsTitle')}</p>

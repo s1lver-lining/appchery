@@ -1287,6 +1287,9 @@ export const en = {
 		searchLead: 'Type a word from a setting\u2019s name or from what it does.',
 		searchEmpty: 'Nothing here matches {q}.',
 		searchAction: 'Search',
+		weekStartTitle: 'Start the week on Sunday',
+		weekStartHint:
+			'Moves where the calendar and the separators down the sessions list break a week. Badges, weekly statistics and the arrows counted for a week stay on Monday, so no figure already recorded changes.',
 		celebrationsTitle: 'Announce a badge or a record',
 		celebrationsHint:
 			'The card that goes up over the screen when you win something. Turned off, badges, records and levels are still awarded and still appear in their lists.',

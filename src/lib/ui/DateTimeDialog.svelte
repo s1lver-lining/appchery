@@ -2,6 +2,7 @@
 	import { untrack } from 'svelte';
 	import { t, locale } from '$lib/i18n';
 	import { monthGrid, startOfDay } from '$lib/domain/dates';
+	import { weekStartsOnSunday } from '$lib/prefs';
 	import { dateFormats, use24Hour } from '$lib/prefs';
 	import Icon from './Icon.svelte';
 	import WheelPicker from './WheelPicker.svelte';
@@ -48,15 +49,16 @@
 	// Rounded down, so opening the dialog never moves the time it was given forward past the hour.
 	let minute = $state(Math.floor(opened.getMinutes() / STEP) * STEP);
 
-	const grid = $derived(monthGrid(viewed.year, viewed.month));
+	const weekFrom = $derived($weekStartsOnSunday ? (0 as const) : (1 as const));
+	const grid = $derived(monthGrid(viewed.year, viewed.month, weekFrom));
 	const monthTitle = $derived(
 		$dateFormats.monthYear(new Date(viewed.year, viewed.month, 1).getTime())
 	);
 	const today = startOfDay(Date.now());
 
-	/** Weekday initials in the locale's order, Monday first to match the grid. */
+	/** Weekday initials in the locale's order, read off the grid so the two can never disagree. */
 	const weekdayHeads = $derived(
-		monthGrid(2024, 0)
+		monthGrid(2024, 0, weekFrom)
 			.slice(0, 7)
 			.map((d) => $dateFormats.weekdayNarrow(d.at))
 	);

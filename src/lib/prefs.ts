@@ -121,6 +121,17 @@ export const faceShowGroup = flag('appchery.faceShowGroup', false);
 export const faceShowOther = flag('appchery.faceShowOther', true);
 
 /**
+ * Whether a week is drawn from Sunday rather than from Monday.
+ *
+ * Off by default, which is Monday, as the rest of the app counts. It changes where the calendar and
+ * the separators down the sessions list put their boundaries and nothing else: badges, the weekly
+ * statistics and the arrows counted for a week stay on Monday whatever this says. Moving those would
+ * move figures already recorded against them, and a habit badge is not worth re-deciding over a
+ * display preference.
+ */
+export const weekStartsOnSunday = flag('appchery.weekStartsOnSunday', false);
+
+/**
  * Whether the screen is held awake while a round is being scored.
  *
  * Off by default, which is what the app did before the switch existed: holding a screen lit through

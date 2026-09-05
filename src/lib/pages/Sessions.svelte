@@ -43,6 +43,7 @@
 	import { parseConfig } from '$lib/domain/matches';
 	import { tabAsked, withOrigin } from '$lib/nav';
 	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
+	import { weekStartsOnSunday } from '$lib/prefs';
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import {
@@ -277,7 +278,9 @@
 		...found.map((session) => ({ at: session.startedAt, session })),
 		...(searching ? [] : occurrences.map((occurrence) => ({ at: occurrence.at, occurrence })))
 	]);
-	const weeks = $derived(groupByWeek(rows, (row) => row.at));
+	/** Where the archer reads a week from. Only the separators move: the totals beside them do not. */
+	const weekFrom = $derived($weekStartsOnSunday ? (0 as const) : (1 as const));
+	const weeks = $derived(groupByWeek(rows, (row) => row.at, weekFrom));
 
 	/** A week read a day at a time, so the date is written once however many outings hang off it. */
 	const daysOf = (group: (typeof weeks)[number]) => {
@@ -299,7 +302,7 @@
 	 */
 	const arrowsByWeek = $derived(
 		sessions.reduce<Map<number, number>>((acc, s) => {
-			const week = startOfWeek(s.startedAt);
+			const week = startOfWeek(s.startedAt, weekFrom);
 			return acc.set(week, (acc.get(week) ?? 0) + (counts[s.id]?.arrows ?? 0));
 		}, new Map())
 	);
@@ -463,7 +466,7 @@
 		}))
 	);
 
-	const grid = $derived(monthGrid(viewedMonth.getFullYear(), viewedMonth.getMonth()));
+	const grid = $derived(monthGrid(viewedMonth.getFullYear(), viewedMonth.getMonth(), weekFrom));
 	// Oldest first here too, so both halves of the page read in the same direction.
 	const monthSessions = $derived(
 		[...sessions]
@@ -536,9 +539,9 @@
 	const shortDate = $derived((at: number) => $dateFormats.shortDate(at));
 	const monthTitle = $derived((date: Date) => $dateFormats.monthYear(date.getTime()));
 
-	/** Weekday initials in the locale's order, Monday first to match the grid. */
+	/** Weekday initials in the locale's order, read off the grid so the two can never disagree. */
 	const weekdayHeads = $derived(
-		monthGrid(2024, 0)
+		monthGrid(2024, 0, weekFrom)
 			.slice(0, 7)
 			.map((d) => $dateFormats.weekdayNarrow(d.at))
 	);

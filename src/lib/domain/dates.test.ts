@@ -93,6 +93,39 @@ describe('groupByWeek', () => {
 	});
 });
 
+describe('a week drawn from Sunday', () => {
+	it('moves the boundary back a day, and only when asked', () => {
+		// The 9th of August 2026 is a Sunday: its own week from Sunday, the week before from Monday.
+		expect(new Date(startOfWeek(at('2026-08-09T12:00'))).getDate()).toBe(3);
+		expect(new Date(startOfWeek(at('2026-08-09T12:00'), 0)).getDate()).toBe(9);
+		expect(new Date(endOfWeek(at('2026-08-09T12:00'), 0)).getDate()).toBe(15);
+	});
+
+	it('still names a group by the ISO week it holds', () => {
+		const sunday = groupByWeek([{ t: at('2026-08-09T10:00') }], (item) => item.t, 0);
+		const monday = groupByWeek([{ t: at('2026-08-10T10:00') }], (item) => item.t, 1);
+		// The Sunday group runs into the Monday week, so both read as the same numbered week.
+		expect(sunday[0].week).toBe(monday[0].week);
+	});
+
+	it('splits a Saturday from the Sunday after it, which a Monday week keeps together', () => {
+		const both = [{ t: at('2026-08-08T10:00') }, { t: at('2026-08-09T10:00') }];
+		expect(groupByWeek(both, (item) => item.t, 1)).toHaveLength(1);
+		expect(groupByWeek(both, (item) => item.t, 0)).toHaveLength(2);
+	});
+
+	it('starts the calendar grid on a Sunday', () => {
+		const grid = monthGrid(2026, 7, 0);
+		expect(grid.length % 7).toBe(0);
+		expect(new Date(grid[0].at).getDay()).toBe(0);
+	});
+
+	it('leaves what is measured alone: no argument still means Monday', () => {
+		expect(startOfWeek(at('2026-08-09T12:00'))).toBe(startOfWeek(at('2026-08-09T12:00'), 1));
+		expect(new Date(monthGrid(2026, 7)[0].at).getDay()).toBe(1);
+	});
+});
+
 describe('monthGrid', () => {
 	it('returns whole weeks so the grid never needs padding', () => {
 		const grid = monthGrid(2026, 7);

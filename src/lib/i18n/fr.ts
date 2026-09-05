@@ -1288,6 +1288,9 @@ export const fr: Dictionary = {
 		searchLead: 'Tapez un mot du nom d\u2019un réglage ou de ce qu\u2019il fait.',
 		searchEmpty: 'Rien ici ne correspond à {q}.',
 		searchAction: 'Rechercher',
+		weekStartTitle: 'Commencer la semaine le dimanche',
+		weekStartHint:
+			'Déplace la coupure des semaines dans le calendrier et dans la liste des séances. Les badges, les statistiques hebdomadaires et les flèches comptées par semaine restent au lundi : aucun chiffre déjà enregistré ne change.',
 		celebrationsTitle: 'Annoncer un badge ou un record',
 		celebrationsHint:
 			'La carte qui s’affiche au milieu de l’écran quand vous gagnez quelque chose. Désactivée, les badges, records et niveaux sont toujours attribués et apparaissent dans leurs listes.',

@@ -82,6 +82,13 @@ export const SETTINGS: SettingEntry[] = [
 		section: 'settings.display'
 	},
 	{
+		key: 'weekStart',
+		tab: 'app',
+		title: 'settings.weekStartTitle',
+		hint: 'settings.weekStartHint',
+		section: 'settings.display'
+	},
+	{
 		key: 'celebrations',
 		tab: 'app',
 		title: 'settings.celebrationsTitle',
