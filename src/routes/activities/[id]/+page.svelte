@@ -39,7 +39,7 @@
 	import type { BowType, TuningTemplate } from '$lib/domain/tuning/templates';
 	import type { RoundDefinition, Shot, Zone } from '$lib/domain/rounds/types';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
-	import Icon from '$lib/ui/Icon.svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import ShareToggle from '$lib/ui/ShareToggle.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
@@ -120,6 +120,9 @@
 	/** Index into `pending`: the end being entered has no rows yet, so it cannot be edited by shot id. */
 	let editingPending = $state<number | null>(null);
 	let plotting = $state(false);
+	/** What the face draws over the arrows. Toggled from the row under it, not from its own corner. */
+	let showOther = $state(true);
+	let showCentre = $state(false);
 	let openEnd = $state<number | null>(null);
 	/** Shot id being retapped inside the end modal. */
 	let modalEditing = $state<string | null>(null);
@@ -934,6 +937,20 @@
 	$effect(() => overrideStatusBar('--c-bg'));
 </script>
 
+<!-- The switches under the face, which all look and behave alike, so they are written once. -->
+{#snippet faceToggle(icon: IconName, label: string, on: boolean, press: () => void)}
+	<button
+		class="press rounded-lg border p-1.5 shadow-sm
+			{on ? 'border-brand bg-brand text-brand-ink' : 'border-line bg-surface text-muted'}"
+		aria-label={label}
+		title={label}
+		aria-pressed={on}
+		onclick={press}
+	>
+		<Icon name={icon} size={18} />
+	</button>
+{/snippet}
+
 {#if activity && activity.kind === 'match'}
 	<Match {activity} onchange={refresh} oncelebrate={(awards) => (celebrations = awards)} />
 {:else if activity && (activity.kind === STRENGTH_KIND || activity.kind === RUNNING_KIND)}
@@ -1427,21 +1444,37 @@
 								shots={faceShots}
 								otherShots={faceOther}
 								interactive={scoringNow}
-								showOtherToggle
-								showCentreToggle
+								bind:showOther
+								bind:showCentre
 								highlight={selectedPlot}
 								onplot={plot}
 							/>
 						</div>
 						<!-- The line under the face says what the next touch will do, which changes with what
-							is selected: place a new arrow, move the ringed one, or give a typed one a place. -->
-						<p class="mt-2 text-center text-xs {selecting ? 'text-brand-text' : 'text-muted'}">
-							{selecting
-								? selectedPlot
-									? $t('score.movePlot')
-									: $t('score.placePlot')
-								: $t('score.plotHint')}
-						</p>
+							is selected: place a new arrow, move the ringed one, or give a typed one a place.
+							The switches that change what is drawn sit beside it rather than over the face,
+							where they covered the rings they were meant to explain. -->
+						<div class="mt-2 flex items-center gap-1.5">
+							<p
+								class="min-w-0 flex-1 rounded-lg border border-line bg-sunk/60 px-2.5 py-1.5 text-xs
+									{selecting ? 'text-brand-text' : 'text-muted'}"
+							>
+								{selecting
+									? selectedPlot
+										? $t('score.movePlot')
+										: $t('score.placePlot')
+									: $t('score.plotHint')}
+							</p>
+							<div class="flex shrink-0 gap-1">
+								{@render faceToggle('sight', $t('score.showCentre'), showCentre, () => (showCentre = !showCentre))}
+								{@render faceToggle(
+									showOther ? 'eye' : 'eyeOff',
+									$t('score.showOtherEnds'),
+									showOther,
+									() => (showOther = !showOther)
+								)}
+							</div>
+						</div>
 					{:else}
 						<div class="grid grid-cols-4 gap-1.5 {scoringNow ? '' : 'opacity-40'}">
 							{#each keypad as zone (zone.label)}
@@ -1690,7 +1723,7 @@
 							{scoreSet}
 							shots={openRowShots}
 							showCentreToggle
-							showCentreDefault
+							showCentre
 							showPerimeter
 							highlight={modalPlot}
 							interactive={modalEditing !== null}

@@ -16,10 +16,10 @@
 		otherShots = [],
 		interactive = false,
 		showOtherToggle = false,
-		showOtherDefault = true,
 		showCentreToggle = false,
-		showCentreDefault = false,
-		showPerimeter = false,
+		showOther = $bindable(true),
+		showCentre = $bindable(false),
+		showPerimeter = $bindable(false),
 		highlight = null,
 		onplot,
 		onpickshot
@@ -31,9 +31,10 @@
 		otherShots?: Shot[];
 		interactive?: boolean;
 		showOtherToggle?: boolean;
-		showOtherDefault?: boolean;
 		showCentreToggle?: boolean;
-		showCentreDefault?: boolean;
+		/** Bindable, so a page that draws its own controls can put them wherever it wants them. */
+		showOther?: boolean;
+		showCentre?: boolean;
 		/** Outline around the group, which reads its spread faster than a radius figure. */
 		showPerimeter?: boolean;
 		/**
@@ -48,12 +49,6 @@
 		 */
 		onpickshot?: (index: number) => void;
 	} = $props();
-
-	// Initial value only: the toggle is the archer's from then on, not the caller's.
-	// svelte-ignore state_referenced_locally
-	let showOther = $state(showOtherDefault);
-	// svelte-ignore state_referenced_locally
-	let showCentre = $state(showCentreDefault);
 
 	let svg = $state<SVGSVGElement | null>(null);
 	/** Live position while dragging, which is what the magnifier follows. */
@@ -70,8 +65,13 @@
 	}
 
 	const visibleOther = $derived(showOther ? otherShots : []);
-	const centre = $derived(showCentre ? groupMetrics([...otherShots, ...shots]) : null);
-	const hull = $derived(showPerimeter ? groupHull(shots) : []);
+	/**
+	 * Both read the arrows that are actually on the face: a centre or an outline drawn around arrows
+	 * that are hidden is a measurement of something the archer cannot see.
+	 */
+	const grouped = $derived([...visibleOther, ...shots]);
+	const centre = $derived(showCentre ? groupMetrics(grouped) : null);
+	const hull = $derived(showPerimeter ? groupHull(grouped) : []);
 
 	/** What this position would score, shown while dragging so the value is known before releasing. */
 	const previewZone = $derived(cursor ? scoreAt(scoreSet, cursor.x, cursor.y) : null);

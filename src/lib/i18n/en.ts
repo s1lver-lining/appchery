@@ -371,6 +371,8 @@ export const en = {
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		nextArrow: 'Enter the next arrow',
+		showCentre: 'Group centre',
+		showOtherEnds: 'Other ends',
 		groupSize: 'Group size',
 		arrowNumbers: 'Use arrow number',
 		arrowNumbersHint: 'Numbers each arrow in the order you entered it, so you can still tell them apart once sorted.',
