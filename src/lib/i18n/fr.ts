@@ -1294,6 +1294,11 @@ export const fr: Dictionary = {
 		celebrationsTitle: 'Annoncer un badge ou un record',
 		celebrationsHint:
 			'La carte qui s’affiche au milieu de l’écran quand vous gagnez quelque chose. Désactivée, les badges, records et niveaux sont toujours attribués et apparaissent dans leurs listes.',
+		sheetHeightTitle: 'Place pour la feuille de score',
+		sheetHeightHint:
+			'La part de l’écran que la feuille peut prendre avant de défiler. Le reste va au clavier ou au blason en dessous.',
+		sheetHeightShort: 'Plus de clavier',
+		sheetHeightLong: 'Plus de feuille',
 		badgeSideTitle: 'Position du score pendant le placement',
 		badgeSideHint:
 			'La valeur affichée à côté du réticule quand vous placez une flèche. En suivant votre main, elle se place hors du pouce qui pointe.',

@@ -20,6 +20,7 @@
 		showHalfBreak,
 		plotByDefault,
 		keepScreenAwake,
+		sheetHeight,
 		faceShowOther,
 		faceShowCentre,
 		faceShowGroup,
@@ -1371,7 +1372,11 @@
 			</div>
 
 			<!-- The cap is what keeps the keypad on screen once the sheet has more ends than fit. -->
-			<div bind:this={sheetScroller} class="max-h-[42dvh] overflow-y-auto overscroll-y-contain">
+			<div
+				bind:this={sheetScroller}
+				class="overflow-y-auto overscroll-y-contain"
+				style="max-height: {$sheetHeight}dvh"
+			>
 				{#each sheetRows as row, i (row.key)}
 					<!-- The break the rules put in the middle of the round, where the archers change ends. -->
 					<div

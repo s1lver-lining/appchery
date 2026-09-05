@@ -30,6 +30,7 @@
 		keepScreenAwake,
 		weekStartsOnSunday,
 		plotBadgeSide,
+		sheetHeight,
 		celebratedLevel,
 		celebratedBests,
 		dismissedBest
@@ -563,6 +564,32 @@
 						<div class="tabular flex justify-between text-[11px] text-muted">
 							<span>{$t('settings.tapWindowShort')}</span>
 							<span>{$t('settings.tapWindowLong')}</span>
+						</div>
+					</div>
+
+					<!-- A slider, because the answer is how much room, and every phone answers differently. -->
+					<div id="setting-sheetHeight" class:flash={flashing === 'sheetHeight'} class="mb-4">
+						<div class="flex items-baseline justify-between gap-3">
+							<p class="font-medium">{$t('settings.sheetHeightTitle')}</p>
+							<p class="tabular shrink-0 text-sm font-semibold text-brand-text">
+								{$sheetHeight}%
+							</p>
+						</div>
+						<p class="mt-0.5 text-sm text-muted">{$t('settings.sheetHeightHint')}</p>
+						<input
+							data-noswipe
+							type="range"
+							min="25"
+							max="60"
+							step="1"
+							class="mt-3 w-full accent-brand"
+							aria-label={$t('settings.sheetHeightTitle')}
+							value={$sheetHeight}
+							oninput={(e) => sheetHeight.set(Number(e.currentTarget.value))}
+						/>
+						<div class="tabular flex justify-between text-[0.6875rem] text-muted">
+							<span>{$t('settings.sheetHeightShort')}</span>
+							<span>{$t('settings.sheetHeightLong')}</span>
 						</div>
 					</div>
 

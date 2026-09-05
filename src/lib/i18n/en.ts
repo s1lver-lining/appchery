@@ -1293,6 +1293,11 @@ export const en = {
 		celebrationsTitle: 'Announce a badge or a record',
 		celebrationsHint:
 			'The card that goes up over the screen when you win something. Turned off, badges, records and levels are still awarded and still appear in their lists.',
+		sheetHeightTitle: 'Room for the scoresheet',
+		sheetHeightHint:
+			'How much of the screen the sheet may take before it starts scrolling. What is left goes to the keypad or the face below it.',
+		sheetHeightShort: 'More keypad',
+		sheetHeightLong: 'More sheet',
 		badgeSideTitle: 'Where the score sits while you plot',
 		badgeSideHint:
 			'The value shown beside the crosshair as an arrow is placed. Following your hand puts it clear of the thumb doing the plotting.',

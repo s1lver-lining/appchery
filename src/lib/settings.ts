@@ -110,6 +110,13 @@ export const SETTINGS: SettingEntry[] = [
 		section: 'settings.plotting'
 	},
 	{
+		key: 'sheetHeight',
+		tab: 'shooting',
+		title: 'settings.sheetHeightTitle',
+		hint: 'settings.sheetHeightHint',
+		section: 'settings.plotting'
+	},
+	{
 		key: 'badgeSide',
 		tab: 'shooting',
 		title: 'settings.badgeSideTitle',

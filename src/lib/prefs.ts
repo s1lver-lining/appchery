@@ -121,6 +121,13 @@ export const faceShowGroup = flag('appchery.faceShowGroup', false);
 export const faceShowOther = flag('appchery.faceShowOther', true);
 
 /**
+ * How much of the screen the scoresheet may take before it starts scrolling, against the keys or
+ * the face under it. As a percentage of the viewport height, starting at the 42 the sheet was fixed
+ * at: a long round wants more sheet, a small phone wants more keypad, and the two cannot both win.
+ */
+export const sheetHeight = storedNumber('appchery.sheetHeight', 42);
+
+/**
  * Which side of the crosshair the score badge sits on while an arrow is being placed.
  *
  * "right" by default, which is where it has always been. A right handed archer holding the phone in
