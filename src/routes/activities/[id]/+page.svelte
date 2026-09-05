@@ -686,6 +686,15 @@
 		modalEditing = null;
 	}
 
+	/** The next end along, with whatever was being retapped let go: it belonged to the end being left. */
+	function stepEnd(by: number) {
+		if (openEnd === null) return;
+		const to = openEnd + by;
+		if (to < 0 || to >= sheetRows.length) return;
+		modalEditing = null;
+		openEnd = to;
+	}
+
 	// Each sheet over the sheet: the camera, an end being reviewed, the card, the record itself.
 	closeOnBack(() => autoScoring, () => (autoScoring = false));
 	closeOnBack(() => openEnd !== null, closeModal);
@@ -1732,9 +1741,32 @@
 				class="relative m-4 max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-2xl border
 					border-line bg-surface p-4 shadow-xl"
 			>
-				<div class="mb-3 flex items-center justify-between">
-					<h2 class="text-lg font-bold">{$t('score.end', { n: (openEnd ?? 0) + 1 })}</h2>
-					<button class="text-muted" aria-label={$t('common.close')} onclick={closeModal}>
+				<!-- Read end by end without going back out: the sheet is a sequence, so this is too. -->
+				<div class="mb-3 flex items-center gap-1">
+					<button
+						class="press rounded-lg p-1 text-muted disabled:opacity-30"
+						aria-label={$t('score.previousEnd')}
+						disabled={(openEnd ?? 0) === 0}
+						onclick={() => stepEnd(-1)}
+					>
+						<Icon name="back" size={20} />
+					</button>
+					<h2 class="flex-1 text-center text-lg font-bold">
+						{$t('score.end', { n: (openEnd ?? 0) + 1 })}
+					</h2>
+					<button
+						class="press rotate-180 rounded-lg p-1 text-muted disabled:opacity-30"
+						aria-label={$t('score.nextEnd')}
+						disabled={(openEnd ?? 0) >= sheetRows.length - 1}
+						onclick={() => stepEnd(1)}
+					>
+						<Icon name="back" size={20} />
+					</button>
+					<button
+						class="ml-2 text-muted"
+						aria-label={$t('common.close')}
+						onclick={closeModal}
+					>
 						<Icon name="close" size={20} />
 					</button>
 				</div>

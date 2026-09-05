@@ -371,6 +371,8 @@ export const en = {
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
 		nextArrow: 'Enter the next arrow',
+		previousEnd: 'Previous end',
+		nextEnd: 'Next end',
 		showCentre: 'Group centre',
 		showGroup: 'Group outline',
 		showOtherEnds: 'Other ends',

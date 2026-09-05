@@ -370,6 +370,8 @@ export const fr: Dictionary = {
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		nextArrow: 'Saisir la flèche suivante',
+		previousEnd: 'Volée précédente',
+		nextEnd: 'Volée suivante',
 		showCentre: 'Centre du groupement',
 		showGroup: 'Contour du groupement',
 		showOtherEnds: 'Autres volées',
