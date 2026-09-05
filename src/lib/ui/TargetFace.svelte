@@ -98,6 +98,13 @@
 	/** Both scales at once, so a stroke keeps its width on screen however deep either one goes. */
 	const drawScale = $derived(view.scale * (cursor ? zoom : 1));
 
+	/**
+	 * The window opens out to the square it was drawn in as soon as anything is magnified. A round
+	 * window suits a face that fills it exactly, but zoomed in it throws away the corners of the box,
+	 * which is where half of what the archer moved in to look at has just gone.
+	 */
+	const squared = $derived(zoomed || cursor !== null);
+
 	/** Kept far enough in that the face always covers the window: panning to empty space shows nothing. */
 	function clampView(scale: number, x: number, y: number) {
 		const s = Math.min(MAX_VIEW, Math.max(1, scale));
@@ -392,9 +399,13 @@
 			<clipPath id="face-clip">
 				<circle cx="0" cy="0" r="1.04" />
 			</clipPath>
+			<!-- Corners rounded by about the width of a ring, so the opened window still reads as one. -->
+			<clipPath id="face-clip-square">
+				<rect x="-1.05" y="-1.05" width="2.1" height="2.1" rx="0.1" />
+			</clipPath>
 		</defs>
 
-		<g clip-path="url(#face-clip)">
+		<g clip-path="url(#face-clip{squared ? '-square' : ''})">
 			<!-- The view the archer set, outside the magnifier so the two compose rather than fight. -->
 			<g transform="translate({view.x} {view.y}) scale({view.scale})">
 				<!-- The whole face scales and translates under the magnifier, so rings stay aligned with arrows. -->
