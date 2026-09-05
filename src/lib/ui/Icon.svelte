@@ -63,6 +63,15 @@
 		camera: `
 			<path d="M3.5 8.6A1.6 1.6 0 0 1 5.1 7h2.3l1.3-2.1h6.6L16.6 7h2.3a1.6 1.6 0 0 1 1.6 1.6v8.8a1.6 1.6 0 0 1-1.6 1.6H5.1a1.6 1.6 0 0 1-1.6-1.6z" />
 			<circle cx="12" cy="12.8" r="3.4" />`,
+		// A dashed ring round three arrows: the outline the face draws around a group.
+		group: `
+			<path d="M12 3.4a8.6 8.6 0 0 1 7.4 4.3" stroke-dasharray="2.4 2" />
+			<path d="M20.6 12a8.6 8.6 0 0 1-4.3 7.4" stroke-dasharray="2.4 2" />
+			<path d="M12 20.6a8.6 8.6 0 0 1-7.4-4.3" stroke-dasharray="2.4 2" />
+			<path d="M3.4 12A8.6 8.6 0 0 1 7.7 4.6" stroke-dasharray="2.4 2" />
+			<circle cx="10" cy="10.4" r="1.5" fill="currentColor" stroke="none" />
+			<circle cx="14.4" cy="11.6" r="1.5" fill="currentColor" stroke="none" />
+			<circle cx="11.6" cy="14.6" r="1.5" fill="currentColor" stroke="none" />`,
 		sight: `
 			<circle cx="12" cy="12" r="6.4" />
 			<path d="M12 2.4v3.6M12 18v3.6M2.4 12h3.6M18 12h3.6" />

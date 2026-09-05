@@ -371,6 +371,7 @@ export const fr: Dictionary = {
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
 		nextArrow: 'Saisir la flèche suivante',
 		showCentre: 'Centre du groupement',
+		showGroup: 'Contour du groupement',
 		showOtherEnds: 'Autres volées',
 		groupSize: 'Taille du groupement',
 		arrowNumbers: 'Numéroter les flèches',

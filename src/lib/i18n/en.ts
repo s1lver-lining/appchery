@@ -372,6 +372,7 @@ export const en = {
 		editArrow: 'Edit arrow {n} of end {end}',
 		nextArrow: 'Enter the next arrow',
 		showCentre: 'Group centre',
+		showGroup: 'Group outline',
 		showOtherEnds: 'Other ends',
 		groupSize: 'Group size',
 		arrowNumbers: 'Use arrow number',

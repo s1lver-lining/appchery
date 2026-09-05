@@ -123,6 +123,7 @@
 	/** What the face draws over the arrows. Toggled from the row under it, not from its own corner. */
 	let showOther = $state(true);
 	let showCentre = $state(false);
+	let showGroup = $state(false);
 	let openEnd = $state<number | null>(null);
 	/** Shot id being retapped inside the end modal. */
 	let modalEditing = $state<string | null>(null);
@@ -1446,6 +1447,7 @@
 								interactive={scoringNow}
 								bind:showOther
 								bind:showCentre
+								showPerimeter={showGroup}
 								highlight={selectedPlot}
 								onplot={plot}
 							/>
@@ -1467,6 +1469,7 @@
 							</p>
 							<div class="flex shrink-0 gap-1">
 								{@render faceToggle('sight', $t('score.showCentre'), showCentre, () => (showCentre = !showCentre))}
+								{@render faceToggle('group', $t('score.showGroup'), showGroup, () => (showGroup = !showGroup))}
 								{@render faceToggle(
 									showOther ? 'eye' : 'eyeOff',
 									$t('score.showOtherEnds'),
