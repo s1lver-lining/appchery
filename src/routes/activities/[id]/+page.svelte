@@ -1277,8 +1277,11 @@
 			<div bind:this={sheetScroller} class="max-h-[42dvh] overflow-y-auto overscroll-y-contain">
 				{#each sheetRows as row, i (row.key)}
 					<div class="flex items-center gap-1 border-b border-line px-2 py-1">
+						<!-- Drawn as a key rather than as a number, because it opens the end and nothing else
+							on the row looks like it does anything. -->
 						<button
-							class="tabular w-6 shrink-0 text-left text-xs font-medium text-brand-text"
+							class="press tabular flex h-6 w-6 shrink-0 items-center justify-center rounded-md
+								border border-line bg-sunk text-xs font-semibold text-brand-text shadow-sm"
 							onclick={() => (openEnd = i)}
 							aria-label={$t('score.end', { n: i + 1 })}
 						>
