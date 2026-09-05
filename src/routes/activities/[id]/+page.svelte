@@ -436,17 +436,30 @@
 
 	/**
 	 * While shooting, the end in progress stands out against the faded ones already entered. Once the
-	 * round is over there is no end in progress, so every arrow is drawn alike. An arrow being
-	 * replaced joins the full strength layer wherever it came from, so the ring always sits on a mark.
+	 * round is over there is no end in progress, so every arrow is drawn alike. Editing a written
+	 * arrow moves that end into the full strength layer, because that end is what is being read.
 	 */
 	const scoringNow = $derived(currentSlot !== null || editing !== null);
-	const editedPlot = $derived<Shot[]>(
-		editing && selectedPlot
-			? [{ ordinal: 1, value: 0, zoneLabel: '', x: selectedPlot.x, y: selectedPlot.y, source: 'plotted' }]
-			: []
+	/** The written end an arrow is being taken out of, which is the end the face is about while it is. */
+	const editedRow = $derived(
+		editing ? (sheetRows.find((row) => row.endId === editing?.endId) ?? null) : null
 	);
-	const faceShots = $derived(scoringNow ? [...livePlotted, ...editedPlot] : storedPlotted);
-	const faceOther = $derived(scoringNow ? storedPlotted : []);
+	const editedRowPlotted = $derived<Shot[]>(
+		editedRow ? toShots(editedRow.shots).filter((s) => s.x !== null) : []
+	);
+	const restPlotted = $derived<Shot[]>(
+		editedRow
+			? toShots(sheetRows.filter((row) => row !== editedRow).flatMap((row) => row.shots)).filter(
+					(s) => s.x !== null
+				)
+			: storedPlotted
+	);
+	const faceShots = $derived(
+		editedRow ? editedRowPlotted : scoringNow ? livePlotted : storedPlotted
+	);
+	const faceOther = $derived(
+		editedRow ? [...restPlotted, ...livePlotted] : scoringNow ? storedPlotted : []
+	);
 
 	const openRow = $derived(openEnd !== null ? sheetRows[openEnd] : null);
 	const openRowShots = $derived<Shot[]>(
