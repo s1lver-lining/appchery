@@ -8,6 +8,8 @@
 export const tricksEn = {
 	title: 'Tips and tricks',
 	lead: 'Things the app does that nothing on screen announces. Everything here is reachable by hand: this is a list of shortcuts, not of hidden settings.',
+	search: 'Filter the list',
+	searchEmpty: 'Nothing here matches {q}.',
 	groups: [
 		{
 			key: 'home',

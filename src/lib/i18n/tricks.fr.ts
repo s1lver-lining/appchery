@@ -3,6 +3,8 @@ import type { TricksDictionary } from './tricks.en';
 export const tricksFr: TricksDictionary = {
 	title: 'Astuces',
 	lead: 'Ce que l’app fait sans jamais l’annoncer à l’écran. Tout ici s’atteint à la main : c’est une liste de raccourcis, pas de réglages cachés.',
+	search: 'Filtrer la liste',
+	searchEmpty: 'Rien ici ne correspond à {q}.',
 	groups: [
 		{
 			key: 'home',
