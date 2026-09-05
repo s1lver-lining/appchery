@@ -370,6 +370,7 @@ export const en = {
 		placePlot: 'This arrow has no place on the face yet: plot where it landed.',
 		noPlots: 'No arrows were plotted on the face for this end.',
 		editArrow: 'Edit arrow {n} of end {end}',
+		nextArrow: 'Enter the next arrow',
 		groupSize: 'Group size',
 		arrowNumbers: 'Use arrow number',
 		arrowNumbersHint: 'Numbers each arrow in the order you entered it, so you can still tell them apart once sorted.',

@@ -369,6 +369,7 @@ export const fr: Dictionary = {
 		placePlot: "Cette flèche n'a pas encore de position : placez-la où elle a touché.",
 		noPlots: "Aucune flèche n'a été pointée sur le blason pour cette volée.",
 		editArrow: 'Modifier la flèche {n} de la volée {end}',
+		nextArrow: 'Saisir la flèche suivante',
 		groupSize: 'Taille du groupement',
 		arrowNumbers: 'Numéroter les flèches',
 		arrowNumbersHint: 'Numérote chaque flèche dans votre ordre de saisie, pour les distinguer même une fois triées.',

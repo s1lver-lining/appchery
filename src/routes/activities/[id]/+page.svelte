@@ -1353,12 +1353,21 @@
 										{/if}
 									</button>
 								{:else}
-									<span
+									<!-- An empty square is where the shooting is up to, so tapping one is a way of saying
+										the correction is done and the next arrow is what comes now. -->
+									<button
 										class="h-[var(--chip)] w-[var(--chip)] shrink-0 rounded border border-dashed
-											{i === pending.length && !editing && editingPending === null
+											disabled:cursor-default
+											{i === pending.length && !selecting
 											? 'border-brand bg-brand/15 ' + cursorClass
 											: 'border-line'}"
-									></span>
+										disabled={!selecting}
+										aria-label={$t('score.nextArrow')}
+										onclick={() => {
+											editing = null;
+											editingPending = null;
+										}}
+									></button>
 								{/if}
 							{/each}
 						</div>
