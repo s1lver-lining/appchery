@@ -18,6 +18,10 @@
 		sortArrowsDescending,
 		showArrowNumbers,
 		showHalfBreak,
+		plotByDefault,
+		faceShowOther,
+		faceShowCentre,
+		faceShowGroup,
 		arrowDriftWarning,
 		arrowDriftIgnored
 	} from '$lib/prefs';
@@ -121,11 +125,18 @@
 	);
 	/** Index into `pending`: the end being entered has no rows yet, so it cannot be edited by shot id. */
 	let editingPending = $state<number | null>(null);
-	let plotting = $state(false);
-	/** What the face draws over the arrows. Toggled from the row under it, not from its own corner. */
-	let showOther = $state(true);
-	let showCentre = $state(false);
-	let showGroup = $state(false);
+	/**
+	 * How arrows are entered, and what the face draws over them. Read from the archer's own settings
+	 * rather than reset each time the page opens, and written back the moment either is changed.
+	 */
+	let plotting = $state($plotByDefault);
+	let showOther = $state($faceShowOther);
+	let showCentre = $state($faceShowCentre);
+	let showGroup = $state($faceShowGroup);
+	$effect(() => plotByDefault.set(plotting));
+	$effect(() => faceShowOther.set(showOther));
+	$effect(() => faceShowCentre.set(showCentre));
+	$effect(() => faceShowGroup.set(showGroup));
 	let openEnd = $state<number | null>(null);
 	/** Shot id being retapped inside the end modal. */
 	let modalEditing = $state<string | null>(null);

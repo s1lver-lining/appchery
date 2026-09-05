@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
 	import { tap as buzz } from '$lib/haptics';
+	import { plotByDefault } from '$lib/prefs';
 	import Icon from '$lib/ui/Icon.svelte';
 	import ArrowPad from '$lib/ui/ArrowPad.svelte';
 	import AutoScore from '$lib/ui/AutoScore.svelte';
@@ -43,7 +44,9 @@
 	/** When the last end was written, taken from the sheet so a reload cannot skip a pause. */
 	let lastEndAt = $state(0);
 	let pending = $state<Omit<Shot, 'ordinal'>[]>([]);
-	let mode = $state<'number' | 'face'>('number');
+	// The archer's own choice of input, kept between activities rather than asked again on each one.
+	let mode = $state<'number' | 'face'>($plotByDefault ? 'face' : 'number');
+	$effect(() => plotByDefault.set(mode === 'face'));
 	let padOpen = $state(true);
 	let loadedFrom = $state<string | null>(null);
 	let confirmingStop = $state(false);

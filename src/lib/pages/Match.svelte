@@ -3,7 +3,7 @@
 	import { getScoreSet } from '$lib/domain/rounds/seed';
 	import { scoreAt, sortShotsDescending } from '$lib/domain/rounds/geometry';
 	import { botEnd, BOT_LEVELS } from '$lib/domain/bots';
-	import { sortArrowsDescending, showArrowNumbers, dateFormats } from '$lib/prefs';
+	import { sortArrowsDescending, showArrowNumbers, dateFormats, plotByDefault } from '$lib/prefs';
 	import { formatDistance } from '$lib/domain/units';
 	import { scoreByArrowNumber } from '$lib/domain/stats';
 	import {
@@ -239,7 +239,9 @@
 
 	/* Entering arrows. One slot at a time, our side first, then theirs, then the pad steps back. */
 	let cursor = $state<{ endNo: number; side: Side; index: number; shootOff: boolean } | null>(null);
-	let mode = $state<'number' | 'face'>('number');
+	// The archer's own choice of input, kept between activities rather than asked again on each one.
+	let mode = $state<'number' | 'face'>($plotByDefault ? 'face' : 'number');
+	$effect(() => plotByDefault.set(mode === 'face'));
 
 	const cursorShots = $derived(cursor ? arrowsOf(cursor.endNo, cursor.side) : []);
 	/** The same side's arrows from every other end, which is what the group is read against. */

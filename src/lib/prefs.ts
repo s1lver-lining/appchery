@@ -102,6 +102,25 @@ export const sortArrowsDescending = flag('appchery.sortArrows', false);
 export const showArrowNumbers = flag('appchery.showArrowNumbers', false);
 
 /**
+ * Which of the two ways of entering an arrow was used last: the keypad, or the face. Remembered
+ * rather than asked again, because an archer who plots plots every arrow of every round, and a
+ * choice that resets on every screen is a choice the app is making on their behalf twice a session.
+ *
+ * Empty until the first time it is switched, which is the keypad: the number is what the sheet is
+ * written in, and the face is the deliberate move.
+ */
+export const plotByDefault = flag('appchery.plotByDefault', false);
+
+/**
+ * What the face draws over the arrows: the group centre, the outline around them, and the arrows of
+ * the ends already shot. Kept between rounds for the same reason as the input above, and defaulting
+ * to what the face drew before any of it could be remembered.
+ */
+export const faceShowCentre = flag('appchery.faceShowCentre', false);
+export const faceShowGroup = flag('appchery.faceShowGroup', false);
+export const faceShowOther = flag('appchery.faceShowOther', true);
+
+/**
  * Whether the sheet draws the break between the two halves of a round shot in halves. On by default:
  * the break is part of how those rounds are shot, and the archer who does not want it is the
  * exception. Only the rounds the rules split have one at all, so nothing else changes with it.
