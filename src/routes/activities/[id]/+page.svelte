@@ -490,9 +490,13 @@
 	);
 
 	/**
-	 * Follow the shooting: whatever the cursor is on has to stay in view, whether that is on first
+	 * Follow the shooting: the row the cursor is on has to stay in view, whether that is on first
 	 * load of a part shot round, after each arrow pushes the sheet down, or after the face took the
 	 * room the keypad had and left the sheet shorter than it was.
+	 *
+	 * The row rather than the square inside it, because the row carries the padding that separates
+	 * it from the edge of the sheet: bringing the square in stops those few pixels short of the
+	 * bottom, which reads as the sheet having drifted up rather than as it having stayed put.
 	 */
 	$effect(() => {
 		// Touched so the effect reruns on everything that moves the cursor or shortens the sheet.
@@ -504,14 +508,14 @@
 		if (!sheetScroller) return;
 		const el = sheetScroller;
 		requestAnimationFrame(() => {
-			const cursor = el.querySelector('[data-cursor]');
-			if (!cursor) {
+			const row = el.querySelector('[data-cursor]');
+			if (!row) {
 				el.scrollTop = el.scrollHeight;
 				return;
 			}
 			// The least scrolling that brings it back inside, so the sheet does not jump under a thumb.
 			const box = el.getBoundingClientRect();
-			const seat = cursor.getBoundingClientRect();
+			const seat = row.getBoundingClientRect();
 			if (seat.top < box.top) el.scrollTop -= box.top - seat.top;
 			else if (seat.bottom > box.bottom) el.scrollTop += seat.bottom - box.bottom;
 		});
@@ -1295,6 +1299,7 @@
 					<div
 						class="flex items-center gap-1 px-2 py-1
 							{i + 1 === round?.halfEnds ? 'border-b-2 border-brand/40' : 'border-b border-line'}"
+						data-cursor={editing?.endId === row.endId ? '' : undefined}
 					>
 						<!-- Drawn as a key rather than as a number, because it opens the end and nothing else
 							on the row looks like it does anything. -->
@@ -1312,7 +1317,6 @@
 									<button
 										class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editing?.shotId === shot.id ? cursorClass : ''}"
-										data-cursor={editing?.shotId === shot.id ? '' : undefined}
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
 									onclick={() => {
@@ -1363,7 +1367,7 @@
 				{/each}
 
 				{#if currentSlot}
-					<div class="flex items-center gap-1 bg-brand/5 px-2 py-1">
+					<div class="flex items-center gap-1 bg-brand/5 px-2 py-1" data-cursor={editing ? undefined : ''}>
 						<span class="tabular w-6 shrink-0 text-xs font-bold text-brand-text">{sheetRows.length + 1}</span>
 						<div class="flex flex-1 gap-0.5">
 							{#each Array(currentSlot.arrows) as _, i (i)}
@@ -1373,7 +1377,6 @@
 									<button
 										class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editingPending === shot.index ? cursorClass : ''}"
-										data-cursor={editingPending === shot.index ? '' : undefined}
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', {
 											n: shot.ordinal,
@@ -1403,7 +1406,6 @@
 											{i === pending.length && !selecting
 											? 'border-brand bg-brand/15 ' + cursorClass
 											: 'border-line'}"
-										data-cursor={i === pending.length && !selecting ? '' : undefined}
 										disabled={!selecting}
 										aria-label={$t('score.nextArrow')}
 										onclick={() => {
