@@ -50,6 +50,13 @@
 		onpickshot?: (index: number) => void;
 	} = $props();
 
+	/**
+	 * Unique per instance: a clip is referenced by id, and the browser takes the first one in the
+	 * document. Two faces on a page, as the scoring page and its end modal are, both answered to the
+	 * same name, so whichever mounted first was clipping both.
+	 */
+	const uid = $props.id();
+
 	let svg = $state<SVGSVGElement | null>(null);
 	/** Live position while dragging, which is what the magnifier follows. */
 	let cursor = $state<{ x: number; y: number } | null>(null);
@@ -423,16 +430,16 @@
 		{...interactive ? { role: 'button', tabindex: 0 } : { role: 'img' }}
 	>
 		<defs>
-			<clipPath id="face-clip">
+			<clipPath id="{uid}-round">
 				<circle cx="0" cy="0" r="1.04" />
 			</clipPath>
 			<!-- Corners rounded by about the width of a ring, so the opened window still reads as one. -->
-			<clipPath id="face-clip-square">
+			<clipPath id="{uid}-square">
 				<rect x="-1.05" y="-1.05" width="2.1" height="2.1" rx="0.1" />
 			</clipPath>
 		</defs>
 
-		<g clip-path="url(#face-clip{squared ? '-square' : ''})">
+		<g clip-path="url(#{uid}-{squared ? 'square' : 'round'})">
 			<!-- The view the archer set, outside the magnifier so the two compose rather than fight. -->
 			<g transform="translate({view.x} {view.y}) scale({view.scale})">
 				<!-- The whole face scales and translates under the magnifier, so rings stay aligned with arrows. -->
