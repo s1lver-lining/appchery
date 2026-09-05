@@ -497,6 +497,10 @@
 	 * The row rather than the square inside it, because the row carries the padding that separates
 	 * it from the edge of the sheet: bringing the square in stops those few pixels short of the
 	 * bottom, which reads as the sheet having drifted up rather than as it having stayed put.
+	 *
+	 * Only an arrow being edited marks a row. With nothing selected the cursor is the next arrow to
+	 * enter, and the foot of the sheet is where that is: going there outright rather than working it
+	 * out from a row is what makes letting an edit go land back exactly where the shooting left off.
 	 */
 	$effect(() => {
 		// Touched so the effect reruns on everything that moves the cursor or shortens the sheet.
@@ -1367,7 +1371,10 @@
 				{/each}
 
 				{#if currentSlot}
-					<div class="flex items-center gap-1 bg-brand/5 px-2 py-1" data-cursor={editing ? undefined : ''}>
+					<div
+						class="flex items-center gap-1 bg-brand/5 px-2 py-1"
+						data-cursor={editingPending !== null ? '' : undefined}
+					>
 						<span class="tabular w-6 shrink-0 text-xs font-bold text-brand-text">{sheetRows.length + 1}</span>
 						<div class="flex flex-1 gap-0.5">
 							{#each Array(currentSlot.arrows) as _, i (i)}
