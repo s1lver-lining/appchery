@@ -285,14 +285,48 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	});
 
 	let notesTimer: ReturnType<typeof setTimeout> | null = null;
+	/** Whether the note on screen has moved on from the one in the row, so a flush knows to bother. */
+	let notesDirty = false;
+
 	function saveNotes() {
+		notesDirty = true;
 		if (notesTimer) clearTimeout(notesTimer);
 		// Written after a pause rather than per keystroke: every write costs a change log row.
-		notesTimer = setTimeout(async () => {
-			const id = await materialise();
-			await updateSession(id, { notes: notes.trim() || null });
-		}, 600);
+		notesTimer = setTimeout(flushNotes, 600);
 	}
+
+	async function flushNotes() {
+		if (notesTimer) clearTimeout(notesTimer);
+		notesTimer = null;
+		if (!notesDirty) return;
+		notesDirty = false;
+		const id = await materialise();
+		await updateSession(id, { notes: notes.trim() || null });
+	}
+
+	/**
+	 * Nothing waits on a timer the page may not live to see. Both the arrow counter and the note are
+	 * written after a pause, and half a second is nothing to a finger but everything to an archer who
+	 * puts the phone in a pocket the moment they stop: what was typed or counted has to survive that.
+	 *
+	 * A session that does not exist yet is left alone on the way out. Writing to one means creating it
+	 * first, and creating it navigates: doing that as the page is being torn down would fight the
+	 * archer's own back press, or quietly spawn a second session on the way back to the first.
+	 */
+	$effect(() => {
+		const hidden = () => {
+			if (document.visibilityState !== 'hidden') return;
+			void flushArrows();
+			void flushNotes();
+		};
+		document.addEventListener('visibilitychange', hidden);
+		return () => {
+			document.removeEventListener('visibilitychange', hidden);
+			if (virtualSlotId) return;
+			void flushArrows();
+			void flushNotes();
+		};
+	});
 	/** Weather without a place still says something; a place name alone does too. */
 	const hasConditions = $derived(Boolean(weather || session?.location));
 
