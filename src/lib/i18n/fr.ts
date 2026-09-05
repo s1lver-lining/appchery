@@ -1281,6 +1281,11 @@ export const fr: Dictionary = {
 		fullscreenTitle: 'Plein écran',
 		fullscreenHint:
 			"Masque les barres du navigateur jusqu'à ce que vous quittiez la page ou la rechargiez. Installer l'application le fait définitivement.",
+		searchTitle: 'Rechercher dans les réglages',
+		searchPlaceholder: 'Que cherchez-vous ?',
+		searchLead: 'Tapez un mot du nom d\u2019un réglage ou de ce qu\u2019il fait.',
+		searchEmpty: 'Rien ici ne correspond à {q}.',
+		searchAction: 'Rechercher',
 		halfBreakTitle: 'Marquer les deux moitiés d’un tir',
 		halfBreakHint:
 			'Laisse un espace dans la feuille là où un tir en deux moitiés se coupe, comme sur un WA 720 ou un WA Indoor 600.',

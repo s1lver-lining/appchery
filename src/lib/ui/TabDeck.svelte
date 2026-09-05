@@ -12,6 +12,7 @@
 		tabs,
 		value = $bindable(),
 		pane,
+		action,
 		paneClass = 'space-y-4',
 		swipeable = true,
 		expand = false
@@ -19,6 +20,8 @@
 		tabs: { key: K; label: string; alert?: boolean }[];
 		value: K;
 		pane: Snippet<[K]>;
+		/** Something the page does that belongs to none of the tabs, sat on the line beside them. */
+		action?: Snippet;
 		paneClass?: string;
 		/**
 		 * Whether the deck may stop being a deck when there is room for it. A tab exists because a
@@ -116,6 +119,9 @@
 {/snippet}
 
 {#if spread}
+	{#if action}
+		<div class="mb-3 flex justify-end">{@render action()}</div>
+	{/if}
 	<!--
 		Every pane at once, but not as equals. Tiling a phone layout across a window gives three narrow
 		strips and no more room than before; a page has one thing it is mostly for and the rest is what
@@ -158,21 +164,24 @@
 		</div>
 	{/if}
 {:else}
-<nav class="flex gap-1 rounded-lg bg-sunk p-1">
-	{#each tabs as item, i (item.key)}
-		<button
-			class="press flex-1 rounded-md py-1.5 text-sm font-medium
-				{value === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
-			onclick={() => select(i)}
-		>
-			{item.label}
-			<!-- A dot rather than a count: the tab says there is something to read, the screen says what. -->
-			{#if item.alert}
-				<span class="ml-1 inline-block size-1.5 rounded-full bg-danger align-middle"></span>
-			{/if}
-		</button>
-	{/each}
-</nav>
+<div class="flex items-stretch gap-2">
+	<nav class="flex flex-1 gap-1 rounded-lg bg-sunk p-1">
+		{#each tabs as item, i (item.key)}
+			<button
+				class="press flex-1 rounded-md py-1.5 text-sm font-medium
+					{value === item.key ? 'bg-surface text-ink shadow-sm' : 'text-muted'}"
+				onclick={() => select(i)}
+			>
+				{item.label}
+				<!-- A dot rather than a count: the tab says there is something to read, the screen says what. -->
+				{#if item.alert}
+					<span class="ml-1 inline-block size-1.5 rounded-full bg-danger align-middle"></span>
+				{/if}
+			</button>
+		{/each}
+	</nav>
+	{#if action}{@render action()}{/if}
+</div>
 
 <!-- Opted out of the page level swipe when it follows the finger itself, and only then. -->
 <div

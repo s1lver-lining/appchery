@@ -62,16 +62,10 @@
 		if (found.path === 'none') return $t('settings.hapticsNoApi');
 		return found.path === 'web' && !found.accepted ? $t('settings.hapticsRefused') : null;
 	}
-	/** Which tab a setting lives on, since being sent to one on another tab is being sent nowhere. */
-	const TAB_OF: Record<string, 'app' | 'shooting' | 'data'> = {
-		location: 'shooting',
-		weather: 'shooting'
-	};
-
 	$effect(() => {
 		const wanted = $page.url.searchParams.get('setting');
 		if (!wanted) return;
-		tab = TAB_OF[wanted] ?? 'app';
+		tab = settingsTabOf(wanted) ?? 'app';
 
 		let frame = 0;
 		let timer: ReturnType<typeof setTimeout>;
@@ -85,7 +79,8 @@
 			// Down the page only: the tabs sit side by side, and scrolling across drags the deck along.
 			found.scrollIntoView({ block: 'center', inline: 'nearest', behavior: 'smooth' });
 			flashing = wanted;
-			timer = setTimeout(() => (flashing = null), 2400);
+			// As long as the pulse itself: the class outliving it would leave the row lit and looking broken.
+			timer = setTimeout(() => (flashing = null), 1000);
 		};
 		let raf = requestAnimationFrame(look);
 
@@ -94,6 +89,7 @@
 			clearTimeout(timer);
 		};
 	});
+	import { settingsTabOf } from '$lib/settings';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
@@ -304,11 +300,24 @@
 
 <div class="mx-auto w-full max-w-page p-4">
 	<TabDeck tabs={TABS} bind:value={tab} paneClass="space-y-6 pt-4" swipeable={false} expand="even">
+		{#snippet action()}
+			<!-- The way to a setting whose tab the archer would otherwise have to guess at. -->
+			<a
+				href="/settings/search"
+				class="press flex items-center gap-1.5 rounded-lg border border-line bg-surface px-3
+					text-sm font-medium text-muted shadow-sm"
+				aria-label={$t('settings.searchTitle')}
+			>
+				<Icon name="search" size={16} />
+				<span class="hidden sm:inline">{$t('settings.searchAction')}</span>
+			</a>
+		{/snippet}
+
 		{#snippet pane(key)}
 			{#if key === 'app'}
 				<!-- What this build is, for a bug report: the release, the commit count behind it, and
 					the licence the whole thing is under. -->
-				<section>
+				<section id="setting-about" class:flash={flashing === 'about'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.about')}</h2>
 					<div class="rounded-xl border border-line bg-surface p-4 text-center">
 						<p class="font-semibold">{$t('app.name')}</p>
@@ -324,7 +333,7 @@
 					</div>
 				</section>
 
-				<section>
+				<section id="setting-language" class:flash={flashing === 'language'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.language')}</h2>
 					<div class="flex gap-2">
 						{#each LOCALES as code (code)}
@@ -339,7 +348,7 @@
 					</div>
 				</section>
 
-				<section>
+				<section id="setting-theme" class:flash={flashing === 'theme'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.theme')}</h2>
 					<div class="flex gap-2">
 						{#each THEMES as option (option)}
@@ -365,7 +374,7 @@
 					<div class="space-y-4">
 						<!-- The installed app can sit on an old build for as long as it is never fully closed,
 						     so there is a way to ask for the current one without uninstalling anything. -->
-						<div class="flex items-start justify-between gap-4">
+						<div id="setting-refresh" class:flash={flashing === 'refresh'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.refreshTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">
@@ -383,7 +392,7 @@
 						<!-- Only while Chrome has actually handed over a prompt to pass on. Already installed, or
 						     a browser that installs from its own menu, and there is nothing to show. -->
 						{#if $installable}
-							<div class="flex items-start justify-between gap-4">
+							<div id="setting-install" class:flash={flashing === 'install'} class="flex items-start justify-between gap-4">
 								<div class="flex-1">
 									<p class="font-medium">{$t('settings.installTitle')}</p>
 									<p class="mt-0.5 text-sm text-muted">{$t('settings.installHint')}</p>
@@ -400,7 +409,7 @@
 						<!-- Absent rather than disabled where the browser has no element fullscreen, which on a
 						     phone means Safari: a dead switch would read as a bug in the app. -->
 						{#if canFullscreen}
-							<div class="flex items-start justify-between gap-4">
+							<div id="setting-fullscreen" class:flash={flashing === 'fullscreen'} class="flex items-start justify-between gap-4">
 								<div class="flex-1">
 									<p class="font-medium">{$t('settings.fullscreenTitle')}</p>
 									<p class="mt-0.5 text-sm text-muted">{$t('settings.fullscreenHint')}</p>
@@ -413,7 +422,7 @@
 							</div>
 						{/if}
 
-						<div class="flex items-start justify-between gap-4">
+						<div id="setting-clock" class:flash={flashing === 'clock'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.clockTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.clockHint')}</p>
@@ -425,7 +434,7 @@
 							/>
 						</div>
 
-						<div class="flex items-start justify-between gap-4">
+						<div id="setting-newButton" class:flash={flashing === 'newButton'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.newButtonTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.newButtonHint')}</p>
@@ -437,7 +446,7 @@
 							/>
 						</div>
 
-						<div class="flex items-start justify-between gap-4">
+						<div id="setting-feedHint" class:flash={flashing === 'feedHint'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.feedHintTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.feedHintHint')}</p>
@@ -449,7 +458,7 @@
 							/>
 						</div>
 
-						<div class="flex items-start justify-between gap-4">
+						<div id="setting-noAnimations" class:flash={flashing === 'noAnimations'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.noAnimationsTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.noAnimationsHint')}</p>
@@ -461,7 +470,7 @@
 							/>
 						</div>
 
-						<div class="flex items-start justify-between gap-4">
+						<div id="setting-halfBreak" class:flash={flashing === 'halfBreak'} class="flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.halfBreakTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.halfBreakHint')}</p>
@@ -474,7 +483,7 @@
 						</div>
 
 						<!-- A short palette: every option has to stay readable on the surface, in both themes. -->
-						<div>
+						<div id="setting-competitionColour" class:flash={flashing === 'competitionColour'}>
 							<p class="font-medium">{$t('settings.competitionColourTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.competitionColourHint')}</p>
 							<div class="mt-2 flex flex-wrap gap-2">
@@ -502,7 +511,7 @@
 			{:else if key === 'shooting'}
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.plotting')}</h2>
-					<div class="rounded-xl border border-line bg-surface p-4">
+					<div id="setting-tapWindow" class:flash={flashing === 'tapWindow'} class="rounded-xl border border-line bg-surface p-4">
 						<div class="flex items-baseline justify-between gap-3">
 							<p class="font-medium">{$t('settings.tapWindowTitle')}</p>
 							<p class="tabular shrink-0 text-sm font-semibold text-brand-text">
@@ -529,7 +538,7 @@
 						</div>
 					</div>
 
-					<div class="mt-4 flex items-start justify-between gap-4">
+					<div id="setting-drift" class:flash={flashing === 'drift'} class="mt-4 flex items-start justify-between gap-4">
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.driftTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.driftHint')}</p>
@@ -541,7 +550,7 @@
 						/>
 					</div>
 
-					<div class="mt-4 flex items-start justify-between gap-4">
+					<div id="setting-haptics" class:flash={flashing === 'haptics'} class="mt-4 flex items-start justify-between gap-4">
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.hapticsTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.hapticsHint')}</p>
@@ -568,8 +577,8 @@
 
 					<div
 						id="setting-location"
-						class="flex items-start justify-between gap-4 rounded-lg transition-shadow duration-500
-							{flashing === 'location' ? 'ring-2 ring-brand ring-offset-4 ring-offset-bg' : ''}"
+						class="flex items-start justify-between gap-4"
+						class:flash={flashing === 'location'}
 					>
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.locationTitle')}</p>
@@ -585,9 +594,8 @@
 					{#if $autoLocation}
 						<div
 							id="setting-weather"
-							class="flex items-start justify-between gap-4 rounded-lg border-l-2 border-line pl-4
-								transition-shadow duration-500
-								{flashing === 'weather' ? 'ring-2 ring-brand ring-offset-4 ring-offset-bg' : ''}"
+							class="flex items-start justify-between gap-4 border-l-2 border-line pl-4"
+							class:flash={flashing === 'weather'}
 						>
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.weatherTitle')}</p>
@@ -600,7 +608,7 @@
 							/>
 						</div>
 
-						<div class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
+						<div id="setting-place" class:flash={flashing === 'place'} class="flex items-start justify-between gap-4 border-l-2 border-line pl-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.placeTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.placeHint')}</p>
@@ -620,7 +628,7 @@
 
 				<section>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('auto.title')}</h2>
-					<div class="mb-4">
+					<div id="setting-detector" class:flash={flashing === 'detector'} class="mb-4">
 						<p class="font-medium">{$t('settings.detectorTitle')}</p>
 						<p class="mt-0.5 text-sm text-muted">{$t('settings.detectorHint')}</p>
 						<div class="mt-2 flex gap-2" role="group" aria-label={$t('settings.detectorTitle')}>
@@ -640,7 +648,7 @@
 						</div>
 					</div>
 
-					<div class="mb-4 flex items-start justify-between gap-4">
+					<div id="setting-smooth" class:flash={flashing === 'smooth'} class="mb-4 flex items-start justify-between gap-4">
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.smoothTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.smoothHint')}</p>
@@ -652,7 +660,7 @@
 						/>
 					</div>
 
-					<div class="flex items-start justify-between gap-4">
+					<div id="setting-record" class:flash={flashing === 'record'} class="flex items-start justify-between gap-4">
 						<div class="flex-1">
 							<p class="font-medium">{$t('settings.recordTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.recordHint')}</p>
@@ -664,7 +672,7 @@
 						/>
 					</div>
 					{#if $recordCameraVideo}
-						<div class="mt-4 flex items-start justify-between gap-4">
+						<div id="setting-motion" class:flash={flashing === 'motion'} class="mt-4 flex items-start justify-between gap-4">
 							<div class="flex-1">
 								<p class="font-medium">{$t('settings.motionTitle')}</p>
 								<p class="mt-0.5 text-sm text-muted">{$t('settings.motionHint')}</p>
@@ -689,7 +697,7 @@
 					because an account is the answer to the same worry a backup answers. -->
 				<AccountCard />
 
-				<section>
+				<section id="setting-storage" class:flash={flashing === 'storage'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.storage')}</h2>
 					<p class="text-sm">
 						<code class="rounded bg-sunk px-1">{info.kind}</code>
@@ -709,7 +717,7 @@
 					{/if}
 				</section>
 
-				<section>
+				<section id="setting-backup" class:flash={flashing === 'backup'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('backup.title')}</h2>
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('backup.hint')}</p>
@@ -753,7 +761,7 @@
 
 				<!-- Scores shot before this app existed. Adding to what is here rather than replacing
 					it, which is what makes this a different button from restoring a backup. -->
-				<section>
+				<section id="setting-importer" class:flash={flashing === 'importer'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('importer.title')}</h2>
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('importer.hint')}</p>
@@ -776,7 +784,7 @@
 					</div>
 				</section>
 
-				<section>
+				<section id="setting-recalc" class:flash={flashing === 'recalc'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.recalcTitle')}</h2>
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('settings.recalcHint')}</p>
@@ -796,7 +804,7 @@
 					</div>
 				</section>
 
-				<section>
+				<section id="setting-forget" class:flash={flashing === 'forget'}>
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.forgetTitle')}</h2>
 					<div class="rounded-xl border border-line bg-surface p-4">
 						<p class="text-sm text-muted">{$t('settings.forgetHint')}</p>
@@ -817,7 +825,7 @@
 				</section>
 
 				<!-- Last on the tab, and the only place in the app that throws shooting away. -->
-				<section>
+				<section id="setting-danger" class:flash={flashing === 'danger'}>
 					<h2 class="mb-2 text-sm font-semibold text-danger">{$t('danger.title')}</h2>
 					<div class="rounded-xl border border-danger/40 bg-danger/5 p-4">
 						<p class="text-sm text-muted">{$t('danger.importedHint')}</p>

@@ -1280,6 +1280,11 @@ export const en = {
 		fullscreenTitle: 'Fullscreen',
 		fullscreenHint:
 			'Hides the browser bars until you leave the page or reload. Installing the app does this for good.',
+		searchTitle: 'Search the settings',
+		searchPlaceholder: 'What are you looking for?',
+		searchLead: 'Type a word from a setting\u2019s name or from what it does.',
+		searchEmpty: 'Nothing here matches {q}.',
+		searchAction: 'Search',
 		halfBreakTitle: 'Mark the halves of a round',
 		halfBreakHint:
 			'Leaves a gap in the sheet where a round shot in two halves breaks, as on a WA 720 or a WA Indoor 600.',

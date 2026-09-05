@@ -234,6 +234,45 @@ body {
 	}
 }
 
+/*
+ * A setting somebody was sent to, answering where it is. The ring alone was missed on a page that is
+ * already all bordered cards, so the row lights up as well and fades back out: motion is what the eye
+ * finds, and a second pulse catches the archer who was still looking at the top of the page.
+ *
+ * The lit colour is mixed from the brand rather than written twice, so it lands at the same strength
+ * on the pale theme and the dark one, over whatever surface the row happens to sit on.
+ */
+@keyframes setting-flash {
+	0%,
+	50%,
+	100% {
+		background-color: transparent;
+		box-shadow: 0 0 0 4px transparent;
+	}
+	14%,
+	36%,
+	64%,
+	86% {
+		background-color: var(--c-flash);
+		box-shadow: 0 0 0 4px var(--c-flash);
+	}
+}
+
+.flash {
+	--c-flash: color-mix(in oklab, var(--c-brand) 26%, transparent);
+	border-radius: 0.5rem;
+	animation: setting-flash 1s ease-in-out;
+}
+
+/* Nothing that pulses for a reader who asked for stillness: the ring says the same thing on its own. */
+@media (prefers-reduced-motion: reduce) {
+	.flash {
+		animation: none;
+		background-color: var(--c-flash);
+		box-shadow: 0 0 0 4px var(--c-flash);
+	}
+}
+
 /* Keyboard only: a mouse or a thumb has the press above to go by and wants no ring left behind. */
 :where(a, button, [role='button'], input, select, textarea):focus-visible {
 	outline: 2px solid var(--c-brand);
