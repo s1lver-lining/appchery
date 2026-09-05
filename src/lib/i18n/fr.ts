@@ -1294,6 +1294,12 @@ export const fr: Dictionary = {
 		celebrationsTitle: 'Annoncer un badge ou un record',
 		celebrationsHint:
 			'La carte qui s’affiche au milieu de l’écran quand vous gagnez quelque chose. Désactivée, les badges, records et niveaux sont toujours attribués et apparaissent dans leurs listes.',
+		badgeSideTitle: 'Position du score pendant le placement',
+		badgeSideHint:
+			'La valeur affichée à côté du réticule quand vous placez une flèche. En suivant votre main, elle se place hors du pouce qui pointe.',
+		badgeSideRight: 'Droite',
+		badgeSideBow: 'Ma main',
+		badgeSideLeft: 'Gauche',
 		awakeTitle: 'Garder l’écran allumé pendant le score',
 		awakeHint:
 			'Maintient l’écran allumé jusqu’à la fin du tir, pour marquer depuis le téléphone en main. Cela consomme de la batterie. Le chronomètre le fait de toute façon.',

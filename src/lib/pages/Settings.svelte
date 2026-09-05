@@ -29,6 +29,7 @@
 		showCelebrations,
 		keepScreenAwake,
 		weekStartsOnSunday,
+		plotBadgeSide,
 		celebratedLevel,
 		celebratedBests,
 		dismissedBest
@@ -562,6 +563,27 @@
 						<div class="tabular flex justify-between text-[11px] text-muted">
 							<span>{$t('settings.tapWindowShort')}</span>
 							<span>{$t('settings.tapWindowLong')}</span>
+						</div>
+					</div>
+
+					<!-- Three answers rather than a switch: the middle one is the archer's hand, not a side. -->
+					<div id="setting-badgeSide" class:flash={flashing === 'badgeSide'}>
+						<p class="font-medium">{$t('settings.badgeSideTitle')}</p>
+						<p class="mt-0.5 text-sm text-muted">{$t('settings.badgeSideHint')}</p>
+						<div class="mt-2 flex gap-2" role="group" aria-label={$t('settings.badgeSideTitle')}>
+							{#each [['right', $t('settings.badgeSideRight')], ['bow', $t('settings.badgeSideBow')], ['left', $t('settings.badgeSideLeft')]] as [value, label] (value)}
+								<button
+									type="button"
+									class="press flex-1 rounded-lg border py-2 text-sm font-medium
+										{($plotBadgeSide ?? 'right') === value
+										? 'border-brand bg-brand text-brand-ink'
+										: 'border-line'}"
+									aria-pressed={($plotBadgeSide ?? 'right') === value}
+									onclick={() => plotBadgeSide.set(value)}
+								>
+									{label}
+								</button>
+							{/each}
 						</div>
 					</div>
 

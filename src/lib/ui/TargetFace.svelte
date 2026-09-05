@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { ScoreSet, Shot } from '$lib/domain/rounds/types';
-	import { plotTapMs } from '$lib/prefs';
+	import { plotTapMs, plotBadgeSide, bowHand } from '$lib/prefs';
 	import { tap as buzz } from '$lib/haptics';
 	import { groupMetrics, groupHull, scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import { t } from '$lib/i18n';
@@ -203,6 +203,15 @@
 	 */
 	const badgeLeft = $derived(cursor ? ((cursor.x * view.scale + view.x + 1.05) / 2.1) * 100 : 50);
 	const badgeTop = $derived(cursor ? ((cursor.y * view.scale + view.y + 1.05) / 2.1) * 100 : 50);
+
+	/**
+	 * Which side of the crosshair the score sits on. Following the hand puts it away from the thumb
+	 * that is doing the plotting: a right handed archer draws with the right hand and reaches with the
+	 * right thumb, so the badge goes left of the point, and the mirror image of that goes right.
+	 */
+	const badgeOnLeft = $derived(
+		$plotBadgeSide === 'left' || ($plotBadgeSide === 'bow' && $bowHand === 'right')
+	);
 
 	/** Where a touch falls in the window, before the view is undone: what a pinch is anchored to. */
 	function toWindow(event: { clientX: number; clientY: number }): { x: number; y: number } | null {
@@ -636,7 +645,9 @@
 		-->
 		<div
 			class="pointer-events-none absolute"
-			style="left: {badgeLeft}%; top: {badgeTop}%; transform: translate(0.6rem, -2.4rem)"
+			style="left: {badgeLeft}%; top: {badgeTop}%; transform: translate({badgeOnLeft
+				? 'calc(-100% - 0.6rem)'
+				: '0.6rem'}, -2.4rem)"
 		>
 			<span
 				class="tabular block rounded-lg px-2.5 py-0.5 text-xl font-bold"

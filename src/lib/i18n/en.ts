@@ -1293,6 +1293,12 @@ export const en = {
 		celebrationsTitle: 'Announce a badge or a record',
 		celebrationsHint:
 			'The card that goes up over the screen when you win something. Turned off, badges, records and levels are still awarded and still appear in their lists.',
+		badgeSideTitle: 'Where the score sits while you plot',
+		badgeSideHint:
+			'The value shown beside the crosshair as an arrow is placed. Following your hand puts it clear of the thumb doing the plotting.',
+		badgeSideRight: 'Right',
+		badgeSideBow: 'My hand',
+		badgeSideLeft: 'Left',
 		awakeTitle: 'Keep the screen on while scoring',
 		awakeHint:
 			'Holds the screen awake until the round is finished, for scoring from the phone in your hand. It costs battery. The shooting clock holds it either way.',

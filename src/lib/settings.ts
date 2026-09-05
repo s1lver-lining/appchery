@@ -110,6 +110,13 @@ export const SETTINGS: SettingEntry[] = [
 		section: 'settings.plotting'
 	},
 	{
+		key: 'badgeSide',
+		tab: 'shooting',
+		title: 'settings.badgeSideTitle',
+		hint: 'settings.badgeSideHint',
+		section: 'settings.plotting'
+	},
+	{
 		key: 'awake',
 		tab: 'shooting',
 		title: 'settings.awakeTitle',

@@ -121,6 +121,16 @@ export const faceShowGroup = flag('appchery.faceShowGroup', false);
 export const faceShowOther = flag('appchery.faceShowOther', true);
 
 /**
+ * Which side of the crosshair the score badge sits on while an arrow is being placed.
+ *
+ * "right" by default, which is where it has always been. A right handed archer holding the phone in
+ * their left hand and plotting with their right thumb has the badge clear of the thumb there; the
+ * mirror image of that archer has the thumb straight over it. "bow" follows the hand already
+ * recorded for the guide, and "left" says it outright.
+ */
+export const plotBadgeSide = storedString('appchery.plotBadgeSide');
+
+/**
  * Whether a week is drawn from Sunday rather than from Monday.
  *
  * Off by default, which is Monday, as the rest of the app counts. It changes where the calendar and
