@@ -15,6 +15,7 @@
 		shots = [],
 		otherShots = [],
 		interactive = false,
+		zoomable,
 		showOtherToggle = false,
 		showCentreToggle = false,
 		showOther = $bindable(true),
@@ -30,6 +31,12 @@
 		/** Arrows from other ends, drawn faded so the current ones stay readable. */
 		otherShots?: Shot[];
 		interactive?: boolean;
+		/**
+		 * Whether two fingers move the face about. Follows `interactive` unless it is said outright,
+		 * which is for the face that is only read from: the end modal is worth moving in on, and the
+		 * thumbnail that names a round in a list is a picture rather than somewhere to look closer.
+		 */
+		zoomable?: boolean;
 		showOtherToggle?: boolean;
 		showCentreToggle?: boolean;
 		/** Bindable, so a page that draws its own controls can put them wherever it wants them. */
@@ -99,6 +106,7 @@
 	 * looking, the other is how closely you are looking while placing a single arrow.
 	 */
 	const MAX_VIEW = 8;
+	const canZoom = $derived(zoomable ?? interactive);
 	let view = $state({ scale: 1, x: 0, y: 0 });
 	const zoomed = $derived(view.scale > 1.005);
 
@@ -231,10 +239,11 @@
 	}
 
 	function down(event: PointerEvent) {
+		if (!interactive && !canZoom) return;
 		(event.target as Element).setPointerCapture?.(event.pointerId);
 		active.set(event.pointerId, { x: event.clientX, y: event.clientY });
 
-		if ((event.ctrlKey || event.metaKey) && active.size === 1) {
+		if (canZoom && (event.ctrlKey || event.metaKey) && active.size === 1) {
 			panning = { from: { x: event.clientX, y: event.clientY }, at: { x: view.x, y: view.y } };
 			cursor = null;
 			tap = null;
@@ -254,6 +263,7 @@
 				return;
 			}
 			// Otherwise the two fingers move the face itself, which nothing else on it does.
+			if (!canZoom) return;
 			const grabbed = midpoint();
 			viewPinch = grabbed
 				? {
@@ -400,7 +410,7 @@
 	/** Trackpad and mouse wheel, so the same control works on the desktop build. */
 	function wheel(event: WheelEvent) {
 		// Ctrl is what a trackpad pinch already sends, so the desktop gesture is the phone gesture.
-		if (event.ctrlKey || event.metaKey) {
+		if (canZoom && (event.ctrlKey || event.metaKey)) {
 			event.preventDefault();
 			const point = toWindow(event);
 			if (point) zoomAbout(point, view.scale * (event.deltaY < 0 ? 1.1 : 1 / 1.1));
@@ -417,7 +427,8 @@
 	<svg
 		bind:this={svg}
 		viewBox="-1.05 -1.05 2.1 2.1"
-		class="h-full w-full touch-none select-none outline-none focus-visible:outline-2
+		class="h-full w-full select-none outline-none focus-visible:outline-2
+			{interactive || canZoom ? 'touch-none' : ''}
 			focus-visible:outline-offset-2 focus-visible:outline-brand
 			{interactive ? 'cursor-crosshair' : ''}"
 		aria-label="Target face"
@@ -638,7 +649,7 @@
 		</div>
 	{/if}
 
-	{#if zoomed}
+	{#if zoomed && canZoom}
 		<!-- Twice the width of a switch, because getting back out has to be easier to find than to miss. -->
 		<button
 			class="press absolute top-1 right-1 flex items-center justify-center rounded-lg border

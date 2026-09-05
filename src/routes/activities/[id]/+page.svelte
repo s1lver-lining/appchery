@@ -1793,6 +1793,7 @@
 							showPerimeter
 							highlight={modalPlot}
 							interactive={modalEditing !== null}
+							zoomable
 							onplot={editModalPlot}
 							onpickshot={pickModalShot}
 						/>
