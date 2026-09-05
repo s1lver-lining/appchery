@@ -130,6 +130,8 @@
 	let modalEditing = $state<string | null>(null);
 	/** One field: what was seen and what was done about it are one note in practice, not two forms. */
 	let notes = $state('');
+	/** What the record holds, so both a reload and a leave can tell a typed note from a stored one. */
+	let notesSaved = $state('');
 	let saved = $state(false);
 	let autoScoring = $state(false);
 
@@ -545,7 +547,11 @@
 	async function refresh() {
 		activity = await getActivity(activityId);
 		// Tests recorded when this was two fields keep both halves, joined into the one note.
-		notes = [activity?.observations, activity?.adjustmentMade].filter(Boolean).join('\n');
+		const written = [activity?.observations, activity?.adjustmentMade].filter(Boolean).join('\n');
+		// Never over a note being written: a measurement saved mid sentence reloads the page's data,
+		// and taking the box back to the record would rub out the half of it that is not in there yet.
+		if (notes === notesSaved) notes = written;
+		notesSaved = written;
 		stored = await loadRows();
 		sheetLoaded = true;
 
@@ -770,10 +776,33 @@
 	}
 
 	async function saveTuning() {
-		await updateActivity(activityId, { observations: notes, adjustmentMade: '' });
+		await flushNotes();
 		saved = true;
 		setTimeout(() => (saved = false), 1500);
 	}
+
+	/**
+	 * The note is written on the way out as well as on the button beside it. The button is the one
+	 * that answers, so it stays, but a note typed and then walked away from is a note the archer
+	 * believes they have made, and losing it silently is the worst of the ways to disagree.
+	 */
+	async function flushNotes() {
+		if (notes === notesSaved) return;
+		const value = notes;
+		notesSaved = value;
+		await updateActivity(activityId, { observations: value, adjustmentMade: '' });
+	}
+
+	$effect(() => {
+		const hidden = () => {
+			if (document.visibilityState === 'hidden') void flushNotes();
+		};
+		document.addEventListener('visibilitychange', hidden);
+		return () => {
+			document.removeEventListener('visibilitychange', hidden);
+			void flushNotes();
+		};
+	});
 
 	const bowType = $derived((bow?.type ?? 'recurve') as BowType);
 
@@ -856,6 +885,7 @@
 		const revisionId = await createRevision(bow.id, draft, reason);
 		await linkResultingRevision(activityId, revisionId);
 		await updateActivity(activityId, { observations: notes, adjustmentMade: '' });
+		notesSaved = notes;
 		applied = true;
 		await refresh();
 	}
