@@ -3,7 +3,7 @@
 	import { beforeNavigate, goto } from '$app/navigation';
 	import { t, locale } from '$lib/i18n';
 	import { overrideStatusBar } from '$lib/theme';
-	import { getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
+	import { getRound, getScoreSet, roundNeedsVerification } from '$lib/domain/rounds/seed';
 	import {
 		endSlots,
 		scorableZones,
@@ -142,6 +142,14 @@
 
 	const round = $derived<RoundDefinition | null>(
 		activity?.roundDefinition ? JSON.parse(activity.roundDefinition) : null
+	);
+	/**
+	 * Where the round breaks into halves, read off the catalogue rather than out of the activity's own
+	 * copy of the round: that copy was written when the round was started, and one started before the
+	 * break was ever recorded is still shot in two halves.
+	 */
+	const halfEnds = $derived(
+		round?.halfEnds ?? (round ? (getRound(round.id)?.halfEnds ?? null) : null)
 	);
 	const scoreSet = $derived(round ? getScoreSet(round.scoreSetId) : null);
 	const unverified = $derived(round ? roundNeedsVerification(round) : false);
@@ -1302,7 +1310,7 @@
 					<!-- The break the rules put in the middle of the round, where the archers change ends. -->
 					<div
 						class="flex items-center gap-1 px-2 py-1
-							{i + 1 === round?.halfEnds ? 'border-b-2 border-brand/40' : 'border-b border-line'}"
+							{i + 1 === halfEnds ? 'border-b-2 border-brand/60' : 'border-b border-line'}"
 						data-cursor={editing?.endId === row.endId ? '' : undefined}
 					>
 						<!-- Drawn as a key rather than as a number, because it opens the end and nothing else

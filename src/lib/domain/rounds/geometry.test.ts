@@ -54,6 +54,14 @@ describe('round definitions', () => {
 		expect(maxScore(round, WA_10_RING)).toBe(720);
 	});
 
+	it('breaks the rounds shot in halves at their middle end', () => {
+		expect(getRound('wa720-70m')!.halfEnds).toBe(6);
+		expect(getRound('wa-indoor-18m')!.halfEnds).toBe(10);
+		// A round of an even number of ends is not thereby shot in halves.
+		expect(getRound('wa360-70m')!.halfEnds).toBeUndefined();
+		expect(getRound('wa-indoor-300-18m')!.halfEnds).toBeUndefined();
+	});
+
 	it('uses only score sets that exist', () => {
 		for (const round of ROUNDS) {
 			expect(round.scoreSetId).toBe(WA_10_RING.id);
