@@ -490,16 +490,31 @@
 	);
 
 	/**
-	 * Follow the shooting: the row being filled must stay in view, whether that is on first load of a
-	 * part shot round or after each arrow pushes the sheet down.
+	 * Follow the shooting: whatever the cursor is on has to stay in view, whether that is on first
+	 * load of a part shot round, after each arrow pushes the sheet down, or after the face took the
+	 * room the keypad had and left the sheet shorter than it was.
 	 */
 	$effect(() => {
-		// Touch both so the effect reruns as arrows and ends are added.
+		// Touched so the effect reruns on everything that moves the cursor or shortens the sheet.
 		void sheetRows.length;
 		void pending.length;
+		void plotting;
+		void editing;
+		void editingPending;
 		if (!sheetScroller) return;
 		const el = sheetScroller;
-		requestAnimationFrame(() => (el.scrollTop = el.scrollHeight));
+		requestAnimationFrame(() => {
+			const cursor = el.querySelector('[data-cursor]');
+			if (!cursor) {
+				el.scrollTop = el.scrollHeight;
+				return;
+			}
+			// The least scrolling that brings it back inside, so the sheet does not jump under a thumb.
+			const box = el.getBoundingClientRect();
+			const seat = cursor.getBoundingClientRect();
+			if (seat.top < box.top) el.scrollTop -= box.top - seat.top;
+			else if (seat.bottom > box.bottom) el.scrollTop += seat.bottom - box.bottom;
+		});
 	});
 
 	async function loadRows() {
@@ -1297,6 +1312,7 @@
 									<button
 										class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editing?.shotId === shot.id ? cursorClass : ''}"
+										data-cursor={editing?.shotId === shot.id ? '' : undefined}
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', { n: shot.ordinal, end: i + 1 })}
 									onclick={() => {
@@ -1357,6 +1373,7 @@
 									<button
 										class="tabular relative h-[var(--chip)] w-[var(--chip)] shrink-0 rounded text-[calc(var(--chip)*0.46)] font-bold
 											{editingPending === shot.index ? cursorClass : ''}"
+										data-cursor={editingPending === shot.index ? '' : undefined}
 										style={chipStyle(shot.zoneLabel)}
 										aria-label={$t('score.editArrow', {
 											n: shot.ordinal,
@@ -1386,6 +1403,7 @@
 											{i === pending.length && !selecting
 											? 'border-brand bg-brand/15 ' + cursorClass
 											: 'border-line'}"
+										data-cursor={i === pending.length && !selecting ? '' : undefined}
 										disabled={!selecting}
 										aria-label={$t('score.nextArrow')}
 										onclick={() => {
