@@ -211,8 +211,16 @@ import { SteadyFace } from '$lib/vision/steady';
 		}
 	}
 
+	/**
+	 * The name the footage is filed under, taken when the recording starts rather than when it stops.
+	 * Stopping the last end of a round finishes the round, which takes this whole panel off the screen
+	 * before the recorder hands over its data: read then, the prop is gone and the file loses its name.
+	 */
+	let recordedAs = '';
+
 	function startRecording() {
 		if (!stream || typeof MediaRecorder === 'undefined') return;
+		recordedAs = videoName;
 		// Whatever the device is willing to encode: asking for a specific codec fails on some phones.
 		try {
 			recorder = new MediaRecorder(stream);
@@ -231,14 +239,14 @@ import { SteadyFace } from '$lib/vision/steady';
 
 	function save(video: Blob) {
 		// Reported straight away: the end keeps the name whether or not the write itself succeeds.
-		onrecorded(videoName);
-		void storeRecording(video, videoName);
+		onrecorded(recordedAs);
+		void storeRecording(video, recordedAs);
 		/**
 		 * Said out loud when there is nothing to save. A file that never appears looks the same as a file
 		 * that was lost, and the difference matters: a laptop reports no motion at all, while a phone
 		 * that reports none has usually refused the permission.
 		 */
-		if (motion.any) void storeMotion(motion.toJSON(), videoName);
+		if (motion.any) void storeMotion(motion.toJSON(), recordedAs);
 		else if ($recordMotion) notice = $t('settings.motionNone');
 	}
 
