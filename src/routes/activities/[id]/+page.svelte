@@ -1709,25 +1709,7 @@
 					{/each}
 				</div>
 
-				{#if modalEditing}
-					<div class="mb-3 grid grid-cols-6 gap-1">
-						{#each keypad as zone (zone.label)}
-							<button
-								class="tabular rounded py-2 text-sm font-bold"
-								style={chipStyle(zone.label)}
-								onclick={() => editModalShot(zone)}
-							>
-								{zone.label}
-							</button>
-						{/each}
-						<button
-							class="press rounded border border-line py-2 text-sm font-bold"
-							onclick={() => editModalShot(missZone(scoreSet))}
-						>
-							{$t('score.miss')}
-						</button>
-					</div>
-				{:else}
+				{#if !modalEditing}
 					<dl class="mb-3 flex justify-between text-sm">
 						<div>
 							<dt class="text-muted">{$t('score.endTotalLong')}</dt>
@@ -1767,6 +1749,28 @@
 					{/if}
 				{:else}
 					<p class="text-center text-sm text-muted">{$t('score.noPlots')}</p>
+				{/if}
+
+				{#if modalEditing}
+					<!-- Under the face rather than under the end, where a grid of small squares of the same
+						colours reads as more arrows to pick from instead of as values to give one. -->
+					<div class="mt-3 grid grid-cols-6 gap-1 border-t border-line pt-3">
+						{#each keypad as zone (zone.label)}
+							<button
+								class="tabular rounded py-2 text-sm font-bold"
+								style={chipStyle(zone.label)}
+								onclick={() => editModalShot(zone)}
+							>
+								{zone.label}
+							</button>
+						{/each}
+						<button
+							class="press rounded border border-line py-2 text-sm font-bold"
+							onclick={() => editModalShot(missZone(scoreSet))}
+						>
+							{$t('score.miss')}
+						</button>
+					</div>
 				{/if}
 			</div>
 		</div>
