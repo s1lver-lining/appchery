@@ -1566,7 +1566,7 @@
 
 	{#if openRow}
 		<!-- The backdrop is a button so a tap outside closes, which is what a modal is expected to do. -->
-		<div class="fixed inset-0 z-50 flex items-end justify-center sm:items-center" use:lockScroll>
+		<div class="fixed inset-0 z-50 flex items-center justify-center" use:lockScroll>
 			<button
 				class="absolute inset-0 bg-black/40"
 				use:scrim={0.4}
@@ -1575,7 +1575,8 @@
 			></button>
 
 			<div
-				class="relative m-4 w-full max-w-sm rounded-2xl border border-line bg-surface p-4 shadow-xl"
+				class="relative m-4 max-h-[90dvh] w-full max-w-sm overflow-y-auto rounded-2xl border
+					border-line bg-surface p-4 shadow-xl"
 			>
 				<div class="mb-3 flex items-center justify-between">
 					<h2 class="text-lg font-bold">{$t('score.end', { n: (openEnd ?? 0) + 1 })}</h2>
@@ -1646,7 +1647,7 @@
 				{/if}
 
 				{#if openRowShots.length > 0 || modalEditing}
-					<div class="mx-auto aspect-square w-full max-w-64 rounded-xl border border-line p-2">
+					<div class="aspect-square w-full rounded-xl border border-line p-2">
 						<!-- Only this end's arrows, with their centre and spread on by default. -->
 						<TargetFace
 							{scoreSet}
