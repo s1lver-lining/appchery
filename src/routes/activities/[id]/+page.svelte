@@ -1481,9 +1481,12 @@
 							is selected: place a new arrow, move the ringed one, or give a typed one a place.
 							The switches that change what is drawn sit beside it rather than over the face,
 							where they covered the rings they were meant to explain. -->
-						<div class="mt-2 flex items-center gap-1.5">
+						<div class="mt-2 flex items-start gap-1.5">
+							<!-- Exactly as tall as a switch, and small enough that the two lines a narrow phone
+								wraps it onto still fit inside that height rather than shifting the row. -->
 							<p
-								class="min-w-0 flex-1 rounded-lg border border-line bg-sunk/60 px-2.5 py-1.5 text-xs
+								class="flex h-8 min-w-0 flex-1 items-center rounded-lg border border-line
+									bg-sunk/60 px-2 text-[11px] leading-[13px]
 									{selecting ? 'text-brand-text' : 'text-muted'}"
 							>
 								{selecting

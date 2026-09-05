@@ -141,6 +141,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Touchez n’importe quelle flèche déjà saisie pour retaper sa valeur ; touchez le numéro de ligne d’une volée pour rouvrir la volée entière, flèches placées et groupement compris.'
 				},
 				{
+					lead: 'Appuyez au lieu de toucher pour viser.',
+					body: 'Une touche pose la flèche exactement là où vous avez touché. Maintenez plutôt, et le blason grossit sous un réticule placé au-dessus du doigt : vous voyez la zone où vous êtes et vous glissez dessus avant de relâcher. Pincez pendant l’appui pour grossir davantage. La durée à partir de laquelle un appui devient une visée se règle dans les réglages.'
+				},
+				{
 					lead: 'Le blason se zoome.',
 					body: 'Pincez n’importe quel blason à deux doigts pour vous en approcher, et déplacez-vous avec les deux. Sur un ordinateur, maintenez ctrl et utilisez la molette, ou faites glisser. Un bouton apparaît dans le coin pour en ressortir. Zoomé, les flèches se choisissent plus finement, et l’appui long pour en placer une grossit toujours par-dessus.'
 				},
