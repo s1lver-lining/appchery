@@ -17,6 +17,7 @@ import { SteadyFace } from '$lib/vision/steady';
 		detectorReadout
 	} from '$lib/prefs';
 	import { storeRecording, storeMotion } from '$lib/files';
+	import SettingLink from './SettingLink.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 	import { overrideStatusBar } from '$lib/theme';
 	import { lockScroll } from './scrollLock';
@@ -647,7 +648,7 @@ import { SteadyFace } from '$lib/vision/steady';
 		<!-- Fixed height as well, so the hint and the warning swapping does not move anything either. -->
 		<p class="flex h-4 items-center justify-center text-center text-[11px]">
 			{#if notice}
-				<span class="text-muted">{notice}</span>
+				<span class="text-muted">{notice} <SettingLink setting="motion" /></span>
 			{:else if found.length > remaining}
 				<span class="text-danger">{$t('auto.tooMany', { n: remaining })}</span>
 			{:else if found.length > 0}

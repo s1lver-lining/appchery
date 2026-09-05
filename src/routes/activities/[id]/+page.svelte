@@ -46,6 +46,7 @@
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { levelUpAward } from '$lib/levelUp';
 	import LeaveDialog from '$lib/ui/LeaveDialog.svelte';
+	import SettingLink from '$lib/ui/SettingLink.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
 	import ArrowNumberChart from '$lib/ui/ArrowNumberChart.svelte';
 	import Match from '$lib/pages/Match.svelte';
@@ -1676,6 +1677,8 @@
 						{$t('score.driftIgnore')}
 					</button>
 				</div>
+				<!-- Both buttons above hide it for a while. The archer who never wants it wants the switch. -->
+				<p class="mt-2 text-xs text-muted"><SettingLink setting="drift" /></p>
 			</section>
 		{/if}
 

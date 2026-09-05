@@ -124,6 +124,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import { BOW_ICONS } from '$lib/ui/bowIcon';
 	import MatchGlyph from '$lib/ui/MatchGlyph.svelte';
 	import TargetFace from '$lib/ui/TargetFace.svelte';
+	import SettingLink from '$lib/ui/SettingLink.svelte';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { levelUpAward } from '$lib/levelUp';
@@ -1564,14 +1565,12 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 							{#if notice}
 								<p class="border-t border-line px-4 py-2 text-sm text-danger">
-			{notice}
-			{#if noticeSetting}
-				<!-- Straight to the switch it is about, which the settings page rings for a moment. -->
-				<a class="font-semibold underline" href="/settings?setting={noticeSetting}">
-					{$t('session.openSettings')}
-				</a>
-			{/if}
-		</p>
+									{notice}
+									{#if noticeSetting}
+										<!-- Straight to the switch it is about, which the page rings on arrival. -->
+										<SettingLink setting={noticeSetting} label={$t('session.openSettings')} />
+									{/if}
+								</p>
 							{/if}
 						</section>
 
