@@ -1287,6 +1287,12 @@ export const en = {
 		searchLead: 'Type a word from a setting\u2019s name or from what it does.',
 		searchEmpty: 'Nothing here matches {q}.',
 		searchAction: 'Search',
+		celebrationsTitle: 'Announce a badge or a record',
+		celebrationsHint:
+			'The card that goes up over the screen when you win something. Turned off, badges, records and levels are still awarded and still appear in their lists.',
+		awakeTitle: 'Keep the screen on while scoring',
+		awakeHint:
+			'Holds the screen awake until the round is finished, for scoring from the phone in your hand. It costs battery. The shooting clock holds it either way.',
 		halfBreakTitle: 'Mark the halves of a round',
 		halfBreakHint:
 			'Leaves a gap in the sheet where a round shot in two halves breaks, as on a WA 720 or a WA Indoor 600.',

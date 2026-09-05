@@ -1288,6 +1288,12 @@ export const fr: Dictionary = {
 		searchLead: 'Tapez un mot du nom d\u2019un réglage ou de ce qu\u2019il fait.',
 		searchEmpty: 'Rien ici ne correspond à {q}.',
 		searchAction: 'Rechercher',
+		celebrationsTitle: 'Annoncer un badge ou un record',
+		celebrationsHint:
+			'La carte qui s’affiche au milieu de l’écran quand vous gagnez quelque chose. Désactivée, les badges, records et niveaux sont toujours attribués et apparaissent dans leurs listes.',
+		awakeTitle: 'Garder l’écran allumé pendant le score',
+		awakeHint:
+			'Maintient l’écran allumé jusqu’à la fin du tir, pour marquer depuis le téléphone en main. Cela consomme de la batterie. Le chronomètre le fait de toute façon.',
 		halfBreakTitle: 'Marquer les deux moitiés d’un tir',
 		halfBreakHint:
 			'Laisse un espace dans la feuille là où un tir en deux moitiés se coupe, comme sur un WA 720 ou un WA Indoor 600.',

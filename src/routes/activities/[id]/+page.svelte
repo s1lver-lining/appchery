@@ -19,6 +19,7 @@
 		showArrowNumbers,
 		showHalfBreak,
 		plotByDefault,
+		keepScreenAwake,
 		faceShowOther,
 		faceShowCentre,
 		faceShowGroup,
@@ -50,6 +51,7 @@
 	import Fireworks, { type Award } from '$lib/ui/Fireworks.svelte';
 	import { levelUpAward } from '$lib/levelUp';
 	import LeaveDialog from '$lib/ui/LeaveDialog.svelte';
+	import { screenLock } from '$lib/ui/wakeLock';
 	import SettingLink from '$lib/ui/SettingLink.svelte';
 	import Scorecard from '$lib/ui/Scorecard.svelte';
 	import ArrowNumberChart from '$lib/ui/ArrowNumberChart.svelte';
@@ -511,6 +513,18 @@
 			? (openMetrics.diameter * slots[openEnd].stage.faceSize) / 2
 			: null
 	);
+
+	/**
+	 * The screen held awake while there is still an end to shoot, for the archer who scores from the
+	 * phone in their hand. Dropped the moment the round is over, so a card left open on the way home
+	 * is not what flattens the battery, and never taken at all unless it was asked for.
+	 */
+	const lock = screenLock(() => navigator.wakeLock?.request('screen'));
+	$effect(() => {
+		if (!$keepScreenAwake || !currentSlot) return;
+		lock.acquire();
+		return () => lock.release();
+	});
 
 	/**
 	 * Follow the shooting: the row the cursor is on has to stay in view, whether that is on first

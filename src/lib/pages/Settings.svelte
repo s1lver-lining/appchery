@@ -26,6 +26,8 @@
 		COMPETITION_COLOURS,
 		noAnimations,
 		showHalfBreak,
+		showCelebrations,
+		keepScreenAwake,
 		celebratedLevel,
 		celebratedBests,
 		dismissedBest
@@ -483,6 +485,18 @@
 						</div>
 
 						<!-- A short palette: every option has to stay readable on the surface, in both themes. -->
+						<div id="setting-celebrations" class:flash={flashing === 'celebrations'} class="flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('settings.celebrationsTitle')}</p>
+								<p class="mt-0.5 text-sm text-muted">{$t('settings.celebrationsHint')}</p>
+							</div>
+							<Toggle
+								checked={$showCelebrations}
+								label={$t('settings.celebrationsTitle')}
+								onchange={(v) => showCelebrations.set(v)}
+							/>
+						</div>
+
 						<div id="setting-competitionColour" class:flash={flashing === 'competitionColour'}>
 							<p class="font-medium">{$t('settings.competitionColourTitle')}</p>
 							<p class="mt-0.5 text-sm text-muted">{$t('settings.competitionColourHint')}</p>
@@ -536,6 +550,18 @@
 							<span>{$t('settings.tapWindowShort')}</span>
 							<span>{$t('settings.tapWindowLong')}</span>
 						</div>
+					</div>
+
+					<div id="setting-awake" class:flash={flashing === 'awake'} class="mt-4 flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<p class="font-medium">{$t('settings.awakeTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.awakeHint')}</p>
+						</div>
+						<Toggle
+							checked={$keepScreenAwake}
+							label={$t('settings.awakeTitle')}
+							onchange={(v) => keepScreenAwake.set(v)}
+						/>
 					</div>
 
 					<div id="setting-drift" class:flash={flashing === 'drift'} class="mt-4 flex items-start justify-between gap-4">

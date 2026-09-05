@@ -82,6 +82,13 @@ export const SETTINGS: SettingEntry[] = [
 		section: 'settings.display'
 	},
 	{
+		key: 'celebrations',
+		tab: 'app',
+		title: 'settings.celebrationsTitle',
+		hint: 'settings.celebrationsHint',
+		section: 'settings.display'
+	},
+	{
 		key: 'competitionColour',
 		tab: 'app',
 		title: 'settings.competitionColourTitle',
@@ -93,6 +100,13 @@ export const SETTINGS: SettingEntry[] = [
 		tab: 'shooting',
 		title: 'settings.tapWindowTitle',
 		hint: 'settings.tapWindowHint',
+		section: 'settings.plotting'
+	},
+	{
+		key: 'awake',
+		tab: 'shooting',
+		title: 'settings.awakeTitle',
+		hint: 'settings.awakeHint',
 		section: 'settings.plotting'
 	},
 	{

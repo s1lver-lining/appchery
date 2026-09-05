@@ -121,6 +121,25 @@ export const faceShowGroup = flag('appchery.faceShowGroup', false);
 export const faceShowOther = flag('appchery.faceShowOther', true);
 
 /**
+ * Whether the screen is held awake while a round is being scored.
+ *
+ * Off by default, which is what the app did before the switch existed: holding a screen lit through
+ * a two hour session costs a battery, and a phone in a pocket between ends does not need it. On is
+ * for the archer who scores from the phone in their hand and is tired of a passcode every three
+ * arrows. The shooting clock takes its own lock either way: that one is not a preference.
+ */
+export const keepScreenAwake = flag('appchery.keepScreenAwake', false);
+
+/**
+ * Whether a badge, a personal best or a level is announced over the middle of the screen.
+ *
+ * On by default. Off, everything is still awarded and still lands in the lists: the only thing that
+ * goes is the card in the sky, which arrives at the end of a round, which on a competition day is
+ * the moment an archer is least willing to be interrupted by their own phone.
+ */
+export const showCelebrations = flag('appchery.showCelebrations', true);
+
+/**
  * Whether the sheet draws the break between the two halves of a round shot in halves. On by default:
  * the break is part of how those rounds are shot, and the archer who does not want it is the
  * exception. Only the rounds the rules split have one at all, so nothing else changes with it.

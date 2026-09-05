@@ -5,6 +5,7 @@
 	import Icon from './Icon.svelte';
 	import { closeOnBack } from './dismiss.svelte';
 	import { celebrate } from '$lib/haptics';
+	import { showCelebrations } from '$lib/prefs';
 
 	/** One thing worth interrupting for: a record, or a badge. */
 	export interface Award {
@@ -22,9 +23,19 @@
 	 */
 	let { awards, onclose }: { awards: Award[]; onclose: () => void } = $props();
 
+	/**
+	 * Turned off, the card never goes up: it stands down at once and tells the page it is done, so
+	 * nothing is left holding the back key. What was won is won either way, and is in the lists.
+	 * Gated here rather than at each of the pages that award something, so a page added later is
+	 * quiet by the same switch without having to remember it.
+	 */
+	$effect(() => {
+		if (!$showCelebrations) onclose();
+	});
+
 	// Felt as well as seen: the moment this fires, the archer is usually still looking at the target.
 	$effect(() => {
-		if (awards.length > 0) celebrate();
+		if ($showCelebrations && awards.length > 0) celebrate();
 	});
 
 	// A record is dismissed by the back key like anything else sitting on top of the page.
@@ -54,6 +65,7 @@
 	const SPARKS = Array.from({ length: 18 }, (_, i) => (i * 360) / 18);
 </script>
 
+{#if $showCelebrations}
 <!-- Over everything and through to everything: the tap that dismisses it is the card's own. -->
 <div class="pointer-events-none fixed inset-0 z-[60] overflow-hidden">
 	{#each SHELLS as shell (shell.delay)}
@@ -98,6 +110,7 @@
 		{/each}
 	</div>
 </div>
+{/if}
 
 <style>
 	.spark {
