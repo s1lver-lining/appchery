@@ -22,21 +22,5 @@ export function hasHappened(
 	return session.kind !== 'planned' && session.startedAt <= now;
 }
 
-/** Accents are dropped on both sides, so "Tir a 18m" finds a session written "Tir à 18m". */
-function fold(value: string): string {
-	return value
-		.normalize('NFD')
-		.replace(/[\u0300-\u036f]/g, '')
-		.toLowerCase();
-}
-
-/**
- * Every word typed has to appear somewhere in the session, in any of the fields, in any order: an
- * archer searching "wind club" is naming two things they remember, not quoting a sentence.
- */
-export function matchesQuery(query: string, fields: (string | null | undefined)[]): boolean {
-	const terms = fold(query).split(/\s+/).filter(Boolean);
-	if (terms.length === 0) return true;
-	const haystack = fields.filter(Boolean).map((field) => fold(field as string));
-	return terms.every((term) => haystack.some((field) => field.includes(term)));
-}
+// Re-exported so the callers that already searched sessions keep their one import.
+export { matchesQuery } from './search';

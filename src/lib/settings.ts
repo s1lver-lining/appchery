@@ -6,6 +6,8 @@
  * `?setting=` that scrolls to it, so a result found here leads straight to the control itself.
  */
 
+import { fold, matchesQuery } from './domain/search';
+
 export type SettingsTab = 'app' | 'shooting' | 'data';
 
 export interface SettingEntry {
@@ -188,20 +190,9 @@ export function settingsTabOf(key: string): SettingsTab | undefined {
 }
 
 /**
- * Folded for comparison: accents off and case flattened, so "reglage" finds "réglage". An archer
- * types what is quickest, which on a phone keyboard is rarely what the dictionary spells.
- */
-function fold(text: string): string {
-	return text
-		.normalize('NFD')
-		.replace(/\p{Diacritic}/gu, '')
-		.toLowerCase();
-}
-
-/**
- * Every word has to appear somewhere in the entry, so a second word narrows the list rather than
- * widening it. A name match outranks a description match: somebody typing "weather" wants the
- * weather switch, not the six settings that mention weather in passing.
+ * Matched on the app's one search rule, then ranked: a name match outranks a description match,
+ * because somebody typing "weather" wants the weather switch rather than the settings that mention
+ * weather in passing. Nothing at all until something is typed, since the page shows the whole list.
  */
 export function searchSettings(
 	query: string,
@@ -213,13 +204,12 @@ export function searchSettings(
 
 	const scored: { entry: SettingEntry; rank: number }[] = [];
 	for (const entry of entries) {
-		const title = fold(translate(entry.title));
-		const hint = fold(entry.hint ? translate(entry.hint) : '');
-		const section = fold(translate(entry.section));
-		if (!words.every((word) => title.includes(word) || hint.includes(word) || section.includes(word)))
-			continue;
-		const named = words.every((word) => title.includes(word));
-		scored.push({ entry, rank: named ? (title.startsWith(words[0]) ? 0 : 1) : 2 });
+		const title = translate(entry.title);
+		const hint = entry.hint ? translate(entry.hint) : '';
+		if (!matchesQuery(query, [title, hint, translate(entry.section)])) continue;
+		const folded = fold(title);
+		const named = words.every((word) => folded.includes(word));
+		scored.push({ entry, rank: named ? (folded.startsWith(words[0]) ? 0 : 1) : 2 });
 	}
 	return scored.sort((a, b) => a.rank - b.rank).map((row) => row.entry);
 }
