@@ -452,7 +452,16 @@
 	const openRowShots = $derived<Shot[]>(
 		openRow ? toShots(openRow.shots).filter((s) => s.x !== null) : []
 	);
+	/** Kept beside the drawn arrows, which drop their row id on the way to being plotted. */
+	const openRowShotIds = $derived<(string | null)[]>(
+		openRow ? openRow.shots.filter((s) => s.x !== null).map((s) => s.id) : []
+	);
 	const openMetrics = $derived(groupMetrics(openRowShots));
+	/** The arrow being retapped in the modal, ringed on the face as well as outlined in the row. */
+	const modalPlot = $derived.by(() => {
+		const shot = openRow?.shots.find((s) => s.id === modalEditing);
+		return shot && shot.x !== null && shot.y !== null ? { x: shot.x, y: shot.y } : null;
+	});
 	/**
 	 * Group size in centimetres: face coordinates run to 1.0 at the edge, so a normalised distance is
 	 * half the face diameter. Reported as a real measurement because that is how archers compare groups.
@@ -635,6 +644,12 @@
 		modalEditing = null;
 		stored = await loadRows();
 		activity = await getActivity(activityId);
+	}
+
+	/** Picking the arrow off the face itself, which is where the archer is already looking. */
+	function pickModalShot(index: number) {
+		const id = openRowShotIds[index];
+		if (id) modalEditing = modalEditing === id ? null : id;
 	}
 
 	/** Retapping on the face moves the arrow and rescores it together, so the two cannot disagree. */
@@ -1655,8 +1670,10 @@
 							showCentreToggle
 							showCentreDefault
 							showPerimeter
+							highlight={modalPlot}
 							interactive={modalEditing !== null}
 							onplot={editModalPlot}
+							onpickshot={pickModalShot}
 						/>
 					</div>
 					{#if modalEditing}

@@ -146,6 +146,10 @@ export const tricksEn = {
 					body: 'Tap any arrow already entered to retap its value; tap an end’s row number to open the whole end, plotted arrows and group size included.'
 				},
 				{
+					lead: 'Pick the arrow off the face.',
+					body: 'Inside an end, tapping an arrow where it landed selects it just as tapping its square does. The selected one is ringed, and every tap after that moves it. Tap it again to let it go.'
+				},
+				{
 					lead: 'Undo is two levels.',
 					body: 'The undo button drops the arrow being entered; "undo last end" drops the whole end that was already written.'
 				},

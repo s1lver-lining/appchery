@@ -3,6 +3,7 @@
 	import { plotTapMs } from '$lib/prefs';
 	import { tap as buzz } from '$lib/haptics';
 	import { groupMetrics, groupHull, scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
+	import { t } from '$lib/i18n';
 	import Icon from './Icon.svelte';
 
 	/**
@@ -20,7 +21,8 @@
 		showCentreDefault = false,
 		showPerimeter = false,
 		highlight = null,
-		onplot
+		onplot,
+		onpickshot
 	}: {
 		scoreSet: ScoreSet;
 		/** Arrows of the current context, drawn at full strength. */
@@ -40,6 +42,11 @@
 		 */
 		highlight?: { x: number; y: number } | null;
 		onplot?: (x: number, y: number) => void;
+		/**
+		 * Given when an arrow already on the face can be picked to be worked on. Only the arrows that
+		 * can be picked carry a target, so a tap meant for the face is never eaten by one.
+		 */
+		onpickshot?: (index: number) => void;
 	} = $props();
 
 	// Initial value only: the toggle is the archer's from then on, not the caller's.
@@ -346,6 +353,29 @@
 						/>
 					{/if}
 				{/each}
+
+				{#if onpickshot}
+					{#each shots as shot, i (i)}
+						{#if shot.x !== null && shot.y !== null && (!highlight || (highlight.x === shot.x && highlight.y === shot.y))}
+							<!-- Wider than the arrow it covers, because a fingertip is wider than an arrow. -->
+							<circle
+								cx={shot.x}
+								cy={shot.y}
+								r={0.07 / (cursor ? zoom : 1)}
+								fill="transparent"
+								class="cursor-pointer"
+								role="button"
+								tabindex="0"
+								aria-label="{$t('score.arrow')} {shot.ordinal}"
+								onpointerdown={(event) => event.stopPropagation()}
+								onclick={() => onpickshot?.(i)}
+								onkeydown={(event) => {
+									if (event.key === 'Enter' || event.key === ' ') onpickshot?.(i);
+								}}
+							/>
+						{/if}
+					{/each}
+				{/if}
 
 				<!--
 					The arrow the next tap will move, ringed rather than recoloured: it is still an arrow.

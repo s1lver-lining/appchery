@@ -141,6 +141,10 @@ export const tricksFr: TricksDictionary = {
 					body: 'Touchez n’importe quelle flèche déjà saisie pour retaper sa valeur ; touchez le numéro de ligne d’une volée pour rouvrir la volée entière, flèches placées et groupement compris.'
 				},
 				{
+					lead: 'Choisir la flèche sur le blason.',
+					body: 'Dans une volée, toucher une flèche là où elle s’est plantée la sélectionne comme le ferait sa case. La sélectionnée est cerclée, et chaque touche suivante la déplace. Touchez-la de nouveau pour la relâcher.'
+				},
+				{
 					lead: 'L’annulation a deux niveaux.',
 					body: 'Le bouton d’annulation retire la flèche en cours de saisie ; « annuler la dernière volée » retire la volée entière déjà écrite.'
 				},
