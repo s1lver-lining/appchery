@@ -159,6 +159,12 @@
 		content: ''; position: absolute; left: 2px; top: 2px;
 		width: 4px; height: 4px; border-radius: 50%; background: var(--good);
 	}
+	/* Confirmed inherited arrows: the same corner as its own arrows, hollow rather than filled. */
+	.frames button.okd::before {
+		content: ''; position: absolute; left: 2px; top: 2px;
+		width: 4px; height: 4px; border-radius: 50%;
+		box-shadow: inset 0 0 0 1.5px var(--good);
+	}
 	kbd {
 		background: #1e2228; border: 1px solid #383d45; border-bottom-width: 2px;
 		border-radius: 4px; padding: 0 4px; font-size: 10px;
@@ -272,7 +278,9 @@
 			<div class="row" style="margin-top:6px"><button id="anchor">Read them through this frame</button></div>
 			<div class="row" style="margin-top:6px">
 				<button id="ownArrows" title="Take away the arrows placed on this frame, so it goes back to following the frame the arrows were drawn on. The dashed circles come back.">Follow the other frame again</button>
-
+			</div>
+			<div class="row" style="margin-top:6px">
+				<button id="okArrows" title="Say that the arrows read onto this frame from another one land where the shafts are. Worth as much to the measuring harnesses as arrows clicked here, and one look instead of six clicks, so it is the quick way to turn a frame whose fit you have just corrected into ground truth. They stay drawn dashed, because a harness that wants only hand placed arrows can still tell the two apart.">These land right<small>V</small></button>
 			</div>
 			<div class="row" style="margin-top:6px"><button id="noarrows">No arrows in this video</button></div>
 		</div>
@@ -882,7 +890,8 @@
 				const placed = (touched && saved?.handles) || seedHandles(v.seeds[i], v.width, v.height);
 				const put = touched && saved?.handles ? inSeedOrder(placed, v.seeds[i]) : { handles: placed, turns: 0 };
 				if (put.turns) turned.push([i, put.turns]);
-				return { handles: put.handles, skip: saved?.skip ?? false, touched };
+				// `arrowsOk` says the inherited arrows land right here, which a harness takes as ground truth.
+				return { handles: put.handles, skip: saved?.skip ?? false, touched, arrowsOk: saved?.arrowsOk ?? false };
 			});
 			v.arrows = v.labels?.arrows ? [...v.labels.arrows] : [];
 			v.arrowFrame = v.labels?.arrowFrame ?? null;
@@ -1441,7 +1450,8 @@
 			for (const [i, p] of here.places) {
 				const chosen = mode === 'nocks' && i === nocking;
 				const done = nockedHere.some((nock) => nock.arrow === i);
-				context.setLineDash(here.derived ? [line * 3, line * 3] : []);
+				// Solid where it was placed here, dashed where inherited, finely dashed where inherited and confirmed.
+				context.setLineDash(here.derived ? (here.confirmed ? [line, line * 2] : [line * 3, line * 3]) : []);
 				context.beginPath();
 				context.arc(p.x, p.y, line * (chosen ? 8 : 5), 0, Math.PI * 2);
 				context.strokeStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.45)' : '#00e676';
@@ -1449,7 +1459,7 @@
 				context.stroke();
 				context.setLineDash([]);
 				context.fillStyle = chosen ? '#ffc107' : done ? 'rgba(0,230,118,0.55)' : '#00e676';
-				context.globalAlpha = here.derived ? 0.7 : 1;
+				context.globalAlpha = here.derived && !here.confirmed ? 0.7 : 1;
 				context.font = `bold ${Math.round(image.width / 30 / closer)}px system-ui`;
 				context.fillText(String(i + 1), p.x + line * 6, p.y - line * 6);
 				context.globalAlpha = 1;
@@ -1533,8 +1543,10 @@
 			.map((w, i) => {
 				const nocked = (v.nocks?.[i]?.length ?? 0) > 0 ? ' nocked' : '';
 				const own = (v.frameArrows?.[i]?.length ?? 0) > 0 || v.arrowFrame === i ? ' own' : '';
+				// A confirmed frame is ground truth too, so the strip has to say so.
+				const okd = !own && w.arrowsOk ? ' okd' : '';
 				const how = w.skip ? 'skip' : w.touched ? 'fitted' : '';
-				return `<button class="${how}${nocked}${own}${i === frame ? ' here' : ''}" data-at="${i}">${i + 1}</button>`;
+				return `<button class="${how}${nocked}${own}${okd}${i === frame ? ' here' : ''}" data-at="${i}">${i + 1}</button>`;
 			})
 			.join('');
 		for (const button of el('frames').querySelectorAll('button')) {
@@ -1558,6 +1570,13 @@
 		el('hide').textContent = showNocks ? 'Hide the nock lines' : 'Show the nock lines';
 		const ownHere = v.frameArrows?.[frame]?.length ?? 0;
 		el('ownArrows').style.display = ownHere > 0 ? '' : 'none';
+		// Nothing to confirm on a frame that carries its own arrows, or on the one they were drawn on.
+		const canConfirm = ownHere === 0 && v.arrowFrame !== frame && v.arrows.length > 0 && !v.work[frame].skip;
+		el('okArrows').style.display = canConfirm ? '' : 'none';
+		el('okArrows').className = v.work[frame].arrowsOk ? 'on' : '';
+		el('okArrows').innerHTML = v.work[frame].arrowsOk
+			? 'These are confirmed<small>V</small>'
+			: 'These land right<small>V</small>';
 		const ownFrames = Object.values(v.frameArrows ?? {}).filter((list) => list.length > 0).length;
 		const nocked = Object.values(v.nocks).filter((list) => list.length > 0).length;
 		const anchored = v.arrowFrame === null || v.arrowFrame === undefined ? '' : ` (placed on frame ${v.arrowFrame + 1})`;
@@ -1958,11 +1977,16 @@
 		const places = new Map();
 		if (own.length > 0) {
 			for (const arrow of own) places.set(arrow.n, project(h, arrow.x, arrow.y));
-			return { places, derived: false, own };
+			return { places, derived: false, confirmed: false, own };
 		}
 		v.arrows.forEach((arrow, i) => places.set(i, project(h, arrow.x, arrow.y)));
 		// Not derived on the frame they were drawn on: there they are exactly where somebody put them.
-		return { places, derived: v.arrowFrame !== frame, own: null };
+		return {
+			places,
+			derived: v.arrowFrame !== frame,
+			confirmed: Boolean(v.work?.[frame]?.arrowsOk),
+			own: null
+		};
 	}
 
 	/**
@@ -2226,6 +2250,17 @@
 		mode = 'marks';
 		draw();
 	};
+	// Only about inherited arrows: a frame with its own, or the frame they were drawn on, has nothing to say.
+	el('okArrows').onclick = () => {
+		const v = video();
+		if (!v?.work?.[frame]) return;
+		const here = v.frameArrows?.[frame]?.length ?? 0;
+		if (here > 0 || v.arrowFrame === frame || v.arrows.length === 0) return;
+		v.work[frame].arrowsOk = !v.work[frame].arrowsOk;
+		changed();
+		show();
+	};
+
 	el('ownArrows').onclick = () => {
 		const v = video();
 		if (!v.frameArrows?.[frame]) return;
@@ -2368,8 +2403,8 @@
 			frames: Object.fromEntries(
 				v.work
 					.map((w, i) => [i, w])
-					.filter(([, w]) => w.touched || w.skip)
-					.map(([i, w]) => [i, { handles: w.handles, skip: w.skip, touched: w.touched }])
+					.filter(([, w]) => w.touched || w.skip || w.arrowsOk)
+					.map(([i, w]) => [i, { handles: w.handles, skip: w.skip, touched: w.touched, arrowsOk: w.arrowsOk }])
 			)
 		};
 	}
@@ -2475,7 +2510,9 @@
 			if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
 			if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
 			if (event.key.toLowerCase() === 'm') el('markMode').onclick();
-			// Beside F, because locking is done while fitting.
+			if (event.key.toLowerCase() === 'v' && el('okArrows').style.display !== 'none') {
+				el('okArrows').onclick();
+			}
 		}
 		if (event.key.toLowerCase() === 'h') el('hide').onclick();
 		// Round the three, because the useful thing is flicking between them on one picture.

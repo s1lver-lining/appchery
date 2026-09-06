@@ -104,9 +104,12 @@ async function groundTruth(name, path) {
 
 	const radius = ANCHOR_RADII[label.faceType] ?? ANCHOR;
 	const own = label.frameArrows ?? {};
-	// Only frames whose arrows were clicked on them. An automatic fit picks its own angle, which would
-	// turn the arrows on every frame and call the result truth.
+	// A frame is truth when the arrows were clicked on it, or somebody dragged its fit or confirmed its
+	// arrows. Automatic fits are not: each picks its own angle, which would turn the arrows on every frame.
 	const vouched = new Set([String(label.arrowFrame ?? 0), ...Object.keys(own)]);
+	for (const [sample, frame] of Object.entries(label.frames ?? {})) {
+		if (frame?.touched || frame?.arrowsOk) vouched.add(sample);
+	}
 	const at = [];
 	for (const sample of vouched) {
 		const frame = label.frames?.[sample];
