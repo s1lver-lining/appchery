@@ -242,7 +242,9 @@ export class LiveScanner {
 			type: 'frame',
 			width: small.width,
 			height: small.height,
-			data: small.data.buffer as ArrayBuffer
+			data: small.data.buffer as ArrayBuffer,
+			// The page's fit, which is followed every frame and so better than anything the worker can make.
+			faces: this.faces
 		};
 		const moved: ArrayBuffer[] = [small.data.buffer as ArrayBuffer];
 		if (region) {

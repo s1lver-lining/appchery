@@ -12,7 +12,7 @@
  */
 import { Scanner, type Region } from './pipeline';
 import type { ArrowModel } from './learned';
-import type { Frame, Impact } from './types';
+import type { Frame, FaceLocation, Impact } from './types';
 
 /**
  * What the page has told the detector about the session, kept apart from the scanner itself.
@@ -58,6 +58,8 @@ interface FrameMessage {
 		y: number;
 		scale: number;
 	};
+	// Where the page has the faces on this frame, which is a better fit than this side can make.
+	faces?: FaceLocation[];
 }
 
 type Message =
@@ -132,6 +134,8 @@ self.onmessage = (event: MessageEvent<Message>) => {
 	busy = true;
 	try {
 		const started = performance.now();
+		// Before the pass, so the search and the proposer both read the frame just handed over.
+		if (message.faces) scanner.adopt(message.faces);
 		const result = scanner.pushReduced(frameOf(message), regionOf(message));
 		self.postMessage({
 			type: 'result',

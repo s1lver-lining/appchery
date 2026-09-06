@@ -221,6 +221,13 @@ export class Scanner {
 	 * right is cheap, a few hundred pixel reads, so the geometry can move every frame while the search
 	 * for new faces and new arrows runs a few times a second.
 	 */
+	// The page follows the face every frame and the worker sees one every 150ms, so the page's fit is
+	// the better one. Counts must match, or the tracker's arrows would land on a different face.
+	adopt(faces: FaceLocation[]) {
+		if (faces.length === 0 || faces.length !== this.faces.length) return;
+		this.faces = faces;
+	}
+
 	track(small: Frame): FaceLocation[] {
 		if (this.faces.length === 0) return this.faces;
 
