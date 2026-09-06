@@ -305,7 +305,7 @@ async function serve() {
 
 			if (url.pathname === '/manifest') {
 				const videos = [];
-				for (const name of (await readdir(WORK)).sort()) {
+				for (const name of (await readdir(WORK)).sort(byWhenShot)) {
 					const meta = join(WORK, name, 'frames.json');
 					if (!existsSync(meta)) continue;
 					const data = JSON.parse(await readFile(meta, 'utf8'));
@@ -417,6 +417,18 @@ async function serve() {
 				: 'Click each arrow once on a frame you have fitted. Everything saves itself.'
 		);
 	});
+}
+
+// Oldest first. The name starts with the session's uuid, so sorting by it shuffles an afternoon into
+// blocks; the moment is the only part that means anything, and the only part the list shows.
+const SHOT_AT = /(\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2})/;
+function byWhenShot(a, b) {
+	const left = a.match(SHOT_AT)?.[1];
+	const right = b.match(SHOT_AT)?.[1];
+	if (left && right && left !== right) return left < right ? -1 : 1;
+	if (left && !right) return -1;
+	if (!left && right) return 1;
+	return a < b ? -1 : a > b ? 1 : 0;
 }
 
 function send(response, status, type, body) {
