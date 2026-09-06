@@ -26,9 +26,11 @@ import type { Frame, FaceLocation, Impact } from './types';
 let limit: number | null = null;
 let up: number | null = null;
 let model: ArrowModel | null = null;
+// Scanner settings a harness has asked for. The app never sends these: see doc/live-scoring-split.md.
+let tune: Record<string, unknown> = {};
 
 function fresh(): Scanner {
-	const made = new Scanner({ model });
+	const made = new Scanner({ ...tune, model });
 	if (limit !== null) made.setLimit(limit);
 	made.setUp(up);
 	return made;
@@ -65,6 +67,7 @@ interface FrameMessage {
 type Message =
 	| FrameMessage
 	| { type: 'model'; model: ArrowModel | null }
+	| { type: 'tune'; tune: Record<string, unknown> }
 	| { type: 'limit'; limit: number }
 	| { type: 'up'; up: number | null }
 	| { type: 'reject'; x: number; y: number; face: number }
@@ -99,6 +102,12 @@ self.onmessage = (event: MessageEvent<Message>) => {
 
 	if (message.type === 'model') {
 		model = message.model;
+		scanner = fresh();
+		return;
+	}
+
+	if (message.type === 'tune') {
+		tune = message.tune ?? {};
 		scanner = fresh();
 		return;
 	}

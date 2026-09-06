@@ -95,7 +95,7 @@ async function sendVideo(request, response, file) {
 }
 
 // The page is reused across recordings: the page's own script makes every counter afresh on each load.
-export async function play(page, port, name, { smooth = false, arrows = null, frames = true, capture = false, replay = false } = {}) {
+export async function play(page, port, name, { smooth = false, arrows = null, frames = true, capture = false, replay = false, tune = null } = {}) {
 	const query = new URLSearchParams({
 		video: name,
 		smooth: smooth ? '1' : '0',
@@ -104,6 +104,7 @@ export async function play(page, port, name, { smooth = false, arrows = null, fr
 		replay: replay ? '1' : '0'
 	});
 	if (arrows) query.set('arrows', String(arrows));
+	if (tune) query.set('tune', tune);
 	await page.goto(`http://localhost:${port}/?${query}`);
 	await page.waitForFunction(() => window.virtualCamera?.done, null, { timeout: 180000 });
 	return page.evaluate(() => window.virtualCamera);

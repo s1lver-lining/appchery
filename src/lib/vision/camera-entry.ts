@@ -57,6 +57,11 @@ export class VirtualCamera {
 		this.scanner.setLimit(limit);
 	}
 
+	/** Scanner settings, so a sweep needs no rebuild. See `detector.worker.ts`. */
+	setTune(tune: Record<string, unknown>) {
+		this.scanner.setTune(tune);
+	}
+
 	setSmoothing(on: boolean) {
 		this.pretty = on;
 	}

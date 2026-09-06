@@ -196,6 +196,11 @@ export class LiveScanner {
 		});
 	}
 
+	/** Scanner settings, for a harness sweeping them. See `detector.worker.ts`. */
+	setTune(tune: Record<string, unknown>) {
+		this.worker.postMessage({ type: 'tune', tune });
+	}
+
 	setModel(model: ArrowModel | null) {
 		this.worker.postMessage({ type: 'model', model });
 	}

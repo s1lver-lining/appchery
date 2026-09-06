@@ -85,6 +85,8 @@
 					/* A session recorded before the sensors were kept simply has none. */
 				}
 				if (params.get('arrows')) camera.setLimit(Number(params.get('arrows')));
+				// Sent before the first frame, because a scanner made afresh forgets everything else.
+				if (params.get('tune') && camera.setTune) camera.setTune(JSON.parse(params.get('tune')));
 
 				const context = paint.getContext('2d');
 				let last = performance.now();

@@ -6,6 +6,7 @@
  *   node scripts/eval-camera.mjs --video 17-51    # one of them
  *   node scripts/eval-camera.mjs --replay         # the single scanner, same metric
  *   node scripts/eval-camera.mjs --motion         # only sessions whose sensors were saved
+ *   node scripts/eval-camera.mjs --tune '{"proposer":"both"}'
  *
  * Everything is compared in the video's own pixels, so a fit turned a quarter is not counted as error.
  * What the numbers mean: doc/live-scoring-split.md.
@@ -56,7 +57,11 @@ async function main() {
 		const truth = await groundTruth(name, path);
 		if (!truth) continue;
 
-		const report = await play(page, port, name, { frames: true, replay: args.includes('--replay') });
+		const report = await play(page, port, name, {
+			frames: true,
+			replay: args.includes('--replay'),
+			tune: option('tune')
+		});
 		if (report.error) {
 			console.error(`  ${name}: ${report.error}`);
 			continue;
