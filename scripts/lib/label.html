@@ -2510,6 +2510,8 @@
 			if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
 			if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
 			if (event.key.toLowerCase() === 'm') el('markMode').onclick();
+			// Beside F, because locking is done while fitting.
+			if (event.key.toLowerCase() === 'g') el('fitLock').onclick();
 			if (event.key.toLowerCase() === 'v' && el('okArrows').style.display !== 'none') {
 				el('okArrows').onclick();
 			}
