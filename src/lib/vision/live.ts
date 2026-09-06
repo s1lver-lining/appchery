@@ -93,8 +93,14 @@ export class LiveScanner {
 	 */
 	readout: DetectorReadout = { proposals: 0, early: 0, cost: 0, passes: 0 };
 
-	constructor(private readonly onresult: () => void) {
-		this.worker = new Worker(new URL('./detector.worker.ts', import.meta.url), { type: 'module' });
+	// `makeWorker` lets a harness run this class outside the app, where esbuild cannot build the worker.
+	constructor(
+		private readonly onresult: () => void,
+		makeWorker?: () => Worker
+	) {
+		this.worker = makeWorker
+			? makeWorker()
+			: new Worker(new URL('./detector.worker.ts', import.meta.url), { type: 'module' });
 		this.worker.onmessage = (event) => {
 			const result = event.data;
 			if (result.type !== 'result') return;

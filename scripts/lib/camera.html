@@ -1,0 +1,250 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Virtual camera</title>
+		<style>
+			html,
+			body {
+				margin: 0;
+				background: #000;
+				overflow: hidden;
+			}
+			#stage {
+				position: relative;
+				width: 100vw;
+				height: 100vh;
+			}
+			video,
+			canvas {
+				position: absolute;
+				left: 0;
+				top: 0;
+			}
+			#film {
+				visibility: hidden;
+			}
+		</style>
+	</head>
+	<body>
+		<!-- The film and the overlay share one canvas, so what is captured is what was on the screen. -->
+		<div id="stage">
+			<video id="film" playsinline muted></video>
+			<canvas id="paint"></canvas>
+		</div>
+		<script type="module">
+			import { VirtualCamera, DRAWN_RINGS, DETECT_EVERY_MS as DETECT_MS } from '/camera.js';
+			import { Replay } from '/replay.js';
+
+			const params = new URLSearchParams(location.search);
+			const film = document.getElementById('film');
+			const paint = document.getElementById('paint');
+
+			// What Playwright reads back. Kept on the window because that is the whole of its side.
+			const report = {
+				ready: false,
+				done: false,
+				error: null,
+				video: params.get('video'),
+				width: 0,
+				height: 0,
+				frames: []
+			};
+			window.virtualCamera = report;
+
+			const GREEN = '#00e676';
+			const MAGENTA = '#ff40ff';
+			const AMBER = '#ffc107';
+
+			async function run() {
+				const name = params.get('video');
+				const pretty = params.get('smooth') === '1';
+				// An overlay video wants no per frame numbers, and five hundred of them is a lot to hand back.
+				const keep = params.get('frames') !== '0';
+				// Jpeg rather than png: five hundred lossless 1080p frames held in a page is a gigabyte.
+				const capture = params.get('capture') === '1';
+				report.captured = capture ? [] : null;
+
+				film.src = `/video/${encodeURIComponent(name)}`;
+				await settle(film);
+				report.width = film.videoWidth;
+				report.height = film.videoHeight;
+				paint.width = film.videoWidth;
+				paint.height = film.videoHeight;
+				fit();
+
+				// Both scorers here, driven by one loop against one set of labels, so the two can be subtracted.
+				const single = params.get('replay') === '1';
+				const camera = single
+					? new Replay(DETECT_MS, null, pretty, false)
+					: new VirtualCamera('/detector.worker.js', pretty);
+				try {
+					const motion = await (await fetch(`/motion/${encodeURIComponent(name)}`)).json();
+					if (motion.samples) camera.setMotion(motion.samples);
+				} catch {
+					/* A session recorded before the sensors were kept simply has none. */
+				}
+				if (params.get('arrows')) camera.setLimit(Number(params.get('arrows')));
+
+				const context = paint.getContext('2d');
+				let last = performance.now();
+				let playedMs = 0;
+				report.ready = true;
+
+				await film.play();
+
+				await new Promise((done) => {
+					function tick() {
+						if (film.ended) return done();
+						requestAnimationFrame(tick);
+						if (film.readyState < 2) return;
+
+						// The recording's clock, not the screen's: a slow machine gets fewer passes, not more time.
+						const now = performance.now();
+						playedMs += Math.min(now - last, 250);
+						last = now;
+
+						const state = single ? pushReduced(camera, film, playedMs) : camera.tick(film, playedMs);
+						context.clearRect(0, 0, paint.width, paint.height);
+						context.drawImage(film, 0, 0, paint.width, paint.height);
+						if (state) {
+							draw(context, state, paint.width);
+							if (keep) report.frames.push(strip(state, playedMs, film.currentTime));
+						}
+						if (capture) {
+							report.captured.push(paint.toDataURL('image/jpeg', 0.85).slice('data:image/jpeg;base64,'.length));
+						}
+					}
+					requestAnimationFrame(tick);
+					// A recording whose end event never fires must not hang the driver for ever.
+					film.addEventListener('ended', done, { once: true });
+				});
+
+				// Only the split holds a worker; the single scanner has nothing to let go of.
+				camera.stop?.();
+				report.done = true;
+			}
+
+			// The single scanner wants pixels, and gets the reduced frame as its full one, as the tool feeds it.
+			const work = document.createElement('canvas');
+			let singlePasses = 0;
+			function pushReduced(replay, film, at) {
+				const factor = replay.scaleFactor;
+				const width = Math.floor(film.videoWidth / factor);
+				const height = Math.floor(film.videoHeight / factor);
+				work.width = width;
+				work.height = height;
+				const c = work.getContext('2d', { willReadFrequently: true });
+				c.drawImage(film, 0, 0, width, height);
+				const small = { width, height, data: c.getImageData(0, 0, width, height).data };
+				const state = replay.push(small, small, at);
+				// Counted here because the single scanner has no counter of its own: it reports whether the
+				// frame in hand got a pass, and how many it has had altogether is what a comparison wants.
+				if (state.detected) singlePasses += 1;
+				// The split's own numbers have no meaning here, and must not be read as zero disagreement.
+				return { ...state, rebase: [], rebaseWorst: 0, passes: singlePasses, proposals: state.detections };
+			}
+
+			/** Only what a harness reads. */
+			function strip(state, at, videoTime) {
+				return {
+					at,
+					// Where in the recording this frame came from, which is the only clock a label matches on.
+					videoTime,
+					faces: state.faces.length,
+					steady: state.steady,
+					passes: state.passes,
+					proposals: state.proposals,
+					cost: state.cost,
+					lag: state.lag,
+					rebase: state.rebase,
+					rebaseWorst: state.rebaseWorst,
+					anchors: state.faces[0]?.anchors ?? null,
+					arrows: state.arrows.map((a) => ({
+						x: a.x,
+						y: a.y,
+						imageX: a.imageX,
+						imageY: a.imageY,
+						label: a.label,
+						decimal: a.decimal
+					}))
+				};
+			}
+
+			// Rings through the face's projection, as the camera page draws them: a seen boss is not an ellipse.
+			function draw(context, state, width) {
+				context.lineWidth = Math.max(2, width / 300);
+				for (const face of state.faces) {
+					context.strokeStyle = state.steady ? GREEN : AMBER;
+					for (const ring of DRAWN_RINGS) ellipse(context, face, ring);
+				}
+				context.fillStyle = MAGENTA;
+				context.strokeStyle = MAGENTA;
+				context.font = `${Math.max(14, width / 45)}px sans-serif`;
+				for (const arrow of state.arrows) {
+					const r = Math.max(4, width / 180);
+					context.beginPath();
+					context.arc(arrow.imageX, arrow.imageY, r, 0, Math.PI * 2);
+					context.stroke();
+					context.fillText(arrow.label, arrow.imageX + r * 1.6, arrow.imageY - r);
+				}
+			}
+
+			/** One ring, walked round in face coordinates and projected point by point. */
+			function ellipse(context, face, ring) {
+				const h = face.transform;
+				context.beginPath();
+				for (let i = 0; i <= 64; i++) {
+					const a = (i / 64) * Math.PI * 2;
+					const fx = Math.cos(a) * ring;
+					const fy = Math.sin(a) * ring;
+					const w = h[6] * fx + h[7] * fy + h[8];
+					const x = (h[0] * fx + h[1] * fy + h[2]) / w;
+					const y = (h[3] * fx + h[4] * fy + h[5]) / w;
+					if (i === 0) context.moveTo(x, y);
+					else context.lineTo(x, y);
+				}
+				context.stroke();
+			}
+
+			/** So a captured stream is the recording's own shape. */
+			function fit() {
+				const scale = Math.min(
+					window.innerWidth / film.videoWidth,
+					window.innerHeight / film.videoHeight
+				);
+				for (const el of [film, paint]) {
+					el.style.width = `${film.videoWidth * scale}px`;
+					el.style.height = `${film.videoHeight * scale}px`;
+				}
+			}
+
+			// These recordings carry no duration, so seeking past the end makes the browser work it out.
+			async function settle(el) {
+				await new Promise((done) => {
+					if (el.readyState >= 1) return done();
+					el.addEventListener('loadedmetadata', done, { once: true });
+					setTimeout(done, 5000);
+				});
+				if (!Number.isFinite(el.duration)) {
+					await new Promise((done) => {
+						const settled = () => {
+							if (!Number.isFinite(el.duration)) return;
+							el.removeEventListener('durationchange', settled);
+							done();
+						};
+						el.addEventListener('durationchange', settled);
+						el.currentTime = 1e101;
+						setTimeout(done, 5000);
+					});
+				}
+				el.currentTime = 0;
+			}
+
+			run().catch((error) => {
+				report.error = String((error && error.stack) || error);
+				report.done = true;
+			});
+		</script>
+	</body>
+</html>
