@@ -266,6 +266,8 @@ export class Scanner {
 	 * is given tells.
 	 */
 	pushReduced(small: Frame, region: Region | null = null): ScanResult {
+		// Everything below reads the picture through this fit, so it has to describe the frame just given.
+		this.track(small);
 
 		if (this.frames % this.faceEvery === 0 || this.faces.length === 0) {
 			const candidates = detectFaces(small);
