@@ -49,6 +49,7 @@ import { existsSync, createReadStream } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename, extname } from 'node:path';
 import { listRecordings, motionPath } from './lib/recordings.mjs';
+import { cameraBundle, workerBundle } from './lib/bundles.mjs';
 
 const ROOT = new URL('..', import.meta.url).pathname;
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
@@ -345,6 +346,14 @@ async function serve() {
 			 */
 			if (url.pathname === '/replay.js') {
 				return send(response, 200, 'text/javascript', await replayBundle());
+			}
+
+			// The live path, beside the replay: they answer different questions. See doc/live-scoring-split.md.
+			if (url.pathname === '/camera.js') {
+				return send(response, 200, 'text/javascript', await cameraBundle());
+			}
+			if (url.pathname === '/detector.worker.js') {
+				return send(response, 200, 'text/javascript', await workerBundle());
 			}
 
 			if (url.pathname.startsWith('/video/')) {

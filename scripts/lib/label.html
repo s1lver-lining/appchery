@@ -272,6 +272,7 @@
 			<div class="row" style="margin-top:6px"><button id="anchor">Read them through this frame</button></div>
 			<div class="row" style="margin-top:6px">
 				<button id="ownArrows" title="Take away the arrows placed on this frame, so it goes back to following the frame the arrows were drawn on. The dashed circles come back.">Follow the other frame again</button>
+
 			</div>
 			<div class="row" style="margin-top:6px"><button id="noarrows">No arrows in this video</button></div>
 		</div>
@@ -288,6 +289,7 @@
 				<button id="detOff">Off</button>
 				<button id="detClassical">Classical</button>
 				<button id="detLearned">Learned</button>
+				<button id="detLive" title="The live path as the phone runs it: the search in a worker with a fit of its own, the face followed on the page between passes, and every arrow carried from one fit into the other. Classical replays the same detector on one thread, which is a steadier thing than any archer has, and the two disagreeing is worth seeing.">Live</button>
 			</div>
 			<p class="dim" id="detectorNote" style="margin-top:6px"></p>
 		</div>
@@ -581,13 +583,21 @@
 		}
 	}
 
-	for (const [id, which] of [['detOff', 'off'], ['detClassical', 'classical'], ['detLearned', 'learned']]) {
+	for (const [id, which] of [
+		['detOff', 'off'],
+		['detClassical', 'classical'],
+		['detLearned', 'learned'],
+		['detLive', 'live']
+	]) {
 		el(id).onclick = () => {
 			detector = which;
 			el('detOff').className = detector === 'off' ? 'on' : '';
 			el('detClassical').className = detector === 'classical' ? 'on' : '';
 			el('detLearned').className = detector === 'learned' ? 'on' : '';
+			el('detLive').className = detector === 'live' ? 'on' : '';
 			sayScorer();
+			// A different scanner entirely, so the sweep starts again rather than changing under itself.
+			if (!el('player').hidden) restartReplay();
 			void runDetector();
 		};
 	}
@@ -605,6 +615,7 @@
 		el('scorerToggle').className = detector === 'off' ? '' : 'on';
 		if (detector === 'off') el('scorerToggle').textContent = 'Scorer off';
 		else if (detector === 'learned') el('scorerToggle').textContent = 'Learned';
+		else if (detector === 'live') el('scorerToggle').textContent = 'Live';
 		else el('scorerToggle').textContent = 'Scorer';
 	}
 
@@ -978,12 +989,20 @@
 	/** Started afresh, because everything the scanner knows it learnt from the frames before this one. */
 	function restartReplay() {
 		if (!replayLib) return;
-		replay = new replayLib.Replay(
-			replayLib.DETECT_EVERY_MS,
-			detector === 'learned' ? model : null,
-			smoothOverlay,
-			false
-		);
+		// The live one holds a worker, which does not free itself.
+		if (replay && replay.stop) replay.stop();
+		// Both answer `push` shaped calls and hand back the same frame state, so drawing does not care which.
+		if (detector === 'live') {
+			if (!cameraLib) return;
+			replay = new cameraLib.VirtualCamera('/detector.worker.js', smoothOverlay);
+		} else {
+			replay = new replayLib.Replay(
+				replayLib.DETECT_EVERY_MS,
+				detector === 'learned' ? model : null,
+				smoothOverlay,
+				false
+			);
+		}
 		if (motionOf) replay.setMotion(motionOf);
 		// The clock starts again with it, so a pass is not owed for the time spent somewhere else.
 		playedMs = 0;
@@ -994,6 +1013,7 @@
 		const v = video();
 		if (!v) return;
 		replayLib ??= await import('/replay.js');
+		cameraLib ??= await import('/camera.js');
 		if (detector === 'learned') model ??= await (await fetch('/model')).json();
 		try {
 			motionOf = (await (await fetch(`/motion/${encodeURIComponent(v.video)}`)).json()).samples ?? null;
@@ -1142,6 +1162,13 @@
 		showTransport();
 		if (detector === 'off') return;
 
+		// The live one takes the video element: reducing it and cutting the crop are steps being reproduced.
+		if (detector === 'live') {
+			const state = replay.tick(film, playedMs);
+			if (state) paintFilm(context2, state, film.videoWidth);
+			return;
+		}
+
 		const factor = replay.scaleFactor;
 		const width = Math.floor(film.videoWidth / factor);
 		const height = Math.floor(film.videoHeight / factor);
@@ -1238,6 +1265,8 @@
 	 * the app would not do is worse than showing nothing, because it would be believed.
 	 */
 	let detector = 'off';
+	/** The app's own split, loaded beside the single scanner replay. See `restartReplay`. */
+	let cameraLib = null;
 	let vision = null;
 	let model = null;
 	/** What the last run found, and what it cost, or null when nothing has been run on this picture. */
@@ -2446,6 +2475,7 @@
 			if (event.key.toLowerCase() === 'a') el('arrowMode').onclick();
 			if (event.key.toLowerCase() === 'n') el('nockMode').onclick();
 			if (event.key.toLowerCase() === 'm') el('markMode').onclick();
+			// Beside F, because locking is done while fitting.
 		}
 		if (event.key.toLowerCase() === 'h') el('hide').onclick();
 		// Round the three, because the useful thing is flicking between them on one picture.

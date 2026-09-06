@@ -15,6 +15,12 @@
 #
 # Nothing here saves: the page writes each label to the workspace a moment after it is placed.
 #
+# The player has three scorers to watch a recording through. Classical and Learned drive one scanner on
+# one thread, which is what this tool has always shown; Live drives the app's own split, the search in a
+# worker with a fit of its own and the face followed on the page between passes. They are not the same
+# program and they do not always agree, and where they disagree the archer is watching the second one.
+# See doc/live-scoring-split.md, and scripts/eval-camera.mjs for the same comparison as numbers.
+#
 # The page also runs the app's own detector, over the frame being labelled or over any photograph in
 # the corpus, drawn dashed in magenta on top of the labels. That is the comparison a score cannot make:
 # not how many arrows were found but which ones, how far out, and whether the fault was the arrows or
