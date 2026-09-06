@@ -1,5 +1,5 @@
 import type { RingColour } from './rings';
-import { alignFace, faceFromAnchors, faceFromEllipse, moveAnchor } from './face';
+import { alignFace, alignTurn, faceFromAnchors, faceFromEllipse, moveAnchor, turnFace, upOffset } from './face';
 import { rgbToHsv } from './pixels';
 import type { Frame, FaceLocation } from './types';
 
@@ -68,6 +68,9 @@ const SPOT_BANDS: { radius: number; colours: RingColour[] }[] = [
 	{ radius: 0.54, colours: ['light', 'grey'] },
 	{ radius: 0.7, colours: ['light', 'grey'] }
 ];
+
+// How far the followed origin moves towards gravity each frame. Swept in doc/live-scoring-split.md.
+const LEAK = 0.01;
 
 /**
  * How far either side of a boundary to sample. Wide enough to clear the printed line and the blur of
@@ -576,7 +579,17 @@ export function refineFace(
 		 *
 		 * So the chain does this job, and gravity does the one job the chain cannot: see `acquire`.
 		 */
-		return alignFace(start, fitted);
+		if (up === null) return alignFace(start, fitted);
+
+		// The chain is unbiased but walks; gravity is bounded but noisy. Leaking one towards the other
+		// bounds the walk without writing gravity's jitter into the coordinates.
+		const chained = alignTurn(start, fitted);
+		const pinned = upOffset(fitted, up);
+		// The short way round, since a face is the same face every quarter turn.
+		let gap = pinned - chained;
+		const quarter = Math.PI / 2;
+		gap -= Math.round(gap / quarter) * quarter;
+		return turnFace(fitted, chained + gap * LEAK);
 	}
 
 	const fitted = descend(frame, start);

@@ -411,6 +411,17 @@ export function upOffset(face: FaceLocation, up: number): number {
 	return Math.atan2(along.y - middle.y, along.x - middle.x);
 }
 
+/** The same fit, described from an angular origin turned by `angle`. The face itself does not move. */
+export function turnFace(fitted: FaceLocation, angle: number): FaceLocation {
+	if (angle === 0) return fitted;
+	const turned = ANCHOR_POINTS.map((_, i) => {
+		const at = (i * Math.PI) / 2 + angle;
+		const point = apply(fitted.transform, Math.cos(at) * ANCHOR_RADIUS, Math.sin(at) * ANCHOR_RADIUS);
+		return [point.x, point.y] as [number, number];
+	});
+	return { ...(faceFromAnchors(turned, fitted.support) ?? fitted), spot: fitted.spot };
+}
+
 export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
 	/**
 	 * Which way up is on the paper, rather than which anchor happens to look upright in the picture.
@@ -453,7 +464,8 @@ export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
  * identical face, so this changes nothing about where the geometry says the boss is; it only stops the
  * coordinates written on it from rotating underneath the arrows.
  */
-export function alignFace(previous: FaceLocation, fitted: FaceLocation): FaceLocation {
+/** The turn `alignFace` would apply, given separately so it can be blended with another one. */
+export function alignTurn(previous: FaceLocation, fitted: FaceLocation): number {
 	/** As far as a frame's worth of drift could conceivably reach. Beyond it this is a different face. */
 	const REACH = Math.PI / 12;
 
@@ -484,12 +496,9 @@ export function alignFace(previous: FaceLocation, fitted: FaceLocation): FaceLoc
 			}
 		}
 	}
-	if (turn === 0) return fitted;
+	return turn;
+}
 
-	const turned = ANCHOR_POINTS.map((_, i) => {
-		const angle = (i * Math.PI) / 2 + turn;
-		const point = apply(fitted.transform, Math.cos(angle) * ANCHOR_RADIUS, Math.sin(angle) * ANCHOR_RADIUS);
-		return [point.x, point.y] as [number, number];
-	});
-	return { ...(faceFromAnchors(turned, fitted.support) ?? fitted), spot: fitted.spot };
+export function alignFace(previous: FaceLocation, fitted: FaceLocation): FaceLocation {
+	return turnFace(fitted, alignTurn(previous, fitted));
 }
