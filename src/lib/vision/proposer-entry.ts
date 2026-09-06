@@ -52,18 +52,23 @@ export function propose(
 			confidence: arrow.confidence
 		}));
 	}
-	if (options.proposer === 'impacts') {
-		return detectArrowsFromImpacts(small, face, options).map((arrow) => ({
+	const steps = () =>
+		detectArrowsFromImpacts(small, face, options).map((arrow) => ({
 			x: arrow.x,
 			y: arrow.y,
 			area: arrow.area,
 			length: arrow.length
 		}));
-	}
-	return detectArrowsInStill(small, face, { ...options, turnedAway }).map((arrow) => ({
-		x: arrow.x,
-		y: arrow.y,
-		area: arrow.area,
-		length: arrow.length
-	}));
+	const shapes = () =>
+		detectArrowsInStill(small, face, { ...options, turnedAway }).map((arrow) => ({
+			x: arrow.x,
+			y: arrow.y,
+			area: arrow.area,
+			length: arrow.length
+		}));
+
+	if (options.proposer === 'impacts') return steps();
+	// Pooled and not merged, as the scanner pools them: the tracker groups by proximity anyway.
+	if (options.proposer === 'both') return [...shapes(), ...steps()];
+	return shapes();
 }
