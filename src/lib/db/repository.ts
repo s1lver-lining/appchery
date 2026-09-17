@@ -742,6 +742,115 @@ export async function recordEnd(
 	});
 }
 
+/** One arrow as a caller already knows it, position included only when there is one. */
+export interface EndShot {
+	ordinal: number;
+	value: number;
+	zoneLabel: string;
+}
+
+/**
+ * An end put exactly as given, whether or not one is there already: the same call records a new end,
+ * edits an arrow in an old one, and shortens one whose last arrow was taken back. Idempotent on
+ * purpose, because its caller is a link that may deliver the same end twice.
+ */
+export async function replaceEnd(
+	activityId: string,
+	stageIndex: number,
+	endNo: number,
+	shots: EndShot[]
+) {
+	const subtotal = shots.reduce((sum, shot) => sum + shot.value, 0);
+
+	return transaction(async () => {
+		const existing = (await listEnds(activityId)).find(
+			(row) => row.stageIndex === stageIndex && row.endNo === endNo
+		);
+		const now = Date.now();
+
+		let endId: string;
+		if (existing) {
+			endId = existing.id;
+			await db()
+				.update(schema.end)
+				.set({ subtotal, updatedAt: now })
+				.where(eq(schema.end.id, endId));
+			await log('round_end', endId, 'update');
+		} else {
+			const base = stamp();
+			endId = base.id;
+			await db()
+				.insert(schema.end)
+				.values({ ...base, activityId, stageIndex, endNo, subtotal, video: null, settingValue: null });
+			await log('round_end', endId, 'insert');
+		}
+
+		const spare = new Map((await listShots(endId)).map((row) => [row.ordinal, row]));
+		for (const shot of shots) {
+			const row = spare.get(shot.ordinal);
+			if (!row) {
+				const base = stamp();
+				await db().insert(schema.shot).values({
+					...base,
+					endId,
+					ordinal: shot.ordinal,
+					value: shot.value,
+					zoneLabel: shot.zoneLabel,
+					x: null,
+					y: null,
+					source: 'manual'
+				});
+				await log('shot', base.id, 'insert');
+				continue;
+			}
+			spare.delete(shot.ordinal);
+			// An arrow that has not changed is left alone, so re-sending an end cannot throw away the
+			// position a plotted arrow already carries.
+			if (row.value === shot.value && row.zoneLabel === shot.zoneLabel) continue;
+			await db()
+				.update(schema.shot)
+				.set({
+					value: shot.value,
+					zoneLabel: shot.zoneLabel,
+					x: null,
+					y: null,
+					source: 'manual',
+					updatedAt: now
+				})
+				.where(eq(schema.shot.id, row.id));
+			await log('shot', row.id, 'update');
+		}
+
+		// Whatever the end no longer reaches had its arrow taken back.
+		const removed = [...spare.values()];
+		if (removed.length > 0) {
+			await db()
+				.update(schema.shot)
+				.set({ deletedAt: now, updatedAt: now })
+				.where(
+					inArray(
+						schema.shot.id,
+						removed.map((row) => row.id)
+					)
+				);
+			await logMany('shot', removed.map((row) => row.id), 'delete');
+		}
+
+		await refreshActivityTotals(activityId);
+		return endId;
+	});
+}
+
+/** The end at that position, gone, or nothing at all when there was never one there. */
+export async function removeEndAt(activityId: string, stageIndex: number, endNo: number) {
+	const existing = (await listEnds(activityId)).find(
+		(row) => row.stageIndex === stageIndex && row.endNo === endNo
+	);
+	if (!existing) return false;
+	await deleteEnd(activityId, existing.id);
+	return true;
+}
+
 /** Editing a recorded arrow, from tapping it on the score sheet. */
 export async function updateShot(
 	shotId: string,
