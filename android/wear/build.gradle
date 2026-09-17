@@ -1,0 +1,28 @@
+apply plugin: 'com.android.application'
+
+// Throwaway probe: no androidx, no Compose, nothing but framework APIs, so it builds from cache and
+// answers one question without dragging a UI toolkit in behind it.
+android {
+    namespace "com.appchery.probe"
+    compileSdk rootProject.ext.compileSdkVersion
+
+    defaultConfig {
+        applicationId "com.appchery.probe"
+        // Wear OS 3, the oldest release that still gets the current Play Services.
+        minSdkVersion 30
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "0.1"
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+        }
+    }
+}
