@@ -190,10 +190,10 @@ function asMergeable(state: EndState): Mergeable {
 }
 
 /**
- * Clock skew between the two devices, as `hello` allows it to be measured. Last write wins is
- * meaningless if the two disagree about now, and a watch runs its own clock: Wear keeps it close to
- * the phone, but close is not equal and a few seconds either way decides who wins an edit.
+ * What to add to a timestamp taken from `from`'s clock to read it on `into`'s. Last write wins is
+ * meaningless if the two devices disagree about now, and a watch runs its own clock: Wear keeps it
+ * close to the phone, but close is not equal and a few seconds either way decides who wins an edit.
  */
-export function skew(peerClock: number, ownClock: number): number {
-	return peerClock - ownClock;
+export function skew(into: number, from: number): number {
+	return into - from;
 }
