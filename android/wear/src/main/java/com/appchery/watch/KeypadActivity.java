@@ -14,6 +14,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -31,7 +32,7 @@ import java.util.Set;
  * tapped and shows what the phone says, and it never decides what an arrow is worth. Every end is
  * sent whole, so an edit, an undo and an added arrow are the same message.
  */
-public class KeypadActivity extends Activity implements Link.Listener {
+public class KeypadActivity extends Activity implements Link.Listener, SessionView.Listener {
 
     // The WA face palette, taken from src/lib/domain/rounds/seed.ts so the wrist matches the phone.
     private static final int GOLD = 0xFFFFCF3F;
@@ -80,10 +81,15 @@ public class KeypadActivity extends Activity implements Link.Listener {
     private TextView sheetStatus;
     private TextView editLabel;
     private ScrollView sheetScroll;
+    private View sheetContent;
     private View editOverlay;
     private int editing = -1;
 
     private DrawerRoot root;
+    private FrameLayout shell;
+    private SessionView sessionView;
+    private TextView idleView;
+    private String screen = "idle";
     private Vibrator vibrator;
     private Link link;
     private float rotary = 0;
@@ -95,7 +101,8 @@ public class KeypadActivity extends Activity implements Link.Listener {
         super.onCreate(state);
         vibrator = getSystemService(Vibrator.class);
         density = getResources().getDisplayMetrics().density;
-        build();
+        buildShell();
+        redraw();
 
         link = new Link(this, this);
         String[] needed = {Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT};
@@ -126,7 +133,46 @@ public class KeypadActivity extends Activity implements Link.Listener {
 
     // -------- the whole screen, rebuilt whenever the round changes shape
 
-    private void build() {
+    private void buildShell() {
+        shell = new FrameLayout(this);
+        shell.setBackgroundColor(Color.BLACK);
+
+        idleView = new TextView(this);
+        idleView.setGravity(Gravity.CENTER);
+        idleView.setTextColor(DIM);
+        idleView.setTextSize(13f);
+        idleView.setPadding(Math.round(30 * density), 0, Math.round(30 * density), 0);
+        shell.addView(idleView);
+
+        sessionView = new SessionView(this, this);
+        shell.addView(sessionView);
+
+        shell.addView(buildScoring());
+
+        // Focus lives here, so a rotary event always reaches the hierarchy whatever screen is up.
+        shell.setFocusableInTouchMode(true);
+        setContentView(shell);
+        shell.requestFocus();
+        showScreen(screen);
+    }
+
+    /** Only the scoring view is rebuilt when a round of another shape arrives. */
+    private void rebuildScoring() {
+        if (root != null) shell.removeView(root);
+        shell.addView(buildScoring());
+        showScreen(screen);
+        redraw();
+    }
+
+    private void showScreen(String next) {
+        screen = next;
+        idleView.setVisibility("idle".equals(next) ? View.VISIBLE : View.GONE);
+        sessionView.setVisibility("session".equals(next) ? View.VISIBLE : View.GONE);
+        if (root != null) root.setVisibility("score".equals(next) ? View.VISIBLE : View.GONE);
+        idleView.setText(linkNote);
+    }
+
+    private DrawerRoot buildScoring() {
         root = new DrawerRoot(this);
         root.setBackgroundColor(Color.BLACK);
         root.addView(buildKeypad());
@@ -142,14 +188,8 @@ public class KeypadActivity extends Activity implements Link.Listener {
         editOverlay = buildEditor();
         editOverlay.setVisibility(View.GONE);
         root.addView(editOverlay);
-
         root.setRotary(this::onCrown);
-        // A rotary event is delivered to whichever view holds focus, so without this the crown never
-        // reaches the hierarchy at all and the dispatch override never runs.
-        root.setFocusableInTouchMode(true);
-        setContentView(root);
-        root.requestFocus();
-        redraw();
+        return root;
     }
 
     private View buildKeypad() {
@@ -361,6 +401,7 @@ public class KeypadActivity extends Activity implements Link.Listener {
         sheetScroll.setFocusable(false);
         sheetScroll.setFocusableInTouchMode(false);
         sheetScroll.addView(content);
+        sheetContent = content;
         return sheetScroll;
     }
 
@@ -575,8 +616,13 @@ public class KeypadActivity extends Activity implements Link.Listener {
     }
 
     private boolean onCrown(MotionEvent e) {
-        if (editOverlay.getVisibility() == View.VISIBLE) return true;
         float delta = e.getAxisValue(MotionEvent.AXIS_SCROLL);
+        if ("session".equals(screen)) {
+            sessionView.scrollByCrown(delta);
+            return true;
+        }
+        if (!"score".equals(screen)) return true;
+        if (editOverlay.getVisibility() == View.VISIBLE) return true;
 
         if (!root.isOpen()) {
             rotary += delta;
@@ -619,8 +665,9 @@ public class KeypadActivity extends Activity implements Link.Listener {
             arrowsPerEnd = roundArrows;
             shots = new String[ends * arrowsPerEnd];
             asserted.clear();
-            build();
+            rebuildScoring();
         }
+        sessionView.setEndSize(arrowsPerEnd);
         redraw();
     }
 
@@ -644,7 +691,44 @@ public class KeypadActivity extends Activity implements Link.Listener {
     @Override
     public void onLinkState(boolean connected, String note) {
         linkNote = note;
+        idleView.setText(note);
+        sessionView.setNote(note);
         redraw();
+    }
+
+    @Override
+    public void onScreen(String next) {
+        // The phone owns where the two of them are, so this is followed rather than negotiated.
+        showScreen(next);
+    }
+
+    @Override
+    public void onSession(String label, int activityCount, int arrows) {
+        sessionView.setSession(label, arrows);
+        // The activities follow one message each, so the list is emptied ready for them.
+        sessionView.clearActivities();
+    }
+
+    @Override
+    public void onActivity(int index, String kind, String label, boolean scorable) {
+        sessionView.addActivity(index, kind, label, scorable);
+    }
+
+    @Override
+    public void onArrows(int total, long at) {
+        sessionView.setArrows(total);
+    }
+
+    @Override
+    public void onOpen(int index) {
+        buzz(18);
+        link.requestOpen(index);
+    }
+
+    @Override
+    public void onArrows(int total) {
+        buzz(18);
+        link.assertArrows(total);
     }
 
     // -------- rendering
@@ -692,6 +776,19 @@ public class KeypadActivity extends Activity implements Link.Listener {
 
         int waiting = link == null ? 0 : link.waiting();
         sheetStatus.setText(waiting > 0 ? linkNote + ", " + waiting + " waiting" : linkNote);
+        clampSheet();
+    }
+
+    /**
+     * An end going out of the sheet makes the sheet shorter, and a ScrollView left scrolled past its
+     * own content shows the empty space below it: a black screen that a tap fixes, because the tap
+     * is what forces the re-layout that clamps it. Clamped here instead, when the height changes.
+     */
+    private void clampSheet() {
+        sheetScroll.post(() -> {
+            int room = Math.max(0, sheetContent.getHeight() - sheetScroll.getHeight());
+            if (sheetScroll.getScrollY() > room) sheetScroll.scrollTo(0, room);
+        });
     }
 
     /** An arrow not yet shot is an empty outline rather than a gap, so the end keeps its shape. */

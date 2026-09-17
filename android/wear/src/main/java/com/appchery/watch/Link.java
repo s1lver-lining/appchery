@@ -45,7 +45,7 @@ import java.util.UUID;
 public class Link {
 
     private static final String TAG = "AppcheryWatch";
-    private static final int VERSION = 1;
+    private static final int VERSION = 2;
 
     // The same three as src/lib/watch/ble.ts. Changing one means changing both halves.
     private static final UUID SERVICE = UUID.fromString("6e7d0001-b5a3-4f2e-9c11-8a2f3b6d4c70");
@@ -65,6 +65,17 @@ public class Link {
         void onEnd(int stageIndex, int endNo, String[] labels, long at);
 
         void onLinkState(boolean connected, String note);
+
+        /** Which screen to show, so the wrist follows wherever the phone has gone. */
+        void onScreen(String screen);
+
+        /** The session the phone has open. Its activities follow, one message each. */
+        void onSession(String label, int activityCount, int arrows);
+
+        void onActivity(int index, String kind, String label, boolean scorable);
+
+        /** The session's training arrows, entire: the phone's figure wins unless ours is newer. */
+        void onArrows(int total, long at);
     }
 
     private final Context context;
@@ -105,6 +116,39 @@ public class Link {
     /** Whether an assertion for that end is still in flight, so a push about it may be stale. */
     public boolean pendingFor(int stageIndex, int endNo) {
         return pending.containsKey(stageIndex + ":" + endNo);
+    }
+
+    private static final String ARROWS_KEY = "arrows";
+
+    /** Asks the phone to open an activity. The phone owns where the two of them are. */
+    public void requestOpen(int index) {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("v", VERSION);
+            message.put("t", "open");
+            message.put("i", index);
+            send(message);
+        } catch (Exception e) {
+            Log.w(TAG, "could not ask to open", e);
+        }
+    }
+
+    /**
+     * The session's training arrows as a total rather than as a difference. "Add six" delivered twice
+     * gives twelve, and a queue delivering twice is ordinary, so the whole figure travels.
+     */
+    public void assertArrows(int total) {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("v", VERSION);
+            message.put("t", "arrows");
+            message.put("n", Math.max(0, total));
+            message.put("at", System.currentTimeMillis());
+            pending.put(ARROWS_KEY, message);
+            flush();
+        } catch (Exception e) {
+            Log.w(TAG, "could not assert arrows", e);
+        }
     }
 
     /** Opens the server and starts advertising. Bluetooth permissions must already be granted. */
@@ -257,6 +301,19 @@ public class Link {
             case "ack":
                 onAck(message);
                 return;
+            case "screen":
+                String screen = message.optString("s", "");
+                if (!screen.isEmpty()) main.post(() -> listener.onScreen(screen));
+                return;
+            case "session":
+                onSession(message);
+                return;
+            case "activity":
+                onActivity(message);
+                return;
+            case "arrows":
+                onArrows(message);
+                return;
             case "bye":
                 say(false, "phone let go");
                 return;
@@ -305,6 +362,37 @@ public class Link {
         long at = message.optLong("at", 0);
         if (endNo < 1) return;
         main.post(() -> listener.onEnd(stageIndex, endNo, labels, at));
+    }
+
+    private void onSession(JSONObject message) {
+        String label = message.optString("l", "");
+        int count = message.optInt("c", -1);
+        int arrows = message.optInt("a", -1);
+        if (label.isEmpty() || count < 0 || arrows < 0) return;
+        main.post(() -> listener.onSession(label, count, arrows));
+    }
+
+    private void onActivity(JSONObject message) {
+        int index = message.optInt("i", -1);
+        String kind = message.optString("k", "");
+        String label = message.optString("l", "");
+        if (index < 0 || kind.isEmpty() || label.isEmpty()) return;
+        boolean scorable = message.optInt("s", 0) == 1;
+        main.post(() -> listener.onActivity(index, kind, label, scorable));
+    }
+
+    private void onArrows(JSONObject message) {
+        int total = message.optInt("n", -1);
+        long at = message.optLong("at", 0);
+        if (total < 0) return;
+
+        JSONObject held = pending.get(ARROWS_KEY);
+        // A figure at least as new as the one being held means the phone has ours, or better.
+        if (held != null) {
+            if (at < held.optLong("at", 0)) return;
+            pending.remove(ARROWS_KEY);
+        }
+        main.post(() -> listener.onArrows(total, at));
     }
 
     private void onAck(JSONObject message) {
