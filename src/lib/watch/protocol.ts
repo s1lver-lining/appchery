@@ -15,7 +15,7 @@ import { resolve, type Mergeable } from '$lib/sync/merge';
  * at about 170 bytes against an MTU that cannot be relied on past 180.
  */
 
-export const PROTOCOL_VERSION = 1;
+export const PROTOCOL_VERSION = 2;
 
 /**
  * Default BLE MTU leaves 20 usable bytes and Chrome negotiates about 185 with no way to ask for
@@ -29,6 +29,16 @@ const MAX_ARROWS = 12;
 /** A zone label is `10`, `X`, `M`, `vital`: nothing longer travels. */
 const MAX_LABEL_LENGTH = 6;
 
+/** A round or session name, cut by the sender: a watch cannot show more than this anyway. */
+const MAX_NAME_LENGTH = 40;
+
+/**
+ * An activity is referred to by its position in the session rather than by its id. Four uuids in one
+ * message comes to about 307 bytes against a budget of 180, so the phone keeps the map and the wire
+ * carries an index.
+ */
+const MAX_ACTIVITIES = 60;
+
 export type Wire =
 	/** Who is on the other end, and what its clock reads, so the two can be compared. */
 	| { v: number; t: 'hello'; d: string; c: number }
@@ -38,8 +48,26 @@ export type Wire =
 	| { v: number; t: 'end'; s: number; n: number; l: (string | null)[]; at: number }
 	/** The end named has been applied as of `at`, so the sender may forget its pending copy. */
 	| { v: number; t: 'ack'; s: number; n: number; at: number }
+	/** Which screen the watch should be showing, so the wrist follows the phone. */
+	| { v: number; t: 'screen'; s: Screen }
+	/** The session the phone has open: its name, how many activities it holds, its training arrows. */
+	| { v: number; t: 'session'; l: string; c: number; a: number }
+	/** One activity in that session, by position. `s` is whether the watch can score it. */
+	| { v: number; t: 'activity'; i: number; k: string; l: string; s: 0 | 1 }
+	/** The watch asking the phone to open an activity, since the phone owns where the two are. */
+	| { v: number; t: 'open'; i: number }
+	/**
+	 * The session's training arrows, entire rather than as a difference. A count sent as "add six"
+	 * doubles when the message arrives twice, and arriving twice is normal for a queue.
+	 */
+	| { v: number; t: 'arrows'; n: number; at: number }
 	/** The link is being given up deliberately, as opposed to lost. */
 	| { v: number; t: 'bye' };
+
+/** Where the watch is. Scoring is driven by `round`, so this only has to name the three states. */
+export type Screen = 'idle' | 'session' | 'score';
+
+const SCREENS: Screen[] = ['idle', 'session', 'score'];
 
 export type Decoded =
 	| { ok: true; message: Wire }
@@ -121,6 +149,31 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 			if (!isIndex(m.s) || !isCount(m.n) || !isTime(m.at)) break;
 			return { ok: true, message: { v: version, t: 'ack', s: m.s, n: m.n, at: m.at } };
 
+		case 'screen':
+			if (!SCREENS.includes(m.s as Screen)) break;
+			return { ok: true, message: { v: version, t: 'screen', s: m.s as Screen } };
+
+		case 'session':
+			if (!isName(m.l) || !isIndex(m.c) || !isIndex(m.a)) break;
+			if ((m.c as number) > MAX_ACTIVITIES) break;
+			return { ok: true, message: { v: version, t: 'session', l: m.l, c: m.c, a: m.a } };
+
+		case 'activity':
+			if (!isIndex(m.i) || (m.i as number) >= MAX_ACTIVITIES) break;
+			if (!isName(m.k) || !isName(m.l) || (m.s !== 0 && m.s !== 1)) break;
+			return {
+				ok: true,
+				message: { v: version, t: 'activity', i: m.i, k: m.k, l: m.l, s: m.s }
+			};
+
+		case 'open':
+			if (!isIndex(m.i) || (m.i as number) >= MAX_ACTIVITIES) break;
+			return { ok: true, message: { v: version, t: 'open', i: m.i } };
+
+		case 'arrows':
+			if (!isIndex(m.n) || !isTime(m.at)) break;
+			return { ok: true, message: { v: version, t: 'arrows', n: m.n, at: m.at } };
+
 		case 'bye':
 			return { ok: true, message: { v: version, t: 'bye' } };
 	}
@@ -134,6 +187,11 @@ function isId(value: unknown): value is string {
 
 function isLabel(value: unknown): value is string {
 	return typeof value === 'string' && value.length > 0 && value.length <= MAX_LABEL_LENGTH;
+}
+
+/** A name the sender has already cut to something a watch can show. */
+function isName(value: unknown): value is string {
+	return typeof value === 'string' && value.length > 0 && value.length <= MAX_NAME_LENGTH;
 }
 
 function isTime(value: unknown): value is number {

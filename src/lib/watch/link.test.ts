@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import { WatchSession, type LinkEvent, type Record, type Round } from './link';
-import { decode, encode, endKey, type EndState, type Wire } from './protocol';
+import { decode, encode, endKey, PROTOCOL_VERSION, type EndState, type Wire } from './protocol';
 import type { PlannedShot } from './apply';
 
 const ROUND: Round = {
@@ -76,7 +76,7 @@ const SIX = ['X', '10', '9', '9', '8', '7'];
 describe('opening a link', () => {
 	it('says hello with this device and its clock', async () => {
 		await session.open();
-		expect(sent).toEqual([{ v: 1, t: 'hello', d: 'phone', c: PHONE_NOW }]);
+		expect(sent).toEqual([{ v: PROTOCOL_VERSION, t: 'hello', d: 'phone', c: PHONE_NOW }]);
 	});
 
 	it('answers a hello with the round, so the watch can draw the right keypad', async () => {
@@ -135,7 +135,7 @@ describe('an end arriving from the watch', () => {
 
 		expect(record.ends.get(endKey(0, 1))?.labels).toEqual(SIX);
 		expect(events).toContainEqual({ kind: 'applied', stageIndex: 0, endNo: 1 });
-		expect(sent).toContainEqual({ v: 1, t: 'ack', s: 0, n: 1, at: PHONE_NOW });
+		expect(sent).toContainEqual({ v: PROTOCOL_VERSION, t: 'ack', s: 0, n: 1, at: PHONE_NOW });
 	});
 
 	// The watch keeps its queue keyed on its own timestamps, so the ack has to speak its clock.
@@ -295,7 +295,7 @@ describe('nonsense on the wire', () => {
 
 	it('names a newer protocol so the archer can be told to update', async () => {
 		await session.receive(new TextEncoder().encode('{"v":99,"t":"bye"}'));
-		expect(events).toEqual([{ kind: 'version-mismatch', theirs: 99, ours: 1 }]);
+		expect(events).toEqual([{ kind: 'version-mismatch', theirs: 99, ours: PROTOCOL_VERSION }]);
 	});
 
 	it('notices a deliberate goodbye', async () => {

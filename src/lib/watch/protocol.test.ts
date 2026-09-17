@@ -40,7 +40,12 @@ describe('encoding', () => {
 			},
 			{ v: PROTOCOL_VERSION, t: 'end', s: 0, n: 3, l: ['X', '10', null], at: 1789668623593 },
 			{ v: PROTOCOL_VERSION, t: 'ack', s: 0, n: 3, at: 1789668623593 },
-			{ v: PROTOCOL_VERSION, t: 'bye' }
+			{ v: PROTOCOL_VERSION, t: 'bye' },
+			{ v: PROTOCOL_VERSION, t: 'screen', s: 'session' },
+			{ v: PROTOCOL_VERSION, t: 'session', l: 'Tuesday evening', c: 3, a: 42 },
+			{ v: PROTOCOL_VERSION, t: 'activity', i: 2, k: 'scoring', l: 'WA 720 (70m)', s: 1 },
+			{ v: PROTOCOL_VERSION, t: 'open', i: 2 },
+			{ v: PROTOCOL_VERSION, t: 'arrows', n: 48, at: 1789668623593 }
 		];
 
 		for (const message of messages) {
@@ -89,6 +94,62 @@ describe('encoding', () => {
 	});
 });
 
+describe('the session view', () => {
+	// An activity travels by position because four uuids in one message is about 307 bytes.
+	it('keeps an activity inside the MTU budget', () => {
+		const message: Wire = {
+			v: PROTOCOL_VERSION,
+			t: 'activity',
+			i: 59,
+			k: 'scoring',
+			l: 'Portsmouth 60cm indoor round',
+			s: 1
+		};
+		expect(encode(message).byteLength).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+	});
+
+	it('keeps a session inside the budget with a long name', () => {
+		const message: Wire = {
+			v: PROTOCOL_VERSION,
+			t: 'session',
+			l: 'Thursday evening at the club, windy'.slice(0, 40),
+			c: 6,
+			a: 144
+		};
+		expect(encode(message).byteLength).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+	});
+
+	it('refuses a screen it has no name for', () => {
+		expect(decode(new TextEncoder().encode('{"v":2,"t":"screen","s":"nowhere"}')).ok).toBe(false);
+	});
+
+	it('refuses an activity position beyond what a session can hold', () => {
+		expect(
+			decode(encode({ v: 2, t: 'activity', i: 60, k: 'scoring', l: 'x', s: 1 })).ok
+		).toBe(false);
+		expect(decode(encode({ v: 2, t: 'open', i: 60 })).ok).toBe(false);
+	});
+
+	it('refuses an activity that is neither scorable nor not', () => {
+		expect(
+			decode(new TextEncoder().encode('{"v":2,"t":"activity","i":0,"k":"scoring","l":"x","s":2}'))
+				.ok
+		).toBe(false);
+	});
+
+	it('refuses a name longer than a watch could show', () => {
+		const long = 'x'.repeat(41);
+		expect(decode(encode({ v: 2, t: 'session', l: long, c: 1, a: 0 })).ok).toBe(false);
+	});
+
+	// Absolute, so a queue delivering it twice cannot double the archer's arrows.
+	it('carries training arrows as a total and refuses a negative one', () => {
+		const decoded = decode(encode({ v: 2, t: 'arrows', n: 0, at: 1 }));
+		expect(decoded.ok).toBe(true);
+		expect(decode(new TextEncoder().encode('{"v":2,"t":"arrows","n":-6,"at":1}')).ok).toBe(false);
+	});
+});
+
 describe('decoding hostile input', () => {
 	it('never throws, whatever arrives', () => {
 		const rubbish = [
@@ -113,6 +174,15 @@ describe('decoding hostile input', () => {
 	it('names a newer protocol rather than calling it broken', () => {
 		const decoded = decode(new TextEncoder().encode('{"v":99,"t":"bye"}'));
 		expect(decoded).toEqual({ ok: false, reason: 'unsupported-version', version: 99 });
+	});
+
+	/**
+	 * The reason the version was bumped for the session view rather than the new types being slipped
+	 * in: a v2 message reaching a v1 build is reported as a version to update, not as noise.
+	 */
+	it('still accepts a message from the version before this one', () => {
+		const decoded = decode(new TextEncoder().encode('{"v":1,"t":"end","s":0,"n":1,"l":["9"],"at":5}'));
+		expect(decoded.ok).toBe(true);
 	});
 
 	it('rejects an end with no arrows or too many', () => {
