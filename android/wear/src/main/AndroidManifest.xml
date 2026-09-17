@@ -4,6 +4,7 @@
     <uses-feature android:name="android.hardware.type.watch" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
+    <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADVERTISE" />
     <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" />
 
@@ -12,14 +13,19 @@
         android:label="Appchery probe"
         android:theme="@android:style/Theme.DeviceDefault">
         <activity
-            android:name=".ProbeActivity"
+            android:name=".KeypadActivity"
             android:exported="true"
-            android:label="Appchery link probe">
+            android:label="Appchery keypad">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <activity
+            android:name=".ProbeActivity"
+            android:exported="true"
+            android:label="Appchery link probe" />
     </application>
 
 </manifest>
