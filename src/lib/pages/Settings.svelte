@@ -3,6 +3,8 @@
 	import { t, locale, LOCALES, LOCALE_NAMES } from '$lib/i18n';
 	import { selfTest } from '$lib/haptics';
 	import { theme, THEMES } from '$lib/theme';
+	import { connectWatch, disconnectWatch, watchStatus, type WatchStatus } from '$lib/watch/store';
+
 	import { dbInfo, LATEST_SCHEMA, rebuildDatabase, schemaVersion } from '$lib/db';
 	import {
 		autoLocation,
@@ -114,6 +116,32 @@
 	import { account } from '$lib/sync/auth';
 	import { syncAlert, syncAlertUnread, markSyncAlertSeen } from '$lib/sync/alert';
 	import { diagnoseStorage, type StorageProblem } from '$lib/db/diagnosis';
+
+	/** Which line sits under the heading: every unusable case says why, rather than going quiet. */
+	function watchNote(status: WatchStatus): string {
+		switch (status.state) {
+			case 'unsupported':
+				return status.reason === 'insecure'
+					? 'settings.watchInsecure'
+					: status.reason === 'no-adapter'
+						? 'settings.watchNoAdapter'
+						: 'settings.watchNoApi';
+			case 'connected':
+				return status.fragile ? 'settings.watchFragile' : 'settings.watchHint';
+			case 'lost':
+				return 'settings.watchLost';
+			case 'failed':
+				return status.reason === 'cancelled'
+					? 'settings.watchCancelled'
+					: status.reason === 'no-service'
+						? 'settings.watchNoService'
+						: status.reason === 'unsupported'
+							? 'settings.watchNoApi'
+							: 'settings.watchFailed';
+			default:
+				return 'settings.watchHint';
+		}
+	}
 
 	/** Named rather than read from package.json, which no bundle ships. */
 	const LICENCE = 'AGPL-3.0-only';
@@ -372,6 +400,52 @@
 								)}
 							</button>
 						{/each}
+					</div>
+				</section>
+
+				<section id="setting-watch" class:flash={flashing === 'watch'}>
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('settings.watch')}</h2>
+					<div class="rounded-xl border border-line p-3">
+						<div class="flex items-center gap-3">
+							<!-- Tinted while the link is up, so the state is legible before any of the words are. -->
+							<span
+								class="grid size-10 shrink-0 place-items-center rounded-full
+									{$watchStatus.state === 'connected'
+										? 'bg-brand text-brand-ink'
+										: 'bg-line text-muted'}"
+							>
+								<Icon name="watch" size={22} filled={$watchStatus.state === 'connected'} />
+							</span>
+							<p class="min-w-0 flex-1 truncate font-medium">
+								{$watchStatus.state === 'connected'
+									? $t('settings.watchConnected', { name: $watchStatus.name })
+									: $watchStatus.state === 'connecting'
+										? $t('settings.watchConnecting')
+										: $t('settings.watchIdle')}
+							</p>
+						</div>
+
+						<!-- Its own row: beside the button the hint wrapped into a column three words wide. -->
+						<p class="mt-2 text-sm text-muted">{$t(watchNote($watchStatus))}</p>
+
+						{#if $watchStatus.state === 'connected'}
+							<button
+								class="press mt-3 w-full rounded-lg border border-line py-2 text-sm font-semibold"
+								onclick={disconnectWatch}
+							>
+								{$t('settings.watchDisconnect')}
+							</button>
+						{:else if $watchStatus.state !== 'unsupported'}
+							<button
+								class="press mt-3 w-full rounded-lg border border-brand bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+								disabled={$watchStatus.state === 'connecting'}
+								onclick={connectWatch}
+							>
+								{$watchStatus.state === 'failed' || $watchStatus.state === 'lost'
+									? $t('settings.watchRetry')
+									: $t('settings.watchConnect')}
+							</button>
+						{/if}
 					</div>
 				</section>
 

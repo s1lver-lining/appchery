@@ -318,6 +318,14 @@ export const tricksEn = {
 			title: 'Elsewhere',
 			tricks: [
 				{
+					lead: 'A watch is connected once, not once per screen.',
+					body: 'The link is made from the settings and stays up while you move around the app, so connect before you walk to the line rather than between ends. Reloading the page ends it, and so does the watch going out of range: no browser can reopen a Bluetooth link on its own, so getting it back costs another tap. Only Chrome and Edge can connect one at all.'
+				},
+				{
+					lead: 'The phone works out every score, not the watch.',
+					body: 'The watch sends which ring each arrow landed in and the phone turns that into points, so a watch on an older build cannot write a wrong score. Whichever of the two you edited last is the one that is kept, and an edit made on the phone shows up on the wrist.'
+				},
+				{
 					lead: 'Open a CapTarget export with Appchery.',
 					body: 'Export from CapTarget and pick Appchery in the share sheet, or open the .xlsx from your files. Importing again after a later export refreshes what it wrote instead of doubling it, and the sessions you recorded here are never touched.'
 				},

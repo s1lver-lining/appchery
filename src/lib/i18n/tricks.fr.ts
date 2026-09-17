@@ -313,6 +313,14 @@ export const tricksFr: TricksDictionary = {
 			title: 'Ailleurs',
 			tricks: [
 				{
+					lead: 'Une montre se connecte une fois, pas à chaque écran.',
+					body: 'Le lien se fait depuis les réglages et tient pendant que vous circulez dans l\'application : connectez-la avant d\'aller au pas de tir, pas entre deux volées. Recharger la page y met fin, comme la montre qui sort de portée : aucun navigateur ne sait rétablir seul un lien Bluetooth, et le retrouver coûte donc un nouvel appui. Seuls Chrome et Edge peuvent en connecter une.'
+				},
+				{
+					lead: 'C\'est le téléphone qui calcule les scores, pas la montre.',
+					body: 'La montre envoie la zone touchée par chaque flèche et le téléphone en fait des points : une montre restée sur une ancienne version ne peut donc pas écrire un mauvais score. Celui des deux que vous avez modifié en dernier est celui qui est gardé, et une correction faite sur le téléphone apparaît au poignet.'
+				},
+				{
 					lead: 'Ouvrez un export CapTarget avec Appchery.',
 					body: "Exportez depuis CapTarget et choisissez Appchery dans le menu de partage, ou ouvrez le .xlsx depuis vos fichiers. Réimporter après un export plus récent met à jour ce qui avait été écrit au lieu de le dupliquer, et vos séances saisies ici ne sont jamais touchées."
 				},
