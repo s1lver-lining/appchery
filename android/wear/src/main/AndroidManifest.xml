@@ -10,22 +10,17 @@
 
     <application
         android:allowBackup="false"
-        android:label="Appchery probe"
+        android:label="Appchery"
         android:theme="@android:style/Theme.DeviceDefault">
         <activity
             android:name=".KeypadActivity"
             android:exported="true"
-            android:label="Appchery keypad">
+            android:label="Appchery">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <activity
-            android:name=".ProbeActivity"
-            android:exported="true"
-            android:label="Appchery link probe" />
     </application>
 
 </manifest>

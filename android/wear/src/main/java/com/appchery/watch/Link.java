@@ -1,0 +1,382 @@
+package com.appchery.watch;
+
+import android.bluetooth.BluetoothAdapter;
+import android.bluetooth.BluetoothDevice;
+import android.bluetooth.BluetoothGatt;
+import android.bluetooth.BluetoothGattCharacteristic;
+import android.bluetooth.BluetoothGattDescriptor;
+import android.bluetooth.BluetoothGattServer;
+import android.bluetooth.BluetoothGattServerCallback;
+import android.bluetooth.BluetoothGattService;
+import android.bluetooth.BluetoothManager;
+import android.bluetooth.BluetoothProfile;
+import android.bluetooth.le.AdvertiseCallback;
+import android.bluetooth.le.AdvertiseData;
+import android.bluetooth.le.AdvertiseSettings;
+import android.bluetooth.le.BluetoothLeAdvertiser;
+import android.content.Context;
+import android.content.SharedPreferences;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.ParcelUuid;
+import android.util.Log;
+
+import org.json.JSONArray;
+import org.json.JSONObject;
+
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+/**
+ * The watch's half of the link: it advertises, serves the two pipes, and speaks the protocol in
+ * src/lib/watch/protocol.ts. The phone owns the record and works out every score, so nothing here
+ * decides what an arrow is worth.
+ *
+ * An end is asserted whole and the queue keeps only the newest assertion per end, so being out of
+ * range for an hour costs a handful of messages rather than one per tap, and a message arriving
+ * twice is harmless.
+ */
+public class Link {
+
+    private static final String TAG = "AppcheryWatch";
+    private static final int VERSION = 1;
+
+    // The same three as src/lib/watch/ble.ts. Changing one means changing both halves.
+    private static final UUID SERVICE = UUID.fromString("6e7d0001-b5a3-4f2e-9c11-8a2f3b6d4c70");
+    private static final UUID TO_PHONE = UUID.fromString("6e7d0002-b5a3-4f2e-9c11-8a2f3b6d4c70");
+    private static final UUID TO_WATCH = UUID.fromString("6e7d0003-b5a3-4f2e-9c11-8a2f3b6d4c70");
+    /** Web Bluetooth's startNotifications() writes this, and a server without one is never heard. */
+    private static final UUID CCCD = UUID.fromString("00002902-0000-1000-8000-00805f9b34fb");
+
+    /** Default MTU leaves this much for a payload until the phone negotiates something larger. */
+    private static final int DEFAULT_PAYLOAD = 20;
+
+    public interface Listener {
+        /** What is being shot. Arrives before any end, and again whenever the phone rebinds. */
+        void onRound(String activityId, List<String> labels, int ends, int arrowsPerEnd);
+
+        /** The phone's copy of an end, which wins whenever it is the newer of the two. */
+        void onEnd(int stageIndex, int endNo, String[] labels, long at);
+
+        void onLinkState(boolean connected, String note);
+    }
+
+    private final Context context;
+    private final Listener listener;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private final String deviceId;
+
+    private BluetoothGattServer server;
+    private BluetoothGattCharacteristic toPhone;
+    private BluetoothLeAdvertiser advertiser;
+    private final Set<BluetoothDevice> subscribers = new LinkedHashSet<>();
+
+    /** Newest assertion per end, waiting to be acknowledged. Superseded ones are simply replaced. */
+    private final Map<String, JSONObject> pending = new LinkedHashMap<>();
+    private int payload = DEFAULT_PAYLOAD;
+    private String activityId;
+
+    public Link(Context context, Listener listener) {
+        this.context = context;
+        this.listener = listener;
+        SharedPreferences prefs = context.getSharedPreferences("appchery.watch", Context.MODE_PRIVATE);
+        String stored = prefs.getString("deviceId", null);
+        if (stored == null) {
+            stored = UUID.randomUUID().toString();
+            prefs.edit().putString("deviceId", stored).apply();
+        }
+        deviceId = stored;
+    }
+
+    public boolean connected() {
+        return !subscribers.isEmpty();
+    }
+
+    public int waiting() {
+        return pending.size();
+    }
+
+    /** Whether an assertion for that end is still in flight, so a push about it may be stale. */
+    public boolean pendingFor(int stageIndex, int endNo) {
+        return pending.containsKey(stageIndex + ":" + endNo);
+    }
+
+    /** Opens the server and starts advertising. Bluetooth permissions must already be granted. */
+    public void start() {
+        BluetoothManager manager = context.getSystemService(BluetoothManager.class);
+        BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
+        if (adapter == null || !adapter.isEnabled()) {
+            say(false, "bluetooth off");
+            return;
+        }
+        advertiser = adapter.getBluetoothLeAdvertiser();
+        if (advertiser == null) {
+            say(false, "no peripheral role");
+            return;
+        }
+
+        server = manager.openGattServer(context, serverCallback);
+        if (server == null) {
+            say(false, "no gatt server");
+            return;
+        }
+
+        toPhone = new BluetoothGattCharacteristic(TO_PHONE,
+                BluetoothGattCharacteristic.PROPERTY_NOTIFY,
+                BluetoothGattCharacteristic.PERMISSION_READ);
+        toPhone.addDescriptor(new BluetoothGattDescriptor(CCCD,
+                BluetoothGattDescriptor.PERMISSION_READ | BluetoothGattDescriptor.PERMISSION_WRITE));
+
+        BluetoothGattCharacteristic toWatch = new BluetoothGattCharacteristic(TO_WATCH,
+                BluetoothGattCharacteristic.PROPERTY_WRITE
+                        | BluetoothGattCharacteristic.PROPERTY_WRITE_NO_RESPONSE,
+                BluetoothGattCharacteristic.PERMISSION_WRITE);
+
+        BluetoothGattService service = new BluetoothGattService(SERVICE,
+                BluetoothGattService.SERVICE_TYPE_PRIMARY);
+        service.addCharacteristic(toPhone);
+        service.addCharacteristic(toWatch);
+        server.addService(service);
+
+        AdvertiseSettings settings = new AdvertiseSettings.Builder()
+                .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
+                .setTxPowerLevel(AdvertiseSettings.ADVERTISE_TX_POWER_HIGH)
+                .setConnectable(true)
+                .build();
+        // A 128 bit uuid takes 18 of the 31 advertised bytes, so the name goes in the scan response
+        // or the whole packet is refused as too large.
+        AdvertiseData data = new AdvertiseData.Builder()
+                .setIncludeDeviceName(false)
+                .addServiceUuid(new ParcelUuid(SERVICE))
+                .build();
+        AdvertiseData response = new AdvertiseData.Builder().setIncludeDeviceName(true).build();
+        advertiser.startAdvertising(settings, data, response, advertiseCallback);
+    }
+
+    public void stop() {
+        if (advertiser != null) advertiser.stopAdvertising(advertiseCallback);
+        if (server != null) server.close();
+        server = null;
+        subscribers.clear();
+    }
+
+    /**
+     * One end, as the watch believes it. Queued first and sent if there is anybody to send it to, so
+     * an end shot out of range goes up at the next connection rather than being lost.
+     */
+    public void assertEnd(int stageIndex, int endNo, String[] labels) {
+        JSONObject message = new JSONObject();
+        try {
+            JSONArray array = new JSONArray();
+            for (String label : labels) {
+                if (label == null) array.put(JSONObject.NULL);
+                else array.put(label);
+            }
+            message.put("v", VERSION);
+            message.put("t", "end");
+            message.put("s", stageIndex);
+            message.put("n", endNo);
+            message.put("l", array);
+            message.put("at", System.currentTimeMillis());
+        } catch (Exception e) {
+            Log.w(TAG, "could not build an end", e);
+            return;
+        }
+
+        // Keyed on the end, so a correction replaces the assertion it corrects instead of queueing
+        // behind it: what the phone needs is the latest state, never the history of one end.
+        pending.put(stageIndex + ":" + endNo, message);
+        flush();
+    }
+
+    private void flush() {
+        if (subscribers.isEmpty() || toPhone == null || server == null) return;
+        for (JSONObject message : new ArrayList<>(pending.values())) send(message);
+    }
+
+    private void send(JSONObject message) {
+        byte[] bytes = message.toString().getBytes(StandardCharsets.UTF_8);
+        if (bytes.length > payload) {
+            // Nothing can be split: a truncated envelope is not a shorter message, it is rubbish.
+            Log.w(TAG, "message of " + bytes.length + " will not fit " + payload);
+        }
+        toPhone.setValue(bytes);
+        for (BluetoothDevice device : subscribers) {
+            server.notifyCharacteristicChanged(device, toPhone, false);
+        }
+    }
+
+    private void hello() {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("v", VERSION);
+            message.put("t", "hello");
+            message.put("d", deviceId);
+            message.put("c", System.currentTimeMillis());
+            send(message);
+        } catch (Exception e) {
+            Log.w(TAG, "could not say hello", e);
+        }
+    }
+
+    private void receive(byte[] bytes) {
+        JSONObject message;
+        try {
+            message = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            // Half a packet, or a device that is not ours. Nothing to do and nothing to report.
+            return;
+        }
+
+        int version = message.optInt("v", 0);
+        if (version > VERSION) {
+            say(true, "phone app is newer");
+            return;
+        }
+        if (version < 1) return;
+
+        String type = message.optString("t", "");
+        switch (type) {
+            case "hello":
+                // The phone speaks first on connecting, and the reply carries this watch's clock so
+                // the two can tell whose edit came later.
+                hello();
+                return;
+            case "round":
+                onRound(message);
+                return;
+            case "end":
+                onEnd(message);
+                return;
+            case "ack":
+                onAck(message);
+                return;
+            case "bye":
+                say(false, "phone let go");
+                return;
+            default:
+        }
+    }
+
+    private void onRound(JSONObject message) {
+        String incoming = message.optString("a", "");
+        JSONArray zones = message.optJSONArray("z");
+        JSONArray stages = message.optJSONArray("s");
+        if (incoming.isEmpty() || zones == null || stages == null || stages.length() == 0) return;
+
+        List<String> labels = new ArrayList<>();
+        for (int i = 0; i < zones.length(); i++) {
+            JSONArray zone = zones.optJSONArray(i);
+            if (zone != null && zone.length() == 2) labels.add(zone.optString(0));
+        }
+
+        JSONArray first = stages.optJSONArray(0);
+        if (first == null || first.length() != 2 || labels.isEmpty()) return;
+        int ends = first.optInt(0);
+        int arrowsPerEnd = first.optInt(1);
+        if (ends < 1 || arrowsPerEnd < 1) return;
+
+        /**
+         * A different activity means the queue belongs to a round nobody is shooting any more.
+         * Sending it would write arrows onto the wrong card, so it goes.
+         */
+        if (activityId != null && !activityId.equals(incoming)) pending.clear();
+        activityId = incoming;
+
+        final List<String> finalLabels = labels;
+        main.post(() -> listener.onRound(incoming, finalLabels, ends, arrowsPerEnd));
+    }
+
+    private void onEnd(JSONObject message) {
+        JSONArray array = message.optJSONArray("l");
+        if (array == null) return;
+        String[] labels = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) {
+            labels[i] = array.isNull(i) ? null : array.optString(i);
+        }
+        int stageIndex = message.optInt("s", 0);
+        int endNo = message.optInt("n", 0);
+        long at = message.optLong("at", 0);
+        if (endNo < 1) return;
+        main.post(() -> listener.onEnd(stageIndex, endNo, labels, at));
+    }
+
+    private void onAck(JSONObject message) {
+        String key = message.optInt("s", 0) + ":" + message.optInt("n", 0);
+        JSONObject held = pending.get(key);
+        if (held == null) return;
+        // Only forgotten when the phone has at least as new a copy as the one being held: an ack for
+        // an older assertion leaves a later correction still waiting.
+        if (message.optLong("at", -1) >= held.optLong("at", 0)) pending.remove(key);
+    }
+
+    private void say(boolean connected, String note) {
+        main.post(() -> listener.onLinkState(connected, note));
+    }
+
+    private final AdvertiseCallback advertiseCallback = new AdvertiseCallback() {
+        @Override
+        public void onStartSuccess(AdvertiseSettings settings) {
+            say(false, "waiting for the phone");
+        }
+
+        @Override
+        public void onStartFailure(int error) {
+            say(false, "cannot advertise, code " + error);
+        }
+    };
+
+    private final BluetoothGattServerCallback serverCallback = new BluetoothGattServerCallback() {
+        @Override
+        public void onConnectionStateChange(BluetoothDevice device, int status, int state) {
+            if (state != BluetoothProfile.STATE_CONNECTED) {
+                subscribers.remove(device);
+                payload = DEFAULT_PAYLOAD;
+                say(false, "waiting for the phone");
+            }
+        }
+
+        @Override
+        public void onMtuChanged(BluetoothDevice device, int mtu) {
+            // Three bytes of the MTU are the notification's own header.
+            payload = Math.max(DEFAULT_PAYLOAD, mtu - 3);
+        }
+
+        @Override
+        public void onDescriptorWriteRequest(BluetoothDevice device, int requestId,
+                BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded,
+                int offset, byte[] value) {
+            if (CCCD.equals(descriptor.getUuid())) {
+                boolean on = value.length > 0 && (value[0] & 0x01) != 0;
+                if (on) {
+                    subscribers.add(device);
+                    say(true, "linked");
+                    // Whatever was shot out of range goes up now, newest state per end only.
+                    main.post(Link.this::flush);
+                } else {
+                    subscribers.remove(device);
+                    say(false, "waiting for the phone");
+                }
+            }
+            if (responseNeeded) {
+                server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
+            }
+        }
+
+        @Override
+        public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId,
+                BluetoothGattCharacteristic characteristic, boolean preparedWrite,
+                boolean responseNeeded, int offset, byte[] value) {
+            if (TO_WATCH.equals(characteristic.getUuid())) receive(value);
+            if (responseNeeded) {
+                server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
+            }
+        }
+    };
+}

@@ -1,4 +1,4 @@
-package com.appchery.probe;
+package com.appchery.watch;
 
 import android.content.Context;
 import android.view.InputDevice;
