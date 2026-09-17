@@ -50,7 +50,6 @@ export class WatchSession {
 	private peerDeviceId: string | null = null;
 	/** Added to a watch timestamp to read it on this device's clock. */
 	private peerOffset = 0;
-	private greeted = false;
 
 	constructor(
 		private readonly round: Round,
@@ -119,7 +118,6 @@ export class WatchSession {
 	private async onHello(peerDeviceId: string, peerClock: number): Promise<void> {
 		this.peerDeviceId = peerDeviceId;
 		this.peerOffset = skew(this.now(), peerClock);
-		this.greeted = true;
 		this.notify({ kind: 'greeted', peerDeviceId, offsetMs: this.peerOffset });
 
 		await this.say({
