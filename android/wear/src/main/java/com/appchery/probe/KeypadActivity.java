@@ -101,7 +101,11 @@ public class KeypadActivity extends Activity {
         root.addView(editOverlay);
 
         root.setRotary(this::onCrown);
+        // A rotary event is delivered to whichever view holds focus, so without this the crown never
+        // reaches the hierarchy at all and the dispatch override above never runs.
+        root.setFocusableInTouchMode(true);
         setContentView(root);
+        root.requestFocus();
         redraw();
     }
 
@@ -480,6 +484,16 @@ public class KeypadActivity extends Activity {
         rotary = 0;
         sheetScroll.scrollBy(0, Math.round(-delta * 70));
         return true;
+    }
+
+    /** The crown again, for the case where focus has gone somewhere this activity does not own. */
+    @Override
+    public boolean onGenericMotionEvent(MotionEvent e) {
+        if (e.getAction() == MotionEvent.ACTION_SCROLL
+                && e.isFromSource(android.view.InputDevice.SOURCE_ROTARY_ENCODER)) {
+            return onCrown(e);
+        }
+        return super.onGenericMotionEvent(e);
     }
 
     // -------- rendering

@@ -4,6 +4,7 @@ import android.content.Context;
 import android.view.InputDevice;
 import android.view.MotionEvent;
 import android.view.View;
+import android.view.VelocityTracker;
 import android.view.ViewConfiguration;
 import android.widget.FrameLayout;
 import android.widget.ScrollView;
@@ -16,6 +17,8 @@ import android.widget.ScrollView;
 public class DrawerRoot extends FrameLayout {
 
     private final int slop;
+    private final int minFling;
+    private VelocityTracker velocity;
     private View drawer;
     private ScrollView drawerScroll;
     private Runnable onSettled;
@@ -28,7 +31,9 @@ public class DrawerRoot extends FrameLayout {
 
     public DrawerRoot(Context context) {
         super(context);
-        slop = ViewConfiguration.get(context).getScaledTouchSlop();
+        ViewConfiguration config = ViewConfiguration.get(context);
+        slop = config.getScaledTouchSlop();
+        minFling = config.getScaledMinimumFlingVelocity();
     }
 
     void attachDrawer(View view, ScrollView scroll) {
@@ -87,6 +92,9 @@ public class DrawerRoot extends FrameLayout {
                 downX = e.getX();
                 downY = e.getY();
                 dragging = false;
+                if (velocity != null) velocity.recycle();
+                velocity = VelocityTracker.obtain();
+                velocity.addMovement(e);
                 return false;
 
             case MotionEvent.ACTION_MOVE:
@@ -119,6 +127,7 @@ public class DrawerRoot extends FrameLayout {
 
         switch (e.getActionMasked()) {
             case MotionEvent.ACTION_MOVE:
+                if (velocity != null) velocity.addMovement(e);
                 float y = Math.max(-getHeight(), Math.min(0, startY + e.getY() - downY));
                 drawer.setTranslationY(y);
                 return true;
@@ -126,12 +135,30 @@ public class DrawerRoot extends FrameLayout {
             case MotionEvent.ACTION_UP:
             case MotionEvent.ACTION_CANCEL:
                 dragging = false;
-                settle(drawer.getTranslationY() > -getHeight() / 2f);
+                settle(shouldOpenAfter(e));
                 return true;
 
             default:
                 return true;
         }
+    }
+
+    /**
+     * A flick decides on its own, and a slow drag only has to pass a quarter of the screen. Half a
+     * screen of travel is more than the system's own drawer asks for, and on a watch that reads as
+     * the gesture not working rather than as the gesture being firm.
+     */
+    private boolean shouldOpenAfter(MotionEvent e) {
+        float travelled = drawer.getTranslationY() + getHeight();
+        if (velocity != null) {
+            velocity.addMovement(e);
+            velocity.computeCurrentVelocity(1000);
+            float vy = velocity.getYVelocity();
+            velocity.recycle();
+            velocity = null;
+            if (Math.abs(vy) > minFling) return vy > 0;
+        }
+        return travelled > getHeight() * 0.25f;
     }
 
     boolean atBottom() {
