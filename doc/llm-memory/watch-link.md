@@ -178,6 +178,36 @@ The two clocks are independent, so the apparent few milliseconds between the wat
 host recording is coincidence rather than a measured latency. The claim that holds is the one the
 gaps support: delivery is live and paced, not queued.
 
+## The two halves have talked
+
+Verified 2026-09-17: the app's own settings card connects to the watch app and the watch's GATT
+server reports the subscribe, 350ms after the connection. The same link from the throwaway probe
+page took 1318ms, so nothing about the app's path is slow.
+
+**MTU came back at 517 on this pairing**, which is 514 usable bytes against a budget of 180. The
+budget stays at 180 regardless: that figure is what this Chrome and this watch negotiated, not
+something a protocol may assume, and the tests that enforce it stay as they are.
+
+## Restarting the watch app strands a connected phone
+
+The trap that cost most of an afternoon, and it will happen to users rather than only to developers.
+
+Re-registering the GATT service gives it new handles. A phone already connected still holds the old
+ones, so the subscribe is written to a handle that no longer exists: it fails silently, the watch
+never sees a subscriber, and the phone's card still says connected. Neither side notices, and
+nothing in the link is wrong enough to raise an error. Updating the watch app through Play does
+exactly this to anybody who happens to be connected at the time.
+
+**So the link needs a liveness check rather than trusting the transport.** On connecting, the phone
+says `hello` and expects the watch's `hello` back within a second or two. Silence means the link is
+dead however healthy it looks, and the card has to say so and offer to connect again. A GATT
+connection being up is not evidence that anybody is listening on it.
+
+Worth remembering while debugging this: the fault looked exactly like a bug in the phone's code, and
+was not. What settled it was running the probe page, which mirrors its own log to the host, against
+the same watch: it linked, which proved the watch and the radio were fine and the difference lay in
+how the test had been set up. Instrument both ends before reasoning about either.
+
 ## Still open
 
 Range with a body between the watch and a phone in a pocket, and the battery cost of advertising

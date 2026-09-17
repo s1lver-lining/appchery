@@ -246,6 +246,8 @@ public class Link {
 
     private void send(JSONObject message) {
         byte[] bytes = message.toString().getBytes(StandardCharsets.UTF_8);
+        Log.i(TAG, "out " + message.optString("t") + " " + bytes.length + "B to "
+                + subscribers.size() + " subscriber(s)");
         if (bytes.length > payload) {
             // Nothing can be split: a truncated envelope is not a shorter message, it is rubbish.
             Log.w(TAG, "message of " + bytes.length + " will not fit " + payload);
@@ -286,6 +288,7 @@ public class Link {
         if (version < 1) return;
 
         String type = message.optString("t", "");
+        Log.i(TAG, "in " + type);
         switch (type) {
             case "hello":
                 // The phone speaks first on connecting, and the reply carries this watch's clock so
@@ -405,6 +408,7 @@ public class Link {
     }
 
     private void say(boolean connected, String note) {
+        Log.i(TAG, "state: " + note + (connected ? " (linked)" : ""));
         main.post(() -> listener.onLinkState(connected, note));
     }
 
@@ -423,6 +427,7 @@ public class Link {
     private final BluetoothGattServerCallback serverCallback = new BluetoothGattServerCallback() {
         @Override
         public void onConnectionStateChange(BluetoothDevice device, int status, int state) {
+            Log.i(TAG, "connection " + device.getAddress() + " state=" + state + " status=" + status);
             if (state != BluetoothProfile.STATE_CONNECTED) {
                 subscribers.remove(device);
                 payload = DEFAULT_PAYLOAD;
@@ -432,6 +437,7 @@ public class Link {
 
         @Override
         public void onMtuChanged(BluetoothDevice device, int mtu) {
+            Log.i(TAG, "mtu " + mtu);
             // Three bytes of the MTU are the notification's own header.
             payload = Math.max(DEFAULT_PAYLOAD, mtu - 3);
         }
@@ -440,6 +446,7 @@ public class Link {
         public void onDescriptorWriteRequest(BluetoothDevice device, int requestId,
                 BluetoothGattDescriptor descriptor, boolean preparedWrite, boolean responseNeeded,
                 int offset, byte[] value) {
+            Log.i(TAG, "descriptor write " + descriptor.getUuid() + " len=" + value.length);
             if (CCCD.equals(descriptor.getUuid())) {
                 boolean on = value.length > 0 && (value[0] & 0x01) != 0;
                 if (on) {
@@ -461,6 +468,7 @@ public class Link {
         public void onCharacteristicWriteRequest(BluetoothDevice device, int requestId,
                 BluetoothGattCharacteristic characteristic, boolean preparedWrite,
                 boolean responseNeeded, int offset, byte[] value) {
+            Log.i(TAG, "write to " + characteristic.getUuid() + " len=" + value.length);
             if (TO_WATCH.equals(characteristic.getUuid())) receive(value);
             if (responseNeeded) {
                 server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
