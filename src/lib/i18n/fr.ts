@@ -1232,6 +1232,8 @@ export const fr: Dictionary = {
 		watchRetry: 'Réessayer',
 		watchDisconnect: 'Déconnecter',
 		watchIdle: 'Aucune montre connectée',
+		watchStaleTitle: 'La montre ne répond pas',
+		watchStale: 'Connectée, mais la montre n\'a jamais répondu. Cela arrive après une mise à jour de l\'application montre. Reconnectez-vous pour y remédier.',
 		watchConnected: 'Connectée à {name}',
 		watchFragile: 'Si le lien tombe, il faudra se reconnecter : ce navigateur ne sait pas le rétablir seul.',
 		watchLost: 'La montre s\'est déconnectée.',

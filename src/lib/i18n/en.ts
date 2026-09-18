@@ -1231,6 +1231,8 @@ export const en = {
 		watchRetry: 'Try again',
 		watchDisconnect: 'Disconnect',
 		watchIdle: 'No watch connected',
+		watchStaleTitle: 'Watch not answering',
+		watchStale: 'Connected, but the watch never answered. This happens after the watch app updates. Connect again to fix it.',
 		watchConnected: 'Connected to {name}',
 		watchFragile: 'If the link drops you will have to connect again: this browser cannot reopen it on its own.',
 		watchLost: 'The watch disconnected.',

@@ -128,6 +128,8 @@
 						: 'settings.watchNoApi';
 			case 'connected':
 				return status.fragile ? 'settings.watchFragile' : 'settings.watchHint';
+			case 'stale':
+				return 'settings.watchStale';
 			case 'lost':
 				return 'settings.watchLost';
 			case 'failed':
@@ -419,9 +421,11 @@
 							<p class="min-w-0 flex-1 truncate font-medium">
 								{$watchStatus.state === 'connected'
 									? $t('settings.watchConnected', { name: $watchStatus.name })
-									: $watchStatus.state === 'connecting'
-										? $t('settings.watchConnecting')
-										: $t('settings.watchIdle')}
+									: $watchStatus.state === 'stale'
+										? $t('settings.watchStaleTitle')
+										: $watchStatus.state === 'connecting'
+											? $t('settings.watchConnecting')
+											: $t('settings.watchIdle')}
 							</p>
 						</div>
 
@@ -441,7 +445,9 @@
 								disabled={$watchStatus.state === 'connecting'}
 								onclick={connectWatch}
 							>
-								{$watchStatus.state === 'failed' || $watchStatus.state === 'lost'
+								{$watchStatus.state === 'failed' ||
+								$watchStatus.state === 'lost' ||
+								$watchStatus.state === 'stale'
 									? $t('settings.watchRetry')
 									: $t('settings.watchConnect')}
 							</button>

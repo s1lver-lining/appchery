@@ -1,7 +1,8 @@
 import { writable } from 'svelte/store';
+import { deviceId } from '$lib/db/repository';
 import { canReconnectSilently, support } from './ble';
 import { connect as connectOverWeb, type ConnectFailure, type Connection } from './ble.web';
-import type { Channel } from './link';
+import { WatchLink, type LinkEvent } from './link';
 
 /**
  * The one link this device holds, kept here rather than on a page because the app is a single page:
@@ -15,6 +16,11 @@ export type WatchStatus =
 	| { state: 'idle' }
 	| { state: 'connecting' }
 	| { state: 'connected'; name: string; fragile: boolean }
+	/**
+	 * Connected to something that never answered. Worth its own state rather than being called
+	 * connected: updating the watch app leaves exactly this, and it looks perfectly healthy.
+	 */
+	| { state: 'stale'; name: string }
 	| { state: 'failed'; reason: ConnectFailure }
 	/** It was connected and is not any more, which reads differently from never having tried. */
 	| { state: 'lost' };
@@ -27,19 +33,46 @@ function initial(): WatchStatus {
 export const watchStatus = writable<WatchStatus>(initial());
 
 let connection: Connection | null = null;
-let listener: ((bytes: DataView) => void) | null = null;
+let link: WatchLink | null = null;
+let onOpen: ((index: number) => void) | null = null;
+let onArrows: ((total: number, at: number) => void) | null = null;
 
-/**
- * Where arriving bytes go. The scoring screen puts a session here when a round is open; until then
- * they are dropped, because nothing can be written to a record that has not been chosen yet.
- */
-export function listenToWatch(handler: ((bytes: DataView) => void) | null): void {
-	listener = handler;
+/** The live link, for a page that wants to put a round or a session on the wrist. */
+export function watchLink(): WatchLink | null {
+	return link;
 }
 
-/** Writing to the watch, or nothing when there is no link to write to. */
-export function watchChannel(): Channel | null {
-	return connection?.channel ?? null;
+/** What to do when the watch asks for an activity. Only the app knows how to get there. */
+export function onWatchOpen(handler: ((index: number) => void) | null): void {
+	onOpen = handler;
+}
+
+/** What to do when the watch asserts the session's training arrows. */
+export function onWatchArrows(handler: ((total: number, at: number) => void) | null): void {
+	onArrows = handler;
+}
+
+function handle(event: LinkEvent, name: string): void {
+	switch (event.kind) {
+		case 'greeted':
+			watchStatus.set({ state: 'connected', name, fragile: !canReconnectSilently() });
+			return;
+		case 'stale':
+			watchStatus.set({ state: 'stale', name });
+			return;
+		case 'farewell':
+			watchStatus.set({ state: 'lost' });
+			return;
+		case 'open':
+			onOpen?.(event.index);
+			return;
+		case 'arrows':
+			onArrows?.(event.total, event.at);
+			return;
+		default:
+			// Applied, refused, noise and a version mismatch are not states of the link itself.
+			return;
+	}
 }
 
 /**
@@ -52,13 +85,16 @@ export async function connectWatch(): Promise<void> {
 		watchStatus.set({ state: 'unsupported', reason: can.reason });
 		return;
 	}
-	if (connection) return;
+	// A link that never answered has to go before another can be made, or this does nothing at all.
+	if (connection && link?.live) return;
+	if (connection) disconnectWatch();
 
 	watchStatus.set({ state: 'connecting' });
 	const result = await connectOverWeb(
-		(bytes) => listener?.(bytes),
+		(bytes) => void link?.receive(bytes),
 		() => {
 			connection = null;
+			link = null;
 			watchStatus.set({ state: 'lost' });
 		}
 	);
@@ -69,17 +105,18 @@ export async function connectWatch(): Promise<void> {
 	}
 
 	connection = result.connection;
-	watchStatus.set({
-		state: 'connected',
-		name: result.connection.name,
-		// Worth warning about once: a link that drops cannot come back without another tap.
-		fragile: !canReconnectSilently()
-	});
+	const name = result.connection.name;
+	link = new WatchLink(result.connection.channel, deviceId(), (event) => handle(event, name));
+	// Said before anything else, and the status stays at connecting until the watch answers it.
+	await link.open();
 }
 
 export function disconnectWatch(): void {
+	void link?.close();
 	connection?.disconnect();
 	connection = null;
-	listener = null;
+	link = null;
+	onOpen = null;
+	onArrows = null;
 	watchStatus.set(initial());
 }

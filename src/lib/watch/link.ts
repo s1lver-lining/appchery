@@ -7,6 +7,7 @@ import {
 	skew,
 	PROTOCOL_VERSION,
 	type EndState,
+	type Screen,
 	type Wire
 } from './protocol';
 
@@ -14,6 +15,11 @@ import {
  * One conversation with a watch, with no idea how the bytes travel. The transport underneath is Web
  * Bluetooth in a browser and a native central in the app, and neither belongs in the rules about
  * whose arrows survive, so both are reduced to `send` and a stream of arriving messages.
+ *
+ * The link is not believed until the watch has answered. A GATT connection being up is no evidence
+ * that anybody is listening on it: re-registering the service gives it new handles, so a phone still
+ * holding the old ones subscribes to nothing and is told nothing about it. Updating the watch app
+ * does exactly that to a phone already connected. See doc/llm-memory/watch-link.md.
  */
 
 /** Writing to the peer. Rejects when the link has gone, which is ordinary rather than exceptional. */
@@ -21,7 +27,7 @@ export interface Channel {
 	send(bytes: Uint8Array): Promise<void>;
 }
 
-/** The record, as this session needs it. Injected so the session can be tested without a database. */
+/** The record, as this link needs it. Injected so the rules can be tested without a database. */
 export interface Record {
 	readEnd(stageIndex: number, endNo: number): Promise<EndState | null>;
 	writeEnd(stageIndex: number, endNo: number, shots: PlannedShot[]): Promise<void>;
@@ -35,46 +41,150 @@ export interface Round {
 	stages: { ends: number; arrowsPerEnd: number }[];
 }
 
+/** One activity as the wrist shows it. The watch refers to it by position, never by id. */
+export interface ActivityLine {
+	kind: string;
+	label: string;
+	scorable: boolean;
+}
+
 export type LinkEvent =
 	| { kind: 'greeted'; peerDeviceId: string; offsetMs: number }
+	/** The watch never answered, so the link is up and useless, and has to be made again. */
+	| { kind: 'stale' }
 	/** An end arrived and changed the record, so whatever is on screen should look again. */
 	| { kind: 'applied'; stageIndex: number; endNo: number }
 	| { kind: 'refused'; stageIndex: number; endNo: number; reason: string }
+	/** The watch asking for an activity by position. Only the phone can actually open one. */
+	| { kind: 'open'; index: number }
+	/** The session's training arrows as a total, read on this device's clock. */
+	| { kind: 'arrows'; total: number; at: number }
 	/** The peer speaks a protocol this build does not: the archer has to update one of the two. */
 	| { kind: 'version-mismatch'; theirs: number; ours: number }
 	| { kind: 'noise' }
 	| { kind: 'farewell' };
 
-export class WatchSession {
-	private readonly zones: Map<string, Zone>;
+/** How long the watch has to answer a hello before the link is called dead. */
+export const LIVENESS_MS = 2500;
+
+export class WatchLink {
+	private round: Round | null = null;
+	private zones: Map<string, Zone> = new Map();
+	private record: Record | null = null;
+
 	private peerDeviceId: string | null = null;
 	/** Added to a watch timestamp to read it on this device's clock. */
 	private peerOffset = 0;
+	private answered = false;
+	private screen: Screen = 'idle';
 
 	constructor(
-		private readonly round: Round,
-		private readonly record: Record,
 		private readonly channel: Channel,
 		private readonly deviceId: string,
 		private readonly notify: (event: LinkEvent) => void = () => {},
-		private readonly now: () => number = Date.now
-	) {
-		this.zones = zoneIndex(round.zones);
-	}
+		private readonly now: () => number = Date.now,
+		private readonly timer: (run: () => void, ms: number) => void = setTimeout
+	) {}
 
 	get peer(): string | null {
 		return this.peerDeviceId;
 	}
 
-	/** Said first, so the watch learns who it is talking to and how far apart the clocks are. */
+	/** Whether the watch has actually answered, as opposed to the transport claiming a connection. */
+	get live(): boolean {
+		return this.answered;
+	}
+
+	/**
+	 * Says hello and waits to be answered. A link nobody is listening on accepts every write and
+	 * delivers none of them, so silence for `LIVENESS_MS` is reported rather than trusted.
+	 */
 	async open(): Promise<void> {
+		this.answered = false;
 		await this.say({ v: PROTOCOL_VERSION, t: 'hello', d: this.deviceId, c: this.now() });
+		this.timer(() => {
+			if (!this.answered) this.notify({ kind: 'stale' });
+		}, LIVENESS_MS);
 	}
 
 	async close(): Promise<void> {
 		// Best effort: a link already gone cannot be told it is being given up.
 		await this.say({ v: PROTOCOL_VERSION, t: 'bye' }).catch(() => {});
 	}
+
+	// -------- what the watch is shown
+
+	/** The scoring context. Sending the round is what tells the watch to draw the right keypad. */
+	async setRound(round: Round, record: Record): Promise<void> {
+		this.round = round;
+		this.record = record;
+		this.zones = zoneIndex(round.zones);
+		await this.showScreen('score');
+		await this.sendRound();
+		await this.pushAll();
+	}
+
+	/** Out of the activity: the watch is left with no round to write an arrow onto. */
+	clearRound(): void {
+		this.round = null;
+		this.record = null;
+		this.zones = new Map();
+	}
+
+	async showSession(label: string, activities: ActivityLine[], arrows: number): Promise<void> {
+		await this.showScreen('session');
+		await this.say({
+			v: PROTOCOL_VERSION,
+			t: 'session',
+			l: cut(label),
+			c: activities.length,
+			a: Math.max(0, Math.round(arrows))
+		});
+		// One activity per message: four uuids in one comes to about 307 bytes against a budget of 180.
+		for (let index = 0; index < activities.length; index++) {
+			const line = activities[index];
+			await this.say({
+				v: PROTOCOL_VERSION,
+				t: 'activity',
+				i: index,
+				k: cut(line.kind),
+				l: cut(line.label),
+				s: line.scorable ? 1 : 0
+			});
+		}
+	}
+
+	async showIdle(): Promise<void> {
+		await this.showScreen('idle');
+	}
+
+	/** The session's training arrows, on the watch's clock so the two compare the same now. */
+	async pushArrows(total: number, updatedAt: number): Promise<void> {
+		await this.say({
+			v: PROTOCOL_VERSION,
+			t: 'arrows',
+			n: Math.max(0, Math.round(total)),
+			at: updatedAt - this.peerOffset
+		});
+	}
+
+	private async showScreen(next: Screen): Promise<void> {
+		this.screen = next;
+		await this.say({ v: PROTOCOL_VERSION, t: 'screen', s: next });
+	}
+
+	private async sendRound(): Promise<void> {
+		if (!this.round) return;
+		await this.say({
+			v: PROTOCOL_VERSION,
+			t: 'round',
+			a: this.round.activityId,
+			z: this.round.zones.map((zone) => [zone.label, zone.value] as [string, number]),
+			s: this.round.stages.map((stage) => [stage.ends, stage.arrowsPerEnd] as [number, number])
+		});
+	}
+
+	// -------- what the watch says
 
 	/**
 	 * Everything the peer sends, including whatever a half written packet decodes to. This never
@@ -100,13 +210,23 @@ export class WatchSession {
 				case 'end':
 					await this.onEnd(message.s, message.n, message.l, message.at);
 					return;
+				case 'open':
+					this.notify({ kind: 'open', index: message.i });
+					return;
+				case 'arrows':
+					// Read on this device's clock, or last write wins compares two different nows.
+					this.notify({ kind: 'arrows', total: message.n, at: message.at + this.peerOffset });
+					return;
 				case 'bye':
+					this.answered = false;
 					this.notify({ kind: 'farewell' });
 					return;
-				// The phone never asks the watch for anything it has to answer, so an ack arriving here
-				// is a watch being polite about a push rather than anything to act on.
+				// Nothing the phone has to act on: it is the one that sends these.
 				case 'ack':
 				case 'round':
+				case 'screen':
+				case 'session':
+				case 'activity':
 					return;
 			}
 		} catch {
@@ -118,16 +238,15 @@ export class WatchSession {
 	private async onHello(peerDeviceId: string, peerClock: number): Promise<void> {
 		this.peerDeviceId = peerDeviceId;
 		this.peerOffset = skew(this.now(), peerClock);
+		this.answered = true;
 		this.notify({ kind: 'greeted', peerDeviceId, offsetMs: this.peerOffset });
 
-		await this.say({
-			v: PROTOCOL_VERSION,
-			t: 'round',
-			a: this.round.activityId,
-			z: this.round.zones.map((zone) => [zone.label, zone.value] as [string, number]),
-			s: this.round.stages.map((stage) => [stage.ends, stage.arrowsPerEnd] as [number, number])
-		});
-		await this.pushAll();
+		// A watch that has just restarted knows none of this, and cannot say so: told again anyway.
+		await this.showScreen(this.screen);
+		if (this.round) {
+			await this.sendRound();
+			await this.pushAll();
+		}
 	}
 
 	private async onEnd(
@@ -136,6 +255,12 @@ export class WatchSession {
 		labels: (string | null)[],
 		at: number
 	): Promise<void> {
+		if (!this.round || !this.record) {
+			// An arrow with no round open has nowhere to go, and inventing somewhere would be worse.
+			this.notify({ kind: 'refused', stageIndex, endNo, reason: 'no-round' });
+			return;
+		}
+
 		const arrowsPerEnd = this.round.stages[stageIndex]?.arrowsPerEnd;
 		// A stage the round does not have is a watch out of step, so it is told the round again.
 		if (arrowsPerEnd === undefined) {
@@ -178,6 +303,7 @@ export class WatchSession {
 	 * show up on the wrist, and what settles a disagreement the watch lost.
 	 */
 	async pushEnd(stageIndex: number, endNo: number): Promise<void> {
+		if (!this.round || !this.record) return;
 		const arrowsPerEnd = this.round.stages[stageIndex]?.arrowsPerEnd;
 		if (arrowsPerEnd === undefined) return;
 
@@ -196,6 +322,7 @@ export class WatchSession {
 
 	/** Every end the record holds, so a watch joining mid round shows the real card. */
 	async pushAll(): Promise<void> {
+		if (!this.round || !this.record) return;
 		for (let stageIndex = 0; stageIndex < this.round.stages.length; stageIndex++) {
 			const stage = this.round.stages[stageIndex];
 			for (let endNo = 1; endNo <= stage.ends; endNo++) {
@@ -210,4 +337,9 @@ export class WatchSession {
 	private async say(message: Wire): Promise<void> {
 		await this.channel.send(encode(message));
 	}
+}
+
+/** Names travel cut, because the watch cannot show more and the budget cannot afford more. */
+function cut(text: string): string {
+	return text.length > 40 ? text.slice(0, 40) : text;
 }
