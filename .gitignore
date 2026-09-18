@@ -19,6 +19,8 @@ android/.gradle/
 android/build/
 android/app/build/
 android/local.properties
+# The address of the watch this machine last installed to: one developer's Wi-Fi, nobody else's.
+.watch-adb
 
 # Copied from node_modules by scripts/sync-sqlite.sh, so it cannot drift from the installed version.
 static/sqlite/
