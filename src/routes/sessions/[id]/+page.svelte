@@ -77,6 +77,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import { mirrorSession, mirrorIdle, acceptArrows } from '$lib/watch/mirror';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import {
@@ -116,6 +117,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		loadMatch,
 		listMatchNames,
 		addTrainingArrows,
+		setTrainingArrows,
 		awardBadges,
 		type ActivityRow,
 		type PlanSlotRow
@@ -183,9 +185,39 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	const sessionArrows = $derived(
 		activities.filter((a) => shootsArrows(a.kind)).reduce((sum, a) => sum + a.arrowsShot, 0) + pending
 	);
+
 	/** Arrows shot without scoring them. They live in one activity, shown as a counter, not a row. */
 	const training = $derived(activities.find((a) => a.kind === 'training'));
 	const listedActivities = $derived(activities.filter((a) => a.kind !== 'training'));
+
+	/**
+	 * The wrist follows the phone, so whatever this page is showing is described to the watch. The
+	 * counter it gets is the training count and never `sessionArrows`: the watch's buttons write the
+	 * training figure, and asserting a session total as a training total would rewrite scored arrows
+	 * as practice. The list is the one this page shows, so both screens read the same session.
+	 */
+	$effect(() => {
+		const label = session ? $formatDateTime(session.startedAt) : '';
+		void mirrorSession(
+			label,
+			listedActivities,
+			(training?.arrowsShot ?? 0) + pending,
+			(activity) => goto(`/activities/${activity.id}`)
+		);
+	});
+
+	/** A total from the watch is written as a total, so the same figure arriving twice changes nothing. */
+	$effect(() => {
+		acceptArrows(async (total) => {
+			const id = await materialise();
+			await setTrainingArrows(id, total);
+			await refresh();
+		});
+		return () => acceptArrows(null);
+	});
+
+	// Leaving the session leaves the watch nothing to show, rather than a session nobody is in.
+	$effect(() => () => void mirrorIdle());
 
 	/**
 	 * Counted locally and written once the finger stops. A long press ticks several times a second,

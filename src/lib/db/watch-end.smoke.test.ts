@@ -42,7 +42,8 @@ vi.stubGlobal('localStorage', {
 	setItem: (key: string, value: string) => void store.set(key, value)
 });
 
-const { replaceEnd, removeEndAt, listEnds, listShots } = await import('./repository');
+const { replaceEnd, removeEndAt, listEnds, listShots, setTrainingArrows, addTrainingArrows } =
+	await import('./repository');
 
 beforeAll(() => {
 	for (const group of MIGRATIONS) for (const statement of group) sqlite.exec(statement);
@@ -249,5 +250,53 @@ describe('the change log', () => {
 			op: string;
 		}[];
 		expect(rows.filter((r) => r.table_name === 'shot' && r.op === 'delete')).toHaveLength(1);
+	});
+});
+
+describe('the session training arrows', () => {
+	async function training() {
+		const rows = await proxy.select().from(schema.activity);
+		return rows.find((row) => row.kind === 'training') ?? null;
+	}
+
+	it('creates the counter on the first figure', async () => {
+		expect(await setTrainingArrows('s', 12)).toBe(12);
+		expect((await training())?.arrowsShot).toBe(12);
+	});
+
+	it('sets the figure rather than adding to it', async () => {
+		await setTrainingArrows('s', 12);
+		expect(await setTrainingArrows('s', 18)).toBe(18);
+		expect((await training())?.arrowsShot).toBe(18);
+	});
+
+	// The whole reason a total travels instead of a difference.
+	it('is idempotent where adding would double', async () => {
+		await setTrainingArrows('s', 18);
+		await setTrainingArrows('s', 18);
+		expect((await training())?.arrowsShot).toBe(18);
+
+		await addTrainingArrows('s', 6);
+		await addTrainingArrows('s', 6);
+		expect((await training())?.arrowsShot).toBe(30);
+	});
+
+	it('writes nothing when the figure already matches', async () => {
+		await setTrainingArrows('s', 18);
+		sqlite.exec('DELETE FROM change_log');
+		await setTrainingArrows('s', 18);
+		const rows = sqlite.prepare('SELECT count(*) AS n FROM change_log').all() as { n: number }[];
+		expect(rows[0].n).toBe(0);
+	});
+
+	it('can take the count back down to nothing', async () => {
+		await setTrainingArrows('s', 18);
+		expect(await setTrainingArrows('s', 0)).toBe(0);
+		expect((await training())?.arrowsShot).toBe(0);
+	});
+
+	it('creates nothing for a figure of nothing', async () => {
+		expect(await setTrainingArrows('s', 0)).toBe(0);
+		expect(await training()).toBeNull();
 	});
 });

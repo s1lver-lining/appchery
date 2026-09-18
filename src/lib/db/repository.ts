@@ -477,6 +477,52 @@ export async function createTuningActivity(sessionId: string, templateKey: strin
  * and rounded like an imported one: half an arrow is not a thing anybody shot, and a billion of them
  * wins every volume badge at once.
  */
+/**
+ * The session's training arrows set to exactly this figure, whatever they were. The watch asserts a
+ * total rather than a difference, because "add six" delivered twice adds twelve and a queue
+ * delivering twice is ordinary. Returns what the count ended up as.
+ */
+export async function setTrainingArrows(sessionId: string, total: number) {
+	await unplan(sessionId);
+	const wanted = safeCount(total, LIMITS.arrows);
+	const [existing] = await db()
+		.select()
+		.from(schema.activity)
+		.where(
+			and(
+				eq(schema.activity.sessionId, sessionId),
+				eq(schema.activity.kind, 'training'),
+				isNull(schema.activity.deletedAt)
+			)
+		);
+
+	if (!existing) {
+		if (wanted <= 0) return 0;
+		const base = stamp();
+		await db()
+			.insert(schema.activity)
+			.values({
+				...base,
+				sessionId,
+				kind: 'training',
+				startedAt: base.createdAt,
+				arrowsShot: wanted,
+				status: 'complete'
+			});
+		await log('activity', base.id, 'insert');
+		return wanted;
+	}
+
+	// Nothing to write when the figure already matches, so re-asserting it costs no change log entry.
+	if (existing.arrowsShot === wanted) return wanted;
+	await db()
+		.update(schema.activity)
+		.set({ arrowsShot: wanted, updatedAt: Date.now() })
+		.where(eq(schema.activity.id, existing.id));
+	await log('activity', existing.id, 'update');
+	return wanted;
+}
+
 export async function addTrainingArrows(sessionId: string, delta: number) {
 	await unplan(sessionId);
 	const [existing] = await db()

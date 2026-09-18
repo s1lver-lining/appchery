@@ -32,6 +32,7 @@
 	import { GUIDE_STEPS, stepText } from '$lib/domain/tuning/guide';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
+	import { mirrorRound, mirrorEnds, mirrorIdle } from '$lib/watch/mirror';
 	import BraceTuning from '$lib/ui/BraceTuning.svelte';
 	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import {
@@ -570,6 +571,36 @@
 
 	/** Until the ends are read back, an unfinished round and a finished one look exactly alike. */
 	let sheetLoaded = $state(false);
+
+	/**
+	 * The wrist follows the phone into the activity. Sent once per activity rather than on every
+	 * reload, because `activity` is reassigned after each write and re-sending the round would reset
+	 * the keypad in the middle of an end.
+	 */
+	let mirroredActivity: string | null = null;
+	$effect(() => {
+		if (!activity || mirroredActivity === activity.id) return;
+		mirroredActivity = activity.id;
+		void mirrorRound(activity);
+	});
+
+	/**
+	 * Anything written to the sheet reaches the wrist. Hooked on the rows rather than on each writer,
+	 * so a writer added later cannot forget to. The first load may send the ends a second time, just
+	 * after the round did, which costs a few messages and changes nothing: an end is asserted whole.
+	 */
+	let sheetMirrored = false;
+	$effect(() => {
+		void stored;
+		if (!sheetMirrored) {
+			sheetMirrored = true;
+			return;
+		}
+		void mirrorEnds();
+	});
+
+	// Leaving takes the round away, so no arrow can land on a round nobody has open.
+	$effect(() => () => void mirrorIdle());
 
 	async function refresh() {
 		activity = await getActivity(activityId);

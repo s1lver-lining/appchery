@@ -74,7 +74,7 @@ public class SessionView extends FrameLayout {
         column.addView(count);
 
         TextView arrowsLabel = new TextView(context);
-        arrowsLabel.setText("arrows");
+        arrowsLabel.setText("training arrows");
         arrowsLabel.setGravity(Gravity.CENTER);
         arrowsLabel.setTextColor(DIM);
         arrowsLabel.setTextSize(10f);
