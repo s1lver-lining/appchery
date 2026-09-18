@@ -6,7 +6,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PLATFORM="android-36"
+# shellcheck source=scripts/android-env.sh
+source "$(dirname "$0")/android-env.sh"
+
 MISSING=()
 
 note() { printf '%s\n' "$*" >&2; }
@@ -16,45 +18,18 @@ command -v node >/dev/null 2>&1 || miss "node (https://nodejs.org, or your distr
 command -v npm  >/dev/null 2>&1 || miss "npm (ships with node)"
 [[ -d node_modules ]] || miss "node_modules — run: npm install"
 
-# A JDK: Gradle needs 21 for the Android plugin used here. Honour JAVA_HOME when it already points
-# at one, otherwise look where the common distros put it.
-pick_java() {
-	local candidate
-	for candidate in "${APPCHERY_JAVA_HOME:-}" "${JAVA_HOME:-}" \
-		/usr/lib/jvm/java-21-openjdk /usr/lib/jvm/java-21-openjdk-amd64 \
-		/usr/lib/jvm/temurin-21-jdk /usr/lib/jvm/default; do
-		[[ -n "$candidate" && -x "$candidate/bin/javac" ]] || continue
-		echo "$candidate"
-		return 0
-	done
-	return 1
-}
 if JAVA_HOME="$(pick_java)"; then
 	export JAVA_HOME
 	export PATH="$JAVA_HOME/bin:$PATH"
 else
-	miss "a JDK 21 (install openjdk-21-jdk, or set APPCHERY_JAVA_HOME)"
+	miss "$(java_hint)"
 fi
 
-# Pick an SDK that can actually build rather than trusting ANDROID_HOME: a distro package such as
-# /opt/android-sdk is often incomplete and not writable, so Gradle fails on unaccepted licences for
-# packages it cannot install. Set APPCHERY_ANDROID_HOME to force a particular one.
-pick_sdk() {
-	local candidate
-	for candidate in "${APPCHERY_ANDROID_HOME:-}" "$HOME/Android/Sdk" "${ANDROID_HOME:-}" \
-		"${ANDROID_SDK_ROOT:-}" /opt/android-sdk; do
-		[[ -n "$candidate" && -d "$candidate/platforms/$PLATFORM" ]] || continue
-		[[ -f "$candidate/licenses/android-sdk-license" ]] || continue
-		echo "$candidate"
-		return 0
-	done
-	return 1
-}
 if ANDROID_HOME="$(pick_sdk)"; then
 	export ANDROID_HOME
 	export ANDROID_SDK_ROOT="$ANDROID_HOME"
 else
-	miss "an Android SDK with $PLATFORM and accepted licences (Android Studio, or sdkmanager --licenses; or set APPCHERY_ANDROID_HOME)"
+	miss "an Android SDK with $APPCHERY_PLATFORM and accepted licences (Android Studio, or sdkmanager --licenses; or set APPCHERY_ANDROID_HOME)"
 fi
 
 [[ -x android/gradlew ]] || miss "android/gradlew — the Android project is missing; run: npx cap add android"

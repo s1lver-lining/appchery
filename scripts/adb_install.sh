@@ -3,24 +3,12 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-# Pick an SDK that can actually build, rather than trusting ANDROID_HOME. A distro package such as
-# /opt/android-sdk is often incomplete and not writable, so Gradle fails on unaccepted licences for
-# packages it cannot install. Set APPCHERY_ANDROID_HOME to force a particular one.
-PLATFORM="android-36"
-pick_sdk() {
-	local candidate
-	for candidate in "${APPCHERY_ANDROID_HOME:-}" "$HOME/Android/Sdk" "${ANDROID_HOME:-}" /opt/android-sdk; do
-		[[ -n "$candidate" && -d "$candidate/platforms/$PLATFORM" ]] || continue
-		[[ -f "$candidate/licenses/android-sdk-license" ]] || continue
-		echo "$candidate"
-		return 0
-	done
-	return 1
-}
+# shellcheck source=scripts/android-env.sh
+source "$(dirname "$0")/android-env.sh"
 
 if ! ANDROID_HOME="$(pick_sdk)"; then
-	echo "No usable Android SDK found: none of the candidates has $PLATFORM with accepted licences." >&2
-	echo "Checked: \$APPCHERY_ANDROID_HOME, \$HOME/Android/Sdk, \$ANDROID_HOME, /opt/android-sdk" >&2
+	echo "No usable Android SDK found: none of the candidates has $APPCHERY_PLATFORM with accepted licences." >&2
+	echo "Checked: \$APPCHERY_ANDROID_HOME, \$HOME/Android/Sdk, \$ANDROID_HOME, \$ANDROID_SDK_ROOT, /opt/android-sdk" >&2
 	exit 1
 fi
 export ANDROID_HOME
@@ -30,10 +18,15 @@ echo "Using Android SDK: $ANDROID_HOME"
 # Gradle reads local.properties before the environment, so pin it to the SDK chosen here.
 echo "sdk.dir=$ANDROID_HOME" > android/local.properties
 
-# Gradle and the Android plugin do not support the newest JDKs, so pin one that works.
-if [[ -z "${JAVA_HOME:-}" && -d /usr/lib/jvm/java-21-openjdk ]]; then
-	export JAVA_HOME=/usr/lib/jvm/java-21-openjdk
+# Gradle and the Android plugin do not support the newest JDKs. A JAVA_HOME already pointing at one
+# is the usual reason this fails, so it is checked rather than trusted.
+if ! JAVA_HOME="$(pick_java)"; then
+	echo "Cannot build: $(java_hint)" >&2
+	exit 1
 fi
+export JAVA_HOME
+export PATH="$JAVA_HOME/bin:$PATH"
+echo "Using JDK: $JAVA_HOME"
 
 ADB="$ANDROID_HOME/platform-tools/adb"
 [[ -x "$ADB" ]] || ADB="$(command -v adb)"
