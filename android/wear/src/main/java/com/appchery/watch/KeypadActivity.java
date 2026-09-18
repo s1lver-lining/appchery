@@ -92,13 +92,14 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     private DrawerRoot root;
     private FrameLayout shell;
     private SessionView sessionView;
-    private TextView idleView;
+    private StatusView statusView;
     private String screen = "idle";
     private Vibrator vibrator;
     private Link link;
     private float rotary = 0;
     private float density;
-    private String linkNote = "starting";
+    private String linkNote = "Starting";
+    private int linkKind = Link.WAITING;
 
     @Override
     protected void onCreate(Bundle state) {
@@ -123,7 +124,7 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
         for (int result : results) {
             if (result != PackageManager.PERMISSION_GRANTED) {
-                onLinkState(false, "no bluetooth permission");
+                onLinkState(Link.FAULT, "Bluetooth permission refused");
                 return;
             }
         }
@@ -153,12 +154,8 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         shell = new FrameLayout(this);
         shell.setBackgroundColor(Color.BLACK);
 
-        idleView = new TextView(this);
-        idleView.setGravity(Gravity.CENTER);
-        idleView.setTextColor(DIM);
-        idleView.setTextSize(13f);
-        idleView.setPadding(Math.round(30 * density), 0, Math.round(30 * density), 0);
-        shell.addView(idleView);
+        statusView = new StatusView(this);
+        shell.addView(statusView);
 
         sessionView = new SessionView(this, this);
         shell.addView(sessionView);
@@ -182,10 +179,10 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
     private void showScreen(String next) {
         screen = next;
-        idleView.setVisibility("idle".equals(next) ? View.VISIBLE : View.GONE);
+        statusView.setVisibility("idle".equals(next) ? View.VISIBLE : View.GONE);
         sessionView.setVisibility("session".equals(next) ? View.VISIBLE : View.GONE);
         if (root != null) root.setVisibility("score".equals(next) ? View.VISIBLE : View.GONE);
-        idleView.setText(linkNote);
+        statusView.setState(linkKind, linkNote);
     }
 
     private DrawerRoot buildScoring() {
@@ -769,9 +766,10 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     }
 
     @Override
-    public void onLinkState(boolean connected, String note) {
+    public void onLinkState(int kind, String note) {
+        linkKind = kind;
         linkNote = note;
-        idleView.setText(note);
+        statusView.setState(kind, note);
         sessionView.setNote(note);
         redraw();
     }

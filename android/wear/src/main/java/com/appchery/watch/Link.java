@@ -65,7 +65,7 @@ public class Link {
         /** The phone's copy of an end, which wins whenever it is the newer of the two. */
         void onEnd(int stageIndex, int endNo, String[] labels, long at);
 
-        void onLinkState(boolean connected, String note);
+        void onLinkState(int kind, String note);
 
         /** Which screen to show, so the wrist follows wherever the phone has gone. */
         void onScreen(String screen);
@@ -170,18 +170,18 @@ public class Link {
         BluetoothManager manager = context.getSystemService(BluetoothManager.class);
         BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
         if (adapter == null || !adapter.isEnabled()) {
-            say(false, "bluetooth off");
+            say(FAULT, "Bluetooth is off");
             return;
         }
         advertiser = adapter.getBluetoothLeAdvertiser();
         if (advertiser == null) {
-            say(false, "no peripheral role");
+            say(FAULT, "This watch cannot be found by a phone");
             return;
         }
 
         server = manager.openGattServer(context, serverCallback);
         if (server == null) {
-            say(false, "no gatt server");
+            say(FAULT, "Bluetooth will not start");
             return;
         }
 
@@ -296,7 +296,7 @@ public class Link {
 
         int version = message.optInt("v", 0);
         if (version > VERSION) {
-            say(true, "phone app is newer");
+            say(FAULT, "Update the watch app");
             return;
         }
         if (version < 1) return;
@@ -332,7 +332,7 @@ public class Link {
                 onArrows(message);
                 return;
             case "bye":
-                say(false, "phone let go");
+                say(WAITING, "Phone let go");
                 return;
             default:
         }
@@ -433,20 +433,30 @@ public class Link {
         if (message.optLong("at", -1) >= held.optLong("at", 0)) pending.remove(key);
     }
 
-    private void say(boolean connected, String note) {
-        Log.i(TAG, "state: " + note + (connected ? " (linked)" : ""));
-        main.post(() -> listener.onLinkState(connected, note));
+    /**
+     * What the link is, as something to show rather than a sentence to read. The screen colours the
+     * state from this: a watch waiting for a phone in a pocket is ordinary and a watch that cannot
+     * advertise at all is not, and the two should not look the same on the wrist.
+     */
+    public static final int WAITING = 0;
+    public static final int LINKED = 1;
+    /** Something the archer has to act on: a permission refused, or a radio that will not start. */
+    public static final int FAULT = 2;
+
+    private void say(int kind, String note) {
+        Log.i(TAG, "state: " + note + (kind == LINKED ? " (linked)" : ""));
+        main.post(() -> listener.onLinkState(kind, note));
     }
 
     private final AdvertiseCallback advertiseCallback = new AdvertiseCallback() {
         @Override
         public void onStartSuccess(AdvertiseSettings settings) {
-            say(false, "waiting for the phone");
+            say(WAITING, "Waiting for your phone");
         }
 
         @Override
         public void onStartFailure(int error) {
-            say(false, "cannot advertise, code " + error);
+            say(FAULT, "Bluetooth will not start (" + error + ")");
         }
     };
 
@@ -457,7 +467,7 @@ public class Link {
             if (state != BluetoothProfile.STATE_CONNECTED) {
                 subscribers.remove(device);
                 payload = DEFAULT_PAYLOAD;
-                say(false, "waiting for the phone");
+                say(WAITING, "Waiting for your phone");
             }
         }
 
@@ -477,12 +487,12 @@ public class Link {
                 boolean on = value.length > 0 && (value[0] & 0x01) != 0;
                 if (on) {
                     subscribers.add(device);
-                    say(true, "linked");
+                    say(LINKED, "Linked");
                     // Whatever was shot out of range goes up now, newest state per end only.
                     main.post(Link.this::flush);
                 } else {
                     subscribers.remove(device);
-                    say(false, "waiting for the phone");
+                    say(WAITING, "Waiting for your phone");
                 }
             }
             if (responseNeeded) {
