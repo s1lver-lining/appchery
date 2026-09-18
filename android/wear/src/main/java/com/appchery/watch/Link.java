@@ -59,7 +59,8 @@ public class Link {
 
     public interface Listener {
         /** What is being shot. Arrives before any end, and again whenever the phone rebinds. */
-        void onRound(String activityId, List<String> labels, int ends, int arrowsPerEnd);
+        void onRound(String activityId, List<String> labels, List<Integer> values, int ends,
+                int arrowsPerEnd);
 
         /** The phone's copy of an end, which wins whenever it is the newer of the two. */
         void onEnd(int stageIndex, int endNo, String[] labels, long at);
@@ -344,9 +345,13 @@ public class Link {
         if (incoming.isEmpty() || zones == null || stages == null || stages.length() == 0) return;
 
         List<String> labels = new ArrayList<>();
+        List<Integer> values = new ArrayList<>();
         for (int i = 0; i < zones.length(); i++) {
             JSONArray zone = zones.optJSONArray(i);
-            if (zone != null && zone.length() == 2) labels.add(zone.optString(0));
+            if (zone == null || zone.length() != 2) continue;
+            labels.add(zone.optString(0));
+            // What each one is worth, which is the phone's to decide and the watch's only to display.
+            values.add(zone.optInt(1, 0));
         }
 
         JSONArray first = stages.optJSONArray(0);
@@ -363,7 +368,8 @@ public class Link {
         activityId = incoming;
 
         final List<String> finalLabels = labels;
-        main.post(() -> listener.onRound(incoming, finalLabels, ends, arrowsPerEnd));
+        final List<Integer> finalValues = values;
+        main.post(() -> listener.onRound(incoming, finalLabels, finalValues, ends, arrowsPerEnd));
     }
 
     private void onEnd(JSONObject message) {
@@ -385,7 +391,14 @@ public class Link {
         int count = message.optInt("c", -1);
         int arrows = message.optInt("a", -1);
         if (label.isEmpty() || count < 0 || arrows < 0) return;
-        main.post(() -> listener.onSession(label, count, arrows));
+        /**
+         * A session message describes the session, and the description may have been made before this
+         * watch changed the count. Its own figure is the newer one until the phone has answered for
+         * it, so the count is withheld rather than allowed to overwrite: sending it back is what made
+         * the counter flick to the old number and then to the right one.
+         */
+        final int shown = pending.containsKey(ARROWS_KEY) ? -1 : arrows;
+        main.post(() -> listener.onSession(label, count, shown));
     }
 
     private void onActivity(JSONObject message) {

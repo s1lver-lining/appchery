@@ -204,11 +204,15 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	 */
 	$effect(() => {
 		const label = session ? $formatDateTime(session.startedAt) : '';
-		void mirrorSession(
-			label,
-			listedActivities,
-			(training?.arrowsShot ?? 0) + pending,
-			(activity) => goto(`/activities/${activity.id}`)
+		/**
+		 * The figure written down, without the arrows still waiting on the debounce. The watch asserts
+		 * a total, and a total it was told includes `pending` is one the flush then adds a second
+		 * time: a phone tap within half a second of a watch tap would invent arrows out of nothing.
+		 * The cost is that a tap on the phone reaches the wrist a moment late, which is the safe way
+		 * round.
+		 */
+		void mirrorSession(label, listedActivities, training?.arrowsShot ?? 0, (activity) =>
+			goto(`/activities/${activity.id}`)
 		);
 	});
 

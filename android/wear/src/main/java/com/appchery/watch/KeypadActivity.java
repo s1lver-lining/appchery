@@ -690,15 +690,15 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     // -------- the phone talking back
 
     @Override
-    public void onRound(String activityId, List<String> labels, int roundEnds, int roundArrows) {
+    public void onRound(String activityId, List<String> labels, List<Integer> prices, int roundEnds,
+            int roundArrows) {
         boolean sameShape = roundEnds == ends && roundArrows == arrowsPerEnd && labels.equals(keys);
         keys = labels;
         Map<String, Integer> next = new HashMap<>();
-        for (String label : labels) {
-            Integer known = values.get(label);
-            // Values come from the phone with the round; a label it did not price scores nothing here,
-            // which only ever affects the total shown on the wrist.
-            next.put(label, known == null ? 0 : known);
+        for (int i = 0; i < labels.size(); i++) {
+            // What each label is worth, as the phone priced it. Only the total on the wrist depends
+            // on this: the record is scored on the phone, from its own score set.
+            next.put(labels.get(i), i < prices.size() ? prices.get(i) : 0);
         }
         values = next;
 
@@ -724,9 +724,19 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
          */
         if (link.pendingFor(stageIndex, endNo)) return;
 
+        boolean any = false;
         for (int arrow = 0; arrow < arrowsPerEnd; arrow++) {
-            shots[end * arrowsPerEnd + arrow] = arrow < labels.length ? labels[arrow] : null;
+            String label = arrow < labels.length ? labels[arrow] : null;
+            shots[end * arrowsPerEnd + arrow] = label;
+            if (label != null) any = true;
         }
+        /**
+         * An end the phone has sent is an end the phone holds, which is what `asserted` means. Without
+         * this, editing an arrow in an end that arrived from the phone and is not yet full is never
+         * sent anywhere: the change would live on the wrist alone.
+         */
+        if (any) asserted.add(end);
+        else asserted.remove(end);
         redraw();
     }
 
@@ -746,7 +756,9 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
     @Override
     public void onSession(String label, int activityCount, int arrows) {
-        sessionView.setSession(label, arrows);
+        // A count of less than nothing means the phone's figure is older than this watch's own.
+        if (arrows >= 0) sessionView.setSession(label, arrows);
+        else sessionView.setTitle(label);
         // The activities follow one message each, so the list is emptied ready for them.
         sessionView.clearActivities();
     }

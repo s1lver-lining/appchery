@@ -167,14 +167,25 @@ public class SessionView extends FrameLayout {
     }
 
     public void setSession(String label, int arrowsSoFar) {
-        title.setText(label);
+        setTitle(label);
         setArrows(arrowsSoFar);
     }
 
+    /** The session named, without touching a count this watch may know better than the phone does. */
+    public void setTitle(String label) {
+        title.setText(label);
+    }
+
     public void setArrows(int total) {
-        arrows = Math.max(0, total);
-        // What was added locally no longer describes the figure the phone has settled on.
-        added.clear();
+        int next = Math.max(0, total);
+        /**
+         * Only a figure that disagrees with this one means the phone decided something else, and only
+         * then does what was added locally stop describing it. A confirmation of what is already
+         * shown must keep it, or undo goes dead the moment the phone answers: which, now that the
+         * phone answers immediately, is always.
+         */
+        if (next != arrows) added.clear();
+        arrows = next;
         count.setText(String.valueOf(arrows));
     }
 

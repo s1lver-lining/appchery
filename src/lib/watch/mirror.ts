@@ -13,6 +13,20 @@ import type { ActivityLine, Round } from './link';
  * whether a watch exists before describing what it is showing.
  */
 
+/**
+ * How long idle waits before it is sent. Leaving one mirrored page for another unmounts the first
+ * before the second mounts, and idle sent in between reads on the wrist as a flash of nothing.
+ */
+const IDLE_DELAY_MS = 250;
+/** What the watch was last told about the session, so it is not told it again for nothing. */
+let lastSession: string | null = null;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+function cancelIdle(): void {
+	if (idleTimer !== null) clearTimeout(idleTimer);
+	idleTimer = null;
+}
+
 /** Only what the activity table and the round snapshot already say. */
 export interface ActivityLike {
 	id: string;
@@ -67,6 +81,16 @@ export async function mirrorSession(
 	 * activity: it is the arrow counter, which the watch already shows as the figure at the top.
 	 */
 	const shown = activities.filter((activity) => activity.kind !== 'training');
+
+	/**
+	 * Skipped when it would say exactly what was said last time. The page describes itself whenever
+	 * anything about it changes, and a reload reassigns the session and its activities separately, so
+	 * one change arrives as two describings a few milliseconds apart. Sending both rebuilds the list
+	 * on the wrist, losing where it was scrolled, and lets an older count land after a newer one.
+	 */
+	const fingerprint = JSON.stringify([label, arrows, shown.map(lineFor)]);
+	if (fingerprint === lastSession) return;
+	lastSession = fingerprint;
 	link.clearRound();
 	onWatchOpen((index) => {
 		const chosen = shown[index];
@@ -105,6 +129,7 @@ export async function mirrorRound(activity: ActivityLike): Promise<void> {
 		}))
 	};
 	onWatchOpen(null);
+	lastSession = null;
 	await link.setRound(round, recordFor(round));
 }
 
@@ -127,23 +152,12 @@ export async function mirrorArrows(total: number, updatedAt: number): Promise<vo
 	await watchLink()?.pushArrows(total, updatedAt);
 }
 
-/**
- * How long idle waits before it is sent. Leaving one mirrored page for another unmounts the first
- * before the second mounts, and idle sent in between reads on the wrist as a flash of nothing.
- */
-const IDLE_DELAY_MS = 250;
-let idleTimer: ReturnType<typeof setTimeout> | null = null;
-
-function cancelIdle(): void {
-	if (idleTimer !== null) clearTimeout(idleTimer);
-	idleTimer = null;
-}
-
 /** Nothing worth showing: the phone is somewhere the watch has no business mirroring. */
 export async function mirrorIdle(): Promise<void> {
 	const link = watchLink();
 	if (!link) return;
 	cancelIdle();
+	lastSession = null;
 	idleTimer = setTimeout(() => {
 		idleTimer = null;
 		link.clearRound();
