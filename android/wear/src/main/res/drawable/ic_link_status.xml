@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The mark reduced to what survives at the size of a chip on a watch face: two rings and a centre,
+    one colour, no strokes thin enough to disappear. Tinted by the system, so it is drawn white.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24"
+    android:tint="#FFFFFFFF">
+    <path
+        android:pathData="M12,1.6 A10.4,10.4 0 1,1 12,22.4 A10.4,10.4 0 1,1 12,1.6"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.2" />
+    <path
+        android:pathData="M12,7.2 A4.8,4.8 0 1,1 12,16.8 A4.8,4.8 0 1,1 12,7.2"
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="2.2" />
+    <path
+        android:pathData="M12,10.4 A1.6,1.6 0 1,1 12,13.6 A1.6,1.6 0 1,1 12,10.4"
+        android:fillColor="#FFFFFFFF" />
+</vector>
