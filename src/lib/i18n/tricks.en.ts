@@ -319,7 +319,15 @@ export const tricksEn = {
 			tricks: [
 				{
 					lead: 'A watch is connected once, not once per screen.',
-					body: 'The link is made from the settings and stays up while you move around the app, so connect before you walk to the line rather than between ends. Reloading the page ends it, and so does the watch going out of range: no browser can reopen a Bluetooth link on its own, so getting it back costs another tap. Only Chrome and Edge can connect one at all.'
+					body: 'The link is made from the settings and stays up while you move around the app, so connect before you walk to the line rather than between ends. In the installed Android app it is made once and for good: the watch is remembered and opened again by itself when the app starts, when it comes back to the screen, and while it is out of range. In a browser there is no remembering, so reloading the page or walking away costs another tap, and only Chrome and Edge can connect one at all.'
+				},
+				{
+					lead: 'Disconnect is how you forget a watch.',
+					body: 'The installed app keeps opening the watch it connected to last, so the button that stops it doing that is Disconnect in the settings. Connecting again costs one tap and one choice from the list, and it is remembered from then on.'
+				},
+				{
+					lead: 'Back on the watch moves the phone.',
+					body: 'The phone owns where the two of them are, so going back on the wrist walks the phone out of the round and into its session, then out of the session, rather than leaving the two screens somewhere different from each other.'
 				},
 				{
 					lead: 'The phone works out every score, not the watch.',

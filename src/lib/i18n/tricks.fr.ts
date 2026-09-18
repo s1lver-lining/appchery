@@ -314,7 +314,15 @@ export const tricksFr: TricksDictionary = {
 			tricks: [
 				{
 					lead: 'Une montre se connecte une fois, pas à chaque écran.',
-					body: 'Le lien se fait depuis les réglages et tient pendant que vous circulez dans l\'application : connectez-la avant d\'aller au pas de tir, pas entre deux volées. Recharger la page y met fin, comme la montre qui sort de portée : aucun navigateur ne sait rétablir seul un lien Bluetooth, et le retrouver coûte donc un nouvel appui. Seuls Chrome et Edge peuvent en connecter une.'
+					body: 'Le lien se fait depuis les réglages et tient pendant que vous circulez dans l\'application : connectez-la avant d\'aller au pas de tir, pas entre deux volées. Dans l\'application Android installée, il se fait une fois pour toutes : la montre est retenue et rouverte toute seule au démarrage, au retour à l\'écran, et tant qu\'elle est hors de portée. Dans un navigateur rien n\'est retenu : recharger la page ou s\'éloigner coûte un nouvel appui, et seuls Chrome et Edge peuvent en connecter une.'
+				},
+				{
+					lead: 'Déconnecter, c\'est oublier une montre.',
+					body: 'L\'application installée rouvre toujours la dernière montre connectée : le bouton qui l\'en empêche est Déconnecter, dans les réglages. La reconnecter coûte un appui et un choix dans la liste, et elle est retenue ensuite.'
+				},
+				{
+					lead: 'Le retour sur la montre déplace le téléphone.',
+					body: 'C\'est le téléphone qui décide où ils se trouvent tous les deux : revenir en arrière au poignet fait donc sortir le téléphone de la volée vers sa séance, puis de la séance, plutôt que de laisser les deux écrans à des endroits différents.'
 				},
 				{
 					lead: 'C\'est le téléphone qui calcule les scores, pas la montre.',
