@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The app's mark, the same three rings as static/icon-maskable.svg and struck from the centre for
+    the same reason: a launcher crops an adaptive icon to its own shape, and on a watch that shape is
+    always a circle. Scaled so the outer ring ends at the edge of the 72dp a mask is guaranteed to
+    leave alone, of the 108dp this canvas is.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:pathData="M54,20.88 A33.12,33.12 0 1,1 54,87.12 A33.12,33.12 0 1,1 54,20.88"
+        android:strokeColor="@color/mark_outer"
+        android:strokeWidth="5.76" />
+    <path
+        android:pathData="M54,29.16 A24.84,24.84 0 1,1 54,78.84 A24.84,24.84 0 1,1 54,29.16"
+        android:strokeColor="@color/mark_middle"
+        android:strokeWidth="5.76" />
+    <path
+        android:pathData="M54,37.53 A16.47,16.47 0 1,1 54,70.47 A16.47,16.47 0 1,1 54,37.53"
+        android:strokeColor="@color/mark_inner"
+        android:strokeWidth="5.76" />
+    <path
+        android:pathData="M54,45.27 A8.73,8.73 0 1,1 54,62.73 A8.73,8.73 0 1,1 54,45.27"
+        android:fillColor="@color/mark_centre" />
+</vector>

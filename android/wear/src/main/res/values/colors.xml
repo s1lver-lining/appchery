@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    The app's own palette, from src/app.css and static/icon-maskable.svg, so the wrist is the same
+    app as the phone. Not the WA face colours, which belong to scores rather than to branding and
+    live as constants next to the keypad that draws them.
+-->
+<resources>
+    <color name="mark_paper">#f7f3ec</color>
+    <color name="mark_outer">#eed5a4</color>
+    <color name="mark_middle">#e0b567</color>
+    <color name="mark_inner">#d0912f</color>
+    <color name="mark_centre">#8a5320</color>
+</resources>
