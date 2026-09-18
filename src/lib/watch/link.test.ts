@@ -441,3 +441,59 @@ describe('what the watch asks for', () => {
 		expect(record.ends.size).toBe(0);
 	});
 });
+
+describe('checking on a link that is already up', () => {
+	/** Re-sending the session and every end every few seconds would fill the air for nothing. */
+	it('says nothing again when the watch was already answering', async () => {
+		await withRound();
+		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
+		sent = [];
+
+		await link.ping();
+		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
+
+		// The hello it sent, and nothing else: no screen, no round, no ends.
+		expect(sent.filter((m) => m.t === 'hello')).toHaveLength(1);
+		expect(sent.filter((m) => m.t === 'screen')).toHaveLength(0);
+		expect(sent.filter((m) => m.t === 'round')).toHaveLength(0);
+		expect(sent.filter((m) => m.t === 'end')).toHaveLength(0);
+	});
+
+	it('reports a link that stops answering', async () => {
+		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
+		expect(link.live).toBe(true);
+
+		await link.ping();
+		elapse();
+		expect(link.live).toBe(false);
+		expect(events).toContainEqual({ kind: 'stale' });
+	});
+
+	/** The watch app restarting is exactly this: it comes back knowing nothing at all. */
+	it('tells a recovered watch everything again', async () => {
+		await link.showSession('Tuesday evening', [{ kind: 'scoring', label: 'WA 720', scorable: true }], 12);
+		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
+
+		await link.ping();
+		elapse();
+		sent = [];
+		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
+
+		expect(sent.filter((m) => m.t === 'screen')).toHaveLength(1);
+		const session = sent.find((m) => m.t === 'session');
+		if (session?.t !== 'session') throw new Error('expected the session again');
+		// The counter has to come back with it, or the wrist shows nothing shot.
+		expect(session.a).toBe(12);
+		expect(sent.filter((m) => m.t === 'activity')).toHaveLength(1);
+	});
+
+	it('forgets the session once the phone has left it', async () => {
+		await link.showSession('Tuesday evening', [], 12);
+		await link.showIdle();
+		await link.ping();
+		elapse();
+		sent = [];
+		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
+		expect(sent.filter((m) => m.t === 'session')).toHaveLength(0);
+	});
+});

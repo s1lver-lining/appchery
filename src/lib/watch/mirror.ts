@@ -1,7 +1,7 @@
 import { getScoreSet } from '$lib/domain/rounds/seed';
 import type { RoundDefinition } from '$lib/domain/rounds/types';
 import { recordFor } from './record';
-import { watchLink, onWatchOpen, onWatchArrows } from './store';
+import { watchLink, onWatchApplied, onWatchBack, onWatchOpen, onWatchArrows } from './store';
 import type { ActivityLine, Round } from './link';
 
 /**
@@ -76,7 +76,6 @@ export async function mirrorSession(
 	 */
 	const shown = activities.filter((activity) => activity.kind !== 'training');
 	link.clearRound();
-	onWatchArrows(null);
 	onWatchOpen((index) => {
 		const chosen = shown[index];
 		// An index from a list the watch was sent before the session changed under it.
@@ -136,10 +135,21 @@ export async function mirrorIdle(): Promise<void> {
 	link.clearRound();
 	onWatchOpen(null);
 	onWatchArrows(null);
+	onWatchBack(null);
 	await link.showIdle();
 }
 
 /** What to do when the watch asserts the session's training arrows. */
 export function acceptArrows(handler: ((total: number, at: number) => void) | null): void {
 	onWatchArrows(handler);
+}
+
+/** Where back goes from this page. The watch asks; only the phone knows what is behind it. */
+export function acceptBack(handler: (() => void) | null): void {
+	onWatchBack(handler);
+}
+
+/** What to do once an arrow from the watch has reached the record, so the page can read it back. */
+export function acceptApplied(handler: (() => void) | null): void {
+	onWatchApplied(handler);
 }

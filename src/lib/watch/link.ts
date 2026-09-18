@@ -57,6 +57,8 @@ export type LinkEvent =
 	| { kind: 'refused'; stageIndex: number; endNo: number; reason: string }
 	/** The watch asking for an activity by position. Only the phone can actually open one. */
 	| { kind: 'open'; index: number }
+	/** The watch asking to come back out. Only the phone knows what is behind where it is. */
+	| { kind: 'back' }
 	/** The session's training arrows as a total, read on this device's clock. */
 	| { kind: 'arrows'; total: number; at: number }
 	/** The peer speaks a protocol this build does not: the archer has to update one of the two. */
@@ -76,7 +78,14 @@ export class WatchLink {
 	/** Added to a watch timestamp to read it on this device's clock. */
 	private peerOffset = 0;
 	private answered = false;
+	/** A hello is out and has not been answered yet, which is what the liveness timer is watching. */
+	private awaiting = false;
 	private screen: Screen = 'idle';
+	/**
+	 * The session as last described. Held because a watch that restarts has forgotten it and cannot
+	 * say so: its counter would sit at nothing while the phone believed it had been told.
+	 */
+	private session: { label: string; activities: ActivityLine[]; arrows: number } | null = null;
 
 	constructor(
 		private readonly channel: Channel,
@@ -101,9 +110,22 @@ export class WatchLink {
 	 */
 	async open(): Promise<void> {
 		this.answered = false;
+		await this.ping();
+	}
+
+	/**
+	 * Asks again whether anybody is there. Worth repeating rather than asking once: restarting the
+	 * watch app re-registers the service, and the phone goes on holding handles that lead nowhere
+	 * while every write it makes appears to succeed.
+	 */
+	async ping(): Promise<void> {
+		this.awaiting = true;
 		await this.say({ v: PROTOCOL_VERSION, t: 'hello', d: this.deviceId, c: this.now() });
 		this.timer(() => {
-			if (!this.answered) this.notify({ kind: 'stale' });
+			if (!this.awaiting) return;
+			this.awaiting = false;
+			this.answered = false;
+			this.notify({ kind: 'stale' });
 		}, LIVENESS_MS);
 	}
 
@@ -132,7 +154,16 @@ export class WatchLink {
 	}
 
 	async showSession(label: string, activities: ActivityLine[], arrows: number): Promise<void> {
+		this.session = { label, activities, arrows };
 		await this.showScreen('session');
+		await this.sendSession(label, activities, arrows);
+	}
+
+	private async sendSession(
+		label: string,
+		activities: ActivityLine[],
+		arrows: number
+	): Promise<void> {
 		await this.say({
 			v: PROTOCOL_VERSION,
 			t: 'session',
@@ -155,6 +186,7 @@ export class WatchLink {
 	}
 
 	async showIdle(): Promise<void> {
+		this.session = null;
 		await this.showScreen('idle');
 	}
 
@@ -213,6 +245,9 @@ export class WatchLink {
 				case 'open':
 					this.notify({ kind: 'open', index: message.i });
 					return;
+				case 'back':
+					this.notify({ kind: 'back' });
+					return;
 				case 'arrows':
 					// Read on this device's clock, or last write wins compares two different nows.
 					this.notify({ kind: 'arrows', total: message.n, at: message.at + this.peerOffset });
@@ -236,13 +271,25 @@ export class WatchLink {
 	}
 
 	private async onHello(peerDeviceId: string, peerClock: number): Promise<void> {
+		/**
+		 * Only a watch that was not answering a moment ago needs telling everything again. A link
+		 * already known to be alive is merely being checked on, and re-sending the session and every
+		 * end each time would put a round's worth of messages on the air every few seconds.
+		 */
+		const recovered = !this.answered;
 		this.peerDeviceId = peerDeviceId;
 		this.peerOffset = skew(this.now(), peerClock);
+		this.awaiting = false;
 		this.answered = true;
 		this.notify({ kind: 'greeted', peerDeviceId, offsetMs: this.peerOffset });
+		if (!recovered) return;
 
 		// A watch that has just restarted knows none of this, and cannot say so: told again anyway.
 		await this.showScreen(this.screen);
+		if (this.session) {
+			const { label, activities, arrows } = this.session;
+			await this.sendSession(label, activities, arrows);
+		}
 		if (this.round) {
 			await this.sendRound();
 			await this.pushAll();

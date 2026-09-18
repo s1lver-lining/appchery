@@ -120,6 +120,18 @@ public class Link {
 
     private static final String ARROWS_KEY = "arrows";
 
+    /** Asks the phone to come back out of wherever it is. It knows what is behind it; this does not. */
+    public void requestBack() {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("v", VERSION);
+            message.put("t", "back");
+            send(message);
+        } catch (Exception e) {
+            Log.w(TAG, "could not ask to go back", e);
+        }
+    }
+
     /** Asks the phone to open an activity. The phone owns where the two of them are. */
     public void requestOpen(int index) {
         try {

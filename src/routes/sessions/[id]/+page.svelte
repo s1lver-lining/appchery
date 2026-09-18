@@ -77,7 +77,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import { mirrorSession, mirrorIdle, acceptArrows } from '$lib/watch/mirror';
+	import { mirrorSession, mirrorIdle, acceptArrows, acceptBack } from '$lib/watch/mirror';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import {
@@ -214,6 +214,12 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			await refresh();
 		});
 		return () => acceptArrows(null);
+	});
+
+	// Back from a session is the list of them, which leaves the watch with nothing to mirror.
+	$effect(() => {
+		acceptBack(() => goto('/sessions'));
+		return () => acceptBack(null);
 	});
 
 	// Leaving the session leaves the watch nothing to show, rather than a session nobody is in.

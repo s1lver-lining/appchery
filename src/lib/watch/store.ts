@@ -36,6 +36,20 @@ let connection: Connection | null = null;
 let link: WatchLink | null = null;
 let onOpen: ((index: number) => void) | null = null;
 let onArrows: ((total: number, at: number) => void) | null = null;
+let onApplied: (() => void) | null = null;
+let onBack: (() => void) | null = null;
+let heartbeat: ReturnType<typeof setInterval> | null = null;
+
+/**
+ * How often the phone checks that anybody is still listening. Often enough that a watch app restart
+ * is noticed before the archer shoots an end into nothing, seldom enough to cost neither battery.
+ */
+const HEARTBEAT_MS = 15_000;
+
+function stopHeartbeat(): void {
+	if (heartbeat !== null) clearInterval(heartbeat);
+	heartbeat = null;
+}
 
 /** The live link, for a page that wants to put a round or a session on the wrist. */
 export function watchLink(): WatchLink | null {
@@ -50,6 +64,19 @@ export function onWatchOpen(handler: ((index: number) => void) | null): void {
 /** What to do when the watch asserts the session's training arrows. */
 export function onWatchArrows(handler: ((total: number, at: number) => void) | null): void {
 	onArrows = handler;
+}
+
+/**
+ * What to do once the watch has changed the record. Writing it is not enough: the page holding the
+ * scoresheet read its rows before the arrow arrived and has no reason to read them again.
+ */
+export function onWatchApplied(handler: (() => void) | null): void {
+	onApplied = handler;
+}
+
+/** What to do when the watch asks to come back out of where it is. */
+export function onWatchBack(handler: (() => void) | null): void {
+	onBack = handler;
 }
 
 function handle(event: LinkEvent, name: string): void {
@@ -69,8 +96,14 @@ function handle(event: LinkEvent, name: string): void {
 		case 'arrows':
 			onArrows?.(event.total, event.at);
 			return;
+		case 'applied':
+			onApplied?.();
+			return;
+		case 'back':
+			onBack?.();
+			return;
 		default:
-			// Applied, refused, noise and a version mismatch are not states of the link itself.
+			// Refused, noise and a version mismatch are not states of the link itself.
 			return;
 	}
 }
@@ -93,6 +126,7 @@ export async function connectWatch(): Promise<void> {
 	const result = await connectOverWeb(
 		(bytes) => void link?.receive(bytes),
 		() => {
+			stopHeartbeat();
 			connection = null;
 			link = null;
 			watchStatus.set({ state: 'lost' });
@@ -109,14 +143,23 @@ export async function connectWatch(): Promise<void> {
 	link = new WatchLink(result.connection.channel, deviceId(), (event) => handle(event, name));
 	// Said before anything else, and the status stays at connecting until the watch answers it.
 	await link.open();
+
+	stopHeartbeat();
+	heartbeat = setInterval(() => {
+		// A write that throws is as good an answer as silence: there is nothing on the other end.
+		void link?.ping().catch(() => watchStatus.set({ state: 'stale', name }));
+	}, HEARTBEAT_MS);
 }
 
 export function disconnectWatch(): void {
+	stopHeartbeat();
 	void link?.close();
 	connection?.disconnect();
 	connection = null;
 	link = null;
 	onOpen = null;
 	onArrows = null;
+	onApplied = null;
+	onBack = null;
 	watchStatus.set(initial());
 }

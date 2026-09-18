@@ -56,6 +56,8 @@ export type Wire =
 	| { v: number; t: 'activity'; i: number; k: string; l: string; s: 0 | 1 }
 	/** The watch asking the phone to open an activity, since the phone owns where the two are. */
 	| { v: number; t: 'open'; i: number }
+	/** The watch asking to come back out of wherever it is, for the same reason. */
+	| { v: number; t: 'back' }
 	/**
 	 * The session's training arrows, entire rather than as a difference. A count sent as "add six"
 	 * doubles when the message arrives twice, and arriving twice is normal for a queue.
@@ -173,6 +175,9 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 		case 'arrows':
 			if (!isIndex(m.n) || !isTime(m.at)) break;
 			return { ok: true, message: { v: version, t: 'arrows', n: m.n, at: m.at } };
+
+		case 'back':
+			return { ok: true, message: { v: version, t: 'back' } };
 
 		case 'bye':
 			return { ok: true, message: { v: version, t: 'bye' } };

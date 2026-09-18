@@ -32,7 +32,13 @@
 	import { GUIDE_STEPS, stepText } from '$lib/domain/tuning/guide';
 	import TuningDiagram from '$lib/ui/TuningDiagram.svelte';
 	import PageSkeleton from '$lib/ui/PageSkeleton.svelte';
-	import { mirrorRound, mirrorEnds, mirrorIdle } from '$lib/watch/mirror';
+	import {
+		mirrorRound,
+		mirrorEnds,
+		mirrorIdle,
+		acceptApplied,
+		acceptBack
+	} from '$lib/watch/mirror';
 	import BraceTuning from '$lib/ui/BraceTuning.svelte';
 	import WeightRatio from '$lib/ui/WeightRatio.svelte';
 	import {
@@ -597,6 +603,26 @@
 			return;
 		}
 		void mirrorEnds();
+	});
+
+	/**
+	 * An arrow from the watch is written straight to the record, which this page read before it
+	 * arrived and has no reason to read again. Without this the arrow is only there after navigating
+	 * away and back, which looks exactly like the write having failed.
+	 */
+	$effect(() => {
+		acceptApplied(async () => {
+			stored = await loadRows();
+			activity = await getActivity(activityId);
+		});
+		return () => acceptApplied(null);
+	});
+
+	// Back from an activity is its session, on both screens: the phone moves and the watch follows.
+	$effect(() => {
+		const sessionId = activity?.sessionId;
+		acceptBack(sessionId ? () => goto(`/sessions/${sessionId}`) : null);
+		return () => acceptBack(null);
 	});
 
 	// Leaving takes the round away, so no arrow can land on a round nobody has open.

@@ -82,6 +82,8 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     private TextView editLabel;
     private ScrollView sheetScroll;
     private View sheetContent;
+    /** Set when the sheet should show its newest end, applied once it has a height to measure. */
+    private boolean wantSheetBottom = false;
     private View editOverlay;
     private int editing = -1;
 
@@ -182,7 +184,10 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         root.setOnSettled(() -> {
             buzz(12);
             // Opened on the newest end rather than the first, so the way out is one drag away.
-            if (root.isOpen()) sheetScroll.post(() -> sheetScroll.scrollTo(0, Integer.MAX_VALUE));
+            if (root.isOpen()) {
+                wantSheetBottom = true;
+                sheetScroll.post(this::applySheetScroll);
+            }
         });
 
         editOverlay = buildEditor();
@@ -402,6 +407,9 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         sheetScroll.setFocusableInTouchMode(false);
         sheetScroll.addView(content);
         sheetContent = content;
+        // Every layout, because the one that matters is whichever first has a height worth measuring.
+        sheetScroll.addOnLayoutChangeListener(
+                (v, l, t, r, b, ol, ot, or2, ob) -> applySheetScroll());
         return sheetScroll;
     }
 
@@ -605,6 +613,29 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         }
     }
 
+    /**
+     * Back asks the phone to move, rather than moving only the wrist: the phone owns where the two
+     * of them are, so a watch that went back on its own would be showing a different place. On the
+     * idle screen there is nothing behind, so the system takes it and the app closes.
+     */
+    @Override
+    public void onBackPressed() {
+        if ("idle".equals(screen) || link == null || !link.connected()) {
+            super.onBackPressed();
+            return;
+        }
+        if (editOverlay.getVisibility() == View.VISIBLE) {
+            closeEditor();
+            return;
+        }
+        if (root != null && root.isOpen()) {
+            root.settle(false);
+            return;
+        }
+        buzz(14);
+        link.requestBack();
+    }
+
     /** The crown again, for the case where focus has gone somewhere this activity does not own. */
     @Override
     public boolean onGenericMotionEvent(MotionEvent e) {
@@ -776,19 +807,29 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
         int waiting = link == null ? 0 : link.waiting();
         sheetStatus.setText(waiting > 0 ? linkNote + ", " + waiting + " waiting" : linkNote);
-        clampSheet();
+        sheetScroll.post(this::applySheetScroll);
     }
 
     /**
-     * An end going out of the sheet makes the sheet shorter, and a ScrollView left scrolled past its
-     * own content shows the empty space below it: a black screen that a tap fixes, because the tap
-     * is what forces the re-layout that clamps it. Clamped here instead, when the height changes.
+     * A ScrollView left scrolled past its own content shows the empty space below it: a black screen
+     * that a tap fixes, because the tap is what forces the re-layout that clamps it.
+     *
+     * Two things put it there. An end leaving the sheet makes the sheet shorter, and asking for the
+     * bottom while the sheet is still being laid out measures its height as nothing, so the scroll
+     * lands far past the end and stays there. Both are why this runs on every layout rather than at
+     * the moment of the change: a height of nothing is waited out instead of being trusted.
      */
-    private void clampSheet() {
-        sheetScroll.post(() -> {
-            int room = Math.max(0, sheetContent.getHeight() - sheetScroll.getHeight());
-            if (sheetScroll.getScrollY() > room) sheetScroll.scrollTo(0, room);
-        });
+    private void applySheetScroll() {
+        int height = sheetScroll.getHeight();
+        if (height <= 0 || sheetContent.getHeight() <= 0) return;
+
+        int room = Math.max(0, sheetContent.getHeight() - height);
+        if (wantSheetBottom) {
+            wantSheetBottom = false;
+            sheetScroll.scrollTo(0, room);
+            return;
+        }
+        if (sheetScroll.getScrollY() > room) sheetScroll.scrollTo(0, room);
     }
 
     /** An arrow not yet shot is an empty outline rather than a gap, so the end keeps its shape. */
