@@ -7,6 +7,7 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.GradientDrawable;
 import android.graphics.drawable.StateListDrawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
@@ -14,6 +15,7 @@ import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.window.OnBackInvokedDispatcher;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
@@ -105,6 +107,7 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         density = getResources().getDisplayMetrics().density;
         buildShell();
         redraw();
+        listenForBack();
 
         link = new Link(this, this);
         String[] needed = {Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT};
@@ -626,25 +629,50 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
     /**
      * Back asks the phone to move, rather than moving only the wrist: the phone owns where the two
-     * of them are, so a watch that went back on its own would be showing a different place. On the
-     * idle screen there is nothing behind, so the system takes it and the app closes.
+     * of them are, so a watch that went back on its own would be showing a different place. The
+     * phone sends the watch wherever it lands: out of a round to its session, out of a session to
+     * the status screen, which is why neither of those cases appears here.
+     *
+     * True when this took the gesture. False means there is nothing behind and the app should close,
+     * which the caller does, because nothing else will.
      */
-    @Override
-    public void onBackPressed() {
-        if ("idle".equals(screen) || link == null || !link.connected()) {
-            super.onBackPressed();
-            return;
-        }
+    private boolean handleBack() {
+        if ("idle".equals(screen) || link == null || !link.connected()) return false;
         if (editOverlay.getVisibility() == View.VISIBLE) {
             closeEditor();
-            return;
+            return true;
         }
         if (root != null && root.isOpen()) {
             root.settle(false);
-            return;
+            return true;
         }
         buzz(14);
         link.requestBack();
+        return true;
+    }
+
+    /**
+     * Android 13 replaced the back key with a gesture the app registers for, and from Android 16 an
+     * app targeting it is not told about back any other way: `onBackPressed` is never called and the
+     * key event is never dispatched. Without this the watch does not go back at all — it closes, and
+     * the phone is never asked to move.
+     */
+    private void listenForBack() {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return;
+        getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                () -> {
+                    // Registered, so the system no longer closes anything on its own: when there is
+                    // nothing behind, leaving is this app's job now.
+                    if (!handleBack()) finish();
+                });
+    }
+
+    /** Wear OS 3, which predates the gesture above and still delivers back as a key press. */
+    @Override
+    @SuppressWarnings("deprecation")
+    public void onBackPressed() {
+        if (!handleBack()) super.onBackPressed();
     }
 
     /** The crown again, for the case where focus has gone somewhere this activity does not own. */
