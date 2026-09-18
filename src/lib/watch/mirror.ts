@@ -2,7 +2,14 @@ import { knownScoreSet } from '$lib/domain/rounds/seed';
 import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
 import type { RoundDefinition } from '$lib/domain/rounds/types';
 import { recordFor } from './record';
-import { watchLink, onWatchApplied, onWatchBack, onWatchOpen, onWatchArrows } from './store';
+import {
+	watchLink,
+	onWatchApplied,
+	onWatchBack,
+	onWatchLinked,
+	onWatchOpen,
+	onWatchArrows
+} from './store';
 import type { ActivityLine, Round } from './link';
 
 /**
@@ -20,6 +27,18 @@ import type { ActivityLine, Round } from './link';
 const IDLE_DELAY_MS = 250;
 /** What the watch was last told about the session, so it is not told it again for nothing. */
 let lastSession: string | null = null;
+/**
+ * How to say the current page again. A page describes itself when it mounts and not afterwards, so
+ * a link made or remade later would leave the watch idle on a phone that is plainly on a round,
+ * until the archer navigated somewhere and back. This is what a watch is told the moment it starts
+ * listening, whether that is the first link of the day or one the app reopened by itself.
+ */
+let describeAgain: (() => Promise<void>) | null = null;
+
+function remember(describe: () => Promise<void>): void {
+	describeAgain = describe;
+	onWatchLinked(() => void describeAgain?.());
+}
 let idleTimer: ReturnType<typeof setTimeout> | null = null;
 
 function cancelIdle(): void {
@@ -72,6 +91,14 @@ export async function mirrorSession(
 	arrows: number,
 	open: (activity: ActivityLike) => void
 ): Promise<void> {
+	// Remembered before the link is looked for: a page that describes itself while nothing is
+	// connected is exactly the page a watch connecting a moment later needs to be told about.
+	remember(async () => {
+		// The fingerprint is what stops a page repeating itself; a fresh watch has heard none of it.
+		lastSession = null;
+		await mirrorSession(label, activities, arrows, open);
+	});
+
 	const link = watchLink();
 	if (!link) return;
 	cancelIdle();
@@ -102,6 +129,8 @@ export async function mirrorSession(
 
 /** The scoring activity the phone has open, so the keypad matches what is being shot. */
 export async function mirrorRound(activity: ActivityLike): Promise<void> {
+	remember(() => mirrorRound(activity));
+
 	const link = watchLink();
 	if (!link) return;
 	cancelIdle();
@@ -154,6 +183,10 @@ export async function mirrorArrows(total: number, updatedAt: number): Promise<vo
 
 /** Nothing worth showing: the phone is somewhere the watch has no business mirroring. */
 export async function mirrorIdle(): Promise<void> {
+	// Nothing worth saying again: a watch that links while the phone is here should be idle too.
+	describeAgain = null;
+	onWatchLinked(null);
+
 	const link = watchLink();
 	if (!link) return;
 	cancelIdle();

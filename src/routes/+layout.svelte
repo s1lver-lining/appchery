@@ -29,6 +29,7 @@
 	import { incomingFile, namedFile } from '$lib/import/incoming';
 	import { refreshApp, watchForUpdates } from '$lib/update';
 	import { watchSync } from '$lib/sync/watch';
+import { resumeWatch } from '$lib/watch/store';
 	import { noteWhatIsFollowed } from '$lib/ianseo/notify';
 	import { syncAlertUnread, refreshSyncAlert } from '$lib/sync/alert';
 	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
@@ -155,6 +156,16 @@
 	// archer goes looking for it.
 	$effect(() => {
 		if (ready) void refreshSyncAlert();
+	});
+
+	/**
+	 * The watch, opened again without being asked. Only the installed app can: it connects straight
+	 * to a remembered address, so the link is up before the archer reaches the shooting line rather
+	 * than costing a tap there. Silent throughout, and a watch left at home changes nothing.
+	 * Needs the database open, because the link says who this device is out of it.
+	 */
+	$effect(() => {
+		if (ready) void resumeWatch();
 	});
 
 	$effect(() => {

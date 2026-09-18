@@ -203,6 +203,13 @@ export const recordMotion = flag('appchery.recordMotion', true);
 export const arrowDetector = storedString('appchery.arrowDetector');
 
 /**
+ * The watch this phone last opened a link to, so the installed app can open it again without the
+ * chooser. A per phone fact rather than the archer's: the address means nothing on another handset,
+ * so it stays in local storage and never goes near the record or the sync.
+ */
+export const rememberedWatch = storedString('appchery.rememberedWatch');
+
+/**
  * Whether the camera overlay smooths the lines it draws.
  *
  * On by default. The fit is measured from the picture afresh every frame, so it lands a fraction of a

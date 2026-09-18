@@ -125,7 +125,9 @@
 					? 'settings.watchInsecure'
 					: status.reason === 'no-adapter'
 						? 'settings.watchNoAdapter'
-						: 'settings.watchNoApi';
+						: status.reason === 'no-wear'
+							? 'settings.watchNoWear'
+							: 'settings.watchNoApi';
 			case 'connected':
 				return status.fragile ? 'settings.watchFragile' : 'settings.watchHint';
 			case 'stale':
@@ -137,9 +139,15 @@
 					? 'settings.watchCancelled'
 					: status.reason === 'no-service'
 						? 'settings.watchNoService'
-						: status.reason === 'unsupported'
-							? 'settings.watchNoApi'
-							: 'settings.watchFailed';
+						: status.reason === 'no-permission'
+							? 'settings.watchNoPermission'
+							: status.reason === 'bluetooth-off'
+								? 'settings.watchBluetoothOff'
+								: status.reason === 'not-found'
+									? 'settings.watchNotFound'
+									: status.reason === 'unsupported'
+										? 'settings.watchNoApi'
+										: 'settings.watchFailed';
 			default:
 				return 'settings.watchHint';
 		}

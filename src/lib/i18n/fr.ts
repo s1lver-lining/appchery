@@ -1243,6 +1243,10 @@ export const fr: Dictionary = {
 		watchCancelled: 'Aucune montre n\'a été choisie.',
 		watchNoService: 'Cet appareil ne fait pas tourner l\'application montre d\'Appchery.',
 		watchFailed: 'Connexion à cette montre impossible.',
+		watchNoWear: 'Les montres Wear OS ne s\'appairent pas aux iPhone : marquer au poignet n\'existe que sur Android.',
+		watchNoPermission: 'Appchery a besoin de l\'autorisation de trouver les appareils proches et de s\'y connecter. Accordez-la dans les réglages Android, section Autorisations.',
+		watchBluetoothOff: 'Le Bluetooth est éteint. Activez-le puis réessayez.',
+		watchNotFound: 'Votre montre n\'a pas répondu. Vérifiez qu\'elle est allumée, déverrouillée, à portée, et que l\'application montre d\'Appchery est ouverte.',
 		conditions: 'Lieu et météo',
 		locationTitle: 'Enregistrer le lieu',
 		locationHint:

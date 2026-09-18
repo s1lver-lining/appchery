@@ -1242,6 +1242,10 @@ export const en = {
 		watchCancelled: 'No watch was chosen.',
 		watchNoService: 'That device is not running the Appchery watch app.',
 		watchFailed: 'Could not connect to that watch.',
+		watchNoWear: 'Wear OS watches do not pair with iPhones, so scoring from the wrist is Android only.',
+		watchNoPermission: 'Appchery needs permission to find and connect to nearby devices. Grant it in Android settings, under Permissions.',
+		watchBluetoothOff: 'Bluetooth is off. Turn it on and try again.',
+		watchNotFound: 'Your watch did not answer. Check it is on, unlocked and nearby, with the Appchery watch app open.',
 		conditions: 'Location and weather',
 		locationTitle: 'Record location',
 		locationHint:

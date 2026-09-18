@@ -1,31 +1,19 @@
 /// <reference types="web-bluetooth" />
 
-import { TO_PHONE, TO_WATCH, WATCH_SERVICE, support } from './ble';
-import type { Channel } from './link';
+import {
+	TO_PHONE,
+	TO_WATCH,
+	WATCH_SERVICE,
+	support,
+	type ConnectFailure,
+	type ConnectResult
+} from './ble';
 
 /**
  * The link over Web Bluetooth, for the browser build. Nothing here knows what a message means: it
  * hands bytes up and takes bytes down, so the rules about whose arrows survive live in link.ts and
  * are tested without any of this.
  */
-
-export interface Connection {
-	channel: Channel;
-	/** The watch's advertised name, for the settings card to show what it found. */
-	name: string;
-	disconnect(): void;
-}
-
-export type ConnectFailure =
-	| 'unsupported'
-	/** The chooser was dismissed, which is a decision rather than a fault. */
-	| 'cancelled'
-	| 'no-service'
-	| 'failed';
-
-export type ConnectResult =
-	| { ok: true; connection: Connection }
-	| { ok: false; reason: ConnectFailure; detail?: string };
 
 /**
  * Asks for a watch and opens the link. The chooser needs a real gesture, so this may only be called
@@ -36,7 +24,8 @@ export async function connect(
 	onBytes: (bytes: DataView) => void,
 	onLost: () => void
 ): Promise<ConnectResult> {
-	if (!support().usable) return { ok: false, reason: 'unsupported' };
+	const can = support();
+	if (!can.usable || can.path !== 'web-bluetooth') return { ok: false, reason: 'unsupported' };
 
 	let device: BluetoothDevice;
 	try {
@@ -69,6 +58,9 @@ export async function connect(
 			ok: true,
 			connection: {
 				name: device.name ?? 'watch',
+				// Kept only so both transports hand back the same thing: no browser can reopen a link
+				// from an id, which is the whole reason the native transport exists.
+				id: device.id,
 				channel: {
 					/**
 					 * Serialised, because two overlapping writes to one characteristic is a stack error
@@ -94,7 +86,8 @@ export async function connect(
 			// Nothing to tidy.
 		}
 		const missing = error instanceof Error && error.name === 'NotFoundError';
-		return { ok: false, reason: missing ? 'no-service' : 'failed', detail };
+		const reason: ConnectFailure = missing ? 'no-service' : 'failed';
+		return { ok: false, reason, detail };
 	}
 }
 
