@@ -3,6 +3,7 @@ import { planEnd, zoneIndex, type PlannedShot } from './apply';
 import {
 	decode,
 	encode,
+	endKey,
 	isEmpty,
 	skew,
 	PROTOCOL_VERSION,
@@ -74,6 +75,13 @@ export class WatchLink {
 	private zones: Map<string, Zone> = new Map();
 	private record: Record | null = null;
 
+	/**
+	 * Ends the watch has been told hold arrows. An end undone on the phone has to be sent as empty
+	 * or the wrist goes on showing what was there: `pushAll` would otherwise skip it for being
+	 * empty, which is right for a watch that has never heard of it and wrong for one that has.
+	 */
+	private sentEnds = new Set<string>();
+
 	private peerDeviceId: string | null = null;
 	/** Added to a watch timestamp to read it on this device's clock. */
 	private peerOffset = 0;
@@ -138,6 +146,8 @@ export class WatchLink {
 
 	/** The scoring context. Sending the round is what tells the watch to draw the right keypad. */
 	async setRound(round: Round, record: Record): Promise<void> {
+		// Whatever the watch was told about belonged to whatever it was showing before.
+		if (this.round?.activityId !== round.activityId) this.sentEnds.clear();
 		this.round = round;
 		this.record = record;
 		this.zones = zoneIndex(round.zones);
@@ -151,6 +161,8 @@ export class WatchLink {
 		this.round = null;
 		this.record = null;
 		this.zones = new Map();
+		// A watch told about another round has not been told about this one's ends.
+		this.sentEnds.clear();
 	}
 
 	async showSession(label: string, activities: ActivityLine[], arrows: number): Promise<void> {
@@ -358,6 +370,9 @@ export class WatchLink {
 
 		const local = await this.record.readEnd(stageIndex, endNo);
 		const labels = local ? local.labels : new Array(arrowsPerEnd).fill(null);
+		const key = endKey(stageIndex, endNo);
+		if (isEmpty(labels)) this.sentEnds.delete(key);
+		else this.sentEnds.add(key);
 		await this.say({
 			v: PROTOCOL_VERSION,
 			t: 'end',
@@ -376,8 +391,11 @@ export class WatchLink {
 			const stage = this.round.stages[stageIndex];
 			for (let endNo = 1; endNo <= stage.ends; endNo++) {
 				const local = await this.record.readEnd(stageIndex, endNo);
-				// An end never shot is not worth a message: the watch already shows it as empty.
-				if (!local || isEmpty(local.labels)) continue;
+				const empty = !local || isEmpty(local.labels);
+				// An end never shot is not worth a message: the watch already shows it as empty. One
+				// the watch was told about and that is empty now is the opposite — it is an undo, and
+				// saying nothing leaves the arrows on the wrist that the phone has just taken away.
+				if (empty && !this.sentEnds.has(endKey(stageIndex, endNo))) continue;
 				await this.pushEnd(stageIndex, endNo);
 			}
 		}

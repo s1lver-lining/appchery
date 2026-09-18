@@ -506,3 +506,62 @@ describe('checking on a link that is already up', () => {
 		expect(sent.filter((m) => m.t === 'session')).toHaveLength(0);
 	});
 });
+
+describe('telling the watch about every end', () => {
+	it('leaves out ends nobody has shot, which the watch already shows as empty', async () => {
+		await withRound();
+		await record.writeEnd(0, 2, [{ ordinal: 1, value: 10, zoneLabel: 'X' }]);
+
+		await link.pushAll();
+
+		const ends = sent.filter((m) => m.t === 'end');
+		expect(ends).toHaveLength(1);
+		expect(ends[0]).toMatchObject({ s: 0, n: 2 });
+	});
+
+	/**
+	 * Undo on the phone. The end is gone from the record, and saying nothing about it would leave
+	 * the arrows on the wrist that the phone has just taken away.
+	 */
+	it('sends an end it has already sent as empty once it has been undone', async () => {
+		await withRound();
+		await record.writeEnd(0, 1, [{ ordinal: 1, value: 9, zoneLabel: '9' }]);
+		await link.pushAll();
+		sent = [];
+
+		await record.removeEnd(0, 1);
+		await link.pushAll();
+
+		const ends = sent.filter((m) => m.t === 'end');
+		expect(ends).toHaveLength(1);
+		if (ends[0]?.t !== 'end') return;
+		expect(ends[0].n).toBe(1);
+		expect(ends[0].l.every((label) => label === null)).toBe(true);
+	});
+
+	it('stops mentioning it once the watch has been told it is empty', async () => {
+		await withRound();
+		await record.writeEnd(0, 1, [{ ordinal: 1, value: 9, zoneLabel: '9' }]);
+		await link.pushAll();
+		await record.removeEnd(0, 1);
+		await link.pushAll();
+		sent = [];
+
+		await link.pushAll();
+
+		expect(sent.filter((m) => m.t === 'end')).toHaveLength(0);
+	});
+
+	it('forgets what the last round was told when another one is opened', async () => {
+		await withRound();
+		await record.writeEnd(0, 1, [{ ordinal: 1, value: 9, zoneLabel: '9' }]);
+		await link.pushAll();
+
+		await link.setRound({ ...ROUND, activityId: 'activity-2' }, new FakeRecord());
+		sent = [];
+		await link.pushAll();
+
+		// A different activity's watch state is not this one's to correct.
+		expect(sent.filter((m) => m.t === 'end')).toHaveLength(0);
+	});
+});
