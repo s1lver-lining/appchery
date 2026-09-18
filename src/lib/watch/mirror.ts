@@ -1,4 +1,5 @@
-import { getScoreSet } from '$lib/domain/rounds/seed';
+import { knownScoreSet } from '$lib/domain/rounds/seed';
+import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
 import type { RoundDefinition } from '$lib/domain/rounds/types';
 import { recordFor } from './record';
 import { watchLink, onWatchApplied, onWatchBack, onWatchOpen, onWatchArrows } from './store';
@@ -30,21 +31,11 @@ export function roundOf(activity: ActivityLike): RoundDefinition | null {
 	}
 }
 
-/** `getScoreSet` throws on an id it does not know, which is an answer rather than a failure here. */
-function scoreSetOrNull(id: string | undefined) {
-	if (!id) return null;
-	try {
-		return getScoreSet(id);
-	} catch {
-		return null;
-	}
-}
-
 /** What the watch can put arrows into: a scored round whose score set this build still knows. */
 export function isScorable(activity: ActivityLike): boolean {
 	if (activity.kind !== 'scoring') return false;
 	const round = roundOf(activity);
-	return Boolean(round && scoreSetOrNull(round.scoreSetId));
+	return Boolean(round && knownScoreSet(round.scoreSetId));
 }
 
 function lineFor(activity: ActivityLike): ActivityLine {
@@ -92,7 +83,7 @@ export async function mirrorRound(activity: ActivityLike): Promise<void> {
 	cancelIdle();
 
 	const definition = roundOf(activity);
-	const scoreSet = scoreSetOrNull(definition?.scoreSetId);
+	const scoreSet = knownScoreSet(definition?.scoreSetId);
 	if (!definition || !scoreSet) {
 		// Nothing the watch could score correctly, so it is told the truth rather than a guess.
 		await link.showIdle();
@@ -101,7 +92,13 @@ export async function mirrorRound(activity: ActivityLike): Promise<void> {
 
 	const round: Round = {
 		activityId: activity.id,
-		zones: scoreSet.zones,
+		/**
+		 * Keypad order, from the app's own helper rather than a second definition: `scorableZones`
+		 * already reverses the score set, which runs outermost to innermost so hit testing can walk
+		 * it backwards. The miss goes last because it is not a score, which is also why the phone's
+		 * keypad keeps it apart from the numbers.
+		 */
+		zones: [...scorableZones(scoreSet), missZone(scoreSet)],
 		stages: definition.stages.map((stage) => ({
 			ends: stage.ends,
 			arrowsPerEnd: stage.arrowsPerEnd

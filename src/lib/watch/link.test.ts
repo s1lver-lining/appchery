@@ -1,12 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
+import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
 import { WatchLink, type LinkEvent, type Record, type Round } from './link';
 import { decode, encode, endKey, PROTOCOL_VERSION, type EndState, type Wire } from './protocol';
 import type { PlannedShot } from './apply';
 
 const ROUND: Round = {
 	activityId: 'activity-1',
-	zones: WA_10_RING.zones,
+	// Keypad order, as `mirror.ts` builds it: the link sends what it is given, in the order given.
+	zones: [...scorableZones(WA_10_RING), missZone(WA_10_RING)],
 	stages: [{ ends: 3, arrowsPerEnd: 6 }]
 };
 
