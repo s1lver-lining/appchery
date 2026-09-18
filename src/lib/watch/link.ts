@@ -211,7 +211,15 @@ export class WatchLink {
 			v: PROTOCOL_VERSION,
 			t: 'round',
 			a: this.round.activityId,
-			z: this.round.zones.map((zone) => [zone.label, zone.value] as [string, number]),
+			/**
+			 * Reversed, because a score set is ordered outermost to innermost so that hit testing can
+			 * walk it backwards, while a keypad reads downwards from the highest value. Sent in the
+			 * order the keys should appear, so the watch lays out what it is given rather than knowing
+			 * which way round an archer expects a face to be written.
+			 */
+			z: [...this.round.zones]
+				.reverse()
+				.map((zone) => [zone.label, zone.value] as [string, number]),
 			s: this.round.stages.map((stage) => [stage.ends, stage.arrowsPerEnd] as [number, number])
 		});
 	}

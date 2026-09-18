@@ -208,6 +208,38 @@ was not. What settled it was running the probe page, which mirrors its own log t
 the same watch: it linked, which proved the watch and the radio were fine and the difference lay in
 how the test had been set up. Instrument both ends before reasoning about either.
 
+## The service worker serves the phone a build that is not the one being tested
+
+Worth an hour of anybody's time, twice over. `src/service-worker.ts` exists, so SvelteKit registers
+it in development as well, and the phone then runs a cached bundle while the dev server happily
+serves the fixed one. Every phone side fix appeared to do nothing, the evidence pointed at the
+freshly written code, and the code had never run.
+
+What proved it was tracing that produced not one line. A fix that changes nothing is worth
+suspecting of never having executed before it is worth debugging. The gentle remedy is the Refresh
+button the app already has in its settings, which drops every cache and reloads; clearing the
+browser's data works too and takes the archer's tabs and site permissions with it.
+
+The same thing will happen to users after a deploy, which is what that button is for.
+
+## Two orderings that are not the same ordering
+
+A score set runs **outermost to innermost**, `M, 1, 2 ... 10, X`, so hit testing can walk it
+backwards and take the first match. A keypad reads **downwards from the highest**. Handing the score
+set to the watch as it stands puts the miss where a thumb reaches for an X, which is how the keypad
+came out upside down. The phone now reverses it on the wire and sends the keys in the order they are
+meant to be drawn, so the watch lays out what it is given rather than having opinions about faces.
+
+## An assertion nothing answers is an assertion sent for ever
+
+The training arrow count travels inside the session message, because that is a description of the
+session. It is not an answer, so the watch's own copy stayed pending, and a queue flush sends
+everything pending: the count rode along with every single end after it, indefinitely. The phone now
+sends the figure back on its own once it has been written, which is what lets the watch forget it.
+
+The general rule this is an instance of: whatever a peer holds until acknowledged needs something
+that acknowledges it, and a message that merely happens to contain the same number is not that.
+
 ## Still open
 
 Range with a body between the watch and a phone in a pocket, and the battery cost of advertising

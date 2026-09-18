@@ -77,7 +77,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
-	import { mirrorSession, mirrorIdle, acceptArrows, acceptBack } from '$lib/watch/mirror';
+	import {
+		mirrorSession,
+		mirrorIdle,
+		mirrorArrows,
+		acceptArrows,
+		acceptBack
+	} from '$lib/watch/mirror';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import WheelPicker from '$lib/ui/WheelPicker.svelte';
 	import {
@@ -210,8 +216,15 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	$effect(() => {
 		acceptArrows(async (total) => {
 			const id = await materialise();
-			await setTrainingArrows(id, total);
+			const written = await setTrainingArrows(id, total);
 			await refresh();
+			/**
+			 * Sent back as its own figure, which is what lets the watch forget the one it is holding.
+			 * The count also travels inside the session message, but that is a description of the
+			 * session rather than an answer, so on its own the watch's copy stayed pending for ever
+			 * and rode along with every end after it.
+			 */
+			await mirrorArrows(written, Date.now());
 		});
 		return () => acceptArrows(null);
 	});

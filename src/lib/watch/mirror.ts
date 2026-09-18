@@ -69,6 +69,7 @@ export async function mirrorSession(
 ): Promise<void> {
 	const link = watchLink();
 	if (!link) return;
+	cancelIdle();
 
 	/**
 	 * Every kind is listed so the session reads the same on both screens, except the training
@@ -88,6 +89,7 @@ export async function mirrorSession(
 export async function mirrorRound(activity: ActivityLike): Promise<void> {
 	const link = watchLink();
 	if (!link) return;
+	cancelIdle();
 
 	const definition = roundOf(activity);
 	const scoreSet = scoreSetOrNull(definition?.scoreSetId);
@@ -128,15 +130,31 @@ export async function mirrorArrows(total: number, updatedAt: number): Promise<vo
 	await watchLink()?.pushArrows(total, updatedAt);
 }
 
+/**
+ * How long idle waits before it is sent. Leaving one mirrored page for another unmounts the first
+ * before the second mounts, and idle sent in between reads on the wrist as a flash of nothing.
+ */
+const IDLE_DELAY_MS = 250;
+let idleTimer: ReturnType<typeof setTimeout> | null = null;
+
+function cancelIdle(): void {
+	if (idleTimer !== null) clearTimeout(idleTimer);
+	idleTimer = null;
+}
+
 /** Nothing worth showing: the phone is somewhere the watch has no business mirroring. */
 export async function mirrorIdle(): Promise<void> {
 	const link = watchLink();
 	if (!link) return;
-	link.clearRound();
-	onWatchOpen(null);
-	onWatchArrows(null);
-	onWatchBack(null);
-	await link.showIdle();
+	cancelIdle();
+	idleTimer = setTimeout(() => {
+		idleTimer = null;
+		link.clearRound();
+		onWatchOpen(null);
+		onWatchArrows(null);
+		onWatchBack(null);
+		void link.showIdle();
+	}, IDLE_DELAY_MS);
 }
 
 /** What to do when the watch asserts the session's training arrows. */

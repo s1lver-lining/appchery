@@ -105,6 +105,13 @@ describe('opening a link', () => {
 		expect(round.s).toEqual([[3, 6]]);
 		expect(round.z).toContainEqual(['X', 10]);
 		expect(round.z).toContainEqual(['M', 0]);
+		/**
+		 * In the order the keys are drawn, highest first. A score set runs the other way, outermost to
+		 * innermost, and sending it as it stands puts M in the corner an archer reaches for X.
+		 */
+		expect(round.z[0]).toEqual(['X', 10]);
+		expect(round.z[1]).toEqual(['10', 10]);
+		expect(round.z[round.z.length - 1]).toEqual(['M', 0]);
 	});
 
 	it('remembers who it is talking to', async () => {
