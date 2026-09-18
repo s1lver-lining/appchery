@@ -25,7 +25,9 @@ import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -93,6 +95,23 @@ public class Link {
     private final Map<String, JSONObject> pending = new LinkedHashMap<>();
     private int payload = DEFAULT_PAYLOAD;
     private String activityId;
+
+    /**
+     * Notifications waiting for the radio. Android carries one at a time per connection: a second
+     * `notifyCharacteristicChanged` issued before `onNotificationSent` arrives is refused, and the
+     * message is gone, because the characteristic holds one value and the next `setValue` has
+     * already overwritten it. Sending in a loop therefore delivers the first of a burst and drops
+     * the rest, which on the wrist looks like taps the phone sometimes ignores.
+     */
+    private final Deque<byte[]> outbox = new ArrayDeque<>();
+    /** A notification is on the air and its `onNotificationSent` has not come back yet. */
+    private boolean sending = false;
+    /**
+     * Given up on, so one lost callback does not wedge the link for good. The radio is quick and
+     * this is long: it is a way out, not a timeout anybody should ever reach.
+     */
+    private static final long SENT_TIMEOUT_MS = 2_000;
+    private Runnable sendGuard;
 
     public Link(Context context, Listener listener) {
         // The application's context, not the activity's: the server outlives the screen.
@@ -266,10 +285,66 @@ public class Link {
             // Nothing can be split: a truncated envelope is not a shorter message, it is rubbish.
             Log.w(TAG, "message of " + bytes.length + " will not fit " + payload);
         }
-        toPhone.setValue(bytes);
-        for (BluetoothDevice device : subscribers) {
-            server.notifyCharacteristicChanged(device, toPhone, false);
+        outbox.add(bytes);
+        pump();
+    }
+
+    /**
+     * One notification at a time, the next going out when the last is confirmed. Everything the
+     * watch says goes through here, so a tap and a flush of held ends cannot tread on each other.
+     */
+    private void pump() {
+        if (sending || outbox.isEmpty()) return;
+        if (subscribers.isEmpty() || toPhone == null || server == null) {
+            /*
+             * Nobody to tell, so this is dropped rather than held. Everything durable is in
+             * `pending` and is said again by `flush` the moment a phone subscribes; what is left
+             * here is a tap, and a tap only means anything at the moment it is made. Held, an
+             * activity chosen while the phone was away would open it minutes later, out of nowhere.
+             */
+            outbox.clear();
+            return;
         }
+
+        byte[] bytes = outbox.peek();
+        toPhone.setValue(bytes);
+        boolean queued = false;
+        for (BluetoothDevice device : subscribers) {
+            queued |= server.notifyCharacteristicChanged(device, toPhone, false);
+        }
+        if (!queued) {
+            // Refused outright, which is the stack being busy rather than the link being gone.
+            main.postDelayed(this::pump, 20);
+            return;
+        }
+        outbox.poll();
+        sending = true;
+        sendGuard = () -> {
+            Log.w(TAG, "no onNotificationSent within " + SENT_TIMEOUT_MS + "ms, carrying on");
+            sending = false;
+            sendGuard = null;
+            pump();
+        };
+        main.postDelayed(sendGuard, SENT_TIMEOUT_MS);
+    }
+
+    /** The phone has gone. Whatever was on the air is not going to be confirmed by anybody. */
+    private void abandonSend() {
+        if (sendGuard != null) {
+            main.removeCallbacks(sendGuard);
+            sendGuard = null;
+        }
+        sending = false;
+    }
+
+    /** The radio has taken one message, so the next may go. */
+    private void onSent() {
+        if (sendGuard != null) {
+            main.removeCallbacks(sendGuard);
+            sendGuard = null;
+        }
+        sending = false;
+        pump();
     }
 
     private void hello() {
@@ -467,8 +542,18 @@ public class Link {
             if (state != BluetoothProfile.STATE_CONNECTED) {
                 subscribers.remove(device);
                 payload = DEFAULT_PAYLOAD;
+                // Nothing is coming back for a notification whose phone has gone, and a link left
+                // believing one is still on the air would never send anything again.
+                main.post(Link.this::abandonSend);
                 say(WAITING, "Waiting for your phone");
             }
+        }
+
+        @Override
+        public void onNotificationSent(BluetoothDevice device, int status) {
+            // The whole reason `outbox` exists: until this arrives, the next notification would be
+            // refused and its message lost.
+            main.post(Link.this::onSent);
         }
 
         @Override
@@ -488,8 +573,12 @@ public class Link {
                 if (on) {
                     subscribers.add(device);
                     say(LINKED, "Linked");
-                    // Whatever was shot out of range goes up now, newest state per end only.
-                    main.post(Link.this::flush);
+                    // Whatever was shot out of range goes up now, newest state per end only, along
+                    // with anything held in the outbox because there was nobody to send it to.
+                    main.post(() -> {
+                        flush();
+                        pump();
+                    });
                 } else {
                     subscribers.remove(device);
                     say(WAITING, "Waiting for your phone");
