@@ -94,7 +94,8 @@ public class Link {
     private String activityId;
 
     public Link(Context context, Listener listener) {
-        this.context = context;
+        // The application's context, not the activity's: the server outlives the screen.
+        this.context = context.getApplicationContext();
         this.listener = listener;
         SharedPreferences prefs = context.getSharedPreferences("appchery.watch", Context.MODE_PRIVATE);
         String stored = prefs.getString("deviceId", null);

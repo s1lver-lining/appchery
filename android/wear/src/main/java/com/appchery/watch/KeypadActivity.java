@@ -112,7 +112,7 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         for (String permission : needed) {
             if (checkSelfPermission(permission) != PackageManager.PERMISSION_GRANTED) granted = false;
         }
-        if (granted) link.start();
+        if (granted) startLink();
         else requestPermissions(needed, 1);
     }
 
@@ -124,6 +124,16 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
                 return;
             }
         }
+        startLink();
+    }
+
+    /**
+     * The link and the service that keeps it: without the service the process is stopped the moment
+     * the app leaves the screen, and a stopped process is one Android may kill, which takes the GATT
+     * server with it and costs the archer a chooser mid round.
+     */
+    private void startLink() {
+        LinkService.keepAlive(this);
         link.start();
     }
 
@@ -131,6 +141,7 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     protected void onDestroy() {
         super.onDestroy();
         if (link != null) link.stop();
+        LinkService.release(this);
     }
 
     // -------- the whole screen, rebuilt whenever the round changes shape
