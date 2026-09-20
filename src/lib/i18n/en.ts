@@ -1584,6 +1584,13 @@ insetHint:
 		create: 'New programme',
 		newWorkout: 'New programme',
 		open: 'Open',
+		startFrom: 'Start from one of these',
+		starters: {
+			easy: { name: 'Easy half hour', hint: 'Thirty minutes at a pace you could talk through.' },
+			long: { name: 'Long run', hint: 'Warm up, as far as you like, way down.' },
+			intervals: { name: 'Tuesday intervals', hint: '7 times 400m fast with 90 seconds easy.' },
+			tempo: { name: 'Tempo five', hint: 'Five kilometres held at a pace you have to work for.' }
+		},
 		foldAll: 'Fold all',
 		unfoldAll: 'Unfold all',
 		reorder: 'Drag to reorder',

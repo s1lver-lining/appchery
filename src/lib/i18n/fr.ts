@@ -1590,6 +1590,13 @@ insetHint:
 		create: 'Nouveau programme',
 		newWorkout: 'Nouveau programme',
 		open: 'Ouvrir',
+		startFrom: 'Partir de l\u2019une de celles-ci',
+		starters: {
+			easy: { name: 'Demi-heure facile', hint: 'Trente minutes \u00e0 une allure o\u00f9 l\u2019on peut parler.' },
+			long: { name: 'Sortie longue', hint: '\u00c9chauffement, aussi loin que vous voulez, retour au calme.' },
+			intervals: { name: 'Fractionn\u00e9 du mardi', hint: '7 fois 400 m vite, 90 secondes faciles.' },
+			tempo: { name: 'Tempo cinq', hint: 'Cinq kilom\u00e8tres tenus \u00e0 une allure qui demande du travail.' }
+		},
 		foldAll: 'Tout replier',
 		unfoldAll: 'Tout déplier',
 		reorder: 'Glisser pour réordonner',

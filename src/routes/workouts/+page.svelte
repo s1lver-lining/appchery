@@ -9,6 +9,7 @@
 		flatten,
 		type RunWorkout
 	} from '$lib/domain/run/workout';
+	import { STARTERS, starterWorkout, type StarterKey } from '$lib/domain/run/starters';
 	import { workoutSummary } from '$lib/ui/run/summary';
 	import { originOf, setPageUp, withOrigin } from '$lib/nav';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -53,6 +54,16 @@
 	}
 
 	const summary = (workout: RunWorkout) => workoutSummary(workout, $t);
+
+	/**
+	 * One of the four to start from. Copied in as the archer's own, so the next thing they do is
+	 * edit it into whatever their coach actually said rather than run somebody else's session.
+	 */
+	async function startFrom(key: StarterKey) {
+		const workout = starterWorkout(key, $t(`workouts.starters.${key}.name`));
+		await saveRunWorkout(workout);
+		goto(withOrigin(`/workouts/${workout.id}`, here));
+	}
 </script>
 
 <PageHeader motif="sessions" title={$t('workouts.title')}>
@@ -69,6 +80,28 @@
 			<p class="font-semibold">{$t('workouts.empty')}</p>
 			<p class="mt-1 text-sm text-muted">{$t('workouts.emptyHint')}</p>
 		</div>
+
+		<!--
+			Four to start from, because an empty library is a blank page and nobody writes their first
+			interval session into one. Each is a copy from the moment it is taken.
+		-->
+		<p class="pt-2 text-sm font-semibold text-muted">{$t('workouts.startFrom')}</p>
+		{#each STARTERS as key (key)}
+			{@const starter = starterWorkout(key, $t(`workouts.starters.${key}.name`))}
+			<button
+				class="press flex w-full items-center gap-2 rounded-xl border border-line bg-surface p-3 text-left"
+				onclick={() => startFrom(key)}
+			>
+				<span class="min-w-0 flex-1">
+					<span class="block truncate font-semibold">{$t(`workouts.starters.${key}.name`)}</span>
+					<span class="block truncate text-xs text-muted">
+						{$t(`workouts.starters.${key}.hint`)}
+					</span>
+					<WorkoutBands workout={starter} />
+				</span>
+				<span class="shrink-0 text-muted"><Icon name="plus" size={18} /></span>
+			</button>
+		{/each}
 	{:else}
 		{#each workouts as workout (workout.id)}
 			<div class="flex items-center gap-2 rounded-xl border border-line bg-surface p-3">
