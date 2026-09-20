@@ -14,6 +14,7 @@
 	import Icon from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import WorkoutBands from '$lib/ui/run/WorkoutBands.svelte';
 
 	/**
 	 * The programmes, kept apart from any one run: a Tuesday interval session is written once and run
@@ -76,6 +77,8 @@
 					<p class="text-xs text-muted tabular">
 						{$t('workouts.blocks', { n: flatten(workout).length })} · {summary(workout)}
 					</p>
+					<!-- The shape of the session, which is how one is picked out of a list of them. -->
+					<WorkoutBands {workout} />
 				</a>
 				<button
 					class="press rounded-lg border border-line p-2 text-muted"
