@@ -703,6 +703,7 @@ export const en = {
 		activeTitle: 'Plan active',
 		activeHint:
 			'Off, this plan stops filling the sessions list and stops counting towards the weekly goal.',
+		held: 'Waiting for you to move',
 		paused: 'Paused',
 		startDate: 'From',
 		endDate: 'Until',
@@ -1335,6 +1336,8 @@ export const en = {
 		badgeSideLeft: 'Left',
 		maxHeartTitle: 'Highest heart rate',
 		maxHeartHint: 'What your own maximum is, so a run can say which zone it was run in. Left empty, the beat is shown as a number and nothing more.',
+		autoPauseTitle: 'Pause a run by itself',
+		autoPauseHint: 'Holds the clock while you are standing still on a run, and starts it again when you move. Off by default: walking a hill on purpose is still running.',
 		awakeTitle: 'Keep the screen on while scoring',
 		awakeHint:
 			'Holds the screen awake until the round is finished, for scoring from the phone in your hand. It costs battery. The shooting clock holds it either way.',

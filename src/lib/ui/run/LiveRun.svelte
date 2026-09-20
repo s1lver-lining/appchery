@@ -127,7 +127,11 @@
 	<!-- The three numbers the run is actually run on. -->
 	<section class="rounded-2xl border border-line bg-surface p-4 text-center">
 		{#if paused}
-			<p class="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">{$t('running.paused')}</p>
+			<!-- Which of the two it is: a run the app is holding starts itself again, and one the
+			     runner stopped waits for them. -->
+			<p class="mb-1 text-xs font-semibold tracking-wide text-muted uppercase">
+				{run.autoHeld ? $t('running.held') : $t('running.paused')}
+			</p>
 		{/if}
 		<p class="text-6xl leading-none font-bold tabular {paused ? 'text-muted' : ''}">
 			{clock(run.seconds)}

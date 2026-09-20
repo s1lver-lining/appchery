@@ -167,6 +167,16 @@ export const keepScreenAwake = flag('appchery.keepScreenAwake', false);
 export const maxHeartRate = storedNumber('appchery.maxHeartRate', 0);
 
 /**
+ * Whether a run holds its own clock while the runner is not moving.
+ *
+ * Off unless asked for. A crossing, a gate and a bootlace are not running and a runner who wants
+ * their average pace to say what they can hold wants them out of it; but a run that pauses itself
+ * is a run the app has an opinion about, and the opinion is wrong every time somebody is walking a
+ * hill on purpose.
+ */
+export const autoPauseRuns = flag('appchery.autoPauseRuns', false);
+
+/**
  * Whether a badge, a personal best or a level is announced over the middle of the screen.
  *
  * On by default. Off, everything is still awarded and still lands in the lists: the only thing that

@@ -20,7 +20,7 @@ import { elapsed, emptyLive, type RunRecord, type StepResult } from '$lib/domain
 import { appendRunPoints, clearRunPoints, listRunPoints, updateRun } from '$lib/db/repository';
 import { screenLock } from '$lib/ui/wakeLock';
 import { zoneOf } from '$lib/domain/run/zones';
-import { maxHeartRate } from '$lib/prefs';
+import { autoPauseRuns, maxHeartRate } from '$lib/prefs';
 import { get } from 'svelte/store';
 import { commit, tap, warn } from '$lib/haptics';
 import { trackingSource, type Source, type StartFailure } from './source';
@@ -60,6 +60,11 @@ const MIRROR_MS = 2000;
 const BEAT_STALE_MS = 20_000;
 /** An hour of a beat every few seconds, which is longer than any fix still waiting to be written. */
 const BEAT_LOG_MOST = 1200;
+/**
+ * How long a run goes nowhere before it holds its own clock, where that has been asked for. Long
+ * enough that a fix rejected at a corner is not a pause, short enough that a crossing is.
+ */
+const STILL_MS = 12_000;
 
 export class LiveRun {
 	activityId = $state('');
@@ -71,6 +76,14 @@ export class LiveRun {
 	failure = $state<StartFailure | null>(null);
 	/** False in a browser, where a tab put to sleep stops receiving: the screen says so. */
 	background = $state(true);
+	/**
+	 * Held by the app rather than by the runner, and let go again by itself the moment they move.
+	 *
+	 * A pause of its own kind: the clock stops but the receiver is left listening, because a run
+	 * that stopped listening could never notice the runner starting again. It also means the
+	 * standing about is visible in the stored track, which is what draws it on the graph afterwards.
+	 */
+	autoHeld = $state(false);
 
 	private source: Source | null = null;
 	private timer: ReturnType<typeof setInterval> | null = null;
@@ -88,6 +101,8 @@ export class LiveRun {
 	private beatLog: { bpm: number; at: number }[] = [];
 	/** The run's beats as they are written, kept as a total rather than as a list of every one. */
 	private beats = { sum: 0, count: 0, max: 0 };
+	/** When the run last covered any ground, which is the only thing auto pause is judged on. */
+	private movedAt = 0;
 	/** What the wrist was last told, so a block change or a pause is sent the moment it happens. */
 	private mirroredCue = -1;
 	private mirroredStatus = '';
@@ -269,6 +284,8 @@ export class LiveRun {
 	async start() {
 		const live = this.record?.live;
 		if (!live || live.status === 'running') return;
+		this.autoHeld = false;
+		this.movedAt = Date.now();
 		const fresh = live.status === 'idle';
 		if (fresh) await clearRunPoints(this.activityId);
 		live.startedAt = live.startedAt ?? Date.now();
@@ -284,6 +301,8 @@ export class LiveRun {
 	async pause() {
 		const live = this.record?.live;
 		if (!live || live.status !== 'running') return;
+		// Asked for by hand, so the app has no business letting go of it again.
+		this.autoHeld = false;
 		live.baseSeconds = elapsed(live, Date.now());
 		live.legStartedAt = null;
 		live.status = 'paused';
@@ -409,7 +428,9 @@ export class LiveRun {
 		// Frozen by Android and thawed again: the service ran the run in the meantime, so what it
 		// did is taken back before anything here is worked out on top of a block it has left.
 		if (slept && this.status === 'running') await this.adopt();
-		if (this.status === 'running') await this.ingest();
+		// A run held by the app is still listening, or it could never hear the runner start again.
+		if (this.status === 'running' || this.autoHeld) await this.ingest();
+		await this.judgeStillness();
 		if (this.status === 'running') this.checkStep();
 		// The wrist gone quiet is not a heart that stopped, but it is not a heart rate either.
 		if (this.heart !== null && Date.now() - (this.beatLog[this.beatLog.length - 1]?.at ?? 0) > BEAT_STALE_MS) {
@@ -559,6 +580,51 @@ export class LiveRun {
 		return found && at - found.at <= BEAT_STALE_MS ? found.bpm : null;
 	}
 
+	/**
+	 * Whether the run is going anywhere, where the archer asked the app to care.
+	 *
+	 * Only while the page is awake. With the screen off the service is what keeps the run, and it
+	 * has no opinion about this: a run in a pocket is timed the way it always was, see doc/running.md.
+	 */
+	private async judgeStillness() {
+		if (!get(autoPauseRuns)) {
+			if (this.autoHeld) await this.letGo();
+			return;
+		}
+		if (this.status === 'running' && this.movedAt > 0 && Date.now() - this.movedAt > STILL_MS) {
+			await this.hold();
+		} else if (this.autoHeld && Date.now() - this.movedAt <= STILL_MS) {
+			await this.letGo();
+		}
+	}
+
+	/** The clock stopped without the receiver being stopped with it, which is what lets it start again. */
+	private async hold() {
+		const live = this.record?.live;
+		if (!live || live.status !== 'running') return;
+		live.baseSeconds = elapsed(live, Date.now());
+		live.legStartedAt = null;
+		live.status = 'paused';
+		this.autoHeld = true;
+		tap();
+		this.lock.release();
+		await this.save();
+		await this.mirror(true);
+	}
+
+	/** Moving again, so the clock is too. */
+	private async letGo() {
+		const live = this.record?.live;
+		this.autoHeld = false;
+		if (!live || live.status !== 'paused') return;
+		live.legStartedAt = Date.now();
+		live.status = 'running';
+		tap();
+		this.lock.acquire();
+		await this.save();
+		await this.mirror(true);
+	}
+
 	private async ingest() {
 		const fixes = (await this.source?.drain()) ?? [];
 		if (fixes.length === 0) return;
@@ -569,6 +635,7 @@ export class LiveRun {
 			const at = Math.max(0, seconds - (this.now - fix.at) / 1000);
 			const taken = addFix(state, fix, at);
 			if (!taken.moved) continue;
+			this.movedAt = Date.now();
 			state = taken.state;
 			const heartRate = this.beatFor(fix.at);
 			this.count(heartRate);

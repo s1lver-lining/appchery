@@ -31,6 +31,7 @@
 		showCelebrations,
 		keepScreenAwake,
 		maxHeartRate,
+		autoPauseRuns,
 		weekStartsOnSunday,
 		plotBadgeSide,
 		sheetHeight,
@@ -763,6 +764,18 @@
 							/>
 							<span class="text-sm text-muted">{$t('running.bpm')}</span>
 						</span>
+					</div>
+
+					<div id="setting-autoPause" class:flash={flashing === 'autoPause'} class="mt-4 flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<p class="font-medium">{$t('settings.autoPauseTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.autoPauseHint')}</p>
+						</div>
+						<Toggle
+							checked={$autoPauseRuns}
+							label={$t('settings.autoPauseTitle')}
+							onchange={(v) => autoPauseRuns.set(v)}
+						/>
 					</div>
 
 					<div id="setting-drift" class:flash={flashing === 'drift'} class="mt-4 flex items-start justify-between gap-4">

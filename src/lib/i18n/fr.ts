@@ -704,6 +704,7 @@ export const fr: Dictionary = {
 		activeTitle: 'Programme actif',
 		activeHint:
 			"Désactivé, ce programme ne remplit plus la liste des séances et ne compte plus dans l'objectif hebdomadaire.",
+		held: 'En attente que vous repartiez',
 		paused: 'En pause',
 		startDate: 'À partir du',
 		endDate: 'Jusqu’au',
@@ -1336,6 +1337,8 @@ export const fr: Dictionary = {
 		badgeSideLeft: 'Gauche',
 		maxHeartTitle: 'Fréquence cardiaque maximale',
 		maxHeartHint: "Votre maximum à vous, pour qu'une sortie puisse dire dans quelle zone elle a été courue. Laissée vide, la fréquence reste un chiffre et rien de plus.",
+		autoPauseTitle: 'Mettre en pause automatiquement',
+		autoPauseHint: "Arrête le chrono quand vous êtes à l'arrêt pendant une sortie, et le relance quand vous repartez. Désactivé par défaut : marcher une côte volontairement, c'est encore courir.",
 		awakeTitle: 'Garder l’écran allumé pendant le score',
 		awakeHint:
 			'Maintient l’écran allumé jusqu’à la fin du tir, pour marquer depuis le téléphone en main. Cela consomme de la batterie. Le chronomètre le fait de toute façon.',
