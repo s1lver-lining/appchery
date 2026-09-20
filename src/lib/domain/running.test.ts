@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
 	clock,
+	elapsed,
+	emptyLive,
 	emptyRun,
 	isRunDone,
 	pace,
@@ -12,6 +14,7 @@ import {
 } from './running';
 
 const run = (partial: Partial<RunRecord> = {}): RunRecord => ({
+	...emptyRun(),
 	distanceM: 5000,
 	durationSeconds: 1650,
 	effort: 'steady',
@@ -58,12 +61,41 @@ describe('a run in progress', () => {
 		expect(isRunDone(run({ durationSeconds: null }))).toBe(false);
 		expect(isRunDone(run({ effort: null }))).toBe(true);
 	});
+
+	it('finishes a tracked run when it is stopped, however far it got', () => {
+		const tracked = emptyRun('tracked');
+		expect(isRunDone({ ...tracked, distanceM: 5000, durationSeconds: 1650 })).toBe(false);
+		expect(isRunDone({ ...tracked, live: { ...tracked.live!, status: 'done' } })).toBe(true);
+	});
+
+	it('reads a clock that stops when the run is paused', () => {
+		const live = { ...emptyLive(), baseSeconds: 60, legStartedAt: 1000 };
+		expect(elapsed(live, 11_000)).toBe(70);
+		expect(elapsed({ ...live, legStartedAt: null }, 11_000)).toBe(60);
+	});
 });
 
 describe('storing a run', () => {
 	it('comes back as it went in', () => {
 		expect(parseRun(serialiseRun(run()))).toEqual(run());
 		expect(parseRun(serialiseRun(emptyRun()))).toEqual(emptyRun());
+	});
+
+	it('keeps a tracked run whole, workout and splits with it', () => {
+		const tracked: RunRecord = {
+			...emptyRun('tracked'),
+			distanceM: 5000,
+			durationSeconds: 1650,
+			live: { ...emptyLive(), status: 'done', startedAt: 10, baseSeconds: 1650 },
+			splits: [{ index: 1, distanceM: 1000, seconds: 330 }],
+			steps: [{ key: 'a#1', distanceM: 200, seconds: 45 }],
+			elevationGainM: 42
+		};
+		expect(parseRun(serialiseRun(tracked))).toEqual(tracked);
+	});
+
+	it('reads a run stored before tracking existed as one entered by hand', () => {
+		expect(parseRun('{"distanceM":5000,"durationSeconds":1650,"effort":"steady"}')).toEqual(run());
 	});
 
 	it('survives a block written by something else', () => {

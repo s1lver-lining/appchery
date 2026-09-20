@@ -326,5 +326,34 @@ export const MIGRATIONS: string[][] = [
 		`DELETE FROM change_log WHERE table_name = 'badge';`
 	],
 	// 0008 where the sight rod sits on the riser, kept beside the mark it belongs to
-	[`ALTER TABLE sight_mark ADD COLUMN position TEXT;`]
+	[`ALTER TABLE sight_mark ADD COLUMN position TEXT;`],
+	// 0009 runs tracked rather than typed: the workouts they are run to, and the fixes they are made of
+	[
+		// Local for now, sync columns and all: what a run came to travels on the activity, and the
+		// library is worth carrying the day the server learns the table, see doc/running.md.
+		`CREATE TABLE IF NOT EXISTS run_workout (
+			id TEXT PRIMARY KEY NOT NULL,
+			created_at INTEGER NOT NULL,
+			updated_at INTEGER NOT NULL,
+			deleted_at INTEGER,
+			device_id TEXT NOT NULL,
+			name TEXT NOT NULL,
+			items TEXT NOT NULL,
+			last_used_at INTEGER
+		);`,
+		// A row per fix rather than JSON on the activity: a run is thousands of them, written as it
+		// happens and read once. The id counts up so writing one costs nothing to invent.
+		`CREATE TABLE IF NOT EXISTS run_point (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			activity_id TEXT NOT NULL,
+			at INTEGER NOT NULL,
+			latitude REAL NOT NULL,
+			longitude REAL NOT NULL,
+			accuracy REAL,
+			altitude REAL,
+			speed REAL,
+			elapsed_seconds REAL NOT NULL
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_run_point_activity ON run_point (activity_id, at);`
+	]
 ];

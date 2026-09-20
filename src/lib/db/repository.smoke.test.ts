@@ -5,7 +5,7 @@ import { and, eq, inArray, isNull } from 'drizzle-orm';
 import * as schema from './schema';
 import { MIGRATIONS } from './migrations';
 import { STRENGTH_KIND, parseStrength, serialiseStrength, setsDone } from '$lib/domain/strength';
-import { RUNNING_KIND, parseRun, serialiseRun } from '$lib/domain/running';
+import { RUNNING_KIND, emptyRun, parseRun, serialiseRun } from '$lib/domain/running';
 import {
 	DRILL_KIND,
 	newDrill,
@@ -196,7 +196,7 @@ describe('training activities', () => {
 			deviceId: 'device',
 			sessionId: 'session-training',
 			kind: RUNNING_KIND,
-			measurements: serialiseRun({ distanceM: 5000, durationSeconds: 1650, effort: 'steady' }),
+			measurements: serialiseRun({ ...emptyRun(), distanceM: 5000, durationSeconds: 1650, effort: 'steady' }),
 			startedAt: now,
 			status: 'complete'
 		});

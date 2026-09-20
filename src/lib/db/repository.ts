@@ -27,6 +27,8 @@ import {
 	type StrengthPlan
 } from '$lib/domain/strength';
 import { RUNNING_KIND, isRunDone, parseRun, serialiseRun, type RunRecord } from '$lib/domain/running';
+import type { RunItem, RunWorkout } from '$lib/domain/run/workout';
+import type { TrackedFix } from '$lib/domain/run/track';
 import {
 	FREE_SCORE_KIND,
 	FREE_SCORE_LIMITS,
@@ -393,6 +395,128 @@ export async function updateRun(activityId: string, run: RunRecord) {
 		.where(eq(schema.activity.id, activityId));
 	await log('activity', activityId, 'update');
 }
+
+/**
+ * The workouts the runner has written, newest use first: a library is read to find the session you
+ * did last Tuesday, and that one is never the one you happened to write first.
+ */
+export async function listRunWorkouts(): Promise<RunWorkout[]> {
+	const rows = await db()
+		.select()
+		.from(schema.runWorkout)
+		.where(isNull(schema.runWorkout.deletedAt))
+		.orderBy(desc(schema.runWorkout.lastUsedAt), desc(schema.runWorkout.updatedAt));
+	return rows.map((row) => ({
+		id: row.id,
+		name: row.name,
+		sourceId: null,
+		items: readItems(row.items)
+	}));
+}
+
+function readItems(items: string): RunItem[] {
+	try {
+		const parsed = JSON.parse(items);
+		return Array.isArray(parsed) ? parsed : [];
+	} catch {
+		// A library row written by something else costs one workout, never the page listing them.
+		return [];
+	}
+}
+
+export async function saveRunWorkout(workout: RunWorkout): Promise<string> {
+	const now = Date.now();
+	const existing = await db()
+		.select({ id: schema.runWorkout.id })
+		.from(schema.runWorkout)
+		.where(eq(schema.runWorkout.id, workout.id));
+	const items = JSON.stringify(workout.items);
+	if (existing.length > 0) {
+		await db()
+			.update(schema.runWorkout)
+			.set({ name: workout.name, items, updatedAt: now })
+			.where(eq(schema.runWorkout.id, workout.id));
+		return workout.id;
+	}
+	await db().insert(schema.runWorkout).values({
+		id: workout.id,
+		createdAt: now,
+		updatedAt: now,
+		deviceId: deviceId(),
+		name: workout.name,
+		items,
+		lastUsedAt: null
+	});
+	return workout.id;
+}
+
+export async function deleteRunWorkout(id: string) {
+	const now = Date.now();
+	await db()
+		.update(schema.runWorkout)
+		.set({ deletedAt: now, updatedAt: now })
+		.where(eq(schema.runWorkout.id, id));
+}
+
+/** Taken out on a run, which is what moves it up the library. */
+export async function markWorkoutUsed(id: string) {
+	await db()
+		.update(schema.runWorkout)
+		.set({ lastUsedAt: Date.now() })
+		.where(eq(schema.runWorkout.id, id));
+}
+
+/**
+ * Fixes as they arrive, written in batches. Nothing is worked out here: the totals on the activity
+ * are the tracker's business, and these rows are the record the run can be rebuilt from.
+ */
+export async function appendRunPoints(activityId: string, points: TrackedFix[]) {
+	if (points.length === 0) return;
+	await db()
+		.insert(schema.runPoint)
+		.values(
+			points.map((point) => ({
+				activityId,
+				at: point.at,
+				latitude: point.lat,
+				longitude: point.lon,
+				accuracy: point.accuracy,
+				altitude: point.altitude,
+				speed: point.speed,
+				elapsedSeconds: point.elapsedSeconds
+			}))
+		);
+}
+
+export async function listRunPoints(activityId: string): Promise<TrackedFix[]> {
+	const rows = await db()
+		.select()
+		.from(schema.runPoint)
+		.where(eq(schema.runPoint.activityId, activityId))
+		.orderBy(asc(schema.runPoint.at));
+	return rows.map((row) => ({
+		at: row.at,
+		lat: row.latitude,
+		lon: row.longitude,
+		accuracy: row.accuracy,
+		altitude: row.altitude,
+		speed: row.speed,
+		elapsedSeconds: row.elapsedSeconds
+	}));
+}
+
+/** The track of a run started and abandoned, so restarting one never runs on top of the last attempt. */
+export async function clearRunPoints(activityId: string) {
+	await db().delete(schema.runPoint).where(eq(schema.runPoint.activityId, activityId));
+}
+
+/** A run started from a workout, which is the one call the live screen makes to begin. */
+export async function createTrackedRun(sessionId: string, run: RunRecord, workoutId?: string | null) {
+	const id = await createRunningActivity(sessionId, run);
+	if (workoutId) await markWorkoutUsed(workoutId);
+	return id;
+}
+
 
 /**
  * A drill: shooting to a rule rather than to a round, see src/lib/domain/drills/types.ts.

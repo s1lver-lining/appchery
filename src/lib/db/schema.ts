@@ -387,3 +387,38 @@ export const competitionPlace = sqliteTable('competition_place', {
 	found: integer('found').notNull(),
 	cachedAt: integer('cached_at').notNull()
 });
+
+/**
+ * A training session written out in blocks, kept to be run again. Local for now: it carries the sync
+ * columns so it can travel the day the server learns about it, see doc/running.md.
+ */
+export const runWorkout = sqliteTable('run_workout', {
+	...syncColumns,
+	name: text('name').notNull(),
+	/** The blocks and repeats as JSON, see src/lib/domain/run/workout.ts. */
+	items: text('items').notNull(),
+	/** When it was last taken out on a run, which is the order the library is worth reading in. */
+	lastUsedAt: integer('last_used_at')
+});
+
+/**
+ * One fix of a tracked run. A row rather than JSON on the activity: a run is thousands of them, and
+ * they are written while it happens and read once when it is looked at again.
+ */
+export const runPoint = sqliteTable(
+	'run_point',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		activityId: text('activity_id').notNull(),
+		/** When the fix was taken, as the receiver reported it rather than when it arrived. */
+		at: integer('at').notNull(),
+		latitude: real('latitude').notNull(),
+		longitude: real('longitude').notNull(),
+		accuracy: real('accuracy'),
+		altitude: real('altitude'),
+		speed: real('speed'),
+		/** The run's own clock when it landed, so the pauses are visible in the track itself. */
+		elapsedSeconds: real('elapsed_seconds').notNull()
+	},
+	(t) => [index('idx_run_point_activity').on(t.activityId, t.at)]
+);
