@@ -1551,6 +1551,7 @@ insetHint:
 		blockDone: 'done',
 		blockResults: 'Block by block',
 		route: 'Where it went',
+		fastestKm: 'fastest',
 		graph: 'Graph',
 		graphNothing: 'Nothing picked to draw.',
 		noTrack: 'This run kept no track to draw.',

@@ -245,6 +245,29 @@
 
 	/** The run's own total, which is the one distance read to the hundred metres rather than the metre. */
 	const total = $derived(distanceParts(record?.distanceM ?? 0, 2));
+
+	const paces = $derived(
+		(record?.splits ?? []).map((split) => paceOf(split.distanceM, split.seconds) ?? 0).filter((pace) => pace > 0)
+	);
+	const averagePace = $derived(paces.length > 0 ? paces.reduce((sum, pace) => sum + pace, 0) / paces.length : 0);
+	const fastestPace = $derived(paces.length > 0 ? Math.min(...paces) : 0);
+	const fastest = $derived(
+		(record?.splits ?? []).find((split) => paceOf(split.distanceM, split.seconds) === fastestPace)?.index ?? -1
+	);
+
+	/**
+	 * How long a kilometre's bar is. Drawn against the run's own average rather than from zero,
+	 * because from zero every kilometre of a run is nearly the same length and the one that hurt is
+	 * invisible. The spread is stretched to fill the bar, with a floor under it so the slowest
+	 * kilometre is still a bar rather than a sliver.
+	 */
+	function barOf(pace: number): number {
+		if (pace <= 0 || paces.length === 0) return 0;
+		const slowest = Math.max(...paces);
+		if (slowest === fastestPace) return 100;
+		// Faster is longer: the bar reads as how well the kilometre went, not as how long it took.
+		return 30 + ((slowest - pace) / (slowest - fastestPace)) * 70;
+	}
 </script>
 
 {#if record && tracked && (status === 'running' || status === 'paused')}
@@ -400,12 +423,36 @@
 					</div>
 
 					{#if tab === 'splits'}
-						<ul class="space-y-1">
+						<ul class="space-y-1.5">
 							{#each record.splits as split (split.index)}
-								<li class="flex items-center gap-3 text-sm tabular">
-									<span class="w-14 text-muted">{$t('running.splitNumber', { n: split.index })}</span>
-									<span class="flex-1 font-semibold">{clock(split.seconds)}</span>
-									<span class="text-xs text-muted">{formatPace(split.seconds)} {$t('running.perKm')}</span>
+								{@const pace = paceOf(split.distanceM, split.seconds) ?? 0}
+								<li class="flex items-center gap-2 text-sm tabular">
+									<span class="w-10 shrink-0 text-xs text-muted">
+										{$t('running.splitNumber', { n: split.index })}
+									</span>
+									<!--
+										A bar each, drawn against the run's own average rather than from zero.
+										From zero every kilometre of a run is nearly the same length and the one
+										that hurt is invisible; against the average, it is the only one that is.
+									-->
+									<span class="relative h-5 flex-1 overflow-hidden rounded-md bg-sunk">
+										<span
+											class="absolute inset-y-0 left-0 rounded-md"
+											style="width:{barOf(pace)}%;background:{pace <= averagePace
+												? 'var(--c-run-work)'
+												: 'var(--c-run-pace)'};opacity:0.35"
+										></span>
+										{#if split.index === fastest}
+											<!-- The best kilometre said outright: it is the one worth finding. -->
+											<span class="absolute inset-y-0 right-1.5 flex items-center text-[10px] font-semibold" style="color:var(--c-run-work)">
+												{$t('running.fastestKm')}
+											</span>
+										{/if}
+										<span class="absolute inset-y-0 left-2 flex items-center text-xs font-semibold">
+											{formatPace(pace)} {$t('running.perKm')}
+										</span>
+									</span>
+									<span class="w-12 shrink-0 text-right text-xs text-muted">{clock(split.seconds)}</span>
 								</li>
 							{:else}
 								<li class="py-4 text-center text-xs text-muted">{$t('running.noSplits')}</li>

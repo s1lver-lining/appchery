@@ -1558,6 +1558,7 @@ insetHint:
 		blockResults: 'Bloc par bloc',
 		correct: 'Modifier les données',
 		route: 'Le parcours',
+		fastestKm: 'le plus rapide',
 		graph: 'Graphique',
 		graphNothing: 'Rien de choisi à tracer.',
 		noTrack: "Cette course n'a gardé aucune trace à tracer.",
