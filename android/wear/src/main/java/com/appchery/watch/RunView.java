@@ -76,6 +76,8 @@ public class RunView extends FrameLayout {
     /** How many samples either graph keeps. At a frame every second or two, this is a few minutes. */
     private static final int HISTORY = 120;
 
+    /** How far off the target still counts as holding it: a pace is never held to the second. */
+    private static final int PACE_SLACK = 10;
     /** The figure a page is read for. Bigger on the pages that have given up their pair for a graph. */
     private static final float HEADLINE = 40f;
     private static final float HEADLINE_BIG = 46f;
@@ -1117,8 +1119,8 @@ public class RunView extends FrameLayout {
         // Neither figure of the pair says anything the headline and the graph do not, and the room
         // they take is the room the line needs: the target is drawn across it rather than beside it.
         p.asGraph(true);
-        p.spark.set(paces, paceCount, run.targetPace, true,
-                accent(run.hasBlock ? run.kind : "work"), this::say);
+        // The same ten seconds either way the headline is judged by: a pace is never held to the second.
+        p.spark.set(paces, paceCount, run.targetPace, true, GOOD, OVER, PACE_SLACK, this::say);
         p.alignScale();
         drawScale(p, paceAtSeconds, paceAtMetres, paceCount);
         p.footer.setText(run.targetPace > 0
@@ -1265,8 +1267,7 @@ public class RunView extends FrameLayout {
     private int paceInk() {
         if ("p".equals(run.status)) return MUTED;
         if (run.targetPace <= 0 || run.pace <= 0) return INK;
-        // Ten seconds either way of the target is holding it: a pace is never held to the second.
-        return run.pace <= run.targetPace + 10 ? GOOD : OVER;
+        return run.pace <= run.targetPace + PACE_SLACK ? GOOD : OVER;
     }
 
     private String blockLine() {
@@ -1552,6 +1553,11 @@ public class RunView extends FrameLayout {
         private int target = 0;
         /** Pace is upside down: a smaller number is a faster runner, so it belongs higher up. */
         private boolean inverted = false;
+        /** The colour of the series where it is holding its target, and where it is not. */
+        private int kept = INK;
+        private int lost = INK;
+        /** How far either side of the target still counts as holding it, in the series' own unit. */
+        private int slack = 0;
         /** The two rules and what they are worth, worked out when the series is set rather than drawn. */
         private int low = 0;
         private int high = 0;
@@ -1586,11 +1592,23 @@ public class RunView extends FrameLayout {
 
         /** The series, the line it is judged against, which way up it goes, and how to write a value. */
         void set(int[] next, int howMany, int aim, boolean upsideDown, int colour, Label how) {
+            set(next, howMany, aim, upsideDown, colour, colour, 0, how);
+        }
+
+        /**
+         * The same, drawn in two colours: the stretch that held the target and the stretch that did
+         * not. Which is the whole question a pace graph is looked at to answer, and one the headline
+         * can only answer about this second.
+         */
+        void set(int[] next, int howMany, int aim, boolean upsideDown, int held, int missed, int give, Label how) {
             values = next;
             count = howMany;
             target = aim;
             inverted = upsideDown;
-            line.setColor(colour);
+            kept = held;
+            lost = missed;
+            slack = give;
+            line.setColor(held);
 
             low = Integer.MAX_VALUE;
             high = Integer.MIN_VALUE;
@@ -1643,13 +1661,35 @@ public class RunView extends FrameLayout {
                 canvas.drawLine(inset, y, width, y, aimed);
             }
 
+            /*
+             * Drawn a segment at a time where there is a target, so the line itself says when the
+             * pace was held and when it went. One colour says only that it is going now, which the
+             * figure above it already said.
+             */
             path.reset();
+            boolean holding = holds(values[0]);
             for (int i = 0; i < count; i++) {
                 float x = inset + (i / (float) (count - 1)) * (width - inset);
                 float y = place(values[i], height);
-                if (i == 0) path.moveTo(x, y);
-                else path.lineTo(x, y);
+                if (i == 0) {
+                    path.moveTo(x, y);
+                    continue;
+                }
+                boolean now = holds(values[i]);
+                if (now != holding) {
+                    // The stretch so far, ending on the point that changed its mind, so the two
+                    // colours meet rather than leaving a gap between them.
+                    path.lineTo(x, y);
+                    line.setColor(holding ? kept : lost);
+                    canvas.drawPath(path, line);
+                    path.reset();
+                    path.moveTo(x, y);
+                    holding = now;
+                    continue;
+                }
+                path.lineTo(x, y);
             }
+            line.setColor(holding ? kept : lost);
             canvas.drawPath(path, line);
         }
 
@@ -1664,6 +1704,13 @@ public class RunView extends FrameLayout {
             // at both ends: a figure at the very top of the box would be drawn half outside it.
             float baseline = Math.min(height, Math.max(ink.getTextSize() * 0.8f, y + ink.getTextSize() * 0.36f));
             canvas.drawText(said, 0, baseline, ink);
+        }
+
+        /** Whether a sample was holding what the block asked for, which is only a question where it asks. */
+        private boolean holds(int value) {
+            if (target <= 0 || kept == lost) return true;
+            // Pace: slower is a larger number, so only one side of the target is a miss.
+            return inverted ? value <= target + slack : Math.abs(value - target) <= slack;
         }
 
         private float place(float value, float height) {
