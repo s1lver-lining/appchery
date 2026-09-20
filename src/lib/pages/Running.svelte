@@ -171,6 +171,8 @@
 	let scrubbing = $state<number | null>(null);
 	/** A kilometre picked off the list, which is the other way of asking the graph about a moment. */
 	let showing = $state<number | null>(null);
+	/** Whether the route is painted by pace, which it is not until it is asked for. */
+	let routeByPace = $state(false);
 	let tab = $state<'splits' | 'graph'>('splits');
 	let importing = $state(false);
 	let importFailed = $state(false);
@@ -495,7 +497,16 @@
 							     explains the lines, and it is read after them rather than instead. -->
 							<div class="mt-3 border-t border-line pt-3">
 								<!-- Marked where the finger is on the graph, so the two are one reading. -->
-								<RunRoute {fixes} at={scrubbing ?? showing} />
+								<RunRoute {fixes} {samples} at={scrubbing ?? showing} byPace={routeByPace} />
+								<!-- Off unless asked for: a route is read for its shape before anything
+								     else, and three colours over it is the shape harder to see. -->
+								<button
+									class="press mx-auto mt-1 block py-1 text-xs font-medium text-muted"
+									aria-pressed={routeByPace}
+									onclick={() => (routeByPace = !routeByPace)}
+								>
+									{routeByPace ? $t('running.routePlain') : $t('running.routeByPace')}
+								</button>
 							</div>
 						{/if}
 					{:else}

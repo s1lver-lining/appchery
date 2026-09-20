@@ -1558,6 +1558,8 @@ insetHint:
 		blockDone: 'fait',
 		blockResults: 'Bloc par bloc',
 		correct: 'Modifier les données',
+		routeByPace: "Colorer selon l'allure",
+		routePlain: 'Parcours uni',
 		route: 'Le parcours',
 		fastestKm: 'le plus rapide',
 		bpm: 'bpm',

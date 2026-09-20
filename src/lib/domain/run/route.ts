@@ -73,3 +73,19 @@ export function pathOf(route: Route): string {
 		.map((point, i) => `${i === 0 ? 'M' : 'L'}${point.x.toFixed(2)} ${point.y.toFixed(2)}`)
 		.join('');
 }
+
+/**
+ * Where a pace sits between the quick end of a run and the slow end of it, as a share.
+ *
+ * The ends are taken off first, for the same reason the graph's scale takes them off: a run has a
+ * handful of samples that say half an hour a kilometre, and a scale drawn to fit those paints the
+ * whole route one colour to leave room for four of them.
+ */
+export function paceBand(paces: (number | null)[], outliers = 0.05): { fast: number; slow: number } | null {
+	const sorted = paces.filter((pace): pace is number => pace !== null && pace > 0).sort((a, b) => a - b);
+	if (sorted.length < 2) return null;
+	const at = (share: number) => sorted[Math.round(share * (sorted.length - 1))];
+	const fast = at(outliers);
+	const slow = at(1 - outliers);
+	return slow > fast ? { fast, slow } : null;
+}

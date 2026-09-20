@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { pathOf, routeOf } from './route';
+import { paceBand, pathOf, routeOf } from './route';
 
 describe('routeOf', () => {
 	it('draws north up, which is a latitude that grows drawing upwards', () => {
@@ -40,5 +40,20 @@ describe('routeOf', () => {
 		const path = pathOf(route);
 		expect(path.startsWith('M')).toBe(true);
 		expect(path.split('L')).toHaveLength(3);
+	});
+});
+
+describe('paceBand', () => {
+	it('leaves the ends out, so a red light does not paint the whole route', () => {
+		const paces = [300, 305, 310, 315, 320, 325, 330, 335, 340, 1800];
+		const band = paceBand(paces, 0.05);
+		expect(band).not.toBeNull();
+		expect(band!.slow).toBeLessThan(1000);
+		expect(band!.fast).toBe(300);
+	});
+
+	it('has nothing to say about a run that held one pace exactly', () => {
+		expect(paceBand([300, 300, 300])).toBeNull();
+		expect(paceBand([null, null])).toBeNull();
 	});
 });

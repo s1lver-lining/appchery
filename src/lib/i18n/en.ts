@@ -1551,6 +1551,8 @@ insetHint:
 		blockTarget: 'at {pace}',
 		blockDone: 'done',
 		blockResults: 'Block by block',
+		routeByPace: 'Colour by pace',
+		routePlain: 'Plain route',
 		route: 'Where it went',
 		fastestKm: 'fastest',
 		bpm: 'bpm',
