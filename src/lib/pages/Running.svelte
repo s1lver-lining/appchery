@@ -167,6 +167,8 @@
 	let samples = $state<RunSample[]>([]);
 	/** The fixes themselves, for the route: a drawing of where it went is not a series of figures. */
 	let fixes = $state<TrackedFix[]>([]);
+	/** Where the finger is on the graph, as a share of the run, so the route can mark the same place. */
+	let scrubbing = $state<number | null>(null);
 	let tab = $state<'splits' | 'graph'>('splits');
 	let importing = $state(false);
 	let importFailed = $state(false);
@@ -459,12 +461,13 @@
 							{/each}
 						</ul>
 					{:else if samples.length > 1}
-						<RunGraph {samples} />
+						<RunGraph {samples} onscrub={(at) => (scrubbing = at)} />
 						{#if fixes.length > 1}
 							<!-- Under the graph rather than above it: the shape of the ground is what
 							     explains the lines, and it is read after them rather than instead. -->
 							<div class="mt-3 border-t border-line pt-3">
-								<RunRoute {fixes} />
+								<!-- Marked where the finger is on the graph, so the two are one reading. -->
+								<RunRoute {fixes} at={scrubbing} />
 							</div>
 						{/if}
 					{:else}

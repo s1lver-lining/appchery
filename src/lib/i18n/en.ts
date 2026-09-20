@@ -1552,6 +1552,8 @@ insetHint:
 		blockResults: 'Block by block',
 		route: 'Where it went',
 		fastestKm: 'fastest',
+		bpm: 'bpm',
+		scrubHint: 'Hold the graph to read it.',
 		graph: 'Graph',
 		graphNothing: 'Nothing picked to draw.',
 		noTrack: 'This run kept no track to draw.',

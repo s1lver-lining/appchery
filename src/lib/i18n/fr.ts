@@ -1559,6 +1559,8 @@ insetHint:
 		correct: 'Modifier les données',
 		route: 'Le parcours',
 		fastestKm: 'le plus rapide',
+		bpm: 'bpm',
+		scrubHint: 'Maintenez le graphique pour le lire.',
 		graph: 'Graphique',
 		graphNothing: 'Rien de choisi à tracer.',
 		noTrack: "Cette course n'a gardé aucune trace à tracer.",
