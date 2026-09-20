@@ -12,6 +12,11 @@ Two ways in, one record out.
 Both fill the same `distanceM` and `durationSeconds`, so the session card, the badges and the
 statistics read one shape and never ask which kind they are looking at.
 
+A programme running out does not end the run. The blocks finish, the wrist says *Free run* and the
+clock carries on from there with nothing to hold and nothing counting down, until the runner says
+otherwise: the way home from the track is a run, and a warm down nobody wrote down is still time on
+the feet. The service does the same while the page is asleep, and hands it back through `claim`.
+
 ## The model
 
 `src/lib/domain/run/workout.ts` is the programme: blocks in order, and repeats holding blocks.
@@ -53,6 +58,40 @@ time: the next fix is still measured from the last one that counted.
 
 `src/lib/domain/running.ts` is the record itself: the two numbers, the mode, the clock (`RunLive`),
 the workout it was run to, the splits and the per block results.
+
+## Laps and zones
+
+A lap is a split the runner asked for, kept apart from the kilometres rather than mixed in: a
+kilometre is arithmetic and a lap is a decision, the top of the hill or the lamp post somebody
+sprinted to. Each is measured from the last one, because what a lap is worth is what it took on its
+own. The button is on the phone's own bar and on the wrist's controls page, and it is the one button
+there that cannot cost anything: pressed by accident it leaves a line in a list, where everything
+else on that page changes what the run is doing.
+
+A heart rate is nothing without the heart it belongs to, so `src/lib/domain/run/zones.ts` works
+against a maximum the archer gives in the settings and refuses to guess one from an age the app does
+not know either. Five zones at the shares of maximum everybody agrees on, with a colour each, cool
+to hot. The run says where its time went rather than only what it averaged: an hour held steady and
+half an hour of intervals come out at the same average and are not the same training.
+
+The wrist wears the zone as the ring around the glass on its heart page, because a colour is read at
+a glance and a figure is not. The zone is worked out on the phone and sent back down rather than
+worked out where it is measured: the maximum is a setting of the app, and the wrist would otherwise
+have to be told it and kept up to date with it, for something the phone can send in eight bytes.
+
+## Holding the clock
+
+A run can hold its own clock while it is going nowhere, and that is off unless it is asked for. A
+crossing, a gate and a bootlace are not running; but a run that pauses itself is a run the app has an
+opinion about, and the opinion is wrong every time somebody is walking a hill on purpose.
+
+It is a pause of its own kind. The clock stops and the receiver is left listening, because a run that
+stopped listening could never notice the runner starting again, which also means the standing about
+is visible in the stored track and is what draws it on the graph afterwards. A pause asked for by
+hand is never let go of by the app.
+
+Only while the page is awake. With the screen off the service keeps the run and has no opinion about
+this: a run in a pocket is timed the way it always was.
 
 ## Where it is stored
 
@@ -99,6 +138,16 @@ Holding the graph reads it at a point: the figures appear above it rather than i
 thumb that summoned them, a dot marks each line, and the route under it marks the same place. That
 last part is why the graph reports where the finger is rather than keeping it to itself.
 
+A kilometre is also the way into the graph: tapping one opens it at that moment, with the line
+marked and the route marked with it. The table says which kilometre was slow and only the graph says
+what happened in it.
+
+The stretches where the run was held are ruled on the graph too. Nothing records a pause: what
+records it is the gap between the two clocks, because every fix carries both when it was taken and
+where the run's own clock was, and the run's clock is the one that stops. A pause takes no room on
+either axis, since neither the clock nor the distance moved while it lasted, so it is drawn as a
+place on the line rather than a stretch of it.
+
 Under the kilometres, each one is a bar drawn against the run's own average rather than from zero.
 From zero every kilometre of a run is nearly the same length and the one that hurt is invisible;
 against the average it is the only one that is. The fastest says so.
@@ -110,6 +159,12 @@ squeezed by the cosine of the latitude, which is what stops a five kilometre loo
 stretched sideways, and the curvature over those few kilometres is smaller than the line is thick.
 The route is fitted into its box keeping its shape, because a route is a picture of somewhere real
 and one stretched to fill a box is a picture of somewhere else.
+
+It can be painted by pace, green through amber to red against the run's own band, which is off
+until it is asked for: a route is read for its shape first, and three colours over it make the shape
+harder to see. The same drawing, without its dots and with a heavier line, is the shape beside each
+run in the session it belongs to. Only on the device that recorded it, because the fixes never
+leave that phone: somebody else's run in the feed has a shape nobody but them can draw.
 
 There is no basemap under it, and that is a decision rather than a gap. The person reading it ran
 it, so the shape alone is enough to recognise the loop, see which way round it went and find where
