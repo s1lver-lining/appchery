@@ -14,21 +14,35 @@
 		fixes,
 		at = null
 	}: {
-		fixes: { lat: number; lon: number }[];
-		/** Where along the route to mark, as a share of the way through. Null for no mark. */
+		fixes: { lat: number; lon: number; elapsedSeconds?: number }[];
+		/** The run's clock to mark on the route, or null for no mark. */
 		at?: number | null;
 	} = $props();
 
 	// A route is a few thousand fixes and a phone screen is a few hundred pixels: past one point per
 	// pixel the path costs more to build than it shows.
-	const route = $derived(routeOf(thin(fixes, 400)));
+	const shown = $derived(thin(fixes, 400));
+	const route = $derived(routeOf(shown));
 	const path = $derived(route ? pathOf(route) : '');
 	const start = $derived(route?.points[0] ?? null);
 	const end = $derived(route ? route.points[route.points.length - 1] : null);
+	/**
+	 * The point the graph is being read at, found by the run's own clock rather than by how far
+	 * through the list it is: a run with a pause in it has fixes that are not evenly spread, and a
+	 * share of the count would put the mark somewhere the runner never was at that moment.
+	 */
 	const here = $derived.by(() => {
 		if (!route || at === null) return null;
-		const index = Math.round(Math.min(1, Math.max(0, at)) * (route.points.length - 1));
-		return route.points[index] ?? null;
+		let best = 0;
+		let closest = Infinity;
+		for (let i = 0; i < shown.length; i++) {
+			const gap = Math.abs((shown[i].elapsedSeconds ?? 0) - at);
+			if (gap < closest) {
+				closest = gap;
+				best = i;
+			}
+		}
+		return route.points[best] ?? null;
 	});
 </script>
 

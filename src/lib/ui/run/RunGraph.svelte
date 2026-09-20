@@ -22,8 +22,8 @@
 		onscrub = undefined
 	}: {
 		samples: RunSample[];
-		/** Where along the run the finger is, as a share of it, so the route can mark the same place. */
-		onscrub?: (at: number | null) => void;
+		/** The run's clock where the finger is, so the route can mark the same moment. Null on release. */
+		onscrub?: (seconds: number | null) => void;
 	} = $props();
 
 	type Series = 'pace' | 'climb' | 'heart';
@@ -123,6 +123,11 @@
 	function ticks(series: Series): { at: number; said: string }[] {
 		const scale = scales[series];
 		if (!scale) return [];
+		// A series that never moved, a climb on the flat or a pace held exactly, has one mark and not
+		// three: three of them would be three copies of the same figure at the same height.
+		if (scale.high === scale.low) {
+			return [{ at: shareOf(series, scale.low) * 100, said: say(series, scale.low) }];
+		}
 		const middle = (scale.low + scale.high) / 2;
 		return [scale.high, middle, scale.low]
 			.map((value) => ({ at: shareOf(series, value) * 100, said: say(series, value) }))
@@ -144,7 +149,7 @@
 			}
 		}
 		held = best;
-		onscrub?.(alongOf(points[best]));
+		onscrub?.(points[best].seconds);
 	}
 
 	function release() {
@@ -213,7 +218,7 @@
 			<!-- The edges hold the figures, so the lines start after them and end before the others. -->
 			{#if leftAxis}
 				<div class="absolute inset-y-0 left-0 w-11">
-					{#each ticks(leftAxis.key) as tick (tick.at)}
+					{#each ticks(leftAxis.key) as tick, i (i)}
 						<span
 							class="absolute right-1 -translate-y-1/2 text-[10px] font-semibold tabular"
 							style="top:{tick.at}%;color:var(--c-run-{leftAxis.key})"
@@ -225,7 +230,7 @@
 			{/if}
 			{#if rightAxis}
 				<div class="absolute inset-y-0 right-0 w-11">
-					{#each ticks(rightAxis.key) as tick (tick.at)}
+					{#each ticks(rightAxis.key) as tick, i (i)}
 						<span
 							class="absolute left-1 -translate-y-1/2 text-[10px] font-semibold tabular"
 							style="top:{tick.at}%;color:var(--c-run-{rightAxis.key})"
@@ -248,7 +253,6 @@
 				}}
 				onpointerup={release}
 				onpointercancel={release}
-				onpointerleave={release}
 			>
 				<svg
 					class="h-full w-full overflow-visible"

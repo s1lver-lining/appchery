@@ -167,7 +167,7 @@
 	let samples = $state<RunSample[]>([]);
 	/** The fixes themselves, for the route: a drawing of where it went is not a series of figures. */
 	let fixes = $state<TrackedFix[]>([]);
-	/** Where the finger is on the graph, as a share of the run, so the route can mark the same place. */
+	/** The run's clock where the finger is on the graph, so the route can mark the same moment. */
 	let scrubbing = $state<number | null>(null);
 	let tab = $state<'splits' | 'graph'>('splits');
 	let importing = $state(false);
@@ -401,10 +401,12 @@
 					</div>
 				{/if}
 
+				{#if fixes.length > 1}
 				<button class="press mt-3 w-full py-1 text-sm font-medium text-brand-text" onclick={exportGpx}>
 					<span class="mr-1 inline-block align-[-3px]"><Icon name="download" size={16} /></span>
 					{$t('running.exportGpx')}
 				</button>
+				{/if}
 			</section>
 
 			{#if record.splits.length > 0 || samples.length > 1}
@@ -417,7 +419,10 @@
 									? 'bg-brand text-brand-ink'
 									: 'text-muted'}"
 								aria-pressed={tab === option.key}
-								onclick={() => (tab = option.key as 'splits' | 'graph')}
+								onclick={() => {
+									tab = option.key as 'splits' | 'graph';
+									scrubbing = null;
+								}}
 							>
 								{option.label}
 							</button>
