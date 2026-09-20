@@ -115,7 +115,7 @@
 		     which is what an out and back looks like for half its length. -->
 		<path
 			d={path}
-			stroke="var(--c-run-pace)"
+			stroke={painted.length > 0 ? 'var(--color-muted)' : 'var(--c-run-pace)'}
 			stroke-width={small ? 0 : 5}
 			stroke-linecap="round"
 			stroke-linejoin="round"
