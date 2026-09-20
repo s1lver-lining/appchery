@@ -128,9 +128,17 @@
 				<p class="mt-1 text-xs tracking-wide text-muted uppercase">{$t(paceUnitKey(unit))}</p>
 			</button>
 		</div>
-		<div class="mt-3 flex justify-center gap-4 text-xs text-muted tabular">
+		<div class="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-xs text-muted tabular">
 			<span>{$t('running.averagePace')} {sayPace(run.averagePace, unit)}</span>
 			<span>{$t('running.elevation')} {sayDistance(run.track.elevationGainM, $t)}</span>
+			{#if run.heart !== null}
+				<!-- Only while the wrist is actually talking: a figure that stays behind when the watch
+				     goes quiet is a heart rate from five minutes ago read as the runner's now. -->
+				<span class="flex items-center gap-1 font-semibold" style="color:var(--c-run-heart)">
+					<Icon name="heart" size={13} filled />
+					{$t('running.bpmValue', { n: run.heart })}
+				</span>
+			{/if}
 		</div>
 	</section>
 

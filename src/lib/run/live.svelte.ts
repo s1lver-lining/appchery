@@ -140,6 +140,14 @@ export class LiveRun {
 	/** Counted up on every block change, so a watch can tell a new block from a redrawn one. */
 	cue = $state(0);
 
+	/**
+	 * The beat as the wrist last reported it, for the screen. Held apart from the log because the
+	 * log is written to be read by the fixes and this is written to be read by a page: it goes back
+	 * to nothing the moment the wrist stops talking, so the run never shows a heart rate from
+	 * five minutes ago as though it were the runner's now.
+	 */
+	heart = $state<number | null>(null);
+
 	get glance(): RunGlance {
 		const steps = this.steps;
 		const step = this.step;
@@ -204,6 +212,7 @@ export class LiveRun {
 		this.track = replayTracked(stored);
 		// Carried on from what is already written, so a run reopened averages over the whole of it.
 		this.beats = { sum: 0, count: 0, max: 0 };
+		this.heart = null;
 		for (const point of stored) this.count(point.heartRate ?? null);
 		this.now = Date.now();
 		// A run reopened while it was still running carries on: the service never stopped.
@@ -358,6 +367,10 @@ export class LiveRun {
 		if (slept && this.status === 'running') await this.adopt();
 		if (this.status === 'running') await this.ingest();
 		if (this.status === 'running') this.checkStep();
+		// The wrist gone quiet is not a heart that stopped, but it is not a heart rate either.
+		if (this.heart !== null && Date.now() - (this.beatLog[this.beatLog.length - 1]?.at ?? 0) > BEAT_STALE_MS) {
+			this.heart = null;
+		}
 		if (this.record && Date.now() - this.lastSaved > SAVE_MS) await this.save();
 		await this.mirror();
 	}
@@ -471,6 +484,7 @@ export class LiveRun {
 	heard(bpm: number, at: number) {
 		if (!Number.isFinite(bpm) || bpm <= 0) return;
 		this.beatLog.push({ bpm: Math.round(bpm), at });
+		this.heart = Math.round(bpm);
 		// An hour of a beat every few seconds. Past that, the samples are older than any fix waiting.
 		if (this.beatLog.length > BEAT_LOG_MOST) this.beatLog.splice(0, this.beatLog.length - BEAT_LOG_MOST);
 	}
