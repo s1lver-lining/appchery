@@ -1,7 +1,11 @@
 package com.appchery.watch;
 
 import android.Manifest;
-import android.app.Activity;
+import android.app.AlarmManager;
+import android.app.PendingIntent;
+import android.content.BroadcastReceiver;
+import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.graphics.Typeface;
@@ -34,7 +38,8 @@ import java.util.Set;
  * tapped and shows what the phone says, and it never decides what an arrow is worth. Every end is
  * sent whole, so an edit, an undo and an added arrow are the same message.
  */
-public class KeypadActivity extends Activity implements Link.Listener, SessionView.Listener {
+public class KeypadActivity extends androidx.activity.ComponentActivity
+        implements Link.Listener, SessionView.Listener, RunView.Listener {
 
     // The WA face palette, taken from src/lib/domain/rounds/seed.ts so the wrist matches the phone.
     private static final int GOLD = 0xFFFFCF3F;
@@ -93,6 +98,20 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     private FrameLayout shell;
     private SessionView sessionView;
     private StatusView statusView;
+    private RunView runView;
+    /**
+     * The screen the phone last named, kept apart from the one on show: a run takes the screen for
+     * as long as it lasts and gives it back to whatever the phone was mirroring behind it.
+     */
+    private String mirrored = "idle";
+    /** The block change last felt, so a frame redrawn is not a block changed. */
+    private int lastCue = -1;
+    private boolean running = false;
+    private boolean keepAwake = false;
+    private boolean ambientWanted = false;
+    private boolean inAmbient = false;
+    private androidx.wear.ambient.AmbientLifecycleObserver ambient;
+    private PendingIntent ambientTick;
     private String screen = "idle";
     private Vibrator vibrator;
     private Link link;
@@ -109,6 +128,9 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
         buildShell();
         redraw();
         listenForBack();
+
+        registerReceiver(ambientTicker, new IntentFilter(AMBIENT_ACTION), RECEIVER_NOT_EXPORTED);
+        if (ambientWanted) attachAmbient();
 
         link = new Link(this, this);
         String[] needed = {Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT};
@@ -144,6 +166,12 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        cancelAmbientTick();
+        try {
+            unregisterReceiver(ambientTicker);
+        } catch (IllegalArgumentException never) {
+            // Registered in onCreate, so this is the double destroy that cannot happen.
+        }
         if (link != null) link.stop();
         LinkService.release(this);
     }
@@ -159,6 +187,15 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
         sessionView = new SessionView(this, this);
         shell.addView(sessionView);
+
+        runView = new RunView(this, this);
+        keepAwake = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("keep-awake", false);
+        ambientWanted = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("ambient", false);
+        runView.setKeepAwake(keepAwake);
+        runView.setAmbientWanted(ambientWanted);
+        runView.setAmbientAvailable(systemAmbient());
+        runView.setVisibility(View.GONE);
+        shell.addView(runView);
 
         shell.addView(buildScoring());
 
@@ -179,10 +216,14 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
     private void showScreen(String next) {
         screen = next;
+        if (!"run".equals(next)) mirrored = next;
+        boolean onRun = "run".equals(next);
         statusView.setVisibility("idle".equals(next) ? View.VISIBLE : View.GONE);
         sessionView.setVisibility("session".equals(next) ? View.VISIBLE : View.GONE);
+        if (runView != null) runView.setVisibility(onRun ? View.VISIBLE : View.GONE);
         if (root != null) root.setVisibility("score".equals(next) ? View.VISIBLE : View.GONE);
         statusView.setState(linkKind, linkNote);
+        applyKeepAwake(onRun && keepAwake);
     }
 
     private DrawerRoot buildScoring() {
@@ -684,6 +725,15 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
 
     private boolean onCrown(MotionEvent e) {
         float delta = e.getAxisValue(MotionEvent.AXIS_SCROLL);
+        if ("run".equals(screen)) {
+            // A detent a page, so the crown turns the run's pages the way it scrolls everything else.
+            rotary += delta;
+            if (Math.abs(rotary) > 1.0f) {
+                runView.turn(rotary > 0 ? 1 : -1);
+                rotary = 0;
+            }
+            return true;
+        }
         if ("session".equals(screen)) {
             sessionView.scrollByCrown(delta);
             return true;
@@ -778,6 +828,181 @@ public class KeypadActivity extends Activity implements Link.Listener, SessionVi
     public void onScreen(String next) {
         // The phone owns where the two of them are, so this is followed rather than negotiated.
         showScreen(next);
+    }
+
+    /**
+     * A run, sent every second or two while one lasts. The wrist takes the screen for it and gives
+     * it back when the run stops, and a block change is felt rather than read: the buzz and the
+     * screen waking are the whole point of wearing the thing on an interval session.
+     */
+    /** A run button on the wrist. The phone owns the run, so this asks and the next frame answers. */
+    @Override
+    public void onRunCommand(String action) {
+        if (link != null) link.command(action);
+    }
+
+    /**
+     * Holding the screen awake for a whole run costs most of what a watch has, so it is asked for
+     * rather than assumed, and remembered: whoever wants it wants it on every run.
+     */
+    @Override
+    public void onKeepAwake(boolean on) {
+        keepAwake = on;
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("keep-awake", on).apply();
+        applyKeepAwake("run".equals(screen) && on);
+    }
+
+    /**
+     * Dimmed and left up rather than lit or dark.
+     *
+     * Ambient is granted by the observer being attached, so it is attached only when it has been
+     * asked for: an app that takes the screen for itself on every watch that opens it is an app
+     * nobody opens twice. The redraw while it lasts is the activity's, on an alarm, because a view
+     * that wakes itself every second in ambient is a lit screen with the lights off.
+     */
+    @Override
+    public void onAmbient(boolean on) {
+        ambientWanted = on;
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("ambient", on).apply();
+        runView.setAmbientAvailable(systemAmbient());
+        if (on) attachAmbient();
+        else detachAmbient();
+    }
+
+    /**
+     * Whether the watch has an ambient screen at all. With its always-on screen switched off the
+     * display simply goes out on a wrist drop, the system's own dream takes over when it does not,
+     * and an app asking for ambient is refused in silence. Read rather than assumed, so the toggle
+     * can say why it is doing nothing.
+     */
+    private boolean systemAmbient() {
+        return android.provider.Settings.Global.getInt(getContentResolver(), "ambient_enabled", 0) == 1;
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        // It is a setting on another screen, so it may have changed while this one was away.
+        if (runView != null) runView.setAmbientAvailable(systemAmbient());
+    }
+
+    private void attachAmbient() {
+        if (ambient != null) return;
+        android.util.Log.i("AppcheryWatch", "ambient asked for");
+        // Built through the library's own factory: the observer is an interface, and this is the
+        // Java name of the Kotlin function that makes one.
+        ambient = androidx.wear.ambient.AmbientLifecycleObserverKt.AmbientLifecycleObserver(this,
+                new androidx.wear.ambient.AmbientLifecycleObserver.AmbientLifecycleCallback() {
+                    @Override
+                    public void onEnterAmbient(
+                            androidx.wear.ambient.AmbientLifecycleObserver.AmbientDetails details) {
+                        android.util.Log.i("AppcheryWatch", "ambient in");
+                        inAmbient = true;
+                        runView.setAmbient(true);
+                        scheduleAmbientTick();
+                    }
+
+                    @Override
+                    public void onUpdateAmbient() {
+                        runView.ambientTick();
+                    }
+
+                    @Override
+                    public void onExitAmbient() {
+                        android.util.Log.i("AppcheryWatch", "ambient out");
+                        inAmbient = false;
+                        cancelAmbientTick();
+                        runView.setAmbient(false);
+                    }
+                });
+        getLifecycle().addObserver(ambient);
+    }
+
+    private void detachAmbient() {
+        if (ambient == null) return;
+        getLifecycle().removeObserver(ambient);
+        ambient = null;
+        inAmbient = false;
+        cancelAmbientTick();
+        runView.setAmbient(false);
+    }
+
+    /**
+     * Twenty seconds, which is the pace a run can be read at from a sleeping watch: the block, what
+     * is left of it and the pace it asks for barely move in that time. Inexact on purpose, so the
+     * watch can line the wakeup up with whatever else it was going to wake for.
+     */
+    private static final long AMBIENT_TICK_MS = 20_000;
+    private static final String AMBIENT_ACTION = "com.appchery.watch.AMBIENT_TICK";
+
+    private final BroadcastReceiver ambientTicker = new BroadcastReceiver() {
+        @Override
+        public void onReceive(android.content.Context context, Intent intent) {
+            if (!inAmbient) return;
+            runView.ambientTick();
+            scheduleAmbientTick();
+        }
+    };
+
+    private void scheduleAmbientTick() {
+        if (!inAmbient || !"run".equals(screen)) return;
+        AlarmManager alarms = getSystemService(AlarmManager.class);
+        if (alarms == null) return;
+        if (ambientTick == null) {
+            Intent intent = new Intent(AMBIENT_ACTION).setPackage(getPackageName());
+            ambientTick = PendingIntent.getBroadcast(this, 0, intent,
+                    PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+        }
+        alarms.set(AlarmManager.RTC_WAKEUP, System.currentTimeMillis() + AMBIENT_TICK_MS, ambientTick);
+    }
+
+    private void cancelAmbientTick() {
+        AlarmManager alarms = getSystemService(AlarmManager.class);
+        if (alarms != null && ambientTick != null) alarms.cancel(ambientTick);
+    }
+
+    private void applyKeepAwake(boolean on) {
+        if (on) getWindow().addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        else getWindow().clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+    }
+
+    @Override
+    public void onRun(Link.Run run) {
+        // The run screen is taken for a run about to start as well: that is where its start button is.
+        boolean live = !"d".equals(run.status);
+        runView.show(run);
+
+        if ("r".equals(run.status) && run.cue != lastCue && lastCue >= 0) wake();
+        lastCue = run.cue;
+
+        if (live && !running) {
+            running = true;
+            showScreen("run");
+        } else if (!live && running) {
+            running = false;
+            lastCue = -1;
+            // Back to whatever the phone was showing behind the run, which it never stopped being.
+            showScreen(mirrored);
+        }
+    }
+
+    /**
+     * A new block: two short buzzes and the screen lit. Wear dims and then sleeps a watch nobody is
+     * looking at, and the whole value of the cue is that it arrives while the runner is not looking.
+     */
+    private void wake() {
+        if (vibrator != null) {
+            vibrator.vibrate(VibrationEffect.createWaveform(new long[]{0, 180, 120, 260}, -1));
+        }
+        android.os.PowerManager power = getSystemService(android.os.PowerManager.class);
+        if (power == null) return;
+        @SuppressWarnings("deprecation")
+        android.os.PowerManager.WakeLock lock = power.newWakeLock(
+                android.os.PowerManager.SCREEN_BRIGHT_WAKE_LOCK
+                        | android.os.PowerManager.ACQUIRE_CAUSES_WAKEUP,
+                "appchery:run-cue");
+        // Held for six seconds and let go by its own timeout: released here it would go dark at once.
+        lock.acquire(6000);
     }
 
     @Override

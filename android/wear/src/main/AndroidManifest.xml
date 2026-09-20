@@ -5,6 +5,8 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Waking the screen when a run changes block, which is a cue the runner is not looking for. -->
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_CONNECTED_DEVICE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -17,6 +19,14 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:label="Appchery"
         android:theme="@android:style/Theme.DeviceDefault">
+
+        <!--
+            Ambient lives in the watch's own shared library rather than in the framework: without
+            this the class androidx.wear talks to is simply not on the classpath, and always on does
+            nothing at all while reporting nothing at all. Not required, so a device without it
+            still installs the app and simply never stays on screen.
+        -->
+        <uses-library android:name="com.google.android.wearable" android:required="false" />
         <activity
             android:name=".KeypadActivity"
             android:exported="true"

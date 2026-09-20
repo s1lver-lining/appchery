@@ -79,6 +79,46 @@ public class Link {
 
         /** The session's training arrows, entire: the phone's figure wins unless ours is newer. */
         void onArrows(int total, long at);
+
+        /** A run as the phone has it, sent while one is going. Never stored, always entire. */
+        void onRun(Run run);
+    }
+
+    /**
+     * A run as it stands. Everything is worked out on the phone: the watch draws these figures and
+     * decides nothing, exactly as it decides nothing about a score.
+     */
+    public static final class Run {
+        /** i idle, r running, p paused, d done. */
+        public String status = "i";
+        public int seconds;
+        public int metres;
+        /** Seconds per kilometre, or 0 where there is not enough run yet to divide. */
+        public int pace;
+        public int averagePace;
+        /** Counts up on every block change, which is what the wrist buzzes for. */
+        public int cue;
+        public boolean hasBlock;
+        public String kind = "";
+        public String label = "";
+        public int blockIndex;
+        public int blockCount;
+        public int repeat;
+        public int repeatOf;
+        public int targetPace;
+        /** What is left of the block, in whichever unit it is run to. Negative where it is neither. */
+        public int leftSeconds = -1;
+        public int leftMetres = -1;
+        /** What the block asks for in total, which is what turns what is left into a proportion. */
+        public int goalSeconds = -1;
+        public int goalMetres = -1;
+        /** The block after this one, empty where the programme ends here. */
+        public String nextKind = "";
+        public int nextPace;
+        /** What the programme asks for in total, sent before the start. Negative where it is unsaid. */
+        public int plannedSeconds = -1;
+        public int plannedMetres = -1;
+        public int plannedPace;
     }
 
     private final Context context;
@@ -406,11 +446,72 @@ public class Link {
             case "arrows":
                 onArrows(message);
                 return;
+            case "run":
+                onRunMessage(message);
+                return;
             case "bye":
                 say(WAITING, "Phone let go");
                 return;
             default:
         }
+    }
+
+    /**
+     * A run button on the wrist. The phone owns the run, so this asks rather than decides, the same
+     * way asking to open an activity does.
+     */
+    public void command(String action) {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("v", VERSION);
+            // A type each rather than a type and an action: a link that never negotiated an MTU can
+            // notify twenty bytes, and "rc" with an action in it is twenty five, dropped in silence.
+            message.put("t", type(action));
+            send(message);
+        } catch (Exception e) {
+            Log.w(TAG, "could not ask to " + action, e);
+        }
+    }
+
+    private static String type(String action) {
+        switch (action) {
+            case "go":
+                return "rg";
+            case "resume":
+                return "ru";
+            case "stop":
+                return "re";
+            default:
+                return "rh";
+        }
+    }
+
+    private void onRunMessage(JSONObject message) {
+        Run run = new Run();
+        run.status = message.optString("st", "i");
+        run.seconds = message.optInt("s", 0);
+        run.metres = message.optInt("d", 0);
+        run.pace = message.optInt("p", 0);
+        run.averagePace = message.optInt("a", 0);
+        run.cue = message.optInt("c", 0);
+        run.kind = message.optString("k", "");
+        run.hasBlock = !run.kind.isEmpty();
+        run.label = message.optString("b", "");
+        run.blockIndex = message.optInt("i", 0);
+        run.blockCount = message.optInt("n", 0);
+        run.repeat = message.optInt("r", 0);
+        run.repeatOf = message.optInt("ro", 0);
+        run.targetPace = message.optInt("tp", 0);
+        run.leftSeconds = message.has("ls") ? message.optInt("ls", -1) : -1;
+        run.leftMetres = message.has("lm") ? message.optInt("lm", -1) : -1;
+        run.goalSeconds = message.has("gs") ? message.optInt("gs", -1) : -1;
+        run.goalMetres = message.has("gm") ? message.optInt("gm", -1) : -1;
+        run.nextKind = message.optString("nk", "");
+        run.nextPace = message.optInt("ntp", 0);
+        run.plannedSeconds = message.has("ps") ? message.optInt("ps", -1) : -1;
+        run.plannedMetres = message.has("pd") ? message.optInt("pd", -1) : -1;
+        run.plannedPace = message.optInt("pp", 0);
+        main.post(() -> listener.onRun(run));
     }
 
     private void onRound(JSONObject message) {
