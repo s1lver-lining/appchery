@@ -351,6 +351,26 @@ final class RunFrames {
         }
     }
 
+    /**
+     * Cut down to one write if it comes to more, in the same order and for the same reason as
+     * fitRun in src/lib/watch/protocol.ts: a full frame is within a few bytes of the budget, and
+     * what is given up is what comes next rather than the block being run.
+     */
+    private static final String[] GIVE_UP = {"ngs", "ngm", "ntp", "nk", "pp", "pd", "ps", "b"};
+
+    private static byte[] fit(JSONObject message) {
+        byte[] bytes = message.toString().getBytes(StandardCharsets.UTF_8);
+        for (String key : GIVE_UP) {
+            if (bytes.length <= MAX_MESSAGE_BYTES) break;
+            message.remove(key);
+            bytes = message.toString().getBytes(StandardCharsets.UTF_8);
+        }
+        return bytes;
+    }
+
+    /** The same budget as src/lib/watch/protocol.ts, which is the size one write can promise. */
+    private static final int MAX_MESSAGE_BYTES = 180;
+
     private static int pace() {
         if (recent.isEmpty()) return 0;
         double[] first = recent.get(0);
@@ -405,6 +425,8 @@ final class RunFrames {
                     Step next = steps.get(stepIndex + 1);
                     message.put("nk", next.kind);
                     if (next.pace > 0) message.put("ntp", next.pace);
+                    if ("t".equals(next.goal)) message.put("ngs", next.value);
+                    else if ("d".equals(next.goal)) message.put("ngm", next.value);
                 }
             }
             if ("i".equals(status)) {
@@ -412,7 +434,7 @@ final class RunFrames {
                 if (plannedMetres >= 0) message.put("pd", plannedMetres);
                 if (plannedPace > 0) message.put("pp", plannedPace);
             }
-            return message.toString().getBytes(StandardCharsets.UTF_8);
+            return fit(message);
         } catch (JSONException impossible) {
             return null;
         }

@@ -100,6 +100,9 @@ export type Wire =
 			/** What comes next, which is worth knowing before it arrives. */
 			nk?: BlockKind;
 			ntp?: number;
+			/** And what it will ask for, in whichever unit it is run to. */
+			ngs?: number;
+			ngm?: number;
 			/** What the programme asks for in total, sent before the start where it is all there is. */
 			ps?: number;
 			pd?: number;
@@ -156,6 +159,37 @@ const TYPE_OF: Record<RunCommand, RunCommandType> = {
 	resume: 'ru',
 	stop: 're'
 };
+
+/**
+ * What a run frame gives up first when it will not fit one write.
+ *
+ * The budget is about a hundred and eighty bytes and a full frame is within a few of it: a long
+ * label, a repeat in the sixties and a next block with a target of its own is already at the edge.
+ * Rather than keep a worst case in somebody's head, the sender drops from the end of this list
+ * until the message fits, so what is lost is always the least of it. The block being run keeps
+ * every one of its figures, because that is the whole of what a wrist is for mid interval.
+ */
+const GIVE_UP: ('ngs' | 'ngm' | 'ntp' | 'nk' | 'ps' | 'pd' | 'pp' | 'b')[] = [
+	'ngs',
+	'ngm',
+	'ntp',
+	'nk',
+	'pp',
+	'pd',
+	'ps',
+	'b'
+];
+
+/** A run frame cut down until it fits one write, which is the only size a link promises. */
+export function fitRun(message: Wire): Wire {
+	if (message.t !== 'run') return message;
+	const fitted = { ...message };
+	for (const key of GIVE_UP) {
+		if (encode(fitted).length <= MAX_MESSAGE_BYTES) break;
+		delete fitted[key];
+	}
+	return fitted;
+}
 
 export function commandType(command: RunCommand): RunCommandType {
 	return TYPE_OF[command];
@@ -309,7 +343,7 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 				if (!BLOCK_KINDS.includes(m.nk as BlockKind)) break;
 				run.nk = m.nk as BlockKind;
 			}
-			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ps', 'pd', 'pp'] as const) {
+			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ngs', 'ngm', 'ps', 'pd', 'pp'] as const) {
 				if (m[key] === undefined) continue;
 				if (!isFigure(m[key])) return { ok: false, reason: 'malformed' };
 				run[key] = m[key] as number;

@@ -115,6 +115,9 @@ public class Link {
         /** The block after this one, empty where the programme ends here. */
         public String nextKind = "";
         public int nextPace;
+        /** What it will ask for, in whichever unit it is run to. Negative where it is neither. */
+        public int nextGoalSeconds = -1;
+        public int nextGoalMetres = -1;
         /** What the programme asks for in total, sent before the start. Negative where it is unsaid. */
         public int plannedSeconds = -1;
         public int plannedMetres = -1;
@@ -527,6 +530,8 @@ public class Link {
         run.goalMetres = message.has("gm") ? message.optInt("gm", -1) : -1;
         run.nextKind = message.optString("nk", "");
         run.nextPace = message.optInt("ntp", 0);
+        run.nextGoalSeconds = message.has("ngs") ? message.optInt("ngs", -1) : -1;
+        run.nextGoalMetres = message.has("ngm") ? message.optInt("ngm", -1) : -1;
         run.plannedSeconds = message.has("ps") ? message.optInt("ps", -1) : -1;
         run.plannedMetres = message.has("pd") ? message.optInt("pd", -1) : -1;
         run.plannedPace = message.optInt("pp", 0);

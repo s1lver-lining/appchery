@@ -7,6 +7,7 @@ import {
 	isEmpty,
 	skew,
 	commandOf,
+	fitRun,
 	MAX_BLOCK_LABEL,
 	PROTOCOL_VERSION,
 	type BlockKind,
@@ -53,7 +54,13 @@ export interface RunFrame {
 		goalMetres: number | null;
 	} | null;
 	/** The block after this one, so the wrist can say what is coming before it arrives. */
-	next: { kind: BlockKind; targetPace: number | null } | null;
+	next: {
+		kind: BlockKind;
+		targetPace: number | null;
+		/** What it will ask for, which is what there is to brace for. */
+		goalSeconds: number | null;
+		goalMetres: number | null;
+	} | null;
 }
 
 /** Writing to the peer. Rejects when the link has gone, which is ordinary rather than exceptional. */
@@ -290,6 +297,8 @@ export class WatchLink {
 		if (frame.next) {
 			message.nk = frame.next.kind;
 			if (frame.next.targetPace) message.ntp = whole(frame.next.targetPace);
+			if (frame.next.goalSeconds !== null) message.ngs = whole(frame.next.goalSeconds);
+			if (frame.next.goalMetres !== null) message.ngm = whole(frame.next.goalMetres);
 		}
 		// Only before the start: once it is running, what was planned is behind what is happening.
 		if (frame.planned && frame.status === 'i') {
@@ -297,7 +306,8 @@ export class WatchLink {
 			message.pd = whole(frame.planned.metres);
 			if (frame.planned.pace) message.pp = whole(frame.planned.pace);
 		}
-		await this.say(message);
+		// Cut down to one write if it comes to more, losing what comes next before anything else.
+		await this.say(fitRun(message));
 	}
 
 	/** The session's training arrows, on the watch's clock so the two compare the same now. */

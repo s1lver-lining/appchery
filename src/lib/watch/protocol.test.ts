@@ -7,6 +7,7 @@ import {
 	keepIncoming,
 	skew,
 	MAX_MESSAGE_BYTES,
+	fitRun,
 	PROTOCOL_VERSION,
 	type EndState,
 	type Wire
@@ -317,7 +318,8 @@ describe('a run on the wrist', () => {
 		lm: 99_999,
 		gm: 99_999,
 		nk: 'cooldown',
-		ntp: 1200
+		ntp: 1200,
+		ngm: 99_999
 	} as Wire;
 
 	it('round trips a block being run', () => {
@@ -325,9 +327,19 @@ describe('a run on the wrist', () => {
 		expect(decoded.ok && decoded.message).toEqual(frame());
 	});
 
-	it('fits one write at its very largest', () => {
-		expect(encode(worst).length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
-		expect(decode(encode(worst)).ok).toBe(true);
+	it('fits one write at its very largest, by giving up what matters least', () => {
+		const sent = fitRun(worst);
+		expect(encode(sent).length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+		expect(decode(encode(sent)).ok).toBe(true);
+		// The block being run keeps every figure it has: that is the whole of what a wrist is for.
+		for (const key of ['k', 'b', 'tp', 'lm', 'gm', 'r', 'ro'] as const) {
+			expect(sent).toHaveProperty(key);
+		}
+	});
+
+	it('leaves a frame that already fits exactly as it was', () => {
+		const roomy = { ...worst, b: 'Easy', r: undefined, ro: undefined } as Wire;
+		expect(fitRun(roomy)).toEqual(roomy);
 	});
 
 	it('carries no block at all when the run follows no programme', () => {

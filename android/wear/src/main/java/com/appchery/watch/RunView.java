@@ -81,6 +81,8 @@ public class RunView extends FrameLayout {
     /** The figure a page is read for. Bigger on the pages that have given up their pair for a graph. */
     private static final float HEADLINE = 40f;
     private static final float HEADLINE_BIG = 46f;
+    /** A word rather than a figure, and the longest of them is "Cool down". */
+    private static final float NEXT_HEADLINE = 26f;
     /**
      * How much of each side belongs to the system. Wear dismisses an app on a swipe that starts at
      * an edge, so anything beginning there is left well alone; what is left is the middle, and in
@@ -1112,7 +1114,12 @@ public class RunView extends FrameLayout {
             p.spark.setVisibility(GONE);
             p.sparkScale.setVisibility(GONE);
         }
-        p.headline.setTextColor(paused || ambient ? (ambient ? INK : MUTED) : INK);
+        // The pace and next pages colour their own headline, and neither is a clock to grey out.
+        if (which != PAGE_PACE && which != PAGE_NEXT) {
+            p.headline.setTextColor(paused || ambient ? (ambient ? INK : MUTED) : INK);
+        } else if (ambient) {
+            p.headline.setTextColor(INK);
+        }
         if (stale()) {
             // The figures are the phone's and the phone has gone quiet: said, rather than shown as new.
             p.figure.setTextColor(MUTED);
@@ -1247,6 +1254,15 @@ public class RunView extends FrameLayout {
         p.footer.setText(run.hasBlock ? blockLine() : "");
     }
 
+    /**
+     * What is coming, laid out as the block page is: the name across the top, the two figures side
+     * by side under it, one each.
+     *
+     * It used to hide the right hand figure and leave the left one sitting in its own half of the
+     * row, which reads as a page that lost something rather than one with a figure on it. There
+     * were always two things to say about the block coming, how much of it there is and how fast it
+     * wants running, so both halves say one.
+     */
     private void drawNextPage(Panel p, int elapsed) {
         p.chip.setVisibility(VISIBLE);
         p.chip.setText("next");
@@ -1256,14 +1272,27 @@ public class RunView extends FrameLayout {
         pill.setCornerRadius(px(20));
         p.chip.setBackground(pill);
 
+        // The name in the colour of what it is, which is how the block pages name a block too.
         p.headline.setText(name(run.nextKind));
-        p.headline.setTextSize(26f);
+        p.headline.setTextSize(NEXT_HEADLINE);
+        p.headline.setTextColor(accent(run.nextKind));
         p.caption.setText("comes next");
-        p.figure.setText(run.nextPace > 0 ? say(run.nextPace) : "no target");
-        p.figure.setTextColor(accent(run.nextKind));
-        p.figureNote.setText(run.nextPace > 0 ? "target · " + unit() : "");
-        p.second.setVisibility(GONE);
+
+        p.figure.setText(nextGoal());
+        p.figure.setTextColor(INK);
+        p.figureNote.setText(run.nextGoalMetres >= 0 ? "to run" : "for");
+        p.second.setVisibility(VISIBLE);
+        p.second.setText(run.nextPace > 0 ? say(run.nextPace) : "–:--");
+        p.second.setTextColor(run.nextPace > 0 ? INK : MUTED);
+        p.secondNote.setText(run.nextPace > 0 ? "target · " + unit() : "no target");
         p.footer.setText(clock(elapsed) + "   " + distance(run.metres));
+    }
+
+    /** What the block coming asks for, in whichever unit it is run to, or that it asks for nothing. */
+    private String nextGoal() {
+        if (run.nextGoalMetres >= 0) return distance(run.nextGoalMetres);
+        if (run.nextGoalSeconds >= 0) return clock(run.nextGoalSeconds);
+        return "open";
     }
 
     private void drawDots() {

@@ -181,7 +181,14 @@ export class LiveRun {
 						goalMetres: step.goal.type === 'distance' ? step.goal.metres : null
 					}
 				: null,
-			next: after ? { kind: after.kind, targetPace: after.targetPace } : null,
+			next: after
+				? {
+						kind: after.kind,
+						targetPace: after.targetPace,
+						goalSeconds: after.goal.type === 'time' ? after.goal.seconds : null,
+						goalMetres: after.goal.type === 'distance' ? after.goal.metres : null
+					}
+				: null,
 			planned: this.record?.workout ? plannedOf(this.record.workout) : null
 		};
 	}
@@ -635,7 +642,12 @@ export interface RunGlance {
 		goalMetres: number | null;
 	} | null;
 	/** The block after this one, because knowing what is coming is half of running an interval. */
-	next: { kind: BlockKind; targetPace: number | null } | null;
+	next: {
+		kind: BlockKind;
+		targetPace: number | null;
+		goalSeconds: number | null;
+		goalMetres: number | null;
+	} | null;
 	/** What the programme asks for in total: the whole of what there is to show before the start. */
 	planned: { seconds: number; metres: number; pace: number | null } | null;
 }
