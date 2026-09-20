@@ -2,7 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { clock } from '$lib/domain/running';
 	import { formatPace } from '$lib/domain/run/workout';
-	import { extentOf, thin, type RunSample } from '$lib/domain/run/series';
+	import { condense, type RunSample } from '$lib/domain/run/series';
 	import { sayDistance } from './distance';
 
 	/**
@@ -37,9 +37,23 @@
 
 	const W = 300;
 	const H = 100;
+	/**
+	 * How much of each end of a series is left out of its scale. A twentieth either way is enough to
+	 * lose the stops and the bad fixes and not enough to lose a hill.
+	 */
+	const OUTLIERS = 0.05;
+	/**
+	 * How many points the line is drawn from. Fewer than the pixels across, because the line is read
+	 * for where the run went hard and where it went uphill, and neither of those is a second long.
+	 */
+	const GRAPH_POINTS = 120;
 
-	/** At most one point per pixel of width: past that a path is cost with nothing drawn for it. */
-	const points = $derived(thin(samples, W));
+	/**
+	 * At most one point per pixel of width, each the average of the stretch behind it. Past that a
+	 * path is cost with nothing drawn for it, and picking one fix in every nine would draw the noise
+	 * rather than the run.
+	 */
+	const points = $derived(condense(samples, GRAPH_POINTS));
 
 	const valueOf = (sample: RunSample, series: Series) =>
 		series === 'pace' ? sample.pace : series === 'climb' ? sample.climbM : sample.heartRate;
@@ -51,12 +65,25 @@
 	const alongOf = (sample: RunSample) =>
 		(axis === 'distance' ? sample.distanceM : sample.seconds) / span;
 
-	/** What a series covers, padded a tenth so a line never runs along the edge of its own box. */
+	/**
+	 * What a series covers, padded a tenth so a line never runs along the edge of its own box.
+	 *
+	 * The ends are taken off before the range is measured. A run has a handful of samples that say
+	 * half an hour a kilometre, which is a red light or a receiver thinking again, and a scale drawn
+	 * to fit those squashes the whole run into the top of the box to make room for four of them.
+	 * What is outside the band is still drawn, flattened against the edge it went past.
+	 */
 	function scaleOf(series: Series) {
-		const found = extentOf(points.map((sample) => valueOf(sample, series)));
-		if (!found) return null;
-		const pad = Math.max(1, (found.max - found.min) * 0.1);
-		return { min: found.min - pad, max: found.max + pad, low: found.min, high: found.max };
+		const values = points
+			.map((sample) => valueOf(sample, series))
+			.filter((value): value is number => value !== null);
+		if (values.length === 0) return null;
+		const sorted = [...values].sort((a, b) => a - b);
+		const at = (share: number) => sorted[Math.round(share * (sorted.length - 1))];
+		const low = at(OUTLIERS);
+		const high = at(1 - OUTLIERS);
+		const pad = Math.max(1, (high - low) * 0.1);
+		return { min: low - pad, max: high + pad, low, high };
 	}
 
 	const scales = $derived({
@@ -69,7 +96,8 @@
 	function shareOf(series: Series, value: number): number {
 		const scale = scales[series];
 		if (!scale) return 0.5;
-		const share = (value - scale.min) / (scale.max - scale.min || 1);
+		// Held inside the box: a sample past the band is drawn against the edge rather than outside it.
+		const share = Math.min(1, Math.max(0, (value - scale.min) / (scale.max - scale.min || 1)));
 		return series === 'pace' ? share : 1 - share;
 	}
 
@@ -133,6 +161,9 @@
 			.map((value) => ({ at: shareOf(series, value) * 100, said: say(series, value) }))
 			.sort((a, b) => a.at - b.at);
 	}
+
+	/** Where to rule the graph: wherever the figures down its edges sit, so the two agree. */
+	const rules = $derived(leftAxis ? ticks(leftAxis.key).map((tick) => tick.at) : rightAxis ? ticks(rightAxis.key).map((tick) => tick.at) : []);
 
 	/** The sample under the finger, by where it is across the plot rather than by which point is nearest. */
 	function grab(event: PointerEvent) {
@@ -261,8 +292,9 @@
 					role="img"
 					aria-label={drawn.map((line) => line.label).join(', ')}
 				>
-					<!-- The three marks of the edges, carried across so a figure can be read off the line. -->
-					{#each [0, 50, 100] as at (at)}
+					<!-- Drawn where the figures are rather than at the edges of the box, or a rule points
+					     at nothing. Both edges mark the ends of their own line, so one set does for both. -->
+					{#each rules as at, i (i)}
 						<line
 							x1="0"
 							x2={W}

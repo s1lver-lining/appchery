@@ -73,10 +73,8 @@
 			stroke-linejoin="round"
 			vector-effect="non-scaling-stroke"
 		/>
-		<!-- Which end is which, because a loop drawn on its own says nothing about where it began. -->
-		{#if start}
-			<circle cx={start.x} cy={start.y} r="2.4" fill="var(--c-run-work)" />
-		{/if}
+		<!-- Which end is which, because a loop drawn on its own says nothing about where it began.
+		     The start goes on top, because a loop ends where it started and the ring would hide it. -->
 		{#if end}
 			<circle
 				cx={end.x}
@@ -87,6 +85,9 @@
 				stroke-width="1.6"
 				vector-effect="non-scaling-stroke"
 			/>
+		{/if}
+		{#if start}
+			<circle cx={start.x} cy={start.y} r="2.4" fill="var(--c-run-work)" />
 		{/if}
 		{#if here}
 			<circle cx={here.x} cy={here.y} r="3" fill="var(--color-ink)" />

@@ -248,6 +248,14 @@
 	/** The run's own total, which is the one distance read to the hundred metres rather than the metre. */
 	const total = $derived(distanceParts(record?.distanceM ?? 0, 2));
 
+	/** The clock at the end of each kilometre, which is the figure a runner reads down the column. */
+	const reached = $derived(
+		(record?.splits ?? []).reduce<number[]>(
+			(running, split) => [...running, (running[running.length - 1] ?? 0) + split.seconds],
+			[]
+		)
+	);
+
 	const paces = $derived(
 		(record?.splits ?? []).map((split) => paceOf(split.distanceM, split.seconds) ?? 0).filter((pace) => pace > 0)
 	);
@@ -431,7 +439,7 @@
 
 					{#if tab === 'splits'}
 						<ul class="space-y-1.5">
-							{#each record.splits as split (split.index)}
+							{#each record.splits as split, i (split.index)}
 								{@const pace = paceOf(split.distanceM, split.seconds) ?? 0}
 								<li class="flex items-center gap-2 text-sm tabular">
 									<span class="w-10 shrink-0 text-xs text-muted">
@@ -459,7 +467,9 @@
 											{formatPace(pace)} {$t('running.perKm')}
 										</span>
 									</span>
-									<span class="w-12 shrink-0 text-right text-xs text-muted">{clock(split.seconds)}</span>
+									<!-- Where the run had got to, not how long the kilometre took: for a whole
+									     kilometre that is the pace again, said a second time. -->
+									<span class="w-12 shrink-0 text-right text-xs text-muted">{clock(reached[i])}</span>
 								</li>
 							{:else}
 								<li class="py-4 text-center text-xs text-muted">{$t('running.noSplits')}</li>
