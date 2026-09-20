@@ -780,6 +780,9 @@ public class RunView extends FrameLayout {
             page = next;
             coming = -1;
             settling = false;
+            // Every button on this screen answers back, and turning a page is the one thing done
+            // without looking: the tick is what says it landed rather than sprang back.
+            buzz();
             // Both put back where they belong before the next draw: a panel left dimmed and shifted
             // would come back invisible the next time it was shown.
             front.column.setTranslationY(0f);
@@ -826,7 +829,10 @@ public class RunView extends FrameLayout {
         there.animate().translationX(far ? 0f : end + (acrossTo < 0 ? width : -width))
                 .alpha(far ? 1f : 0f).setDuration(150).withEndAction(() -> {
                     settling = false;
-                    if (far) onControls = !onControls;
+                    if (far) {
+                        onControls = !onControls;
+                        buzz();
+                    }
                     armedAt = 0;
                     acrossTo = 0f;
                     for (View one : new View[]{front.column, back.column, controls, ready}) {
