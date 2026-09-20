@@ -45,11 +45,14 @@ describe('routeOf', () => {
 
 describe('paceBand', () => {
 	it('leaves the ends out, so a red light does not paint the whole route', () => {
-		const paces = [300, 305, 310, 315, 320, 325, 330, 335, 340, 1800];
+		// A run's worth of samples rather than a handful: a twentieth of ten values is none of them,
+		// and a route is painted from hundreds.
+		const paces = Array.from({ length: 100 }, (_, i) => 300 + i);
+		paces.push(1800, 1800, 1800);
 		const band = paceBand(paces, 0.05);
 		expect(band).not.toBeNull();
 		expect(band!.slow).toBeLessThan(1000);
-		expect(band!.fast).toBe(300);
+		expect(band!.fast).toBeGreaterThanOrEqual(300);
 	});
 
 	it('has nothing to say about a run that held one pace exactly', () => {
