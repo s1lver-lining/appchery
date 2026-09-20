@@ -43,6 +43,7 @@
 	import LiveRunView from '$lib/ui/run/LiveRun.svelte';
 	import ManualRun from '$lib/ui/run/ManualRun.svelte';
 	import RunGraph from '$lib/ui/run/RunGraph.svelte';
+	import RunRoute from '$lib/ui/run/RunRoute.svelte';
 	import { sayDistance } from '$lib/ui/run/distance';
 
 	/**
@@ -164,6 +165,8 @@
 	 * the graph is the fixes, and there is no point holding thousands of them while one is running.
 	 */
 	let samples = $state<RunSample[]>([]);
+	/** The fixes themselves, for the route: a drawing of where it went is not a series of figures. */
+	let fixes = $state<TrackedFix[]>([]);
 	let tab = $state<'splits' | 'graph'>('splits');
 	let importing = $state(false);
 	let importFailed = $state(false);
@@ -172,10 +175,13 @@
 		const id = activity.id;
 		if (status !== 'done') {
 			samples = [];
+			fixes = [];
 			return;
 		}
 		listRunPoints(id).then((points) => {
-			if (activity.id === id) samples = samplesOf(points);
+			if (activity.id !== id) return;
+			samples = samplesOf(points);
+			fixes = points;
 		});
 	});
 
@@ -230,6 +236,7 @@
 			run.record.steps = [];
 			await run.persist();
 			samples = samplesOf(read.fixes as TrackedFix[]);
+			fixes = read.fixes;
 			onchange();
 		} finally {
 			importing = false;
@@ -406,6 +413,13 @@
 						</ul>
 					{:else if samples.length > 1}
 						<RunGraph {samples} />
+						{#if fixes.length > 1}
+							<!-- Under the graph rather than above it: the shape of the ground is what
+							     explains the lines, and it is read after them rather than instead. -->
+							<div class="mt-3 border-t border-line pt-3">
+								<RunRoute {fixes} />
+							</div>
+						{/if}
 					{:else}
 						<p class="py-8 text-center text-xs text-muted">{$t('running.noTrack')}</p>
 					{/if}
