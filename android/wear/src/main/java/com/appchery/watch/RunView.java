@@ -1110,10 +1110,10 @@ public class RunView extends FrameLayout {
             p.second.setTextColor(INK);
             infoDots.setVisibility(GONE);
             p.footer.setTextColor(MUTED);
-            // Nothing that moves and nothing drawn for the sake of it: the watch is asleep under it.
-            p.spark.setVisibility(GONE);
-            p.sparkScale.setVisibility(GONE);
         }
+        // The graph stays up in ambient, in white: it is the one thing here that does not have to be
+        // live to be worth reading, because what it says is where the last few minutes went.
+        p.spark.dim(ambient);
         // The pace and next pages colour their own headline, and neither is a clock to grey out.
         if (which != PAGE_PACE && which != PAGE_NEXT) {
             p.headline.setTextColor(paused || ambient ? (ambient ? INK : MUTED) : INK);
@@ -1615,6 +1615,8 @@ public class RunView extends FrameLayout {
         private int lost = INK;
         /** How far either side of the target still counts as holding it, in the series' own unit. */
         private int slack = 0;
+        /** In ambient there is one colour and it is white: an OLED lights only what is drawn. */
+        private boolean dim = false;
         /** The two rules and what they are worth, worked out when the series is set rather than drawn. */
         private int low = 0;
         private int high = 0;
@@ -1695,6 +1697,16 @@ public class RunView extends FrameLayout {
             invalidate();
         }
 
+        /**
+         * Asleep with the screen still up. The line is the one thing on this page that does not need
+         * to be live to be worth reading: what it says is where the last few minutes went, and that
+         * is as true twenty seconds later as it was when it was drawn.
+         */
+        void dim(boolean on) {
+            dim = on;
+            invalidate();
+        }
+
         /** How far in the line begins, so a scale drawn under it starts where the line does. */
         int inset() {
             return Math.round(inset);
@@ -1715,7 +1727,9 @@ public class RunView extends FrameLayout {
             if (!highSaid.isEmpty()) drawRule(canvas, high, highSaid, width, height);
             if (target > 0) {
                 float y = place(target, height);
-                canvas.drawLine(inset, y, width, y, aimed);
+                // The green goes with the rest of the colour in ambient, but the rule stays: where
+                // the target is remains the point of the picture.
+                canvas.drawLine(inset, y, width, y, dim ? rule : aimed);
             }
 
             /*
@@ -1737,7 +1751,7 @@ public class RunView extends FrameLayout {
                     // The stretch so far, ending on the point that changed its mind, so the two
                     // colours meet rather than leaving a gap between them.
                     path.lineTo(x, y);
-                    line.setColor(holding ? kept : lost);
+                    line.setColor(dim ? INK : (holding ? kept : lost));
                     canvas.drawPath(path, line);
                     path.reset();
                     path.moveTo(x, y);
@@ -1746,7 +1760,7 @@ public class RunView extends FrameLayout {
                 }
                 path.lineTo(x, y);
             }
-            line.setColor(holding ? kept : lost);
+            line.setColor(dim ? INK : (holding ? kept : lost));
             canvas.drawPath(path, line);
         }
 
@@ -1765,7 +1779,7 @@ public class RunView extends FrameLayout {
 
         /** Whether a sample was holding what the block asked for, which is only a question where it asks. */
         private boolean holds(int value) {
-            if (target <= 0 || kept == lost) return true;
+            if (dim || target <= 0 || kept == lost) return true;
             // Pace: slower is a larger number, so only one side of the target is a miss.
             return inverted ? value <= target + slack : Math.abs(value - target) <= slack;
         }
