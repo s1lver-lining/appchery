@@ -1583,6 +1583,7 @@ insetHint:
 		create: 'Nouveau programme',
 		newWorkout: 'Nouveau programme',
 		open: 'Ouvrir',
+		reorder: 'Glisser pour réordonner',
 		duplicate: 'Dupliquer',
 		name: 'Nom',
 		namePlaceholder: 'Fractionné du mardi',

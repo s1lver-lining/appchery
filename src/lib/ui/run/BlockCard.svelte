@@ -23,7 +23,9 @@
 		onchange,
 		onduplicate,
 		ondelete,
-		onmove
+		onmove,
+		ongrab = undefined,
+		held = false
 	}: {
 		block: RunBlock;
 		open: boolean;
@@ -32,6 +34,10 @@
 		onduplicate: () => void;
 		ondelete: () => void;
 		onmove: (by: -1 | 1) => void;
+		/** Picked up to be put somewhere else. Absent where this list cannot be dragged. */
+		ongrab?: (event: PointerEvent) => void;
+		/** Whether this is the card being carried, which is drawn as lifted off the list. */
+		held?: boolean;
 	} = $props();
 
 	const skin = $derived(blockSkin(block.kind));
@@ -84,7 +90,12 @@
 </script>
 
 <!-- The kind's colour runs the whole height of the block, so a programme is read as bands first. -->
-<div class="flex items-stretch overflow-hidden rounded-xl border" style={skin}>
+<div
+	class="flex items-stretch overflow-hidden rounded-xl border transition-shadow {held
+		? 'relative z-10 opacity-90 shadow-lg ring-2 ring-brand'
+		: ''}"
+	style={skin}
+>
 	<span class="w-1 shrink-0" style="background:{colour}"></span>
 	<div class="min-w-0 flex-1">
 		<!-- The controls sit on this line whether the block is open or shut: a programme is reordered
@@ -108,6 +119,17 @@
 			</button>
 
 			<span class="ml-1 flex shrink-0 items-center">
+				{#if ongrab}
+					<!-- Held rather than tapped: a programme of a dozen blocks is a dozen taps an arrow
+					     at a time, and the arrows stay for the one step nobody wants to drag. -->
+					<button
+						class="press touch-none rounded-lg p-1.5 text-muted"
+						aria-label={$t('workouts.reorder')}
+						onpointerdown={ongrab}
+					>
+						<Icon name="grip" size={16} />
+					</button>
+				{/if}
 				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.up')} onclick={() => onmove(-1)}>
 					<Icon name="arrowUp" size={16} />
 				</button>

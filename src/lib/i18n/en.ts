@@ -1577,6 +1577,7 @@ insetHint:
 		create: 'New programme',
 		newWorkout: 'New programme',
 		open: 'Open',
+		reorder: 'Drag to reorder',
 		duplicate: 'Duplicate',
 		name: 'Name',
 		namePlaceholder: 'Tuesday intervals',

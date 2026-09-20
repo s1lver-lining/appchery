@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
+	import { tap } from '$lib/haptics';
 	import Icon from '$lib/ui/Icon.svelte';
 	import BlockCard from './BlockCard.svelte';
 	import { workoutSummary } from './summary';
@@ -38,6 +39,47 @@
 
 	const replace = (items: RunItem[]) => onchange({ ...workout, items });
 
+	/**
+	 * A block carried to where it belongs.
+	 *
+	 * The arrows move one step at a time, which is the right gesture for the one block that is in
+	 * the wrong place and a dozen taps for a programme being written. Dragging is the same move made
+	 * once, and it is the grip that starts it rather than the card itself: the card is scrolled past
+	 * far more often than it is moved.
+	 *
+	 * The list is reordered as the finger passes each card rather than when it is let go, so what is
+	 * on the screen is always what would be kept. The editor saves on every change anyway, so there
+	 * is no moment where the two disagree.
+	 */
+	let list = $state<HTMLElement | null>(null);
+	let carrying = $state<number | null>(null);
+
+	function grab(index: number, event: PointerEvent) {
+		carrying = index;
+		(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+		tap();
+	}
+
+	function carry(event: PointerEvent) {
+		if (carrying === null || !list) return;
+		const cards = [...list.children] as HTMLElement[];
+		// The card whose middle the finger has passed, which is the one it should now be above.
+		let to = cards.findIndex((card) => {
+			const box = card.getBoundingClientRect();
+			return event.clientY < box.top + box.height / 2;
+		});
+		if (to === -1) to = cards.length - 1;
+		if (to === carrying || to < 0) return;
+		const items = [...workout.items];
+		const [moved] = items.splice(carrying, 1);
+		items.splice(to, 0, moved);
+		carrying = to;
+		tap();
+		replace(items);
+	}
+
+	const drop = () => (carrying = null);
+
 	function put(index: number, item: RunItem) {
 		replace(workout.items.map((current, i) => (i === index ? item : current)));
 	}
@@ -56,7 +98,7 @@
 		replace(items);
 	}
 
-	function drop(index: number) {
+	function remove(index: number) {
 		replace(workout.items.filter((_, i) => i !== index));
 	}
 
@@ -83,19 +125,33 @@
 		the wheels came back showing their first row while holding their real value. Unkeyed, a move
 		is the same cards taking new values, which is a change the wheels already follow.
 	-->
+	<div
+		bind:this={list}
+		class="space-y-3 {carrying !== null ? 'touch-none' : ''}"
+		onpointermove={carry}
+		onpointerup={drop}
+		onpointercancel={drop}
+		role="presentation"
+	>
 	{#each workout.items as item, index}
 		{#if item.type === 'block'}
 			<BlockCard
 				block={item}
 				open={!shut[item.id]}
+				held={carrying === index}
 				ontoggle={() => toggle(item.id)}
 				onchange={(block) => put(index, { ...block, type: 'block' })}
 				onduplicate={() => duplicate(index)}
-				ondelete={() => drop(index)}
+				ondelete={() => remove(index)}
 				onmove={(by) => move(index, by)}
+				ongrab={(event) => grab(index, event)}
 			/>
 		{:else}
-			<div class="rounded-xl border-2 border-dashed border-brand/40 bg-brand/5 p-2">
+			<div
+				class="rounded-xl border-2 border-dashed border-brand/40 bg-brand/5 p-2 {carrying === index
+					? 'relative z-10 opacity-90 shadow-lg ring-2 ring-brand'
+					: ''}"
+			>
 				<div class="mb-2 flex items-center gap-2 px-1">
 					<span class="text-sm font-semibold">{$t('workouts.repeat')}</span>
 					<input
@@ -113,6 +169,13 @@
 							})}
 					/>
 					<span class="flex-1 text-sm text-muted">{$t('workouts.times')}</span>
+					<button
+						class="press touch-none rounded-lg p-1.5 text-muted"
+						aria-label={$t('workouts.reorder')}
+						onpointerdown={(event) => grab(index, event)}
+					>
+						<Icon name="grip" size={16} />
+					</button>
 					<button
 						class="press rounded-lg p-1.5 text-muted"
 						aria-label={$t('common.up')}
@@ -137,7 +200,7 @@
 					<button
 						class="press rounded-lg p-1.5 text-muted"
 						aria-label={$t('common.delete')}
-						onclick={() => drop(index)}
+						onclick={() => remove(index)}
 					>
 						<Icon name="trash" size={16} />
 					</button>
@@ -187,6 +250,7 @@
 			</div>
 		{/if}
 	{/each}
+	</div>
 
 	<div class="flex gap-2">
 		<button

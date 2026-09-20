@@ -214,6 +214,8 @@
 		// Two matches feeding one, which is the whole of what an elimination draw is.
 		bracket: `<path d="M3.5 5.5h5.5v13H3.5" /><path d="M9 12h5.5v-5h6" /><path d="M14.5 12h6" />`,
 		chevronUp: `<path d="M6 14.5L12 8.5l6 6" />`,
+		// Two columns of dots: the grip of something meant to be picked up and put somewhere else.
+		grip: `<circle cx="9" cy="6" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="6" r="1.4" fill="currentColor" stroke="none" /><circle cx="9" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="12" r="1.4" fill="currentColor" stroke="none" /><circle cx="9" cy="18" r="1.4" fill="currentColor" stroke="none" /><circle cx="15" cy="18" r="1.4" fill="currentColor" stroke="none" />`,
 		// A shaft under the head, so moving a block is never read as opening one: a chevron is bare.
 		arrowUp: `<path d="M12 19.5V5" /><path d="M6 10.5L12 4.5l6 6" />`,
 		// Out of the app and into a file, which is what every export in here does.
