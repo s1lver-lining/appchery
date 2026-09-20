@@ -111,6 +111,21 @@
 	--c-win: #2f7d4f;
 
 	/*
+	 * What a block of a run is for. Outside @theme with the chart colours and for the same reason:
+	 * a block paints itself through an inline style, so Tailwind never sees a class to emit from.
+	 * The soft step is the same hue laid on the surface, kept as its own value rather than mixed at
+	 * runtime so a block reads the same on every engine.
+	 */
+	--c-run-warmup: #b87a26;
+	--c-run-warmup-soft: #f6ecd9;
+	--c-run-work: #2f7d4f;
+	--c-run-work-soft: #e2f0e6;
+	--c-run-recovery: #1a6ba8;
+	--c-run-recovery-soft: #e2edf6;
+	--c-run-cooldown: #7a7167;
+	--c-run-cooldown-soft: #eeeae3;
+
+	/*
 	 * How far a measurement sits from where it should be: right, off, and wrong. Used by the tuning
 	 * scales, where the colour is the reading and the number beside it only says how much.
 	 */
@@ -153,6 +168,16 @@
 		--c-comp-ink: #d7cfc2;
 		--c-comp-red: #c04a55;
 		--c-win: #5fb07f;
+
+		/* Their own steps again: the light tints would glow on a surface that is nearly black. */
+		--c-run-warmup: #d99b47;
+		--c-run-warmup-soft: #2e2519;
+		--c-run-work: #5fb07f;
+		--c-run-work-soft: #1b2b21;
+		--c-run-recovery: #4f9ac9;
+		--c-run-recovery-soft: #192630;
+		--c-run-cooldown: #a2988a;
+		--c-run-cooldown-soft: #241f1a;
 		--c-band-good: #5fb07f;
 		--c-band-fair: #e0a052;
 		--c-band-poor: #e0776a;

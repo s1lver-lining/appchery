@@ -13,7 +13,8 @@
 		format = (v: T) => String(v),
 		onchange,
 		item = 44,
-		labelHidden = false
+		labelHidden = false,
+		flush = false
 	}: {
 		values: T[];
 		value: T;
@@ -24,11 +25,24 @@
 		item?: number;
 		/** The label still names the wheel for a screen reader, but the page draws its own heading. */
 		labelHidden?: boolean;
+		/**
+		 * Drops the wheel's own frame, for a row of wheels that belong to one figure: an hour, its
+		 * minutes and its seconds are one number, and three framed boxes read as three of them.
+		 */
+		flush?: boolean;
 	} = $props();
 
 	const ITEM = $derived(item);
 	let list = $state<HTMLDivElement | null>(null);
 	let settling: ReturnType<typeof setTimeout> | null = null;
+	/**
+	 * Whether this wheel has been touched since it was last put where the value says. A browser
+	 * resets scrollTop to zero when it moves a scrollable element in the DOM, which is what
+	 * reordering a list does, and the scroll that follows is indistinguishable from a drag: the
+	 * wheel would report the first value as chosen and the row a block was moved past would silently
+	 * reset to nothing. So a scroll nobody caused puts the wheel back rather than reporting anything.
+	 */
+	let touched = false;
 
 	function scrollToValue(next: T, behavior: ScrollBehavior = 'smooth') {
 		const index = values.indexOf(next);
@@ -44,6 +58,10 @@
 
 	function onScroll() {
 		if (!list) return;
+		if (!touched) {
+			scrollToValue(value, 'auto');
+			return;
+		}
 		if (settling) clearTimeout(settling);
 		// Read after scrolling stops: reporting mid-flick would fire a value per frame.
 		settling = setTimeout(() => {
@@ -64,7 +82,7 @@
 <div class="flex h-full flex-col justify-end text-sm">
 	{#if !labelHidden}<span class="text-muted">{label}</span>{/if}
 	<div
-		class="relative mt-1 overflow-hidden rounded-lg border border-line bg-bg"
+		class="relative overflow-hidden bg-bg {flush ? '' : 'mt-1 rounded-lg border border-line'}"
 		style="height: {ITEM * 3}px"
 	>
 		<!-- The selected row sits in the middle band, marked so the wheel reads as a dial. -->
@@ -76,6 +94,10 @@
 			bind:this={list}
 			class="h-full snap-y snap-mandatory overflow-y-auto scroll-smooth [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
 			onscroll={onScroll}
+		onpointerdown={() => (touched = true)}
+		ontouchstart={() => (touched = true)}
+		onwheel={() => (touched = true)}
+		onkeydown={() => (touched = true)}
 			role="listbox"
 			aria-label={label}
 			tabindex="0"

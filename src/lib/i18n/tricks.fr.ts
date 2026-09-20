@@ -275,6 +275,22 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: 'Une sortie ne demande que ses deux nombres.',
 					body: "Entrez une distance et un temps, l'allure se calcule toute seule : la fiche ne peut donc pas afficher une allure que ses propres nombres démentent. Une sortie à moitié notée est enregistrée telle quelle : une distance sans temps reste une sortie que vous avez faite."
+				},
+				{
+					lead: 'Allez au bloc où vous en êtes vraiment.',
+					body: "Touchez la carte du bloc en haut de la sortie et choisissez n'importe quel bloc du programme, séries comprises. La sortie continue de là : le bloc quitté garde ce qu'il a donné, et celui choisi compte à partir de votre distance et de votre chrono, pas de ceux du plan."
+				},
+				{
+					lead: 'Un programme, ce sont des séries de blocs, pas un compteur sur un bloc.',
+					body: "Écrivez 7 fois (200 m vite, 100 m souple) comme une série contenant deux blocs. Le cadre autour d'eux est ce qui rend la séance lisible d'un coup d'œil, et le bouton dupliquer, sur un bloc comme sur une série, en fait une copie indépendante : écrire la séance deux fois tient en deux touches."
+				},
+				{
+					lead: 'Une sortie suivie continue à enregistrer dans la poche.',
+					body: "Lancer une sortie lance un service dédié : l'écran peut s'éteindre et le téléphone partir dans une poche sans perdre le milieu de la sortie. La notification laissée derrière est le chemin de retour vers les chiffres. Dans un navigateur, il n'y a pas de service : un onglet endormi cesse d'enregistrer, et la sortie le dit."
+				},
+				{
+					lead: 'La montre vibre au changement de bloc.',
+					body: "Une montre connectée affiche la sortie en direct : ce qu'il reste du bloc, l'allure visée et celle que vous tenez. À la fin d'un bloc, elle vibre deux fois et allume son écran : un fractionné se court sans rien regarder."
 				}
 			]
 		},

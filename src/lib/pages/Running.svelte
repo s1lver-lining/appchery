@@ -1,175 +1,321 @@
 <script lang="ts">
+	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
 	import {
 		EFFORTS,
 		clock,
-		isRunDone,
-		pace,
+		emptyRun,
 		parseRun,
-		validateRun,
 		type Effort,
 		type RunRecord
 	} from '$lib/domain/running';
+	import { paceOf } from '$lib/domain/run/track';
+	import {
+		emptyWorkout,
+		flatten,
+		formatPace,
+		snapshotWorkout,
+		type RunWorkout
+	} from '$lib/domain/run/workout';
+	import { workoutSummary } from '$lib/ui/run/summary';
 	import { exercise } from '$lib/domain/exercises';
-	import { updateRun, type ActivityRow } from '$lib/db/repository';
+	import { goto } from '$app/navigation';
+	import { withOrigin } from '$lib/nav';
+	import { listRunWorkouts, markWorkoutUsed, saveRunWorkout, type ActivityRow } from '$lib/db/repository';
+	import { LiveRun } from '$lib/run/live.svelte';
+	import { canTrack } from '$lib/run/source';
 	import type { Load, MuscleId } from '$lib/domain/muscles';
+	import Icon from '$lib/ui/Icon.svelte';
 	import MovementFigure from '$lib/ui/MovementFigure.svelte';
 	import MuscleBoard from '$lib/ui/MuscleBoard.svelte';
+	import LiveRunView from '$lib/ui/run/LiveRun.svelte';
+	import ManualRun from '$lib/ui/run/ManualRun.svelte';
 
 	/**
-	 * A run, written down. Two numbers and how it felt, which is everything a run is worth keeping
-	 * without a satellite: the pace falls out of the first two and is never entered, so the three
-	 * figures on the card can never disagree with each other.
+	 * A run: set up, run, and looked at afterwards, or simply written down.
+	 *
+	 * One page for all four because they are one thing at four moments, and a run is opened again
+	 * mid way more often than not: a phone put away at a red light comes back to whichever of them it
+	 * left. What is shown is decided by the record alone, so the page has no state of its own to lose.
 	 */
 	let { activity, onchange }: { activity: ActivityRow; onchange: () => void } = $props();
 
-	let run = $state<RunRecord>({ distanceM: null, durationSeconds: null, effort: null });
+	const run = new LiveRun();
 	let loadedFrom = $state<string | null>(null);
+	let workouts = $state<RunWorkout[]>([]);
+
 	$effect(() => {
 		if (loadedFrom === activity.id) return;
-		run = parseRun(activity.measurements);
 		loadedFrom = activity.id;
+		// A run created before this device could track keeps whatever it was created as.
+		const record: RunRecord = activity.measurements
+			? parseRun(activity.measurements)
+			: emptyRun(canTrack() ? 'tracked' : 'manual');
+		run.open(activity.id, record);
 	});
 
-	/**
-	 * Entered in kilometres, in minutes and in seconds, because that is how a watch reports a run and
-	 * how a runner says it. Metres and seconds are what is stored, so the display can change without
-	 * touching a record.
-	 */
-	const km = $derived(run.distanceM === null ? '' : String(Math.round(run.distanceM / 10) / 100));
-	const minutes = $derived(
-		run.durationSeconds === null ? '' : String(Math.floor(run.durationSeconds / 60))
-	);
-	const seconds = $derived(run.durationSeconds === null ? '' : String(run.durationSeconds % 60));
+	// Read again on every arrival, so a programme edited and come back from is shown as it is now.
+	$effect(() => {
+		void activity.id;
+		listRunWorkouts().then(async (all) => {
+			workouts = all;
+			// And taken again, because the wrist is shown what the run would be, not what it was.
+			const source = run.record?.workout?.sourceId ?? null;
+			const latest = source ? all.find((one) => one.id === source) : null;
+			if (latest && run.status === 'idle') await run.setWorkout(snapshotWorkout(latest));
+		});
+	});
 
-	const errors = $derived(validateRun(run));
-	const perKm = $derived(pace(run));
-	const running = $derived(exercise('running'));
-	const load = $derived((running?.load ?? {}) as Partial<Record<MuscleId, Load>>);
+	onDestroy(() => {
+		void run.close();
+	});
 
-	async function save() {
-		if (errors.length > 0) return;
-		await updateRun(activity.id, run);
+	// Picked up again after the screen was off: the service may have paused or finished the run.
+	$effect(() => {
+		const woke = () => {
+			if (document.visibilityState === 'visible') void run.resumed();
+		};
+		document.addEventListener('visibilitychange', woke);
+		return () => document.removeEventListener('visibilitychange', woke);
+	});
+
+	const record = $derived(run.record);
+	const status = $derived(run.status);
+	const tracked = $derived(record?.mode === 'tracked');
+
+	async function edited(next: RunRecord) {
+		if (!run.record) return;
+		run.record.distanceM = next.distanceM;
+		run.record.durationSeconds = next.durationSeconds;
+		await run.persist();
 		onchange();
 	}
 
-	function setDistance(value: string) {
-		const parsed = Number(value.replace(',', '.'));
-		run.distanceM = value.trim() === '' || !Number.isFinite(parsed) ? null : Math.round(parsed * 1000);
-		save();
+	async function setEffort(level: Effort) {
+		if (!run.record) return;
+		run.record.effort = run.record.effort === level ? null : level;
+		await run.persist();
+		onchange();
 	}
 
-	/** The two halves of a time are one number, so either being typed rebuilds the whole of it. */
-	function setDuration(part: 'minutes' | 'seconds', value: string) {
-		const current = run.durationSeconds ?? 0;
-		const parsed = Math.max(0, Math.floor(Number(value) || 0));
-		const next =
-			part === 'minutes' ? parsed * 60 + (current % 60) : Math.floor(current / 60) * 60 + parsed;
-		run.durationSeconds = next === 0 ? null : next;
-		save();
+	async function choose(id: string) {
+		const workout = workouts.find((one) => one.id === id) ?? null;
+		await run.setWorkout(workout ? snapshotWorkout(workout) : null);
+		if (workout) await markWorkoutUsed(workout.id);
 	}
+
+	/** Written on the programmes page rather than in a form here: there is one place for that. */
+	async function writeOne() {
+		const fresh = emptyWorkout($t('workouts.newWorkout'));
+		await saveRunWorkout(fresh);
+		await run.setWorkout(snapshotWorkout(fresh));
+		goto(withOrigin(`/workouts/${fresh.id}`, here));
+	}
+
+	/**
+	 * Copied afresh at the start rather than when it was picked, so a programme edited in between is
+	 * the one that gets run and the copy the run keeps is still its own.
+	 */
+	async function start() {
+		const source = run.record?.workout?.sourceId ?? null;
+		if (source) {
+			workouts = await listRunWorkouts();
+			const latest = workouts.find((one) => one.id === source);
+			if (latest) await run.setWorkout(snapshotWorkout(latest));
+		}
+		await run.start();
+		onchange();
+	}
+
+	const here = $derived(`/activities/${activity.id}`);
+	const chosen = $derived(record?.workout?.sourceId ?? '');
+	/**
+	 * The library's copy rather than the run's, until the run starts. The run holds a copy of its own
+	 * so that history cannot be rewritten, but before the start there is no history: what is offered
+	 * has to be the programme as it is now, or editing one and coming back shows it as it was.
+	 */
+	const offered = $derived(workouts.find((one) => one.id === chosen) ?? record?.workout ?? null);
+	const running = $derived(exercise('running'));
+	const load = $derived((running?.load ?? {}) as Partial<Record<MuscleId, Load>>);
+	const steps = $derived(record?.workout ? flatten(record.workout) : []);
+	const stepName = (key: string) => {
+		const step = steps.find((one) => one.key === key);
+		return step ? step.label?.trim() || $t(`workouts.blockKinds.${step.kind}`) : key;
+	};
+
+	const summaryOf = (workout: RunWorkout) => workoutSummary(workout, $t);
 </script>
 
-<div class="mx-auto w-full max-w-page space-y-4 p-4">
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<h2 class="mb-3 text-sm font-semibold text-muted">{$t('running.what')}</h2>
-
-		<div class="grid gap-3 sm:grid-cols-2">
-			<label class="block">
-				<span class="text-sm text-muted">{$t('running.distance')}</span>
-				<div class="mt-1 flex items-center gap-2">
-					<input
-						class="w-full rounded-lg border bg-bg px-3 py-2 text-lg tabular {errors.includes('distance')
-							? 'border-danger'
-							: 'border-line'}"
-						type="text"
-						inputmode="decimal"
-						placeholder="5"
-						value={km}
-						onchange={(event) => setDistance(event.currentTarget.value)}
-					/>
-					<span class="shrink-0 text-sm text-muted">{$t('running.km')}</span>
+{#if record && tracked && (status === 'running' || status === 'paused')}
+	<LiveRunView {run} />
+{:else if record}
+	<div class="mx-auto w-full max-w-page space-y-4 p-4">
+		{#if tracked && status === 'idle'}
+			<!-- Before the start: which programme, and one button that is hard to miss with a thumb. -->
+			<section class="rounded-2xl border border-line bg-surface p-4">
+				<div class="flex items-center gap-2">
+					<span class="text-sm font-semibold text-muted">{$t('running.ready')}</span>
+					<a class="ml-auto text-sm font-medium text-brand-text" href={withOrigin('/workouts', here)}>
+						{$t('workouts.title')}
+					</a>
 				</div>
-			</label>
 
-			<div>
-				<span class="text-sm text-muted">{$t('running.duration')}</span>
-				<div class="mt-1 flex items-center gap-2">
-					<input
-						class="w-full rounded-lg border bg-bg px-3 py-2 text-lg tabular {errors.includes('duration')
-							? 'border-danger'
-							: 'border-line'}"
-						type="text"
-						inputmode="numeric"
-						placeholder="27"
-						value={minutes}
-						onchange={(event) => setDuration('minutes', event.currentTarget.value)}
-					/>
-					<span class="shrink-0 text-sm text-muted">{$t('running.minutesShort')}</span>
-					<input
-						class="w-full rounded-lg border border-line bg-bg px-3 py-2 text-lg tabular"
-						type="text"
-						inputmode="numeric"
-						placeholder="30"
-						value={seconds}
-						onchange={(event) => setDuration('seconds', event.currentTarget.value)}
-					/>
-					<span class="shrink-0 text-sm text-muted">{$t('running.secondsShort')}</span>
+				<div class="mt-2 flex gap-2">
+					<select
+						class="min-w-0 flex-1 rounded-lg border border-line bg-bg px-3 py-2.5 text-base"
+						aria-label={$t('running.chooseWorkout')}
+						value={chosen}
+						onchange={(event) => choose(event.currentTarget.value)}
+					>
+						<option value="">{$t('running.freeRun')}</option>
+						{#each workouts as workout (workout.id)}
+							<option value={workout.id}>{workout.name || $t('workouts.newWorkout')}</option>
+						{/each}
+					</select>
+
+					{#if chosen}
+						<a
+							class="press flex items-center justify-center rounded-lg border border-line px-3 text-muted"
+							aria-label={$t('workouts.open')}
+							href={withOrigin(`/workouts/${chosen}`, here)}
+						>
+							<Icon name="edit" size={18} />
+						</a>
+					{:else}
+						<button
+							class="press rounded-lg border border-line px-3 text-sm font-semibold"
+							onclick={writeOne}
+						>
+							{$t('workouts.create')}
+						</button>
+					{/if}
 				</div>
-			</div>
-		</div>
 
-		{#if errors.length > 0}
-			<p class="mt-2 text-xs text-danger">{$t('running.outOfRange')}</p>
+				<p class="mt-2 text-xs text-muted tabular">
+					{offered ? summaryOf(offered) : $t('running.freeRunHint')}
+				</p>
+			</section>
+
+			<button
+				class="press flex h-20 w-full items-center justify-center gap-3 rounded-2xl bg-brand text-2xl font-bold text-brand-ink"
+				onclick={start}
+			>
+				<Icon name="play" size={28} />
+				{$t('running.start')}
+			</button>
+			<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('manual')}>
+				{$t('running.switchToHand')}
+			</button>
 		{/if}
-	</section>
 
-	<!-- Worked out rather than asked for, so the card can never hold a pace its own numbers deny. -->
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.pace')}</h2>
-		{#if perKm === null}
-			<p class="text-sm text-muted">{$t('running.paceWaiting')}</p>
-		{:else}
-			<p class="text-3xl font-bold tabular">
-				{clock(perKm)}
-				<span class="text-base font-medium text-muted">{$t('running.perKm')}</span>
-			</p>
-		{/if}
-	</section>
+		{#if tracked && status === 'done'}
+			<!-- What it came to. The tracked figures lead, and the fields under them are for putting right. -->
+			<section class="rounded-2xl border border-line bg-surface p-4 text-center">
+				<p class="text-5xl leading-none font-bold tabular">
+					{((record.distanceM ?? 0) / 1000).toFixed(2)}
+					<span class="text-lg font-medium text-muted">{$t('running.km')}</span>
+				</p>
+				<div class="mt-3 grid grid-cols-3 gap-2 text-sm">
+					<div>
+						<p class="text-xl font-bold tabular">{clock(record.durationSeconds ?? 0)}</p>
+						<p class="text-xs text-muted">{$t('running.elapsed')}</p>
+					</div>
+					<div>
+						<p class="text-xl font-bold tabular">
+							{formatPace(paceOf(record.distanceM ?? 0, record.durationSeconds ?? 0)) || '–:--'}
+						</p>
+						<p class="text-xs text-muted">{$t('running.averagePace')}</p>
+					</div>
+					<div>
+						<p class="text-xl font-bold tabular">
+							{record.elevationGainM ?? 0}{$t('running.metresShort')}
+						</p>
+						<p class="text-xs text-muted">{$t('running.elevation')}</p>
+					</div>
+				</div>
+			</section>
 
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.effort')}</h2>
-		<p class="mb-3 text-xs text-muted">{$t('running.effortHint')}</p>
-		<div class="flex gap-1">
-			{#each EFFORTS as level (level)}
-				<button
-					class="press flex-1 rounded-lg border py-2 text-xs font-medium {run.effort === level
-						? 'border-brand bg-brand/10 font-semibold'
-						: 'border-line'}"
-					onclick={() => {
-						run.effort = run.effort === level ? null : (level as Effort);
-						save();
-					}}
-				>
-					{$t(`running.efforts.${level}`)}
-				</button>
-			{/each}
-		</div>
-	</section>
-
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.whatItWorks')}</h2>
-		<div class="grid gap-3 sm:grid-cols-2">
-			{#if running}
-				<MovementFigure movement={running.movement} class="w-full max-h-[26vh]" />
+			{#if record.splits.length > 0}
+				<section class="rounded-2xl border border-line bg-surface p-4">
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.splits')}</h2>
+					<ul class="space-y-1">
+						{#each record.splits as split (split.index)}
+							<li class="flex items-center gap-3 text-sm tabular">
+								<span class="w-14 text-muted">{$t('running.splitNumber', { n: split.index })}</span>
+								<span class="flex-1 font-semibold">{clock(split.seconds)}</span>
+								<span class="text-xs text-muted">{formatPace(split.seconds)} {$t('running.perKm')}</span>
+							</li>
+						{/each}
+					</ul>
+				</section>
 			{/if}
-			<div class="mx-auto max-w-[13rem]">
-				<MuscleBoard {load} class="max-h-[28vh] w-full" />
-			</div>
-		</div>
-	</section>
 
-	{#if !isRunDone(run)}
-		<p class="text-center text-xs text-muted">{$t('running.unfinished')}</p>
-	{/if}
-</div>
+			{#if record.steps.length > 0}
+				<section class="rounded-2xl border border-line bg-surface p-4">
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.blockResults')}</h2>
+					<ul class="space-y-1">
+						{#each record.steps as step (step.key)}
+							<li class="flex items-center gap-3 text-sm">
+								<span class="min-w-0 flex-1 truncate">{stepName(step.key)}</span>
+								<span class="tabular text-muted">
+									{(step.distanceM / 1000).toFixed(2)} {$t('running.km')} · {clock(step.seconds)}
+								</span>
+								<span class="w-14 text-right font-semibold tabular">
+									{formatPace(paceOf(step.distanceM, step.seconds)) || '–:--'}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+
+			<section class="rounded-2xl border border-line bg-surface p-4">
+				<h2 class="mb-3 text-sm font-semibold text-muted">{$t('running.correct')}</h2>
+				<ManualRun run={record} onchange={edited} />
+			</section>
+		{/if}
+
+		{#if !tracked}
+			<section class="rounded-2xl border border-line bg-surface p-4">
+				<ManualRun run={record} onchange={edited} />
+			</section>
+
+			{#if canTrack() && record.distanceM === null && record.durationSeconds === null}
+				<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('tracked')}>
+					{$t('running.switchToTrack')}
+				</button>
+			{/if}
+		{/if}
+
+		{#if !tracked || status === 'done'}
+			<section class="rounded-2xl border border-line bg-surface p-4">
+				<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.effort')}</h2>
+				<p class="mb-3 text-xs text-muted">{$t('running.effortHint')}</p>
+				<div class="flex gap-1">
+					{#each EFFORTS as level (level)}
+						<button
+							class="press flex-1 rounded-lg border py-2 text-xs font-medium {record.effort === level
+								? 'border-brand bg-brand/10 font-semibold'
+								: 'border-line'}"
+							onclick={() => setEffort(level)}
+						>
+							{$t(`running.efforts.${level}`)}
+						</button>
+					{/each}
+				</div>
+			</section>
+
+			<section class="rounded-2xl border border-line bg-surface p-4">
+				<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.whatItWorks')}</h2>
+				<div class="grid gap-3 sm:grid-cols-2">
+					{#if running}
+						<MovementFigure movement={running.movement} class="w-full max-h-[26vh]" />
+					{/if}
+					<div class="mx-auto max-w-[13rem]">
+						<MuscleBoard {load} class="max-h-[28vh] w-full" />
+					</div>
+				</div>
+			</section>
+		{/if}
+	</div>
+{/if}

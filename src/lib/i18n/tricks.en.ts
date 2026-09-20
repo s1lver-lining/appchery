@@ -280,6 +280,22 @@ export const tricksEn = {
 				{
 					lead: 'A run only needs the two numbers it is made of.',
 					body: 'Enter a distance and a time and the pace works itself out, so the card can never hold a pace its own numbers deny. Half a run is saved as it stands: a distance with no time is still a run you did.'
+				},
+				{
+					lead: 'Jump to the block you are actually on.',
+					body: 'Tap the block card at the top of a run and pick any block of the programme, repeats and all. The run carries on from there: the one you left keeps what it came to, and the one you picked starts counting from your own distance and clock rather than from the plan’s.'
+				},
+				{
+					lead: 'A programme is repeats of blocks, not a count on one.',
+					body: 'Write 7 times (200 m fast, 100 m easy) as one repeat holding two blocks. The frame around them is what makes it read back at a glance, and the duplicate button on any block or repeat copies it with fresh ids, so writing the session twice over is two taps.'
+				},
+				{
+					lead: 'A tracked run keeps recording in your pocket.',
+					body: 'Starting a run starts a service of its own, so the screen can go off and the phone can go in a pocket without losing the middle of the run. The notification it leaves behind is the way back to the numbers. In a browser there is no such service: a sleeping tab stops recording, and the run says so.'
+				},
+				{
+					lead: 'The watch buzzes when the block changes.',
+					body: 'A linked watch shows the run as it happens: what is left of the block, the pace you are meant to be holding and the one you are holding. When a block ends it buzzes twice and wakes its screen, so an interval session can be run without looking at anything.'
 				}
 			]
 		},

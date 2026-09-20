@@ -169,6 +169,21 @@
 		// A dumbbell: the work done away from the shooting line.
 		exercise: `<path d="M3 9.6v4.8M6 7.4v9.2M18 7.4v9.2M21 9.6v4.8" /><path d="M6 12h12" />`,
 		// A runner mid stride: the lean and the opposite arm are what make it a run and not a walk.
+		// The three buttons a run is driven with, drawn as the same shapes every player uses.
+		play: `
+			<path d="M8 5.6 18.4 12 8 18.4Z" class="f" />`,
+		pause: `
+			<path d="M9.4 5.6v12.8M14.6 5.6v12.8" />`,
+		stop: `
+			<rect x="6.4" y="6.4" width="11.2" height="11.2" rx="1.6" class="f" />`,
+		// A block copied: one card laid over another, which is what duplicating a block does.
+		copy: `
+			<rect x="8.6" y="8.6" width="11.4" height="11.4" rx="2" />
+			<path d="M15.4 5.4H5.8A1.4 1.4 0 0 0 4.4 6.8v9.6" />`,
+		// The end of a block, and the end of a run.
+		flag: `
+			<path d="M6.4 20.4V3.6" />
+			<path d="M6.4 4.6h10.8l-2.2 3.6 2.2 3.6H6.4" />`,
 		run: `
 			<circle cx="15.4" cy="4.4" r="2" />
 			<path d="M13.8 20.6 15 14.6l-3-2.6 1-5.2" />

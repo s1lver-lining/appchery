@@ -37,7 +37,8 @@
 		setsDone,
 		setsPlanned
 	} from '$lib/domain/strength';
-	import { RUNNING_KIND, clock, emptyRun, parseRun } from '$lib/domain/running';
+	import { RUNNING_KIND, clock, emptyRun, pace, parseRun } from '$lib/domain/running';
+	import { canTrack } from '$lib/run/source';
 import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/freeScore';
 	import {
 		DRILL_GAMES,
@@ -633,7 +634,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 	async function startRunning() {
 		const id = await materialise();
-		goto(`/activities/${await createRunningActivity(id, emptyRun())}`);
+		// Tracked wherever the device can: a run followed is a better record than a run remembered.
+		goto(`/activities/${await createRunningActivity(id, emptyRun(canTrack() ? 'tracked' : 'manual'))}`);
 	}
 
 	/** Points a set match can be played to: six for an individual, five for a team, or anything. */
@@ -859,10 +861,16 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	/** The two numbers, or a nudge to enter them: a run with neither says nothing on its own. */
 	function runSummary(a: ActivityRow): string {
 		const run = parseRun(a.measurements);
+		const perKm = pace(run);
 		const parts = [
+			run.workout?.name || null,
 			run.distanceM === null ? null : $t('running.kmValue', { km: Math.round(run.distanceM / 10) / 100 }),
-			run.durationSeconds === null ? null : clock(run.durationSeconds)
+			run.durationSeconds === null ? null : clock(run.durationSeconds),
+			// The pace is the number a runner reads first, and a tracked run always has one.
+			perKm === null ? null : `${clock(perKm)} ${$t('running.perKm')}`
 		].filter(Boolean);
+		if (run.live?.status === 'running' || run.live?.status === 'paused')
+			parts.unshift($t(run.live.status === 'paused' ? 'running.paused' : 'running.start'));
 		return parts.length > 0 ? parts.join(' · ') : $t('running.hint');
 	}
 
