@@ -14,7 +14,8 @@
 		fixes,
 		at = null,
 		samples = [],
-		byPace = false
+		byPace = false,
+		small = false
 	}: {
 		fixes: { lat: number; lon: number; elapsedSeconds?: number }[];
 		/** The run's clock to mark on the route, or null for no mark. */
@@ -23,6 +24,11 @@
 		samples?: RunSample[];
 		/** Whether to paint it. Off by default: a route is read for its shape before anything else. */
 		byPace?: boolean;
+		/**
+		 * Drawn at the size of an icon, where the ends and the marker are dots nobody can see and the
+		 * line has to be thick enough to read at all. What is left is the shape, which is the point.
+		 */
+		small?: boolean;
 	} = $props();
 
 	// A route is a few thousand fixes and a phone screen is a few hundred pixels: past one point per
@@ -99,7 +105,7 @@
 
 {#if route}
 	<svg
-		class="mx-auto block max-h-56 w-full"
+		class="mx-auto block w-full {small ? 'max-h-full' : 'max-h-56'}"
 		viewBox="0 0 {route.width} {route.height}"
 		fill="none"
 		role="img"
@@ -110,7 +116,7 @@
 		<path
 			d={path}
 			stroke="var(--c-run-pace)"
-			stroke-width="5"
+			stroke-width={small ? 0 : 5}
 			stroke-linecap="round"
 			stroke-linejoin="round"
 			opacity="0.18"
@@ -130,7 +136,7 @@
 			<path
 				d={path}
 				stroke="var(--c-run-pace)"
-				stroke-width="2"
+				stroke-width={small ? 1.6 : 2}
 				stroke-linecap="round"
 				stroke-linejoin="round"
 				vector-effect="non-scaling-stroke"
@@ -138,7 +144,7 @@
 		{/if}
 		<!-- Which end is which, because a loop drawn on its own says nothing about where it began.
 		     The start goes on top, because a loop ends where it started and the ring would hide it. -->
-		{#if end}
+		{#if end && !small}
 			<circle
 				cx={end.x}
 				cy={end.y}
@@ -149,7 +155,7 @@
 				vector-effect="non-scaling-stroke"
 			/>
 		{/if}
-		{#if start}
+		{#if start && !small}
 			<circle cx={start.x} cy={start.y} r="2.4" fill="var(--c-run-work)" />
 		{/if}
 		{#if here}

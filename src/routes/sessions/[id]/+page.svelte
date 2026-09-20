@@ -78,6 +78,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
 	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
+	import RunRoute from '$lib/ui/run/RunRoute.svelte';
 	import {
 		mirrorSession,
 		mirrorIdle,
@@ -120,6 +121,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		createDrillActivity,
 		createStrengthActivity,
 		createRunningActivity,
+		listRunPoints,
 		createMatchActivity,
 		loadMatch,
 		listMatchNames,
@@ -160,6 +162,24 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 	let session = $state<Awaited<ReturnType<typeof getSession>>>(null);
 	let activities = $state<ActivityRow[]>([]);
+	/**
+	 * The track of each run in this session, for the shape drawn beside it. Read here rather than in
+	 * the row, so a session of six runs is six reads on arrival and not six on every redraw.
+	 *
+	 * Only the device that recorded a run has its track: the fixes stay on the phone that took them,
+	 * so somebody else's run in the feed has a shape nobody but them can draw, see doc/running.md.
+	 */
+	let routes = $state<Record<string, { lat: number; lon: number }[]>>({});
+
+	$effect(() => {
+		const runs = activities.filter((a) => a.kind === RUNNING_KIND && !(a.id in routes));
+		if (runs.length === 0) return;
+		for (const run of runs) {
+			listRunPoints(run.id).then((points) => {
+				if (points.length > 1) routes = { ...routes, [run.id]: points };
+			});
+		}
+	});
 	let bows = $state<Awaited<ReturnType<typeof listBows>>>([]);
 	let matchEnds = $state<Map<string, MatchEnd[]>>(new Map());
 	let tab = $state<'overview' | 'settings'>('overview');
@@ -1401,6 +1421,14 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 																name={drillDefinition(parseDrill(a.measurements).game).icon}
 																size={18}
 															/>
+														</span>
+													{:else if a.kind === RUNNING_KIND && routes[a.id]}
+														<!-- A run that left a track draws itself: the shape says which
+														     run it was faster than any sentence about it can. -->
+														<span
+															class="flex h-9 w-9 items-center justify-center overflow-hidden rounded-lg border border-line bg-sunk"
+														>
+															<RunRoute fixes={routes[a.id]} small />
 														</span>
 													{:else if a.kind === STRENGTH_KIND || a.kind === RUNNING_KIND}
 														<span
