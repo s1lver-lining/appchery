@@ -306,6 +306,22 @@ export const tricksEn = {
 					body: 'Start a run with a watch linked and it asks for the sensor once, then reads the wrist for as long as the run lasts. The beat goes up to the phone and is written on the fixes, so it is in the graph and in the exported GPX afterwards. Its own page on the watch keeps the last few minutes as a line.'
 				},
 				{
+					lead: 'A programme running out does not end the run.',
+					body: 'When the last block is done the watch says Free run and the clock carries on from there, with nothing to hold and nothing counting down. The way home from the track is a run, and it is timed from where the blocks stopped. Finish it when you actually finish.'
+				},
+				{
+					lead: 'Take a lap wherever you like.',
+					body: 'The lap button on the run, and on the watch\u2019s controls page, marks the top of the hill or the lamp post you sprinted to. Each one is timed from the last, and they are kept apart from the kilometres: a kilometre is arithmetic and a lap is something you decided.'
+				},
+				{
+					lead: 'Tap a kilometre to see what happened in it.',
+					body: 'The list says which one was slow. Tapping it opens the graph at that moment, with the pace, the hill and the beat marked there and the same place marked on the route.'
+				},
+				{
+					lead: 'Tell the app your highest heart rate and the beat starts meaning something.',
+					body: 'Put it in the settings and every run says where its time went, zone by zone, each with its own colour. The watch wears the zone as the ring around its glass while you run, because a colour is read at a glance and a number is not.'
+				},
+				{
 					lead: 'The watch buzzes when the block changes.',
 					body: 'A linked watch shows the run as it happens: what is left of the block, the pace you are meant to be holding and the one you are holding. When a block ends it buzzes twice and wakes its screen, so an interval session can be run without looking at anything.'
 				}

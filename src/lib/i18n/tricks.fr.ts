@@ -289,6 +289,22 @@ export const tricksFr: TricksDictionary = {
 					body: "Lancer une sortie lance un service dédié : l'écran peut s'éteindre et le téléphone partir dans une poche sans perdre le milieu de la sortie. La notification laissée derrière est le chemin de retour vers les chiffres. Dans un navigateur, il n'y a pas de service : un onglet endormi cesse d'enregistrer, et la sortie le dit."
 				},
 				{
+					lead: 'Un programme qui se termine n\u2019arr\u00eate pas la sortie.',
+					body: "Une fois le dernier bloc fait, la montre affiche Free run et le chrono repart de l\u00e0, sans rien \u00e0 tenir ni rien \u00e0 d\u00e9compter. Le retour depuis la piste est une sortie, et il est chronom\u00e9tr\u00e9 \u00e0 partir de la fin des blocs. Terminez quand vous avez vraiment termin\u00e9."
+				},
+				{
+					lead: 'Prenez un tour o\u00f9 vous voulez.',
+					body: "Le bouton de tour, sur la sortie et sur la page de commandes de la montre, marque le haut de la c\u00f4te ou le lampadaire jusqu\u2019auquel vous avez sprint\u00e9. Chacun est chronom\u00e9tr\u00e9 depuis le pr\u00e9c\u00e9dent, et ils restent s\u00e9par\u00e9s des kilom\u00e8tres : un kilom\u00e8tre est un calcul, un tour est une d\u00e9cision."
+				},
+				{
+					lead: 'Touchez un kilom\u00e8tre pour voir ce qui s\u2019y est pass\u00e9.',
+					body: "La liste dit lequel \u00e9tait lent. Le toucher ouvre le graphique \u00e0 cet instant, avec l\u2019allure, la c\u00f4te et le cardio marqu\u00e9s l\u00e0, et le m\u00eame endroit marqu\u00e9 sur le parcours."
+				},
+				{
+					lead: 'Donnez votre fr\u00e9quence maximale et le cardio se met \u00e0 vouloir dire quelque chose.',
+					body: "Renseignez-la dans les r\u00e9glages et chaque sortie dit o\u00f9 son temps est pass\u00e9, zone par zone, chacune avec sa couleur. La montre porte la zone en anneau autour de son verre pendant la course : une couleur se lit d\u2019un coup d\u2019\u0153il, pas un chiffre."
+				},
+				{
 					lead: 'La montre vibre au changement de bloc.',
 					body: "Une montre connectée affiche la sortie en direct : ce qu'il reste du bloc, l'allure visée et celle que vous tenez. À la fin d'un bloc, elle vibre deux fois et allume son écran : un fractionné se court sans rien regarder."
 				},
