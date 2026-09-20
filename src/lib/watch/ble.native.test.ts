@@ -1,9 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 /**
- * The native transport, against a plugin that is not there. What is worth testing is everything the
+ * The native transport, against plugins that are not there. What is worth testing is everything the
  * transport decides for itself: that a remembered watch never reaches a chooser, that a refusal is
  * reported as the thing the archer can act on, and that bytes travel both ways.
+ *
+ * Two plugins stand in for two jobs, as they do on a phone: the Bluetooth one finds a watch, and the
+ * app's own central holds the link, because a link the page owns stops the moment Android freezes
+ * the page. See doc/llm-memory/watch-native-transport.md.
  */
 
 const plugin = {
@@ -28,16 +32,32 @@ const plugin = {
 	)
 };
 
+/** The app's own central, `Wrist.java`, which is what actually holds the link. */
+const handlers: Record<string, (data: never) => void> = {};
+const wrist = {
+	connect: vi.fn(async (_options: { address: string }) => ({ connected: true })),
+	disconnect: vi.fn(async () => {}),
+	send: vi.fn(async (_options: { text: string }) => {}),
+	plan: vi.fn(async () => {}),
+	forget: vi.fn(async () => {}),
+	claim: vi.fn(async () => ({ live: false, i: -1, c: 0, fs: 0, fd: 0, done: [] })),
+	addListener: vi.fn(async (event: string, handler: (data: never) => void) => {
+		handlers[event] = handler;
+		return { remove: async () => delete handlers[event] };
+	})
+};
+
 vi.mock('@capacitor-community/bluetooth-le', () => ({ BleClient: plugin }));
 
 let platform = 'android';
 let native = true;
 vi.mock('@capacitor/core', () => ({
-	Capacitor: { isNativePlatform: () => native, getPlatform: () => platform }
+	Capacitor: { isNativePlatform: () => native, getPlatform: () => platform },
+	registerPlugin: () => wrist
 }));
 
 const { connect } = await import('./ble.native');
-const { TO_PHONE, TO_WATCH, WATCH_SERVICE } = await import('./ble');
+const { WATCH_SERVICE } = await import('./ble');
 
 const noop = () => {};
 
@@ -45,6 +65,8 @@ beforeEach(() => {
 	platform = 'android';
 	native = true;
 	for (const fn of Object.values(plugin)) fn.mockClear();
+	for (const fn of Object.values(wrist)) fn.mockClear();
+	wrist.connect.mockResolvedValue({ connected: true });
 	plugin.initialize.mockResolvedValue(undefined);
 	plugin.isEnabled.mockResolvedValue(true);
 	plugin.connect.mockResolvedValue(undefined);
@@ -60,7 +82,7 @@ describe('the native link', () => {
 
 		expect(result.ok).toBe(true);
 		expect(plugin.requestDevice).not.toHaveBeenCalled();
-		expect(plugin.connect).toHaveBeenCalledWith('CC:DD', expect.any(Function), expect.anything());
+		expect(wrist.connect).toHaveBeenCalledWith({ address: 'CC:DD' });
 	});
 
 	it('asks for a watch when none is remembered, and says which one it found', async () => {
@@ -73,7 +95,7 @@ describe('the native link', () => {
 	});
 
 	it('calls a remembered watch that does not answer missing rather than broken', async () => {
-		plugin.connect.mockRejectedValueOnce(new Error('Connection failed with timeout.'));
+		wrist.connect.mockRejectedValueOnce(new Error('not-found'));
 
 		const result = await connect(noop, noop, { deviceId: 'CC:DD' });
 
@@ -95,7 +117,7 @@ describe('the native link', () => {
 		const result = await connect(noop, noop, { deviceId: 'CC:DD' });
 
 		expect(result).toMatchObject({ ok: false, reason: 'bluetooth-off' });
-		expect(plugin.connect).not.toHaveBeenCalled();
+		expect(wrist.connect).not.toHaveBeenCalled();
 	});
 
 	it('is a dismissed chooser, not an error, when the archer backs out', async () => {
@@ -107,32 +129,28 @@ describe('the native link', () => {
 	});
 
 	it('hangs up on a device that has no watch app on it', async () => {
-		plugin.startNotifications.mockRejectedValueOnce(new Error('Service not found'));
+		wrist.connect.mockRejectedValueOnce(new Error('no-service'));
 
 		const result = await connect(noop, noop);
 
 		expect(result).toMatchObject({ ok: false, reason: 'no-service' });
-		expect(plugin.disconnect).toHaveBeenCalledWith('AA:BB');
 	});
 
-	it('hands arriving bytes up and sends only the message, not the buffer behind it', async () => {
-		const arrived: DataView[] = [];
-		const result = await connect((bytes) => arrived.push(bytes), noop);
+	it('hands arriving bytes up and sends what it is given', async () => {
+		const arrived: string[] = [];
+		const result = await connect(
+			(bytes) => arrived.push(new TextDecoder().decode(bytes)),
+			noop
+		);
 		if (!result.ok) throw new Error('expected a link');
 
-		const [, service, characteristic, deliver] = plugin.startNotifications.mock.calls[0]!;
-		expect(service).toBe(WATCH_SERVICE);
-		expect(characteristic).toBe(TO_PHONE);
-		const incoming = new DataView(new Uint8Array([7]).buffer);
-		deliver(incoming);
-		expect(arrived).toEqual([incoming]);
+		(handlers.bytes as (data: { text: string }) => void)({ text: '{"t":"hello"}' });
+		expect(arrived).toEqual(['{"t":"hello"}']);
 
-		// A window onto a larger buffer, which is what the encoder hands over.
-		const whole = new Uint8Array([1, 2, 3, 4]);
-		await result.connection.channel.send(whole.subarray(1, 3));
-		const [id, outService, outCharacteristic, value] = plugin.writeWithoutResponse.mock.calls[0]!;
-		expect([id, outService, outCharacteristic]).toEqual(['AA:BB', WATCH_SERVICE, TO_WATCH]);
-		expect([value.byteOffset, value.byteLength]).toEqual([1, 2]);
+		// A window onto a larger buffer, which is what the encoder hands over: only the message goes.
+		const whole = new TextEncoder().encode('xx{"t":"ack"}xx');
+		await result.connection.channel.send(whole.subarray(2, 13));
+		expect(wrist.send).toHaveBeenCalledWith({ text: '{"t":"ack"}' });
 	});
 
 	it('does not call a link lost when it is the one putting it down', async () => {
@@ -140,19 +158,19 @@ describe('the native link', () => {
 		const result = await connect(noop, lost);
 		if (!result.ok) throw new Error('expected a link');
 
-		const onDisconnect = plugin.connect.mock.calls[0]![1]!;
+		const dropped = handlers.lost as () => void;
 		result.connection.disconnect();
-		onDisconnect('AA:BB');
+		dropped();
 
 		expect(lost).not.toHaveBeenCalled();
-		expect(plugin.disconnect).toHaveBeenCalledWith('AA:BB');
+		expect(wrist.disconnect).toHaveBeenCalled();
 	});
 
 	it('reports a watch dropping off as lost', async () => {
 		const lost = vi.fn();
 		await connect(noop, lost);
 
-		plugin.connect.mock.calls[0]![1]!('AA:BB');
+		(handlers.lost as () => void)();
 
 		expect(lost).toHaveBeenCalledOnce();
 	});

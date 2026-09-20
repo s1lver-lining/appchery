@@ -1,25 +1,55 @@
 import { BleClient } from '@capacitor-community/bluetooth-le';
-import {
-	TO_PHONE,
-	TO_WATCH,
-	WATCH_SERVICE,
-	support,
-	type ConnectFailure,
-	type ConnectResult
-} from './ble';
+import { registerPlugin } from '@capacitor/core';
+import { WATCH_SERVICE, support, type ConnectFailure, type ConnectResult } from './ble';
 
 /**
- * The link over the platform's own central, for the installed app. The sibling of ble.web.ts and
- * the same shape: it hands bytes up, takes bytes down, and says why it could not connect.
+ * The link over the app's own central, for the installed app. The sibling of ble.web.ts and the
+ * same shape: it hands bytes up, takes bytes down, and says why it could not connect.
  *
  * What it buys over the browser is the whole reason it exists. Chrome on Android has no
  * `getDevices`, so a permitted watch cannot be picked up again without the chooser and every
  * connection costs the archer a tap at the shooting line. A native central connects straight to a
  * remembered address, so the app asks once and never again. See doc/llm-memory/watch-native-transport.md.
+ *
+ * The connection itself is the app's own, in `Wrist.java`, rather than the Bluetooth plugin's. A
+ * plugin is only ever called by a page, and Android freezes a page the moment the screen goes off,
+ * which is how a run is run: the wrist sat on figures minutes old while the Bluetooth stack was
+ * perfectly healthy and nobody was telling it to write. Owned by the app, the same link can be fed
+ * by the service while the page sleeps. The plugin is still what finds a watch in the first place,
+ * which is a chooser and a scan and belongs to nobody's run.
  */
 
-/** How long a connection attempt is given before it is called a failure rather than hanging. */
-const CONNECT_TIMEOUT_MS = 10_000;
+interface WristPlugin {
+	connect(options: { address: string }): Promise<{ connected: boolean }>;
+	disconnect(): Promise<void>;
+	send(options: { text: string }): Promise<void>;
+	/** The run as the page has it, for the service to carry on from. See RunFrames.java. */
+	plan(plan: Record<string, unknown>): Promise<void>;
+	forget(): Promise<void>;
+	claim(): Promise<WristClaim>;
+	addListener(
+		event: 'bytes',
+		handler: (data: { text: string }) => void
+	): Promise<{ remove: () => Promise<void> }>;
+	addListener(event: 'lost', handler: () => void): Promise<{ remove: () => Promise<void> }>;
+}
+
+/** What the service worked out while the page was asleep, for the page to adopt. */
+export interface WristClaim {
+	live: boolean;
+	/** Where the run is now: it may have been paused or finished from the wrist in the meantime. */
+	st: 'i' | 'r' | 'p' | 'd';
+	/** The run's clock as the service has it, in seconds. */
+	s: number;
+	/** The step it reached, by position in the flattened programme, or -1. */
+	i: number;
+	c: number;
+	fs: number;
+	fd: number;
+	done: { i: number; d: number; s: number }[];
+}
+
+export const Wrist = registerPlugin<WristPlugin>('Wrist');
 
 export interface ConnectOptions {
 	/**
@@ -76,28 +106,24 @@ export async function connect(
 	/** Set before we disconnect on purpose, so a link being closed is not reported as one lost. */
 	let closing = false;
 
-	try {
-		await BleClient.connect(
-			id,
-			() => {
-				if (!closing) onLost();
-			},
-			{ timeout: CONNECT_TIMEOUT_MS }
-		);
-	} catch (error) {
-		// A remembered watch out of range, off, or simply left at home: ordinary, and not a fault the
-		// archer can act on beyond bringing the watch closer.
-		return { ok: false, reason: remembered ? 'not-found' : 'failed', detail: messageOf(error) };
-	}
+	// Subscribed before the connection rather than after: the first thing the watch says is its
+	// answer to the phone's hello, and it says it as soon as the descriptor is written.
+	const incoming = await Wrist.addListener('bytes', ({ text }) => {
+		onBytes(viewOf(new TextEncoder().encode(text)));
+	});
+	const gone = await Wrist.addListener('lost', () => {
+		if (!closing) onLost();
+	});
 
 	try {
-		await BleClient.startNotifications(id, WATCH_SERVICE, TO_PHONE, onBytes);
+		await Wrist.connect({ address: id });
 	} catch (error) {
-		closing = true;
-		await quietly(() => BleClient.disconnect(id));
-		// The address was remembered from a watch that had the service, so losing it means the watch
-		// app is gone rather than that the archer picked the wrong device.
-		return { ok: false, reason: 'no-service', detail: messageOf(error) };
+		await quietly(() => incoming.remove());
+		await quietly(() => gone.remove());
+		// A remembered watch out of range, off, or simply left at home: ordinary, and not a fault the
+		// archer can act on beyond bringing the watch closer.
+		const reason = failureOf(error, remembered ? 'not-found' : 'failed');
+		return { ok: false, reason, detail: messageOf(error) };
 	}
 
 	return {
@@ -107,20 +133,29 @@ export async function connect(
 			id,
 			channel: {
 				/**
-				 * Without response: an end is asserted whole and asserted again if it never lands, so
-				 * waiting for the watch to confirm each write buys nothing and costs a round trip. The
-				 * plugin serialises its own calls, so two overlapping ends cannot collide the way they
-				 * can in the browser.
+				 * Without response: a message is asserted whole and asserted again if it never lands,
+				 * so waiting for the watch to confirm each write buys a round trip and nothing else.
+				 * The queue is in `Wrist.java`, because the stack carries one write at a time.
 				 */
-				send: (bytes) =>
-					BleClient.writeWithoutResponse(id, WATCH_SERVICE, TO_WATCH, viewOf(bytes))
+				send: async (bytes) => {
+					await Wrist.send({ text: new TextDecoder().decode(bytes) });
+				}
 			},
 			disconnect: () => {
 				closing = true;
-				void quietly(() => BleClient.disconnect(id));
+				void quietly(() => incoming.remove());
+				void quietly(() => gone.remove());
+				void quietly(() => Wrist.disconnect());
 			}
 		}
 	};
+}
+
+/** The reasons `Wrist.java` rejects with, which are the card's own vocabulary already. */
+function failureOf(error: unknown, fallback: ConnectFailure): ConnectFailure {
+	const message = messageOf(error) ?? '';
+	const known: ConnectFailure[] = ['no-service', 'no-permission', 'bluetooth-off', 'not-found'];
+	return known.find((reason) => message.includes(reason)) ?? fallback;
 }
 
 /**
