@@ -58,8 +58,8 @@ the workout it was run to, the splits and the per block results.
 
 | What | Where | Travels |
 | --- | --- | --- |
-| The run: numbers, clock, workout snapshot, splits, block results | `activity.measurements`, JSON | yes, with the activity |
-| The fixes | `run_point`, a row each | no |
+| The run: numbers, clock, workout snapshot, splits, block results, heart figures | `activity.measurements`, JSON | yes, with the activity |
+| The fixes, and the beat measured at each of them | `run_point`, a row each | no |
 | The programmes | `run_workout` | no, yet |
 
 The fixes are rows rather than JSON on the activity because a run is thousands of them, written while
@@ -70,6 +70,38 @@ activity and is the same on every device; the raw trace stays on the phone that 
 tables carry what they need to start travelling the day the server learns about them: `run_workout`
 has the sync columns already. Adding them to sync is a Supabase migration plus an entry in
 `src/lib/db/synced.ts`, see `doc/migration.md`.
+
+## Reading it back
+
+A finished run is read two ways, a tab apart. The kilometres are the answer to *how did it go*; the
+graph is the answer to *why*, and the two are rarely the same question.
+
+`src/lib/domain/run/series.ts` turns the stored track into one sample per counted fix: the clock, the
+distance, the pace over the same window the live screen uses, the height above where the run started,
+and the beat. The gates in `track.ts` run over it again, so the line and the total agree about what
+the run was rather than being two readings of one track. The samples are thinned to the width of the
+screen before anything is drawn, because a run is thousands of fixes and a path with more points than
+pixels is cost with nothing drawn for it.
+
+The three lines share the ground and nothing else: a pace in seconds, a climb in metres and a beat a
+minute have no axis in common, so each keeps its own scale and says the range it covers underneath.
+Pace is drawn upside down, because a smaller number is a faster runner. The ground is distance until
+it is tapped for time, which is the difference between a hill and a red light.
+
+## In and out as GPX
+
+`src/lib/domain/run/gpx.ts` is the format the rest of the world reads. It is domain code and scans
+the text rather than parsing a document, because a DOM is a browser and this has to be testable
+without one.
+
+A run exports its track as it was stored. A run with nothing in it yet offers to read one in: the
+file becomes `run_point` rows and the totals are worked out here through the same gates rather than
+taken from the file, so an imported run and a recorded one add up the same way and the graph reads
+one shape. What a GPX does not carry, this does not invent: there is no accuracy and no measured
+speed in a file, so those are null and only the distance floor has anything to say about a point.
+
+The heart rate rides in Garmin's `TrackPointExtension`, which is not part of GPX and is what
+everybody implements, the watch this was written against included.
 
 ## Tracking on Android
 
@@ -134,15 +166,100 @@ kinds in its own words, as `KeypadActivity` names everything else.
 
 ### The pages
 
-`RunView` is pages, a tap, a fling or a crown detent apart, with dots saying which one is up:
+`RunView` is pages, a drag, a fling or a crown detent apart, with dots saying which one is up:
 
 | Page | What it is for |
 | --- | --- |
 | Ready | before the start: what the programme asks for, and the button that begins it |
+| Pace | am I too fast or too slow: the pace now, over a line of the last few minutes, with the target drawn across it |
 | Block | the block being run: what is left of it, and the pace against its target |
 | Run | the run's own totals: clock, distance, average pace |
 | Next | the block coming, and at what pace |
+| Heart | the beat off this wrist, and where it has been. Only where there is a sensor to read |
 | Controls | pause, resume, finish, and whether to hold the screen awake. A swipe to the right away from the rest |
+
+A run opens on the block, or on its own totals where there is no programme, because that is what it
+is being run from; the pace page is one turn above it rather than in the way. The pages come round:
+off the bottom is back to the top, because there are five of them at most and they are turned with a
+wet thumb mid run, so reaching one two behind is never a decision about which way is shorter.
+
+The pace page's graph is the block's while there is a programme, and the whole run's when there is
+not: a line that ran on through a recovery would say the runner had fallen apart.
+
+Both graphs are drawn the same way. The two ends of what the line actually covered are ruled across
+it, dotted and grey, with the figure each is worth written in white at the left: two rules rather
+than an even scale, because what a runner wants off a graph this size is how far the worst of it
+went, and a grid of round numbers can miss both ends of a narrow range. The pace target is a third
+rule in green, the colour work already wears: the line to be on. Those figures own the left of the
+box and the line begins after them, because a line drawn through digits is neither.
+
+Under the graph is the ground it covers, in three marks in the same white: how far back it starts,
+the middle of it, and the right hand end, which is always now. Counted back from now rather than
+given as the run's own clock, because what is being asked is how long ago something happened, and a
+figure that has to be subtracted from another one first is a figure nobody reads mid run. Tapped to
+swap between minutes and metres, as the pace figures are tapped to swap their unit. The scale starts
+where the line does rather than at the edge of the box, or it would be a scale under nothing.
+
+A page with a graph lays itself out differently. The graph wants the middle of the glass, which is
+the widest part of a round screen and the only band a line is worth drawing across, so the pair of
+figures gives up its room, the headline closes up and grows, and the grey line under it drops
+towards the bottom edge where there was room nothing was using. Its height is a fifth of the glass
+rather than a fixed measure: the figures above it are in sp and do not shrink with the watch, so a
+graph that did not would push that line off the bottom of a smaller screen.
+
+Neither graph comes from the phone. The frame says where the run is, never where it has been, and a
+history on the wire would be a message the size of the run on a link the size of a sentence. So the
+watch keeps its own last few minutes of each, which is all either graph is for.
+
+### Following the finger
+
+A drag moves the page under it from the moment it is plainly a drag, and brings the next one up
+behind it from the edge it is coming from. Let go far enough in and the page turns; let go short of
+that, or pull back the other way, and both go back where they were with nothing having happened.
+What a drag does is decided when it ends rather than when it starts, which is what makes it safe to
+try, and it is the gesture the watch has already taught its owner with the shade it pulls down over
+everything else.
+
+That is why `RunView` holds two panels rather than one column filled from whichever page is showing:
+both pages are on the screen at once for as long as the drag lasts, and one column cannot be in two
+states at the same time. An edge with nothing behind it gives a little and comes straight back,
+because an edge that does not move at all reads as a screen that has stopped listening.
+
+The controls follow the finger the same way, sideways, and always in the same direction whichever
+way the drag went: out to the left and in from the right, because the mirror of that is how Wear
+closes an app.
+
+A turn of the crown lands on the neighbouring page through the same animation from a standing start.
+It goes the way a list scrolls, the content moving against the finger rather than with it.
+
+### The heart rate
+
+The watch is the only thing in a run that touches the runner, so it is the only thing that can
+measure a heart, and it is the one figure of a run that travels upwards. `Heart.java` registers
+`TYPE_HEART_RATE` while a run is live and never between runs: a photoplethysmograph is a light held
+against the skin, and a light left on is most of a watch's battery over an hour. It passes at most
+one reading every few seconds, because a graph drawn from a beat a second is the same graph.
+
+`hr` is a message type of its own and is not held to the twenty bytes the buttons are. A button has
+to work on a link that never negotiated an MTU, because a pause that only sometimes pauses is worse
+than none; a beat lost is a few seconds missing from a graph, and a link that small carries no run
+frames either, so there would be nothing on the wrist to measure against.
+
+The phone is what records it. A beat is kept until a fix lands and is written on that fix, so the
+heart rate is read back exactly where the runner was when it was measured, which is what the graph
+draws and what a GPX wants. A sample older than twenty seconds is not written at all: the wrist is
+out of range or the sensor has lost the skin, and a fix stamped with it would be claiming a reading
+nobody took.
+
+With the page frozen, `RunFrames` buffers the beats exactly as it composes the frames, and hands
+them back through `claim` with the rest of what it did. They carry the moment each was taken, so the
+page puts every one of them on the fix it belongs to rather than stamping a whole batch with the
+newest. Buffered only while the page is quiet, because a sample kept twice is a sample averaged
+twice.
+
+`BODY_SENSORS` is asked for on the way into a run rather than on a settings screen nobody visits,
+which is where the phone asks for its own. Refused, the run is a run without a heart rate, and the
+page for it is not offered at all.
 
 The controls are a page of their own and never on the block page. A run is stopped once and read a
 hundred times, and a stop button under a thumb mid stride is a run lost. Finish is asked twice, for

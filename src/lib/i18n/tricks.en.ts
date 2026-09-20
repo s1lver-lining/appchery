@@ -294,6 +294,18 @@ export const tricksEn = {
 					body: 'Starting a run starts a service of its own, so the screen can go off and the phone can go in a pocket without losing the middle of the run. The notification it leaves behind is the way back to the numbers. In a browser there is no such service: a sleeping tab stops recording, and the run says so.'
 				},
 				{
+					lead: 'A run you already have a file for.',
+					body: 'A run with nothing in it yet offers to read a GPX. The file becomes the run: its track, its splits, its climb and whatever heart rate it carries, worked out here rather than trusted, so an imported run and a recorded one add up the same way. A finished run exports the same file back out, extensions and all.'
+				},
+				{
+					lead: 'The kilometres are one reading of a run, not the only one.',
+					body: 'The tab beside them draws the pace, the climb and the heart rate over each other, any of the three at a time. It runs against distance until you tap for time, which is the difference between a hill and a red light.'
+				},
+				{
+					lead: 'The watch measures the heart rate, and asks the first time.',
+					body: 'Start a run with a watch linked and it asks for the sensor once, then reads the wrist for as long as the run lasts. The beat goes up to the phone and is written on the fixes, so it is in the graph and in the exported GPX afterwards. Its own page on the watch keeps the last few minutes as a line.'
+				},
+				{
 					lead: 'The watch buzzes when the block changes.',
 					body: 'A linked watch shows the run as it happens: what is left of the block, the pace you are meant to be holding and the one you are holding. When a block ends it buzzes twice and wakes its screen, so an interval session can be run without looking at anything.'
 				}

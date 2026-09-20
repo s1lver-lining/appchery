@@ -4,12 +4,15 @@
 	import {
 		EFFORTS,
 		clock,
+		distanceParts,
 		emptyRun,
 		parseRun,
 		type Effort,
 		type RunRecord
 	} from '$lib/domain/running';
-	import { paceOf } from '$lib/domain/run/track';
+	import { heartOf, paceOf, replayTracked, type TrackedFix } from '$lib/domain/run/track';
+	import { parseGpx, toGpx } from '$lib/domain/run/gpx';
+	import { samplesOf, type RunSample } from '$lib/domain/run/series';
 	import {
 		emptyWorkout,
 		flatten,
@@ -21,7 +24,16 @@
 	import { exercise } from '$lib/domain/exercises';
 	import { goto } from '$app/navigation';
 	import { withOrigin } from '$lib/nav';
-	import { listRunWorkouts, markWorkoutUsed, saveRunWorkout, type ActivityRow } from '$lib/db/repository';
+	import {
+		appendRunPoints,
+		clearRunPoints,
+		listRunPoints,
+		listRunWorkouts,
+		markWorkoutUsed,
+		saveRunWorkout,
+		type ActivityRow
+	} from '$lib/db/repository';
+	import { shareFile } from '$lib/files';
 	import { LiveRun } from '$lib/run/live.svelte';
 	import { canTrack } from '$lib/run/source';
 	import type { Load, MuscleId } from '$lib/domain/muscles';
@@ -30,6 +42,8 @@
 	import MuscleBoard from '$lib/ui/MuscleBoard.svelte';
 	import LiveRunView from '$lib/ui/run/LiveRun.svelte';
 	import ManualRun from '$lib/ui/run/ManualRun.svelte';
+	import RunGraph from '$lib/ui/run/RunGraph.svelte';
+	import { sayDistance } from '$lib/ui/run/distance';
 
 	/**
 	 * A run: set up, run, and looked at afterwards, or simply written down.
@@ -144,6 +158,86 @@
 	};
 
 	const summaryOf = (workout: RunWorkout) => workoutSummary(workout, $t);
+
+	/**
+	 * The track itself, read once a run is over. The splits and the totals live on the activity, but
+	 * the graph is the fixes, and there is no point holding thousands of them while one is running.
+	 */
+	let samples = $state<RunSample[]>([]);
+	let tab = $state<'splits' | 'graph'>('splits');
+	let importing = $state(false);
+	let importFailed = $state(false);
+
+	$effect(() => {
+		const id = activity.id;
+		if (status !== 'done') {
+			samples = [];
+			return;
+		}
+		listRunPoints(id).then((points) => {
+			if (activity.id === id) samples = samplesOf(points);
+		});
+	});
+
+	/** The run as the rest of the world reads one, handed to whatever the phone shares files with. */
+	async function exportGpx() {
+		const points = await listRunPoints(activity.id);
+		if (points.length === 0) return;
+		const name = record?.workout?.name?.trim() || $t('running.title');
+		const day = new Date(record?.live?.startedAt ?? points[0].at).toISOString().slice(0, 10);
+		const text = toGpx(points, name, record?.live?.startedAt ?? null);
+		await shareFile(new Blob([text], { type: 'application/gpx+xml' }), `${day} ${name}.gpx`, name);
+	}
+
+	/**
+	 * Somebody else's watch, read in as a run of ours.
+	 *
+	 * The file is the track and nothing else: the totals are worked out here through the same gates
+	 * a tracked run is measured by, so a run imported and a run recorded add up the same way and the
+	 * graph reads one shape. Only ever into a run with nothing in it yet, which is why the button is
+	 * gone the moment there is.
+	 */
+	async function importGpx(file: File) {
+		if (!run.record) return;
+		importing = true;
+		importFailed = false;
+		try {
+			const read = parseGpx(await file.text());
+			if (read.fixes.length < 2) {
+				importFailed = true;
+				return;
+			}
+			await clearRunPoints(activity.id);
+			await appendRunPoints(activity.id, read.fixes);
+			const track = replayTracked(read.fixes);
+			const last = read.fixes[read.fixes.length - 1];
+			const beats = heartOf(read.fixes);
+			run.record.mode = 'tracked';
+			run.record.live = {
+				status: 'done',
+				startedAt: read.startedAt,
+				baseSeconds: last.elapsedSeconds,
+				legStartedAt: null,
+				stepKey: null,
+				stepFrom: { seconds: 0, distanceM: 0 }
+			};
+			run.record.distanceM = Math.round(track.distanceM) || null;
+			run.record.durationSeconds = Math.round(last.elapsedSeconds) || null;
+			run.record.splits = track.splits;
+			run.record.elevationGainM = Math.round(track.elevationGainM);
+			run.record.averageHeartRate = beats?.average ?? null;
+			run.record.maxHeartRate = beats?.max ?? null;
+			run.record.steps = [];
+			await run.persist();
+			samples = samplesOf(read.fixes as TrackedFix[]);
+			onchange();
+		} finally {
+			importing = false;
+		}
+	}
+
+	/** The run's own total, which is the one distance read to the hundred metres rather than the metre. */
+	const total = $derived(distanceParts(record?.distanceM ?? 0, 2));
 </script>
 
 {#if record && tracked && (status === 'running' || status === 'paused')}
@@ -206,14 +300,38 @@
 			<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('manual')}>
 				{$t('running.switchToHand')}
 			</button>
+
+			<!--
+				A file from another watch, read in as a run of this one. Only while there is nothing to
+				lose: a run already recorded is not something an import should be able to walk over.
+			-->
+			<label class="press block w-full cursor-pointer py-2 text-center text-sm text-muted">
+				<span class="mr-1 inline-block align-[-3px] rotate-180"><Icon name="download" size={16} /></span>
+				{importing ? $t('running.importing') : $t('running.importGpx')}
+				<input
+					class="hidden"
+					type="file"
+					accept=".gpx,application/gpx+xml,text/xml"
+					onchange={(event) => {
+						const file = event.currentTarget.files?.[0];
+						event.currentTarget.value = '';
+						if (file) void importGpx(file);
+					}}
+				/>
+			</label>
+			{#if importFailed}
+				<p class="text-center text-xs text-danger">{$t('running.importFailed')}</p>
+			{/if}
 		{/if}
 
 		{#if tracked && status === 'done'}
 			<!-- What it came to. The tracked figures lead, and the fields under them are for putting right. -->
 			<section class="rounded-2xl border border-line bg-surface p-4 text-center">
 				<p class="text-5xl leading-none font-bold tabular">
-					{((record.distanceM ?? 0) / 1000).toFixed(2)}
-					<span class="text-lg font-medium text-muted">{$t('running.km')}</span>
+					{total.value}
+					<span class="text-lg font-medium text-muted">
+						{total.unit === 'km' ? $t('running.km') : $t('running.metresShort')}
+					</span>
 				</p>
 				<div class="mt-3 grid grid-cols-3 gap-2 text-sm">
 					<div>
@@ -228,25 +346,69 @@
 					</div>
 					<div>
 						<p class="text-xl font-bold tabular">
-							{record.elevationGainM ?? 0}{$t('running.metresShort')}
+							{sayDistance(record.elevationGainM ?? 0, $t)}
 						</p>
 						<p class="text-xs text-muted">{$t('running.elevation')}</p>
 					</div>
 				</div>
+
+				{#if record.averageHeartRate}
+					<!-- Beside the rest rather than on a card of its own: it is a figure of the run. -->
+					<div class="mt-3 flex items-center justify-center gap-4 border-t border-line pt-3 text-sm">
+						<span class="flex items-center gap-1.5" style="color:var(--c-run-heart)">
+							<Icon name="heart" size={16} filled />
+							<span class="font-bold tabular">
+								{$t('running.bpmValue', { n: record.averageHeartRate })}
+							</span>
+						</span>
+						{#if record.maxHeartRate}
+							<span class="text-muted tabular">
+								{$t('running.heartMax', { n: record.maxHeartRate })}
+							</span>
+						{/if}
+					</div>
+				{/if}
+
+				<button class="press mt-3 w-full py-1 text-sm font-medium text-brand-text" onclick={exportGpx}>
+					<span class="mr-1 inline-block align-[-3px]"><Icon name="download" size={16} /></span>
+					{$t('running.exportGpx')}
+				</button>
 			</section>
 
-			{#if record.splits.length > 0}
+			{#if record.splits.length > 0 || samples.length > 1}
 				<section class="rounded-2xl border border-line bg-surface p-4">
-					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.splits')}</h2>
-					<ul class="space-y-1">
-						{#each record.splits as split (split.index)}
-							<li class="flex items-center gap-3 text-sm tabular">
-								<span class="w-14 text-muted">{$t('running.splitNumber', { n: split.index })}</span>
-								<span class="flex-1 font-semibold">{clock(split.seconds)}</span>
-								<span class="text-xs text-muted">{formatPace(split.seconds)} {$t('running.perKm')}</span>
-							</li>
+					<!-- Two readings of the same run: what each kilometre came to, and why it did. -->
+					<div class="mb-3 grid grid-cols-2 gap-1 rounded-lg border border-line bg-sunk p-0.5">
+						{#each [{ key: 'splits', label: $t('running.splits') }, { key: 'graph', label: $t('running.graph') }] as option (option.key)}
+							<button
+								class="press truncate rounded-md px-2 py-1.5 text-xs font-medium {tab === option.key
+									? 'bg-brand text-brand-ink'
+									: 'text-muted'}"
+								aria-pressed={tab === option.key}
+								onclick={() => (tab = option.key as 'splits' | 'graph')}
+							>
+								{option.label}
+							</button>
 						{/each}
-					</ul>
+					</div>
+
+					{#if tab === 'splits'}
+						<ul class="space-y-1">
+							{#each record.splits as split (split.index)}
+								<li class="flex items-center gap-3 text-sm tabular">
+									<span class="w-14 text-muted">{$t('running.splitNumber', { n: split.index })}</span>
+									<span class="flex-1 font-semibold">{clock(split.seconds)}</span>
+									<span class="text-xs text-muted">{formatPace(split.seconds)} {$t('running.perKm')}</span>
+								</li>
+							{:else}
+								<li class="py-4 text-center text-xs text-muted">{$t('running.noSplits')}</li>
+							{/each}
+						</ul>
+					{:else if samples.length > 1}
+						<RunGraph {samples} />
+					{:else}
+						<p class="py-8 text-center text-xs text-muted">{$t('running.noTrack')}</p>
+					{/if}
 				</section>
 			{/if}
 
@@ -258,7 +420,7 @@
 							<li class="flex items-center gap-3 text-sm">
 								<span class="min-w-0 flex-1 truncate">{stepName(step.key)}</span>
 								<span class="tabular text-muted">
-									{(step.distanceM / 1000).toFixed(2)} {$t('running.km')} · {clock(step.seconds)}
+									{sayDistance(step.distanceM, $t)} · {clock(step.seconds)}
 								</span>
 								<span class="w-14 text-right font-semibold tabular">
 									{formatPace(paceOf(step.distanceM, step.seconds)) || '–:--'}
@@ -280,10 +442,34 @@
 				<ManualRun run={record} onchange={edited} />
 			</section>
 
-			{#if canTrack() && record.distanceM === null && record.durationSeconds === null}
-				<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('tracked')}>
-					{$t('running.switchToTrack')}
-				</button>
+			{#if record.distanceM === null && record.durationSeconds === null}
+				{#if canTrack()}
+					<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('tracked')}>
+						{$t('running.switchToTrack')}
+					</button>
+				{/if}
+
+			<!--
+				A file from another watch, read in as a run of this one. Only while there is nothing to
+				lose: a run already recorded is not something an import should be able to walk over.
+			-->
+			<label class="press block w-full cursor-pointer py-2 text-center text-sm text-muted">
+				<span class="mr-1 inline-block align-[-3px] rotate-180"><Icon name="download" size={16} /></span>
+				{importing ? $t('running.importing') : $t('running.importGpx')}
+				<input
+					class="hidden"
+					type="file"
+					accept=".gpx,application/gpx+xml,text/xml"
+					onchange={(event) => {
+						const file = event.currentTarget.files?.[0];
+						event.currentTarget.value = '';
+						if (file) void importGpx(file);
+					}}
+				/>
+			</label>
+			{#if importFailed}
+				<p class="text-center text-xs text-danger">{$t('running.importFailed')}</p>
+			{/if}
 			{/if}
 		{/if}
 

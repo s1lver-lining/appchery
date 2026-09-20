@@ -126,6 +126,15 @@
 	--c-run-cooldown-soft: #eeeae3;
 
 	/*
+	 * The three lines a finished run is read as. Blue, red and grey rather than three points of the
+	 * same wheel: the graph draws them over each other, and the pair that has to stay apart under
+	 * deuteranopia is the pace and the heart rate, which is the pair a runner compares.
+	 */
+	--c-run-pace: #1a6ba8;
+	--c-run-heart: #a3392c;
+	--c-run-climb: #7a7167;
+
+	/*
 	 * How far a measurement sits from where it should be: right, off, and wrong. Used by the tuning
 	 * scales, where the colour is the reading and the number beside it only says how much.
 	 */
@@ -178,6 +187,10 @@
 		--c-run-recovery-soft: #192630;
 		--c-run-cooldown: #a2988a;
 		--c-run-cooldown-soft: #241f1a;
+		/* Their own steps again: the light three sink into a surface that is nearly black. */
+		--c-run-pace: #4f9ac9;
+		--c-run-heart: #c04a55;
+		--c-run-climb: #a2988a;
 		--c-band-good: #5fb07f;
 		--c-band-fair: #e0a052;
 		--c-band-poor: #e0776a;

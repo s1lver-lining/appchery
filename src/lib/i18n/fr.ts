@@ -1556,7 +1556,20 @@ insetHint:
 		blockTarget: 'à {pace}',
 		blockDone: 'fait',
 		blockResults: 'Bloc par bloc',
-		correct: 'Modifier les données'
+		correct: 'Modifier les données',
+		graph: 'Graphique',
+		graphNothing: 'Rien de choisi à tracer.',
+		noTrack: "Cette course n'a gardé aucune trace à tracer.",
+		height: 'Altitude',
+		heart: 'Cardio',
+		heartMax: 'pic {n}',
+		bpmValue: '{n} bpm',
+		alongDistance: 'Par distance',
+		alongTime: 'Par temps',
+		exportGpx: 'Exporter en GPX',
+		importGpx: 'Importer un fichier GPX',
+		importing: 'Lecture du fichier',
+		importFailed: 'Aucune trace dans ce fichier.'
 	},
 	workouts: {
 		title: 'Programmes',

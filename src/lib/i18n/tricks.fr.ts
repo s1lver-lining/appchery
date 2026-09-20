@@ -291,6 +291,18 @@ export const tricksFr: TricksDictionary = {
 				{
 					lead: 'La montre vibre au changement de bloc.',
 					body: "Une montre connectée affiche la sortie en direct : ce qu'il reste du bloc, l'allure visée et celle que vous tenez. À la fin d'un bloc, elle vibre deux fois et allume son écran : un fractionné se court sans rien regarder."
+				},
+				{
+					lead: 'Une sortie dont vous avez déjà le fichier.',
+					body: "Une sortie encore vide propose de lire un GPX. Le fichier devient la sortie : sa trace, ses kilomètres, son dénivelé et la fréquence cardiaque qu'il porte, recalculés ici plutôt que crus sur parole, si bien qu'une sortie importée et une sortie enregistrée s'additionnent pareil. Une sortie terminée réexporte le même fichier."
+				},
+				{
+					lead: 'Les kilomètres sont une lecture de la sortie, pas la seule.',
+					body: "L'onglet à côté trace l'allure, le dénivelé et le cardio les uns sur les autres, au choix. Il court en distance jusqu'à ce que vous demandiez le temps, ce qui fait toute la différence entre une côte et un feu rouge."
+				},
+				{
+					lead: 'La montre mesure le cardio, et le demande la première fois.',
+					body: "Lancez une sortie avec une montre liée : elle demande le capteur une fois, puis lit le poignet tant que la sortie dure. Le battement remonte au téléphone et s'écrit sur les points, donc il est dans le graphique et dans le GPX exporté. Sur la montre, il a sa page, avec les dernières minutes tracées."
 				}
 			]
 		},
