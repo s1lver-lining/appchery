@@ -30,6 +30,7 @@
 		showHalfBreak,
 		showCelebrations,
 		keepScreenAwake,
+		maxHeartRate,
 		weekStartsOnSunday,
 		plotBadgeSide,
 		sheetHeight,
@@ -737,6 +738,31 @@
 							label={$t('settings.awakeTitle')}
 							onchange={(v) => keepScreenAwake.set(v)}
 						/>
+					</div>
+
+					<!-- What a beat a minute is worth, which is the only thing that makes one worth showing. -->
+					<div id="setting-maxHeart" class:flash={flashing === 'maxHeart'} class="mt-4">
+						<p class="font-medium">{$t('settings.maxHeartTitle')}</p>
+						<p class="mt-0.5 text-sm text-muted">{$t('settings.maxHeartHint')}</p>
+						<span class="mt-2 flex items-center gap-2">
+							<input
+								class="tabular w-24 rounded-lg border border-line bg-bg px-3 py-2 text-lg"
+								type="number"
+								inputmode="numeric"
+								min="120"
+								max="230"
+								placeholder="—"
+								aria-label={$t('settings.maxHeartTitle')}
+								value={$maxHeartRate || ''}
+								onchange={(e) => {
+									const said = Number(e.currentTarget.value);
+									// Outside this it is a typing slip rather than a heart, and zero is the
+									// way to say nothing at all, which is what the app starts out knowing.
+									maxHeartRate.set(said >= 120 && said <= 230 ? Math.round(said) : 0);
+								}}
+							/>
+							<span class="text-sm text-muted">{$t('running.bpm')}</span>
+						</span>
 					</div>
 
 					<div id="setting-drift" class:flash={flashing === 'drift'} class="mt-4 flex items-start justify-between gap-4">

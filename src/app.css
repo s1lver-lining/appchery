@@ -130,6 +130,17 @@
 	 * same wheel: the graph draws them over each other, and the pair that has to stay apart under
 	 * deuteranopia is the pace and the heart rate, which is the pair a runner compares.
 	 */
+	/*
+	 * The five heart rate zones, cool to hot, which is the one order everybody already reads a scale
+	 * of effort in. Kept apart from the block colours: a block is what a stretch is for and a zone is
+	 * what it cost, and the two are shown side by side.
+	 */
+	--c-zone-1: #7a8b99;
+	--c-zone-2: #1a6ba8;
+	--c-zone-3: #2f7d4f;
+	--c-zone-4: #b87a26;
+	--c-zone-5: #a3392c;
+
 	--c-run-pace: #1a6ba8;
 	--c-run-heart: #a3392c;
 	--c-run-climb: #7a7167;
@@ -188,6 +199,13 @@
 		--c-run-cooldown: #a2988a;
 		--c-run-cooldown-soft: #241f1a;
 		/* Their own steps again: the light three sink into a surface that is nearly black. */
+		/* Their own steps again, or the cool end of the scale disappears into the surface. */
+		--c-zone-1: #8b99a5;
+		--c-zone-2: #4f9ac9;
+		--c-zone-3: #5fb07f;
+		--c-zone-4: #d99b47;
+		--c-zone-5: #c04a55;
+
 		--c-run-pace: #4f9ac9;
 		--c-run-heart: #c04a55;
 		--c-run-climb: #a2988a;

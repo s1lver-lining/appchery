@@ -66,6 +66,11 @@ public class RunView extends FrameLayout {
     /** --c-run-heart of src/app.css, dark: the heart is the same red on the wrist as on the phone. */
     private static final int HEART = 0xFFC04A55;
     private static final int HEART_TINT = 0xFF2B191B;
+    /**
+     * The five heart rate zones of src/app.css, dark, cool to hot. The ring wears the zone on the
+     * heart page: a run is spent glancing at a wrist, and a colour is read before a figure is.
+     */
+    private static final int[] ZONE = {0xFF8B99A5, 0xFF4F9AC9, 0xFF5FB07F, 0xFFD99B47, 0xFFC04A55};
 
     private static final int PAGE_PACE = 0;
     private static final int PAGE_BLOCK = 1;
@@ -1083,7 +1088,7 @@ public class RunView extends FrameLayout {
         else drawPage(front, page, seconds());
         if (moving() && coming >= 0 && !onControls) drawPage(back, coming, seconds());
 
-        ring.set(ambient || onControls ? 0f : progress(), paused ? MUTED : accent(run.kind));
+        ring.set(ambient || onControls ? 0f : progress(), ringInk(paused));
     }
 
     private void drawControls(boolean paused) {
@@ -1181,12 +1186,15 @@ public class RunView extends FrameLayout {
 
         p.headline.setTextSize(HEADLINE_BIG);
         p.headline.setText(heart > 0 ? String.valueOf(heart) : "--");
-        p.headline.setTextColor(INK);
+        p.headline.setTextColor(run.zone >= 1 && run.zone <= 5 ? ZONE[run.zone - 1] : INK);
         // Said rather than left blank: a sensor still looking for a pulse is not a sensor that failed.
-        p.caption.setText(heart > 0 ? "bpm" : (heartAvailable ? "looking for a pulse" : "no sensor"));
+        // The zone said as well as coloured: a colour alone is a thing to learn rather than read.
+        String said = run.zone >= 1 && run.zone <= 5 ? "bpm · zone " + run.zone : "bpm";
+        p.caption.setText(heart > 0 ? said : (heartAvailable ? "looking for a pulse" : "no sensor"));
 
         p.asGraph(true);
-        p.spark.set(hearts, heartCount, 0, false, HEART, String::valueOf);
+        p.spark.set(hearts, heartCount, 0, false,
+                run.zone >= 1 && run.zone <= 5 ? ZONE[run.zone - 1] : HEART, String::valueOf);
         p.alignScale();
         drawScale(p, heartAtSeconds, heartAtMetres, heartCount);
         p.footer.setText(clock(elapsed) + "   " + distance(run.metres));
@@ -1354,7 +1362,10 @@ public class RunView extends FrameLayout {
 
     /** How much of the block is done, for the ring. Nothing to show where the block is open ended. */
     private float progress() {
-        if (run == null || !run.hasBlock) return 0f;
+        if (run == null) return 0f;
+        // The heart page's ring is a colour rather than a measurement, so it goes all the way round.
+        if (!onControls && page == PAGE_HEART && run.zone >= 1 && run.zone <= 5) return 1f;
+        if (!run.hasBlock) return 0f;
         if (run.goalMetres > 0 && run.leftMetres >= 0) {
             return Math.min(1f, (run.goalMetres - run.leftMetres) / (float) run.goalMetres);
         }
@@ -1363,6 +1374,17 @@ public class RunView extends FrameLayout {
             return Math.min(1f, (run.goalSeconds - left) / (float) run.goalSeconds);
         }
         return 0f;
+    }
+
+    /**
+     * What colour the ring wears. The block's, ordinarily, because the ring is what is left of the
+     * block; on the heart page it is the zone, which is the one thing a glance at a wrist can carry
+     * that a figure cannot, and the page is being looked at for exactly that.
+     */
+    private int ringInk(boolean paused) {
+        if (paused) return MUTED;
+        if (!onControls && page == PAGE_HEART && run.zone >= 1 && run.zone <= 5) return ZONE[run.zone - 1];
+        return accent(run.kind);
     }
 
     private int paceInk() {

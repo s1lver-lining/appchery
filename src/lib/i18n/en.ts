@@ -1333,6 +1333,8 @@ export const en = {
 		badgeSideRight: 'Right',
 		badgeSideBow: 'My hand',
 		badgeSideLeft: 'Left',
+		maxHeartTitle: 'Highest heart rate',
+		maxHeartHint: 'What your own maximum is, so a run can say which zone it was run in. Left empty, the beat is shown as a number and nothing more.',
 		awakeTitle: 'Keep the screen on while scoring',
 		awakeHint:
 			'Holds the screen awake until the round is finished, for scoring from the phone in your hand. It costs battery. The shooting clock holds it either way.',
@@ -1555,6 +1557,8 @@ insetHint:
 		routePlain: 'Plain route',
 		route: 'Where it went',
 		fastestKm: 'fastest',
+		zones: 'Where the effort went',
+		zoneName: 'Zone {n}',
 		bpm: 'bpm',
 		scrubHint: 'Hold the graph to read it.',
 		graph: 'Graph',

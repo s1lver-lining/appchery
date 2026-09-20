@@ -19,6 +19,9 @@ import {
 import { elapsed, emptyLive, type RunRecord, type StepResult } from '$lib/domain/running';
 import { appendRunPoints, clearRunPoints, listRunPoints, updateRun } from '$lib/db/repository';
 import { screenLock } from '$lib/ui/wakeLock';
+import { zoneOf } from '$lib/domain/run/zones';
+import { maxHeartRate } from '$lib/prefs';
+import { get } from 'svelte/store';
 import { commit, tap, warn } from '$lib/haptics';
 import { trackingSource, type Source, type StartFailure } from './source';
 import { acceptHeart, acceptRunCommands, endMirroredRun, mirrorRun } from '$lib/watch/mirror';
@@ -182,6 +185,7 @@ export class LiveRun {
 					}
 				: null,
 			freeSeconds: this.freeSeconds,
+			zone: zoneOf(this.heart, get(maxHeartRate)),
 			next: after
 				? {
 						kind: after.kind,
@@ -438,6 +442,7 @@ export class LiveRun {
 			averagePace: glance.averagePace,
 			cue: glance.cue,
 			freeSeconds: glance.freeSeconds,
+			zone: glance.zone,
 			block: glance.step
 				? {
 						kind: glance.step.kind,
@@ -668,6 +673,8 @@ export interface RunGlance {
 	cue: number;
 	/** Seconds since the programme ran out, or null while there is still a block to run. */
 	freeSeconds: number | null;
+	/** Which zone the beat off the wrist is in, for the wrist to colour itself by. */
+	zone: number | null;
 	step: {
 		kind: BlockKind;
 		label: string | null;

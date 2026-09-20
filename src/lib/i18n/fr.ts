@@ -1334,6 +1334,8 @@ export const fr: Dictionary = {
 		badgeSideRight: 'Droite',
 		badgeSideBow: 'Ma main',
 		badgeSideLeft: 'Gauche',
+		maxHeartTitle: 'Fréquence cardiaque maximale',
+		maxHeartHint: "Votre maximum à vous, pour qu'une sortie puisse dire dans quelle zone elle a été courue. Laissée vide, la fréquence reste un chiffre et rien de plus.",
 		awakeTitle: 'Garder l’écran allumé pendant le score',
 		awakeHint:
 			'Maintient l’écran allumé jusqu’à la fin du tir, pour marquer depuis le téléphone en main. Cela consomme de la batterie. Le chronomètre le fait de toute façon.',
@@ -1562,6 +1564,8 @@ insetHint:
 		routePlain: 'Parcours uni',
 		route: 'Le parcours',
 		fastestKm: 'le plus rapide',
+		zones: "Où l'effort est passé",
+		zoneName: 'Zone {n}',
 		bpm: 'bpm',
 		scrubHint: 'Maintenez le graphique pour le lire.',
 		graph: 'Graphique',

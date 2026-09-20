@@ -12,6 +12,7 @@
 	} from '$lib/domain/running';
 	import { heartOf, paceOf, replayTracked, type TrackedFix } from '$lib/domain/run/track';
 	import { parseGpx, toGpx } from '$lib/domain/run/gpx';
+	import { zoneOf } from '$lib/domain/run/zones';
 	import { pausesOf, samplesOf, type RunPause, type RunSample } from '$lib/domain/run/series';
 	import {
 		emptyWorkout,
@@ -44,6 +45,8 @@
 	import ManualRun from '$lib/ui/run/ManualRun.svelte';
 	import RunGraph from '$lib/ui/run/RunGraph.svelte';
 	import RunRoute from '$lib/ui/run/RunRoute.svelte';
+	import HeartZones from '$lib/ui/run/HeartZones.svelte';
+	import { maxHeartRate } from '$lib/prefs';
 	import { sayDistance } from '$lib/ui/run/distance';
 
 	/**
@@ -254,6 +257,9 @@
 		}
 	}
 
+	/** What the run averaged out at, in the runner's own terms, which is what colours the figure. */
+	const averageZone = $derived(zoneOf(record?.averageHeartRate ?? null, $maxHeartRate));
+
 	/** The run's own total, which is the one distance read to the hundred metres rather than the metre. */
 	const total = $derived(distanceParts(record?.distanceM ?? 0, 2));
 
@@ -404,7 +410,10 @@
 				{#if record.averageHeartRate}
 					<!-- Beside the rest rather than on a card of its own: it is a figure of the run. -->
 					<div class="mt-3 flex items-center justify-center gap-4 border-t border-line pt-3 text-sm">
-						<span class="flex items-center gap-1.5" style="color:var(--c-run-heart)">
+						<span
+							class="flex items-center gap-1.5"
+							style="color:{averageZone ? `var(--c-zone-${averageZone})` : 'var(--c-run-heart)'}"
+						>
 							<Icon name="heart" size={16} filled />
 							<span class="font-bold tabular">
 								{$t('running.bpmValue', { n: record.averageHeartRate })}
@@ -518,6 +527,10 @@
 						<p class="py-8 text-center text-xs text-muted">{$t('running.noTrack')}</p>
 					{/if}
 				</section>
+			{/if}
+
+			{#if $maxHeartRate > 0}
+				<HeartZones {fixes} max={$maxHeartRate} />
 			{/if}
 
 			{#if record.steps.length > 0}

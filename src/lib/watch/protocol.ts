@@ -85,6 +85,15 @@ export type Wire =
 			c: number;
 			/** Seconds since the programme ran out and the run carried on, counting up rather than down. */
 			fr?: number;
+			/**
+			 * Which zone the beat the watch is reading falls in, one to five.
+			 *
+			 * Worked out on the phone and sent back rather than worked out where it is measured,
+			 * because the zone is the beat against that runner's own maximum and the maximum is a
+			 * setting of the app. The wrist would otherwise need to be told it and kept up to date
+			 * with it, for a figure the phone can send in eight bytes.
+			 */
+			hz?: number;
 			k?: BlockKind;
 			/** What the block is called, cut by the sender. */
 			b?: string;
@@ -345,7 +354,7 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 				if (!BLOCK_KINDS.includes(m.nk as BlockKind)) break;
 				run.nk = m.nk as BlockKind;
 			}
-			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ngs', 'ngm', 'fr', 'ps', 'pd', 'pp'] as const) {
+			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ngs', 'ngm', 'fr', 'hz', 'ps', 'pd', 'pp'] as const) {
 				if (m[key] === undefined) continue;
 				if (!isFigure(m[key])) return { ok: false, reason: 'malformed' };
 				run[key] = m[key] as number;

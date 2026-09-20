@@ -159,6 +159,14 @@ export const weekStartsOnSunday = flag('appchery.weekStartsOnSunday', false);
 export const keepScreenAwake = flag('appchery.keepScreenAwake', false);
 
 /**
+ * The highest this heart has been seen to go, which is the only thing that turns a beat a minute
+ * into something worth reading. Zero until it is said: a hundred and sixty is an easy afternoon for
+ * one runner and everything another one has, and a guess from an age the app does not know would be
+ * a guess dressed up as a measurement.
+ */
+export const maxHeartRate = storedNumber('appchery.maxHeartRate', 0);
+
+/**
  * Whether a badge, a personal best or a level is announced over the middle of the screen.
  *
  * On by default. Off, everything is still awarded and still lands in the lists: the only thing that
