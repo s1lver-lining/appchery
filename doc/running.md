@@ -84,9 +84,39 @@ screen before anything is drawn, because a run is thousands of fixes and a path 
 pixels is cost with nothing drawn for it.
 
 The three lines share the ground and nothing else: a pace in seconds, a climb in metres and a beat a
-minute have no axis in common, so each keeps its own scale and says the range it covers underneath.
-Pace is drawn upside down, because a smaller number is a faster runner. The ground is distance until
-it is tapped for time, which is the difference between a hill and a red light.
+minute have no axis in common, so each keeps its own scale. Pace is drawn upside down, because a
+smaller number is a faster runner. The ground is distance until it is tapped for time, which is the
+difference between a hill and a red light.
+
+Two of the three write their figures down an edge, in their own colour: the pace down the left and
+the climb down the right, because that is the pair that is read together, and the heart takes
+whichever edge is going spare. With all three drawn there is no edge left for the beat, and it is
+read off the legend and off the finger instead, which is where a bpm is actually wanted. The edges
+are HTML rather than text in the drawing, because the drawing is stretched to fit and stretched text
+is unreadable.
+
+Holding the graph reads it at a point: the figures appear above it rather than in a bubble under the
+thumb that summoned them, a dot marks each line, and the route under it marks the same place. That
+last part is why the graph reports where the finger is rather than keeping it to itself.
+
+Under the kilometres, each one is a bar drawn against the run's own average rather than from zero.
+From zero every kilometre of a run is nearly the same length and the one that hurt is invisible;
+against the average it is the only one that is. The fastest says so.
+
+## Where it went
+
+`src/lib/domain/run/route.ts` projects the fixes and `RunRoute.svelte` draws them. Longitude is
+squeezed by the cosine of the latitude, which is what stops a five kilometre loop coming out
+stretched sideways, and the curvature over those few kilometres is smaller than the line is thick.
+The route is fitted into its box keeping its shape, because a route is a picture of somewhere real
+and one stretched to fill a box is a picture of somewhere else.
+
+There is no basemap under it, and that is a decision rather than a gap. The person reading it ran
+it, so the shape alone is enough to recognise the loop, see which way round it went and find where
+it doubled back. It also means a finished run draws itself with no network, nothing to attribute and
+nobody told where its owner runs. Tiles would be the opposite of all four, and the open ones that
+exist, OpenStreetMap's own raster tiles, OpenFreeMap, Protomaps, all involve either somebody else's
+server hearing about every run or a basemap shipped with the app.
 
 ## In and out as GPX
 
@@ -179,7 +209,9 @@ kinds in its own words, as `KeypadActivity` names everything else.
 | Controls | pause, resume, finish, and whether to hold the screen awake. A swipe to the right away from the rest |
 
 A run opens on the block, or on its own totals where there is no programme, because that is what it
-is being run from; the pace page is one turn above it rather than in the way. The pages come round:
+is being run from; the pace page is one turn above it rather than in the way. The Next page uses
+both halves of its figure row, one for what the block coming asks for and one for the pace it wants
+held: a page that hides half its row reads as one that lost something. The pages come round:
 off the bottom is back to the top, because there are five of them at most and they are turned with a
 wet thumb mid run, so reaching one two behind is never a decision about which way is shorter.
 
@@ -190,7 +222,9 @@ Both graphs are drawn the same way. The two ends of what the line actually cover
 it, dotted and grey, with the figure each is worth written in white at the left: two rules rather
 than an even scale, because what a runner wants off a graph this size is how far the worst of it
 went, and a grid of round numbers can miss both ends of a narrow range. The pace target is a third
-rule in green, the colour work already wears: the line to be on. Those figures own the left of the
+rule in green, the colour work already wears: the line to be on. The pace line itself is drawn a
+segment at a time, green where it was holding that target and red where it was not, because when it
+went is the question, and one colour answers only about this second. Those figures own the left of the
 box and the line begins after them, because a line drawn through digits is neither.
 
 Under the graph is the ground it covers, in three marks in the same white: how far back it starts,
@@ -230,7 +264,16 @@ way the drag went: out to the left and in from the right, because the mirror of 
 closes an app.
 
 A turn of the crown lands on the neighbouring page through the same animation from a standing start.
-It goes the way a list scrolls, the content moving against the finger rather than with it.
+It goes the way a list scrolls, the content moving against the finger rather than with it. A page
+landing ticks, because turning one is the thing on this screen done without looking.
+
+A grabber sits against the right edge while a run is on show. The controls are a swipe away and only
+the controls page said so, which is no use to anybody who never found it; a bar rather than a sliver
+of the page itself, because the sliver of a page whose background is black is black.
+
+In ambient the graph stays up, in white. It is the one thing on the screen that does not have to be
+live to be worth reading: what it says is where the last few minutes went, and that is as true
+twenty seconds later as when it was drawn.
 
 ### The heart rate
 
@@ -239,6 +282,12 @@ measure a heart, and it is the one figure of a run that travels upwards. `Heart.
 `TYPE_HEART_RATE` while a run is live and never between runs: a photoplethysmograph is a light held
 against the skin, and a light left on is most of a watch's battery over an hour. It passes at most
 one reading every few seconds, because a graph drawn from a beat a second is the same graph.
+
+A full run frame is within a couple of bytes of what one write can carry, so the sender trims rather
+than trusting a worst case somebody worked out once: `fitRun` drops from a list of what matters
+least until the message fits, starting with what the *next* block asks for and never touching the
+figures of the block being run. `RunFrames.java` does the same, in the same order, for the frames it
+composes while the page is asleep.
 
 `hr` is a message type of its own and is not held to the twenty bytes the buttons are. A button has
 to work on a link that never negotiated an MTU, because a pause that only sometimes pauses is worse
