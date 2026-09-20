@@ -128,6 +128,7 @@ public class RunView extends FrameLayout {
     private final LinearLayout controls;
     private final TextView hold;
     private final TextView finish;
+    private final TextView lap;
     private final TextView awake;
     private final TextView alwaysOn;
     private final TextView ambientNote;
@@ -312,6 +313,18 @@ public class RunView extends FrameLayout {
             draw();
         });
         controls.addView(row(context, awake, alwaysOn), rowSize(px(6)));
+
+        /*
+         * A lap of its own, under the pairs. It is the one button here that cannot cost anything:
+         * pressing it by accident leaves an extra line in a list, where every other button on this
+         * page changes what the run is doing.
+         */
+        lap = button(context, "Lap", SURFACE, INK);
+        lap.setOnClickListener(view -> {
+            buzz();
+            ask("lap");
+        });
+        controls.addView(lap, rowSize(px(6)));
 
         /*
          * Asking for ambient is not the same as being given it: with the watch's own always-on

@@ -533,6 +533,26 @@
 				<HeartZones {fixes} max={$maxHeartRate} />
 			{/if}
 
+			{#if record.laps.length > 0}
+				<!-- Above the block results and the kilometres: a lap is what the runner chose to
+				     measure, and what they chose is what they came back to read. -->
+				<section class="rounded-2xl border border-line bg-surface p-4">
+					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.laps')}</h2>
+					<ul class="space-y-1">
+						{#each record.laps as lap (lap.index)}
+							<li class="flex items-center gap-3 text-sm tabular">
+								<span class="w-14 text-muted">{$t('running.lapNumber', { n: lap.index })}</span>
+								<span class="flex-1 font-semibold">{clock(lap.seconds)}</span>
+								<span class="text-xs text-muted">
+									{sayDistance(lap.distanceM, $t)} · {formatPace(paceOf(lap.distanceM, lap.seconds)) || '–:--'}
+									{$t('running.perKm')}
+								</span>
+							</li>
+						{/each}
+					</ul>
+				</section>
+			{/if}
+
 			{#if record.steps.length > 0}
 				<section class="rounded-2xl border border-line bg-surface p-4">
 					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.blockResults')}</h2>

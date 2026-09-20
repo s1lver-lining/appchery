@@ -253,7 +253,8 @@ export class LiveRun {
 
 	/** A button on the watch. Refused where it makes no sense, so a stale wrist cannot restart a run. */
 	async command(command: RunCommand) {
-		if (command === 'go' && this.status === 'idle') await this.start();
+		if (command === 'lap') await this.lap();
+		else if (command === 'go' && this.status === 'idle') await this.start();
 		else if (command === 'resume' && this.status === 'paused') await this.start();
 		else if (command === 'pause' && this.status === 'running') await this.pause();
 		else if (command === 'stop' && (this.status === 'running' || this.status === 'paused')) {
@@ -338,6 +339,33 @@ export class LiveRun {
 		await this.save();
 		await this.mirror(true);
 		endMirroredRun();
+	}
+
+	/**
+	 * A lap, taken by hand.
+	 *
+	 * The kilometres are arithmetic and a lap is a decision: the top of the hill, the lamp post
+	 * somebody sprinted to, the moment the interval actually started. It is measured from the last
+	 * one rather than from the start, because what a lap is worth is what it took on its own.
+	 */
+	async lap() {
+		const live = this.record?.live;
+		if (!live || !this.record) return;
+		if (live.status !== 'running' && live.status !== 'paused') return;
+		const from = this.record.laps.reduce(
+			(sum, lap) => ({ seconds: sum.seconds + lap.seconds, distanceM: sum.distanceM + lap.distanceM }),
+			{ seconds: 0, distanceM: 0 }
+		);
+		const seconds = Math.round(Math.max(0, this.seconds - from.seconds));
+		const distanceM = Math.round(Math.max(0, this.track.distanceM - from.distanceM));
+		// A lap of nothing is a button pressed twice, which is not a lap.
+		if (seconds < 1) return;
+		this.record.laps = [
+			...this.record.laps,
+			{ index: this.record.laps.length + 1, distanceM, seconds }
+		];
+		commit();
+		await this.save();
 	}
 
 	/** The block the runner says they are on, which always beats the one the clock thinks they are on. */

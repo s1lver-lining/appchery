@@ -383,6 +383,7 @@ export class WatchLink {
 				case 'rh':
 				case 'ru':
 				case 're':
+				case 'rl':
 					this.notify({ kind: 'command', command: commandOf(message.t) });
 					return;
 				case 'arrows':

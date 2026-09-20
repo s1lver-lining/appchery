@@ -507,6 +507,8 @@ public class Link {
                 return "ru";
             case "stop":
                 return "re";
+            case "lap":
+                return "rl";
             default:
                 return "rh";
         }

@@ -44,6 +44,7 @@
 	const progress = $derived(run.stepProgress);
 	const splits = $derived(splitsNow(run.track, run.seconds));
 	const paused = $derived(run.status === 'paused');
+	const laps = $derived(run.record?.laps ?? []);
 </script>
 
 <div class="mx-auto w-full max-w-page space-y-3 p-4 pb-40">
@@ -161,6 +162,21 @@
 		</div>
 	</section>
 
+	{#if laps.length > 0}
+		<section class="rounded-2xl border border-line bg-surface p-4">
+			<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.laps')}</h2>
+			<ul class="space-y-1">
+				{#each [...laps].reverse() as lap (lap.index)}
+					<li class="flex items-center gap-3 text-sm tabular">
+						<span class="w-14 text-muted">{$t('running.lapNumber', { n: lap.index })}</span>
+						<span class="flex-1 font-semibold">{clock(lap.seconds)}</span>
+						<span class="text-xs text-muted">{sayDistance(lap.distanceM, $t)}</span>
+					</li>
+				{/each}
+			</ul>
+		</section>
+	{/if}
+
 	<section class="rounded-2xl border border-line bg-surface p-4">
 		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.splits')}</h2>
 		{#if splits.length === 0}
@@ -209,6 +225,15 @@
 				{$t('running.skip')}
 			</button>
 		{/if}
+
+		<!-- The one button here that cannot cost anything: at worst it leaves a line in a list. -->
+		<button
+			class="press flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-2xl border border-line text-[0.65rem] font-semibold"
+			onclick={() => run.lap()}
+		>
+			<Icon name="watch" size={20} />
+			{$t('running.lap')}
+		</button>
 
 		<button
 			class="press flex h-16 w-20 flex-col items-center justify-center gap-1 rounded-2xl border border-danger/50 text-[0.65rem] font-semibold text-danger"

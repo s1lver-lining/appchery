@@ -152,23 +152,25 @@ export type RunStatus = 'i' | 'r' | 'p' | 'd';
 
 const RUN_STATUSES: RunStatus[] = ['i', 'r', 'p', 'd'];
 
-export type RunCommand = 'go' | 'pause' | 'resume' | 'stop';
+export type RunCommand = 'go' | 'pause' | 'resume' | 'stop' | 'lap';
 
-/** The four on the wire, shortest first: run go, run hold, run unhold, run end. */
-export type RunCommandType = 'rg' | 'rh' | 'ru' | 're';
+/** On the wire, shortest first: run go, run hold, run unhold, run end, run lap. */
+export type RunCommandType = 'rg' | 'rh' | 'ru' | 're' | 'rl';
 
 const COMMAND_OF: Record<RunCommandType, RunCommand> = {
 	rg: 'go',
 	rh: 'pause',
 	ru: 'resume',
-	re: 'stop'
+	re: 'stop',
+	rl: 'lap'
 };
 
 const TYPE_OF: Record<RunCommand, RunCommandType> = {
 	go: 'rg',
 	pause: 'rh',
 	resume: 'ru',
-	stop: 're'
+	stop: 're',
+	lap: 'rl'
 };
 
 /**
@@ -373,6 +375,7 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 		case 'rh':
 		case 'ru':
 		case 're':
+		case 'rl':
 			return { ok: true, message: { v: version, t: m.t as RunCommandType } };
 
 		case 'bye':

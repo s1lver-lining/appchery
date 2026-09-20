@@ -60,6 +60,11 @@ export interface RunRecord {
 	/** The programme this run was made of, copied in so editing the library never rewrites a run. */
 	workout: RunWorkout | null;
 	splits: Split[];
+	/**
+	 * The splits the runner took themselves, which are the ones they will remember. Kept apart from
+	 * the kilometres rather than mixed in: a lap is a decision and a kilometre is arithmetic.
+	 */
+	laps: Split[];
 	steps: StepResult[];
 	elevationGainM: number | null;
 	/** Beats a minute over the whole run, and the highest one reached. Null where nothing measured. */
@@ -98,6 +103,7 @@ export function emptyRun(mode: RunMode = 'manual'): RunRecord {
 		live: mode === 'tracked' ? emptyLive() : null,
 		workout: null,
 		splits: [],
+		laps: [],
 		steps: [],
 		elevationGainM: null,
 		averageHeartRate: null,
@@ -149,6 +155,7 @@ export function serialiseRun(run: RunRecord): string {
 		live: run.live,
 		workout: run.workout ? JSON.parse(serialiseWorkout(run.workout)) : null,
 		splits: run.splits,
+		laps: run.laps,
 		steps: run.steps,
 		elevationGainM: run.elevationGainM,
 		averageHeartRate: run.averageHeartRate,
@@ -172,6 +179,7 @@ export function parseRun(measurements: string | null): RunRecord {
 			live: parseLive(parsed.live, mode),
 			workout: parsed.workout ? parseWorkout(JSON.stringify(parsed.workout)) : null,
 			splits: Array.isArray(parsed.splits) ? parsed.splits : [],
+			laps: Array.isArray(parsed.laps) ? parsed.laps : [],
 			steps: Array.isArray(parsed.steps) ? parsed.steps : [],
 			elevationGainM: typeof parsed.elevationGainM === 'number' ? parsed.elevationGainM : null,
 			averageHeartRate: finite(parsed.averageHeartRate),

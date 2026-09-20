@@ -349,7 +349,7 @@ describe('a run on the wrist', () => {
 	});
 
 	it('carries the buttons on the wrist inside the smallest payload a link ever has', () => {
-		for (const t of ['rg', 'rh', 'ru', 're'] as const) {
+		for (const t of ['rg', 'rh', 'ru', 're', 'rl'] as const) {
 			const bytes = encode({ v: PROTOCOL_VERSION, t });
 			// Twenty is what a link that never negotiated an MTU can notify, and it drops the rest.
 			expect(bytes.length).toBeLessThanOrEqual(20);
