@@ -148,3 +148,45 @@ export function extentOf(values: (number | null)[]): { min: number; max: number 
 	}
 	return min === Infinity ? null : { min, max };
 }
+
+/** A stretch of a run where the clock was stopped, found by what the two clocks disagree about. */
+export interface RunPause {
+	/** The run's own clock where it happened, which is where a graph has to mark it. */
+	seconds: number;
+	distanceM: number;
+	/** How long it lasted, by the world's clock. */
+	forSeconds: number;
+}
+
+/** Shorter than this is a fix arriving late rather than a run being held at a crossing. */
+const PAUSE_S = 10;
+
+/**
+ * Where a run was paused.
+ *
+ * Nothing records a pause: what records it is the gap between the two clocks. Every fix carries when
+ * it was taken and where the run's own clock was, and the run's clock is the one that stops, so a
+ * pause is wherever the world moved on and the run did not.
+ *
+ * A pause takes no room on either axis, because neither the clock nor the distance moved while it
+ * lasted: it is a place on the line rather than a stretch of it, and that is how it is drawn.
+ */
+export function pausesOf(fixes: TrackedFix[]): RunPause[] {
+	const out: RunPause[] = [];
+	let state = emptyTrack();
+	for (let i = 1; i < fixes.length; i++) {
+		const before = fixes[i - 1];
+		const fix = fixes[i];
+		state = addFix(state, before, before.elapsedSeconds).state;
+		const world = (fix.at - before.at) / 1000;
+		const ran = fix.elapsedSeconds - before.elapsedSeconds;
+		const held = world - ran;
+		if (held < PAUSE_S) continue;
+		out.push({
+			seconds: before.elapsedSeconds,
+			distanceM: state.distanceM,
+			forSeconds: Math.round(held)
+		});
+	}
+	return out;
+}

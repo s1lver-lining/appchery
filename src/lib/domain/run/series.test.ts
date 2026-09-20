@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { condense, extentOf, samplesOf, thin } from './series';
+import { condense, extentOf, pausesOf, samplesOf, thin } from './series';
 import type { TrackedFix } from './track';
 
 /** A straight run north, a fix a second, fast enough that every one of them counts. */
@@ -109,5 +109,62 @@ describe('extentOf', () => {
 
 	it('has nothing to say about a series that is all gaps', () => {
 		expect(extentOf([null, null])).toBeNull();
+	});
+});
+
+describe('pausesOf', () => {
+	/** A run held at a crossing: the world's clock moves on and the run's own does not. */
+	function held(): TrackedFix[] {
+		const fixes: TrackedFix[] = [];
+		for (let i = 0; i < 10; i++) {
+			fixes.push({
+				at: 1_700_000_000_000 + i * 1000,
+				lat: 48.1 + i * 0.00005,
+				lon: -1.6,
+				accuracy: 5,
+				altitude: 70,
+				speed: 5,
+				elapsedSeconds: i
+			});
+		}
+		// Two minutes of standing about, so the next fix is two minutes later on one clock only.
+		for (let i = 0; i < 5; i++) {
+			fixes.push({
+				at: 1_700_000_000_000 + 9000 + 120_000 + i * 1000,
+				lat: 48.1 + (10 + i) * 0.00005,
+				lon: -1.6,
+				accuracy: 5,
+				altitude: 70,
+				speed: 5,
+				elapsedSeconds: 9 + i + 1
+			});
+		}
+		return fixes;
+	}
+
+	it('finds a pause by what the two clocks disagree about', () => {
+		const pauses = pausesOf(held());
+		expect(pauses).toHaveLength(1);
+		// Two minutes of standing, less the second of running that the fix after it also covers.
+		expect(pauses[0].forSeconds).toBe(119);
+		expect(pauses[0].seconds).toBe(9);
+	});
+
+	it('is not fooled by a fix arriving a moment late', () => {
+		const fixes = held().map((fix, i) => (i === 3 ? { ...fix, at: fix.at + 3000 } : fix));
+		expect(pausesOf(fixes).filter((pause) => pause.forSeconds < 10)).toHaveLength(0);
+	});
+
+	it('has nothing to say about a run that never stopped', () => {
+		const fixes = Array.from({ length: 10 }, (_, i) => ({
+			at: 1_700_000_000_000 + i * 1000,
+			lat: 48.1 + i * 0.00005,
+			lon: -1.6,
+			accuracy: 5,
+			altitude: 70,
+			speed: 5,
+			elapsedSeconds: i
+		}));
+		expect(pausesOf(fixes)).toEqual([]);
 	});
 });

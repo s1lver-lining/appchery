@@ -12,7 +12,7 @@
 	} from '$lib/domain/running';
 	import { heartOf, paceOf, replayTracked, type TrackedFix } from '$lib/domain/run/track';
 	import { parseGpx, toGpx } from '$lib/domain/run/gpx';
-	import { samplesOf, type RunSample } from '$lib/domain/run/series';
+	import { pausesOf, samplesOf, type RunPause, type RunSample } from '$lib/domain/run/series';
 	import {
 		emptyWorkout,
 		flatten,
@@ -165,6 +165,8 @@
 	 * the graph is the fixes, and there is no point holding thousands of them while one is running.
 	 */
 	let samples = $state<RunSample[]>([]);
+	/** Where the run was held, which is what explains a gap in the lines and in the kilometres. */
+	let pauses = $state<RunPause[]>([]);
 	/** The fixes themselves, for the route: a drawing of where it went is not a series of figures. */
 	let fixes = $state<TrackedFix[]>([]);
 	/** The run's clock where the finger is on the graph, so the route can mark the same moment. */
@@ -182,11 +184,13 @@
 		if (status !== 'done') {
 			samples = [];
 			fixes = [];
+			pauses = [];
 			return;
 		}
 		listRunPoints(id).then((points) => {
 			if (activity.id !== id) return;
 			samples = samplesOf(points);
+			pauses = pausesOf(points);
 			fixes = points;
 		});
 	});
@@ -242,6 +246,7 @@
 			run.record.steps = [];
 			await run.persist();
 			samples = samplesOf(read.fixes as TrackedFix[]);
+			pauses = pausesOf(read.fixes as TrackedFix[]);
 			fixes = read.fixes;
 			onchange();
 		} finally {
@@ -491,7 +496,7 @@
 							{/each}
 						</ul>
 					{:else if samples.length > 1}
-						<RunGraph {samples} focus={showing} onscrub={(at) => (scrubbing = at)} />
+						<RunGraph {samples} {pauses} focus={showing} onscrub={(at) => (scrubbing = at)} />
 						{#if fixes.length > 1}
 							<!-- Under the graph rather than above it: the shape of the ground is what
 							     explains the lines, and it is read after them rather than instead. -->

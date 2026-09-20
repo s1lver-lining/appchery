@@ -2,7 +2,7 @@
 	import { t } from '$lib/i18n';
 	import { clock } from '$lib/domain/running';
 	import { formatPace } from '$lib/domain/run/workout';
-	import { condense, type RunSample } from '$lib/domain/run/series';
+	import { condense, type RunPause, type RunSample } from '$lib/domain/run/series';
 	import { sayDistance } from './distance';
 
 	/**
@@ -19,10 +19,13 @@
 	 */
 	let {
 		samples,
+		pauses = [],
 		onscrub = undefined,
 		focus = null
 	}: {
 		samples: RunSample[];
+		/** Where the run was held, which is what explains a gap in the lines. */
+		pauses?: RunPause[];
 		/** The run's clock where the finger is, so the route can mark the same moment. Null on release. */
 		onscrub?: (seconds: number | null) => void;
 		/**
@@ -325,6 +328,25 @@
 							stroke="var(--color-line)"
 							stroke-width="1"
 							stroke-dasharray="2 3"
+							vector-effect="non-scaling-stroke"
+						/>
+					{/each}
+					<!--
+						Where the run was held. A pause takes no room on either axis, because neither the
+						clock nor the distance moved while it lasted: it is a place on the line rather
+						than a stretch of it, and drawn as a stretch it would be a lie about both.
+					-->
+					{#each pauses as pause, i (i)}
+						{@const x = ((axis === 'distance' ? pause.distanceM : pause.seconds) / span) * W}
+						<line
+							x1={x}
+							x2={x}
+							y1="0"
+							y2={H}
+							stroke="var(--color-muted)"
+							stroke-width="1"
+							stroke-dasharray="3 3"
+							opacity="0.7"
 							vector-effect="non-scaling-stroke"
 						/>
 					{/each}
