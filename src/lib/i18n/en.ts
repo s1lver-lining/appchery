@@ -703,7 +703,6 @@ export const en = {
 		activeTitle: 'Plan active',
 		activeHint:
 			'Off, this plan stops filling the sessions list and stops counting towards the weekly goal.',
-		held: 'Waiting for you to move',
 		paused: 'Paused',
 		startDate: 'From',
 		endDate: 'Until',
@@ -1529,6 +1528,7 @@ insetHint:
 		stopTitle: 'Finish this run?',
 		stopBody: 'The run is saved as it stands. It cannot be started again afterwards.',
 		stopConfirm: 'Finish',
+		held: 'Waiting for you to move',
 		paused: 'Paused',
 		elapsed: 'Time',
 		currentPace: 'Pace now',

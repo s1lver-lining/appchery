@@ -704,7 +704,6 @@ export const fr: Dictionary = {
 		activeTitle: 'Programme actif',
 		activeHint:
 			"Désactivé, ce programme ne remplit plus la liste des séances et ne compte plus dans l'objectif hebdomadaire.",
-		held: 'En attente que vous repartiez',
 		paused: 'En pause',
 		startDate: 'À partir du',
 		endDate: 'Jusqu’au',
@@ -1535,6 +1534,7 @@ insetHint:
 		stopTitle: 'Terminer cette sortie ?',
 		stopBody: "La sortie est enregistrée telle quelle. Elle ne peut pas être relancée ensuite.",
 		stopConfirm: 'Terminer',
+		held: 'En attente que vous repartiez',
 		paused: 'En pause',
 		elapsed: 'Temps',
 		currentPace: 'Allure',
