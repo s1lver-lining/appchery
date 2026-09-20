@@ -209,3 +209,21 @@ export function validateRun(run: RunRecord): string[] {
 		errors.push('duration');
 	return errors;
 }
+/**
+ * A distance as the app writes one: metres while it is under a kilometre, and kilometres to the
+ * metre above it.
+ *
+ * Three decimals rather than two because most of what is shown is a part of a run rather than a
+ * run: what is left of a block, a height gained, a split still going. Ten metres is a few strides,
+ * and a figure that cannot say them is a figure that sits still while the runner moves. The run's
+ * own total is the exception and asks for two, because nobody reads their evening's ten kilometres
+ * to the metre.
+ *
+ * The unit comes back apart from the figure, because the pages draw it smaller and greyer, and the
+ * watch draws it in its own words.
+ */
+export function distanceParts(metres: number, decimals = 3): { value: string; unit: 'km' | 'm' } {
+	const safe = Number.isFinite(metres) ? Math.max(0, metres) : 0;
+	if (safe < 1000) return { value: String(Math.round(safe)), unit: 'm' };
+	return { value: (safe / 1000).toFixed(decimals), unit: 'km' };
+}

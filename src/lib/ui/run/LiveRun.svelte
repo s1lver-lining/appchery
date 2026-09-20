@@ -8,6 +8,7 @@
 	import type { RunStep } from '$lib/domain/run/workout';
 	import { blockColour, blockTint } from './kinds';
 	import { paceUnitKey, sayPace, saySplit, type PaceUnit } from './pace';
+	import { sayDistance } from './distance';
 	import type { LiveRun } from '$lib/run/live.svelte';
 
 	/**
@@ -33,7 +34,7 @@
 		step.goal.type === 'time'
 			? clock(step.goal.seconds)
 			: step.goal.type === 'distance'
-				? `${step.goal.metres} ${$t('workouts.metres')}`
+				? sayDistance(step.goal.metres, $t)
 				: $t('workouts.goalOpen');
 
 	const steps = $derived(run.steps);
@@ -83,9 +84,7 @@
 
 			<div class="mt-2 flex items-end justify-between gap-3">
 				<p class="text-3xl font-bold tabular">
-					{step.goal.type === 'distance'
-						? `${Math.round(progress.done)} ${$t('workouts.metres')}`
-						: clock(progress.done)}
+					{step.goal.type === 'distance' ? sayDistance(progress.done, $t) : clock(progress.done)}
 					<span class="text-base font-medium text-muted">/ {goalOf(step)}</span>
 				</p>
 				{#if step.targetPace}
@@ -131,7 +130,7 @@
 		</div>
 		<div class="mt-3 flex justify-center gap-4 text-xs text-muted tabular">
 			<span>{$t('running.averagePace')} {sayPace(run.averagePace, unit)}</span>
-			<span>{$t('running.elevation')} {Math.round(run.track.elevationGainM)} {$t('running.metresShort')}</span>
+			<span>{$t('running.elevation')} {sayDistance(run.track.elevationGainM, $t)}</span>
 		</div>
 	</section>
 
@@ -147,7 +146,7 @@
 						<span class="flex-1 font-semibold">{clock(split.seconds)}</span>
 						{#if split.partial}
 							<span class="text-xs text-muted">
-								{(split.distanceM / 1000).toFixed(2)} {$t('running.km')} · {$t('running.splitPartial')}
+								{sayDistance(split.distanceM, $t)} · {$t('running.splitPartial')}
 							</span>
 						{:else}
 							<span class="text-xs text-muted">

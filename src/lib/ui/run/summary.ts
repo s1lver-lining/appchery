@@ -1,5 +1,6 @@
 import { clock } from '$lib/domain/running';
 import { formatPace, workoutPace, workoutTotals, type RunWorkout } from '$lib/domain/run/workout';
+import { sayDistance } from './distance';
 
 /**
  * What a programme comes to, in one line: how far, how long, and the pace that averages out at.
@@ -12,7 +13,7 @@ export function workoutSummary(
 	t: (key: string, values?: Record<string, string | number>) => string
 ): string {
 	const totals = workoutTotals(workout);
-	const distance = (totals.metres / 1000).toFixed(2);
+	const distance = sayDistance(totals.metres, t);
 	const time = clock(totals.seconds);
 	if (totals.open > 0) return t('workouts.totalsOpen', { distance, time, n: totals.open });
 	const pace = workoutPace(workout);
