@@ -2,6 +2,7 @@
 	import { t } from '$lib/i18n';
 	import Icon from '$lib/ui/Icon.svelte';
 	import { clock } from '$lib/domain/running';
+	import { sayDistance } from './distance';
 	import { BLOCK_KINDS, formatPace, type BlockKind, type RunBlock } from '$lib/domain/run/workout';
 	import { blockColour, blockSkin, blockTint } from './kinds';
 	import TimePicker from './TimePicker.svelte';
@@ -59,13 +60,7 @@
 					? (block.goal.metres / 1000) * pace
 					: null;
 		const said: string[] = [];
-		if (metres !== null) {
-			said.push(
-				metres >= 1000
-					? `${(metres / 1000).toFixed(2)} ${$t('running.km')}`
-					: `${Math.round(metres)} ${$t('workouts.metres')}`
-			);
-		}
+		if (metres !== null) said.push(sayDistance(metres, $t));
 		if (pace) said.push(`${formatPace(pace)} ${$t('running.perKm')}`);
 		if (seconds !== null) said.push(clock(seconds));
 		return said.length > 0 ? said.join(' · ') : $t('workouts.goalOpen');
@@ -92,23 +87,41 @@
 <div class="flex items-stretch overflow-hidden rounded-xl border" style={skin}>
 	<span class="w-1 shrink-0" style="background:{colour}"></span>
 	<div class="min-w-0 flex-1">
-		<button
-			class="press flex w-full min-w-0 items-center gap-2 text-left {open ? 'px-2.5 py-1.5' : 'p-2.5'}"
-			onclick={ontoggle}
-		>
-			<span class="min-w-0 flex-1">
-				<span
-					class="block truncate font-semibold {open ? 'text-xs' : 'text-sm'}"
-					style="color:{colour}"
-				>
-					{block.label?.trim() || kindName}
+		<!-- The controls sit on this line whether the block is open or shut: a programme is reordered
+		     while it is being read, which is exactly when every block is folded away. -->
+		<div class="flex min-w-0 items-center {open ? 'py-0.5 pr-1 pl-2.5' : 'py-1 pr-1 pl-2.5'}">
+			<button class="press flex min-w-0 flex-1 items-center gap-1 py-1 text-left" onclick={ontoggle}>
+				<span class="min-w-0 flex-1">
+					<span
+						class="block truncate font-semibold {open ? 'text-xs' : 'text-sm'}"
+						style="color:{colour}"
+					>
+						{block.label?.trim() || kindName}
+					</span>
+					<span class="block truncate text-xs text-muted tabular {open ? 'hidden' : ''}">{figures}</span>
 				</span>
-				<span class="block truncate text-xs text-muted tabular {open ? 'hidden' : ''}">{figures}</span>
+				<!-- A chevron for opening and an arrow for moving: the one thing that must not be
+				     confused is the caret with the button that sends the block down the list. -->
+				<span class="shrink-0 text-muted transition-transform {open ? '' : 'rotate-180'}">
+					<Icon name="chevronUp" size={16} />
+				</span>
+			</button>
+
+			<span class="ml-1 flex shrink-0 items-center">
+				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.up')} onclick={() => onmove(-1)}>
+					<Icon name="arrowUp" size={16} />
+				</button>
+				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.down')} onclick={() => onmove(1)}>
+					<span class="block rotate-180"><Icon name="arrowUp" size={16} /></span>
+				</button>
+				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('workouts.duplicate')} onclick={onduplicate}>
+					<Icon name="copy" size={16} />
+				</button>
+				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.delete')} onclick={ondelete}>
+					<Icon name="trash" size={16} />
+				</button>
 			</span>
-			<span class="shrink-0 text-muted transition-transform {open ? '' : 'rotate-180'}">
-				<Icon name="chevronUp" size={16} />
-			</span>
-		</button>
+		</div>
 
 	{#if open}
 		<div class="px-2.5 pb-2.5">
@@ -184,21 +197,6 @@
 				value={block.label ?? ''}
 				onchange={(event) => onchange({ ...block, label: event.currentTarget.value.trim() || null })}
 			/>
-
-			<div class="mt-2 flex justify-end gap-1">
-				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.up')} onclick={() => onmove(-1)}>
-					<Icon name="chevronUp" size={16} />
-				</button>
-				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.down')} onclick={() => onmove(1)}>
-					<span class="block rotate-180"><Icon name="chevronUp" size={16} /></span>
-				</button>
-				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('workouts.duplicate')} onclick={onduplicate}>
-					<Icon name="copy" size={16} />
-				</button>
-				<button class="press rounded-lg p-1.5 text-muted" aria-label={$t('common.delete')} onclick={ondelete}>
-					<Icon name="trash" size={16} />
-				</button>
-			</div>
 		</div>
 	{/if}
 	</div>

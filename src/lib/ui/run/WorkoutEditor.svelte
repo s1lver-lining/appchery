@@ -23,9 +23,8 @@
 	 */
 	let {
 		workout,
-		onchange,
-		showName = true
-	}: { workout: RunWorkout; onchange: (workout: RunWorkout) => void; showName?: boolean } = $props();
+		onchange
+	}: { workout: RunWorkout; onchange: (workout: RunWorkout) => void } = $props();
 
 	/**
 	 * Open unless it has been shut. A programme is written as a whole, so every block shows its own
@@ -78,20 +77,6 @@
 </script>
 
 <div class="space-y-3">
-	{#if showName}
-		<label class="block">
-			<span class="text-sm text-muted">{$t('workouts.name')}</span>
-			<input
-				class="mt-1 w-full rounded-lg border border-line bg-bg px-3 py-2 text-lg"
-				type="text"
-				maxlength="60"
-				placeholder={$t('workouts.namePlaceholder')}
-				value={workout.name}
-				oninput={(event) => onchange({ ...workout, name: event.currentTarget.value })}
-			/>
-		</label>
-	{/if}
-
 	<!--
 		Unkeyed on purpose. Keyed by id, moving a block moves its card through the DOM, and a browser
 		silently resets the scroll position of anything it reparents without firing a scroll event:
@@ -133,14 +118,14 @@
 						aria-label={$t('common.up')}
 						onclick={() => move(index, -1)}
 					>
-						<Icon name="chevronUp" size={16} />
+						<Icon name="arrowUp" size={16} />
 					</button>
 					<button
 						class="press rounded-lg p-1.5 text-muted"
 						aria-label={$t('common.down')}
 						onclick={() => move(index, 1)}
 					>
-						<span class="block rotate-180"><Icon name="chevronUp" size={16} /></span>
+						<span class="block rotate-180"><Icon name="arrowUp" size={16} /></span>
 					</button>
 					<button
 						class="press rounded-lg p-1.5 text-muted"

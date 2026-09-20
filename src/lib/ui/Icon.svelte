@@ -214,6 +214,12 @@
 		// Two matches feeding one, which is the whole of what an elimination draw is.
 		bracket: `<path d="M3.5 5.5h5.5v13H3.5" /><path d="M9 12h5.5v-5h6" /><path d="M14.5 12h6" />`,
 		chevronUp: `<path d="M6 14.5L12 8.5l6 6" />`,
+		// A shaft under the head, so moving a block is never read as opening one: a chevron is bare.
+		arrowUp: `<path d="M12 19.5V5" /><path d="M6 10.5L12 4.5l6 6" />`,
+		// Out of the app and into a file, which is what every export in here does.
+		download: `<path d="M12 4v11" /><path d="M7.5 11L12 15.5 16.5 11" /><path d="M5 18.5h14" />`,
+		// A heart, for the one figure in a run that comes off the body rather than off a satellite.
+		heart: `<path d="M12 20.2 4.8 13a4.6 4.6 0 0 1 7.2-5.6A4.6 4.6 0 0 1 19.2 13Z" class="f" />`,
 		check: `<path d="M5 12.5l4.5 4.5L19 7" />`,
 		// A circle that does not quite close, with the arrow that carries it round.
 		refresh: `<path d="M20.2 12a8.2 8.2 0 1 1-2.4-5.8" /><path d="M20.4 3.6v5h-5" />`,
