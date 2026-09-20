@@ -34,6 +34,24 @@
 	let shut = $state<Record<string, boolean>>({});
 	const toggle = (id: string) => (shut = { ...shut, [id]: !shut[id] });
 
+	/** Every block there is, repeats unrolled to the blocks inside them, which is what folds. */
+	const everyId = $derived(
+		workout.items.flatMap((item) =>
+			item.type === 'block' ? [item.id] : item.blocks.map((block) => block.id)
+		)
+	);
+	const anyOpen = $derived(everyId.some((id) => !shut[id]));
+
+	/**
+	 * All of them at once. A programme is opened to change one block and then has to be shut a block
+	 * at a time to see its shape again, which is the state it is read in and the state it is left in.
+	 */
+	function foldAll() {
+		const next: Record<string, boolean> = {};
+		for (const id of everyId) next[id] = anyOpen;
+		shut = next;
+	}
+
 	const totals = $derived(workoutTotals(workout));
 	const errors = $derived(validateWorkout(workout));
 
@@ -125,6 +143,13 @@
 		the wheels came back showing their first row while holding their real value. Unkeyed, a move
 		is the same cards taking new values, which is a change the wheels already follow.
 	-->
+	{#if everyId.length > 1}
+		<!-- Over the list rather than under it: it is reached for before reading, not after writing. -->
+		<button class="press ml-auto block py-0.5 text-xs font-medium text-muted" onclick={foldAll}>
+			{anyOpen ? $t('workouts.foldAll') : $t('workouts.unfoldAll')}
+		</button>
+	{/if}
+
 	<div
 		bind:this={list}
 		class="space-y-3 {carrying !== null ? 'touch-none' : ''}"

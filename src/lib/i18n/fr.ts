@@ -1583,6 +1583,8 @@ insetHint:
 		create: 'Nouveau programme',
 		newWorkout: 'Nouveau programme',
 		open: 'Ouvrir',
+		foldAll: 'Tout replier',
+		unfoldAll: 'Tout déplier',
 		reorder: 'Glisser pour réordonner',
 		duplicate: 'Dupliquer',
 		name: 'Nom',

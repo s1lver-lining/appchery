@@ -1577,6 +1577,8 @@ insetHint:
 		create: 'New programme',
 		newWorkout: 'New programme',
 		open: 'Open',
+		foldAll: 'Fold all',
+		unfoldAll: 'Unfold all',
 		reorder: 'Drag to reorder',
 		duplicate: 'Duplicate',
 		name: 'Name',
