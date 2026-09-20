@@ -34,6 +34,8 @@ export async function handDown(
 		s: frame.seconds,
 		d: frame.distanceM,
 		i: at,
+		// Which of the two a missing step is: one that was never started, or a programme that ran out.
+		fx: frame.freeSeconds !== null,
 		fs: live.stepFrom.seconds,
 		fd: live.stepFrom.distanceM,
 		ps: frame.planned?.seconds ?? -1,

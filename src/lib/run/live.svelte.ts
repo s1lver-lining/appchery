@@ -181,6 +181,7 @@ export class LiveRun {
 						goalMetres: step.goal.type === 'distance' ? step.goal.metres : null
 					}
 				: null,
+			freeSeconds: this.freeSeconds,
 			next: after
 				? {
 						kind: after.kind,
@@ -335,7 +336,39 @@ export class LiveRun {
 		const at = steps.findIndex((step) => step.key === this.record?.live?.stepKey);
 		const next = steps[at + 1];
 		if (next) await this.jumpTo(next.key);
-		else await this.stop();
+		else await this.goFree();
+	}
+
+	/**
+	 * The programme is done and the run is not.
+	 *
+	 * A finished programme used to stop the run, which is the app deciding that the session is over
+	 * because the plan ran out. It is not: the way home from the track is a run, and a warm down
+	 * nobody wrote down is still time on the feet. So the blocks end and the clock carries on with
+	 * nothing to hold and nothing counting down, until the runner says otherwise.
+	 */
+	async goFree() {
+		const live = this.record?.live;
+		if (!live || live.stepKey === null) return;
+		this.closeStep();
+		live.stepKey = null;
+		live.stepFrom = { seconds: this.seconds, distanceM: this.track.distanceM };
+		// Felt like any other block change, because it is one: the last one has just ended.
+		this.cue++;
+		commit();
+		await this.save();
+		await this.mirror(true);
+	}
+
+	/**
+	 * How long the run has been running to nothing, or null where it is not. Only after a programme:
+	 * a run that never had one is free from the first stride and has a page of its own that says so.
+	 */
+	get freeSeconds(): number | null {
+		const live = this.record?.live;
+		if (!live || live.stepKey !== null || this.steps.length === 0) return null;
+		if (live.status !== 'running' && live.status !== 'paused') return null;
+		return Math.max(0, this.seconds - live.stepFrom.seconds);
 	}
 
 	private async begin(fresh: boolean) {
@@ -404,6 +437,7 @@ export class LiveRun {
 			pace: glance.pace,
 			averagePace: glance.averagePace,
 			cue: glance.cue,
+			freeSeconds: glance.freeSeconds,
 			block: glance.step
 				? {
 						kind: glance.step.kind,
@@ -451,6 +485,12 @@ export class LiveRun {
 				...this.record.steps.filter((result) => result.key !== step.key),
 				{ key: step.key, distanceM: done.d, seconds: done.s }
 			];
+		}
+		// The programme ran out while nobody was listening, and the run went on without it.
+		if (taken.free && live.stepKey !== null) {
+			live.stepKey = null;
+			live.stepFrom = { seconds: taken.fs, distanceM: taken.fd };
+			this.cue = Math.max(this.cue, taken.c);
 		}
 		const reached = taken.i >= 0 ? steps[taken.i] : null;
 		if (reached && live.stepKey !== reached.key) {
@@ -626,6 +666,8 @@ export interface RunGlance {
 	pace: number | null;
 	averagePace: number | null;
 	cue: number;
+	/** Seconds since the programme ran out, or null while there is still a block to run. */
+	freeSeconds: number | null;
 	step: {
 		kind: BlockKind;
 		label: string | null;

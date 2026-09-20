@@ -189,6 +189,8 @@ public class RunView extends FrameLayout {
     private boolean heartAvailable = false;
     /** The page a drag is bringing in, and how far across the controls are being pulled. */
     private int coming = -1;
+    /** The run's clock when the free run began, so its own clock is a subtraction and not a guess. */
+    private int freeFrom = 0;
     private float acrossTo = 0f;
     private float dragY = 0f;
     /** Set for as long as a page is animating into place, which is not a drag but is not still either. */
@@ -544,7 +546,8 @@ public class RunView extends FrameLayout {
         if (!live()) return open;
         // The pace leads: it is the one page that answers a question rather than reporting a figure.
         open.add(PAGE_PACE);
-        if (run != null && run.hasBlock) open.add(PAGE_BLOCK);
+        // The block page is where a free run is timed too, so it stays once the programme runs out.
+        if (run != null && (run.hasBlock || run.freeSeconds >= 0)) open.add(PAGE_BLOCK);
         open.add(PAGE_RUN);
         if (run != null && !run.nextKind.isEmpty()) open.add(PAGE_NEXT);
         // Only where there is something to draw: a page of two dashes is a page not worth turning to.
@@ -869,6 +872,8 @@ public class RunView extends FrameLayout {
             paceCount = 0;
             paceCue = next.cue;
         }
+        // Where the free run started, taken from the frame rather than counted: the phone owns it.
+        if (next.freeSeconds >= 0) freeFrom = next.seconds - next.freeSeconds;
         if ("r".equals(next.status) && next.pace > 0) {
             paceCount = keep(paces, paceAtSeconds, paceAtMetres, paceCount, next.pace,
                     next.seconds, next.metres);
@@ -1099,6 +1104,7 @@ public class RunView extends FrameLayout {
         else if (which == PAGE_PACE) drawPacePage(p, elapsed);
         else if (which == PAGE_HEART) drawHeartPage(p, elapsed);
         else if (which == PAGE_BLOCK && run.hasBlock) drawBlockPage(p, elapsed);
+        else if (which == PAGE_BLOCK && run.freeSeconds >= 0) drawFreePage(p, elapsed);
         else drawRunPage(p, elapsed);
 
         if (ambient) {
@@ -1286,6 +1292,44 @@ public class RunView extends FrameLayout {
         p.second.setTextColor(run.nextPace > 0 ? INK : MUTED);
         p.secondNote.setText(run.nextPace > 0 ? "target · " + unit() : "no target");
         p.footer.setText(clock(elapsed) + "   " + distance(run.metres));
+    }
+
+    /**
+     * The programme is done and the run is not.
+     *
+     * Nothing counting down and no pace to hold, so the clock counts up from where the blocks
+     * stopped: the way home from the track is a run, and this is what times it.
+     */
+    private void drawFreePage(Panel p, int elapsed) {
+        p.chip.setVisibility(VISIBLE);
+        p.chip.setText("Free run");
+        p.chip.setTextColor(MUTED);
+        GradientDrawable pill = new GradientDrawable();
+        pill.setColor(SURFACE);
+        pill.setCornerRadius(px(20));
+        p.chip.setBackground(pill);
+
+        p.headline.setText(clock(freeSeconds()));
+        p.headline.setTextSize(HEADLINE);
+        p.caption.setText("since the programme");
+
+        p.figure.setText(say(run.pace));
+        p.figure.setTextColor(INK);
+        p.figureNote.setText("now · " + unit());
+        p.second.setVisibility(VISIBLE);
+        p.second.setText(distance(run.metres));
+        p.second.setTextColor(INK);
+        p.secondNote.setText("distance");
+        p.footer.setText(clock(elapsed) + "   " + distance(run.metres));
+    }
+
+    /**
+     * The free run's own clock, counted off the run's rather than off a figure that arrives every
+     * second or two: the frames say how long it has been, and between them this has to keep moving.
+     */
+    private int freeSeconds() {
+        if (run == null || run.freeSeconds < 0) return 0;
+        return Math.max(0, seconds() - freeFrom);
     }
 
     /** What the block coming asks for, in whichever unit it is run to, or that it asks for nothing. */

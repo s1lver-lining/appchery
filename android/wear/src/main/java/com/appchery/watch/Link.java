@@ -99,6 +99,8 @@ public class Link {
         /** Counts up on every block change, which is what the wrist buzzes for. */
         public int cue;
         public boolean hasBlock;
+        /** Seconds since the programme ran out and the run carried on. Negative while one is running. */
+        public int freeSeconds = -1;
         public String kind = "";
         public String label = "";
         public int blockIndex;
@@ -518,6 +520,7 @@ public class Link {
         run.cue = message.optInt("c", 0);
         run.kind = message.optString("k", "");
         run.hasBlock = !run.kind.isEmpty();
+        run.freeSeconds = message.has("fr") ? message.optInt("fr", -1) : -1;
         run.label = message.optString("b", "");
         run.blockIndex = message.optInt("i", 0);
         run.blockCount = message.optInt("n", 0);

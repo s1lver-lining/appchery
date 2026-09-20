@@ -1551,6 +1551,7 @@ insetHint:
 		jump: 'Aller à un bloc',
 		jumpHint: 'La sortie reprend au bloc choisi.',
 		freeRun: 'Sans programme',
+		programmeDone: 'le programme est terminé',
 		freeRunHint: 'Temps, distance et allure sont enregistrés dans tous les cas.',
 		chooseWorkout: 'Suivre un programme',
 		blockTarget: 'à {pace}',

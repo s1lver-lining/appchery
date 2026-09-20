@@ -107,6 +107,21 @@
 				</div>
 			{/if}
 		</button>
+	{:else if run.freeSeconds !== null}
+		<!--
+			The programme ran out and the run did not. Nothing to hold and nothing counting down: the
+			way home from the track is a run, and it is timed from where the blocks stopped.
+		-->
+		<button class="press w-full rounded-2xl border border-line bg-surface p-4 text-left" onclick={() => (jumping = true)}>
+			<div class="flex items-center gap-2">
+				<span class="rounded-full bg-sunk px-2.5 py-1 text-xs font-semibold text-muted">
+					{$t('running.freeRun')}
+				</span>
+				<span class="text-xs text-muted">{$t('running.programmeDone')}</span>
+				<span class="ml-auto text-muted"><Icon name="list" size={18} /></span>
+			</div>
+			<p class="mt-2 text-3xl font-bold tabular">{clock(run.freeSeconds)}</p>
+		</button>
 	{/if}
 
 	<!-- The three numbers the run is actually run on. -->

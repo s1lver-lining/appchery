@@ -83,6 +83,8 @@ final class RunFrames {
     private static double anchorMetres = 0;
     private static long anchorStamp = 0;
     private static double stepFromSeconds = 0;
+    /** When the programme ran out, or negative while one is still running. */
+    private static double freeFromSeconds = -1;
     private static double stepFromMetres = 0;
     private static int plannedSeconds = -1;
     private static int plannedMetres = -1;
@@ -181,6 +183,8 @@ final class RunFrames {
             anchorStamp = SystemClock.elapsedRealtime();
             stepIndex = plan.optInt("i", -1);
             stepFromSeconds = plan.optDouble("fs", 0);
+            // A plan naming no step is a run whose programme has run out, and its clock started then.
+            freeFromSeconds = plan.optInt("i", -1) < 0 && plan.optBoolean("fx", false) ? plan.optDouble("fs", 0) : -1;
             stepFromMetres = plan.optDouble("fd", 0);
             plannedSeconds = plan.optInt("ps", -1);
             plannedMetres = plan.optInt("pd", -1);
@@ -219,6 +223,7 @@ final class RunFrames {
             live = false;
             status = "i";
             stepIndex = -1;
+            freeFromSeconds = -1;
             cue = 0;
             steps = new ArrayList<>();
             results.clear();
@@ -242,6 +247,8 @@ final class RunFrames {
                 out.put("s", (int) Math.round(seconds()));
                 out.put("i", stepIndex);
                 out.put("c", cue);
+                // Whether the programme ran out while nobody was listening, which the page adopts.
+                out.put("free", freeFromSeconds >= 0);
                 out.put("fs", stepFromSeconds);
                 out.put("fd", stepFromMetres);
                 JSONArray done = new JSONArray();
@@ -342,7 +349,14 @@ final class RunFrames {
             result.seconds = (int) Math.round(doneSeconds);
             results.add(result);
 
-            if (stepIndex + 1 >= steps.size()) return;
+            if (stepIndex + 1 >= steps.size()) {
+                // The programme is done and the run is not: the clock carries on with nothing to
+                // hold, from here, until somebody stops it. The page is told through claim().
+                stepIndex = -1;
+                freeFromSeconds = seconds();
+                cue++;
+                return;
+            }
             stepIndex++;
             stepFromSeconds = seconds();
             stepFromMetres = metres();
@@ -400,6 +414,9 @@ final class RunFrames {
             message.put("a", averagePace());
             message.put("c", cue);
 
+            if (freeFromSeconds >= 0) {
+                message.put("fr", (int) Math.round(Math.max(0, seconds() - freeFromSeconds)));
+            }
             if (stepIndex >= 0 && stepIndex < steps.size()) {
                 Step step = steps.get(stepIndex);
                 message.put("k", step.kind);

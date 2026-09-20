@@ -83,6 +83,8 @@ export type Wire =
 			a: number;
 			/** Counts up on every block change, which is what the watch buzzes for. */
 			c: number;
+			/** Seconds since the programme ran out and the run carried on, counting up rather than down. */
+			fr?: number;
 			k?: BlockKind;
 			/** What the block is called, cut by the sender. */
 			b?: string;
@@ -343,7 +345,7 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 				if (!BLOCK_KINDS.includes(m.nk as BlockKind)) break;
 				run.nk = m.nk as BlockKind;
 			}
-			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ngs', 'ngm', 'ps', 'pd', 'pp'] as const) {
+			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ngs', 'ngm', 'fr', 'ps', 'pd', 'pp'] as const) {
 				if (m[key] === undefined) continue;
 				if (!isFigure(m[key])) return { ok: false, reason: 'malformed' };
 				run[key] = m[key] as number;

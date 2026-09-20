@@ -37,6 +37,8 @@ export interface RunFrame {
 	pace: number | null;
 	averagePace: number | null;
 	cue: number;
+	/** Seconds since the programme ran out and the run carried on, or null while a block is running. */
+	freeSeconds: number | null;
 	/** What the programme asks for in total. All there is to show before the run is started. */
 	planned: { seconds: number; metres: number; pace: number | null } | null;
 	block: {
@@ -275,6 +277,7 @@ export class WatchLink {
 			a: whole(frame.averagePace ?? 0),
 			c: whole(frame.cue)
 		};
+		if (frame.freeSeconds !== null) message.fr = whole(frame.freeSeconds);
 		const block = frame.block;
 		if (block) {
 			message.k = block.kind;

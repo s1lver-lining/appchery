@@ -43,6 +43,8 @@ export interface WristClaim {
 	s: number;
 	/** The step it reached, by position in the flattened programme, or -1. */
 	i: number;
+	/** Whether the programme ran out while the page was asleep and the run carried on without it. */
+	free?: boolean;
 	c: number;
 	fs: number;
 	fd: number;

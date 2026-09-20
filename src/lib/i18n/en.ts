@@ -1545,6 +1545,7 @@ insetHint:
 		jump: 'Jump to a block',
 		jumpHint: 'The run carries on from the block you pick.',
 		freeRun: 'No programme',
+		programmeDone: 'the programme is done',
 		freeRunHint: 'Time, distance and pace are recorded either way.',
 		chooseWorkout: 'Run a programme',
 		blockTarget: 'at {pace}',
