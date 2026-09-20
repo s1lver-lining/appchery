@@ -115,6 +115,8 @@ public class RunView extends FrameLayout {
     private final Panel front;
     private final Panel back;
     private LinearLayout infoDots;
+    /** The edge of the controls, showing, so the swipe to them is something seen rather than learned. */
+    private View peek;
 
     private final LinearLayout controls;
     private final TextView hold;
@@ -234,6 +236,23 @@ public class RunView extends FrameLayout {
         dotsPlace.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
         dotsPlace.rightMargin = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.045f);
         addView(infoDots, dotsPlace);
+
+        /*
+         * A grabber against the right edge. The controls are a swipe away and nothing said so: the
+         * page they are on says how to get back, which is no use to anybody who never found it.
+         *
+         * A bar rather than a sliver of the controls themselves, because the sliver of a page whose
+         * background is black is black, and a black sliver against a black screen says nothing.
+         */
+        peek = new View(context);
+        GradientDrawable grip = new GradientDrawable();
+        grip.setColor(LINE);
+        grip.setCornerRadius(px(2));
+        peek.setBackground(grip);
+        LayoutParams peekPlace = new LayoutParams(px(3), px(42));
+        peekPlace.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
+        peekPlace.rightMargin = px(1);
+        addView(peek, peekPlace);
 
         // The controls, on a page of their own: a run is stopped once and read a hundred times.
         controls = column(context);
@@ -1032,6 +1051,9 @@ public class RunView extends FrameLayout {
         // Both are up while one is being dragged over the other, which is the whole of the gesture.
         front.column.setVisibility(live() && (!onControls || acrossTo != 0) ? VISIBLE : GONE);
         infoDots.setVisibility(live() && !onControls && !ambient && !moving() ? VISIBLE : GONE);
+        // Gone in ambient with everything else, and while a drag is under way, because by then the
+        // runner is already doing the thing it was there to suggest.
+        peek.setVisibility(live() && !onControls && !ambient && !moving() ? VISIBLE : GONE);
         controls.setVisibility(live() && (onControls || acrossTo != 0) ? VISIBLE : GONE);
         ready.setVisibility(live() ? GONE : VISIBLE);
         // Left alone while a page is on its way in: a frame arrives every second or two, and one
