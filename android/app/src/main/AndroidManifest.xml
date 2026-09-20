@@ -54,6 +54,16 @@
 
         </activity>
 
+        <!--
+            Where the phone is while a run is being tracked. Declared with the location type because
+            that is the only way Android lets an app keep receiving fixes with the screen off, which
+            is how a run is actually run, see doc/running.md.
+        -->
+        <service
+            android:name=".TraceService"
+            android:exported="false"
+            android:foregroundServiceType="location" />
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -86,6 +96,12 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+
+    <!-- Tracking a run: the service that keeps receiving fixes, and the notification it runs behind. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    <uses-feature android:name="android.hardware.location.gps" android:required="false" />
 
     <!-- Live scoring from the camera. -->
     <uses-permission android:name="android.permission.CAMERA" />

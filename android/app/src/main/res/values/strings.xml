@@ -4,4 +4,7 @@
     <string name="title_activity_main">Appchery</string>
     <string name="package_name">com.appchery.app</string>
     <string name="custom_url_scheme">com.appchery.app</string>
+    <string name="run_tracking_title">Run in progress</string>
+    <string name="run_tracking_text">Appchery is recording your run.</string>
+    <string name="run_paused_text">Your run is paused.</string>
 </resources>

@@ -1,0 +1,6 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="run_tracking_title">Sortie en cours</string>
+    <string name="run_tracking_text">Appchery enregistre votre sortie.</string>
+    <string name="run_paused_text">Votre sortie est en pause.</string>
+</resources>
