@@ -19,11 +19,17 @@
 	 */
 	let {
 		samples,
-		onscrub = undefined
+		onscrub = undefined,
+		focus = null
 	}: {
 		samples: RunSample[];
 		/** The run's clock where the finger is, so the route can mark the same moment. Null on release. */
 		onscrub?: (seconds: number | null) => void;
+		/**
+		 * A moment to read the graph at without a finger on it, for a kilometre picked off the list
+		 * next door. The finger wins while there is one, because it is the more recent of the two.
+		 */
+		focus?: number | null;
 	} = $props();
 
 	type Series = 'pace' | 'climb' | 'heart';
@@ -188,7 +194,23 @@
 		onscrub?.(null);
 	}
 
-	const reading = $derived(held === null ? null : (points[held] ?? null));
+	/** The sample nearest a moment, which is how a kilometre picked from the list is found. */
+	function nearest(seconds: number): RunSample | null {
+		let best: RunSample | null = null;
+		let closest = Infinity;
+		for (const sample of points) {
+			const gap = Math.abs(sample.seconds - seconds);
+			if (gap < closest) {
+				closest = gap;
+				best = sample;
+			}
+		}
+		return best;
+	}
+
+	const reading = $derived(
+		held !== null ? (points[held] ?? null) : focus !== null ? nearest(focus) : null
+	);
 </script>
 
 <div>

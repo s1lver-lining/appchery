@@ -169,6 +169,8 @@
 	let fixes = $state<TrackedFix[]>([]);
 	/** The run's clock where the finger is on the graph, so the route can mark the same moment. */
 	let scrubbing = $state<number | null>(null);
+	/** A kilometre picked off the list, which is the other way of asking the graph about a moment. */
+	let showing = $state<number | null>(null);
 	let tab = $state<'splits' | 'graph'>('splits');
 	let importing = $state(false);
 	let importFailed = $state(false);
@@ -430,6 +432,7 @@
 								onclick={() => {
 									tab = option.key as 'splits' | 'graph';
 									scrubbing = null;
+									showing = null;
 								}}
 							>
 								{option.label}
@@ -441,7 +444,16 @@
 						<ul class="space-y-1.5">
 							{#each record.splits as split, i (split.index)}
 								{@const pace = paceOf(split.distanceM, split.seconds) ?? 0}
-								<li class="flex items-center gap-2 text-sm tabular">
+								<!-- The row is the way into the graph at that kilometre: the table says
+								     which one was slow and only the graph says what happened in it. -->
+								<li>
+								<button
+									class="press flex w-full items-center gap-2 text-left text-sm tabular"
+									onclick={() => {
+										showing = reached[i];
+										tab = 'graph';
+									}}
+								>
 									<span class="w-10 shrink-0 text-xs text-muted">
 										{$t('running.splitNumber', { n: split.index })}
 									</span>
@@ -470,19 +482,20 @@
 									<!-- Where the run had got to, not how long the kilometre took: for a whole
 									     kilometre that is the pace again, said a second time. -->
 									<span class="w-12 shrink-0 text-right text-xs text-muted">{clock(reached[i])}</span>
+								</button>
 								</li>
 							{:else}
 								<li class="py-4 text-center text-xs text-muted">{$t('running.noSplits')}</li>
 							{/each}
 						</ul>
 					{:else if samples.length > 1}
-						<RunGraph {samples} onscrub={(at) => (scrubbing = at)} />
+						<RunGraph {samples} focus={showing} onscrub={(at) => (scrubbing = at)} />
 						{#if fixes.length > 1}
 							<!-- Under the graph rather than above it: the shape of the ground is what
 							     explains the lines, and it is read after them rather than instead. -->
 							<div class="mt-3 border-t border-line pt-3">
 								<!-- Marked where the finger is on the graph, so the two are one reading. -->
-								<RunRoute {fixes} at={scrubbing} />
+								<RunRoute {fixes} at={scrubbing ?? showing} />
 							</div>
 						{/if}
 					{:else}
