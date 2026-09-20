@@ -19,8 +19,12 @@ export interface RunFix {
 	speed: number | null;
 }
 
-/** A fix as it was stored, carrying the run's own clock so a track replays through its pauses. */
-export type TrackedFix = RunFix & { elapsedSeconds: number };
+/**
+ * A fix as it was stored, carrying the run's own clock so a track replays through its pauses, and
+ * whatever the wrist was reporting when it landed. The beat is on the fix rather than in a series of
+ * its own because that is how a GPX carries one, and because a run is read back point by point.
+ */
+export type TrackedFix = RunFix & { elapsedSeconds: number; heartRate?: number | null };
 
 export const TRACK_RULES = {
 	/** Beyond this the fix says little more than which town you are in. */
@@ -224,3 +228,26 @@ export function replayTracked(fixes: TrackedFix[]): TrackState {
 	for (const fix of fixes) state = addFix(state, fix, fix.elapsedSeconds).state;
 	return state;
 }
+
+/**
+ * What the heart did over a run, out of the fixes it is written on. Null where nothing was
+ * measuring: an average of the handful of beats that arrived before a strap slipped is worse than
+ * no figure at all, so a run has to carry a few before it is worth saying anything about.
+ */
+export function heartOf(fixes: TrackedFix[]): { average: number; max: number } | null {
+	let sum = 0;
+	let count = 0;
+	let max = 0;
+	for (const fix of fixes) {
+		const beat = fix.heartRate;
+		if (!beat || beat <= 0) continue;
+		sum += beat;
+		count++;
+		if (beat > max) max = beat;
+	}
+	if (count < HEART_MIN_SAMPLES) return null;
+	return { average: Math.round(sum / count), max };
+}
+
+/** Fewer than this and the wrist was reporting by accident rather than for the length of a run. */
+export const HEART_MIN_SAMPLES = 5;

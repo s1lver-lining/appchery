@@ -418,7 +418,9 @@ export const runPoint = sqliteTable(
 		altitude: real('altitude'),
 		speed: real('speed'),
 		/** The run's own clock when it landed, so the pauses are visible in the track itself. */
-		elapsedSeconds: real('elapsed_seconds').notNull()
+		elapsedSeconds: real('elapsed_seconds').notNull(),
+		/** Beats a minute as the watch last reported them, or null wherever nothing was measuring. */
+		heartRate: integer('heart_rate')
 	},
 	(t) => [index('idx_run_point_activity').on(t.activityId, t.at)]
 );

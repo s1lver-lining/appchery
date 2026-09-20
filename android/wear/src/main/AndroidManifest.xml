@@ -5,6 +5,8 @@
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="true" />
 
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- The heart rate, which is the one figure of a run only the wrist can measure. -->
+    <uses-permission android:name="android.permission.BODY_SENSORS" />
     <!-- Waking the screen when a run changes block, which is a cue the runner is not looking for. -->
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

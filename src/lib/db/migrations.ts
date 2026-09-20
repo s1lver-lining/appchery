@@ -355,5 +355,11 @@ export const MIGRATIONS: string[][] = [
 			elapsed_seconds REAL NOT NULL
 		);`,
 		`CREATE INDEX IF NOT EXISTS idx_run_point_activity ON run_point (activity_id, at);`
+	],
+	// 0010 the beat the wrist was reporting when a fix landed
+	[
+		// On the fix rather than in a series of its own: that is how a GPX carries a heart rate, and
+		// a run is read back point by point anyway, see doc/running.md.
+		`ALTER TABLE run_point ADD COLUMN heart_rate INTEGER;`
 	]
 ];

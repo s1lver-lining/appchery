@@ -62,6 +62,9 @@ export interface RunRecord {
 	splits: Split[];
 	steps: StepResult[];
 	elevationGainM: number | null;
+	/** Beats a minute over the whole run, and the highest one reached. Null where nothing measured. */
+	averageHeartRate: number | null;
+	maxHeartRate: number | null;
 }
 
 export function emptyLive(): RunLive {
@@ -96,7 +99,9 @@ export function emptyRun(mode: RunMode = 'manual'): RunRecord {
 		workout: null,
 		splits: [],
 		steps: [],
-		elevationGainM: null
+		elevationGainM: null,
+		averageHeartRate: null,
+		maxHeartRate: null
 	};
 }
 
@@ -145,7 +150,9 @@ export function serialiseRun(run: RunRecord): string {
 		workout: run.workout ? JSON.parse(serialiseWorkout(run.workout)) : null,
 		splits: run.splits,
 		steps: run.steps,
-		elevationGainM: run.elevationGainM
+		elevationGainM: run.elevationGainM,
+		averageHeartRate: run.averageHeartRate,
+		maxHeartRate: run.maxHeartRate
 	});
 }
 
@@ -166,7 +173,9 @@ export function parseRun(measurements: string | null): RunRecord {
 			workout: parsed.workout ? parseWorkout(JSON.stringify(parsed.workout)) : null,
 			splits: Array.isArray(parsed.splits) ? parsed.splits : [],
 			steps: Array.isArray(parsed.steps) ? parsed.steps : [],
-			elevationGainM: typeof parsed.elevationGainM === 'number' ? parsed.elevationGainM : null
+			elevationGainM: typeof parsed.elevationGainM === 'number' ? parsed.elevationGainM : null,
+			averageHeartRate: finite(parsed.averageHeartRate),
+			maxHeartRate: finite(parsed.maxHeartRate)
 		};
 	} catch {
 		// A block written by something else is not worth failing a page over.
@@ -209,6 +218,7 @@ export function validateRun(run: RunRecord): string[] {
 		errors.push('duration');
 	return errors;
 }
+
 /**
  * A distance as the app writes one: metres while it is under a kilometre, and kilometres to the
  * metre above it.

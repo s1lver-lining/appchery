@@ -318,9 +318,25 @@ final class Wrist {
          */
         String type = typeOf(copy);
         if (type != null && type.length() == 2 && type.charAt(0) == 'r' && RunFrames.command(type)) return;
+        /*
+         * A beat is offered to the run and then delivered anyway. It is not a command: nothing acts
+         * on it, and the page is where it is written down. Buffered here only while the page is
+         * asleep, because a run is spent with the screen off and a graph with an hour missing out of
+         * the middle of it is not a graph.
+         */
+        if ("hr".equals(type)) RunFrames.heard(beatOf(copy));
         Listener told = listener;
         if (told == null) return;
         main.post(() -> told.onBytes(copy));
+    }
+
+    /** The beat out of a message already known to be one, or zero where it is not a number. */
+    private static int beatOf(byte[] bytes) {
+        try {
+            return new org.json.JSONObject(new String(bytes, StandardCharsets.UTF_8)).optInt("b", 0);
+        } catch (org.json.JSONException notOurs) {
+            return 0;
+        }
     }
 
     /** The `t` of a message, without parsing the whole of one on a Bluetooth callback. */

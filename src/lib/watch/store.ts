@@ -48,6 +48,7 @@ let onArrows: ((total: number, at: number) => void) | null = null;
 let onApplied: (() => void) | null = null;
 let onBack: (() => void) | null = null;
 let onCommand: ((command: RunCommand) => void) | null = null;
+let onHeart: ((bpm: number, at: number) => void) | null = null;
 let onLinked: (() => void) | null = null;
 /**
  * Whether this link has already been greeted. The heartbeat says hello every fifteen seconds and is
@@ -111,6 +112,11 @@ export function onWatchCommand(handler: ((command: RunCommand) => void) | null):
 	onCommand = handler;
 }
 
+/** What to do with the beat the watch reports, which only a run has any use for. */
+export function onWatchHeart(handler: ((bpm: number, at: number) => void) | null): void {
+	onHeart = handler;
+}
+
 function handle(event: LinkEvent, name: string): void {
 	switch (event.kind) {
 		case 'greeted':
@@ -142,6 +148,9 @@ function handle(event: LinkEvent, name: string): void {
 			return;
 		case 'command':
 			onCommand?.(event.command);
+			return;
+		case 'heart':
+			onHeart?.(event.bpm, event.at);
 			return;
 		default:
 			// Refused, noise and a version mismatch are not states of the link itself.

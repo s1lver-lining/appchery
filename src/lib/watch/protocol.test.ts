@@ -347,6 +347,19 @@ describe('a run on the wrist', () => {
 		expect(decode(new TextEncoder().encode('{"v":2,"t":"rq"}')).ok).toBe(false);
 	});
 
+	it('carries the beat up from the wrist, and refuses one nobody could have', () => {
+		const beat = { v: PROTOCOL_VERSION, t: 'hr', b: 148 } as Wire;
+		const bytes = encode(beat);
+		// Not held to the buttons' twenty: a beat lost is a few seconds missing from a graph, and a
+		// link too small to carry this one is a link too small to carry the run frames either way.
+		expect(bytes.length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+		const decoded = decode(bytes);
+		expect(decoded.ok && decoded.message).toEqual(beat);
+		for (const b of [0, 10, 400, 60.5, 'fast']) {
+			expect(decode(new TextEncoder().encode(JSON.stringify({ v: 2, t: 'hr', b }))).ok).toBe(false);
+		}
+	});
+
 	it('says what the programme asks for before the run is started', () => {
 		const ready = { v: PROTOCOL_VERSION, t: 'run', st: 'i', s: 0, d: 0, p: 0, a: 0, c: 0, ps: 3600, pd: 10_000, pp: 360 } as Wire;
 		const decoded = decode(encode(ready));

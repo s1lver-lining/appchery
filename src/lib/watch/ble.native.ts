@@ -47,6 +47,8 @@ export interface WristClaim {
 	fs: number;
 	fd: number;
 	done: { i: number; d: number; s: number }[];
+	/** The beats the wrist reported while the page was frozen, each with when it was taken. */
+	hr?: { b: number; at: number }[];
 }
 
 export const Wrist = registerPlugin<WristPlugin>('Wrist');

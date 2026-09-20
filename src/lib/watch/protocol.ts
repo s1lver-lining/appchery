@@ -106,6 +106,19 @@ export type Wire =
 			pp?: number;
 	  }
 	/**
+	 * The beat the watch is reading off the wrist, sent while a run is going.
+	 *
+	 * It travels the other way from everything else about a run: the phone works out the run and the
+	 * watch shows it, but the sensor is on the wrist and the record is on the phone. Sent as it is
+	 * measured rather than asked for, because a sample nobody collected is a gap in the graph.
+	 *
+	 * Not squeezed into the twenty bytes the buttons are held to. A button has to work on a link
+	 * that never negotiated an MTU, because a pause that only sometimes pauses is worse than none; a
+	 * beat lost is a few seconds missing from a graph, and a link that small carries no run frames
+	 * either, so there would be nothing on the wrist to measure against.
+	 */
+	| { v: number; t: 'hr'; b: number }
+	/**
 	 * The watch asking the phone to drive the run: start it, hold it, let it go on, or finish it.
 	 * The phone owns the run, its clock and its recording, so the wrist asks and the phone decides,
 	 * exactly as it asks to open an activity rather than opening one.
@@ -307,6 +320,10 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 		case 'back':
 			return { ok: true, message: { v: version, t: 'back' } };
 
+		case 'hr':
+			if (!isBeat(m.b)) break;
+			return { ok: true, message: { v: version, t: 'hr', b: m.b } };
+
 		case 'rg':
 		case 'rh':
 		case 'ru':
@@ -336,6 +353,11 @@ function isName(value: unknown): value is string {
 /** A whole number a wrist is shown: never negative, never fractional, never absurd. */
 function isFigure(value: unknown): value is number {
 	return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10_000_000;
+}
+
+/** A heart rate a living body could be at. Outside this it is the sensor talking to itself. */
+function isBeat(value: unknown): value is number {
+	return Number.isInteger(value) && (value as number) >= 25 && (value as number) <= 250;
 }
 
 function isTime(value: unknown): value is number {

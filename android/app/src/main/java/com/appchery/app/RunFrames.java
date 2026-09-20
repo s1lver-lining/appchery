@@ -57,6 +57,12 @@ final class RunFrames {
         int repeatOf;
     }
 
+    /** One beat off the wrist, with when it was taken: the page puts each one on the fix it belongs to. */
+    private static final class Beat {
+        long at;
+        int bpm;
+    }
+
     private static final class Result {
         int index;
         int metres;
@@ -65,6 +71,9 @@ final class RunFrames {
 
     private static List<Step> steps = new ArrayList<>();
     private static final List<Result> results = new ArrayList<>();
+    /** An hour of a beat every few seconds, which is longer than any run holds a phone asleep for. */
+    private static final int BEATS_MOST = 1200;
+    private static final List<Beat> beats = new ArrayList<>();
 
     private static boolean live = false;
     private static String status = "i";
@@ -144,6 +153,23 @@ final class RunFrames {
         return true;
     }
 
+    /**
+     * A beat the watch reported. Kept only while the page is asleep: awake, the page is told
+     * directly and holding a second copy here would have it counted twice when the two are joined.
+     */
+    static void heard(int bpm) {
+        if (bpm < 25 || bpm > 250) return;
+        synchronized (LOCK) {
+            if (!live) return;
+            if (SystemClock.elapsedRealtime() - Wrist.lastPageWrite() < QUIET_MS) return;
+            Beat beat = new Beat();
+            beat.at = System.currentTimeMillis();
+            beat.bpm = bpm;
+            beats.add(beat);
+            while (beats.size() > BEATS_MOST) beats.remove(0);
+        }
+    }
+
     /** The page describing the run: where its clock and its distance are, and what is left to run. */
     static void plan(JSONObject plan) {
         synchronized (LOCK) {
@@ -163,7 +189,8 @@ final class RunFrames {
             last = null;
             recent.clear();
             results.clear();
-
+            // The beats are not cleared here: they are samples nobody has collected yet, and a plan
+            // arrives on every frame. They go when the page takes them, or when the run does.
             steps = new ArrayList<>();
             JSONArray given = plan.optJSONArray("steps");
             for (int i = 0; given != null && i < given.length(); i++) {
@@ -195,6 +222,7 @@ final class RunFrames {
             cue = 0;
             steps = new ArrayList<>();
             results.clear();
+            beats.clear();
             last = null;
             recent.clear();
         }
@@ -225,6 +253,16 @@ final class RunFrames {
                     done.put(one);
                 }
                 out.put("done", done);
+                // Drained rather than read: a sample handed over twice is a sample averaged twice.
+                JSONArray heard = new JSONArray();
+                for (Beat beat : beats) {
+                    JSONObject one = new JSONObject();
+                    one.put("b", beat.bpm);
+                    one.put("at", beat.at);
+                    heard.put(one);
+                }
+                beats.clear();
+                out.put("hr", heard);
             } catch (JSONException impossible) {
                 // Numbers and an array into an empty object.
             }

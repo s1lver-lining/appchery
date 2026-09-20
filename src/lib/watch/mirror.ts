@@ -9,7 +9,8 @@ import {
 	onWatchLinked,
 	onWatchOpen,
 	onWatchArrows,
-	onWatchCommand
+	onWatchCommand,
+	onWatchHeart
 } from './store';
 import type { ActivityLine, Round, RunFrame } from './link';
 import type { RunCommand } from './protocol';
@@ -185,6 +186,7 @@ export async function mirrorRun(frame: RunFrame): Promise<void> {
 export function endMirroredRun(): void {
 	watchLink()?.clearRun();
 	onWatchCommand(null);
+	onWatchHeart(null);
 	describeAgain = null;
 	onWatchLinked(null);
 }
@@ -236,6 +238,11 @@ export function acceptArrows(handler: ((total: number, at: number) => void) | nu
 /** What the run buttons on the wrist do. The watch asks; the phone is what runs a run. */
 export function acceptRunCommands(handler: ((command: RunCommand) => void) | null): void {
 	onWatchCommand(handler);
+}
+
+/** The beat as the wrist reads it, which is the one thing about a run that travels upwards. */
+export function acceptHeart(handler: ((bpm: number, at: number) => void) | null): void {
+	onWatchHeart(handler);
 }
 
 /** Where back goes from this page. The watch asks; only the phone knows what is behind it. */

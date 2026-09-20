@@ -4,6 +4,7 @@ import {
 	emptyTrack,
 	paceOf,
 	replayTracked,
+	HEART_MIN_SAMPLES,
 	type TrackState,
 	type TrackedFix
 } from '$lib/domain/run/track';
@@ -20,7 +21,7 @@ import { appendRunPoints, clearRunPoints, listRunPoints, updateRun } from '$lib/
 import { screenLock } from '$lib/ui/wakeLock';
 import { commit, tap, warn } from '$lib/haptics';
 import { trackingSource, type Source, type StartFailure } from './source';
-import { acceptRunCommands, endMirroredRun, mirrorRun } from '$lib/watch/mirror';
+import { acceptHeart, acceptRunCommands, endMirroredRun, mirrorRun } from '$lib/watch/mirror';
 import { handDown, takeBack } from './handover';
 import type { RunFrame } from '$lib/watch/link';
 import type { RunCommand, RunStatus } from '$lib/watch/protocol';
@@ -48,6 +49,14 @@ const SAVE_MS = 5000;
  * halving the writes halves what the link has to carry for a whole hour.
  */
 const MIRROR_MS = 2000;
+/**
+ * How old a beat may be before it is no longer what the runner's heart is doing. The watch sends one
+ * every few seconds; past this the wrist is out of range or the sensor has lost the skin, and a fix
+ * stamped with it would be claiming a reading nobody took.
+ */
+const BEAT_STALE_MS = 20_000;
+/** An hour of a beat every few seconds, which is longer than any fix still waiting to be written. */
+const BEAT_LOG_MOST = 1200;
 
 export class LiveRun {
 	activityId = $state('');
@@ -68,6 +77,14 @@ export class LiveRun {
 	);
 	private pending: TrackedFix[] = [];
 	private lastMirrored = 0;
+	/**
+	 * Beats off the wrist waiting for a fix to be written on. A list rather than the last one,
+	 * because a page that has been frozen takes back everything the service heard while it slept and
+	 * has to put each sample where it belongs rather than stamping a whole batch with the newest.
+	 */
+	private beatLog: { bpm: number; at: number }[] = [];
+	/** The run's beats as they are written, kept as a total rather than as a list of every one. */
+	private beats = { sum: 0, count: 0, max: 0 };
 	/** What the wrist was last told, so a block change or a pause is sent the moment it happens. */
 	private mirroredCue = -1;
 	private mirroredStatus = '';
@@ -179,9 +196,15 @@ export class LiveRun {
 		this.record = record;
 		this.source = trackingSource();
 		this.background = this.source.background;
-		this.track = replayTracked(await listRunPoints(activityId));
 		// The buttons on the wrist, which ask rather than decide: the run is driven from one place.
 		acceptRunCommands((command) => void this.command(command));
+		// And what the wrist measures rather than asks for, which travels the other way.
+		acceptHeart((bpm, at) => this.heard(bpm, at));
+		const stored = await listRunPoints(activityId);
+		this.track = replayTracked(stored);
+		// Carried on from what is already written, so a run reopened averages over the whole of it.
+		this.beats = { sum: 0, count: 0, max: 0 };
+		for (const point of stored) this.count(point.heartRate ?? null);
 		this.now = Date.now();
 		// A run reopened while it was still running carries on: the service never stopped.
 		if (record.live?.status === 'running') await this.begin(false);
@@ -269,6 +292,7 @@ export class LiveRun {
 		this.record.durationSeconds = Math.round(live.baseSeconds) || null;
 		this.record.splits = this.track.splits;
 		this.record.elevationGainM = Math.round(this.track.elevationGainM);
+		this.writeBeats();
 		commit();
 		await this.flush();
 		await this.save();
@@ -395,6 +419,10 @@ export class LiveRun {
 		const live = this.record?.live;
 		if (!taken || !live || !this.record) return;
 
+		// Every beat the wrist reported while nobody here was listening, each back where it belongs.
+		for (const sample of taken.hr ?? []) this.heard(sample.b, sample.at);
+		this.beatLog.sort((a, b) => a.at - b.at);
+
 		const steps = this.steps;
 		for (const done of taken.done) {
 			const step = steps[done.i];
@@ -435,6 +463,36 @@ export class LiveRun {
 		await this.save();
 	}
 
+	/**
+	 * A beat off the wrist. Kept rather than written: it is stamped onto the next fix that lands, so
+	 * the heart rate is read back exactly where the runner was when it was measured, which is what a
+	 * GPX wants and what the graph draws.
+	 */
+	heard(bpm: number, at: number) {
+		if (!Number.isFinite(bpm) || bpm <= 0) return;
+		this.beatLog.push({ bpm: Math.round(bpm), at });
+		// An hour of a beat every few seconds. Past that, the samples are older than any fix waiting.
+		if (this.beatLog.length > BEAT_LOG_MOST) this.beatLog.splice(0, this.beatLog.length - BEAT_LOG_MOST);
+	}
+
+	/** What the beat does to the run's totals, counted once per fix it is written on. */
+	private count(bpm: number | null) {
+		if (!bpm || bpm <= 0) return;
+		this.beats.sum += bpm;
+		this.beats.count++;
+		if (bpm > this.beats.max) this.beats.max = bpm;
+	}
+
+	/** The beat to write on a fix: the newest sample taken before it, while that is recent enough. */
+	private beatFor(at: number): number | null {
+		let found: { bpm: number; at: number } | null = null;
+		for (const sample of this.beatLog) {
+			if (sample.at > at) break;
+			found = sample;
+		}
+		return found && at - found.at <= BEAT_STALE_MS ? found.bpm : null;
+	}
+
 	private async ingest() {
 		const fixes = (await this.source?.drain()) ?? [];
 		if (fixes.length === 0) return;
@@ -446,7 +504,9 @@ export class LiveRun {
 			const taken = addFix(state, fix, at);
 			if (!taken.moved) continue;
 			state = taken.state;
-			this.pending.push({ ...fix, elapsedSeconds: at });
+			const heartRate = this.beatFor(fix.at);
+			this.count(heartRate);
+			this.pending.push({ ...fix, elapsedSeconds: at, heartRate });
 		}
 		this.track = state;
 		if (this.pending.length >= 10) await this.flush();
@@ -482,6 +542,13 @@ export class LiveRun {
 		this.record.steps = [...this.record.steps.filter((step) => step.key !== result.key), result];
 	}
 
+	/** The run's own heart figures, out of the totals kept as the fixes were written. */
+	private writeBeats() {
+		if (!this.record || this.beats.count < HEART_MIN_SAMPLES) return;
+		this.record.averageHeartRate = Math.round(this.beats.sum / this.beats.count);
+		this.record.maxHeartRate = this.beats.max;
+	}
+
 	/** An edit made on the page rather than by the run: the effort felt, a number put right afterwards. */
 	async persist() {
 		await this.save();
@@ -515,6 +582,7 @@ export class LiveRun {
 			this.record.durationSeconds = Math.round(this.seconds) || null;
 			this.record.splits = this.track.splits;
 			this.record.elevationGainM = Math.round(this.track.elevationGainM);
+			this.writeBeats();
 		}
 		await updateRun(this.activityId, $state.snapshot(this.record) as RunRecord);
 	}

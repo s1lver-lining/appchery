@@ -95,6 +95,8 @@ export type LinkEvent =
 	| { kind: 'back' }
 	/** The watch asking for the run to be started, held or finished. The phone is what runs it. */
 	| { kind: 'command'; command: RunCommand }
+	/** The beat off the wrist. The one figure of a run the phone cannot measure for itself. */
+	| { kind: 'heart'; bpm: number; at: number }
 	/** The session's training arrows as a total, read on this device's clock. */
 	| { kind: 'arrows'; total: number; at: number }
 	/** The peer speaks a protocol this build does not: the archer has to update one of the two. */
@@ -357,6 +359,9 @@ export class WatchLink {
 					return;
 				case 'back':
 					this.notify({ kind: 'back' });
+					return;
+				case 'hr':
+					this.notify({ kind: 'heart', bpm: message.b, at: Date.now() });
 					return;
 				case 'rg':
 				case 'rh':

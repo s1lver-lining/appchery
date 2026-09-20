@@ -105,8 +105,12 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
      */
     private String mirrored = "idle";
     /** The block change last felt, so a frame redrawn is not a block changed. */
+    /** Asked for on the way into a run, so it answers on its own rather than with the link's. */
+    private static final int HEART_PERMISSION = 2;
     private int lastCue = -1;
     private boolean running = false;
+    /** The sensor against the skin, on only while a run is: a light held on all day is a flat watch. */
+    private Heart heart;
     private boolean keepAwake = false;
     private boolean ambientWanted = false;
     private boolean inAmbient = false;
@@ -144,6 +148,12 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
 
     @Override
     public void onRequestPermissionsResult(int code, String[] permissions, int[] results) {
+        // The heart rate is asked for on its own and refusing it costs a figure, never the run.
+        if (code == HEART_PERMISSION) {
+            if (running) heart.start(this);
+            runView.setHeartAvailable(heart.available(this));
+            return;
+        }
         for (int result : results) {
             if (result != PackageManager.PERMISSION_GRANTED) {
                 onLinkState(Link.FAULT, "Bluetooth permission refused");
@@ -166,6 +176,8 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        // The sensor goes with the screen that was reading it: a light left on is a flat watch.
+        if (heart != null) heart.stop();
         cancelAmbientTick();
         try {
             unregisterReceiver(ambientTicker);
@@ -188,6 +200,10 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         sessionView = new SessionView(this, this);
         shell.addView(sessionView);
 
+        heart = new Heart(this, bpm -> {
+            if (link != null) link.heart(bpm);
+            if (runView != null) runView.setHeart(bpm);
+        });
         runView = new RunView(this, this);
         keepAwake = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("keep-awake", false);
         ambientWanted = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("ambient", false);
@@ -726,10 +742,11 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     private boolean onCrown(MotionEvent e) {
         float delta = e.getAxisValue(MotionEvent.AXIS_SCROLL);
         if ("run".equals(screen)) {
-            // A detent a page, so the crown turns the run's pages the way it scrolls everything else.
+            // A detent a page. Turned away from the runner the pages come up from below, which is
+            // the way a list scrolls: the content moves against the finger, not with it.
             rotary += delta;
             if (Math.abs(rotary) > 1.0f) {
-                runView.turn(rotary > 0 ? 1 : -1);
+                runView.turn(rotary > 0 ? -1 : 1);
                 rotary = 0;
             }
             return true;
@@ -977,9 +994,15 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
 
         if (live && !running) {
             running = true;
+            // Asked for here rather than on a settings screen nobody visits, as the phone asks for
+            // its own on the way into a run. Refused, the run is a run without a heart rate.
+            Heart.ask(this, HEART_PERMISSION);
+            heart.start(this);
+            runView.setHeartAvailable(heart.available(this));
             showScreen("run");
         } else if (!live && running) {
             running = false;
+            heart.stop();
             lastCue = -1;
             // Back to whatever the phone was showing behind the run, which it never stopped being.
             showScreen(mirrored);

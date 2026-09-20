@@ -473,6 +473,25 @@ public class Link {
         }
     }
 
+    /**
+     * The beat off this wrist, on its way to the phone that keeps the record.
+     *
+     * The only thing about a run that travels upwards, because the sensor is here and the record is
+     * there. Sent as it is measured rather than asked for: a sample nobody collected is a gap in a
+     * graph that cannot be filled in afterwards.
+     */
+    public void heart(int bpm) {
+        try {
+            JSONObject message = new JSONObject();
+            message.put("v", VERSION);
+            message.put("t", "hr");
+            message.put("b", bpm);
+            send(message);
+        } catch (Exception e) {
+            Log.w(TAG, "could not send a beat", e);
+        }
+    }
+
     private static String type(String action) {
         switch (action) {
             case "go":
