@@ -11,6 +11,7 @@ import {
 } from './ble';
 import { connect as connectOverWeb } from './ble.web';
 import { WatchLink, type LinkEvent } from './link';
+import type { RunCommand } from './protocol';
 
 /**
  * The one link this device holds, kept here rather than on a page because the app is a single page:
@@ -46,6 +47,7 @@ let onOpen: ((index: number) => void) | null = null;
 let onArrows: ((total: number, at: number) => void) | null = null;
 let onApplied: (() => void) | null = null;
 let onBack: (() => void) | null = null;
+let onCommand: ((command: RunCommand) => void) | null = null;
 let onLinked: (() => void) | null = null;
 /**
  * Whether this link has already been greeted. The heartbeat says hello every fifteen seconds and is
@@ -104,6 +106,11 @@ export function onWatchBack(handler: (() => void) | null): void {
 	onBack = handler;
 }
 
+/** What to do when the watch asks for the run to be started, held or finished. */
+export function onWatchCommand(handler: ((command: RunCommand) => void) | null): void {
+	onCommand = handler;
+}
+
 function handle(event: LinkEvent, name: string): void {
 	switch (event.kind) {
 		case 'greeted':
@@ -132,6 +139,9 @@ function handle(event: LinkEvent, name: string): void {
 			return;
 		case 'back':
 			onBack?.();
+			return;
+		case 'command':
+			onCommand?.(event.command);
 			return;
 		default:
 			// Refused, noise and a version mismatch are not states of the link itself.

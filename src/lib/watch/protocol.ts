@@ -63,8 +63,101 @@ export type Wire =
 	 * doubles when the message arrives twice, and arriving twice is normal for a queue.
 	 */
 	| { v: number; t: 'arrows'; n: number; at: number }
+	/**
+	 * A run as it stands. Sent while one is going and never stored, so it carries everything the
+	 * wrist draws and nothing it has to remember.
+	 *
+	 * Deliberately not a new `screen`: a watch built before runs existed ignores a message type it
+	 * has never heard of and goes on showing the session, where a screen name it does not know would
+	 * leave it with nothing drawn at all. The block fields are left out entirely when the run follows
+	 * no programme, which is what keeps this inside one write.
+	 */
+	| {
+			v: number;
+			t: 'run';
+			st: RunStatus;
+			/** Seconds, metres, seconds per kilometre, all whole: a wrist reads no decimals. */
+			s: number;
+			d: number;
+			p: number;
+			a: number;
+			/** Counts up on every block change, which is what the watch buzzes for. */
+			c: number;
+			k?: BlockKind;
+			/** What the block is called, cut by the sender. */
+			b?: string;
+			i?: number;
+			n?: number;
+			r?: number;
+			ro?: number;
+			tp?: number;
+			/** What is left of the block, in whichever unit it is run to. */
+			ls?: number;
+			lm?: number;
+			/** The whole of what the block asks for, so the wrist can draw how much of it is done. */
+			gs?: number;
+			gm?: number;
+			/** What comes next, which is worth knowing before it arrives. */
+			nk?: BlockKind;
+			ntp?: number;
+			/** What the programme asks for in total, sent before the start where it is all there is. */
+			ps?: number;
+			pd?: number;
+			pp?: number;
+	  }
+	/**
+	 * The watch asking the phone to drive the run: start it, hold it, let it go on, or finish it.
+	 * The phone owns the run, its clock and its recording, so the wrist asks and the phone decides,
+	 * exactly as it asks to open an activity rather than opening one.
+	 *
+	 * A type each rather than one type with an action in it, because the action costs nine bytes and
+	 * the budget here is not the MTU the link usually gets but the twenty bytes it falls back to: a
+	 * watch whose notifications were never given a larger one drops anything longer, silently, and a
+	 * pause button that works only on a well negotiated link is a pause button that cannot be
+	 * trusted. `{"v":2,"t":"rh"}` is sixteen bytes and always fits.
+	 */
+	| { v: number; t: RunCommandType }
 	/** The link is being given up deliberately, as opposed to lost. */
 	| { v: number; t: 'bye' };
+
+/** Where the run is: idle, running, paused, done. One letter, because it is sent every second. */
+export type RunStatus = 'i' | 'r' | 'p' | 'd';
+
+const RUN_STATUSES: RunStatus[] = ['i', 'r', 'p', 'd'];
+
+export type RunCommand = 'go' | 'pause' | 'resume' | 'stop';
+
+/** The four on the wire, shortest first: run go, run hold, run unhold, run end. */
+export type RunCommandType = 'rg' | 'rh' | 'ru' | 're';
+
+const COMMAND_OF: Record<RunCommandType, RunCommand> = {
+	rg: 'go',
+	rh: 'pause',
+	ru: 'resume',
+	re: 'stop'
+};
+
+const TYPE_OF: Record<RunCommand, RunCommandType> = {
+	go: 'rg',
+	pause: 'rh',
+	resume: 'ru',
+	stop: 're'
+};
+
+export function commandType(command: RunCommand): RunCommandType {
+	return TYPE_OF[command];
+}
+
+export function commandOf(type: RunCommandType): RunCommand {
+	return COMMAND_OF[type];
+}
+
+export type BlockKind = 'warmup' | 'work' | 'recovery' | 'cooldown';
+
+const BLOCK_KINDS: BlockKind[] = ['warmup', 'work', 'recovery', 'cooldown'];
+
+/** A block label on the wire. Longer than this does not fit a round screen anyway. */
+export const MAX_BLOCK_LABEL = 10;
 
 /** Where the watch is. Scoring is driven by `round`, so this only has to name the three states. */
 export type Screen = 'idle' | 'session' | 'score';
@@ -176,8 +269,49 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 			if (!isIndex(m.n) || !isTime(m.at)) break;
 			return { ok: true, message: { v: version, t: 'arrows', n: m.n, at: m.at } };
 
+		case 'run': {
+			if (!RUN_STATUSES.includes(m.st as RunStatus)) break;
+			if (!isFigure(m.s) || !isFigure(m.d) || !isFigure(m.p) || !isFigure(m.a)) break;
+			if (!isFigure(m.c)) break;
+			const run: Wire = {
+				v: version,
+				t: 'run',
+				st: m.st as RunStatus,
+				s: m.s as number,
+				d: m.d as number,
+				p: m.p as number,
+				a: m.a as number,
+				c: m.c as number
+			};
+			// A run with no programme sends none of these, so absent and wrong are different answers.
+			if (m.k !== undefined) {
+				if (!BLOCK_KINDS.includes(m.k as BlockKind)) break;
+				run.k = m.k as BlockKind;
+			}
+			if (m.b !== undefined) {
+				if (typeof m.b !== 'string' || m.b.length > MAX_BLOCK_LABEL) break;
+				run.b = m.b;
+			}
+			if (m.nk !== undefined) {
+				if (!BLOCK_KINDS.includes(m.nk as BlockKind)) break;
+				run.nk = m.nk as BlockKind;
+			}
+			for (const key of ['i', 'n', 'r', 'ro', 'tp', 'ls', 'lm', 'gs', 'gm', 'ntp', 'ps', 'pd', 'pp'] as const) {
+				if (m[key] === undefined) continue;
+				if (!isFigure(m[key])) return { ok: false, reason: 'malformed' };
+				run[key] = m[key] as number;
+			}
+			return { ok: true, message: run };
+		}
+
 		case 'back':
 			return { ok: true, message: { v: version, t: 'back' } };
+
+		case 'rg':
+		case 'rh':
+		case 'ru':
+		case 're':
+			return { ok: true, message: { v: version, t: m.t as RunCommandType } };
 
 		case 'bye':
 			return { ok: true, message: { v: version, t: 'bye' } };
@@ -197,6 +331,11 @@ function isLabel(value: unknown): value is string {
 /** A name the sender has already cut to something a watch can show. */
 function isName(value: unknown): value is string {
 	return typeof value === 'string' && value.length > 0 && value.length <= MAX_NAME_LENGTH;
+}
+
+/** A whole number a wrist is shown: never negative, never fractional, never absurd. */
+function isFigure(value: unknown): value is number {
+	return Number.isInteger(value) && (value as number) >= 0 && (value as number) <= 10_000_000;
 }
 
 function isTime(value: unknown): value is number {

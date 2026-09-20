@@ -274,3 +274,98 @@ describe('bookkeeping', () => {
 		expect(skew(1000, 1000)).toBe(0);
 	});
 });
+
+describe('a run on the wrist', () => {
+	const frame = (patch: Partial<Extract<Wire, { t: 'run' }>> = {}): Wire => ({
+		v: PROTOCOL_VERSION,
+		t: 'run',
+		st: 'r',
+		s: 1284,
+		d: 4310,
+		p: 296,
+		a: 298,
+		c: 7,
+		k: 'work',
+		b: 'Reps',
+		i: 8,
+		n: 16,
+		r: 4,
+		ro: 7,
+		tp: 218,
+		lm: 120,
+		gm: 200,
+		nk: 'recovery',
+		ntp: 400,
+		...patch
+	});
+
+	/** What the sender can actually produce at its largest: long figures, a full label, accents. */
+	const worst = {
+		v: PROTOCOL_VERSION,
+		t: 'run',
+		st: 'r',
+		s: 35_999,
+		d: 99_999,
+		p: 1200,
+		a: 1200,
+		c: 999,
+		k: 'recovery',
+		b: 'Côte longu',
+		r: 60,
+		ro: 60,
+		tp: 1200,
+		lm: 99_999,
+		gm: 99_999,
+		nk: 'cooldown',
+		ntp: 1200
+	} as Wire;
+
+	it('round trips a block being run', () => {
+		const decoded = decode(encode(frame()));
+		expect(decoded.ok && decoded.message).toEqual(frame());
+	});
+
+	it('fits one write at its very largest', () => {
+		expect(encode(worst).length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+		expect(decode(encode(worst)).ok).toBe(true);
+	});
+
+	it('carries no block at all when the run follows no programme', () => {
+		const free = { v: PROTOCOL_VERSION, t: 'run', st: 'p', s: 60, d: 200, p: 0, a: 300, c: 0 } as Wire;
+		const decoded = decode(encode(free));
+		expect(decoded.ok && decoded.message).toEqual(free);
+	});
+
+	it('carries the buttons on the wrist inside the smallest payload a link ever has', () => {
+		for (const t of ['rg', 'rh', 'ru', 're'] as const) {
+			const bytes = encode({ v: PROTOCOL_VERSION, t });
+			// Twenty is what a link that never negotiated an MTU can notify, and it drops the rest.
+			expect(bytes.length).toBeLessThanOrEqual(20);
+			const decoded = decode(bytes);
+			expect(decoded.ok && decoded.message).toEqual({ v: PROTOCOL_VERSION, t });
+		}
+		expect(decode(new TextEncoder().encode('{"v":2,"t":"rq"}')).ok).toBe(false);
+	});
+
+	it('says what the programme asks for before the run is started', () => {
+		const ready = { v: PROTOCOL_VERSION, t: 'run', st: 'i', s: 0, d: 0, p: 0, a: 0, c: 0, ps: 3600, pd: 10_000, pp: 360 } as Wire;
+		const decoded = decode(encode(ready));
+		expect(decoded.ok && decoded.message).toEqual(ready);
+	});
+
+	it('refuses a frame that says something impossible', () => {
+		const bad: unknown[] = [
+			{ ...frame(), st: 'x' },
+			{ ...frame(), s: -1 },
+			{ ...frame(), d: 'far' },
+			{ ...frame(), k: 'sprint' },
+			{ ...frame(), b: 'a label far too long for a wrist' },
+			{ ...frame(), tp: 1.5 },
+			{ ...frame(), nk: 'jog' },
+			{ ...frame(), gm: -5 }
+		];
+		for (const message of bad) {
+			expect(decode(new TextEncoder().encode(JSON.stringify(message))).ok).toBe(false);
+		}
+	});
+});

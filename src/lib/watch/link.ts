@@ -6,8 +6,13 @@ import {
 	endKey,
 	isEmpty,
 	skew,
+	commandOf,
+	MAX_BLOCK_LABEL,
 	PROTOCOL_VERSION,
+	type BlockKind,
 	type EndState,
+	type RunCommand,
+	type RunStatus,
 	type Screen,
 	type Wire
 } from './protocol';
@@ -22,6 +27,34 @@ import {
  * holding the old ones subscribes to nothing and is told nothing about it. Updating the watch app
  * does exactly that to a phone already connected. See doc/llm-memory/watch-link.md.
  */
+
+/** A run as the wrist is to show it. Worked out on the phone, because the watch decides nothing. */
+export interface RunFrame {
+	status: RunStatus;
+	seconds: number;
+	distanceM: number;
+	pace: number | null;
+	averagePace: number | null;
+	cue: number;
+	/** What the programme asks for in total. All there is to show before the run is started. */
+	planned: { seconds: number; metres: number; pace: number | null } | null;
+	block: {
+		kind: BlockKind;
+		label: string | null;
+		index: number;
+		count: number;
+		repeat: number;
+		repeatOf: number;
+		targetPace: number | null;
+		leftSeconds: number | null;
+		leftMetres: number | null;
+		/** What the block asks for in total, which is what makes what is left a proportion. */
+		goalSeconds: number | null;
+		goalMetres: number | null;
+	} | null;
+	/** The block after this one, so the wrist can say what is coming before it arrives. */
+	next: { kind: BlockKind; targetPace: number | null } | null;
+}
 
 /** Writing to the peer. Rejects when the link has gone, which is ordinary rather than exceptional. */
 export interface Channel {
@@ -60,6 +93,8 @@ export type LinkEvent =
 	| { kind: 'open'; index: number }
 	/** The watch asking to come back out. Only the phone knows what is behind where it is. */
 	| { kind: 'back' }
+	/** The watch asking for the run to be started, held or finished. The phone is what runs it. */
+	| { kind: 'command'; command: RunCommand }
 	/** The session's training arrows as a total, read on this device's clock. */
 	| { kind: 'arrows'; total: number; at: number }
 	/** The peer speaks a protocol this build does not: the archer has to update one of the two. */
@@ -94,6 +129,8 @@ export class WatchLink {
 	 * say so: its counter would sit at nothing while the phone believed it had been told.
 	 */
 	private session: { label: string; activities: ActivityLine[]; arrows: number } | null = null;
+	/** The run in progress, for the same reason the session is held: a watch that restarts is blank. */
+	private run: RunFrame | null = null;
 
 	constructor(
 		private readonly channel: Channel,
@@ -199,7 +236,66 @@ export class WatchLink {
 
 	async showIdle(): Promise<void> {
 		this.session = null;
+		this.run = null;
 		await this.showScreen('idle');
+	}
+
+	/**
+	 * A run as it stands. Held as well as sent, because a watch that restarts mid run has forgotten
+	 * everything and cannot say so: the next hello puts the run back on the wrist by itself.
+	 */
+	async showRun(frame: RunFrame): Promise<void> {
+		this.run = frame;
+		await this.sendRun(frame);
+	}
+
+	/** Out of the run, so a watch reconnecting later is not handed one that finished an hour ago. */
+	clearRun(): void {
+		this.run = null;
+	}
+
+	private async sendRun(frame: RunFrame): Promise<void> {
+		const whole = (value: number) => Math.max(0, Math.round(value));
+		const message: Wire = {
+			v: PROTOCOL_VERSION,
+			t: 'run',
+			st: frame.status,
+			s: whole(frame.seconds),
+			d: whole(frame.distanceM),
+			p: whole(frame.pace ?? 0),
+			a: whole(frame.averagePace ?? 0),
+			c: whole(frame.cue)
+		};
+		const block = frame.block;
+		if (block) {
+			message.k = block.kind;
+			if (block.label) message.b = block.label.slice(0, MAX_BLOCK_LABEL);
+			// One position or the other, never both: inside a repeat the round is what the runner
+			// counts, outside it the place in the programme is, and the budget is one write.
+			if (block.repeatOf > 1) {
+				message.r = whole(block.repeat);
+				message.ro = whole(block.repeatOf);
+			} else {
+				message.i = whole(block.index);
+				message.n = whole(block.count);
+			}
+			if (block.targetPace) message.tp = whole(block.targetPace);
+			if (block.leftSeconds !== null) message.ls = whole(block.leftSeconds);
+			if (block.leftMetres !== null) message.lm = whole(block.leftMetres);
+			if (block.goalSeconds !== null) message.gs = whole(block.goalSeconds);
+			if (block.goalMetres !== null) message.gm = whole(block.goalMetres);
+		}
+		if (frame.next) {
+			message.nk = frame.next.kind;
+			if (frame.next.targetPace) message.ntp = whole(frame.next.targetPace);
+		}
+		// Only before the start: once it is running, what was planned is behind what is happening.
+		if (frame.planned && frame.status === 'i') {
+			message.ps = whole(frame.planned.seconds);
+			message.pd = whole(frame.planned.metres);
+			if (frame.planned.pace) message.pp = whole(frame.planned.pace);
+		}
+		await this.say(message);
 	}
 
 	/** The session's training arrows, on the watch's clock so the two compare the same now. */
@@ -262,6 +358,12 @@ export class WatchLink {
 				case 'back':
 					this.notify({ kind: 'back' });
 					return;
+				case 'rg':
+				case 'rh':
+				case 'ru':
+				case 're':
+					this.notify({ kind: 'command', command: commandOf(message.t) });
+					return;
 				case 'arrows':
 					// Read on this device's clock, or last write wins compares two different nows.
 					this.notify({ kind: 'arrows', total: message.n, at: message.at + this.peerOffset });
@@ -308,6 +410,7 @@ export class WatchLink {
 			await this.sendRound();
 			await this.pushAll();
 		}
+		if (this.run) await this.sendRun(this.run);
 	}
 
 	private async onEnd(

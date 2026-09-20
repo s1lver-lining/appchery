@@ -8,9 +8,11 @@ import {
 	onWatchBack,
 	onWatchLinked,
 	onWatchOpen,
-	onWatchArrows
+	onWatchArrows,
+	onWatchCommand
 } from './store';
-import type { ActivityLine, Round } from './link';
+import type { ActivityLine, Round, RunFrame } from './link';
+import type { RunCommand } from './protocol';
 
 /**
  * Putting what the phone is showing onto the wrist. This is the only place that knows both the app's
@@ -162,6 +164,31 @@ export async function mirrorRound(activity: ActivityLike): Promise<void> {
 	await link.setRound(round, recordFor(round));
 }
 
+/**
+ * A run as it stands, put on the wrist. Sent on a tick rather than described once, because a run is
+ * a screen that changes every second, and the frame is small enough to be the whole of it: nothing
+ * is worked out on the watch.
+ */
+export async function mirrorRun(frame: RunFrame): Promise<void> {
+	// A run is the phone's own screen while it lasts, so a watch linking mid run is told about it.
+	remember(() => mirrorRun(frame));
+
+	const link = watchLink();
+	if (!link) return;
+	cancelIdle();
+	lastSession = null;
+	onWatchOpen(null);
+	await link.showRun(frame);
+}
+
+/** Out of the run: the wrist goes back to the session the phone is showing behind it. */
+export function endMirroredRun(): void {
+	watchLink()?.clearRun();
+	onWatchCommand(null);
+	describeAgain = null;
+	onWatchLinked(null);
+}
+
 /** One end the phone has just changed, so the wrist stops showing the old one. */
 export async function mirrorEnd(stageIndex: number, endNo: number): Promise<void> {
 	await watchLink()?.pushEnd(stageIndex, endNo);
@@ -204,6 +231,11 @@ export async function mirrorIdle(): Promise<void> {
 /** What to do when the watch asserts the session's training arrows. */
 export function acceptArrows(handler: ((total: number, at: number) => void) | null): void {
 	onWatchArrows(handler);
+}
+
+/** What the run buttons on the wrist do. The watch asks; the phone is what runs a run. */
+export function acceptRunCommands(handler: ((command: RunCommand) => void) | null): void {
+	onWatchCommand(handler);
 }
 
 /** Where back goes from this page. The watch asks; only the phone knows what is behind it. */
