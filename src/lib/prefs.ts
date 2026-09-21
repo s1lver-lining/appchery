@@ -177,6 +177,22 @@ export const maxHeartRate = storedNumber('appchery.maxHeartRate', 0);
 export const autoPauseRuns = flag('appchery.autoPauseRuns', false);
 
 /**
+ * Whether a finished run fetches a map to draw itself on.
+ *
+ * Off. Everything else about a run stays on the phone that recorded it, the fixes included, and a
+ * map is the one part that cannot: it means telling somebody else's server which squares of the
+ * world you were in. Worth having, not worth turning on for somebody without asking.
+ */
+export const runMaps = flag('appchery.runMaps', false);
+
+/**
+ * Whether a run without a map offers to fetch one. On, until somebody says they have heard it.
+ * Turned off, the offer goes and the control beside the route stays: hiding a question is not the
+ * same as taking away the answer.
+ */
+export const runMapPrompt = flag('appchery.runMapPrompt', true);
+
+/**
  * Whether a badge, a personal best or a level is announced over the middle of the screen.
  *
  * On by default. Off, everything is still awarded and still lands in the lists: the only thing that

@@ -23,6 +23,7 @@ export const en = {
 		settings: 'Settings'
 	},
 	common: {
+		hide: 'Hide',
 		cancel: 'Cancel',
 		save: 'Save',
 		add: 'Add',
@@ -1337,6 +1338,10 @@ export const en = {
 		maxHeartHint: 'What your own maximum is, so a run can say which zone it was run in. Left empty, the beat is shown as a number and nothing more.',
 		autoPauseTitle: 'Pause a run by itself',
 		autoPauseHint: 'Holds the clock while you are standing still on a run, and starts it again when you move. Off by default: walking a hill on purpose is still running.',
+		runMapsTitle: 'Map under a run',
+		runMapsHint: 'Draws a finished run on a map. The map is fetched from openfreemap.org, which means telling their server roughly where you ran. Off, a run still draws its own shape, and any one run can still be given a map on the spot.',
+		runMapPromptTitle: 'Offer a map on runs without one',
+		runMapPromptHint: 'The one line question under a route. Turning it off leaves the map button where it is.',
 		awakeTitle: 'Keep the screen on while scoring',
 		awakeHint:
 			'Holds the screen awake until the round is finished, for scoring from the phone in your hand. It costs battery. The shooting clock holds it either way.',
@@ -1561,6 +1566,13 @@ insetHint:
 		blockResults: 'Block by block',
 		routeByPace: 'Colour by pace',
 		routePlain: 'Plain route',
+		mapAsk: 'Map?',
+		mapThisRun: 'This run',
+		mapAlways: 'Always',
+		mapOn: 'Show map',
+		mapOff: 'Hide map',
+		mapCredit: '© OpenStreetMap contributors · OpenFreeMap',
+		mapFailed: 'No map came back.',
 		route: 'Where it went',
 		fastestKm: 'fastest',
 		zones: 'Where the effort went',

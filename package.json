@@ -28,10 +28,10 @@
     "build:site": "vite build --config vite.site.config.ts && node scripts/prerender-site.mjs",
     "preview:site": "vite preview --config vite.site.config.ts",
     "deploy:site": "./scripts/deploy-site.sh",
-    "predev": "./scripts/sync-sqlite.sh",
-    "prebuild": "./scripts/sync-sqlite.sh",
-    "prebuild:preprod": "./scripts/sync-sqlite.sh",
-    "postinstall": "./scripts/sync-sqlite.sh"
+    "predev": "./scripts/sync-sqlite.sh && ./scripts/sync-maplibre.sh",
+    "prebuild": "./scripts/sync-sqlite.sh && ./scripts/sync-maplibre.sh",
+    "prebuild:preprod": "./scripts/sync-sqlite.sh && ./scripts/sync-maplibre.sh",
+    "postinstall": "./scripts/sync-sqlite.sh && ./scripts/sync-maplibre.sh"
   },
   "type": "module",
   "private": true,
@@ -67,6 +67,7 @@
     "@capacitor/ios": "^8.5.0",
     "@capacitor/share": "^8.0.1",
     "@sqlite.org/sqlite-wasm": "^3.53.0-build1",
-    "drizzle-orm": "^0.45.2"
+    "drizzle-orm": "^0.45.2",
+    "maplibre-gl": "^6.10.0"
   }
 }

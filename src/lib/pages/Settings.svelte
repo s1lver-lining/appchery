@@ -32,6 +32,8 @@
 		keepScreenAwake,
 		maxHeartRate,
 		autoPauseRuns,
+		runMaps,
+		runMapPrompt,
 		weekStartsOnSunday,
 		plotBadgeSide,
 		sheetHeight,
@@ -775,6 +777,34 @@
 							checked={$autoPauseRuns}
 							label={$t('settings.autoPauseTitle')}
 							onchange={(v) => autoPauseRuns.set(v)}
+						/>
+					</div>
+
+					<!--
+						The one part of a run that leaves the phone. Everything else it records stays here,
+						the fixes included, so this is asked for rather than assumed.
+					-->
+					<div id="setting-runMaps" class:flash={flashing === 'runMaps'} class="mt-4 flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<p class="font-medium">{$t('settings.runMapsTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.runMapsHint')}</p>
+						</div>
+						<Toggle
+							checked={$runMaps}
+							label={$t('settings.runMapsTitle')}
+							onchange={(v) => runMaps.set(v)}
+						/>
+					</div>
+
+					<div id="setting-runMapPrompt" class:flash={flashing === 'runMapPrompt'} class="mt-4 flex items-start justify-between gap-4">
+						<div class="flex-1">
+							<p class="font-medium">{$t('settings.runMapPromptTitle')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.runMapPromptHint')}</p>
+						</div>
+						<Toggle
+							checked={$runMapPrompt}
+							label={$t('settings.runMapPromptTitle')}
+							onchange={(v) => runMapPrompt.set(v)}
 						/>
 					</div>
 

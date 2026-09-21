@@ -24,6 +24,8 @@ android/local.properties
 
 # Copied from node_modules by scripts/sync-sqlite.sh, so it cannot drift from the installed version.
 static/sqlite/
+# The same, for MapLibre's worker: scripts/sync-maplibre.sh puts it there.
+static/maplibre/
 TODO.md
 # Test imagery: large, and mostly third party datasets. The first three pictures are committed as a
 # small fixture; everything else stays local. See doc/camera-scoring.md for where to get them.

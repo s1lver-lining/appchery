@@ -46,7 +46,7 @@
 	import RunGraph from '$lib/ui/run/RunGraph.svelte';
 	import RunRoute from '$lib/ui/run/RunRoute.svelte';
 	import HeartZones from '$lib/ui/run/HeartZones.svelte';
-	import { maxHeartRate } from '$lib/prefs';
+	import { maxHeartRate, runMapPrompt, runMaps } from '$lib/prefs';
 	import { sayDistance } from '$lib/ui/run/distance';
 
 	/**
@@ -178,6 +178,19 @@
 	let showing = $state<number | null>(null);
 	/** Whether the route is painted by pace, which it is not until it is asked for. */
 	let routeByPace = $state(false);
+	/**
+	 * A map for this run and no other, asked for here and forgotten on the way out. Held apart from
+	 * the setting: saying yes once is not the same as saying yes from now on, and the app has no
+	 * business reading the first as the second.
+	 */
+	let mapOnce = $state(false);
+	const mapping = $derived($runMaps || mapOnce);
+
+	// Nothing carries from one run to the next: a map asked for is asked for about this one.
+	$effect(() => {
+		void activity.id;
+		mapOnce = false;
+	});
 	let tab = $state<'splits' | 'graph'>('splits');
 	let importing = $state(false);
 	let importFailed = $state(false);
@@ -511,16 +524,59 @@
 							     explains the lines, and it is read after them rather than instead. -->
 							<div class="mt-3 border-t border-line pt-3">
 								<!-- Marked where the finger is on the graph, so the two are one reading. -->
-								<RunRoute {fixes} {samples} at={scrubbing ?? showing} byPace={routeByPace} />
-								<!-- Off unless asked for: a route is read for its shape before anything
-								     else, and three colours over it is the shape harder to see. -->
-								<button
-									class="press mx-auto mt-1 block py-1 text-xs font-medium text-muted"
-									aria-pressed={routeByPace}
-									onclick={() => (routeByPace = !routeByPace)}
-								>
-									{routeByPace ? $t('running.routePlain') : $t('running.routeByPace')}
-								</button>
+								{#if mapping}
+									{#await import('$lib/ui/run/RunMap.svelte') then loaded}
+										{@const RunMap = loaded.default}
+										<RunMap
+											{fixes}
+											{samples}
+											at={scrubbing ?? showing}
+											byPace={routeByPace}
+										/>
+									{/await}
+								{:else}
+									<RunRoute {fixes} {samples} at={scrubbing ?? showing} byPace={routeByPace} />
+								{/if}
+
+								<div class="mt-1 flex items-center justify-center gap-3">
+									<!-- Off unless asked for: a route is read for its shape before anything
+									     else, and three colours over it is the shape harder to see. -->
+									<button
+										class="press py-1 text-xs font-medium text-muted"
+										aria-pressed={routeByPace}
+										onclick={() => (routeByPace = !routeByPace)}
+									>
+										{routeByPace ? $t('running.routePlain') : $t('running.routeByPace')}
+									</button>
+									<!-- Here whatever the settings say, because hiding a question is not the
+									     same as taking away the answer. -->
+									<button
+										class="press py-1 text-xs font-medium text-muted"
+										aria-pressed={mapping}
+										onclick={() => {
+											if ($runMaps) runMaps.set(false);
+											mapOnce = !mapping;
+										}}
+									>
+										{mapping ? $t('running.mapOff') : $t('running.mapOn')}
+									</button>
+								</div>
+
+								{#if !mapping && $runMapPrompt}
+									<!-- One line: a question about a map is not worth a paragraph or a card. -->
+									<div class="mt-1 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 text-xs">
+										<span class="text-muted">{$t('running.mapAsk')}</span>
+										<button class="press font-medium text-brand-text" onclick={() => (mapOnce = true)}>
+											{$t('running.mapThisRun')}
+										</button>
+										<button class="press font-medium text-brand-text" onclick={() => runMaps.set(true)}>
+											{$t('running.mapAlways')}
+										</button>
+										<button class="press text-muted" onclick={() => runMapPrompt.set(false)}>
+											{$t('common.hide')}
+										</button>
+									</div>
+								{/if}
 							</div>
 						{/if}
 					{:else}

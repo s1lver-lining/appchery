@@ -24,6 +24,7 @@ export const fr: Dictionary = {
 		settings: 'Paramètres'
 	},
 	common: {
+		hide: 'Masquer',
 		cancel: 'Annuler',
 		save: 'Enregistrer',
 		add: 'Ajouter',
@@ -1338,6 +1339,10 @@ export const fr: Dictionary = {
 		maxHeartHint: "Votre maximum à vous, pour qu'une sortie puisse dire dans quelle zone elle a été courue. Laissée vide, la fréquence reste un chiffre et rien de plus.",
 		autoPauseTitle: 'Mettre en pause automatiquement',
 		autoPauseHint: "Arrête le chrono quand vous êtes à l'arrêt pendant une sortie, et le relance quand vous repartez. Désactivé par défaut : marcher une côte volontairement, c'est encore courir.",
+		runMapsTitle: 'Carte sous une sortie',
+		runMapsHint: "Dessine une sortie terminée sur une carte. La carte vient d'openfreemap.org, ce qui revient à indiquer à leur serveur à peu près où vous avez couru. Désactivé, une sortie dessine quand même sa forme, et n'importe laquelle peut recevoir une carte sur le moment.",
+		runMapPromptTitle: 'Proposer une carte aux sorties qui n\u2019en ont pas',
+		runMapPromptHint: "La question d'une ligne sous un parcours. La désactiver laisse le bouton de carte en place.",
 		awakeTitle: 'Garder l’écran allumé pendant le score',
 		awakeHint:
 			'Maintient l’écran allumé jusqu’à la fin du tir, pour marquer depuis le téléphone en main. Cela consomme de la batterie. Le chronomètre le fait de toute façon.',
@@ -1568,6 +1573,13 @@ insetHint:
 		correct: 'Modifier les données',
 		routeByPace: "Colorer selon l'allure",
 		routePlain: 'Parcours uni',
+		mapAsk: 'Carte ?',
+		mapThisRun: 'Cette sortie',
+		mapAlways: 'Toujours',
+		mapOn: 'Afficher la carte',
+		mapOff: 'Masquer la carte',
+		mapCredit: '© les contributeurs OpenStreetMap · OpenFreeMap',
+		mapFailed: 'Aucune carte reçue.',
 		route: 'Le parcours',
 		fastestKm: 'le plus rapide',
 		zones: "Où l'effort est passé",
