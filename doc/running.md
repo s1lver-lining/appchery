@@ -161,7 +161,13 @@ The route is fitted into its box keeping its shape, because a route is a picture
 and one stretched to fill a box is a picture of somewhere else.
 
 It can be painted by pace, green through amber to red against the run's own band, which is off
-until it is asked for: a route is read for its shape first, and three colours over it make the shape
+until it is asked for. Painting turns one line into a few hundred separately coloured stretches and
+takes a moment the page does not pretend it did not: the button spins while it works, put on the
+screen a whole frame before the work starts, because a spinner asked for in the same breath as the
+work first appears in the same frame as the finished route. With a map it is the map that says when
+it is done, at its next idle.
+
+Off until it is asked for: a route is read for its shape first, and three colours over it make the shape
 harder to see. The same drawing, without its dots and with a heavier line, is the shape beside each
 run in the session it belongs to. Only on the device that recorded it, because the fixes never
 leave that phone: somebody else's run in the feed has a shape nobody but them can draw.
@@ -172,10 +178,14 @@ and drawn that way a finished run costs no network, owes no attribution and tell
 owner runs.
 
 `RunMap.svelte` is the other half: the same line, the same colours, the same start, finish and
-marker, drawn over OpenFreeMap's vector tiles by MapLibre. It is a picture rather than a map to
-drive, because a pannable map inside a page that scrolls is a trap for the thumb. The whole
-component is behind a dynamic import, so a run nobody wanted a map for downloads neither the
-renderer nor a tile.
+marker, drawn over OpenFreeMap's vector tiles by MapLibre. The whole component is behind a dynamic
+import, so a run nobody wanted a map for downloads neither the renderer nor a tile.
+
+It is pinched, dragged and double tapped as any map is, but only with two fingers, and with a
+modifier on a wheel. A map that took a one fingered drag inside a page that scrolls is a trap for
+the thumb: the page stops moving wherever the map happens to be under it. Two fingers is what every
+map embedded in a page asks for. North stays up, because a run is read against the streets it was
+run on, and a long press puts the whole run back on the screen after it has been pushed about.
 
 Both the renderer and the tiles are off by default, and that is the only setting in the app whose
 reason is not taste. Everything else a run records stays on the phone that recorded it, the fixes
