@@ -506,7 +506,13 @@
 						{/each}
 					</div>
 
-					{#if tab === 'splits'}
+					<!--
+						Both drawn and one hidden, rather than one built and the other thrown away. The map
+						is the reason: unmounting it throws away its WebGL context, its style and every
+						tile it had, and coming back builds the lot again, which is a second of grey and a
+						flicker for a tab nobody meant to rebuild anything by pressing.
+					-->
+					<div class:hidden={tab !== 'splits'}>
 						<ul class="space-y-1.5">
 							{#each record.splits as split, i (split.index)}
 								{@const pace = paceOf(split.distanceM, split.seconds) ?? 0}
@@ -554,7 +560,10 @@
 								<li class="py-4 text-center text-xs text-muted">{$t('running.noSplits')}</li>
 							{/each}
 						</ul>
-					{:else if samples.length > 1}
+					</div>
+
+					<div class:hidden={tab !== 'graph'}>
+					{#if samples.length > 1}
 						<RunGraph {samples} {pauses} focus={showing} onscrub={(at) => (scrubbing = at)} />
 						{#if fixes.length > 1}
 							<!-- Under the graph rather than above it: the shape of the ground is what
@@ -626,6 +635,7 @@
 					{:else}
 						<p class="py-8 text-center text-xs text-muted">{$t('running.noTrack')}</p>
 					{/if}
+					</div>
 				</section>
 			{/if}
 
