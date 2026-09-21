@@ -138,6 +138,12 @@ Holding the graph reads it at a point: the figures appear above it rather than i
 thumb that summoned them, a dot marks each line, and the route under it marks the same place. That
 last part is why the graph reports where the finger is rather than keeping it to itself.
 
+Both readings stay in the page, one of them hidden, rather than one being built and the other
+thrown away. The map is the reason: unmounting it throws away its WebGL context, its style and every
+tile it holds, and coming back builds all of it again, which is a second of grey and a flicker for a
+tab nobody pressed meaning to rebuild anything. MapLibre watches its own container, so going away
+and coming back costs it a resize and nothing else.
+
 A kilometre is also the way into the graph: tapping one opens it at that moment, with the line
 marked and the route marked with it. The table says which kilometre was slow and only the graph says
 what happened in it.
