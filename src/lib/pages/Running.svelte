@@ -191,7 +191,11 @@
 		void activity.id;
 		mapOnce = false;
 	});
-	let tab = $state<'splits' | 'graph'>('splits');
+	/**
+	 * The graph first, and first of the two. The kilometres are the table a run is checked against;
+	 * the graph is what it is read as, and it is also where the ground it was run over is drawn.
+	 */
+	let tab = $state<'splits' | 'graph'>('graph');
 	let importing = $state(false);
 	let importFailed = $state(false);
 
@@ -452,7 +456,7 @@
 				<section class="rounded-2xl border border-line bg-surface p-4">
 					<!-- Two readings of the same run: what each kilometre came to, and why it did. -->
 					<div class="mb-3 grid grid-cols-2 gap-1 rounded-lg border border-line bg-sunk p-0.5">
-						{#each [{ key: 'splits', label: $t('running.splits') }, { key: 'graph', label: $t('running.graph') }] as option (option.key)}
+						{#each [{ key: 'graph', label: $t('running.graph') }, { key: 'splits', label: $t('running.splits') }] as option (option.key)}
 							<button
 								class="press truncate rounded-md px-2 py-1.5 text-xs font-medium {tab === option.key
 									? 'bg-brand text-brand-ink'
