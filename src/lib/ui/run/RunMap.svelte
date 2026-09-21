@@ -23,13 +23,19 @@
 		fixes,
 		samples = [],
 		byPace = false,
-		at = null
+		at = null,
+		onbusy = undefined
 	}: {
 		fixes: { lat: number; lon: number; elapsedSeconds?: number }[];
 		samples?: RunSample[];
 		byPace?: boolean;
 		/** The run's clock to mark, or null for no mark. */
 		at?: number | null;
+		/**
+		 * Whether the map is still working the route out. Repainting a line as three hundred
+		 * separately coloured stretches takes a moment the page should not pretend it did not.
+		 */
+		onbusy?: (busy: boolean) => void;
 	} = $props();
 
 	/** Positron rather than the full basemap: a quiet grey ground is what a route is read against. */
@@ -273,7 +279,11 @@
 	// The line, the ends and the marker follow the page without the map being built again.
 	$effect(() => {
 		const data = routeData();
-		if (painted) setData('route', data);
+		if (!painted) return;
+		onbusy?.(true);
+		setData('route', data);
+		// Idle is the map saying it has drawn everything it was given, which is when it is done.
+		map?.once('idle', () => onbusy?.(false));
 	});
 	$effect(() => {
 		const data = hereData();

@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { onDestroy } from 'svelte';
+	import { onDestroy, tick } from 'svelte';
 	import { t } from '$lib/i18n';
 	import {
 		EFFORTS,
@@ -178,6 +178,39 @@
 	let showing = $state<number | null>(null);
 	/** Whether the route is painted by pace, which it is not until it is asked for. */
 	let routeByPace = $state(false);
+	/** Whether that is being worked out, which on a long run is a moment rather than an instant. */
+	let painting = $state(false);
+
+	/**
+	 * Painting a route by pace turns one line into a few hundred separately coloured stretches, and
+	 * a phone takes a moment over that. The moment is spent with nothing on the screen having
+	 * changed, so the button says it heard.
+	 *
+	 * The frames matter: the work is Svelte's redraw rather than the click, so the spinner is put up
+	 * and given a frame to be drawn in before anything is asked for. Put up and asked for in the same
+	 * breath, it would first appear in the same frame as the finished route, which is no answer at all.
+	 */
+	/**
+	 * Resolves once the browser has actually put the last change on the screen. One frame is not
+	 * enough: a callback from requestAnimationFrame runs before that frame is painted, so asking for
+	 * the work there holds the thread through the very frame the spinner was meant to appear in.
+	 */
+	const drawn = () =>
+		new Promise((done) => requestAnimationFrame(() => requestAnimationFrame(() => done(null))));
+
+	async function paintRoute() {
+		if (painting) return;
+		painting = true;
+		await tick();
+		await drawn();
+		routeByPace = !routeByPace;
+		await tick();
+		await drawn();
+		// Without a map the work ends with that redraw. With one, the map says when it is done, and
+		// this is only the fallback for a map that never gets round to saying so.
+		if (!mapping) painting = false;
+		else setTimeout(() => (painting = false), 4000);
+	}
 	/**
 	 * A map for this run and no other, asked for here and forgotten on the way out. Held apart from
 	 * the setting: saying yes once is not the same as saying yes from now on, and the app has no
@@ -536,6 +569,9 @@
 											{samples}
 											at={scrubbing ?? showing}
 											byPace={routeByPace}
+											onbusy={(busy) => {
+												if (!busy) painting = false;
+											}}
 										/>
 									{/await}
 								{:else}
@@ -546,10 +582,14 @@
 									<!-- Off unless asked for: a route is read for its shape before anything
 									     else, and three colours over it is the shape harder to see. -->
 									<button
-										class="press py-1 text-xs font-medium text-muted"
+										class="press flex items-center gap-1.5 py-1 text-xs font-medium text-muted"
 										aria-pressed={routeByPace}
-										onclick={() => (routeByPace = !routeByPace)}
+										aria-busy={painting}
+										onclick={paintRoute}
 									>
+										{#if painting}
+											<span class="inline-flex animate-spin"><Icon name="refresh" size={13} /></span>
+										{/if}
 										{routeByPace ? $t('running.routePlain') : $t('running.routeByPace')}
 									</button>
 									<!-- Here whatever the settings say, because hiding a question is not the
