@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
-	import { GeoJSONSource, Map as MapLibreMap, setWorkerUrl } from 'maplibre-gl';
+	import { GeoJSONSource, Map as MapLibreMap, NavigationControl, setWorkerUrl } from 'maplibre-gl';
 	import type { FeatureCollection } from 'geojson';
 	import 'maplibre-gl/dist/maplibre-gl.css';
 	import { t } from '$lib/i18n';
@@ -226,27 +226,43 @@
 			center: [(lowLon + highLon) / 2, (lowLat + highLat) / 2],
 			zoom: 11,
 			/*
-			 * A picture rather than a map to drive. A pannable map inside a page that scrolls is a
-			 * trap for the thumb, and what this is here for is the ground under one line.
+			 * Pinched, dragged and double tapped as any map is, but only with two fingers, and only
+			 * with a modifier on a wheel. A map that took a one fingered drag inside a page that
+			 * scrolls is a trap for the thumb: the page would stop moving wherever the map happened
+			 * to be under it. Two fingers is what every map embedded in a page asks for, and it is
+			 * the gesture nobody makes by accident while scrolling past.
 			 */
-			interactive: false,
-			attributionControl: false
+			cooperativeGestures: true,
+			// North stays up. A run is read against the streets it was run on, and a tilted or turned
+			// map is one more thing to put right before it can be.
+			dragRotate: false,
+			pitchWithRotate: false,
+			touchPitch: false,
+			attributionControl: false,
+			locale: {
+				'CooperativeGesturesHandler.WindowsHelpText': $t('running.mapCtrlZoom'),
+				'CooperativeGesturesHandler.MacHelpText': $t('running.mapCmdZoom'),
+				'CooperativeGesturesHandler.MobileHelpText': $t('running.mapTwoFingers')
+			}
 		});
+		built.touchZoomRotate.disableRotation();
+		// Back to the whole run, because a map that has been pushed about has no way home otherwise.
+		built.addControl(new NavigationControl({ showCompass: false }), 'top-right');
 		// Said rather than left as an empty grey box: the tiles come from somebody else's server,
 		// and the one thing that can go wrong with that is that it is not there.
 		built.on('error', () => (failed = true));
+		const whole: [[number, number], [number, number]] = [
+			[lowLon, lowLat],
+			[highLon, highLat]
+		];
 		built.on('load', () => {
 			// Fitted once the map is up rather than in the constructor: a bounds given before the
 			// container is measured leaves the map without a viewport to ask for tiles for.
-			built.fitBounds(
-				[
-					[lowLon, lowLat],
-					[highLon, highLat]
-				],
-				{ padding: 24, animate: false }
-			);
+			built.fitBounds(whole, { padding: 24, animate: false });
 			paint(built);
 		});
+		// A double tap on a map zooms in; this one, held, puts the whole run back on the screen.
+		built.on('contextmenu', () => built.fitBounds(whole, { padding: 24 }));
 		// A change of theme brings a new style and takes the layers with it, so they go back on.
 		built.on('styledata', () => {
 			if (built.isStyleLoaded()) paint(built);
