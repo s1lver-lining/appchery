@@ -166,12 +166,48 @@ harder to see. The same drawing, without its dots and with a heavier line, is th
 run in the session it belongs to. Only on the device that recorded it, because the fixes never
 leave that phone: somebody else's run in the feed has a shape nobody but them can draw.
 
-There is no basemap under it, and that is a decision rather than a gap. The person reading it ran
-it, so the shape alone is enough to recognise the loop, see which way round it went and find where
-it doubled back. It also means a finished run draws itself with no network, nothing to attribute and
-nobody told where its owner runs. Tiles would be the opposite of all four, and the open ones that
-exist, OpenStreetMap's own raster tiles, OpenFreeMap, Protomaps, all involve either somebody else's
-server hearing about every run or a basemap shipped with the app.
+There is no basemap under it unless one is asked for. The person reading it ran it, so the shape
+alone is enough to recognise the loop, see which way round it went and find where it doubled back,
+and drawn that way a finished run costs no network, owes no attribution and tells nobody where its
+owner runs.
+
+`RunMap.svelte` is the other half: the same line, the same colours, the same start, finish and
+marker, drawn over OpenFreeMap's vector tiles by MapLibre. It is a picture rather than a map to
+drive, because a pannable map inside a page that scrolls is a trap for the thumb. The whole
+component is behind a dynamic import, so a run nobody wanted a map for downloads neither the
+renderer nor a tile.
+
+Both the renderer and the tiles are off by default, and that is the only setting in the app whose
+reason is not taste. Everything else a run records stays on the phone that recorded it, the fixes
+included; a map is the one part that cannot, because asking for tiles is telling somebody else's
+server roughly where somebody ran. So it is asked for rather than assumed:
+
+* **Off**, which is where it starts. The run draws its own shape.
+* **This run**, from the one line offer under a route, which forgets it on the way out: saying yes
+  once is not saying yes from now on.
+* **Always**, which is the setting, for anybody who has decided.
+
+The offer can be hidden, and hiding it leaves the map control beside the route where it is: hiding a
+question is not the same as taking away the answer. Both are settings, so both come back.
+
+Attribution is drawn in a line of the app's own rather than in the library's box, which is two lines
+tall on a phone and covers a third of a map this size. It is owed either way: the ground is
+OpenStreetMap's work.
+
+The route beside a run in a session list never fetches anything. A session of six runs would be six
+maps' worth of requests for pictures nine millimetres across.
+
+### The worker
+
+MapLibre works out where its worker lives from where its own module lives, which is right while it
+is served as the package and wrong the moment a bundler rewrites it. Bundled, the app asked for a
+worker under its own hashed chunks, got a 404, and drew a grey box with tiles that never arrived and
+no error to say why: the tiles are fetched by that worker, so a dead one is a map that looks like a
+map and does nothing.
+
+`scripts/sync-maplibre.sh` copies the worker and the shared half it imports into `static/`, and
+`setWorkerUrl` names them, exactly as `sync-sqlite.sh` does for SQLite's own worker and for the same
+reason. Both run before every build.
 
 ## In and out as GPX
 
