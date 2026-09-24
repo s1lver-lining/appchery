@@ -249,7 +249,7 @@ public class RunView extends FrameLayout {
         dotsPlace.rightMargin = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.045f);
         addView(infoDots, dotsPlace);
 
-        // The left edge is empty on a round screen, and a red mark there is seen without being read.
+        // The left edge is empty on a round screen, and an orange mark there is seen without being read.
         phoneLost = new PhoneLost(context);
         LayoutParams lostPlace = new LayoutParams(px(16), px(22));
         lostPlace.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
@@ -1675,25 +1675,34 @@ public class RunView extends FrameLayout {
     }
 
 
-    /** A phone outline struck through, in red: the phone has stopped sending. */
+    /**
+     * A phone struck through, in the brand orange rather than red: a phone that has gone quiet has
+     * usually just paused or slept, which is ordinary, not an alarm. The earpiece and the button
+     * are what make it a phone rather than a battery.
+     */
     private static final class PhoneLost extends View {
         private final Paint pen = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
         private final RectF body = new RectF();
 
         PhoneLost(Context context) {
             super(context);
-            pen.setColor(OVER);
+            pen.setColor(BRAND);
             pen.setStyle(Paint.Style.STROKE);
             pen.setStrokeCap(Paint.Cap.ROUND);
+            fill.setColor(BRAND);
         }
 
         @Override
         protected void onDraw(Canvas canvas) {
-            float w = getWidth(), h = getHeight(), stroke = w * 0.12f;
+            float w = getWidth(), h = getHeight(), stroke = w * 0.09f;
             pen.setStrokeWidth(stroke);
-            body.set(w * 0.2f, stroke, w * 0.8f, h - stroke);
-            canvas.drawRoundRect(body, w * 0.14f, w * 0.14f, pen);
-            canvas.drawLine(stroke, h * 0.15f, w - stroke, h * 0.85f, pen);
+            body.set(w * 0.15f, stroke, w * 0.85f, h - stroke);
+            canvas.drawRoundRect(body, w * 0.18f, w * 0.18f, pen);
+            // Earpiece and home button.
+            canvas.drawLine(w * 0.4f, h * 0.14f, w * 0.6f, h * 0.14f, pen);
+            canvas.drawCircle(w * 0.5f, h * 0.83f, w * 0.07f, fill);
+            canvas.drawLine(stroke, h * 0.1f, w - stroke, h * 0.9f, pen);
         }
     }
 
