@@ -56,7 +56,12 @@
 	 * mid way more often than not: a phone put away at a red light comes back to whichever of them it
 	 * left. What is shown is decided by the record alone, so the page has no state of its own to lose.
 	 */
-	let { activity, onchange }: { activity: ActivityRow; onchange: () => void } = $props();
+	let {
+		activity,
+		onchange,
+		/** Where a page opened from here comes back to, since a run is shown on two pages of its own. */
+		origin = `/activities/${activity.id}`
+	}: { activity: ActivityRow; onchange: () => void; origin?: string } = $props();
 
 	const run = new LiveRun();
 	let loadedFrom = $state<string | null>(null);
@@ -145,7 +150,7 @@
 		onchange();
 	}
 
-	const here = $derived(`/activities/${activity.id}`);
+	const here = $derived(origin);
 	const chosen = $derived(record?.workout?.sourceId ?? '');
 	/**
 	 * The library's copy rather than the run's, until the run starts. The run holds a copy of its own
@@ -348,12 +353,12 @@
 {#if record && tracked && (status === 'running' || status === 'paused')}
 	<LiveRunView {run} />
 {:else if record}
-	<div class="mx-auto w-full max-w-page space-y-4 p-4">
+	<div class="space-y-4">
 		{#if tracked && status === 'idle'}
 			<!-- Before the start: which programme, and one button that is hard to miss with a thumb. -->
-			<section class="rounded-2xl border border-line bg-surface p-4">
+			<section class="rounded-xl border border-line bg-surface p-3.5">
 				<div class="flex items-center gap-2">
-					<span class="text-sm font-semibold text-muted">{$t('running.ready')}</span>
+					<span class="text-sm font-semibold">{$t('running.ready')}</span>
 					<a class="ml-auto text-sm font-medium text-brand-text" href={withOrigin('/workouts', here)}>
 						{$t('workouts.title')}
 					</a>
@@ -396,34 +401,42 @@
 			</section>
 
 			<button
-				class="press flex h-20 w-full items-center justify-center gap-3 rounded-2xl bg-brand text-2xl font-bold text-brand-ink"
+				class="press flex h-20 w-full items-center justify-center gap-3 rounded-2xl bg-brand text-2xl font-bold text-brand-ink shadow-lg shadow-brand/20"
 				onclick={start}
 			>
-				<Icon name="play" size={28} />
+				<span class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-ink/15">
+					<Icon name="play" size={26} />
+				</span>
 				{$t('running.start')}
-			</button>
-			<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('manual')}>
-				{$t('running.switchToHand')}
 			</button>
 
 			<!--
-				A file from another watch, read in as a run of this one. Only while there is nothing to
-				lose: a run already recorded is not something an import should be able to walk over.
+				Side by side and quiet: both are ways in for a run this phone is not going to follow, and
+				neither competes with the button above. A file is only offered while there is nothing to
+				lose, since a run already recorded is not something an import should walk over.
 			-->
-			<label class="press block w-full cursor-pointer py-2 text-center text-sm text-muted">
-				<span class="mr-1 inline-block align-[-3px] rotate-180"><Icon name="download" size={16} /></span>
-				{importing ? $t('running.importing') : $t('running.importGpx')}
-				<input
-					class="hidden"
-					type="file"
-					accept=".gpx,application/gpx+xml,text/xml"
-					onchange={(event) => {
-						const file = event.currentTarget.files?.[0];
-						event.currentTarget.value = '';
-						if (file) void importGpx(file);
-					}}
-				/>
-			</label>
+			<div class="grid grid-cols-2 gap-2 text-center text-sm text-muted">
+				<button
+					class="press rounded-xl border border-line py-2.5"
+					onclick={() => run.setMode('manual')}
+				>
+					{$t('running.switchToHand')}
+				</button>
+				<label class="press cursor-pointer rounded-xl border border-line py-2.5">
+					<span class="mr-1 inline-block rotate-180 align-[-3px]"><Icon name="download" size={16} /></span>
+					{importing ? $t('running.importing') : $t('running.importGpx')}
+					<input
+						class="hidden"
+						type="file"
+						accept=".gpx,application/gpx+xml,text/xml"
+						onchange={(event) => {
+							const file = event.currentTarget.files?.[0];
+							event.currentTarget.value = '';
+							if (file) void importGpx(file);
+						}}
+					/>
+				</label>
+			</div>
 			{#if importFailed}
 				<p class="text-center text-xs text-danger">{$t('running.importFailed')}</p>
 			{/if}
@@ -431,30 +444,23 @@
 
 		{#if tracked && status === 'done'}
 			<!-- What it came to. The tracked figures lead, and the fields under them are for putting right. -->
-			<section class="rounded-2xl border border-line bg-surface p-4 text-center">
-				<p class="text-5xl leading-none font-bold tabular">
+			<section
+				class="overflow-hidden rounded-xl border border-brand/30 bg-gradient-to-br from-brand/12 to-surface p-3.5 text-center"
+			>
+				<p class="tabular text-6xl leading-none font-bold text-brand-text">
 					{total.value}
 					<span class="text-lg font-medium text-muted">
 						{total.unit === 'km' ? $t('running.km') : $t('running.metresShort')}
 					</span>
 				</p>
-				<div class="mt-3 grid grid-cols-3 gap-2 text-sm">
-					<div>
-						<p class="text-xl font-bold tabular">{clock(record.durationSeconds ?? 0)}</p>
-						<p class="text-xs text-muted">{$t('running.elapsed')}</p>
-					</div>
-					<div>
-						<p class="text-xl font-bold tabular">
-							{formatPace(paceOf(record.distanceM ?? 0, record.durationSeconds ?? 0)) || '–:--'}
-						</p>
-						<p class="text-xs text-muted">{$t('running.averagePace')}</p>
-					</div>
-					<div>
-						<p class="text-xl font-bold tabular">
-							{sayDistance(record.elevationGainM ?? 0, $t)}
-						</p>
-						<p class="text-xs text-muted">{$t('running.elevation')}</p>
-					</div>
+				<div class="mt-4 grid grid-cols-3 gap-2 text-sm">
+					{#each [{ icon: 'clock', value: clock(record.durationSeconds ?? 0), label: $t('running.elapsed') }, { icon: 'run', value: formatPace(paceOf(record.distanceM ?? 0, record.durationSeconds ?? 0)) || '–:--', label: $t('running.averagePace') }, { icon: 'chart', value: sayDistance(record.elevationGainM ?? 0, $t), label: $t('running.elevation') }] as figure (figure.label)}
+						<div class="rounded-lg bg-surface/60 py-2">
+							<span class="flex justify-center text-muted"><Icon name={figure.icon as IconName} size={14} /></span>
+							<p class="tabular mt-1 text-xl leading-none font-bold">{figure.value}</p>
+							<p class="mt-1 text-xs text-muted">{figure.label}</p>
+						</div>
+					{/each}
 				</div>
 
 				{#if record.averageHeartRate}
@@ -646,8 +652,8 @@
 			{#if record.laps.length > 0}
 				<!-- Above the block results and the kilometres: a lap is what the runner chose to
 				     measure, and what they chose is what they came back to read. -->
-				<section class="rounded-2xl border border-line bg-surface p-4">
-					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.laps')}</h2>
+				<section class="rounded-xl border border-line bg-surface p-3.5">
+					<h2 class="mb-2 text-sm font-semibold">{$t('running.laps')}</h2>
 					<ul class="space-y-1">
 						{#each record.laps as lap (lap.index)}
 							<li class="flex items-center gap-3 text-sm tabular">
@@ -664,8 +670,8 @@
 			{/if}
 
 			{#if record.steps.length > 0}
-				<section class="rounded-2xl border border-line bg-surface p-4">
-					<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.blockResults')}</h2>
+				<section class="rounded-xl border border-line bg-surface p-3.5">
+					<h2 class="mb-2 text-sm font-semibold">{$t('running.blockResults')}</h2>
 					<ul class="space-y-1">
 						{#each record.steps as step (step.key)}
 							<li class="flex items-center gap-3 text-sm">
@@ -682,51 +688,51 @@
 				</section>
 			{/if}
 
-			<section class="rounded-2xl border border-line bg-surface p-4">
-				<h2 class="mb-3 text-sm font-semibold text-muted">{$t('running.correct')}</h2>
+			<section class="rounded-xl border border-line bg-surface p-3.5">
+				<h2 class="mb-3 text-sm font-semibold">{$t('running.correct')}</h2>
 				<ManualRun run={record} onchange={edited} />
 			</section>
 		{/if}
 
 		{#if !tracked}
-			<section class="rounded-2xl border border-line bg-surface p-4">
+			<section class="rounded-xl border border-line bg-surface p-3.5">
 				<ManualRun run={record} onchange={edited} />
 			</section>
 
 			{#if record.distanceM === null && record.durationSeconds === null}
-				{#if canTrack()}
-					<button class="press w-full py-2 text-sm text-muted" onclick={() => run.setMode('tracked')}>
-						{$t('running.switchToTrack')}
-					</button>
+				<div class="grid gap-2 text-center text-sm text-muted {canTrack() ? 'grid-cols-2' : ''}">
+					{#if canTrack()}
+						<button
+							class="press rounded-xl border border-line py-2.5"
+							onclick={() => run.setMode('tracked')}
+						>
+							{$t('running.switchToTrack')}
+						</button>
+					{/if}
+					<label class="press cursor-pointer rounded-xl border border-line py-2.5">
+						<span class="mr-1 inline-block rotate-180 align-[-3px]"><Icon name="download" size={16} /></span>
+						{importing ? $t('running.importing') : $t('running.importGpx')}
+						<input
+							class="hidden"
+							type="file"
+							accept=".gpx,application/gpx+xml,text/xml"
+							onchange={(event) => {
+								const file = event.currentTarget.files?.[0];
+								event.currentTarget.value = '';
+								if (file) void importGpx(file);
+							}}
+						/>
+					</label>
+				</div>
+				{#if importFailed}
+					<p class="text-center text-xs text-danger">{$t('running.importFailed')}</p>
 				{/if}
-
-			<!--
-				A file from another watch, read in as a run of this one. Only while there is nothing to
-				lose: a run already recorded is not something an import should be able to walk over.
-			-->
-			<label class="press block w-full cursor-pointer py-2 text-center text-sm text-muted">
-				<span class="mr-1 inline-block align-[-3px] rotate-180"><Icon name="download" size={16} /></span>
-				{importing ? $t('running.importing') : $t('running.importGpx')}
-				<input
-					class="hidden"
-					type="file"
-					accept=".gpx,application/gpx+xml,text/xml"
-					onchange={(event) => {
-						const file = event.currentTarget.files?.[0];
-						event.currentTarget.value = '';
-						if (file) void importGpx(file);
-					}}
-				/>
-			</label>
-			{#if importFailed}
-				<p class="text-center text-xs text-danger">{$t('running.importFailed')}</p>
-			{/if}
 			{/if}
 		{/if}
 
 		{#if !tracked || status === 'done'}
-			<section class="rounded-2xl border border-line bg-surface p-4">
-				<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.effort')}</h2>
+			<section class="rounded-xl border border-line bg-surface p-3.5">
+				<h2 class="mb-2 text-sm font-semibold">{$t('running.effort')}</h2>
 				<p class="mb-3 text-xs text-muted">{$t('running.effortHint')}</p>
 				<div class="flex gap-1">
 					{#each EFFORTS as level (level)}
@@ -742,8 +748,8 @@
 				</div>
 			</section>
 
-			<section class="rounded-2xl border border-line bg-surface p-4">
-				<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.whatItWorks')}</h2>
+			<section class="rounded-xl border border-line bg-surface p-3.5">
+				<h2 class="mb-2 text-sm font-semibold">{$t('running.whatItWorks')}</h2>
 				<div class="grid gap-3 sm:grid-cols-2">
 					{#if running}
 						<MovementFigure movement={running.movement} class="w-full max-h-[26vh]" />

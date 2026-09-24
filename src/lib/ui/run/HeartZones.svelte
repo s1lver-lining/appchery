@@ -25,8 +25,8 @@
 </script>
 
 {#if total > 0}
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<h2 class="mb-3 text-sm font-semibold text-muted">{$t('running.zones')}</h2>
+	<section class="rounded-xl border border-line bg-surface p-3.5">
+		<h2 class="mb-3 text-sm font-semibold">{$t('running.zones')}</h2>
 		<dl class="space-y-1.5">
 			{#each rows as zone (zone)}
 				<div class="flex items-center gap-2 text-sm">

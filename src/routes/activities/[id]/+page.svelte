@@ -108,6 +108,7 @@
 	import { DRILL_KIND } from '$lib/domain/drills';
 	import Strength from '$lib/pages/Strength.svelte';
 	import Running from '$lib/pages/Running.svelte';
+	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import Drill from '$lib/pages/Drill.svelte';
 	import { closeOnBack } from '$lib/ui/dismiss.svelte';
 	import { offerUndo } from '$lib/ui/undo.svelte';
@@ -1111,13 +1112,23 @@
 	<Match {activity} onchange={refresh} oncelebrate={(awards) => (celebrations = awards)} />
 {:else if activity && (activity.kind === STRENGTH_KIND || activity.kind === RUNNING_KIND)}
 	<!-- Training rather than shooting: no score sheet, no keypad, and no arrows anywhere on it. -->
-	<div class="safe-top pt-2">
-		<header class="mx-auto w-full max-w-page px-4 pt-4">
-			<a href="/sessions/{activity.sessionId}" class="text-sm text-muted">‹ {$t('common.back')}</a>
-			<h1 class="text-2xl font-bold tracking-tight">
-				{$t(activity.kind === STRENGTH_KIND ? 'strength.title' : 'running.title')}
-			</h1>
-		</header>
+	<PageHeader
+		motif={activity.kind === STRENGTH_KIND ? 'exercises' : 'running'}
+		title={$t(activity.kind === STRENGTH_KIND ? 'strength.title' : 'running.title')}
+	>
+		{#snippet lead()}
+			{@const shown = activity}
+			<a
+				href="/sessions/{shown?.sessionId}"
+				class="-ml-1 inline-flex text-muted"
+				aria-label={$t('common.back')}
+			>
+				<Icon name="back" size={22} />
+			</a>
+		{/snippet}
+	</PageHeader>
+
+	<div class="mx-auto w-full max-w-page space-y-4 p-4">
 		{#if activity.kind === STRENGTH_KIND}
 			<Strength {activity} onchange={refresh} />
 		{:else}

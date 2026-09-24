@@ -47,7 +47,7 @@
 	const laps = $derived(run.record?.laps ?? []);
 </script>
 
-<div class="mx-auto w-full max-w-page space-y-3 p-4 pb-40">
+<div class="space-y-3 pb-40">
 	{#if run.failure}
 		<p class="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
 			{$t(
@@ -66,7 +66,7 @@
 
 	{#if step}
 		<!-- The block being run, and the one tap that says the runner is somewhere else in the programme. -->
-		<button class="press w-full rounded-2xl border border-line bg-surface p-4 text-left" onclick={() => (jumping = true)}>
+		<button class="press w-full rounded-xl border border-line bg-surface p-3.5 text-left" onclick={() => (jumping = true)}>
 			<div class="flex items-center gap-2">
 				<span
 					class="rounded-full px-2.5 py-1 text-xs font-semibold"
@@ -113,7 +113,7 @@
 			The programme ran out and the run did not. Nothing to hold and nothing counting down: the
 			way home from the track is a run, and it is timed from where the blocks stopped.
 		-->
-		<button class="press w-full rounded-2xl border border-line bg-surface p-4 text-left" onclick={() => (jumping = true)}>
+		<button class="press w-full rounded-xl border border-line bg-surface p-3.5 text-left" onclick={() => (jumping = true)}>
 			<div class="flex items-center gap-2">
 				<span class="rounded-full bg-sunk px-2.5 py-1 text-xs font-semibold text-muted">
 					{$t('running.freeRun')}
@@ -126,7 +126,7 @@
 	{/if}
 
 	<!-- The three numbers the run is actually run on. -->
-	<section class="rounded-2xl border border-line bg-surface p-4 text-center">
+	<section class="rounded-xl border border-line bg-surface p-3.5 text-center">
 		{#if paused}
 			<!-- Which of the two it is: a run the app is holding starts itself again, and one the
 			     runner stopped waits for them. -->
@@ -163,8 +163,8 @@
 	</section>
 
 	{#if laps.length > 0}
-		<section class="rounded-2xl border border-line bg-surface p-4">
-			<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.laps')}</h2>
+		<section class="rounded-xl border border-line bg-surface p-3.5">
+			<h2 class="mb-2 text-sm font-semibold">{$t('running.laps')}</h2>
 			<ul class="space-y-1">
 				{#each [...laps].reverse() as lap (lap.index)}
 					<li class="flex items-center gap-3 text-sm tabular">
@@ -177,8 +177,8 @@
 		</section>
 	{/if}
 
-	<section class="rounded-2xl border border-line bg-surface p-4">
-		<h2 class="mb-2 text-sm font-semibold text-muted">{$t('running.splits')}</h2>
+	<section class="rounded-xl border border-line bg-surface p-3.5">
+		<h2 class="mb-2 text-sm font-semibold">{$t('running.splits')}</h2>
 		{#if splits.length === 0}
 			<p class="text-sm text-muted">{$t('running.noSplits')}</p>
 		{:else}

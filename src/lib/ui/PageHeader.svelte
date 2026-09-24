@@ -18,6 +18,7 @@
 		| 'tricks'
 		| 'ianseo'
 		| 'exercises'
+		| 'running'
 		| 'experience'
 		| 'feed'
 		| 'settings';
@@ -236,6 +237,28 @@
 					stroke-linecap="round"
 					opacity={0.3 - step * 0.07}
 				/>
+			{/each}
+		</svg>
+	{:else if motif === 'running'}
+		<!-- A route winding away, with the kilometres marked on it: what a run leaves behind. -->
+		<svg
+			class="pointer-events-none absolute inset-y-0 right-0 h-full w-64 text-brand"
+			viewBox="0 0 140 100"
+			preserveAspectRatio="xMaxYMid meet"
+			fill="none"
+			aria-hidden="true"
+		>
+			{#each [0, 1, 2] as line (line)}
+				<path
+					d="M-10 {86 - line * 9} C 26 {52 - line * 9}, 46 {84 - line * 9}, 76 {48 - line * 9} S 116 {14 - line * 9}, 146 {20 - line * 9}"
+					stroke="currentColor"
+					stroke-width={3.4 - line * 0.7}
+					stroke-linecap="round"
+					opacity={0.3 - line * 0.08}
+				/>
+			{/each}
+			{#each [[32, 62], [76, 48], [120, 18]] as [cx, cy], i (cx)}
+				<circle {cx} {cy} r="4" fill="currentColor" opacity={0.18 + i * 0.07} />
 			{/each}
 		</svg>
 	{:else if motif === 'tricks'}
