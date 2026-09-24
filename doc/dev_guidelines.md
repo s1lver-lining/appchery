@@ -81,25 +81,43 @@ nobody notices until a result is disputed.
 
 ## Tricks
 
-When a feature is implemented in a way that is not obvious, add the trick to the tricks dictionary,
-`src/lib/i18n/tricks.en.ts`, and translate it in `tricks.fr.ts`. The app shows them on its tips and
-tricks page, so a trick nobody translated fails the build rather than shipping in English.
+**The default is no trick.** Most features get none. Adding a feature is not a reason to add one.
 
-This is a good example of a trick, describing a feature that is not obvious to the user:
+A trick earns its place only if a user who opens the screen and looks at it would still not know the
+thing exists. That is the whole test:
+
+* A button, a menu entry, a toggle, a field: **no trick.** It is on the screen. They will see it.
+* A long press, a right click, a swipe, a shake, a drag: **a trick**, because nothing on the screen
+  says to try it.
+* A rule the app follows that would surprise somebody who guessed: **a trick**, because being wrong
+  about it costs them something.
+
+If you find yourself arguing that a trick is worth keeping, it is not. Delete it.
+
+Write the trick for the user and about what they can do, never about how the code works. Two or three
+sentences at most.
+
+Tricks live in `src/lib/i18n/tricks.en.ts` and must be translated in `tricks.fr.ts`, or the build
+fails rather than shipping English to a French reader.
+
+Good, because nothing on the screen would ever say to try it:
 **Change what the two figures count.** Press and hold either figure in the header, or right click it,
 and pick from several options.
 
-This one is also good because it describes a non-obvious but necessary behaviour:
+Good, because guessing the other way round costs a badge:
 **Once earned, kept.** Deleting a session never takes a badge back. If you want the list to match
 the history exactly, the recheck in the settings data tab is the button that does it, and it is the
 only thing in the app that can take a badge away.
 
-This is a bad exemple of a trick, it's an obvious feature about which the user don't need to be informed (and it's about the code, not the user):
+Bad, because it is about the code and no user needs it:
 **Chart colours are declared outside `@theme`.** Tailwind only emits the theme variables its
 generated classes mention, and a chart paints its colours through an inline style, so the chart hues
-live on `:root` as `--c-kind-*` and `--c-medal-*` rather than as theme tokens that would be dropped
-from the build.
+live on `:root` as `--c-kind-*` rather than as theme tokens that would be dropped from the build.
 
-This one is a bad exemple as it's too obvious too:
+Bad, because the badge page says exactly this, on the badge:
 **Locked ones show their progress.** A badge you have not earned still says what it wants and how
 far along you are, because 840 arrows of a thousand is worth knowing.
+
+Bad, because it is a button, in the obvious place, that says what it does:
+**Send a run to Strava.** Once you have connected your account in the settings, finished runs carry
+a button that puts them on Strava.
