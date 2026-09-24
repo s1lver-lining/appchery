@@ -270,27 +270,25 @@
 			{/if}
 		</div>
 
-		<!-- Down the page still belongs to the page: only a drag across the graph reads it. -->
-		<div class="relative mt-1 h-32 touch-pan-y select-none">
-			<!-- The edges hold the figures, so the lines start after them and end before the others. -->
+		<!--
+			The edges hold the figures, so the lines start after them and end before the others. Each
+			edge is as wide as its widest figure and no wider: the room is the graph's otherwise. Down the
+			page still belongs to the page: only a drag across the graph reads it.
+		-->
+		<div
+			class="mt-1 grid touch-pan-y select-none"
+			style="grid-template-columns:{leftAxis ? 'auto ' : ''}minmax(0,1fr){rightAxis ? ' auto' : ''}"
+		>
 			{#if leftAxis}
-				<div class="absolute inset-y-0 left-0 w-11">
+				<div class="relative h-32 pr-1 text-[10px] font-semibold tabular">
+					<!-- Laid flat and unseen, the figures give the edge its width. -->
+					{#each ticks(leftAxis.key) as tick, i (i)}
+						<div class="invisible h-0 overflow-hidden">{tick.said}</div>
+					{/each}
 					{#each ticks(leftAxis.key) as tick, i (i)}
 						<span
-							class="absolute right-1 -translate-y-1/2 text-[10px] font-semibold tabular"
+							class="absolute right-1 -translate-y-1/2"
 							style="top:{tick.at}%;color:var(--c-run-{leftAxis.key})"
-						>
-							{tick.said}
-						</span>
-					{/each}
-				</div>
-			{/if}
-			{#if rightAxis}
-				<div class="absolute inset-y-0 right-0 w-11">
-					{#each ticks(rightAxis.key) as tick, i (i)}
-						<span
-							class="absolute left-1 -translate-y-1/2 text-[10px] font-semibold tabular"
-							style="top:{tick.at}%;color:var(--c-run-{rightAxis.key})"
 						>
 							{tick.said}
 						</span>
@@ -300,7 +298,7 @@
 
 			<!-- A drag across the graph is a reading of it, never a swipe to the tab beside it. -->
 			<div
-				class="absolute inset-y-0 {leftAxis ? 'left-11' : 'left-0'} {rightAxis ? 'right-11' : 'right-0'}"
+				class="relative h-32"
 				role="presentation"
 				data-noswipe
 				onpointerdown={(event) => {
@@ -391,20 +389,32 @@
 					{/each}
 				{/if}
 			</div>
-		</div>
+			{#if rightAxis}
+				<div class="relative h-32 pl-1 text-[10px] font-semibold tabular">
+					<!-- Laid flat and unseen, the figures give the edge its width. -->
+					{#each ticks(rightAxis.key) as tick, i (i)}
+						<div class="invisible h-0 overflow-hidden">{tick.said}</div>
+					{/each}
+					{#each ticks(rightAxis.key) as tick, i (i)}
+						<span
+							class="absolute left-1 -translate-y-1/2"
+							style="top:{tick.at}%;color:var(--c-run-{rightAxis.key})"
+						>
+							{tick.said}
+						</span>
+					{/each}
+				</div>
+			{/if}
 
-		<!-- The ends of the ground the lines are drawn over, which is what says how far in they are. -->
-		<div
-			class="flex justify-between text-xs text-muted tabular {leftAxis ? 'pl-11' : ''} {rightAxis
-				? 'pr-11'
-				: ''}"
-		>
-			<span>{axis === 'distance' ? sayDistance(0, $t) : clock(0)}</span>
-			<span>
-				{axis === 'distance'
-					? sayDistance(points[points.length - 1]?.distanceM ?? 0, $t)
-					: clock(points[points.length - 1]?.seconds ?? 0)}
-			</span>
+			<!-- The ends of the ground the lines are drawn over, which is what says how far in they are. -->
+			<div class="flex justify-between text-xs text-muted tabular" style="grid-column:{leftAxis ? 2 : 1}">
+				<span>{axis === 'distance' ? sayDistance(0, $t) : clock(0)}</span>
+				<span>
+					{axis === 'distance'
+						? sayDistance(points[points.length - 1]?.distanceM ?? 0, $t)
+						: clock(points[points.length - 1]?.seconds ?? 0)}
+				</span>
+			</div>
 		</div>
 	{/if}
 </div>
