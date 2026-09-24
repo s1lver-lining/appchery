@@ -75,7 +75,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	} from '$lib/domain/matches';
 	import { summariseByRound, shapeKey, type ScoredActivity } from '$lib/domain/stats';
 	import { formatDistance } from '$lib/domain/units';
-	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
+	import { defaultNameKey, isRunningSession, matchesQuery } from '$lib/domain/sessions';
+	import Running from '$lib/pages/Running.svelte';
 	import { registerBackGuard } from '$lib/nav';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import RunRoute from '$lib/ui/run/RunRoute.svelte';
@@ -167,7 +168,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	 * the row, so a session of six runs is six reads on arrival and not six on every redraw.
 	 *
 	 * Only the device that recorded a run has its track: the fixes stay on the phone that took them,
-	 * so somebody else's run in the feed has a shape nobody but them can draw, see doc/running.md.
+	 * so somebody else's run in the feed has a shape nobody but them can draw, see doc/llm-memory/running.md.
 	 */
 	let routes = $state<Record<string, { lat: number; lon: number }[]>>({});
 
@@ -216,6 +217,13 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	/** Arrows shot without scoring them. They live in one activity, shown as a counter, not a row. */
 	const training = $derived(activities.find((a) => a.kind === 'training'));
 	const listedActivities = $derived(activities.filter((a) => a.kind !== 'training'));
+
+	/**
+	 * A session holding runs and nothing else, shown as the run itself rather than as a card with one
+	 * activity on it. Adding anything else turns it back into an ordinary session, see doc/llm-memory/running.md.
+	 */
+	const runningSession = $derived(isRunningSession(activities));
+	const theRun = $derived(activities.find((a) => a.kind === RUNNING_KIND));
 
 	/**
 	 * The wrist follows the phone, so whatever this page is showing is described to the watch. The
@@ -458,7 +466,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	}
 
 	const defaultName = $derived(
-		session ? $t(defaultNameKey(session.kind, session.startedAt)) : ''
+		session ? $t(defaultNameKey(runningSession ? RUNNING_KIND : session.kind, session.startedAt)) : ''
 	);
 	const selectedBowType = $derived<BowType | null>(
 		(bows.find((b) => b.id === session?.bowId)?.type ?? session?.bowType ?? null) as BowType | null
@@ -1160,7 +1168,18 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 			{#snippet pane(key)}
 				<!-- Guarded again here: the check outside does not narrow inside a snippet. -->
 				{#if session}
-					{#if key === 'overview'}
+					{#if key === 'overview' && runningSession && theRun}
+						<Running activity={theRun} onchange={refresh} origin={`/sessions/${sessionId}`} />
+
+						<!-- The way out of a run and back into an outing: add anything else and it is one. -->
+						<button
+							class="press flex w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line py-3 text-sm font-medium text-muted"
+							onclick={openPicker}
+						>
+							<Icon name="plus" size={16} />
+							{$t('session.addActivity')}
+						</button>
+					{:else if key === 'overview'}
 						<!-- What was shot leads, with the conditions beside it: they frame the figure. -->
 						<div class="grid grid-cols-3 gap-3">
 							<section
@@ -1521,71 +1540,74 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 							</div>
 						</section>
 
-						<!-- Shown rather than listed: a bow is known by its shape, and the archer's own bows
-							wear the shape of the type they were made as. -->
-						<section class="rounded-xl border border-line bg-surface p-4">
-							<span class="mb-1 block text-sm font-semibold">{$t('session.bow')}</span>
+						<!-- Nothing is shot on a run, so there is no bow to ask about. -->
+						{#if !runningSession}
+							<!-- Shown rather than listed: a bow is known by its shape, and the archer's own bows
+								wear the shape of the type they were made as. -->
+							<section class="rounded-xl border border-line bg-surface p-4">
+								<span class="mb-1 block text-sm font-semibold">{$t('session.bow')}</span>
 
-							{#if bows.length > 2}
-								<!-- A rack of bows is a list, not a wall of buttons: past a couple it is picked
-									from a drawer, which is the one place their names have room to be read. -->
-								<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
-								<button
-									class="press mb-3 flex w-full items-center gap-2 rounded-lg border p-2 text-left
-										{chosenBow.startsWith('bow:')
-										? 'border-brand bg-brand/10 text-brand-text'
-										: 'border-line'}"
-									onclick={() => (bowSheet = true)}
-								>
-									<Icon name={BOW_ICONS[(myBow?.type ?? 'recurve') as BowType] ?? 'bow'} size={22} />
-									<span class="min-w-0 flex-1 truncate text-sm font-medium">
-										{myBow?.name ?? $t('session.pickBow')}
-									</span>
-									<Icon name="chevronUp" size={16} />
-								</button>
-							{:else if bows.length > 0}
-								<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
-								<div class="mb-3 grid grid-cols-2 gap-2">
-									{#each bows as b (b.id)}
+								{#if bows.length > 2}
+									<!-- A rack of bows is a list, not a wall of buttons: past a couple it is picked
+										from a drawer, which is the one place their names have room to be read. -->
+									<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
+									<button
+										class="press mb-3 flex w-full items-center gap-2 rounded-lg border p-2 text-left
+											{chosenBow.startsWith('bow:')
+											? 'border-brand bg-brand/10 text-brand-text'
+											: 'border-line'}"
+										onclick={() => (bowSheet = true)}
+									>
+										<Icon name={BOW_ICONS[(myBow?.type ?? 'recurve') as BowType] ?? 'bow'} size={22} />
+										<span class="min-w-0 flex-1 truncate text-sm font-medium">
+											{myBow?.name ?? $t('session.pickBow')}
+										</span>
+										<Icon name="chevronUp" size={16} />
+									</button>
+								{:else if bows.length > 0}
+									<span class="mb-1 block text-xs text-muted">{$t('session.myBows')}</span>
+									<div class="mb-3 grid grid-cols-2 gap-2">
+										{#each bows as b (b.id)}
+											<button
+												class="press flex items-center gap-2 rounded-lg border p-2 text-left
+													{chosenBow === `bow:${b.id}`
+													? 'border-brand bg-brand/10 text-brand-text'
+													: 'border-line'}"
+												aria-pressed={chosenBow === `bow:${b.id}`}
+												onclick={() => setBow(`bow:${b.id}`)}
+											>
+												<Icon name={BOW_ICONS[b.type as BowType] ?? 'bow'} size={22} />
+												<span class="min-w-0 truncate text-sm font-medium">{b.name}</span>
+											</button>
+										{/each}
+									</div>
+								{/if}
+
+								<span class="mb-1 block text-xs text-muted">{$t('session.genericBow')}</span>
+								<div class="grid grid-cols-4 gap-2">
+									{#each BOW_TYPES as type (type)}
 										<button
-											class="press flex items-center gap-2 rounded-lg border p-2 text-left
-												{chosenBow === `bow:${b.id}`
-												? 'border-brand bg-brand/10 text-brand-text'
-												: 'border-line'}"
-											aria-pressed={chosenBow === `bow:${b.id}`}
-											onclick={() => setBow(`bow:${b.id}`)}
+											class="press flex flex-col items-center gap-1 rounded-lg border p-1.5
+												{chosenBow === type ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
+											aria-pressed={chosenBow === type}
+											onclick={() => setBow(type)}
 										>
-											<Icon name={BOW_ICONS[b.type as BowType] ?? 'bow'} size={22} />
-											<span class="min-w-0 truncate text-sm font-medium">{b.name}</span>
+											<Icon name={BOW_ICONS[type]} size={28} />
+											<span class="block w-full truncate text-[0.625rem] text-muted">{$t(`bow.${type}`)}</span>
 										</button>
 									{/each}
 								</div>
-							{/if}
 
-							<span class="mb-1 block text-xs text-muted">{$t('session.genericBow')}</span>
-							<div class="grid grid-cols-4 gap-2">
-								{#each BOW_TYPES as type (type)}
-									<button
-										class="press flex flex-col items-center gap-1 rounded-lg border p-1.5
-											{chosenBow === type ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
-										aria-pressed={chosenBow === type}
-										onclick={() => setBow(type)}
-									>
-										<Icon name={BOW_ICONS[type]} size={28} />
-										<span class="block w-full truncate text-[0.625rem] text-muted">{$t(`bow.${type}`)}</span>
-									</button>
-								{/each}
-							</div>
-
-							<button
-								class="press mt-2 w-full rounded-lg border py-1.5 text-xs font-medium
-									{chosenBow === '' ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
-								aria-pressed={chosenBow === ''}
-								onclick={() => setBow('')}
-							>
-								{$t('session.noBow')}
-							</button>
-						</section>
+								<button
+									class="press mt-2 w-full rounded-lg border py-1.5 text-xs font-medium
+										{chosenBow === '' ? 'border-brand bg-brand/10 text-brand-text' : 'border-line text-muted'}"
+									aria-pressed={chosenBow === ''}
+									onclick={() => setBow('')}
+								>
+									{$t('session.noBow')}
+								</button>
+							</section>
+						{/if}
 
 						<section class="overflow-hidden rounded-xl border border-line bg-surface">
 							<div class="flex items-center justify-between gap-2 border-b border-line px-4 py-3">

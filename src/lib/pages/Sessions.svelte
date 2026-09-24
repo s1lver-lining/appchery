@@ -27,6 +27,7 @@
 		listPlans,
 		listBows,
 		createSession,
+		createRunningActivity,
 		updateSession,
 		deleteSessions,
 		restoreSessions,
@@ -44,7 +45,10 @@
 	import { tabAsked, withOrigin } from '$lib/nav';
 	import { groupByWeek, monthGrid, startOfDay, startOfWeek } from '$lib/domain/dates';
 	import { weekStartsOnSunday } from '$lib/prefs';
-	import { defaultNameKey, matchesQuery } from '$lib/domain/sessions';
+	import { defaultNameKey, sessionShape, matchesQuery, type SessionShape } from '$lib/domain/sessions';
+	import { RUNNING_KIND, clock, emptyRun, parseRun } from '$lib/domain/running';
+	import { canTrack } from '$lib/run/source';
+	import { sayDistance } from '$lib/ui/run/distance';
 	import type { RoundDefinition } from '$lib/domain/rounds/types';
 	import {
 		defaultBowId,
@@ -54,7 +58,7 @@
 		showWeekGoal,
 		fullNewSessionButton
 	} from '$lib/prefs';
-	import Icon from '$lib/ui/Icon.svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import MoreMenu from '$lib/ui/MoreMenu.svelte';
 	import EmptyState from '$lib/ui/EmptyState.svelte';
@@ -73,7 +77,17 @@
 	type Session = Awaited<ReturnType<typeof listSessions>>[number];
 
 	let sessions = $state<Session[]>([]);
-	let counts = $state<Record<string, { activities: number; arrows: number; names: string[] }>>({});
+	/** What each session holds, gathered once so a row never reads the activities again. */
+	type SessionCount = {
+		activities: number;
+		arrows: number;
+		names: string[];
+		/** Every activity in it, which is what says whether the outing was a run, a match or a round. */
+		held: { kind: string; status: string }[];
+		metres: number;
+		seconds: number;
+	};
+	let counts = $state<Record<string, SessionCount>>({});
 	/** What is typed in the search box. Not stored: a search is about the minute it is made in. */
 	let query = $state('');
 	let pickingView = $state(false);
@@ -168,10 +182,21 @@
 			listPlans(),
 			listAllActivities()
 		]);
-		counts = activities.reduce<
-			Record<string, { activities: number; arrows: number; names: string[] }>
-		>((acc, a) => {
-			const entry = (acc[a.sessionId] ??= { activities: 0, arrows: 0, names: [] });
+		counts = activities.reduce<Record<string, SessionCount>>((acc, a) => {
+			const entry = (acc[a.sessionId] ??= {
+				activities: 0,
+				arrows: 0,
+				names: [],
+				held: [],
+				metres: 0,
+				seconds: 0
+			});
+			entry.held.push({ kind: a.kind, status: a.status });
+			if (a.kind === RUNNING_KIND) {
+				const run = parseRun(a.measurements);
+				entry.metres += run.distanceM ?? 0;
+				entry.seconds += run.durationSeconds ?? 0;
+			}
 			// Kept per session so the search reads what was shot without parsing every round again.
 			const round: RoundDefinition | null = a.roundDefinition ? JSON.parse(a.roundDefinition) : null;
 			// A match is remembered by who it was against, so that is its name as far as searching goes.
@@ -212,6 +237,16 @@
 	 */
 	async function start(kind: 'practice' | 'competition' = 'practice') {
 		goto(`/sessions/${await createSession({ kind, bowId: $defaultBowId })}`);
+	}
+
+	/**
+	 * The run is created with the session, so the outing reads as a run from the first frame rather
+	 * than starting life as an empty session. No bow: a run is not shot with one.
+	 */
+	async function startRun() {
+		const id = await createSession({});
+		await createRunningActivity(id, emptyRun(canTrack() ? 'tracked' : 'manual'));
+		goto(`/sessions/${id}`);
 	}
 
 	/**
@@ -262,7 +297,7 @@
 	 */
 	const haystack = $derived((s: Session) => [
 		s.label,
-		$t(defaultNameKey(s.kind, s.startedAt)),
+		$t(defaultNameKey(nameKind(s), s.startedAt)),
 		s.location,
 		s.notes,
 		...(counts[s.id]?.names ?? [])
@@ -495,6 +530,19 @@
 	const today = startOfDay(Date.now());
 
 	const isCompetition = (s: Session) => s.kind === 'competition';
+	const shapeOf = $derived((s: Session) => sessionShape(counts[s.id]?.held ?? []));
+	const isRunning = $derived((s: Session) => shapeOf(s) === 'running');
+	/** One icon per shape, so a list of outings says what each was without a word being read. */
+	const SHAPE_ICONS: Record<SessionShape, IconName> = {
+		running: 'run',
+		strength: 'exercise',
+		match: 'bracket',
+		tuning: 'wrench',
+		training: 'sight',
+		scoring: 'target'
+	};
+	/** A run reads as a run whatever the outing was called, so the default name follows what it holds. */
+	const nameKind = $derived((s: Session) => (isRunning(s) ? RUNNING_KIND : s.kind));
 	const isToday = (s: Session) => startOfDay(s.startedAt) === today;
 
 	/**
@@ -508,7 +556,9 @@
 			(counts[s.id]?.activities ?? 0) === 0
 	);
 
-	const sessionName = $derived((s: Session) => s.label ?? $t(defaultNameKey(s.kind, s.startedAt)));
+	const sessionName = $derived(
+		(s: Session) => s.label ?? $t(defaultNameKey(nameKind(s), s.startedAt))
+	);
 
 	const SHOT_DOT = 'bg-muted/70 border-muted/70';
 	const PLANNED_DOT = 'bg-surface border-line';
@@ -521,7 +571,8 @@
 		const marks: string[] = (byDay.get(day) ?? []).map((s) =>
 			isCompetition(s)
 				? 'bg-competition border-competition'
-				: s.kind === 'planned' || (counts[s.id]?.arrows ?? 0) === 0
+				: // A run shoots no arrows, so counting them would leave it pale as a day nobody turned up.
+					s.kind === 'planned' || (!isRunning(s) && (counts[s.id]?.arrows ?? 0) === 0)
 					? PLANNED_DOT
 					: SHOT_DOT
 		);
@@ -559,6 +610,11 @@
 			icon: 'target' as const,
 			onselect: () => start('practice'),
 			accent: true
+		},
+		{
+			label: $t('sessions.newRun'),
+			icon: 'run' as const,
+			onselect: startRun
 		},
 		{
 			label: $t('sessions.newCompetition'),
@@ -610,13 +666,17 @@
 			</span>
 		{/if}
 
-		{#if isCompetition(s)}
-			<span
-				class="flex aspect-square shrink-0 items-center justify-center self-stretch rounded-lg bg-competition/10 text-competition"
-			>
-				<Icon name="medal" size={26} />
-			</span>
-		{/if}
+		<!-- A medal for the day that counted, and otherwise whatever the outing turned out to be. -->
+		<span
+			class="flex aspect-square shrink-0 items-center justify-center self-stretch rounded-lg
+				{isCompetition(s)
+				? 'bg-competition/10 text-competition'
+				: isEmpty(s)
+					? 'text-muted/60'
+					: 'bg-sunk text-muted'}"
+		>
+			<Icon name={isCompetition(s) ? 'medal' : SHAPE_ICONS[shapeOf(s)]} size={isCompetition(s) ? 26 : 22} />
+		</span>
 
 		<div class="min-w-0 flex-1">
 			<p
@@ -637,7 +697,7 @@
 				{/if}
 				<span class="tabular shrink-0">{$formatTime(s.startedAt)}</span>
 				<!-- Nothing entered yet says nothing: a row reading "0 act." looks like a failed count. -->
-				{#if (counts[s.id]?.activities ?? 0) > 0}
+				{#if (counts[s.id]?.activities ?? 0) > 0 && !isRunning(s)}
 					<span class="text-line">·</span>
 					<span class="shrink-0">{activityLabel(s.id)}</span>
 				{/if}
@@ -659,6 +719,16 @@
 			<div class="shrink-0 text-center text-muted">
 				<span class="flex justify-center"><Icon name="calendar" size={20} /></span>
 				<p class="mt-1 text-[0.625rem] tracking-wide uppercase">{$t('sessions.planned')}</p>
+			</div>
+		{:else if isRunning(s)}
+			<!-- A run counts no arrows, so the figure that means something is how far it went. -->
+			<div class="shrink-0 text-right">
+				<p class="tabular text-lg leading-none font-bold">
+					{sayDistance(counts[s.id]?.metres ?? 0, $t, 2)}
+				</p>
+				{#if (counts[s.id]?.seconds ?? 0) > 0}
+					<p class="tabular mt-1 text-[0.625rem] text-muted">{clock(counts[s.id].seconds)}</p>
+				{/if}
 			</div>
 		{:else}
 			<div class="shrink-0 text-right">

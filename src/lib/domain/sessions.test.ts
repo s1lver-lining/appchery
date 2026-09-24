@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { defaultNameKey, matchesQuery, hasHappened } from './sessions';
+import { defaultNameKey, sessionShape, isRunningSession, matchesQuery, hasHappened } from './sessions';
 
 const at = (iso: string) => new Date(iso).getTime();
 
@@ -10,6 +10,10 @@ describe('defaultNameKey', () => {
 		);
 	});
 
+	it('calls a run a run', () => {
+		expect(defaultNameKey('running', at('2026-08-10T09:00'))).toBe('sessions.name.running.morning');
+	});
+
 	it('treats every other kind as practice', () => {
 		expect(defaultNameKey('practice', at('2026-08-10T20:00'))).toBe(
 			'sessions.name.practice.evening'
@@ -17,6 +21,48 @@ describe('defaultNameKey', () => {
 		expect(defaultNameKey('qualification', at('2026-08-10T02:00'))).toBe(
 			'sessions.name.practice.night'
 		);
+	});
+});
+
+describe('sessionShape', () => {
+	const done = (kind: string) => ({ kind, status: 'complete' });
+	const going = (kind: string) => ({ kind, status: 'in_progress' });
+
+	it('is a run when every activity is one', () => {
+		expect(sessionShape([going('running')])).toBe('running');
+		expect(sessionShape([going('running'), done('running')])).toBe('running');
+	});
+
+	it('names the other single kinds after what they are', () => {
+		expect(sessionShape([going('match')])).toBe('match');
+		expect(sessionShape([going('tuning')])).toBe('tuning');
+		expect(sessionShape([going('strength')])).toBe('strength');
+		expect(sessionShape([going('training')])).toBe('training');
+	});
+
+	it('is scoring as soon as a round was finished, whatever else is in it', () => {
+		expect(sessionShape([done('scoring'), going('running')])).toBe('scoring');
+		expect(sessionShape([done('scoring'), going('tuning')])).toBe('scoring');
+	});
+
+	it('is scoring when it holds a mixture that finished nothing', () => {
+		expect(sessionShape([going('tuning'), going('match')])).toBe('scoring');
+		expect(sessionShape([going('scoring')])).toBe('scoring');
+		expect(sessionShape([])).toBe('scoring');
+	});
+
+	// Training arrows are a counter on the session, so they never take the icon off what was shot.
+	it('lets the training counter ride along', () => {
+		expect(sessionShape([going('running'), going('training')])).toBe('running');
+		expect(sessionShape([going('tuning'), going('training')])).toBe('tuning');
+	});
+});
+
+describe('isRunningSession', () => {
+	it('follows the shape', () => {
+		expect(isRunningSession([{ kind: 'running' }])).toBe(true);
+		expect(isRunningSession([{ kind: 'running' }, { kind: 'scoring' }])).toBe(false);
+		expect(isRunningSession([])).toBe(false);
 	});
 });
 

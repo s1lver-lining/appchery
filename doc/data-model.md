@@ -120,6 +120,25 @@ One outing. Holds the bow, the place, and the conditions. Activities hang off it
 > activity inherits it. The weather snapshot is never refreshed because it records the conditions the
 > arrows were shot in: a later refresh would falsify the record rather than update it.
 
+#### What a session turns out to be
+
+`kind` says what the outing was *for*. What it actually *holds* is read off the activities by
+`sessionShape` in `src/lib/domain/sessions.ts`, and it is what the list draws an icon from:
+
+| Shape | When |
+|---|---|
+| `scoring` | a scoring activity was finished, or it holds a mixture, or it holds nothing yet |
+| `running` | runs and nothing else, which is also shown as a run rather than as an outing |
+| `strength` | strength activities and nothing else |
+| `match` | matches and nothing else |
+| `tuning` | tuning procedures and nothing else |
+| `training` | the training counter and nothing else |
+
+A finished round wins over everything, because it is what the outing will be remembered for. Nothing
+is stored, so adding to a session can change what it is: put a round in a session of runs and it is
+an ordinary session again. Training arrows are a counter rather than a row, so they never take the
+icon off what was shot.
+
 ### `activity`
 
 One thing done inside a session: a scored round, or a tuning procedure.

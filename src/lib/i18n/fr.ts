@@ -69,9 +69,16 @@ export const fr: Dictionary = {
 				afternoon: "Compétition de l'après-midi",
 				evening: 'Compétition du soir',
 				night: 'Compétition de nuit'
+			},
+			running: {
+				morning: 'Course du matin',
+				afternoon: "Course de l'après-midi",
+				evening: 'Course du soir',
+				night: 'Course de nuit'
 			}
 		},
 		newCompetition: 'Nouvelle compétition',
+		newRun: 'Nouvelle course',
 		moreKinds: 'Autres types de séance',
 		newPlanned: 'Planifier une séance',
 		jumpTo: 'Aller à',

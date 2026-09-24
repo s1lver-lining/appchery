@@ -17,6 +17,21 @@ clock carries on from there with nothing to hold and nothing counting down, unti
 otherwise: the way home from the track is a run, and a warm down nobody wrote down is still time on
 the feet. The service does the same while the page is asleep, and hands it back through `claim`.
 
+## Running sessions
+
+A session that holds runs and nothing else is shown as a run: a run icon and the distance in the
+list, the run itself on the session page instead of the usual arrow count and activity list, and
+"Morning run" where an unnamed outing would say "Morning session".
+
+Nothing is stored for this. `sessionShape` in `src/lib/domain/sessions.ts` reads the activities, so
+a session is whatever it turns out to hold, and a run is one of the shapes it can come out as, see
+doc/data-model.md. Adding a round to one makes it an ordinary session again, and the button under
+the run on its page is there to do exactly that.
+
+The new run button on the sessions list writes the session and its run together. An empty session
+holds no activity and so could not be read as a run, which would leave the first screen of a run
+looking like an outing nobody had entered anything in yet.
+
 ## The model
 
 `src/lib/domain/run/workout.ts` is the programme: blocks in order, and repeats holding blocks.

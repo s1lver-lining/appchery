@@ -68,9 +68,16 @@ export const en = {
 				afternoon: 'Afternoon competition',
 				evening: 'Evening competition',
 				night: 'Night competition'
+			},
+			running: {
+				morning: 'Morning run',
+				afternoon: 'Afternoon run',
+				evening: 'Evening run',
+				night: 'Night run'
 			}
 		},
 		newCompetition: 'New competition',
+		newRun: 'New run',
 		moreKinds: 'Other kinds of session',
 		newPlanned: 'Plan a session',
 		jumpTo: 'Jump to',
