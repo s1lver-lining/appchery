@@ -99,9 +99,11 @@ describe('reopening a remembered link', () => {
 
 		await resumeWatch();
 
-		expect(connectNative).toHaveBeenCalledWith(expect.any(Function), expect.any(Function), {
-			deviceId: 'AA:BB'
-		});
+		expect(connectNative).toHaveBeenCalledWith(
+			expect.any(Function),
+			expect.any(Function),
+			expect.objectContaining({ deviceId: 'AA:BB' })
+		);
 	});
 
 	it('leaves the card idle rather than failed when the watch is not there', async () => {

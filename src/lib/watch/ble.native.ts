@@ -31,7 +31,10 @@ interface WristPlugin {
 		event: 'bytes',
 		handler: (data: { text: string }) => void
 	): Promise<{ remove: () => Promise<void> }>;
-	addListener(event: 'lost', handler: () => void): Promise<{ remove: () => Promise<void> }>;
+	addListener(
+		event: 'lost' | 'restarted',
+		handler: () => void
+	): Promise<{ remove: () => Promise<void> }>;
 }
 
 /** What the service worked out while the page was asleep, for the page to adopt. */
@@ -63,6 +66,8 @@ export interface ConnectOptions {
 	 * the app to look at last week's scores.
 	 */
 	deviceId?: string | null;
+	/** The watch app restarted while the link stayed up, so it has to be told everything again. */
+	onRestarted?: () => void;
 }
 
 export async function connect(
@@ -118,12 +123,16 @@ export async function connect(
 	const gone = await Wrist.addListener('lost', () => {
 		if (!closing) onLost();
 	});
+	const restarted = await Wrist.addListener('restarted', () => {
+		if (!closing) options.onRestarted?.();
+	});
 
 	try {
 		await Wrist.connect({ address: id });
 	} catch (error) {
 		await quietly(() => incoming.remove());
 		await quietly(() => gone.remove());
+		await quietly(() => restarted.remove());
 		// A remembered watch out of range, off, or simply left at home: ordinary, and not a fault the
 		// archer can act on beyond bringing the watch closer.
 		const reason = failureOf(error, remembered ? 'not-found' : 'failed');
@@ -149,6 +158,7 @@ export async function connect(
 				closing = true;
 				void quietly(() => incoming.remove());
 				void quietly(() => gone.remove());
+				void quietly(() => restarted.remove());
 				void quietly(() => Wrist.disconnect());
 			}
 		}

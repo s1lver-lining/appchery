@@ -394,10 +394,10 @@ public class Link {
         pump();
     }
 
-    // A late disconnect can drop a phone that just resubscribed, see doc/llm-memory/watch-link.md.
+    // A phone writing is subscribed even when this app never saw it, see doc/llm-memory/watch-link.md.
     private void relink(BluetoothDevice from) {
         if (from == null || !subscribers.add(from)) return;
-        Log.i(TAG, "taken back on hello " + from.getAddress());
+        Log.i(TAG, "taken back on write " + from.getAddress());
         say(LINKED, "Linked");
         main.post(() -> {
             flush();
@@ -440,7 +440,6 @@ public class Link {
             case "hello":
                 // The phone speaks first on connecting, and the reply carries this watch's clock so
                 // the two can tell whose edit came later.
-                relink(from);
                 hello();
                 return;
             case "round":
@@ -741,7 +740,10 @@ public class Link {
                 BluetoothGattCharacteristic characteristic, boolean preparedWrite,
                 boolean responseNeeded, int offset, byte[] value) {
             Log.i(TAG, "write to " + characteristic.getUuid() + " len=" + value.length);
-            if (TO_WATCH.equals(characteristic.getUuid())) receive(device, value);
+            if (TO_WATCH.equals(characteristic.getUuid())) {
+                relink(device);
+                receive(device, value);
+            }
             if (responseNeeded) {
                 server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
             }

@@ -180,7 +180,8 @@ async function openLink(
 			// A watch that walked out of range walks back in, so this is the start of trying rather
 			// than the end of the link. Does nothing in a browser, which cannot reopen one unasked.
 			retryDelay = RETRY_FIRST_MS;
-			armRetry();
+			// Tried at once: a connect waits for the watch, so a restarting watch app is caught as it returns.
+			void tryRemembered(true);
 		}
 	);
 }
@@ -217,14 +218,16 @@ export async function connectWatch(): Promise<void> {
 		const remembered = get(rememberedWatch);
 		result = remembered
 			? await openLink((onBytes, onLost) =>
-					connectOverNative(onBytes, onLost, { deviceId: remembered })
+					connectOverNative(onBytes, onLost, { deviceId: remembered, onRestarted: regreet })
 				)
 			: { ok: false, reason: 'not-found' };
 		// The archer asked for a watch, so a remembered one that is not there is a reason to offer the
 		// chooser rather than to give up: it may well be a different watch they mean to use.
 		if (!result.ok && result.reason === 'not-found') {
 			rememberedWatch.set(null);
-			result = await openLink((onBytes, onLost) => connectOverNative(onBytes, onLost));
+			result = await openLink((onBytes, onLost) =>
+				connectOverNative(onBytes, onLost, { onRestarted: regreet })
+			);
 		}
 	} else {
 		result = await openLink(connectOverWeb);
@@ -322,7 +325,7 @@ async function tryRemembered(quiet: boolean): Promise<void> {
 		const connectOverNative = await nativeTransport();
 		if (!quiet) watchStatus.set({ state: 'connecting' });
 		const result = await openLink((onBytes, onLost) =>
-			connectOverNative(onBytes, onLost, { deviceId: remembered })
+			connectOverNative(onBytes, onLost, { deviceId: remembered, onRestarted: regreet })
 		);
 
 		if (!result.ok) {
@@ -382,6 +385,11 @@ function dropLink(): void {
 	connection = null;
 	link = null;
 	greeted = false;
+}
+
+// Said again at once, so the restarted watch app is handed the run without waiting on a heartbeat.
+function regreet(): void {
+	void link?.open().catch(() => undefined);
 }
 
 // A restarted watch app leaves the phone writing into nothing, see doc/llm-memory/watch-link.md.

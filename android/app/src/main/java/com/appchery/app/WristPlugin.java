@@ -52,6 +52,11 @@ public class WristPlugin extends Plugin {
             public void onLost() {
                 notifyListeners("lost", new JSObject());
             }
+
+            @Override
+            public void onRestarted() {
+                notifyListeners("restarted", new JSObject());
+            }
         });
     }
 

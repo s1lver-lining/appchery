@@ -53,6 +53,9 @@ final class Wrist {
 
         /** Gone, as opposed to given up: the page decides whether to say so or to try again. */
         void onLost();
+
+        /** The watch app restarted under a link that stayed up, and knows nothing of this phone. */
+        void onRestarted();
     }
 
     private static Wrist instance;
@@ -74,6 +77,8 @@ final class Wrist {
     /** Set before a disconnect we asked for, so a link being closed is not reported as one lost. */
     private boolean closing = false;
     private Runnable timeout;
+    /** Subscribing again under a link already up, after the watch app restarted beneath it. */
+    private boolean resubscribing = false;
 
     /** When the page last wrote, so the service can tell a page that is asleep from one that is busy. */
     private static volatile long pageWroteAt = 0;
@@ -100,6 +105,7 @@ final class Wrist {
         address = wanted;
         closing = false;
         ready = false;
+        resubscribing = false;
 
         BluetoothManager manager = context.getSystemService(BluetoothManager.class);
         BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
@@ -202,6 +208,13 @@ final class Wrist {
 
     private void finish(boolean ok, String reason) {
         Listener told = listener;
+        if (resubscribing) {
+            // The connect call was answered long ago: a link that cannot subscribe again is a link lost.
+            resubscribing = false;
+            ready = false;
+            if (told != null) main.post(told::onLost);
+            return;
+        }
         if (told != null) main.post(() -> told.onReady(ok, reason));
     }
 
@@ -286,7 +299,25 @@ final class Wrist {
                 return;
             }
             ready = true;
+            if (resubscribing) {
+                resubscribing = false;
+                Listener told = listener;
+                if (told != null) main.post(told::onRestarted);
+                return;
+            }
             finish(true, null);
+        }
+
+        @Override
+        public void onServiceChanged(BluetoothGatt link) {
+            if (!ready) return;
+            // The stack drops our notification registration with the old service, so it is made again.
+            resubscribing = true;
+            try {
+                if (!link.discoverServices()) finish(false, "failed");
+            } catch (SecurityException denied) {
+                finish(false, "no-permission");
+            }
         }
 
         @Override

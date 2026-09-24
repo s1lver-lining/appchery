@@ -255,9 +255,16 @@ itself again, so a paused run or one being prepared reaches the wrist without an
 changing. Only a link that answered once is reopened: one that never has is a watch app that is not
 listening, and reconnecting every heartbeat would change nothing.
 
-**Restarting the phone app can unsubscribe the phone that just arrived.** The old connection is
-closed and a new one opened at once, and the old one's disconnect can reach the watch after the new
-subscribe, removing the same device. The watch then cannot answer the hello and says it is waiting
-for a phone. A hello is only sent after the subscribe went through, so the watch takes a phone that
-says hello back as a subscriber. A `bye` releases the phone for the same reason, so the next hello
-says linked again.
+**A restarted watch app starts blind under a link that stayed up.** Measured 2026-09-25: the
+watch app's activity is recreated while the process and the connection survive, so the new server
+never sees the subscribe, and every button went to nobody while the phone's writes still arrived.
+The phone's own client still has notifications on the same handles (the stack reads the database
+hash and keeps its cache), so the watch takes any phone that writes to it as a subscriber. The phone
+hears `onServiceChanged` at the same moment. The stack drops the phone's notification registration
+with the old service, so from then on everything the watch says reaches the phone's radio and is
+thrown away before the app: the run displays and no button works. The phone therefore discovers and
+subscribes again, and only then says hello, which hands the restarted watch the run.
+
+The same logic covers a phone app restart, whose old connection's disconnect can reach the watch
+after the new subscribe and remove the device that just arrived. A `bye` releases the phone, so the
+next write takes it back and says linked again.
