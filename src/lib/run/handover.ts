@@ -11,7 +11,7 @@ import type { RunLive } from '$lib/domain/running';
  * screen goes off, which is how a run is actually run. The service carries on: it has the fixes
  * already, and with the programme and an anchor it can keep the wrist fed and move the run through
  * its blocks. This is the whole of the conversation between the two, and there is nothing to it on
- * any platform that has no service, see doc/running.md.
+ * any platform that has no service, see doc/llm-memory/running.md.
  */
 
 const native = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Wrist');

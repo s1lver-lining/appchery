@@ -26,7 +26,7 @@ import java.util.UUID;
  * with the screen off, which is how a run is actually run, had the wrist showing figures minutes
  * old: the Bluetooth stack was fine and nobody was telling it to write. With the connection here,
  * {@link TraceService} can keep the wrist fed from the fixes it is already waking for, and the page
- * drives the same link when it is awake. One owner, either way. See doc/running.md.
+ * drives the same link when it is awake. One owner, either way. See doc/llm-memory/running.md.
  *
  * A process singleton because there is one watch and one link, and both outlive any page or service.
  */

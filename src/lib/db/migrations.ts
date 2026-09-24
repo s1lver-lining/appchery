@@ -330,7 +330,7 @@ export const MIGRATIONS: string[][] = [
 	// 0009 runs tracked rather than typed: the workouts they are run to, and the fixes they are made of
 	[
 		// Local for now, sync columns and all: what a run came to travels on the activity, and the
-		// library is worth carrying the day the server learns the table, see doc/running.md.
+		// library is worth carrying the day the server learns the table, see doc/llm-memory/running.md.
 		`CREATE TABLE IF NOT EXISTS run_workout (
 			id TEXT PRIMARY KEY NOT NULL,
 			created_at INTEGER NOT NULL,
@@ -359,7 +359,7 @@ export const MIGRATIONS: string[][] = [
 	// 0010 the beat the wrist was reporting when a fix landed
 	[
 		// On the fix rather than in a series of its own: that is how a GPX carries a heart rate, and
-		// a run is read back point by point anyway, see doc/running.md.
+		// a run is read back point by point anyway, see doc/llm-memory/running.md.
 		`ALTER TABLE run_point ADD COLUMN heart_rate INTEGER;`
 	]
 ];

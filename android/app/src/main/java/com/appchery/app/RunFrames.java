@@ -25,7 +25,7 @@ import java.util.List;
  * own is an hour of battery bought for nothing.
  *
  * The page stays the authority. Everything worked out here is handed back when the page wakes, and
- * whatever it makes of the track it stored wins. See doc/running.md.
+ * whatever it makes of the track it stored wins. See doc/llm-memory/running.md.
  */
 final class RunFrames {
 

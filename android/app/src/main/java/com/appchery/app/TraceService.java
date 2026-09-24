@@ -29,7 +29,7 @@ import java.util.List;
  *
  * <p>It works out nothing. Fixes are buffered here with a sequence number and drained by the page
  * whenever it is awake, so a page frozen for twenty minutes catches up in one call rather than
- * missing twenty minutes of running. See doc/running.md.
+ * missing twenty minutes of running. See doc/llm-memory/running.md.
  */
 public class TraceService extends Service implements LocationListener {
 

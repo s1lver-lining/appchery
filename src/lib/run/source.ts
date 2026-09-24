@@ -10,7 +10,7 @@ import type { RunFix } from '$lib/domain/run/track';
  * rather than pushed. A browser hands them over as they arrive, so the web source keeps them until
  * they are asked for, and every caller is written once. What the app cannot promise in a browser is
  * the background: a tab the phone has put to sleep stops receiving, and the page says so rather than
- * pretending otherwise, see doc/running.md.
+ * pretending otherwise, see doc/llm-memory/running.md.
  */
 
 export type StartFailure = 'denied' | 'location-off' | 'unsupported';
@@ -22,7 +22,7 @@ export interface Source {
 	/**
 	 * Paused rather than finished. The service stays up with nothing to listen to: stopping it is
 	 * the app losing the one thing keeping its process alive, and a process Android has reclaimed
-	 * cannot be told to carry on, see doc/running.md.
+	 * cannot be told to carry on, see doc/llm-memory/running.md.
 	 */
 	hold(): Promise<void>;
 	stop(): Promise<void>;

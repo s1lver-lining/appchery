@@ -39,7 +39,7 @@ import type { RunCommand, RunStatus } from '$lib/watch/protocol';
  *
  * Nothing is kept only in memory. The clock, the step being run and the totals are written to the
  * activity every few seconds and every time a button is pressed, so a phone that kills the app mid
- * run loses seconds rather than a run, see doc/running.md.
+ * run loses seconds rather than a run, see doc/llm-memory/running.md.
  */
 
 /** How often the fixes gathered by the service are taken and the totals redrawn. */
@@ -513,7 +513,7 @@ export class LiveRun {
 		// A watch that is not there is not an error: the mirror is a no-op with no link.
 		await mirrorRun(frame).catch(() => undefined);
 		// And the same run handed to the service, which speaks for this page once Android stops
-		// calling it: a run is spent with the screen off, see doc/running.md.
+		// calling it: a run is spent with the screen off, see doc/llm-memory/running.md.
 		await handDown(frame, this.steps, this.record.live);
 	}
 
@@ -612,7 +612,7 @@ export class LiveRun {
 	 * Whether the run is going anywhere, where the archer asked the app to care.
 	 *
 	 * Only while the page is awake. With the screen off the service is what keeps the run, and it
-	 * has no opinion about this: a run in a pocket is timed the way it always was, see doc/running.md.
+	 * has no opinion about this: a run in a pocket is timed the way it always was, see doc/llm-memory/running.md.
 	 */
 	private async judgeStillness() {
 		if (!get(autoPauseRuns)) {
@@ -757,7 +757,7 @@ const WOKE_MS = 6000;
  *
  * The watch shows what the phone shows and localises it itself, so what travels is numbers and a
  * block kind rather than sentences. `cue` counts block changes: the watch buzzes and lights up when
- * it goes up, which is the one thing a runner needs from a wrist mid interval, see doc/running.md.
+ * it goes up, which is the one thing a runner needs from a wrist mid interval, see doc/llm-memory/running.md.
  */
 export interface RunGlance {
 	status: 'idle' | 'running' | 'paused' | 'done';

@@ -390,7 +390,7 @@ export const competitionPlace = sqliteTable('competition_place', {
 
 /**
  * A training session written out in blocks, kept to be run again. Local for now: it carries the sync
- * columns so it can travel the day the server learns about it, see doc/running.md.
+ * columns so it can travel the day the server learns about it, see doc/llm-memory/running.md.
  */
 export const runWorkout = sqliteTable('run_workout', {
 	...syncColumns,
