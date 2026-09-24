@@ -106,6 +106,9 @@
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
 	import ConfirmDialog from '$lib/ui/ConfirmDialog.svelte';
+	import { stravaConfigured } from '$lib/strava/config';
+	import { authorizeUrl } from '$lib/strava/api';
+	import { forgetStrava, markSignInStarted, stravaTokens } from '$lib/strava/tokens';
 	import Icon from '$lib/ui/Icon.svelte';
 	import {
 		fullscreenSupported,
@@ -795,6 +798,40 @@
 							onchange={(v) => runMaps.set(v)}
 						/>
 					</div>
+
+					<!--
+						Signing in is done in the phone's browser rather than in here: an app that asks for
+						somebody's Strava password in its own screen is the thing they are told not to trust.
+					-->
+					{#if stravaConfigured()}
+						<div id="setting-strava" class:flash={flashing === 'strava'} class="mt-4 flex items-start justify-between gap-4">
+							<div class="flex-1">
+								<p class="font-medium">{$t('strava.title')}</p>
+								<p class="mt-0.5 text-sm text-muted">
+									{$stravaTokens
+										? $t('strava.signedInAs', { name: $stravaTokens.athlete ?? $t('strava.yourAccount') })
+										: $t('strava.connectHint')}
+								</p>
+							</div>
+							{#if $stravaTokens}
+								<button
+									class="press shrink-0 rounded-lg border border-line px-3 py-2 text-sm font-semibold"
+									onclick={forgetStrava}
+								>
+									{$t('strava.disconnect')}
+								</button>
+							{:else}
+								<a
+									class="press shrink-0 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-brand-ink"
+									href={authorizeUrl()}
+									rel="external"
+									onclick={markSignInStarted}
+								>
+									{$t('strava.connect')}
+								</a>
+							{/if}
+						</div>
+					{/if}
 
 					<div id="setting-runMapPrompt" class:flash={flashing === 'runMapPrompt'} class="mt-4 flex items-start justify-between gap-4">
 						<div class="flex-1">

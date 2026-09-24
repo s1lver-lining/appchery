@@ -228,13 +228,20 @@ import { resumeWatch } from '$lib/watch/store';
 	 */
 	const SITE = 'https://app.appchery.com';
 
+	/**
+	 * The app's own scheme, which only the trip back from Strava uses. Chrome refuses to hand an
+	 * https link to an app when it arrives as a redirect, so the page Strava returns to forwards to
+	 * this, which Chrome cannot open itself and must pass on. See doc/llm-memory/strava.md.
+	 */
+	const SCHEME = 'appchery://';
+
 	/** Whatever the platform handed over: a file to import, or a link to one of the app's own pages. */
 	async function openHanded(url: string) {
 		if (url === handedUrl) return;
 		handedUrl = url;
 
-		if (url.startsWith(SITE)) {
-			const here = new URL(url);
+		if (url.startsWith(SITE) || url.startsWith(SCHEME)) {
+			const here = new URL(url.startsWith(SCHEME) ? url.replace(SCHEME, `${SITE}/`) : url);
 			goto(`${here.pathname}${here.search}` || '/');
 			return;
 		}

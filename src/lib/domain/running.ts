@@ -13,7 +13,7 @@ import { parseWorkout, serialiseWorkout, type RunWorkout } from './run/workout';
  * numbers a hand entered one is typed into, so everything downstream, the summary, the badges, the
  * statistics, reads one shape and never asks which kind it was looking at. What tracking adds is
  * kept beside them: the splits, the workout it was run to, and what each of its blocks came to.
- * The fixes themselves are rows in run_point, not JSON here, see doc/running.md.
+ * The fixes themselves are rows in run_point, not JSON here, see doc/llm-memory/running.md.
  */
 export const RUNNING_KIND = 'running';
 
@@ -70,6 +70,8 @@ export interface RunRecord {
 	/** Beats a minute over the whole run, and the highest one reached. Null where nothing measured. */
 	averageHeartRate: number | null;
 	maxHeartRate: number | null;
+	/** The activity this run became on Strava, so it is never sent twice. Null until it is sent. */
+	stravaActivityId: number | null;
 }
 
 export function emptyLive(): RunLive {
@@ -107,7 +109,8 @@ export function emptyRun(mode: RunMode = 'manual'): RunRecord {
 		steps: [],
 		elevationGainM: null,
 		averageHeartRate: null,
-		maxHeartRate: null
+		maxHeartRate: null,
+		stravaActivityId: null
 	};
 }
 
@@ -159,7 +162,8 @@ export function serialiseRun(run: RunRecord): string {
 		steps: run.steps,
 		elevationGainM: run.elevationGainM,
 		averageHeartRate: run.averageHeartRate,
-		maxHeartRate: run.maxHeartRate
+		maxHeartRate: run.maxHeartRate,
+		stravaActivityId: run.stravaActivityId
 	});
 }
 
@@ -183,7 +187,8 @@ export function parseRun(measurements: string | null): RunRecord {
 			steps: Array.isArray(parsed.steps) ? parsed.steps : [],
 			elevationGainM: typeof parsed.elevationGainM === 'number' ? parsed.elevationGainM : null,
 			averageHeartRate: finite(parsed.averageHeartRate),
-			maxHeartRate: finite(parsed.maxHeartRate)
+			maxHeartRate: finite(parsed.maxHeartRate),
+			stravaActivityId: finite(parsed.stravaActivityId)
 		};
 	} catch {
 		// A block written by something else is not worth failing a page over.

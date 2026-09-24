@@ -35,10 +35,13 @@
 		type ActivityRow
 	} from '$lib/db/repository';
 	import { shareFile } from '$lib/files';
+	import { stravaConfigured } from '$lib/strava/config';
+	import { duplicateOf, nameTheSport, startUpload, waitForActivity } from '$lib/strava/api';
+	import { StravaError, stravaTokens } from '$lib/strava/tokens';
 	import { LiveRun } from '$lib/run/live.svelte';
 	import { canTrack } from '$lib/run/source';
 	import type { Load, MuscleId } from '$lib/domain/muscles';
-	import Icon from '$lib/ui/Icon.svelte';
+	import Icon, { type IconName } from '$lib/ui/Icon.svelte';
 	import MovementFigure from '$lib/ui/MovementFigure.svelte';
 	import MuscleBoard from '$lib/ui/MuscleBoard.svelte';
 	import LiveRunView from '$lib/ui/run/LiveRun.svelte';
@@ -263,6 +266,58 @@
 		await shareFile(new Blob([text], { type: 'application/gpx+xml' }), `${day} ${name}.gpx`, name);
 	}
 
+	/** Named the same on Strava as in the file, so a run is one run wherever it is read. */
+	const runName = $derived(record?.workout?.name?.trim() || $t('running.title'));
+
+	let sending = $state<'idle' | 'sending' | 'waiting' | 'failed'>('idle');
+	let sendFailure = $state<string | null>(null);
+
+	/**
+	 * The run pushed to Strava, as the same GPX the export writes. Strava takes the file and turns it
+	 * into an activity afterwards rather than at once, so the button waits on it rather than claiming
+	 * it is done, see doc/llm-memory/strava.md.
+	 */
+	async function sendToStrava() {
+		if (!record || sending === 'sending' || sending === 'waiting') return;
+		sending = 'sending';
+		sendFailure = null;
+		try {
+			const points = await listRunPoints(activity.id);
+			if (points.length === 0) throw new StravaError('refused', 'no track to send');
+			const startedAt = record.live?.startedAt ?? points[0].at;
+			const gpx = toGpx(points, runName, record.live?.startedAt ?? null);
+			// The activity id, which never changes, so sending the same run twice is one activity.
+			const started = await startUpload(gpx, runName, `appchery-${activity.id}`);
+
+			const duplicate = duplicateOf(started.error);
+			if (duplicate) return await markSent(duplicate);
+			if (started.error) throw new StravaError('refused', started.error);
+
+			sending = 'waiting';
+			const finished = await waitForActivity(started.uploadId);
+			const already = duplicateOf(finished.error);
+			if (already) return await markSent(already);
+			if (finished.error) throw new StravaError('refused', finished.error);
+			// Still processing when the wait ran out: it will land, so nothing is marked and no
+			// failure is claimed. Pressing again is safe, because Strava knows the file already.
+			if (finished.activityId) await markSent(finished.activityId);
+			else sending = 'idle';
+		} catch (error) {
+			sending = 'failed';
+			sendFailure =
+				error instanceof StravaError ? $t(`strava.error.${error.kind}`) : String(error);
+		}
+	}
+
+	async function markSent(activityId: number) {
+		sending = 'idle';
+		await nameTheSport(activityId);
+		if (!run.record) return;
+		run.record.stravaActivityId = activityId;
+		await run.persist();
+		onchange();
+	}
+
 	/**
 	 * Somebody else's watch, read in as a run of ours.
 	 *
@@ -484,15 +539,49 @@
 				{/if}
 
 				{#if fixes.length > 1}
-				<button class="press mt-3 w-full py-1 text-sm font-medium text-brand-text" onclick={exportGpx}>
-					<span class="mr-1 inline-block align-[-3px]"><Icon name="download" size={16} /></span>
-					{$t('running.exportGpx')}
-				</button>
+					<div class="mt-3 flex flex-col items-center gap-1 border-t border-line pt-3">
+						<button class="press py-1 text-sm font-medium text-brand-text" onclick={exportGpx}>
+							<span class="mr-1 inline-block align-[-3px]"><Icon name="download" size={16} /></span>
+							{$t('running.exportGpx')}
+						</button>
+
+						{#if stravaConfigured() && $stravaTokens}
+							{#if record.stravaActivityId}
+								<!-- Already there, so the button becomes the way to go and look at it. -->
+								<a
+									class="press py-1 text-sm font-medium text-brand-text"
+									href="https://www.strava.com/activities/{record.stravaActivityId}"
+									rel="external noreferrer"
+									target="_blank"
+								>
+									<span class="mr-1 inline-block align-[-3px]"><Icon name="check" size={16} /></span>
+									{$t('strava.onStrava')}
+								</a>
+							{:else}
+								<button
+									class="press flex items-center gap-1.5 py-1 text-sm font-medium text-brand-text disabled:opacity-50"
+									disabled={sending === 'sending' || sending === 'waiting'}
+									onclick={sendToStrava}
+								>
+									{#if sending === 'sending' || sending === 'waiting'}
+										<span class="inline-flex animate-spin"><Icon name="refresh" size={14} /></span>
+									{:else}
+										<span class="inline-block rotate-180 align-[-3px]"><Icon name="download" size={16} /></span>
+									{/if}
+									{sending === 'waiting' ? $t('strava.waiting') : $t('strava.send')}
+								</button>
+							{/if}
+						{/if}
+
+						{#if sending === 'failed' && sendFailure}
+							<p class="text-center text-xs text-danger">{sendFailure}</p>
+						{/if}
+					</div>
 				{/if}
 			</section>
 
 			{#if record.splits.length > 0 || samples.length > 1}
-				<section class="rounded-2xl border border-line bg-surface p-4">
+				<section class="rounded-xl border border-line bg-surface p-3.5">
 					<!-- Two readings of the same run: what each kilometre came to, and why it did. -->
 					<div class="mb-3 grid grid-cols-2 gap-1 rounded-lg border border-line bg-sunk p-0.5">
 						{#each [{ key: 'graph', label: $t('running.graph') }, { key: 'splits', label: $t('running.splits') }] as option (option.key)}

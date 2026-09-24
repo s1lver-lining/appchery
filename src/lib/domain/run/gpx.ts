@@ -42,6 +42,8 @@ export function toGpx(fixes: TrackedFix[], name: string, startedAt: number | nul
 	lines.push(`  <metadata><time>${iso(startedAt ?? fixes[0]?.at ?? Date.now())}</time></metadata>`);
 	lines.push(`  <trk>`);
 	lines.push(`    <name>${escape(name)}</name>`);
+	// Without this Strava guesses, and what it guesses is a workout, which is shown without a pace.
+	lines.push(`    <type>running</type>`);
 	lines.push(`    <trkseg>`);
 	for (const fix of fixes) {
 		lines.push(`      <trkpt lat="${fix.lat.toFixed(PLACES)}" lon="${fix.lon.toFixed(PLACES)}">`);

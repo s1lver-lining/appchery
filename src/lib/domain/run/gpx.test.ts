@@ -33,6 +33,11 @@ describe('toGpx', () => {
 		expect(text).not.toContain('extensions');
 	});
 
+	// A track with no sport on it is read as a workout, and a workout is shown without a pace.
+	it('says it is a run', () => {
+		expect(toGpx([], 'Run', null)).toContain('<type>running</type>');
+	});
+
 	it('escapes a name that would otherwise break the file', () => {
 		expect(toGpx([], 'Rain & <wind>', null)).toContain('<name>Rain &amp; &lt;wind&gt;</name>');
 	});

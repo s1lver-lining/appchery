@@ -46,6 +46,19 @@
                 <data android:scheme="https" android:host="app.appchery.com" />
             </intent-filter>
 
+            <!--
+                The app's own scheme, which exists for the trip back from Strava. Chrome will not
+                hand an https link to an app when it is a redirect rather than something the user
+                tapped, so the page Strava returns to forwards to this instead, and a scheme Chrome
+                cannot open itself always reaches the app. See doc/llm-memory/strava.md.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="appchery" />
+            </intent-filter>
+
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -57,7 +70,7 @@
         <!--
             Where the phone is while a run is being tracked. Declared with the location type because
             that is the only way Android lets an app keep receiving fixes with the screen off, which
-            is how a run is actually run, see doc/running.md.
+            is how a run is actually run, see doc/llm-memory/running.md.
         -->
         <service
             android:name=".TraceService"

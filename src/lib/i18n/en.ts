@@ -1508,6 +1508,30 @@ insetHint:
 		rowSummary: '{done} of {total} sets',
 		runningElsewhere: 'Running is an activity of its own, started from the same list as this one.'
 	},
+	strava: {
+		title: 'Strava',
+		connect: 'Connect',
+		connectHint: 'Sign in once, then finished runs can be sent with one button.',
+		disconnect: 'Disconnect',
+		signedInAs: 'Signed in as {name}',
+		yourAccount: 'your account',
+		connecting: 'Signing in',
+		connected: 'Connected to Strava',
+		connectedHint: 'Your finished runs now carry a button to send them.',
+		handOver: 'Signed in',
+		handOverHint: 'Opening Appchery to finish. Tap below if it does not.',
+		openApp: 'Open Appchery',
+		refused: 'Strava did not sign you in',
+		send: 'Send to Strava',
+		waiting: 'Strava is working on it',
+		onStrava: 'On Strava',
+		error: {
+			offline: 'No answer from Strava. Try again once you have a signal.',
+			disconnected: 'Strava wants you to sign in again. The settings is where to do it.',
+			refused: 'Strava would not take this run.',
+			unreadable: 'Strava answered with something the app could not read.'
+		}
+	},
 	running: {
 		title: 'Running',
 		hint: 'A run, tracked or written down: how far, how long, and how it felt.',

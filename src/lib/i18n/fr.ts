@@ -1514,6 +1514,30 @@ insetHint:
 		rowSummary: '{done} séries sur {total}',
 		runningElsewhere: "La course est une activité à part, lancée depuis la même liste que celle ci."
 	},
+	strava: {
+		title: 'Strava',
+		connect: 'Connecter',
+		connectHint: 'Connectez-vous une fois, ensuite un bouton envoie les sorties terminées.',
+		disconnect: 'Déconnecter',
+		signedInAs: 'Connecté en tant que {name}',
+		yourAccount: 'votre compte',
+		connecting: 'Connexion',
+		connected: 'Connecté à Strava',
+		connectedHint: 'Vos sorties terminées portent maintenant un bouton pour les envoyer.',
+		handOver: 'Connecté',
+		handOverHint: "Ouverture d'Appchery pour terminer. Touchez ci-dessous si rien ne se passe.",
+		openApp: 'Ouvrir Appchery',
+		refused: "Strava ne vous a pas connecté",
+		send: 'Envoyer sur Strava',
+		waiting: 'Strava le traite',
+		onStrava: 'Sur Strava',
+		error: {
+			offline: 'Aucune réponse de Strava. Réessayez une fois que vous avez du réseau.',
+			disconnected: 'Strava demande une nouvelle connexion. Cela se fait dans les réglages.',
+			refused: "Strava n'a pas accepté cette sortie.",
+			unreadable: "Strava a répondu quelque chose que l'app n'a pas su lire."
+		}
+	},
 	running: {
 		title: 'Course à pied',
 		hint: 'Une sortie, suivie ou notée : la distance, le temps, et la sensation.',
