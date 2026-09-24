@@ -7,6 +7,8 @@ import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
+import android.os.Handler;
+import android.os.Looper;
 import android.os.SystemClock;
 import android.util.Log;
 
@@ -34,6 +36,14 @@ final class Heart {
     /** Below this the sensor is reporting that it cannot find a pulse rather than reporting one. */
     private static final int LOWEST = 25;
     private static final int HIGHEST = 250;
+    /**
+     * How long the sensor may go quiet before it is assumed gone. A watch that has put the app in
+     * the background can cut the sensor off and never give it back, while the registration still
+     * looks alive from here: a run on 23/09 lost its heart for the last hour and three quarters that
+     * way. Well past the half minute the sensor sometimes takes on its own.
+     */
+    private static final long QUIET_MS = 30_000;
+    private static final long CHECK_MS = 10_000;
 
     interface Listener {
         void onBeat(int bpm);
@@ -46,11 +56,27 @@ final class Heart {
     private long lastSent = 0;
     /** The last beat read, so the screen can show one between the sends that go up the link. */
     private int latest = 0;
+    /** When the sensor last gave a reading, good or not, which is what says it is still there. */
+    private long heardAt = 0;
+    private final Handler main = new Handler(Looper.getMainLooper());
+    private Context context;
+    private final Runnable watchdog = new Runnable() {
+        @Override
+        public void run() {
+            if (!on) return;
+            if (SystemClock.elapsedRealtime() - heardAt > QUIET_MS) {
+                Log.w(TAG, "the sensor went quiet, asking for it again");
+                register();
+            }
+            main.postDelayed(this, CHECK_MS);
+        }
+    };
 
     private final SensorEventListener watching = new SensorEventListener() {
         @Override
         public void onSensorChanged(SensorEvent event) {
             if (event.values.length == 0) return;
+            heardAt = SystemClock.elapsedRealtime();
             int bpm = Math.round(event.values[0]);
             // A contact lost is reported as a reading of zero, which is not a heart rate.
             if (bpm < LOWEST || bpm > HIGHEST) return;
@@ -93,16 +119,40 @@ final class Heart {
 
     void start(Context context) {
         if (on || !available(context)) return;
+        this.context = context;
+        on = true;
+        register();
+        main.postDelayed(watchdog, CHECK_MS);
+    }
+
+    /**
+     * Asked for again while a run is on, for the app coming back to the screen. Registered once and
+     * left, a sensor the watch took away in the background stayed away however often the runner
+     * came back to look.
+     */
+    void revive() {
+        if (on) register();
+    }
+
+    /** Let go and taken again, since a registration the system dropped still counts as one here. */
+    private void register() {
+        sensors.unregisterListener(watching);
+        if (context == null || !available(context)) return;
+        // Counted from here, so a sensor slow to warm up is not asked for again straight away.
+        heardAt = SystemClock.elapsedRealtime();
         // The slowest rate the platform offers: a heart is not a thing that changes in milliseconds.
-        on = sensors.registerListener(watching, sensor, SensorManager.SENSOR_DELAY_NORMAL);
-        if (!on) Log.w(TAG, "the sensor would not start");
+        if (!sensors.registerListener(watching, sensor, SensorManager.SENSOR_DELAY_NORMAL)) {
+            Log.w(TAG, "the sensor would not start");
+        }
     }
 
     void stop() {
         if (!on) return;
+        main.removeCallbacks(watchdog);
         sensors.unregisterListener(watching);
         on = false;
         latest = 0;
+        context = null;
     }
 
     /** What the wrist last read, for the screen. Zero where nothing has been read yet. */

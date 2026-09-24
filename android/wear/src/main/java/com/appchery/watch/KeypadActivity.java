@@ -906,6 +906,8 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         super.onResume();
         // It is a setting on another screen, so it may have changed while this one was away.
         if (runView != null) runView.setAmbientAvailable(systemAmbient());
+        // Back on screen mid run: the sensor may have been taken away while the app was not.
+        if (running && heart != null) heart.revive();
     }
 
     private void attachAmbient() {
