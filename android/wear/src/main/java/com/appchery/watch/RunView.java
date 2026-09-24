@@ -124,6 +124,8 @@ public class RunView extends FrameLayout {
     private LinearLayout infoDots;
     /** A crossed out phone against the left edge, standing in for the figures' source going quiet. */
     private View phoneLost;
+    /** The five zones round the bottom of the glass, with the beat marked in them. */
+    private ZoneArc zoneArc;
     /** The edge of the controls, showing, so the swipe to them is something seen rather than learned. */
     private View peek;
 
@@ -256,6 +258,10 @@ public class RunView extends FrameLayout {
         lostPlace.leftMargin = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.045f);
         phoneLost.setVisibility(GONE);
         addView(phoneLost, lostPlace);
+
+        zoneArc = new ZoneArc(context);
+        zoneArc.setVisibility(GONE);
+        addView(zoneArc, new LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT));
 
         /*
          * A grabber against the right edge. The controls are a swipe away and nothing said so: the
@@ -1100,6 +1106,9 @@ public class RunView extends FrameLayout {
         // Left alone while a page is on its way in: a frame arrives every second or two, and one
         // landing mid animation would take the panel it is arriving in off the screen.
         if (!moving()) back.column.setVisibility(GONE);
+        // Both belong to the pages, and are put back by drawPage when one is showing.
+        phoneLost.setVisibility(GONE);
+        zoneArc.setVisibility(GONE);
 
         if (!live()) {
             drawReady();
@@ -1159,7 +1168,10 @@ public class RunView extends FrameLayout {
             p.figure.setTextColor(MUTED);
             p.second.setTextColor(MUTED);
         }
-        phoneLost.setVisibility(stale() ? VISIBLE : GONE);
+        phoneLost.setVisibility(!onControls && stale() ? VISIBLE : GONE);
+        boolean zoned = !onControls && run.zone >= 0 && run.zone <= 5;
+        zoneArc.setVisibility(zoned ? VISIBLE : GONE);
+        if (zoned) zoneArc.show(run.zone, run.zoneWithin, ambient);
         drawDots();
     }
 
@@ -1212,7 +1224,7 @@ public class RunView extends FrameLayout {
         p.headline.setTextColor(run.zone >= 1 && run.zone <= 5 ? ZONE[run.zone - 1] : INK);
         // Said rather than left blank: a sensor still looking for a pulse is not a sensor that failed.
         // The zone said as well as coloured: a colour alone is a thing to learn rather than read.
-        String said = run.zone >= 1 && run.zone <= 5 ? "bpm · zone " + run.zone : "bpm";
+        String said = run.zone >= 0 && run.zone <= 5 ? "bpm · zone " + run.zone : "bpm";
         p.caption.setText(heart > 0 ? said : (heartAvailable ? "looking for a pulse" : "no sensor"));
 
         p.asGraph(true);
@@ -1703,6 +1715,70 @@ public class RunView extends FrameLayout {
             canvas.drawLine(w * 0.4f, h * 0.14f, w * 0.6f, h * 0.14f, pen);
             canvas.drawCircle(w * 0.5f, h * 0.83f, w * 0.07f, fill);
             canvas.drawLine(stroke, h * 0.1f, w - stroke, h * 0.9f, pen);
+        }
+    }
+
+    /**
+     * The five zones as an arc along the bottom of the round glass, cool on the left and hot on the
+     * right, the way a Garmin shows them. The zone the beat is in is lit and thicker, the others are
+     * dim, and a dot on the arc says how far through it the beat is.
+     */
+    private final class ZoneArc extends View {
+        private static final float SPAN = 70f;
+        private static final float GAP = 2.5f;
+        private final Paint band = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final Paint tick = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF oval = new RectF();
+        private int zone;
+        private int within = -1;
+        private boolean ambient;
+
+        ZoneArc(Context context) {
+            super(context);
+            band.setStyle(Paint.Style.STROKE);
+            band.setStrokeCap(Paint.Cap.BUTT);
+            tick.setStyle(Paint.Style.FILL);
+        }
+
+        void show(int zone, int within, boolean ambient) {
+            if (zone == this.zone && within == this.within && ambient == this.ambient) return;
+            this.zone = zone;
+            this.within = within;
+            this.ambient = ambient;
+            invalidate();
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float w = getWidth(), h = getHeight();
+            float thin = px(4), thick = px(7);
+            // Clear of the progress ring, which takes the outer ten or so dp of the glass.
+            float inset = px(12);
+            oval.set(inset, inset, w - inset, h - inset);
+            // Angles run clockwise from three o'clock, so the bottom is 90 and the left of it is more.
+            float start = 90f + SPAN / 2f;
+            float each = SPAN / 5f;
+            for (int z = 1; z <= 5; z++) {
+                boolean here = z == zone;
+                int colour = ZONE[z - 1];
+                band.setColor(ambient ? (here ? INK : LINE) : here ? colour : (colour & 0x00FFFFFF) | 0x55000000);
+                band.setStrokeWidth(here ? thick : thin);
+                float from = start - (z - 1) * each - GAP / 2f;
+                canvas.drawArc(oval, from, -(each - GAP), false, band);
+            }
+            // Below the first zone nothing is lit and the mark sits at the cool end.
+            int at = zone == 0 ? 0 : within;
+            if (at < 0) return;
+            // A dot riding on the band, dark rimmed so it reads against whichever colour it is on.
+            float share = Math.min(100, Math.max(0, at)) / 100f;
+            int from = Math.max(1, zone);
+            double angle = Math.toRadians(start - (from - 1) * each - GAP / 2f - share * (each - GAP));
+            float cx = w / 2f, cy = h / 2f, r = (w - 2 * inset) / 2f;
+            float x = cx + (float) Math.cos(angle) * r, y = cy + (float) Math.sin(angle) * r;
+            tick.setColor(0xFF000000);
+            canvas.drawCircle(x, y, px(4), tick);
+            tick.setColor(INK);
+            canvas.drawCircle(x, y, px(3), tick);
         }
     }
 

@@ -19,7 +19,7 @@ import {
 import { elapsed, emptyLive, type RunRecord, type StepResult } from '$lib/domain/running';
 import { appendRunPoints, clearRunPoints, listRunPoints, updateRun } from '$lib/db/repository';
 import { screenLock } from '$lib/ui/wakeLock';
-import { zoneOf } from '$lib/domain/run/zones';
+import { zoneOf, zoneWithin } from '$lib/domain/run/zones';
 import { autoPauseRuns, maxHeartRate } from '$lib/prefs';
 import { get } from 'svelte/store';
 import { commit, tap, warn } from '$lib/haptics';
@@ -200,7 +200,9 @@ export class LiveRun {
 					}
 				: null,
 			freeSeconds: this.freeSeconds,
-			zone: zoneOf(this.heart, get(maxHeartRate)),
+			// Zero below the first zone, so the wrist can tell a resting beat from no maximum at all.
+			zone: this.heart && get(maxHeartRate) > 0 ? (zoneOf(this.heart, get(maxHeartRate)) ?? 0) : null,
+			zoneWithin: zoneWithin(this.heart, get(maxHeartRate)),
 			next: after
 				? {
 						kind: after.kind,
@@ -492,6 +494,7 @@ export class LiveRun {
 			cue: glance.cue,
 			freeSeconds: glance.freeSeconds,
 			zone: glance.zone,
+			zoneWithin: glance.zoneWithin,
 			block: glance.step
 				? {
 						kind: glance.step.kind,
@@ -770,6 +773,8 @@ export interface RunGlance {
 	freeSeconds: number | null;
 	/** Which zone the beat off the wrist is in, for the wrist to colour itself by. */
 	zone: number | null;
+	/** How far through that zone, nought to one, for the wrist to place a mark in it. */
+	zoneWithin: number | null;
 	step: {
 		kind: BlockKind;
 		label: string | null;

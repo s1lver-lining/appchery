@@ -3,6 +3,8 @@ import { Wrist, type WristClaim } from '$lib/watch/ble.native';
 import type { RunFrame } from '$lib/watch/link';
 import type { RunStep } from '$lib/domain/run/workout';
 import type { RunLive } from '$lib/domain/running';
+import { get } from 'svelte/store';
+import { maxHeartRate } from '$lib/prefs';
 
 /**
  * Handing the run to the service and taking back what it did.
@@ -41,6 +43,8 @@ export async function handDown(
 		ps: frame.planned?.seconds ?? -1,
 		pd: frame.planned?.metres ?? -1,
 		pp: frame.planned?.pace ?? 0,
+		// The runner's maximum, so the service can say which zone a beat is in while the page sleeps.
+		hm: get(maxHeartRate) || 0,
 		steps: steps.map((step) => ({
 			k: step.kind,
 			l: step.label ?? '',

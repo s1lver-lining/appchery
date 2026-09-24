@@ -76,6 +76,15 @@ final class RunFrames {
     private static final List<Beat> beats = new ArrayList<>();
 
     private static boolean live = false;
+    /** The runner's maximum, from the page, or zero where none is set. */
+    private static int maxHeart = 0;
+    /** The last beat heard, kept apart from the queue the page drains, to colour the next frame. */
+    private static int lastBpm = 0;
+    private static long lastBpmAt = 0;
+    /** How old a beat may be and still be the runner's heart rate, as BEAT_STALE_MS in live.svelte.ts. */
+    private static final long BEAT_STALE_MS = 20_000;
+    /** The zone floors of src/lib/domain/run/zones.ts. */
+    private static final double[] ZONE_FLOOR = {0.5, 0.6, 0.7, 0.8, 0.9};
     private static String status = "i";
     private static int cue = 0;
     private static int stepIndex = -1;
@@ -163,6 +172,8 @@ final class RunFrames {
         if (bpm < 25 || bpm > 250) return;
         synchronized (LOCK) {
             if (!live) return;
+            lastBpm = bpm;
+            lastBpmAt = SystemClock.elapsedRealtime();
             if (SystemClock.elapsedRealtime() - Wrist.lastPageWrite() < QUIET_MS) return;
             Beat beat = new Beat();
             beat.at = System.currentTimeMillis();
@@ -189,6 +200,7 @@ final class RunFrames {
             plannedSeconds = plan.optInt("ps", -1);
             plannedMetres = plan.optInt("pd", -1);
             plannedPace = plan.optInt("pp", 0);
+            maxHeart = plan.optInt("hm", 0);
             metresSince = 0;
             last = null;
             recent.clear();
@@ -228,6 +240,7 @@ final class RunFrames {
             steps = new ArrayList<>();
             results.clear();
             beats.clear();
+            lastBpm = 0;
             last = null;
             recent.clear();
         }
@@ -401,6 +414,24 @@ final class RunFrames {
         return (int) Math.round(span / (metres / 1000.0));
     }
 
+    /** The zone of the last beat and how far through it, as zoneOf and zoneWithin work them out. */
+    private static void putZone(JSONObject message) throws JSONException {
+        if (maxHeart <= 0 || lastBpm <= 0) return;
+        if (SystemClock.elapsedRealtime() - lastBpmAt > BEAT_STALE_MS) return;
+        double share = lastBpm / (double) maxHeart;
+        for (int zone = 5; zone >= 1; zone--) {
+            double floor = ZONE_FLOOR[zone - 1];
+            if (share < floor) continue;
+            double top = zone == 5 ? 1.0 : ZONE_FLOOR[zone];
+            double within = Math.min(1, Math.max(0, (share - floor) / (top - floor)));
+            message.put("hz", zone);
+            message.put("hi", (int) Math.round(within * 100));
+            return;
+        }
+        // Below the first zone: said as nought, which is not the same as no maximum.
+        message.put("hz", 0);
+    }
+
     /** The same frame src/lib/watch/link.ts sends, because the watch knows only one shape of one. */
     private static byte[] compose() {
         try {
@@ -417,6 +448,7 @@ final class RunFrames {
             if (freeFromSeconds >= 0) {
                 message.put("fr", (int) Math.round(Math.max(0, seconds() - freeFromSeconds)));
             }
+            putZone(message);
             if (stepIndex >= 0 && stepIndex < steps.size()) {
                 Step step = steps.get(stepIndex);
                 message.put("k", step.kind);

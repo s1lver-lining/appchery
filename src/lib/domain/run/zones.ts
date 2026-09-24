@@ -30,6 +30,17 @@ export function zoneOf(bpm: number | null | undefined, max: number): Zone | null
 	return null;
 }
 
+/**
+ * How far through its zone a beat is, nought at the floor and one at the next zone's floor, or null
+ * where it has no zone. The fifth zone runs to the maximum and stops there.
+ */
+export function zoneWithin(bpm: number | null | undefined, max: number): number | null {
+	const zone = zoneOf(bpm, max);
+	if (zone === null || !bpm) return null;
+	const top = zone === 5 ? 1 : ZONE_FLOOR[(zone + 1) as Zone];
+	return Math.min(1, Math.max(0, (bpm / max - ZONE_FLOOR[zone]) / (top - ZONE_FLOOR[zone])));
+}
+
 /** The beats a zone covers, for saying what it is rather than only colouring it. */
 export function zoneBand(zone: Zone, max: number): { from: number; to: number | null } {
 	const from = Math.round(ZONE_FLOOR[zone] * max);

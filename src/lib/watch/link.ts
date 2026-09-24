@@ -41,6 +41,8 @@ export interface RunFrame {
 	freeSeconds: number | null;
 	/** Which zone the beat is in, one to five, or null where there is no maximum to measure against. */
 	zone: number | null;
+	/** How far through the zone the beat is, nought to one. */
+	zoneWithin?: number | null;
 	/** What the programme asks for in total. All there is to show before the run is started. */
 	planned: { seconds: number; metres: number; pace: number | null } | null;
 	block: {
@@ -281,6 +283,7 @@ export class WatchLink {
 		};
 		if (frame.freeSeconds !== null) message.fr = whole(frame.freeSeconds);
 		if (frame.zone !== null) message.hz = whole(frame.zone);
+		if (frame.zone !== null && frame.zoneWithin != null) message.hi = whole(frame.zoneWithin * 100);
 		const block = frame.block;
 		if (block) {
 			message.k = block.kind;

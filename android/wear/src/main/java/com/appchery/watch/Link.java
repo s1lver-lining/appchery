@@ -101,8 +101,10 @@ public class Link {
         public boolean hasBlock;
         /** Seconds since the programme ran out and the run carried on. Negative while one is running. */
         public int freeSeconds = -1;
-        /** Which zone the beat is in, one to five, or zero where the phone has no maximum for it. */
+        /** Which zone the beat is in, one to five, zero below the first, or -1 where the phone has no maximum for it. */
         public int zone;
+        /** How far through that zone, in hundredths, or -1 where the phone did not say. */
+        public int zoneWithin = -1;
         public String kind = "";
         public String label = "";
         public int blockIndex;
@@ -538,7 +540,8 @@ public class Link {
         run.kind = message.optString("k", "");
         run.hasBlock = !run.kind.isEmpty();
         run.freeSeconds = message.has("fr") ? message.optInt("fr", -1) : -1;
-        run.zone = message.optInt("hz", 0);
+        run.zone = message.optInt("hz", -1);
+        run.zoneWithin = message.optInt("hi", -1);
         run.label = message.optString("b", "");
         run.blockIndex = message.optInt("i", 0);
         run.blockCount = message.optInt("n", 0);

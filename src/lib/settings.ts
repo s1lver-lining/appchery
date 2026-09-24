@@ -138,6 +138,13 @@ export const SETTINGS: SettingEntry[] = [
 		section: 'settings.plotting'
 	},
 	{
+		key: 'maxHeart',
+		tab: 'shooting',
+		title: 'settings.maxHeartTitle',
+		hint: 'settings.maxHeartHint',
+		section: 'settings.plotting'
+	},
+	{
 		key: 'drift',
 		tab: 'shooting',
 		title: 'settings.driftTitle',
