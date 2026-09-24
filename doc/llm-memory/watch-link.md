@@ -244,3 +244,20 @@ that acknowledges it, and a message that merely happens to contain the same numb
 
 Range with a body between the watch and a phone in a pocket, and the battery cost of advertising
 across a full session. Neither was measured.
+
+## Getting the wrist back after a restart
+
+**Restarting the watch app leaves the phone writing into nothing.** The watch registers its service
+afresh while the phone keeps handles into the old one, and every write appears to succeed. The
+heartbeat catches it as stale, and the installed app then drops the link and reconnects to the
+remembered watch. The new link is greeted, and the greeting is what makes the open page describe
+itself again, so a paused run or one being prepared reaches the wrist without anything on the phone
+changing. Only a link that answered once is reopened: one that never has is a watch app that is not
+listening, and reconnecting every heartbeat would change nothing.
+
+**Restarting the phone app can unsubscribe the phone that just arrived.** The old connection is
+closed and a new one opened at once, and the old one's disconnect can reach the watch after the new
+subscribe, removing the same device. The watch then cannot answer the hello and says it is waiting
+for a phone. A hello is only sent after the subscribe went through, so the watch takes a phone that
+says hello back as a subscriber. A `bye` releases the phone for the same reason, so the next hello
+says linked again.

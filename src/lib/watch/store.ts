@@ -130,6 +130,7 @@ function handle(event: LinkEvent, name: string): void {
 			return;
 		case 'stale':
 			watchStatus.set({ state: 'stale', name });
+			reopenStale();
 			return;
 		case 'farewell':
 			watchStatus.set({ state: 'lost' });
@@ -381,6 +382,15 @@ function dropLink(): void {
 	connection = null;
 	link = null;
 	greeted = false;
+}
+
+// A restarted watch app leaves the phone writing into nothing, see doc/llm-memory/watch-link.md.
+function reopenStale(): void {
+	const can = support();
+	// Never answered is a watch app not listening at all, and reconnecting to it changes nothing.
+	if (!can.usable || can.path !== 'native' || !connection || opening || !greeted) return;
+	dropLink();
+	void tryRemembered(true);
 }
 
 export function disconnectWatch(): void {

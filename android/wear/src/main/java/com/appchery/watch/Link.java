@@ -394,6 +394,17 @@ public class Link {
         pump();
     }
 
+    // A late disconnect can drop a phone that just resubscribed, see doc/llm-memory/watch-link.md.
+    private void relink(BluetoothDevice from) {
+        if (from == null || !subscribers.add(from)) return;
+        Log.i(TAG, "taken back on hello " + from.getAddress());
+        say(LINKED, "Linked");
+        main.post(() -> {
+            flush();
+            pump();
+        });
+    }
+
     private void hello() {
         try {
             JSONObject message = new JSONObject();
@@ -407,7 +418,7 @@ public class Link {
         }
     }
 
-    private void receive(byte[] bytes) {
+    private void receive(BluetoothDevice from, byte[] bytes) {
         JSONObject message;
         try {
             message = new JSONObject(new String(bytes, StandardCharsets.UTF_8));
@@ -429,6 +440,7 @@ public class Link {
             case "hello":
                 // The phone speaks first on connecting, and the reply carries this watch's clock so
                 // the two can tell whose edit came later.
+                relink(from);
                 hello();
                 return;
             case "round":
@@ -457,6 +469,8 @@ public class Link {
                 onRunMessage(message);
                 return;
             case "bye":
+                // Released, so a later hello on this connection takes it back and says so.
+                if (from != null) subscribers.remove(from);
                 say(WAITING, "Phone let go");
                 return;
             default:
@@ -727,7 +741,7 @@ public class Link {
                 BluetoothGattCharacteristic characteristic, boolean preparedWrite,
                 boolean responseNeeded, int offset, byte[] value) {
             Log.i(TAG, "write to " + characteristic.getUuid() + " len=" + value.length);
-            if (TO_WATCH.equals(characteristic.getUuid())) receive(value);
+            if (TO_WATCH.equals(characteristic.getUuid())) receive(device, value);
             if (responseNeeded) {
                 server.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, offset, value);
             }
