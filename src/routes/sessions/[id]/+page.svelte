@@ -230,8 +230,12 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	 * counter it gets is the training count and never `sessionArrows`: the watch's buttons write the
 	 * training figure, and asserting a session total as a training total would rewrite scored arrows
 	 * as practice. The list is the one this page shows, so both screens read the same session.
+	 *
+	 * Except a session that is a run: the page is the run, and so is the wrist, which the run
+	 * describes itself. Described as a session too, the wrist would be an arrow counter.
 	 */
 	$effect(() => {
+		if (runningSession) return;
 		const label = session ? $formatDateTime(session.startedAt) : '';
 		/**
 		 * The figure written down, without the arrows still waiting on the debounce. The watch asserts

@@ -844,6 +844,11 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     @Override
     public void onScreen(String next) {
         // The phone owns where the two of them are, so this is followed rather than negotiated.
+        // A run holds the screen while it lasts, though: what arrives meanwhile is where to go after.
+        if (running && !"run".equals(next)) {
+            mirrored = next;
+            return;
+        }
         showScreen(next);
     }
 
