@@ -455,15 +455,23 @@
 				</p>
 			</section>
 
-			<button
-				class="press flex h-20 w-full items-center justify-center gap-3 rounded-2xl bg-brand text-2xl font-bold text-brand-ink shadow-lg shadow-brand/20"
-				onclick={start}
+			<!-- Standing on the tab bar, where the controls it turns into will be. The spacer keeps the
+			     page's end clear of it. -->
+			<div class="h-24" aria-hidden="true"></div>
+			<div
+				class="overbar fixed inset-x-0 z-40 border-t border-line bg-surface/95 p-3 backdrop-blur"
+				style="bottom: var(--tabbar-h, 0px)"
 			>
-				<span class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-ink/15">
-					<Icon name="play" size={26} />
-				</span>
-				{$t('running.start')}
-			</button>
+				<button
+					class="press mx-auto flex h-20 w-full max-w-page items-center justify-center gap-3 rounded-2xl bg-brand text-2xl font-bold text-brand-ink shadow-lg shadow-brand/20"
+					onclick={start}
+				>
+					<span class="flex h-11 w-11 items-center justify-center rounded-full bg-brand-ink/15">
+						<Icon name="play" size={26} />
+					</span>
+					{$t('running.start')}
+				</button>
+			</div>
 
 			<!--
 				Side by side and quiet: both are ways in for a run this phone is not going to follow, and

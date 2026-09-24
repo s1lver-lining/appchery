@@ -47,7 +47,7 @@
 	const laps = $derived(run.record?.laps ?? []);
 </script>
 
-<div class="space-y-3 pb-40">
+<div class="space-y-3 pb-28">
 	{#if run.failure}
 		<p class="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
 			{$t(
@@ -204,15 +204,21 @@
 	</section>
 </div>
 
-<!-- Along the bottom edge, thumb sized, and in the same place whether the run is going or paused. -->
-<div class="safe-bottom fixed inset-x-0 bottom-0 z-40 border-t border-line bg-surface/95 p-3 backdrop-blur">
+<!--
+	Thumb sized, and in the same place whether the run is going or paused: standing on the tab bar
+	rather than behind it, so it stays in reach however long the splits get.
+-->
+<div
+	class="overbar fixed inset-x-0 z-40 border-t border-line bg-surface/95 p-3 backdrop-blur"
+	style="bottom: var(--tabbar-h, 0px)"
+>
 	<div class="mx-auto flex w-full max-w-page gap-2">
 		<button
-			class="press flex h-16 flex-1 items-center justify-center gap-2 rounded-2xl text-lg font-bold
+			class="press flex h-16 flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-xs font-bold
 				{paused ? 'bg-brand text-brand-ink' : 'border border-line'}"
 			onclick={() => (paused ? run.start() : run.pause())}
 		>
-			<Icon name={paused ? 'play' : 'pause'} size={22} />
+			<Icon name={paused ? 'play' : 'pause'} size={28} />
 			{$t(paused ? 'running.resume' : 'running.pause')}
 		</button>
 

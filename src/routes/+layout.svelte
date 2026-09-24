@@ -57,6 +57,12 @@ import { resumeWatch } from '$lib/watch/store';
 	 * archer actually makes. Anything else is a fresh arrival, and a fresh arrival starts at the top.
 	 */
 	let scroller = $state<HTMLElement | null>(null);
+
+	/** The tab bar's height, published so a bar pinned over the page can stand on it instead of behind it. */
+	let tabbarHeight = $state(0);
+	$effect(() => {
+		document.documentElement.style.setProperty('--tabbar-h', `${tabbarHeight}px`);
+	});
 	const scrolledTo = new Map<string, number>();
 
 	beforeNavigate((nav) => {
@@ -551,7 +557,7 @@ import { resumeWatch } from '$lib/watch/store';
 		<UndoBar />
 
 		<!-- Gone once the rail has taken over: two navs saying the same thing is one too many. -->
-		<nav data-tabbar class="overbar safe-bottom flex border-t border-line bg-surface lg:hidden">
+		<nav data-tabbar bind:offsetHeight={tabbarHeight} class="overbar safe-bottom flex border-t border-line bg-surface lg:hidden">
 			{#each tabs as tab (tab.href)}
 				<a
 					href={tab.href}
