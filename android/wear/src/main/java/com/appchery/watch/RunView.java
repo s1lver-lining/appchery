@@ -122,6 +122,8 @@ public class RunView extends FrameLayout {
     private final Panel front;
     private final Panel back;
     private LinearLayout infoDots;
+    /** A crossed out phone against the left edge, standing in for the figures' source going quiet. */
+    private View phoneLost;
     /** The edge of the controls, showing, so the swipe to them is something seen rather than learned. */
     private View peek;
 
@@ -246,6 +248,14 @@ public class RunView extends FrameLayout {
         dotsPlace.gravity = Gravity.END | Gravity.CENTER_VERTICAL;
         dotsPlace.rightMargin = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.045f);
         addView(infoDots, dotsPlace);
+
+        // The left edge is empty on a round screen, and a red mark there is seen without being read.
+        phoneLost = new PhoneLost(context);
+        LayoutParams lostPlace = new LayoutParams(px(16), px(22));
+        lostPlace.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
+        lostPlace.leftMargin = Math.round(context.getResources().getDisplayMetrics().widthPixels * 0.045f);
+        phoneLost.setVisibility(GONE);
+        addView(phoneLost, lostPlace);
 
         /*
          * A grabber against the right edge. The controls are a swipe away and nothing said so: the
@@ -1148,8 +1158,8 @@ public class RunView extends FrameLayout {
             // The figures are the phone's and the phone has gone quiet: said, rather than shown as new.
             p.figure.setTextColor(MUTED);
             p.second.setTextColor(MUTED);
-            p.footer.setText("phone is quiet");
         }
+        phoneLost.setVisibility(stale() ? VISIBLE : GONE);
         drawDots();
     }
 
@@ -1250,7 +1260,7 @@ public class RunView extends FrameLayout {
 
         p.figure.setText(say(run.pace));
         p.figure.setTextColor(paceInk());
-        p.figureNote.setText("now · " + unit());
+        p.figureNote.setText(unit());
         // The target beside it and the same size: it is the figure the other one is judged against.
         p.second.setVisibility(VISIBLE);
         if (run.targetPace > 0) {
@@ -1336,7 +1346,7 @@ public class RunView extends FrameLayout {
 
         p.figure.setText(say(run.pace));
         p.figure.setTextColor(INK);
-        p.figureNote.setText("now · " + unit());
+        p.figureNote.setText(unit());
         p.second.setVisibility(VISIBLE);
         p.second.setText(distance(run.metres));
         p.second.setTextColor(INK);
@@ -1632,6 +1642,8 @@ public class RunView extends FrameLayout {
             LinearLayout.LayoutParams footerSize = wide();
             footerSize.topMargin = px(6);
             column.addView(footer, footerSize);
+            // Too small and too grey to read at a run; what it said is on the other pages.
+            footer.setVisibility(GONE);
         }
 
         /**
@@ -1662,6 +1674,28 @@ public class RunView extends FrameLayout {
         }
     }
 
+
+    /** A phone outline struck through, in red: the phone has stopped sending. */
+    private static final class PhoneLost extends View {
+        private final Paint pen = new Paint(Paint.ANTI_ALIAS_FLAG);
+        private final RectF body = new RectF();
+
+        PhoneLost(Context context) {
+            super(context);
+            pen.setColor(OVER);
+            pen.setStyle(Paint.Style.STROKE);
+            pen.setStrokeCap(Paint.Cap.ROUND);
+        }
+
+        @Override
+        protected void onDraw(Canvas canvas) {
+            float w = getWidth(), h = getHeight(), stroke = w * 0.12f;
+            pen.setStrokeWidth(stroke);
+            body.set(w * 0.2f, stroke, w * 0.8f, h - stroke);
+            canvas.drawRoundRect(body, w * 0.14f, w * 0.14f, pen);
+            canvas.drawLine(stroke, h * 0.15f, w - stroke, h * 0.85f, pen);
+        }
+    }
 
     /**
      * A few minutes of one figure, drawn as a line.
