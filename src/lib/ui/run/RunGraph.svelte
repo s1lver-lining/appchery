@@ -270,7 +270,8 @@
 			{/if}
 		</div>
 
-		<div class="relative mt-1 h-32 touch-none select-none">
+		<!-- Down the page still belongs to the page: only a drag across the graph reads it. -->
+		<div class="relative mt-1 h-32 touch-pan-y select-none">
 			<!-- The edges hold the figures, so the lines start after them and end before the others. -->
 			{#if leftAxis}
 				<div class="absolute inset-y-0 left-0 w-11">
@@ -297,9 +298,11 @@
 				</div>
 			{/if}
 
+			<!-- A drag across the graph is a reading of it, never a swipe to the tab beside it. -->
 			<div
 				class="absolute inset-y-0 {leftAxis ? 'left-11' : 'left-0'} {rightAxis ? 'right-11' : 'right-0'}"
 				role="presentation"
+				data-noswipe
 				onpointerdown={(event) => {
 					(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
 					grab(event);
