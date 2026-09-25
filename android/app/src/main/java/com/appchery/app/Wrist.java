@@ -74,11 +74,22 @@ final class Wrist {
     private String address;
     private boolean ready = false;
     private boolean sending = false;
+    /** How long a write may go unconfirmed. One lost during a rediscovery otherwise held the queue for good. */
+    private static final long SENT_TIMEOUT_MS = 1_000;
+    private final Runnable sentGuard = () -> {
+        synchronized (this) {
+            sending = false;
+        }
+        pump();
+    };
     /** Set before a disconnect we asked for, so a link being closed is not reported as one lost. */
     private boolean closing = false;
     private Runnable timeout;
     /** Subscribing again under a link already up, after the watch app restarted beneath it. */
     private boolean resubscribing = false;
+    /** Reconnecting by itself mid run, with the page frozen and in no position to ask. */
+    private boolean rejoining = false;
+    private Context context;
 
     /** When the page last wrote, so the service can tell a page that is asleep from one that is busy. */
     private static volatile long pageWroteAt = 0;
@@ -106,6 +117,8 @@ final class Wrist {
         closing = false;
         ready = false;
         resubscribing = false;
+        rejoining = false;
+        this.context = context.getApplicationContext();
 
         BluetoothManager manager = context.getSystemService(BluetoothManager.class);
         BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
@@ -147,6 +160,7 @@ final class Wrist {
 
     synchronized void disconnect() {
         closing = true;
+        rejoining = false;
         ready = false;
         outbox.clear();
         sending = false;
@@ -204,14 +218,46 @@ final class Wrist {
             return;
         }
         outbox.poll();
+        main.removeCallbacks(sentGuard);
+        main.postDelayed(sentGuard, SENT_TIMEOUT_MS);
+    }
+
+    /**
+     * The link back, for a run going on behind a dark screen. Auto connect waits for the watch as long
+     * as it takes and costs nothing meanwhile, which is what a watch app restarting needs.
+     */
+    private synchronized void rejoin() {
+        if (context == null || address == null) return;
+        closeGatt();
+        rejoining = true;
+        try {
+            BluetoothDevice device = context.getSystemService(BluetoothManager.class).getAdapter()
+                    .getRemoteDevice(address);
+            gatt = device.connectGatt(context, true, callback, BluetoothDevice.TRANSPORT_LE);
+        } catch (RuntimeException failed) {
+            // Refused or no adapter: the page tries again itself once it wakes.
+            rejoining = false;
+        }
+    }
+
+    /** The run put back on the wrist, which takes a phone that writes to it as linked again. */
+    private void resend() {
+        byte[] frame = RunFrames.current();
+        if (frame != null) write(frame);
     }
 
     private void finish(boolean ok, String reason) {
         Listener told = listener;
+        if (rejoining) {
+            // Nobody is waiting on this answer; the page reconnects itself when it wakes.
+            rejoining = false;
+            return;
+        }
         if (resubscribing) {
             // The connect call was answered long ago: a link that cannot subscribe again is a link lost.
             resubscribing = false;
             ready = false;
+            if (RunFrames.isLive()) main.post(this::rejoin);
             if (told != null) main.post(told::onLost);
             return;
         }
@@ -236,6 +282,7 @@ final class Wrist {
                 ready = false;
                 Listener told = listener;
                 if (closing || told == null) return;
+                if (wasReady && RunFrames.isLive()) rejoin();
                 if (wasReady) main.post(told::onLost);
                 else finish(false, "not-found");
             }
@@ -254,6 +301,8 @@ final class Wrist {
         @Override
         public void onServicesDiscovered(BluetoothGatt link, int status) {
             BluetoothGattService service = link.getService(SERVICE);
+            // The watch app between one copy and the next: its service comes back with another change.
+            if (service == null && resubscribing) return;
             if (service == null) {
                 // The address was remembered from a watch that had it, so this is the watch app gone.
                 closeGatt();
@@ -299,8 +348,19 @@ final class Wrist {
                 return;
             }
             ready = true;
+            // Whatever was waiting on a write the rediscovery swallowed goes out now.
+            main.removeCallbacks(sentGuard);
+            synchronized (Wrist.this) {
+                sending = false;
+            }
+            if (rejoining) {
+                rejoining = false;
+                resend();
+                return;
+            }
             if (resubscribing) {
                 resubscribing = false;
+                resend();
                 Listener told = listener;
                 if (told != null) main.post(told::onRestarted);
                 return;
@@ -322,7 +382,10 @@ final class Wrist {
 
         @Override
         public void onCharacteristicWrite(BluetoothGatt link, BluetoothGattCharacteristic ch, int status) {
-            sending = false;
+            main.removeCallbacks(sentGuard);
+            synchronized (Wrist.this) {
+                sending = false;
+            }
             pump();
         }
 

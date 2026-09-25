@@ -675,7 +675,8 @@ public class Link {
     private final AdvertiseCallback advertiseCallback = new AdvertiseCallback() {
         @Override
         public void onStartSuccess(AdvertiseSettings settings) {
-            say(WAITING, "Waiting for your phone");
+            // Advertising starts again with a phone already linked, which is not waiting for one.
+            if (subscribers.isEmpty()) say(WAITING, "Waiting for your phone");
         }
 
         @Override

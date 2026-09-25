@@ -294,6 +294,19 @@ final class RunFrames {
      * One fix, judged by the same rules as the page and then used for the wrist. Called from the
      * service's location callback, which is the only thing here that ever wakes the processor.
      */
+    /** The run as it stands, for a watch that has just come back and knows nothing of it. */
+    static byte[] current() {
+        synchronized (LOCK) {
+            return live ? compose() : null;
+        }
+    }
+
+    static boolean isLive() {
+        synchronized (LOCK) {
+            return live;
+        }
+    }
+
     static void onFix(Location fix) {
         byte[] frame = null;
         synchronized (LOCK) {
@@ -338,6 +351,8 @@ final class RunFrames {
 
     /** The run's clock, continued from where the page left it. */
     private static double seconds() {
+        // Held where it stopped: a paused run's frame is sent again on reconnecting, long after.
+        if ("p".equals(status)) return anchorSeconds;
         return anchorSeconds + (SystemClock.elapsedRealtime() - anchorStamp) / 1000.0;
     }
 

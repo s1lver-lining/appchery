@@ -268,3 +268,10 @@ subscribes again, and only then says hello, which hands the restarted watch the 
 The same logic covers a phone app restart, whose old connection's disconnect can reach the watch
 after the new subscribe and remove the device that just arrived. A `bye` releases the phone, so the
 next write takes it back and says linked again.
+
+**With the phone screen off, the native side brings the wrist back on its own.** The page is frozen
+then, and every reconnect above lives in the page. So `Wrist` reconnects by itself when the link
+drops while `RunFrames` holds a live run, going or paused, using auto connect because it waits for
+the watch as long as it takes and costs nothing meanwhile. Once subscribed again it writes the
+run's current frame, which the watch takes as linked and as its run screen. The page, when it wakes,
+reconnects in its own way and the native link simply gives way to it.
