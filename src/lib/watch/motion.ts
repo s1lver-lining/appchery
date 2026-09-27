@@ -88,11 +88,32 @@ export const SHOT = {
 	STILL: 0.4,
 	HOLD_FROM_MS: 1500,
 	HOLD_TO_MS: 200,
-	REFRACTORY_MS: 3000
+	REFRACTORY_MS: 3000,
+	/** How long after the release the watch counts it, which is also where its segment ends. */
+	AFTER_SHOT_MS: 700
 };
 
+/** The rule as the archer set it in the settings; `SHOT` until they do. */
+export type ShotRule = typeof SHOT;
+
+/** A rule read back from storage or typed in, anything missing or senseless put back to default. */
+export function sanitiseShotRule(raw: unknown): ShotRule {
+	const given = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
+	const rule = { ...SHOT };
+	for (const key of Object.keys(SHOT) as (keyof ShotRule)[]) {
+		const value = given[key];
+		if (typeof value === 'number' && Number.isFinite(value) && value >= 0) rule[key] = value;
+	}
+	// A hold that ends before it begins would average nothing and never find a shot.
+	if (rule.HOLD_TO_MS >= rule.HOLD_FROM_MS) {
+		rule.HOLD_FROM_MS = SHOT.HOLD_FROM_MS;
+		rule.HOLD_TO_MS = SHOT.HOLD_TO_MS;
+	}
+	return rule;
+}
+
 /** When each shot was released, in milliseconds since recording began. */
-export function findShots(samples: Samples): number[] {
+export function findShots(samples: Samples, rule: ShotRule = SHOT): number[] {
 	const { gyro, accel } = samples;
 	const spin = gyro.t.map((_, i) => Math.hypot(gyro.x[i], gyro.y[i], gyro.z[i]));
 	const shots: number[] = [];
@@ -100,17 +121,17 @@ export function findShots(samples: Samples): number[] {
 	let from = 0;
 	for (let i = 0; i < accel.t.length; i++) {
 		const at = accel.t[i];
-		if (at - last < SHOT.REFRACTORY_MS) continue;
-		if (Math.hypot(accel.x[i], accel.y[i], accel.z[i]) <= SHOT.RELEASE) continue;
-		while (from < gyro.t.length && gyro.t[from] < at - SHOT.HOLD_FROM_MS) from++;
+		if (at - last < rule.REFRACTORY_MS) continue;
+		if (Math.hypot(accel.x[i], accel.y[i], accel.z[i]) <= rule.RELEASE) continue;
+		while (from < gyro.t.length && gyro.t[from] < at - rule.HOLD_FROM_MS) from++;
 		let sum = 0;
 		let count = 0;
-		for (let j = from; j < gyro.t.length && gyro.t[j] < at - SHOT.HOLD_TO_MS; j++) {
+		for (let j = from; j < gyro.t.length && gyro.t[j] < at - rule.HOLD_TO_MS; j++) {
 			sum += spin[j];
 			count++;
 		}
 		// Too little hold on record to judge, which at the start of a segment is a draw cut in half.
-		if (count < 10 || sum / count >= SHOT.STILL) continue;
+		if (count < 10 || sum / count >= rule.STILL) continue;
 		shots.push(at);
 		last = at;
 	}

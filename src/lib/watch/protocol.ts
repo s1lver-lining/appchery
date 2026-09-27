@@ -149,6 +149,13 @@ export type Wire =
 	/** Whether the watch should record the wrist's motion while a round is on it. */
 	| { v: number; t: 'mr'; o: 0 | 1 }
 	/**
+	 * The shot rule the watch counts training arrows by, all of it at once. Integers so it cannot
+	 * grow: `r` release in tenths of m/s², `s` stillness in mrad/s, then the hold window `f` to `h`,
+	 * the refractory `g` and the count delay `a` in ms. About 70 bytes: inside the 180 budget, not the
+	 * 20 byte fallback, which is why it is said again on every round and every recovered hello.
+	 */
+	| { v: number; t: 'ms'; r: number; s: number; f: number; h: number; g: number; a: number }
+	/**
 	 * One end's recorded motion is coming: `k` names it, `b` bytes follow in `mc` chunks. Sized to the
 	 * MTU actually negotiated rather than to the budget, because a chunk lost costs only a resend.
 	 * See doc/llm-memory/wrist-motion.md.
@@ -417,6 +424,13 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 		case 'mr':
 			if (m.o !== 0 && m.o !== 1) break;
 			return { ok: true, message: { v: version, t: 'mr', o: m.o } };
+
+		case 'ms': {
+			const fields = [m.r, m.s, m.f, m.h, m.g, m.a];
+			if (!fields.every(isFigure)) break;
+			const [r, s, f, h, g, a] = fields as number[];
+			return { ok: true, message: { v: version, t: 'ms', r, s, f, h, g, a } };
+		}
 
 		case 'mh':
 			if (!isTime(m.k) || !isId(m.a) || !isIndex(m.s) || !isIndex(m.n)) break;

@@ -44,6 +44,14 @@ const rememberedWatch = writable<string | null>(null);
 vi.mock('$lib/prefs', () => ({
 	rememberedWatch,
 	recordWristMotion: writable(false),
+	shotRule: writable({
+		RELEASE: 25,
+		STILL: 0.4,
+		HOLD_FROM_MS: 1500,
+		HOLD_TO_MS: 200,
+		REFRACTORY_MS: 3000,
+		AFTER_SHOT_MS: 700
+	}),
 	wristArm: writable<string | null>(null)
 }));
 

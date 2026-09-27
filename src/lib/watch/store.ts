@@ -1,7 +1,7 @@
 import { App } from '@capacitor/app';
 import { get, writable } from 'svelte/store';
 import { deviceId, saveWristMotion } from '$lib/db/repository';
-import { recordWristMotion, rememberedWatch, wristArm } from '$lib/prefs';
+import { recordWristMotion, rememberedWatch, shotRule, wristArm } from '$lib/prefs';
 import {
 	canReconnectSilently,
 	support,
@@ -358,6 +358,7 @@ async function adopt(opened: Connection): Promise<void> {
 	const name = opened.name;
 	link = new WatchLink(opened.channel, deviceId(), (event) => handle(event, name));
 	link.keepMotion = keepRecordedEnd;
+	link.shotRule = get(shotRule);
 	// Said before anything else, and the status stays at connecting until the watch answers it.
 	await link.open();
 	await link.setMotion(get(recordWristMotion));
@@ -432,6 +433,7 @@ let resumeImport = false;
 
 // The switch reaches a watch already linked, not only the next one.
 recordWristMotion.subscribe((on) => void link?.setMotion(on).catch(() => undefined));
+shotRule.subscribe((rule) => void link?.setShotRule(rule).catch(() => undefined));
 
 /**
  * Puts the link down and forgets the watch. Forgetting is the point of the button: an archer who

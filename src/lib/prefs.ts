@@ -1,5 +1,6 @@
 import { derived, writable } from 'svelte/store';
 import { locale } from './i18n';
+import { sanitiseShotRule, type ShotRule } from './watch/motion';
 import { EMPTY_FILTER, parseFilter, type StatsFilter } from './domain/statsFilter';
 
 const DEFAULT_BOW_KEY = 'appchery.defaultBowId';
@@ -248,6 +249,27 @@ export const rememberedWatch = storedString('appchery.rememberedWatch');
  * the shot later. Off by default: it costs the watch battery and is a research aid, not a feature.
  */
 export const recordWristMotion = flag('appchery.recordWristMotion', false);
+
+/**
+ * The thresholds the watch counts a training arrow by, set from the settings while recording is on
+ * so they can be tuned against the recordings. Kept whole in one key: the watch takes all or none.
+ */
+export const shotRule = (() => {
+	const key = 'appchery.shotRule';
+	let saved: unknown = null;
+	try {
+		saved = JSON.parse(
+			(typeof window === 'undefined' ? null : window.localStorage.getItem(key)) ?? 'null'
+		);
+	} catch {
+		saved = null;
+	}
+	const store = writable<ShotRule>(sanitiseShotRule(saved));
+	store.subscribe((value) => {
+		if (typeof window !== 'undefined') window.localStorage.setItem(key, JSON.stringify(value));
+	});
+	return store;
+})();
 
 /** Which arm the watch is worn on while recording, `bow` or `string`, since the two move differently. */
 export const wristArm = storedString('appchery.wristArm');

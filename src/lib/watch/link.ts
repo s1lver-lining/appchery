@@ -1,5 +1,6 @@
 import type { Zone } from '$lib/domain/rounds/types';
 import { planEnd, zoneIndex, type PlannedShot } from './apply';
+import { SHOT, type ShotRule } from './motion';
 import {
 	decode,
 	encode,
@@ -169,6 +170,8 @@ export class WatchLink {
 	private run: RunFrame | null = null;
 	/** Whether the archer wants the wrist recorded, said again to a watch that restarts. */
 	private motion = false;
+	/** Set before the link opens, so the first `mr` carries it; `setShotRule` for a change later. */
+	shotRule: ShotRule = SHOT;
 	/** Recorded ends being put back together, by the watch's key. */
 	private assembling = new Map<
 		number,
@@ -254,8 +257,33 @@ export class WatchLink {
 		await this.sendMotion();
 	}
 
+	/** The thresholds the watch counts a shot by, remembered by the watch until told otherwise. */
+	async setShotRule(rule: ShotRule): Promise<void> {
+		this.shotRule = rule;
+		await this.sendShotRule();
+	}
+
+	/**
+	 * Said with the switch, which is to say on every round and every recovered hello: rarely enough
+	 * to cost nothing, often enough that a watch that missed one hears it before the next end.
+	 */
 	private async sendMotion(): Promise<void> {
 		await this.say({ v: PROTOCOL_VERSION, t: 'mr', o: this.motion ? 1 : 0 });
+		await this.sendShotRule();
+	}
+
+	private async sendShotRule(): Promise<void> {
+		const rule = this.shotRule;
+		await this.say({
+			v: PROTOCOL_VERSION,
+			t: 'ms',
+			r: Math.round(rule.RELEASE * 10),
+			s: Math.round(rule.STILL * 1000),
+			f: Math.round(rule.HOLD_FROM_MS),
+			h: Math.round(rule.HOLD_TO_MS),
+			g: Math.round(rule.REFRACTORY_MS),
+			a: Math.round(rule.AFTER_SHOT_MS)
+		});
 	}
 
 	/** Out of the activity: the watch is left with no round to write an arrow onto. */
@@ -456,6 +484,7 @@ export class WatchLink {
 					await this.onMotionChunk(message.k, message.o, message.d);
 					return;
 				case 'mr':
+				case 'ms':
 				case 'mk':
 					return;
 				// Nothing the phone has to act on: it is the one that sends these.

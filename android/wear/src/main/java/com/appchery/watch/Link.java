@@ -85,6 +85,9 @@ public class Link {
 
         /** Whether the archer wants the wrist's motion recorded during a round. */
         void onMotion(boolean on);
+
+        /** The thresholds a shot is counted by, as the archer set them on the phone. */
+        void onShotRule(JSONObject rule);
     }
 
     /**
@@ -606,6 +609,9 @@ public class Link {
             case "mr":
                 boolean on = message.optInt("o", 0) == 1;
                 main.post(() -> listener.onMotion(on));
+                return;
+            case "ms":
+                main.post(() -> listener.onShotRule(message));
                 return;
             case "mk":
                 main.post(() -> onMotionKept(message));

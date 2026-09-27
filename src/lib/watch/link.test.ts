@@ -627,3 +627,14 @@ describe('recorded motion', () => {
 		expect(sent).toContainEqual({ v: 2, t: 'mr', o: 1 });
 	});
 });
+
+describe('the shot rule', () => {
+	it('goes with the recording switch, and fits the message budget', async () => {
+		await link.setMotion(true);
+		const rule = sent.find((m) => m.t === 'ms');
+		expect(rule).toEqual({ v: 2, t: 'ms', r: 250, s: 400, f: 1500, h: 200, g: 3000, a: 700 });
+		const most = 9_999_999;
+		const worst = { ...rule, r: most, s: most, f: most, h: most, g: most, a: most };
+		expect(new TextEncoder().encode(JSON.stringify(worst)).length).toBeLessThanOrEqual(180);
+	});
+});

@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { t } from '$lib/i18n';
-	import { formatTime } from '$lib/prefs';
+	import { formatTime, shotRule } from '$lib/prefs';
+	import { get } from 'svelte/store';
 	import { setPageUp } from '$lib/nav';
 	import {
 		getSession,
@@ -156,7 +157,7 @@
 		const line = columns
 			.map((value, x) => `${x},${(HEIGHT - (Math.min(value, TOP) / TOP) * HEIGHT).toFixed(1)}`)
 			.join(' ');
-		const shots = findShots(samples);
+		const shots = findShots(samples, get(shotRule));
 		return {
 			hz: n / (span / 1000),
 			gapMs,

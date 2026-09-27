@@ -69,13 +69,34 @@ final class Motion {
     }
 
     // The shot rule, identical to `findShots` in src/lib/watch/motion.ts: see there for the figures.
-    private static final float RELEASE = 25f;
-    private static final float STILL = 0.4f;
-    private static final long HOLD_FROM_MS = 1500;
-    private static final long HOLD_TO_MS = 200;
-    private static final long REFRACTORY_MS = 3000;
+    // Defaults until the phone sends its own (`ms`), then whatever the archer set in the settings.
+    // Read on the worker thread, written on the main one.
+    private volatile float release = 25f;
+    private volatile float still = 0.4f;
+    private volatile long holdFromMs = 1500;
+    private volatile long holdToMs = 200;
+    private volatile long refractoryMs = 3000;
     /** How long after the release a shot is counted, which is also where its segment ends. */
-    private static final long AFTER_SHOT_MS = 700;
+    private volatile long afterShotMs = 700;
+
+    /**
+     * Takes the rule as the phone says it in `ms`, anything missing left as it was. The hold is
+     * read from a ring of 256 gyroscope samples, about five seconds at the 52Hz the watch gives, so
+     * a longer hold window is cut to what the ring can answer.
+     */
+    void setRule(JSONObject rule) {
+        if (rule == null) return;
+        if (rule.has("r")) release = rule.optInt("r", 250) / 10f;
+        if (rule.has("s")) still = rule.optInt("s", 400) / 1000f;
+        long from = Math.min(4000, rule.optLong("f", holdFromMs));
+        long to = rule.optLong("h", holdToMs);
+        if (to < from) {
+            holdFromMs = from;
+            holdToMs = to;
+        }
+        if (rule.has("g")) refractoryMs = rule.optLong("g", 3000);
+        if (rule.has("a")) afterShotMs = Math.min(5000, rule.optLong("a", 700));
+    }
 
     /** Whether shots are being counted. Read on the worker thread. */
     private volatile boolean counting = false;
@@ -318,20 +339,20 @@ final class Motion {
             spinNext = (spinNext + 1) % spin.length;
             return;
         }
-        if (size <= RELEASE || ms - lastShot < REFRACTORY_MS) return;
+        if (size <= release || ms - lastShot < refractoryMs) return;
         float sum = 0;
         int count = 0;
         for (int i = 0; i < spin.length; i++) {
-            if (spinAt[i] >= ms - HOLD_FROM_MS && spinAt[i] < ms - HOLD_TO_MS) {
+            if (spinAt[i] >= ms - holdFromMs && spinAt[i] < ms - holdToMs) {
                 sum += spin[i];
                 count++;
             }
         }
-        if (count < 10 || sum / count >= STILL) return;
+        if (count < 10 || sum / count >= still) return;
         lastShot = ms;
         Log.i(TAG, "shot, released at " + size + " after a hold of " + (sum / count));
         // Told late, so the follow through stays in this segment and the buzz is not lost in the release.
-        main.postDelayed(announceShot, AFTER_SHOT_MS);
+        main.postDelayed(announceShot, afterShotMs);
     }
 
     private static short quantise(float value, int scale) {

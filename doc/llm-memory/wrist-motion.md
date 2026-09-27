@@ -62,6 +62,14 @@ One archer, a wristband rather than a bow, so the figures are a start rather tha
 The rule lives twice, in `Motion.java` and in `findShots` in `src/lib/watch/motion.ts`, and the two
 must stay equal: the phone uses its copy to show what the watch would have counted.
 
+The six figures (release, stillness, the hold window, the refractory gap, the count delay) are
+settable on the phone under the recording switch, stored as `appchery.shotRule`, defaults in `SHOT`.
+They travel as `ms`, integers only (`r` tenths of m/s², `s` mrad/s, the rest ms), about 70 bytes:
+inside the 180 budget but not the 20 byte fallback, so the phone says it right after every `mr`
+(each round, each recovered hello) and whenever it changes. The watch keeps the last one in its
+preferences under `shot-rule`; the hold window is capped at 4 s by its 256 sample gyroscope ring.
+The check page runs `findShots` with the rule as set, so it shows what the watch would count now.
+
 Every recording says who ended it, `by` on the wire and `counted_by` in the table: `archer` for a
 tap, `watch` for the counter. Only a tapped count is a label; a count the watch made is its own
 guess and training on it would teach the counter nothing.

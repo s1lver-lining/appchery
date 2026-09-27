@@ -42,11 +42,23 @@
 		celebratedBests,
 		dismissedBest,
 		recordWristMotion,
+		shotRule,
 		wristArm
 	} from '$lib/prefs';
 	import { countWristMotion } from '$lib/db/repository';
 	import { importWristMotion } from '$lib/watch/store';
 	import { exportWristMotion } from '$lib/watch/motionExport';
+	import { SHOT, sanitiseShotRule, type ShotRule } from '$lib/watch/motion';
+
+	/** The shot counter's thresholds, in the units `ShotRule` keeps them in. */
+	const SHOT_FIELDS: { key: keyof ShotRule; label: string; step: number }[] = [
+		{ key: 'RELEASE', label: 'settings.shotRelease', step: 0.5 },
+		{ key: 'STILL', label: 'settings.shotStill', step: 0.05 },
+		{ key: 'HOLD_FROM_MS', label: 'settings.shotHoldFrom', step: 50 },
+		{ key: 'HOLD_TO_MS', label: 'settings.shotHoldTo', step: 50 },
+		{ key: 'REFRACTORY_MS', label: 'settings.shotRefractory', step: 100 },
+		{ key: 'AFTER_SHOT_MS', label: 'settings.shotAfter', step: 50 }
+	];
 	import { recalculateBadges, deleteImportedSessions, deleteEverything } from '$lib/db/repository';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
 	import { dataChanged } from '$lib/db/changed';
@@ -529,6 +541,38 @@
 								>
 									{$t('settings.wristMotionExport', { n: motionCount ?? 0 })}
 								</button>
+								<details class="mt-3">
+									<summary class="cursor-pointer text-sm font-medium">{$t('settings.shotRule')}</summary>
+									<p class="mt-1 text-sm text-muted">{$t('settings.shotRuleHint')}</p>
+									<div class="mt-2 grid grid-cols-2 gap-2">
+										{#each SHOT_FIELDS as field (field.key)}
+											<label class="text-sm">
+												<span class="text-muted">{$t(field.label)}</span>
+												<input
+													type="number"
+													inputmode="decimal"
+													min="0"
+													step={field.step}
+													class="mt-0.5 w-full rounded-lg border border-line bg-transparent px-2 py-1"
+													value={$shotRule[field.key]}
+													onchange={(e) =>
+														shotRule.set(
+															sanitiseShotRule({
+																...$shotRule,
+																[field.key]: Number(e.currentTarget.value)
+															})
+														)}
+												/>
+											</label>
+										{/each}
+									</div>
+									<button
+										class="press mt-2 w-full rounded-lg border border-line py-2 text-sm"
+										onclick={() => shotRule.set({ ...SHOT })}
+									>
+										{$t('settings.shotRuleReset')}
+									</button>
+								</details>
 							{/if}
 						{/if}
 					</div>

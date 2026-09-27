@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deflateSync } from 'node:zlib';
-import { decode, findShots, parse } from './motion';
+import { SHOT, decode, findShots, parse, sanitiseShotRule } from './motion';
 
 /** Written the way Motion.java writes it, so the two halves are held to one format. */
 function recording(samples: [kind: number, tenths: number, x: number, y: number, z: number][]) {
@@ -110,5 +110,15 @@ describe('finding shots', () => {
 
 	it('needs a hold on record before it', () => {
 		expect(findShots(wrist(20_000, [100]))).toEqual([]);
+	});
+
+	it('follows the rule the archer set', () => {
+		expect(findShots(wrist(20_000, [5000], 1.5), { ...SHOT, STILL: 2 }).length).toBe(1);
+		expect(findShots(wrist(20_000, [5000, 12_000]), { ...SHOT, REFRACTORY_MS: 8000 }).length).toBe(1);
+	});
+
+	it('puts back what makes no sense', () => {
+		expect(sanitiseShotRule({ RELEASE: -1, HOLD_FROM_MS: 100, HOLD_TO_MS: 200 })).toEqual(SHOT);
+		expect(sanitiseShotRule('junk')).toEqual(SHOT);
 	});
 });

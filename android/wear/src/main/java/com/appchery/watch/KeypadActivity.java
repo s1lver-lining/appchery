@@ -196,6 +196,12 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
                 }
             }
         });
+        try {
+            motion.setRule(new JSONObject(getSharedPreferences("watch", MODE_PRIVATE)
+                    .getString("shot-rule", "{}")));
+        } catch (org.json.JSONException ignored) {
+            // A rule that cannot be read is the default rule.
+        }
         link.attachMotion(motion);
         String[] needed = {Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT};
         boolean granted = true;
@@ -368,6 +374,13 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         motionWanted = on;
         getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("motion", on).apply();
         syncMotion();
+    }
+
+    @Override
+    public void onShotRule(JSONObject rule) {
+        // Kept as the phone said it, so a restart counts by the same rule before the phone is back.
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putString("shot-rule", rule.toString()).apply();
+        if (motion != null) motion.setRule(rule);
     }
 
     private DrawerRoot buildScoring() {
