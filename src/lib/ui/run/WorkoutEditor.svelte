@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { tick } from 'svelte';
 	import { t } from '$lib/i18n';
 	import { tap } from '$lib/haptics';
 	import Icon from '$lib/ui/Icon.svelte';
@@ -57,6 +58,41 @@
 
 	const replace = (items: RunItem[]) => onchange({ ...workout, items });
 
+	/** The pace of the last block written, which is what the next one most likely runs at. */
+	function lastPace(items: (RunItem | RunBlock)[]): number | null {
+		const last = items.at(-1);
+		if (!last) return null;
+		return !('blocks' in last) ? last.targetPace : (last.blocks.at(-1)?.targetPace ?? null);
+	}
+
+	/**
+	 * A reorder shown as one. The cards are unkeyed (see below), so a move is the same cards taking
+	 * new values and would otherwise happen in a single frame with nothing to say what went where.
+	 * Each card is measured under the id it showed, then slid from there to where that id now is.
+	 */
+	async function slide(
+		container: HTMLElement | null | undefined,
+		from: { id: string }[],
+		to: { id: string }[],
+		reorder: () => void
+	) {
+		const cards = container ? ([...container.children] as HTMLElement[]) : [];
+		const before = new Map(from.map(({ id }, i) => [id, cards[i]?.getBoundingClientRect().top]));
+		reorder();
+		await tick();
+		if (!container) return;
+		([...container.children] as HTMLElement[]).forEach((card, i) => {
+			const top = before.get(to[i]?.id);
+			if (top === undefined) return;
+			const by = top - card.getBoundingClientRect().top;
+			if (Math.abs(by) < 1) return;
+			card.animate([{ transform: `translateY(${by}px)` }, { transform: 'none' }], {
+				duration: 180,
+				easing: 'ease-out'
+			});
+		});
+	}
+
 	/**
 	 * A block carried to where it belongs.
 	 *
@@ -71,6 +107,8 @@
 	 */
 	let list = $state<HTMLElement | null>(null);
 	let carrying = $state<number | null>(null);
+	/** The block lists inside each repeat, by the repeat's index, for sliding their own moves. */
+	const inners: HTMLElement[] = $state([]);
 
 	function grab(index: number, event: PointerEvent) {
 		carrying = index;
@@ -93,7 +131,7 @@
 		items.splice(to, 0, moved);
 		carrying = to;
 		tap();
-		replace(items);
+		slide(list, workout.items, items, () => replace(items));
 	}
 
 	const drop = () => (carrying = null);
@@ -107,7 +145,7 @@
 		if (to < 0 || to >= workout.items.length) return;
 		const items = [...workout.items];
 		[items[index], items[to]] = [items[to], items[index]];
-		replace(items);
+		slide(list, workout.items, items, () => replace(items));
 	}
 
 	function duplicate(index: number) {
@@ -129,7 +167,7 @@
 	function addInside(index: number) {
 		const item = workout.items[index];
 		if (item.type !== 'repeat') return;
-		const block = newBlock('work');
+		const block = newBlock('work', lastPace([...workout.items.slice(0, index), ...item.blocks]));
 		if (block.type !== 'block') return;
 		const { type: _type, ...bare } = block;
 		insideBlocks(index, [...item.blocks, bare]);
@@ -231,7 +269,7 @@
 					</button>
 				</div>
 
-				<div class="space-y-2">
+				<div class="space-y-2" bind:this={inners[index]}>
 					{#each item.blocks as block, inner}
 						<BlockCard
 							{block}
@@ -260,7 +298,7 @@
 								if (to < 0 || to >= item.blocks.length) return;
 								const blocks = [...item.blocks];
 								[blocks[inner], blocks[to]] = [blocks[to], blocks[inner]];
-								insideBlocks(index, blocks);
+								slide(inners[index], item.blocks, blocks, () => insideBlocks(index, blocks));
 							}}
 						/>
 					{/each}
@@ -280,7 +318,7 @@
 	<div class="flex gap-2">
 		<button
 			class="press flex-1 rounded-xl border border-line bg-surface py-3 text-sm font-semibold"
-			onclick={() => replace([...workout.items, newBlock(workout.items.length === 0 ? 'warmup' : 'work')])}
+			onclick={() => replace([...workout.items, newBlock(workout.items.length === 0 ? 'warmup' : 'work', lastPace(workout.items))])}
 		>
 			<span class="mr-1 inline-block align-[-2px]"><Icon name="plus" size={16} /></span>
 			{$t('workouts.addBlock')}

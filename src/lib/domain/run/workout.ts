@@ -63,10 +63,11 @@ export function emptyWorkout(name = ''): RunWorkout {
 	return { id: id(), name, items: [], sourceId: null };
 }
 
-export function newBlock(kind: BlockKind = 'work'): RunItem {
+/** `targetPace` carries on from the block before, since a programme is mostly written at one pace. */
+export function newBlock(kind: BlockKind = 'work', targetPace: number | null = null): RunItem {
 	const goal: RunGoal =
 		kind === 'work' ? { type: 'distance', metres: 400 } : { type: 'time', seconds: 600 };
-	return { type: 'block', id: id(), kind, goal, targetPace: null, label: null };
+	return { type: 'block', id: id(), kind, goal, targetPace, label: null };
 }
 
 export function newRepeat(times = 6): RunItem {

@@ -49,17 +49,21 @@
 		if (index >= 0) list?.scrollTo({ top: index * ITEM, behavior });
 	}
 
-	// Keep the wheel aligned when the value changes from outside, without fighting an active drag.
+	/*
+	 * Keep the wheel aligned when the value changes from outside, without fighting an active drag.
+	 * Instant rather than 'auto': the list is scroll-smooth, which makes 'auto' animate, and a wheel
+	 * spinning to a value nobody just picked (a block moved, a page opened) reads as a change.
+	 */
 	$effect(() => {
 		const index = values.indexOf(value);
 		if (!list || index < 0 || settling) return;
-		if (Math.abs(list.scrollTop - index * ITEM) > 2) scrollToValue(value, 'auto');
+		if (Math.abs(list.scrollTop - index * ITEM) > 2) scrollToValue(value, 'instant');
 	});
 
 	function onScroll() {
 		if (!list) return;
 		if (!touched) {
-			scrollToValue(value, 'auto');
+			scrollToValue(value, 'instant');
 			return;
 		}
 		if (settling) clearTimeout(settling);
