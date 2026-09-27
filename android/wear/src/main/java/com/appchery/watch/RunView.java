@@ -132,6 +132,8 @@ public class RunView extends FrameLayout {
     private final LinearLayout controls;
     private final TextView hold;
     private final TextView finish;
+    /** Where the pause and the finish are once running: before the start there is nothing to pause. */
+    private final TextView begin;
     private final TextView lap;
     private final TextView awake;
     private final TextView alwaysOn;
@@ -312,6 +314,12 @@ public class RunView extends FrameLayout {
             draw();
         });
         controls.addView(row(context, hold, finish), rowSize(px(9)));
+        begin = button(context, "Start", BRAND, BRAND_INK);
+        begin.setOnClickListener(view -> {
+            buzz();
+            ask("go");
+        });
+        controls.addView(begin, rowSize(px(9)));
 
         awake = button(context, "Screen off", SURFACE, MUTED);
         awake.setOnClickListener(view -> {
@@ -566,6 +574,11 @@ public class RunView extends FrameLayout {
         return !live() || onControls;
     }
 
+    /** What the controls slide over: the pages once running, and the start screen before that. */
+    private View face() {
+        return live() ? front.column : ready;
+    }
+
     private void ask(String action) {
         if (listener != null) listener.onRunCommand(action);
     }
@@ -662,7 +675,7 @@ public class RunView extends FrameLayout {
 
     /** Into the controls and back out, by the one gesture that is neither the crown nor the way out. */
     private void toggleControls() {
-        if (!live()) return;
+        if (run == null) return;
         // Through the same animation a drag ends in, from a standing start. Always the same way
         // round, out to the left and in from the right, because both directions are the same
         // gesture: an animation that ran backwards would be showing a swipe nobody can make.
@@ -845,10 +858,13 @@ public class RunView extends FrameLayout {
         float width = Math.max(1, getWidth());
         acrossTo = Math.max(-width, Math.min(width, dx));
         float share = Math.min(1f, Math.abs(acrossTo) / width);
-        View here = onControls ? controls : front.column;
-        View there = onControls ? front.column : controls;
+        View here = onControls ? controls : face();
+        View there = onControls ? face() : controls;
         here.setTranslationX(acrossTo);
         here.setAlpha(1f - share * 0.7f);
+        // Drawn before it shows: on the start screen it has never been drawn, and would arrive
+        // with the pause and finish of its layout until the slide ended.
+        if (there == controls) drawControls("p".equals(status()));
         there.setVisibility(VISIBLE);
         there.setTranslationX(acrossTo + (acrossTo < 0 ? width : -width));
         there.setAlpha(0.3f + share * 0.7f);
@@ -858,8 +874,8 @@ public class RunView extends FrameLayout {
     private void releaseAcross() {
         float width = Math.max(1, getWidth());
         boolean far = Math.abs(acrossTo) > width * TURN_SHARE;
-        View here = onControls ? controls : front.column;
-        View there = onControls ? front.column : controls;
+        View here = onControls ? controls : face();
+        View there = onControls ? face() : controls;
         float end = far ? (acrossTo < 0 ? -width : width) : 0f;
         here.animate().cancel();
         here.animate().translationX(end).alpha(far ? 0f : 1f).setDuration(150).start();
@@ -1100,9 +1116,9 @@ public class RunView extends FrameLayout {
         infoDots.setVisibility(live() && !onControls && !ambient && !moving() ? VISIBLE : GONE);
         // Gone in ambient with everything else, and while a drag is under way, because by then the
         // runner is already doing the thing it was there to suggest.
-        peek.setVisibility(live() && !onControls && !ambient && !moving() ? VISIBLE : GONE);
-        controls.setVisibility(live() && (onControls || acrossTo != 0) ? VISIBLE : GONE);
-        ready.setVisibility(live() ? GONE : VISIBLE);
+        peek.setVisibility(!onControls && !ambient && !moving() ? VISIBLE : GONE);
+        controls.setVisibility(onControls || acrossTo != 0 ? VISIBLE : GONE);
+        ready.setVisibility(!live() && (!onControls || acrossTo != 0) ? VISIBLE : GONE);
         // Left alone while a page is on its way in: a frame arrives every second or two, and one
         // landing mid animation would take the panel it is arriving in off the screen.
         if (!moving()) back.column.setVisibility(GONE);
@@ -1111,7 +1127,8 @@ public class RunView extends FrameLayout {
         zoneArc.setVisibility(GONE);
 
         if (!live()) {
-            drawReady();
+            if (onControls) drawControls(false);
+            else drawReady();
             ring.set(0f, LINE);
             return;
         }
@@ -1124,6 +1141,9 @@ public class RunView extends FrameLayout {
     }
 
     private void drawControls(boolean paused) {
+        ((View) hold.getParent()).setVisibility(live() ? VISIBLE : GONE);
+        begin.setVisibility(live() ? GONE : VISIBLE);
+        lap.setVisibility(live() ? VISIBLE : GONE);
         hold.setText(paused ? "Resume" : "Pause");
         finish.setText(SystemClock.elapsedRealtime() - armedAt < ARMED_MS ? "Confirm?" : "Finish");
         awake.setText(keepAwake ? "Screen on" : "Screen off");
