@@ -20,3 +20,24 @@ export function portal(node: HTMLElement) {
 		}
 	};
 }
+
+/**
+ * The same move for a bar that belongs to its page after all: shown only while the place it came
+ * from is. Tabs and pager panes that are off screen are still rendered, just marked inert, and a
+ * bar moved out of one would otherwise float over whichever page is actually showing.
+ */
+export function portalWhileShown(node: HTMLElement) {
+	const anchor = node.parentElement;
+	const follow = () => (node.hidden = !!anchor?.closest('[inert]'));
+	follow();
+	portal(node);
+	const watch = new MutationObserver(follow);
+	watch.observe(document.body, { attributes: true, attributeFilter: ['inert'], subtree: true });
+
+	return {
+		destroy() {
+			watch.disconnect();
+			node.remove();
+		}
+	};
+}

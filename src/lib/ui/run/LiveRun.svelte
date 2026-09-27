@@ -10,6 +10,7 @@
 	import { paceUnitKey, sayPace, saySplit, type PaceUnit } from './pace';
 	import { sayDistance } from './distance';
 	import type { LiveRun } from '$lib/run/live.svelte';
+	import { portalWhileShown } from '$lib/ui/portal';
 
 	/**
 	 * A run while it is being run.
@@ -45,9 +46,12 @@
 	const splits = $derived(splitsNow(run.track, run.seconds));
 	const paused = $derived(run.status === 'paused');
 	const laps = $derived(run.record?.laps ?? []);
+
+	/** The controls' height, left clear at the end of the page so the last split can be read. */
+	let controls = $state(0);
 </script>
 
-<div class="space-y-3 pb-28">
+<div class="space-y-3" style="padding-bottom: {controls}px">
 	{#if run.failure}
 		<p class="rounded-xl border border-danger/40 bg-danger/10 p-3 text-sm text-danger">
 			{$t(
@@ -206,9 +210,13 @@
 
 <!--
 	Thumb sized, and in the same place whether the run is going or paused: standing on the tab bar
-	rather than behind it, so it stays in reach however long the splits get.
+	rather than behind it, so it stays in reach however long the splits get. Out on the body, because
+	a session shows this page inside a sliding tab, and a transformed ancestor would pin it to that
+	pane rather than to the screen.
 -->
 <div
+	use:portalWhileShown
+	bind:offsetHeight={controls}
 	class="overbar fixed inset-x-0 z-40 border-t border-line bg-surface/95 p-3 backdrop-blur"
 	style="bottom: var(--tabbar-h, 0px)"
 >

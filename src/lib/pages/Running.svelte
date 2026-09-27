@@ -51,6 +51,7 @@
 	import HeartZones from '$lib/ui/run/HeartZones.svelte';
 	import { maxHeartRate, runMapPrompt, runMaps } from '$lib/prefs';
 	import { sayDistance } from '$lib/ui/run/distance';
+	import { portalWhileShown } from '$lib/ui/portal';
 
 	/**
 	 * A run: set up, run, and looked at afterwards, or simply written down.
@@ -403,6 +404,9 @@
 		// Faster is longer: the bar reads as how well the kilometre went, not as how long it took.
 		return 30 + ((slowest - pace) / (slowest - fastestPace)) * 70;
 	}
+
+	/** The start bar's height, left clear at the end of the page. */
+	let startBar = $state(0);
 </script>
 
 {#if record && tracked && (status === 'running' || status === 'paused')}
@@ -455,10 +459,14 @@
 				</p>
 			</section>
 
-			<!-- Standing on the tab bar, where the controls it turns into will be. The spacer keeps the
-			     page's end clear of it. -->
-			<div class="h-24" aria-hidden="true"></div>
+			<!--
+				Standing on the tab bar, where the controls it turns into will be. Out on the body, because
+				a session shows this page inside a sliding tab, and a transformed ancestor would pin it to
+				that pane rather than to the screen. The page ends with its height, so nothing stays under it.
+			-->
 			<div
+				use:portalWhileShown
+				bind:offsetHeight={startBar}
 				class="overbar fixed inset-x-0 z-40 border-t border-line bg-surface/95 p-3 backdrop-blur"
 				style="bottom: var(--tabbar-h, 0px)"
 			>
@@ -856,6 +864,10 @@
 					</div>
 				</div>
 			</section>
+		{/if}
+
+		{#if tracked && status === 'idle'}
+			<div style="height: {startBar}px" aria-hidden="true"></div>
 		{/if}
 	</div>
 {/if}
