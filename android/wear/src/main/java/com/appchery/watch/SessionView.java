@@ -257,8 +257,8 @@ public class SessionView extends FrameLayout {
     }
 
     /**
-     * One activity. A kind the watch cannot score is shown anyway, so the session reads the same on
-     * both screens, but it does not answer a tap.
+     * One activity. Only one the watch can show answers a tap: a round it can score, or a tracked
+     * run. Every other kind is shown anyway, so the session reads the same on both screens.
      */
     public void addActivity(int index, String kind, String label, boolean scorable) {
         LinearLayout row = new LinearLayout(getContext());

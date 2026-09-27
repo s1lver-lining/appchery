@@ -1,6 +1,7 @@
 import { knownScoreSet } from '$lib/domain/rounds/seed';
 import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
 import type { RoundDefinition } from '$lib/domain/rounds/types';
+import { RUNNING_KIND, parseRun } from '$lib/domain/running';
 import { recordFor } from './record';
 import {
 	watchLink,
@@ -54,6 +55,8 @@ export interface ActivityLike {
 	id: string;
 	kind: string;
 	roundDefinition: string | null;
+	/** A run's record, which says whether it is one the wrist can show. */
+	measurements?: string | null;
 }
 
 /** The round an activity was shot under, out of its own snapshot rather than today's definitions. */
@@ -74,13 +77,22 @@ export function isScorable(activity: ActivityLike): boolean {
 	return Boolean(round && knownScoreSet(round.scoreSetId));
 }
 
+/**
+ * What a tap on the wrist can open: a round it can score, or a tracked run, which the wrist shows
+ * as its run screen. A hand entered run has nothing to put there.
+ */
+export function opensOnWrist(activity: ActivityLike): boolean {
+	if (activity.kind === RUNNING_KIND) return parseRun(activity.measurements ?? null).mode === 'tracked';
+	return isScorable(activity);
+}
+
 function lineFor(activity: ActivityLike): ActivityLine {
 	const round = roundOf(activity);
 	return {
 		kind: activity.kind,
 		// A round names itself; everything else is named by what it is, which is all a wrist needs.
 		label: round?.name ?? activity.kind,
-		scorable: isScorable(activity)
+		scorable: opensOnWrist(activity)
 	};
 }
 

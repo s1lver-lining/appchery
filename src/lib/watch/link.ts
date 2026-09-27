@@ -114,6 +114,7 @@ export interface Round {
 export interface ActivityLine {
 	kind: string;
 	label: string;
+	/** Whether a tap on the wrist opens it: a round it can score, or a tracked run. */
 	scorable: boolean;
 }
 
