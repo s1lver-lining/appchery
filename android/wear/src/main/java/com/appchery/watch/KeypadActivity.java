@@ -25,6 +25,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import org.json.JSONObject;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -119,6 +121,26 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     private String screen = "idle";
     private Vibrator vibrator;
     private Link link;
+    /** The wrist's motion, recorded end by end while a round is on screen and the archer asked for it. */
+    private Motion motion;
+    private boolean motionWanted = false;
+    /** Asked for on the wrist itself, for the automatic counter the recordings are meant to train. */
+    private boolean trainingMotion = false;
+    /** The training count the segment in progress began at. */
+    private int trainingFrom = -1;
+    /**
+     * Shots the watch has seen in each end, by activity and end: an end reopened by an undo, or
+     * another round opened straight from this one, must not number its arrows from one again.
+     */
+    private final Map<String, Integer> shotsInEnd = new HashMap<>();
+    private String roundEnd;
+    /** The next segment to close does so on a shot rather than on the end being scored. */
+    private boolean shotJustEnded = false;
+    /** Counting training arrows from the release, so the archer need not tap. */
+    private boolean autoCount = false;
+    /** Whether the last change of the count was the watch's own, which the recording says. */
+    private boolean countedByWatch = false;
+    private String roundActivity;
     private float rotary = 0;
     private float density;
     private String linkNote = "Starting";
@@ -137,6 +159,44 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         if (ambientWanted) attachAmbient();
 
         link = new Link(this, this);
+        motionWanted = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("motion", false);
+        trainingMotion = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("training-motion", false);
+        sessionView.setMotion(trainingMotion);
+        autoCount = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("auto-count", false);
+        sessionView.setAutoCount(autoCount);
+        motion = new Motion(this, new android.os.Handler(getMainLooper()), new Motion.Listener() {
+            @Override
+            public void onSegment() {
+                link.offerMotion();
+            }
+
+            @Override
+            public void onShot() {
+                if ("score".equals(screen)) {
+                    // A shot in a round is cut into a segment of its own, so each arrow keeps its draw.
+                    if (roundEnd != null) shotsInEnd.merge(roundEnd, 1, Integer::sum);
+                    shotJustEnded = true;
+                    syncMotion();
+                } else if ("session".equals(screen) && autoCount) {
+                    countedByWatch = true;
+                    sessionView.addOne();
+                } else {
+                    return;
+                }
+                if (!autoCount) return;
+                // Two pulses, unlike a tap's one, so a count nobody asked for is felt as the watch's.
+                // Already at full amplitude, so they are made longer to be felt through a draw.
+                // As an alarm: a shot lands with the screen off, and Android drops a background app's
+                // touch feedback without a word, which is how the single buzz a tap gets went missing.
+                if (vibrator != null) {
+                    vibrator.vibrate(VibrationEffect.createWaveform(new long[]{0, 120, 100, 120},
+                            new int[]{0, 255, 0, 255}, -1),
+                            new android.media.AudioAttributes.Builder()
+                                    .setUsage(android.media.AudioAttributes.USAGE_ALARM).build());
+                }
+            }
+        });
+        link.attachMotion(motion);
         String[] needed = {Manifest.permission.BLUETOOTH_ADVERTISE, Manifest.permission.BLUETOOTH_CONNECT};
         boolean granted = true;
         for (String permission : needed) {
@@ -178,6 +238,7 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         super.onDestroy();
         // The sensor goes with the screen that was reading it: a light left on is a flat watch.
         if (heart != null) heart.stop();
+        if (motion != null) motion.stop();
         cancelAmbientTick();
         try {
             unregisterReceiver(ambientTicker);
@@ -240,6 +301,73 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         if (root != null) root.setVisibility("score".equals(next) ? View.VISIBLE : View.GONE);
         statusView.setState(linkKind, linkNote);
         applyKeepAwake(onRun && keepAwake);
+        syncMotion();
+    }
+
+    /** Points the recorder at the end being shot, or stops it when there is none. */
+    private void syncMotion() {
+        if (motion == null) return;
+        try {
+            if ((motionWanted || autoCount) && "score".equals(screen) && roundActivity != null) {
+                trainingFrom = -1;
+                for (int i = 0; i < shots.length; i++) {
+                    if (shots[i] != null) continue;
+                    int end = i / arrowsPerEnd + 1;
+                    String key = roundActivity + ":" + end;
+                    // A shot told after its end was scored belongs to that end, not to this one.
+                    if (!key.equals(roundEnd)) shotJustEnded = false;
+                    roundEnd = key;
+                    int roundShots = shotsInEnd.getOrDefault(key, 0);
+                    // `o` is the arrow's place in the end as shot, which may be scored in another order.
+                    JSONObject meta = new JSONObject().put("a", roundActivity).put("s", 0).put("n", end)
+                            .put("o", roundShots + 1);
+                    JSONObject closing = shotJustEnded ? new JSONObject().put("sh", 1) : null;
+                    shotJustEnded = false;
+                    motion.at(key + ":" + roundShots, meta, Motion.SHORTEST_ROUND_MS,
+                            closing, motionWanted, true);
+                    return;
+                }
+            } else if ((trainingMotion || autoCount) && "session".equals(screen)) {
+                // Cut at every change of the count, so each segment says how many arrows it holds.
+                int count = sessionView.arrows();
+                JSONObject closing = trainingFrom < 0 ? null : new JSONObject().put("ta", count)
+                        .put("by", countedByWatch ? "watch" : "archer");
+                countedByWatch = false;
+                trainingFrom = count;
+                JSONObject meta = new JSONObject().put("a", "training").put("s", 0).put("n", 0)
+                        .put("tb", count);
+                motion.at("training:" + count, meta, Motion.SHORTEST_TRAINING_MS, closing,
+                        trainingMotion, autoCount);
+                return;
+            }
+        } catch (org.json.JSONException never) {
+            // Only thrown for a non finite number, and none of these is one.
+        }
+        trainingFrom = -1;
+        roundEnd = null;
+        motion.at(null, null, 0, null, false, false);
+    }
+
+    @Override
+    public void onAutoCount(boolean on) {
+        autoCount = on;
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("auto-count", on).apply();
+        syncMotion();
+    }
+
+    @Override
+    public void onTrainingMotion(boolean on) {
+        trainingMotion = on;
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("training-motion", on).apply();
+        syncMotion();
+    }
+
+    @Override
+    public void onMotion(boolean on) {
+        if (on == motionWanted) return;
+        motionWanted = on;
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("motion", on).apply();
+        syncMotion();
     }
 
     private DrawerRoot buildScoring() {
@@ -785,6 +913,7 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     public void onRound(String activityId, List<String> labels, List<Integer> prices, int roundEnds,
             int roundArrows) {
         boolean sameShape = roundEnds == ends && roundArrows == arrowsPerEnd && labels.equals(keys);
+        roundActivity = activityId;
         keys = labels;
         Map<String, Integer> next = new HashMap<>();
         for (int i = 0; i < labels.size(); i++) {
@@ -1052,6 +1181,7 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     @Override
     public void onArrows(int total, long at) {
         sessionView.setArrows(total);
+        syncMotion();
     }
 
     @Override
@@ -1064,6 +1194,7 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     public void onArrows(int total) {
         buzz(18);
         link.assertArrows(total);
+        syncMotion();
     }
 
     // -------- rendering
@@ -1074,6 +1205,7 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     }
 
     private void redraw() {
+        syncMotion();
         int shotCount = 0;
         for (String label : shots) if (label != null) shotCount++;
         int endIndex = Math.min(shotCount / arrowsPerEnd, ends - 1);

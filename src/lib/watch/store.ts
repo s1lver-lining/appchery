@@ -1,7 +1,7 @@
 import { App } from '@capacitor/app';
 import { get, writable } from 'svelte/store';
-import { deviceId } from '$lib/db/repository';
-import { rememberedWatch } from '$lib/prefs';
+import { deviceId, saveWristMotion } from '$lib/db/repository';
+import { recordWristMotion, rememberedWatch, wristArm } from '$lib/prefs';
 import {
 	canReconnectSilently,
 	support,
@@ -10,7 +10,7 @@ import {
 	type Connection
 } from './ble';
 import { connect as connectOverWeb } from './ble.web';
-import { WatchLink, type LinkEvent } from './link';
+import { WatchLink, type LinkEvent, type RecordedEnd } from './link';
 import type { RunCommand } from './protocol';
 
 /**
@@ -121,6 +121,7 @@ function handle(event: LinkEvent, name: string): void {
 	switch (event.kind) {
 		case 'greeted':
 			watchStatus.set({ state: 'connected', name, fragile: !canReconnectSilently() });
+			void importWristMotion().catch(() => undefined);
 			// Once per link. Re-describing on every heartbeat would rebuild the round on the wrist
 			// every fifteen seconds, taking the end being shot with it.
 			if (!greeted) {
@@ -356,8 +357,10 @@ async function adopt(opened: Connection): Promise<void> {
 	greeted = false;
 	const name = opened.name;
 	link = new WatchLink(opened.channel, deviceId(), (event) => handle(event, name));
+	link.keepMotion = keepRecordedEnd;
 	// Said before anything else, and the status stays at connecting until the watch answers it.
 	await link.open();
+	await link.setMotion(get(recordWristMotion));
 
 	stopHeartbeat();
 	heartbeat = setInterval(() => {
@@ -365,6 +368,70 @@ async function adopt(opened: Connection): Promise<void> {
 		void link?.ping().catch(() => watchStatus.set({ state: 'stale', name }));
 	}, HEARTBEAT_MS);
 }
+
+/** Kept whatever page is open: a recorded end belongs to the record, not to the screen showing it. */
+async function keepRecordedEnd(end: RecordedEnd): Promise<void> {
+	let binary = '';
+	for (const byte of end.data) binary += String.fromCharCode(byte);
+	await saveWristMotion({
+		activityId: end.activityId,
+		stageIndex: end.stageIndex,
+		endNo: end.endNo,
+		startedAt: end.startedAt,
+		durationMs: end.durationMs,
+		watchKey: end.key,
+		arm: get(wristArm),
+		arrowsBefore: end.arrowsBefore,
+		arrowsAfter: end.arrowsAfter,
+		countedBy: end.countedBy,
+		shotOrdinal: end.shotOrdinal,
+		endedOnShot: end.endedOnShot,
+		data: btoa(binary)
+	});
+}
+
+/**
+ * Moves what the native side received while the page was frozen into the database. Called on every
+ * heartbeat's answer and whenever the app comes back, which is the page's first chance to.
+ */
+export async function importWristMotion(): Promise<void> {
+	const can = support();
+	if (!can.usable || can.path !== 'native') return;
+	const { Wrist } = await import('./ble.native');
+	if (!Wrist?.motion) return;
+	if (!resumeImport) {
+		resumeImport = true;
+		void App.addListener('appStateChange', ({ isActive }) => {
+			if (isActive) void importWristMotion().catch(() => undefined);
+		});
+	}
+	const { items } = await Wrist.motion();
+	if (items.length === 0) return;
+	const offset = link?.offset ?? 0;
+	for (const item of items) {
+		await saveWristMotion({
+			activityId: item.a,
+			stageIndex: item.s,
+			endNo: item.n,
+			startedAt: item.st + offset,
+			durationMs: item.du,
+			watchKey: item.k,
+			arm: get(wristArm),
+			arrowsBefore: item.tb ?? null,
+			arrowsAfter: item.ta ?? null,
+			countedBy: item.by ?? null,
+			shotOrdinal: item.o ?? null,
+			endedOnShot: item.sh === 1,
+			data: item.data
+		});
+	}
+	await Wrist.forgetMotion({ keys: items.map((item) => item.k) });
+}
+
+let resumeImport = false;
+
+// The switch reaches a watch already linked, not only the next one.
+recordWristMotion.subscribe((on) => void link?.setMotion(on).catch(() => undefined));
 
 /**
  * Puts the link down and forgets the watch. Forgetting is the point of the button: an archer who

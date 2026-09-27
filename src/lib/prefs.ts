@@ -244,6 +244,15 @@ export const arrowDetector = storedString('appchery.arrowDetector');
 export const rememberedWatch = storedString('appchery.rememberedWatch');
 
 /**
+ * Whether the watch records the wrist's gyroscope and accelerometer through each end, for analysing
+ * the shot later. Off by default: it costs the watch battery and is a research aid, not a feature.
+ */
+export const recordWristMotion = flag('appchery.recordWristMotion', false);
+
+/** Which arm the watch is worn on while recording, `bow` or `string`, since the two move differently. */
+export const wristArm = storedString('appchery.wristArm');
+
+/**
  * Whether the camera overlay smooths the lines it draws.
  *
  * On by default. The fit is measured from the picture afresh every frame, so it lands a fraction of a

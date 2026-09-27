@@ -28,7 +28,7 @@ vi.mock('@capacitor/core', () => ({
 	Capacitor: { isNativePlatform: () => native, getPlatform: () => platform }
 }));
 
-vi.mock('$lib/db/repository', () => ({ deviceId: () => 'phone-1' }));
+vi.mock('$lib/db/repository', () => ({ deviceId: () => 'phone-1', saveWristMotion: vi.fn() }));
 
 const connectNative = vi.fn();
 vi.mock('./ble.native', () => ({ connect: connectNative }));
@@ -41,7 +41,11 @@ vi.mock('./ble.web', () => ({ connect: connectWeb }));
  * none of which exists here and none of which this file is about.
  */
 const rememberedWatch = writable<string | null>(null);
-vi.mock('$lib/prefs', () => ({ rememberedWatch }));
+vi.mock('$lib/prefs', () => ({
+	rememberedWatch,
+	recordWristMotion: writable(false),
+	wristArm: writable<string | null>(null)
+}));
 
 // `support()` looks for a window before it looks at anything else, and vitest runs in node.
 vi.stubGlobal('window', { isSecureContext: true });

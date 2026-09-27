@@ -146,6 +146,37 @@ export type Wire =
 	 * trusted. `{"v":2,"t":"rh"}` is sixteen bytes and always fits.
 	 */
 	| { v: number; t: RunCommandType }
+	/** Whether the watch should record the wrist's motion while a round is on it. */
+	| { v: number; t: 'mr'; o: 0 | 1 }
+	/**
+	 * One end's recorded motion is coming: `k` names it, `b` bytes follow in `mc` chunks. Sized to the
+	 * MTU actually negotiated rather than to the budget, because a chunk lost costs only a resend.
+	 * See doc/llm-memory/wrist-motion.md.
+	 */
+	| {
+			v: number;
+			t: 'mh';
+			k: number;
+			/** The activity, or `training` for training arrows, where `n` is 0. */
+			a: string;
+			s: number;
+			n: number;
+			st: number;
+			du: number;
+			b: number;
+			/** Training only: the count as the segment began, and as it ended if it ended on a change. */
+			tb?: number;
+			ta?: number;
+			/** Who changed the count that ended it: the archer's tap, or the watch counting by itself. */
+			by?: 'archer' | 'watch';
+			/** Rounds only: the arrow's place in the end as shot, and 1 where the segment ended on its release. */
+			o?: number;
+			sh?: 1;
+	  }
+	/** Part of a recorded end: `d` is base64 of the bytes at offset `o`. */
+	| { v: number; t: 'mc'; k: number; o: number; d: string }
+	/** The phone keeps recorded end `k`, so the watch may delete it. */
+	| { v: number; t: 'mk'; k: number }
 	/** The link is being given up deliberately, as opposed to lost. */
 	| { v: number; t: 'bye' };
 
@@ -382,6 +413,32 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 
 		case 'bye':
 			return { ok: true, message: { v: version, t: 'bye' } };
+
+		case 'mr':
+			if (m.o !== 0 && m.o !== 1) break;
+			return { ok: true, message: { v: version, t: 'mr', o: m.o } };
+
+		case 'mh':
+			if (!isTime(m.k) || !isId(m.a) || !isIndex(m.s) || !isIndex(m.n)) break;
+			if (!isTime(m.st) || !isTime(m.du) || !isFigure(m.b)) break;
+			if (m.tb !== undefined && !isFigure(m.tb)) break;
+			if (m.ta !== undefined && !isFigure(m.ta)) break;
+			const header: Wire = { v: version, t: 'mh', k: m.k, a: m.a, s: m.s, n: m.n, st: m.st, du: m.du, b: m.b };
+			if (m.tb !== undefined) header.tb = m.tb as number;
+			if (m.ta !== undefined) header.ta = m.ta as number;
+			if (m.by === 'archer' || m.by === 'watch') header.by = m.by;
+			if (m.o !== undefined && !isCount(m.o)) break;
+			if (m.o !== undefined) header.o = m.o as number;
+			if (m.sh === 1) header.sh = 1;
+			return { ok: true, message: header };
+
+		case 'mc':
+			if (!isTime(m.k) || !isFigure(m.o) || typeof m.d !== 'string' || m.d.length === 0) break;
+			return { ok: true, message: { v: version, t: 'mc', k: m.k, o: m.o, d: m.d } };
+
+		case 'mk':
+			if (!isTime(m.k)) break;
+			return { ok: true, message: { v: version, t: 'mk', k: m.k } };
 	}
 
 	return { ok: false, reason: 'malformed' };

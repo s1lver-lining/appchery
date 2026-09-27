@@ -512,6 +512,42 @@ export async function clearRunPoints(activityId: string) {
 	await db().delete(schema.runPoint).where(eq(schema.runPoint.activityId, activityId));
 }
 
+/** A recorded end from the watch. One delivered twice, after an ack that got lost, is kept once. */
+export async function saveWristMotion(row: {
+	activityId: string;
+	stageIndex: number;
+	endNo: number;
+	startedAt: number;
+	durationMs: number;
+	watchKey: number;
+	arm: string | null;
+	arrowsBefore: number | null;
+	arrowsAfter: number | null;
+	countedBy: string | null;
+	shotOrdinal: number | null;
+	endedOnShot: boolean;
+	data: string;
+}) {
+	await db()
+		.insert(schema.wristMotion)
+		.values({ ...row, receivedAt: Date.now() })
+		.onConflictDoNothing();
+}
+
+export async function listWristMotion() {
+	return db().select().from(schema.wristMotion).orderBy(asc(schema.wristMotion.startedAt));
+}
+
+export async function countWristMotion(): Promise<number> {
+	const rows = await db().select({ id: schema.wristMotion.id }).from(schema.wristMotion);
+	return rows.length;
+}
+
+/** Everything recorded, once exported and no longer wanted on the phone. */
+export async function clearWristMotion() {
+	await db().delete(schema.wristMotion);
+}
+
 /** A run started from a workout, which is the one call the live screen makes to begin. */
 export async function createTrackedRun(sessionId: string, run: RunRecord, workoutId?: string | null) {
 	const id = await createRunningActivity(sessionId, run);

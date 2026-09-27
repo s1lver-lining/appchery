@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, real, index } from 'drizzle-orm/sqlite-core';
+import { sqliteTable, text, integer, real, index, uniqueIndex } from 'drizzle-orm/sqlite-core';
 
 // Sync readiness costs a few columns now and is impossible to retrofit later, see doc/data-model.md.
 const syncColumns = {
@@ -423,4 +423,37 @@ export const runPoint = sqliteTable(
 		heartRate: integer('heart_rate')
 	},
 	(t) => [index('idx_run_point_activity').on(t.activityId, t.at)]
+);
+
+/**
+ * One end's motion as the watch recorded it: deflated samples in base64, decoded only when exported.
+ * Never synced, see doc/llm-memory/wrist-motion.md.
+ */
+export const wristMotion = sqliteTable(
+	'wrist_motion',
+	{
+		id: integer('id').primaryKey({ autoIncrement: true }),
+		activityId: text('activity_id').notNull(),
+		stageIndex: integer('stage_index').notNull(),
+		endNo: integer('end_no').notNull(),
+		/** When recording began, on the phone's clock. */
+		startedAt: integer('started_at').notNull(),
+		durationMs: integer('duration_ms').notNull(),
+		/** The watch's name for the segment, so one delivered twice is kept once. */
+		watchKey: integer('watch_key').notNull(),
+		/** `bow` or `string`: which arm the archer said the watch is on. */
+		arm: text('arm'),
+		data: text('data').notNull(),
+		receivedAt: integer('received_at').notNull(),
+		/** Training arrows only: the count as recording began, and as it ended on a change. */
+		arrowsBefore: integer('arrows_before'),
+		arrowsAfter: integer('arrows_after'),
+		/** `archer` or `watch`: only a tapped count is a label worth training a counter on. */
+		countedBy: text('counted_by'),
+		/** Rounds only: which arrow of the end this is, in the order shot rather than scored. */
+		shotOrdinal: integer('shot_ordinal'),
+		/** Closed 0.7 seconds after a release, as opposed to by the end being scored. */
+		endedOnShot: integer('ended_on_shot', { mode: 'boolean' }).notNull().default(false)
+	},
+	(t) => [uniqueIndex('idx_wrist_motion_key').on(t.activityId, t.watchKey)]
 );

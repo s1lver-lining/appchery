@@ -69,6 +69,27 @@ export interface RunFrame {
 	} | null;
 }
 
+/** One end's motion as the wrist recorded it, whole. See doc/llm-memory/wrist-motion.md. */
+export interface RecordedEnd {
+	activityId: string;
+	stageIndex: number;
+	endNo: number;
+	/** When recording began, on this device's clock. */
+	startedAt: number;
+	durationMs: number;
+	/** The watch's own name for it, which is what makes a segment arriving twice the same one. */
+	key: number;
+	/** Deflated samples, exactly as the watch wrote them. */
+	data: Uint8Array;
+	/** Training arrows only: the count before, and after where the segment ended on a change. */
+	arrowsBefore: number | null;
+	arrowsAfter: number | null;
+	countedBy: 'archer' | 'watch' | null;
+	/** Rounds only: which arrow of the end, in the order shot, and whether it ended on its release. */
+	shotOrdinal: number | null;
+	endedOnShot: boolean;
+}
+
 /** Writing to the peer. Rejects when the link has gone, which is ordinary rather than exceptional. */
 export interface Channel {
 	send(bytes: Uint8Array): Promise<void>;
@@ -146,6 +167,19 @@ export class WatchLink {
 	private session: { label: string; activities: ActivityLine[]; arrows: number } | null = null;
 	/** The run in progress, for the same reason the session is held: a watch that restarts is blank. */
 	private run: RunFrame | null = null;
+	/** Whether the archer wants the wrist recorded, said again to a watch that restarts. */
+	private motion = false;
+	/** Recorded ends being put back together, by the watch's key. */
+	private assembling = new Map<
+		number,
+		{ header: Extract<Wire, { t: 'mh' }>; parts: Map<number, Uint8Array>; got: number }
+	>();
+
+	/**
+	 * Where a recorded end goes once whole. The watch is told it is kept only once this resolves, so a
+	 * write that fails leaves the watch holding it to send again.
+	 */
+	keepMotion: ((end: RecordedEnd) => Promise<void>) | null = null;
 
 	constructor(
 		private readonly channel: Channel,
@@ -157,6 +191,11 @@ export class WatchLink {
 
 	get peer(): string | null {
 		return this.peerDeviceId;
+	}
+
+	/** What to add to a watch timestamp to read it on this device's clock. */
+	get offset(): number {
+		return this.peerOffset;
 	}
 
 	/** Whether the watch has actually answered, as opposed to the transport claiming a connection. */
@@ -205,7 +244,18 @@ export class WatchLink {
 		this.zones = zoneIndex(round.zones);
 		await this.showScreen('score');
 		await this.sendRound();
+		await this.sendMotion();
 		await this.pushAll();
+	}
+
+	/** Whether the watch records the wrist's motion during a round. */
+	async setMotion(on: boolean): Promise<void> {
+		this.motion = on;
+		await this.sendMotion();
+	}
+
+	private async sendMotion(): Promise<void> {
+		await this.say({ v: PROTOCOL_VERSION, t: 'mr', o: this.motion ? 1 : 0 });
 	}
 
 	/** Out of the activity: the watch is left with no round to write an arrow onto. */
@@ -397,6 +447,17 @@ export class WatchLink {
 					this.answered = false;
 					this.notify({ kind: 'farewell' });
 					return;
+				case 'mh':
+					// One segment at a time from the watch, so a new header means what was held is dead.
+					this.assembling.clear();
+					this.assembling.set(message.k, { header: message, parts: new Map(), got: 0 });
+					return;
+				case 'mc':
+					await this.onMotionChunk(message.k, message.o, message.d);
+					return;
+				case 'mr':
+				case 'mk':
+					return;
 				// Nothing the phone has to act on: it is the one that sends these.
 				case 'ack':
 				case 'round':
@@ -427,6 +488,7 @@ export class WatchLink {
 
 		// A watch that has just restarted knows none of this, and cannot say so: told again anyway.
 		await this.showScreen(this.screen);
+		await this.sendMotion();
 		if (this.session) {
 			const { label, activities, arrows } = this.session;
 			await this.sendSession(label, activities, arrows);
@@ -436,6 +498,43 @@ export class WatchLink {
 			await this.pushAll();
 		}
 		if (this.run) await this.sendRun(this.run);
+	}
+
+	private async onMotionChunk(key: number, offset: number, base64: string): Promise<void> {
+		const held = this.assembling.get(key);
+		// A chunk without its header is the tail of a send that began before this link did.
+		if (!held || held.parts.has(offset)) return;
+		let bytes: Uint8Array;
+		try {
+			bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+		} catch {
+			return;
+		}
+		if (offset + bytes.length > held.header.b) return;
+		held.parts.set(offset, bytes);
+		held.got += bytes.length;
+		if (held.got < held.header.b) return;
+
+		this.assembling.delete(key);
+		const data = new Uint8Array(held.header.b);
+		for (const [at, part] of held.parts) data.set(part, at);
+		const { a, s, n, st, du, tb, ta, by, o, sh } = held.header;
+		if (!this.keepMotion) return;
+		await this.keepMotion({
+			activityId: a,
+			stageIndex: s,
+			endNo: n,
+			startedAt: st + this.peerOffset,
+			durationMs: du,
+			key,
+			data,
+			arrowsBefore: tb ?? null,
+			arrowsAfter: ta ?? null,
+			countedBy: by ?? null,
+			shotOrdinal: o ?? null,
+			endedOnShot: sh === 1
+		});
+		await this.say({ v: PROTOCOL_VERSION, t: 'mk', k: key });
 	}
 
 	private async onEnd(

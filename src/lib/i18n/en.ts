@@ -1236,6 +1236,12 @@ export const en = {
 		themeSystem: 'System',
 		watch: 'Watch',
 		watchHint: 'Score a round from your wrist. The phone keeps the record and works out every score.',
+		wristMotionTitle: 'Record wrist motion',
+		wristMotionHint: 'The watch records its gyroscope and accelerometer through each end, for analysing your shot. Uses more watch battery.',
+		wristArm: 'Watch worn on',
+		wristArmBow: 'Bow arm',
+		wristArmString: 'String arm',
+		wristMotionExport: 'Export recordings ({n} ends)',
 		watchConnect: 'Connect a watch',
 		watchConnecting: 'Looking for a watch',
 		watchRetry: 'Try again',
@@ -2293,5 +2299,33 @@ insetHint:
 			when: 'Tuesday, 18:30',
 			average: 'Rolling average'
 		}
+	},
+	// A page for checking the watch's motion recordings work, not for reading the shot.
+	wristMotion: {
+		title: 'Wrist motion',
+		newestFirst: 'Newest first',
+		oldestFirst: 'Oldest first',
+		open: 'Wrist motion recordings',
+		none: 'Nothing recorded in this session yet.',
+		loading: 'Decoding recordings',
+		summary: '{n} recordings, {minutes} min, {shots} shots found',
+		end: 'End {n}',
+		endArrow: 'End {n}, arrow {o}',
+		endAfter: 'End {n}, after the last arrow',
+		training: 'Training arrows {from} to {to}',
+		trainingOpen: 'Training arrows from {from}, ended on a screen change',
+		byWatch: 'counted by the watch',
+		byArcher: 'counted by you',
+		rate: '{hz} Hz',
+		gap: 'longest gap {ms} ms',
+		gravity: 'gravity {g} m/s²',
+		size: '{kb} KB',
+		shots: '{found} shots found, {labelled} counted',
+		shotsNoLabel: '{found} shots found',
+		noArm: 'arm not set',
+		armBow: 'bow arm',
+		armString: 'string arm',
+		broken: 'Could not decode: {error}',
+		legend: 'Acceleration through the recording. Marks are the shots found, by the same rule the watch counts with.'
 	}
 };

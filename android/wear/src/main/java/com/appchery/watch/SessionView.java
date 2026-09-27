@@ -30,6 +30,12 @@ public class SessionView extends FrameLayout {
 
         /** The session's training arrows, as a total. */
         void onArrows(int total);
+
+        /** Whether the wrist's motion is recorded while training arrows are counted. */
+        void onTrainingMotion(boolean on);
+
+        /** Whether the watch counts training arrows by itself, from the release. */
+        void onAutoCount(boolean on);
     }
 
     private final Listener listener;
@@ -46,6 +52,10 @@ public class SessionView extends FrameLayout {
     /** What the last few additions were, so undo takes back what was actually added. */
     private final java.util.ArrayDeque<Integer> added = new java.util.ArrayDeque<>();
     private TextView endButton;
+    private TextView motionSwitch;
+    private boolean motion = false;
+    private TextView countSwitch;
+    private boolean autoCount = false;
 
     public SessionView(Context context, Listener listener) {
         super(context);
@@ -82,6 +92,24 @@ public class SessionView extends FrameLayout {
 
         column.addView(buildButtons(context));
 
+        LinearLayout switches = new LinearLayout(context);
+        switches.setOrientation(LinearLayout.HORIZONTAL);
+        motionSwitch = toggle(context, () -> {
+            setMotion(!motion);
+            listener.onTrainingMotion(motion);
+        });
+        countSwitch = toggle(context, () -> {
+            setAutoCount(!autoCount);
+            listener.onAutoCount(autoCount);
+        });
+        switches.addView(motionSwitch, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        switches.addView(countSwitch, new LinearLayout.LayoutParams(0,
+                ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        column.addView(switches);
+        setMotion(false);
+        setAutoCount(false);
+
         note = new TextView(context);
         note.setGravity(Gravity.CENTER);
         note.setTextColor(DIM);
@@ -114,6 +142,16 @@ public class SessionView extends FrameLayout {
         row.addView(endButton, weighted());
         row.addView(button(context, "⌫", this::undo), weighted());
         return row;
+    }
+
+    private TextView toggle(Context context, Runnable action) {
+        TextView view = new TextView(context);
+        view.setGravity(Gravity.CENTER);
+        view.setTextSize(11f);
+        view.setClickable(true);
+        view.setPadding(0, Math.round(8 * density), 0, Math.round(8 * density));
+        view.setOnClickListener(v -> action.run());
+        return view;
     }
 
     private LinearLayout.LayoutParams weighted() {
@@ -187,6 +225,27 @@ public class SessionView extends FrameLayout {
         if (next != arrows) added.clear();
         arrows = next;
         count.setText(String.valueOf(arrows));
+    }
+
+    public int arrows() {
+        return arrows;
+    }
+
+    public void setMotion(boolean on) {
+        motion = on;
+        motionSwitch.setText(on ? "● Rec" : "○ Rec");
+        motionSwitch.setTextColor(on ? 0xFFE5484D : DIM);
+    }
+
+    public void setAutoCount(boolean on) {
+        autoCount = on;
+        countSwitch.setText(on ? "● Auto" : "○ Auto");
+        countSwitch.setTextColor(on ? GOLD : DIM);
+    }
+
+    /** A shot the watch counted by itself. Undo takes it back like any other. */
+    public void addOne() {
+        add(1);
     }
 
     public void setNote(String text) {

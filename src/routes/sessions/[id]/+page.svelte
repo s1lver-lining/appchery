@@ -58,7 +58,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		matchDistance,
 		matchDistanceUnit,
 		matchScoreSet,
-		matchSystem
+		matchSystem,
+		recordWristMotion
 	} from '$lib/prefs';
 	import {
 		newMatch,
@@ -1309,6 +1310,17 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 								</button>
 							</div>
 						</section>
+
+						{#if $recordWristMotion}
+							<!-- Only while recording is on: a check that the watch's recordings work. -->
+							<a
+								href="/sessions/{sessionId}/motion"
+								class="press flex items-center justify-between rounded-xl border border-line bg-surface p-3.5 text-sm font-medium"
+							>
+								{$t('wristMotion.open')}
+								<span class="rotate-180 text-muted"><Icon name="back" size={18} /></span>
+							</a>
+						{/if}
 
 						<section>
 						{#if bracket.length > 0}

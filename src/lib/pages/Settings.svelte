@@ -40,8 +40,13 @@
 		textScale,
 		celebratedLevel,
 		celebratedBests,
-		dismissedBest
+		dismissedBest,
+		recordWristMotion,
+		wristArm
 	} from '$lib/prefs';
+	import { countWristMotion } from '$lib/db/repository';
+	import { importWristMotion } from '$lib/watch/store';
+	import { exportWristMotion } from '$lib/watch/motionExport';
 	import { recalculateBadges, deleteImportedSessions, deleteEverything } from '$lib/db/repository';
 	import ImportDialog from '$lib/ui/ImportDialog.svelte';
 	import { dataChanged } from '$lib/db/changed';
@@ -265,6 +270,30 @@
 		celebrationNotice = $t('settings.forgetResult');
 	}
 
+	let motionCount = $state<number | null>(null);
+	let motionBusy = $state(false);
+	$effect(() => {
+		if ($recordWristMotion) {
+			void importWristMotion()
+				.catch(() => {})
+				.then(() => countWristMotion())
+				.then((n) => (motionCount = n))
+				.catch(() => {});
+		}
+	});
+
+	async function exportMotion() {
+		motionBusy = true;
+		try {
+			await importWristMotion().catch(() => {});
+			const blob = await exportWristMotion();
+			const stamp = new Date().toISOString().slice(0, 10);
+			await saveFile(blob, `appchery-wrist-motion-${stamp}.json`, $t('settings.wristMotionTitle'));
+		} finally {
+			motionBusy = false;
+		}
+	}
+
 	async function exportToFile() {
 		busy = true;
 		backupError = null;
@@ -466,6 +495,41 @@
 									? $t('settings.watchRetry')
 									: $t('settings.watchConnect')}
 							</button>
+						{/if}
+
+						{#if $watchStatus.state !== 'unsupported'}
+							<div class="mt-4 flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<p class="font-medium">{$t('settings.wristMotionTitle')}</p>
+									<p class="mt-0.5 text-sm text-muted">{$t('settings.wristMotionHint')}</p>
+								</div>
+								<Toggle
+									checked={$recordWristMotion}
+									label={$t('settings.wristMotionTitle')}
+									onchange={(v) => recordWristMotion.set(v)}
+								/>
+							</div>
+							{#if $recordWristMotion}
+								<p class="mt-3 text-sm text-muted">{$t('settings.wristArm')}</p>
+								<div class="mt-1 flex gap-2">
+									{#each ['bow', 'string'] as arm (arm)}
+										<button
+											class="press rounded-lg border px-4 py-2 text-sm
+												{$wristArm === arm ? 'border-brand bg-brand text-brand-ink' : 'border-line'}"
+											onclick={() => wristArm.set(arm)}
+										>
+											{$t(arm === 'bow' ? 'settings.wristArmBow' : 'settings.wristArmString')}
+										</button>
+									{/each}
+								</div>
+								<button
+									class="press mt-3 w-full rounded-lg border border-line py-2 text-sm font-semibold disabled:opacity-50"
+									disabled={motionBusy || !motionCount}
+									onclick={exportMotion}
+								>
+									{$t('settings.wristMotionExport', { n: motionCount ?? 0 })}
+								</button>
+							{/if}
 						{/if}
 					</div>
 				</section>

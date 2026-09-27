@@ -97,6 +97,27 @@ public class WristPlugin extends Plugin {
         call.resolve();
     }
 
+    /** Recorded motion received while the page could not take it, for the page to store. */
+    @PluginMethod
+    public void motion(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("items", WristMotion.waiting(getContext()));
+        call.resolve(result);
+    }
+
+    /** Stored by the page, so the files it came from can go. */
+    @PluginMethod
+    public void forgetMotion(PluginCall call) {
+        try {
+            org.json.JSONArray keys = call.getArray("keys");
+            for (int i = 0; i < keys.length(); i++) WristMotion.forget(getContext(), keys.getLong(i));
+        } catch (Exception e) {
+            call.reject("bad keys");
+            return;
+        }
+        call.resolve();
+    }
+
     /**
      * What the service did while the page was away. The page adopts the block it reached and the
      * blocks it finished; everything else it works out again from the track it stored.

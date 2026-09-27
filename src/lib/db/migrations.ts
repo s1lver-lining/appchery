@@ -361,5 +361,35 @@ export const MIGRATIONS: string[][] = [
 		// On the fix rather than in a series of its own: that is how a GPX carries a heart rate, and
 		// a run is read back point by point anyway, see doc/llm-memory/running.md.
 		`ALTER TABLE run_point ADD COLUMN heart_rate INTEGER;`
+	],
+	// 0011 the wrist's motion through each end, recorded by the watch for analysis
+	[
+		// Local only and never synced: an end is a few hundred kilobytes, see doc/llm-memory/wrist-motion.md.
+		`CREATE TABLE IF NOT EXISTS wrist_motion (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			activity_id TEXT NOT NULL,
+			stage_index INTEGER NOT NULL,
+			end_no INTEGER NOT NULL,
+			started_at INTEGER NOT NULL,
+			duration_ms INTEGER NOT NULL,
+			watch_key INTEGER NOT NULL,
+			arm TEXT,
+			data TEXT NOT NULL,
+			received_at INTEGER NOT NULL
+		);`,
+		`CREATE UNIQUE INDEX IF NOT EXISTS idx_wrist_motion_key ON wrist_motion (activity_id, watch_key);`
+	],
+	// 0012 wrist motion while training arrows are counted, with how many were counted
+	[
+		// activity_id is `training` for these, and the export matches them to a session by time.
+		`ALTER TABLE wrist_motion ADD COLUMN arrows_before INTEGER;`,
+		`ALTER TABLE wrist_motion ADD COLUMN arrows_after INTEGER;`
+	],
+	// 0013 whether a training count was tapped or counted by the watch, which decides if it is a label
+	[`ALTER TABLE wrist_motion ADD COLUMN counted_by TEXT;`],
+	// 0014 a round recorded arrow by arrow: which arrow of the end, in the order shot
+	[
+		`ALTER TABLE wrist_motion ADD COLUMN shot_ordinal INTEGER;`,
+		`ALTER TABLE wrist_motion ADD COLUMN ended_on_shot INTEGER NOT NULL DEFAULT 0;`
 	]
 ];

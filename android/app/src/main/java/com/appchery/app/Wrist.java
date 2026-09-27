@@ -411,6 +411,8 @@ final class Wrist {
          * and hands back what it did when the page comes round.
          */
         String type = typeOf(copy);
+        // Recorded motion is received here whatever the page is doing, see WristMotion.
+        if (WristMotion.take(context, type, copy)) return;
         if (type != null && type.length() == 2 && type.charAt(0) == 'r' && RunFrames.command(type)) return;
         /*
          * A beat is offered to the run and then delivered anyway. It is not a command: nothing acts

@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
-import { WatchLink, type LinkEvent, type Record, type Round } from './link';
+import { WatchLink, type LinkEvent, type RecordedEnd, type Record, type Round } from './link';
 import { decode, encode, endKey, PROTOCOL_VERSION, type EndState, type Wire } from './protocol';
 import type { PlannedShot } from './apply';
 
@@ -563,5 +563,67 @@ describe('telling the watch about every end', () => {
 
 		// A different activity's watch state is not this one's to correct.
 		expect(sent.filter((m) => m.t === 'end')).toHaveLength(0);
+	});
+});
+
+describe('recorded motion', () => {
+	const bytes = new Uint8Array([1, 2, 3, 4, 5, 6, 7]);
+	const b64 = (part: Uint8Array) => btoa(String.fromCharCode(...part));
+	const header: Wire = { v: 2, t: 'mh', k: 42, a: 'activity-1', s: 0, n: 3, st: 5000, du: 60_000, b: 7 };
+	let kept: RecordedEnd[];
+
+	beforeEach(() => {
+		kept = [];
+		link.keepMotion = async (end) => {
+			kept.push(end);
+		};
+	});
+
+	async function chunk(offset: number, part: Uint8Array) {
+		await link.receive(encode({ v: 2, t: 'mc', k: 42, o: offset, d: b64(part) }));
+	}
+
+	it('puts an end back together in whatever order the chunks arrive, and says it is kept', async () => {
+		await link.receive(encode(header));
+		await chunk(4, bytes.slice(4));
+		await chunk(0, bytes.slice(0, 4));
+		expect(kept).toHaveLength(1);
+		expect([...kept[0].data]).toEqual([...bytes]);
+		expect(kept[0]).toMatchObject({ activityId: 'activity-1', endNo: 3, key: 42, durationMs: 60_000 });
+		expect(sent).toContainEqual({ v: 2, t: 'mk', k: 42 });
+	});
+
+	it('reads the start on the phone clock', async () => {
+		await link.receive(encode({ v: 2, t: 'hello', d: 'watch', c: PHONE_NOW - 3000 }));
+		await link.receive(encode(header));
+		await chunk(0, bytes);
+		expect(kept[0].startedAt).toBe(8000);
+	});
+
+	it('ignores chunks that arrive without a header, and a chunk given twice', async () => {
+		await chunk(0, bytes.slice(0, 4));
+		await link.receive(encode(header));
+		await chunk(0, bytes.slice(0, 4));
+		await chunk(0, bytes.slice(0, 4));
+		expect(kept).toHaveLength(0);
+		await chunk(4, bytes.slice(4));
+		expect(kept).toHaveLength(1);
+	});
+
+	it('does not say kept when keeping failed, so the watch sends it again', async () => {
+		link.keepMotion = async () => {
+			throw new Error('disk on fire');
+		};
+		await link.receive(encode(header));
+		await chunk(0, bytes);
+		expect(sent.some((m) => m.t === 'mk')).toBe(false);
+	});
+
+	it('tells the watch whether to record, and again with every round', async () => {
+		await link.setMotion(true);
+		expect(sent).toContainEqual({ v: 2, t: 'mr', o: 1 });
+		sent = [];
+		await link.setRound(ROUND, record);
+		expect(sent).toContainEqual({ v: 2, t: 'mr', o: 1 });
 	});
 });

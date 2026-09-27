@@ -27,6 +27,9 @@ interface WristPlugin {
 	plan(plan: Record<string, unknown>): Promise<void>;
 	forget(): Promise<void>;
 	claim(): Promise<WristClaim>;
+	/** Recorded motion the native side received and kept, see WristMotion.java. */
+	motion(): Promise<{ items: NativeMotion[] }>;
+	forgetMotion(options: { keys: number[] }): Promise<void>;
 	addListener(
 		event: 'bytes',
 		handler: (data: { text: string }) => void
@@ -54,6 +57,22 @@ export interface WristClaim {
 	done: { i: number; d: number; s: number }[];
 	/** The beats the wrist reported while the page was frozen, each with when it was taken. */
 	hr?: { b: number; at: number }[];
+}
+
+/** A segment header as the watch sent it, with the data it described in base64. */
+export interface NativeMotion {
+	k: number;
+	a: string;
+	s: number;
+	n: number;
+	st: number;
+	du: number;
+	tb?: number;
+	ta?: number;
+	by?: 'archer' | 'watch';
+	o?: number;
+	sh?: 1;
+	data: string;
 }
 
 export const Wrist = registerPlugin<WristPlugin>('Wrist');

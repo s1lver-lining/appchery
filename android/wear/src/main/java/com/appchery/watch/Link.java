@@ -82,6 +82,9 @@ public class Link {
 
         /** A run as the phone has it, sent while one is going. Never stored, always entire. */
         void onRun(Run run);
+
+        /** Whether the archer wants the wrist's motion recorded during a round. */
+        void onMotion(boolean on);
     }
 
     /**
@@ -162,6 +165,27 @@ public class Link {
     private static final long SENT_TIMEOUT_MS = 2_000;
     private Runnable sendGuard;
 
+    /**
+     * A recorded end on its way up, sent only while `outbox` is empty so a tap never waits behind it.
+     * One segment at a time, forgotten on the phone's `mk`, and sent again whole if that never comes.
+     */
+    private final Deque<byte[]> bulk = new ArrayDeque<>();
+    private Motion motion;
+    private Motion.Segment inFlight;
+    private Runnable motionRetry;
+    /** Long enough for a phone to write a segment, short enough that a lost one is not lost for long. */
+    private static final long KEPT_TIMEOUT_MS = 30_000;
+    /** A phone whose page is asleep drops every chunk, so each failure waits longer before the next. */
+    private long motionBackoff = 0;
+    private static final long MOST_BACKOFF_MS = 5 * 60_000;
+    /** A header and a useful chunk need a negotiated MTU: the default twenty bytes would take all day. */
+    private static final int BULK_PAYLOAD = 120;
+    /**
+     * The TicWatch stack refuses a ~500 byte notification as "too long" under a 517 MTU, with no
+     * callback, so chunks stay inside one LE data packet whatever the MTU claims.
+     */
+    private static final int BULK_MOST = 244;
+
     public Link(Context context, Listener listener) {
         // The application's context, not the activity's: the server outlives the screen.
         this.context = context.getApplicationContext();
@@ -173,6 +197,11 @@ public class Link {
             prefs.edit().putString("deviceId", stored).apply();
         }
         deviceId = stored;
+        /*
+         * A restarted app is back under a link that kept its MTU and will not negotiate it again, and
+         * until the phone happens to write something long this side would believe twenty bytes.
+         */
+        payload = prefs.getInt("payload", DEFAULT_PAYLOAD);
     }
 
     public boolean connected() {
@@ -324,6 +353,108 @@ public class Link {
     private void flush() {
         if (subscribers.isEmpty() || toPhone == null || server == null) return;
         for (JSONObject message : new ArrayList<>(pending.values())) send(message);
+        offerMotion();
+    }
+
+    private void setPayload(int size) {
+        payload = size;
+        context.getSharedPreferences("appchery.watch", Context.MODE_PRIVATE).edit()
+                .putInt("payload", size).apply();
+    }
+
+    /** Where recorded ends come from. Nothing is offered until this is set. */
+    public void attachMotion(Motion source) {
+        motion = source;
+        offerMotion();
+    }
+
+    /** Sends the oldest recorded end if nothing else is on its way up. */
+    public void offerMotion() {
+        if (motion == null || inFlight != null || subscribers.isEmpty() || server == null) return;
+        if (payload < BULK_PAYLOAD) return;
+        List<Motion.Segment> waiting = motion.waiting();
+        if (waiting.isEmpty()) return;
+        Motion.Segment segment = waiting.get(0);
+        byte[] data;
+        try {
+            data = java.nio.file.Files.readAllBytes(segment.file.toPath());
+        } catch (Exception e) {
+            Log.w(TAG, "could not read a recorded end, dropping it", e);
+            motion.forget(segment);
+            main.post(this::offerMotion);
+            return;
+        }
+        try {
+            long key = segment.meta.getLong("st");
+            JSONObject header = new JSONObject(segment.meta.toString());
+            header.put("v", VERSION);
+            header.put("t", "mh");
+            header.put("k", key);
+            header.put("b", data.length);
+            byte[] head = header.toString().getBytes(StandardCharsets.UTF_8);
+            // Refused as too long without a callback, the chunks would follow a header never heard.
+            if (head.length > Math.min(payload, BULK_MOST)) return;
+            bulk.add(head);
+            // Room for the envelope around the chunk, and base64 costs four bytes for every three.
+            int per = (Math.min(payload, BULK_MOST) - 60) / 4 * 3;
+            for (int offset = 0; offset < data.length; offset += per) {
+                int length = Math.min(per, data.length - offset);
+                JSONObject chunk = new JSONObject();
+                chunk.put("v", VERSION);
+                chunk.put("t", "mc");
+                chunk.put("k", key);
+                chunk.put("o", offset);
+                chunk.put("d", android.util.Base64.encodeToString(data, offset, length,
+                        android.util.Base64.NO_WRAP));
+                bulk.add(chunk.toString().getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (Exception e) {
+            Log.w(TAG, "could not frame a recorded end", e);
+            bulk.clear();
+            return;
+        }
+        inFlight = segment;
+        Log.i(TAG, "sending recorded end " + segment.meta.optInt("n") + ", " + data.length + "B in "
+                + (bulk.size() - 1) + " chunks");
+        pump();
+    }
+
+    private void onMotionKept(JSONObject message) {
+        if (inFlight == null || message.optLong("k", -1) != inFlight.meta.optLong("st", -2)) return;
+        Log.i(TAG, "phone kept recorded end " + inFlight.meta.optInt("n"));
+        motion.forget(inFlight);
+        inFlight = null;
+        motionBackoff = 0;
+        cancelMotionRetry();
+        offerMotion();
+    }
+
+    private void cancelMotionRetry() {
+        if (motionRetry != null) main.removeCallbacks(motionRetry);
+        motionRetry = null;
+    }
+
+    /** Everything of a segment is out: if the phone does not say it has it, it goes again whole. */
+    private void awaitKept() {
+        cancelMotionRetry();
+        motionRetry = () -> {
+            motionRetry = null;
+            Log.w(TAG, "recorded end never acknowledged, sending it again");
+            motionBackoff = Math.min(MOST_BACKOFF_MS, Math.max(KEPT_TIMEOUT_MS, motionBackoff * 2));
+            motionRetry = () -> {
+                motionRetry = null;
+                inFlight = null;
+                offerMotion();
+            };
+            main.postDelayed(motionRetry, motionBackoff);
+        };
+        main.postDelayed(motionRetry, KEPT_TIMEOUT_MS);
+    }
+
+    private void abandonMotion() {
+        bulk.clear();
+        inFlight = null;
+        cancelMotionRetry();
     }
 
     private void send(JSONObject message) {
@@ -343,7 +474,8 @@ public class Link {
      * watch says goes through here, so a tap and a flush of held ends cannot tread on each other.
      */
     private void pump() {
-        if (sending || outbox.isEmpty()) return;
+        Deque<byte[]> source = outbox.isEmpty() ? bulk : outbox;
+        if (sending || source.isEmpty()) return;
         if (subscribers.isEmpty() || toPhone == null || server == null) {
             /*
              * Nobody to tell, so this is dropped rather than held. Everything durable is in
@@ -352,10 +484,11 @@ public class Link {
              * activity chosen while the phone was away would open it minutes later, out of nowhere.
              */
             outbox.clear();
+            abandonMotion();
             return;
         }
 
-        byte[] bytes = outbox.peek();
+        byte[] bytes = source.peek();
         toPhone.setValue(bytes);
         boolean queued = false;
         for (BluetoothDevice device : subscribers) {
@@ -366,7 +499,8 @@ public class Link {
             main.postDelayed(this::pump, 20);
             return;
         }
-        outbox.poll();
+        source.poll();
+        if (source == bulk && bulk.isEmpty()) awaitKept();
         sending = true;
         sendGuard = () -> {
             Log.w(TAG, "no onNotificationSent within " + SENT_TIMEOUT_MS + "ms, carrying on");
@@ -468,6 +602,13 @@ public class Link {
                 return;
             case "run":
                 onRunMessage(message);
+                return;
+            case "mr":
+                boolean on = message.optInt("o", 0) == 1;
+                main.post(() -> listener.onMotion(on));
+                return;
+            case "mk":
+                main.post(() -> onMotionKept(message));
                 return;
             case "bye":
                 // Released, so a later hello on this connection takes it back and says so.
@@ -691,10 +832,11 @@ public class Link {
             Log.i(TAG, "connection " + device.getAddress() + " state=" + state + " status=" + status);
             if (state != BluetoothProfile.STATE_CONNECTED) {
                 subscribers.remove(device);
-                payload = DEFAULT_PAYLOAD;
+                setPayload(DEFAULT_PAYLOAD);
                 // Nothing is coming back for a notification whose phone has gone, and a link left
                 // believing one is still on the air would never send anything again.
                 main.post(Link.this::abandonSend);
+                main.post(Link.this::abandonMotion);
                 say(WAITING, "Waiting for your phone");
             }
         }
@@ -710,7 +852,8 @@ public class Link {
         public void onMtuChanged(BluetoothDevice device, int mtu) {
             Log.i(TAG, "mtu " + mtu);
             // Three bytes of the MTU are the notification's own header.
-            payload = Math.max(DEFAULT_PAYLOAD, mtu - 3);
+            setPayload(Math.max(DEFAULT_PAYLOAD, mtu - 3));
+            main.post(Link.this::offerMotion);
         }
 
         @Override
@@ -745,6 +888,11 @@ public class Link {
                 boolean responseNeeded, int offset, byte[] value) {
             Log.i(TAG, "write to " + characteristic.getUuid() + " len=" + value.length);
             if (TO_WATCH.equals(characteristic.getUuid())) {
+                // A restarted app never hears the MTU the link already has, but a long write proves it.
+                if (value.length > payload) {
+                    setPayload(value.length);
+                    main.post(Link.this::offerMotion);
+                }
                 relink(device);
                 receive(device, value);
             }
