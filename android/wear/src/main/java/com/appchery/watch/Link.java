@@ -147,7 +147,11 @@ public class Link {
     private BluetoothGattServer server;
     private BluetoothGattCharacteristic toPhone;
     private BluetoothLeAdvertiser advertiser;
-    private final Set<BluetoothDevice> subscribers = new LinkedHashSet<>();
+    /**
+     * Written by the Bluetooth threads as phones come and go and read on the main thread by every
+     * send: a plain set could throw mid iteration and take the app down with it.
+     */
+    private final Set<BluetoothDevice> subscribers = new java.util.concurrent.CopyOnWriteArraySet<>();
 
     /** Newest assertion per end, waiting to be acknowledged. Superseded ones are simply replaced. */
     private final Map<String, JSONObject> pending = new LinkedHashMap<>();
@@ -405,6 +409,21 @@ public class Link {
             }
             Long sent = controlSentAt.get(one.getKey());
             if (sent != null && clock - sent < after) continue;
+            if (!subscribers.isEmpty() && payload < CONTROL_PAYLOAD) {
+                // Up, but only twenty bytes: the stamp would be dropped in silence, so the bare press
+                // goes, once, as controls always did, rather than never.
+                each.remove();
+                controlSentAt.remove(one.getKey());
+                JSONObject bare = new JSONObject();
+                try {
+                    bare.put("v", VERSION);
+                    bare.put("t", one.getValue().optString("t"));
+                } catch (Exception impossible) {
+                    continue;
+                }
+                send(bare);
+                continue;
+            }
             controlSentAt.put(one.getKey(), clock);
             send(one.getValue());
         }
@@ -633,6 +652,12 @@ public class Link {
                 // The phone speaks first on connecting, and the reply carries this watch's clock so
                 // the two can tell whose edit came later, and when a control was pressed.
                 hello();
+                /*
+                 * And whatever is still not acked goes again. Resent only on a new subscription before,
+                 * so one lost while the link stayed up waited for the next disconnection. A hello comes
+                 * with every replay and every fifteen seconds while the phone's page is awake.
+                 */
+                main.post(this::flush);
                 return;
             case "ck":
                 // A control taken, so its copy goes.
@@ -708,7 +733,14 @@ public class Link {
              * as the link blinks is then sent again rather than lost, and dated where it was made.
              * On the twenty byte fallback the stamp would not fit, so it goes bare and once.
              */
-            if (phoneAcksControls && payload >= CONTROL_PAYLOAD) {
+            /*
+             * Kept whatever the link is doing now: a press made while it is down is the one that most
+             * needs keeping, and the room a disconnection resets is negotiated again before the phone
+             * subscribes and the kept control goes. The payload used to be checked here, and was
+             * twenty bytes during exactly those presses, so they went bare and were dropped.
+             */
+            boolean room = subscribers.isEmpty() || payload >= CONTROL_PAYLOAD;
+            if (phoneAcksControls && room) {
                 long stamp = Math.max(System.currentTimeMillis(), lastControlStamp + 1);
                 lastControlStamp = stamp;
                 message.put("at", stamp);
@@ -819,16 +851,50 @@ public class Link {
         int arrowsPerEnd = first.optInt(1);
         if (ends < 1 || arrowsPerEnd < 1) return;
 
-        /**
-         * A different activity means the queue belongs to a round nobody is shooting any more.
-         * Sending it would write arrows onto the wrong card, so it goes.
+        /*
+         * A different activity: the ends waiting belong to another round, and sent now they would be
+         * written onto this one's card. They used to be thrown away, and with them any end shot out of
+         * range and the training count waiting too. Parked instead, under their round, and put back
+         * when it is shown again; the count is the session's, not a round's, and stays.
          */
-        if (activityId != null && !activityId.equals(incoming)) pending.clear();
+        String leaving = activityId;
         activityId = incoming;
+        main.post(() -> switchRound(leaving, incoming));
 
         final List<String> finalLabels = labels;
         final List<Integer> finalValues = values;
         main.post(() -> listener.onRound(incoming, finalLabels, finalValues, ends, arrowsPerEnd));
+    }
+
+    /** Ends waiting for a round that is not the one shown, by its activity, see switchRound. */
+    private final Map<String, Map<String, JSONObject>> parked = new java.util.HashMap<>();
+
+    private void switchRound(String leaving, String incoming) {
+        if (leaving == null || leaving.equals(incoming)) return;
+        Map<String, JSONObject> ends = new LinkedHashMap<>();
+        java.util.Iterator<Map.Entry<String, JSONObject>> each = pending.entrySet().iterator();
+        while (each.hasNext()) {
+            Map.Entry<String, JSONObject> one = each.next();
+            if (ARROWS_KEY.equals(one.getKey())) continue;
+            ends.put(one.getKey(), one.getValue());
+            each.remove();
+        }
+        if (!ends.isEmpty()) parked.put(leaving, ends);
+        Map<String, JSONObject> back = parked.remove(incoming);
+        if (back != null) {
+            // Put back under anything asserted since, which is newer.
+            for (Map.Entry<String, JSONObject> one : back.entrySet()) pending.putIfAbsent(one.getKey(), one.getValue());
+            // And drawn again: the keypad was emptied for the round in between, and the phone, which
+            // never got these, has nothing of them to send. Queued after the round is shown.
+            for (JSONObject one : back.values()) {
+                int stage = one.optInt("s");
+                int endNo = one.optInt("n");
+                String[] labels = pendingLabels(stage, endNo);
+                long at = one.optLong("at", 0);
+                if (labels != null) main.post(() -> listener.onEnd(stage, endNo, labels, at));
+            }
+            flush();
+        }
     }
 
     private void onEnd(JSONObject message) {
@@ -850,14 +916,49 @@ public class Link {
         int count = message.optInt("c", -1);
         int arrows = message.optInt("a", -1);
         if (label.isEmpty() || count < 0 || arrows < 0) return;
-        /**
-         * A session message describes the session, and the description may have been made before this
-         * watch changed the count. Its own figure is the newer one until the phone has answered for
-         * it, so the count is withheld rather than allowed to overwrite: sending it back is what made
-         * the counter flick to the old number and then to the right one.
-         */
-        final int shown = pending.containsKey(ARROWS_KEY) ? -1 : arrows;
-        main.post(() -> listener.onSession(label, count, shown));
+        main.post(() -> {
+            /*
+             * Another session: a count still waiting belongs to the one left. It used to be kept and
+             * shown under the new session's name, and sent on until the phone, filing it under the
+             * session it now described, wrote one session's count into another. Parked under its own
+             * session instead, and put back when that session is shown again.
+             */
+            if (sessionLabel != null && !sessionLabel.equals(label)) switchSession(sessionLabel, label);
+            sessionLabel = label;
+            /*
+             * The description may have been made before this watch changed the count. Its own figure
+             * is the newer one until the phone has answered for it, so that is the one shown: the
+             * phone's would make the counter flick to the old number and then to the right one.
+             */
+            JSONObject own = pending.get(ARROWS_KEY);
+            int shown = own != null ? own.optInt("n", arrows) : arrows;
+            listener.onSession(label, count, shown);
+        });
+    }
+
+    /** The session the count belongs to, as the phone named it. */
+    private String sessionLabel;
+    /** Counts waiting for a session that is not the one shown, by its label, see switchSession. */
+    private final Map<String, JSONObject> parkedCounts = new java.util.HashMap<>();
+
+    private void switchSession(String leaving, String incoming) {
+        JSONObject count = pending.remove(ARROWS_KEY);
+        if (count != null) parkedCounts.put(leaving, count);
+        JSONObject back = parkedCounts.remove(incoming);
+        if (back != null) {
+            pending.put(ARROWS_KEY, back);
+            flush();
+        }
+    }
+
+    /** The labels of an end this watch changed and the phone has not acked, or null. */
+    public String[] pendingLabels(int stageIndex, int endNo) {
+        JSONObject held = pending.get(stageIndex + ":" + endNo);
+        JSONArray array = held == null ? null : held.optJSONArray("l");
+        if (array == null) return null;
+        String[] out = new String[array.length()];
+        for (int i = 0; i < array.length(); i++) out[i] = array.isNull(i) ? null : array.optString(i);
+        return out;
     }
 
     private void onActivity(JSONObject message) {
@@ -869,27 +970,33 @@ public class Link {
         main.post(() -> listener.onActivity(index, kind, label, scorable));
     }
 
+    // Both on the main thread, where everything else that touches `pending` runs: from the Bluetooth
+    // thread they raced `flush` copying it, which can throw and take the app down.
     private void onArrows(JSONObject message) {
         int total = message.optInt("n", -1);
         long at = message.optLong("at", 0);
         if (total < 0) return;
-
-        JSONObject held = pending.get(ARROWS_KEY);
-        // A figure at least as new as the one being held means the phone has ours, or better.
-        if (held != null) {
-            if (at < held.optLong("at", 0)) return;
-            pending.remove(ARROWS_KEY);
-        }
-        main.post(() -> listener.onArrows(total, at));
+        main.post(() -> {
+            JSONObject held = pending.get(ARROWS_KEY);
+            // A figure at least as new as the one being held means the phone has ours, or better.
+            if (held != null) {
+                if (at < held.optLong("at", 0)) return;
+                pending.remove(ARROWS_KEY);
+            }
+            listener.onArrows(total, at);
+        });
     }
 
     private void onAck(JSONObject message) {
         String key = message.optInt("s", 0) + ":" + message.optInt("n", 0);
-        JSONObject held = pending.get(key);
-        if (held == null) return;
-        // Only forgotten when the phone has at least as new a copy as the one being held: an ack for
-        // an older assertion leaves a later correction still waiting.
-        if (message.optLong("at", -1) >= held.optLong("at", 0)) pending.remove(key);
+        long at = message.optLong("at", -1);
+        main.post(() -> {
+            JSONObject held = pending.get(key);
+            if (held == null) return;
+            // Only forgotten when the phone has at least as new a copy as the one being held: an ack
+            // for an older assertion leaves a later correction still waiting.
+            if (at >= held.optLong("at", 0)) pending.remove(key);
+        });
     }
 
     /**

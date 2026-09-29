@@ -144,7 +144,9 @@ final class Wrist {
                 return;
             case "ack":
                 // The page has applied an end the watch scored, so its kept copy can go, see WristInbox.
-                WristInbox.clear(context, "end:" + message.optInt("s") + ":" + message.optInt("n"));
+                // The page acks for the round it has open, which is the one it last described.
+                WristInbox.clear(context, WristInbox.keyOf("end", scope("round", "a"),
+                        message.optInt("s"), message.optInt("n")), message.optLong("at", 0));
                 return;
             case "mk":
                 // Answers to something the watch said, which a replay would only confuse.
@@ -152,7 +154,8 @@ final class Wrist {
             case "arrows":
                 // The page's echo of the training total: it has taken the watch's count, so forget it.
                 // Still kept for replay, so a watch that restarts is told the total the phone settled on.
-                WristInbox.clear(context, "arrows");
+                WristInbox.clear(context, WristInbox.keyOf("arrows", scope("session", "l"), 0, 0),
+                        message.optLong("at", 0));
                 keep(type, bytes);
                 return;
             case "session":
@@ -170,8 +173,33 @@ final class Wrist {
             case "end":
                 keep("end:" + message.optInt("s") + ":" + message.optInt("n"), bytes);
                 return;
+            case "run":
+                /*
+                 * Held for a replay but never written down. The page sends one every two seconds for
+                 * the whole of a run, and each used to rewrite everything kept here to storage; and a
+                 * frame read back in a new process is a run as it was when that process died, which
+                 * RunFrames.current, said after it, is the only one to trust about.
+                 */
+                said.remove(type);
+                said.put(type, bytes);
+                return;
             default:
                 keep(type, bytes);
+        }
+    }
+
+    /**
+     * What the page last described to the watch, by one field: the round's activity (`a`) or the
+     * session's label (`l`). An assertion arriving now was made on what the watch was shown, which is
+     * this, so it is kept under it, see WristInbox. Empty where nothing was described.
+     */
+    private synchronized String scope(String subject, String field) {
+        byte[] described = said.get(subject);
+        if (described == null) return "";
+        try {
+            return new org.json.JSONObject(new String(described, StandardCharsets.UTF_8)).optString(field, "");
+        } catch (org.json.JSONException broken) {
+            return "";
         }
     }
 
@@ -192,6 +220,7 @@ final class Wrist {
         if (context == null) return;
         org.json.JSONArray list = new org.json.JSONArray();
         for (java.util.Map.Entry<String, byte[]> one : said.entrySet()) {
+            if ("run".equals(one.getKey())) continue;
             list.put(new org.json.JSONArray().put(one.getKey()).put(text(one.getValue())));
         }
         context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
@@ -210,6 +239,8 @@ final class Wrist {
             org.json.JSONArray list = new org.json.JSONArray(prefs.getString("said", "[]"));
             for (int i = 0; i < list.length(); i++) {
                 org.json.JSONArray one = list.getJSONArray(i);
+                // A run frame written down by an older build: a run as it was, not as it is.
+                if ("run".equals(one.getString(0))) continue;
                 said.put(one.getString(0), one.getString(1).getBytes(StandardCharsets.UTF_8));
             }
         } catch (org.json.JSONException broken) {
@@ -354,9 +385,31 @@ final class Wrist {
     synchronized void write(byte[] bytes) {
         if (!ready || gatt == null || toWatch == null) return;
         outbox.add(bytes);
-        // Dropped from the front: what is stale here is a frame of a run, and the next one is better.
-        while (outbox.size() > 24) outbox.poll();
+        if (outbox.size() > OUTBOX_SOFT) shed();
         pump();
+    }
+
+    /** Past this, run frames other than the newest go: the next one says the same, and better. */
+    private static final int OUTBOX_SOFT = 24;
+    /** Past this, anything goes from the front: a watch not taking writes is not taking these either. */
+    private static final int OUTBOX_MOST = 256;
+
+    /**
+     * Room made in the queue. It used to drop from the front at 24, and a replay is longer than that
+     * with a full session on the phone: the hello and the session, said first, were the ones dropped,
+     * and the watch was left with activities and ends of a session it was never told about.
+     */
+    private void shed() {
+        byte[] newestFrame = null;
+        for (byte[] one : outbox) if ("run".equals(typeOf(one))) newestFrame = one;
+        if (newestFrame != null) {
+            Iterator<byte[]> each = outbox.iterator();
+            while (each.hasNext()) {
+                byte[] one = each.next();
+                if (one != newestFrame && "run".equals(typeOf(one))) each.remove();
+            }
+        }
+        while (outbox.size() > OUTBOX_MOST) outbox.poll();
     }
 
     private synchronized void pump() {
@@ -601,7 +654,10 @@ final class Wrist {
         }
 
         // Assertions: kept until the page acks them, and offered to it now as well, see WristInbox.
-        if (WristInbox.durable(type)) WristInbox.take(context, type, copy);
+        if (WristInbox.durable(type)) {
+            String scope = "end".equals(type) ? scope("round", "a") : scope("session", "l");
+            WristInbox.take(context, type, copy, scope);
+        }
 
         // The watch's clock, for dating a press that waited out the link going down.
         if ("hello".equals(type)) noteWatchClock(copy);

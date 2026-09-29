@@ -1564,6 +1564,10 @@ insetHint:
 	},
 	running: {
 		title: 'Course à pied',
+		otherRunTitle: 'Une autre sortie est en cours',
+		otherRunBody:
+			"Une sortie est déjà en cours d'enregistrement. Terminez-la avant de démarrer celle-ci : le téléphone n'enregistre qu'une sortie à la fois.",
+		otherRunOpen: "Y aller",
 		hint: 'Une sortie, suivie ou notée : la distance, le temps, et la sensation.',
 		distance: 'Distance',
 		km: 'km',

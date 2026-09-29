@@ -252,7 +252,20 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 
 	/** A total from the watch is written as a total, so the same figure arriving twice changes nothing. */
 	$effect(() => {
-		acceptArrows(async (total) => {
+		acceptArrows(async (total, at) => {
+			/*
+			 * Older than the last change made on this phone: made on the wrist before it, and
+			 * delivered late, which the native side now does whenever the page was asleep or elsewhere.
+			 * Applied, it undid the phone's edit. Answered with the phone's figure instead, which is
+			 * newer and so lets the watch drop its copy and show the right count. Measured against the
+			 * phone's own edits only, not the activity's update time: that moves when a total from the
+			 * watch is applied too, and a second tap on the wrist made before the first was applied
+			 * would then have been refused.
+			 */
+			if (training && at < lastLocalEdit) {
+				await mirrorArrows(training.arrowsShot, lastLocalEdit);
+				return;
+			}
 			const id = await materialise();
 			const written = await setTrainingArrows(id, total);
 			await refresh();
@@ -282,6 +295,8 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 	 * counted separately.
 	 */
 	const trainingArrows = $derived(Math.max(0, (training?.arrowsShot ?? 0) + pending));
+	/** When the count was last changed on this phone, which a total from the watch must be newer than. */
+	let lastLocalEdit = 0;
 	let flushTimer: ReturnType<typeof setTimeout> | null = null;
 
 	function countArrows(delta: number) {
@@ -298,6 +313,7 @@ import { FREE_SCORE_KIND, parseFreeScore, freeScoreLabel } from '$lib/domain/fre
 		const delta = pending;
 		if (delta === 0) return;
 		const id = await materialise();
+		lastLocalEdit = Date.now();
 		await addTrainingArrows(id, delta);
 		await refresh();
 		// Dropped only once the reload holds it, otherwise the counter blinks back for a frame.

@@ -257,6 +257,33 @@ export class LiveRun {
 		this.source = trackingSource();
 		this.background = this.source.background;
 		/*
+		 * Another activity's run is going, held natively: this page is only being looked at, a past
+		 * run opened mid run for one. It must not take the wrist's buttons from that run, describe
+		 * itself to the watch, or stop the service on leaving, all of which it used to do: leaving a
+		 * past run's page stopped the GPS of the run still going. See doc/llm-memory/watch-protocol.md.
+		 */
+		const held = await nativeRun();
+		this.bystander = !!(held?.live && held.id && held.id !== activityId);
+		if (this.bystander) {
+			const stored = await listRunPoints(activityId);
+			this.track = replayTracked(stored);
+			this.now = Date.now();
+			return;
+		}
+		await this.drive();
+	}
+
+	/**
+	 * This page taking the run: the wrist's buttons, what it measures, and what the native side did
+	 * while no page held it. On opening, and on a start from a page that was a bystander when it
+	 * opened and whose other run has ended since.
+	 */
+	private async drive() {
+		const activityId = this.activityId;
+		const record = this.record;
+		if (!record) return;
+		this.bystander = false;
+		/*
 		 * The buttons on the wrist. In the installed app the native side takes every one of them and
 		 * this page adopts what it did (acceptRunChanges); these reach the page only in a browser, or
 		 * from a watch too old to stamp its presses. See doc/llm-memory/watch-protocol.md.
@@ -314,6 +341,8 @@ export class LiveRun {
 	async close() {
 		this.stopPolling();
 		await this.flush();
+		// Never took anything, so leaves everything: the run going is another page's.
+		if (this.bystander) return;
 		if (this.status === 'running' || this.status === 'paused') {
 			/*
 			 * Left mid run, going or held. Nothing is stopped: the service is what keeps this
@@ -334,9 +363,30 @@ export class LiveRun {
 		endMirroredRun();
 	}
 
+	/**
+	 * Set when a start was refused because another activity's run is going, to that activity's id.
+	 * The page shows it until the archer dismisses it, see Running.svelte.
+	 */
+	otherRun = $state<string | null>(null);
+
 	async start() {
 		const live = this.record?.live;
 		if (!live || live.status === 'running') return;
+		/*
+		 * One run at a time: the phone has one service, one buffer of fixes and one wrist. Asked again
+		 * here rather than trusted from when the page opened, since the other run may have ended
+		 * meanwhile, from the wrist as well as from the phone. Refused out loud, never quietly: a
+		 * start that does nothing reads as a run being recorded that is not.
+		 */
+		if (nativeRuns()) {
+			const held = await nativeRun();
+			if (held?.live && held.id && held.id !== this.activityId) {
+				this.otherRun = held.id;
+				warn();
+				return;
+			}
+			if (this.bystander) await this.drive();
+		}
 		this.autoHeld = false;
 		this.movedAt = Date.now();
 		const fresh = live.status === 'idle';
@@ -543,6 +593,7 @@ export class LiveRun {
 	 * runner is waiting to feel; everything else waits for the tick after the last one.
 	 */
 	private async mirror(now = false, as?: RunStatus) {
+		if (this.bystander) return;
 		if (!this.record || this.record.mode !== 'tracked') return;
 		const glance = this.glance;
 		const changed = glance.cue !== this.mirroredCue || glance.status !== this.mirroredStatus;
@@ -585,7 +636,7 @@ export class LiveRun {
 		await mirrorRun(frame).catch(() => undefined);
 		// And the same run handed to the service, which speaks for this page once Android stops
 		// calling it: a run is spent with the screen off, see doc/llm-memory/running.md.
-		await handDown(frame, this.steps, this.record.live, this.nativeRev, this.activityId);
+		await handDown(frame, this.steps, this.record.live, this.nativeRev, this.activityId, this.autoHeld);
 	}
 
 	/**
@@ -605,6 +656,8 @@ export class LiveRun {
 	}
 
 	private adopting: Promise<void> | null = null;
+	/** Opened while another activity's run is going natively, see open: looked at, never driving. */
+	private bystander = false;
 	/** A stop under way, whose status only reads done once the last fixes are drained. */
 	private stopping = false;
 
@@ -675,6 +728,8 @@ export class LiveRun {
 			live.status = 'paused';
 			this.lock.release();
 		} else if (taken.st === 'r' && live.status === 'paused') {
+			// Let go by the wrist, or by the native side on a fix that moved: either way not held now.
+			this.autoHeld = false;
 			live.baseSeconds = taken.s;
 			live.legStartedAt = Date.now();
 			live.status = 'running';

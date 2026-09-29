@@ -209,6 +209,18 @@ export class WatchLink {
 		return this.peerDeviceId;
 	}
 
+	/**
+	 * What the watch was last described, as it was sent: the round's activity and the session's label.
+	 * An assertion the native side kept is applied only where it belongs, see WristInbox.
+	 */
+	get roundActivity(): string | null {
+		return this.round?.activityId ?? null;
+	}
+
+	get sessionLabel(): string | null {
+		return this.session ? cut(this.session.label) : null;
+	}
+
 	/** What to add to a watch timestamp to read it on this device's clock. */
 	get offset(): number {
 		return this.peerOffset;
@@ -725,6 +737,23 @@ export class WatchLink {
 	private async say(message: Wire): Promise<void> {
 		await this.channel.send(encode(message));
 	}
+}
+
+/**
+ * Whether an assertion the native side kept is for what this link has open. An end names only its
+ * stage and end, and a count only a total, so one kept from another round or session was applied to
+ * this one: arrows on the wrong card. One kept by a build before scopes carries none and is taken as
+ * it always was. See WristInbox.java and doc/llm-memory/watch-protocol.md.
+ */
+export function belongsHere(
+	item: { [field: string]: unknown },
+	open: Pick<WatchLink, 'roundActivity' | 'sessionLabel'>
+): boolean {
+	const scope = item._scope;
+	if (typeof scope !== 'string') return true;
+	if (item.t === 'end') return scope === open.roundActivity;
+	if (item.t === 'arrows') return scope === open.sessionLabel;
+	return true;
 }
 
 /** Names travel cut, because the watch cannot show more and the budget cannot afford more. */

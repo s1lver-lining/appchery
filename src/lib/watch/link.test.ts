@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
-import { WatchLink, type LinkEvent, type RecordedEnd, type Record, type Round } from './link';
+import { WatchLink, belongsHere, type LinkEvent, type RecordedEnd, type Record, type Round } from './link';
 import {
 	decode,
 	encode,
@@ -733,5 +733,34 @@ describe('the watch alerts', () => {
 		sent = [];
 		await link.setAlerts({ end: true, block: false, distanceMetres: 1500 });
 		expect(sent).toEqual([{ v: 2, t: 'al', e: 1, b: 0, d: 1500 }]);
+	});
+});
+
+/**
+ * Assertions the native side kept while the page was elsewhere, offered back on waking. Each carries
+ * what the watch was showing when it was made, and only goes where that is open again.
+ */
+describe('a kept assertion finding its way back', () => {
+	it('goes to the round it was scored on, and never onto another', async () => {
+		await withRound();
+		const end = { v: 2, t: 'end', s: 0, n: 1, l: SIX, at: PHONE_NOW, _scope: ROUND.activityId };
+		expect(belongsHere(end, link)).toBe(true);
+		expect(belongsHere({ ...end, _scope: 'another-activity' }, link)).toBe(false);
+	});
+
+	it('waits while no round is open at all', () => {
+		expect(belongsHere({ v: 2, t: 'end', s: 0, n: 1, l: SIX, at: 1, _scope: 'activity-1' }, link)).toBe(false);
+	});
+
+	it('goes to the session it was counted in, by the label the watch was shown', async () => {
+		const long = 'A session whose name is far too long for any watch to show whole';
+		await link.showSession(long, [], 0);
+		const count = { v: 2, t: 'arrows', n: 40, at: PHONE_NOW };
+		expect(belongsHere({ ...count, _scope: long.slice(0, 40) }, link)).toBe(true);
+		expect(belongsHere({ ...count, _scope: 'Another session' }, link)).toBe(false);
+	});
+
+	it('takes one kept before scopes existed as it always did', () => {
+		expect(belongsHere({ v: 2, t: 'end', s: 0, n: 1, l: SIX, at: 1 }, link)).toBe(true);
 	});
 });

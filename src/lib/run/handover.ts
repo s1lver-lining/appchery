@@ -30,17 +30,21 @@ export async function handDown(
 	steps: RunStep[],
 	live: RunLive | null,
 	rev = -1,
-	activityId: string | null = null
+	activityId: string | null = null,
+	autoHeld = false
 ): Promise<void> {
 	if (!native()) return;
 	if (frame.status === 'd' || !live) {
-		await Wrist.forget().catch(() => undefined);
+		await Wrist.forget({ id: activityId }).catch(() => undefined);
 		return;
 	}
 	const at = steps.findIndex((step) => step.key === live.stepKey);
 	await Wrist.plan({
 		rv: rev,
 		id: activityId,
+		// Held by the app rather than the runner: the native side lets it go on the first fix that
+		// moves, since the page cannot while it is frozen.
+		ah: autoHeld ? 1 : 0,
 		st: frame.status,
 		c: frame.cue,
 		s: frame.seconds,

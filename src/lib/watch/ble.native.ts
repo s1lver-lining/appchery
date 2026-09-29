@@ -25,7 +25,8 @@ interface WristPlugin {
 	send(options: { text: string }): Promise<void>;
 	/** The run as the page has it, for the service to carry on from. See RunFrames.java. */
 	plan(plan: Record<string, unknown>): Promise<void>;
-	forget(): Promise<void>;
+	/** The page is done with its run; `id` so another activity's page cannot clear a run still going. */
+	forget(options?: { id?: string | null }): Promise<void>;
 	claim(): Promise<WristClaim>;
 	/** Recorded motion the native side received and kept, see WristMotion.java. */
 	motion(): Promise<{ items: NativeMotion[] }>;

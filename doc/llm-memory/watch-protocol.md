@@ -33,7 +33,7 @@ Every message from the watch is exactly one of these. `Wrist.deliver` routes by 
 
 And from the phone to the watch:
 
-* **Descriptions** (hello, session, activities, round, ends, screen, run frames, `mr`, `ms`): the
+* **Descriptions** (hello, session, activities, round, ends, screen, run frames, `mr`, `ms`, `al`): the
   newest per subject is kept natively by `Wrist.remember` and said again on every subscription the
   native side makes by itself, so a watch app that restarts with the phone in a pocket is told
   everything. Run frames come from the page while it is awake and from `RunFrames` while it is not.
@@ -91,7 +91,44 @@ the page says so. It still acks and de-duplicates stamped controls, so a new wat
    GPS (`TraceService.READY`, "Ready to run"), started by `RunFrames.plan` while the page describing it
    is on screen. Without it (no watch linked when the page was shown, no location permission yet) a
    start from the wrist is not taken, the watch keeps it, and it is taken once the phone is awake.
-7. **Each message is taken once.** Assertions are idempotent; controls are named by their stamp and
+8. **An assertion is applied only where it was made.** An end names only its stage and end, a count
+   only a total, so each kept assertion carries its scope: the round's activity for an end, the
+   session's label for the count, read from what the phone last described (`Wrist.scope`). The page
+   takes only the entries of what it has open (`belongsHere`); the rest wait. On the watch, the
+   pending ends of a round left are parked under it and sent again when it is shown, rather than
+   thrown away, and the training count is never dropped with a round.
+9. **An ack clears only what it covers.** It names the assertion's time, and a newer correction kept
+   since stays until its own ack.
+10. **The newest change wins, measured where it was made.** A training total from the watch older
+    than the last change made on the phone is refused and answered with the phone's figure, so the
+    watch drops its copy. Compared with the phone's own edits, never with the activity's update
+    time, which moves when a total from the watch is applied as well.
+11. **A page looking at another activity is a bystander.** With a run of another activity live
+    natively, a run page opened (a past run, looked at mid run) takes no buttons, describes nothing
+    to the watch, starts nothing and stops no service; natively, a plan or a forget for another
+    activity is refused while a run is live.
+12. **Nothing is lost for lack of room, and nothing waits for a disconnection to be sent again.** The
+    phone's outbox sheds run frames older than the newest before anything else, so a long replay
+    keeps its hello and its session; a replay ends on the run's real state, finished or waiting to
+    start included; the watch sends everything not yet acked again on every hello.
+13. **Whatever the watch holds is held per round or per session, and shown per round.** The keypad
+    is emptied when the activity changes, not only when the round's shape does: two rounds of the
+    same shape kept the first one's arrows, which the phone never overwrote since it sends only the
+    ends it holds. A training count waiting for its ack is parked under its session when another is
+    shown, instead of being shown and sent on as the new session's, and an end of the watch's own
+    still waiting is drawn from its pending copy.
+14. **One run at a time, refused out loud.** A start on the phone while another activity's run is live
+    natively shows a warning that stays until dismissed (`LiveRun.otherRun`), and is checked at the
+    start rather than when the page opened, since the other run may have ended since. The watch cannot
+    start a second run: it only offers Start on a run the phone described as waiting, and a page
+    looking at another activity describes nothing (invariant 11).
+15. **What the page decides alone, the native side can undo alone.** The page's automatic hold is
+    judged only while it is awake, so it is handed down as such (`ah`) and the native side lets it go
+    on the first fix that moves: held at a crossing with the screen on and run on with the phone in a
+    pocket, the clock stayed stopped.
+16. **Written down only what a new process can use.** Run frames are held for replay but never stored:
+    one every two seconds rewrote the whole description, and one read back is a run as it was.
+17. **Each message is taken once.** Assertions are idempotent; controls are named by their stamp and
    the same stamp is one press, remembered only once taken, so a press the phone could not act on yet
    is sent again rather than refused as a repeat; telemetry is drained, never read twice.
 
@@ -136,6 +173,21 @@ native side, and its first plan undid a finish; controls were fire and forget; a
 Android restarted came back listening to GPS; a page frozen for more than an hour trimmed the oldest
 beats before writing them; and adopts set off together by a thaw could stop a run twice. Taking a
 start natively also brought out the rule in invariant 6: done naively it would have crashed the app.
+
+A review of the whole link on 2026-09-30 found nine more, two of them brought in by the inbox itself
+(invariants 8 and 9: kept ends went onto whichever round opened next, and an ack could clear a newer
+correction), and the rest older: a late total undid a phone edit, a past run looked at mid run
+stopped the live run's GPS and took it off the wrist, a replay could put a finished run back on the
+watch or lose its own hello to a full queue, and the watch threw away unsent ends and the count on
+every change of round.
+
+A second review the same day found eight more, one of them in the inbox wiring again (the drain on
+waking sat behind a return for when no recording was waiting, so it hardly ever ran), and the rest
+older: the keypad and the count of invariant 13; on the watch, a press made while the link was down
+still went bare, since the payload is reset to twenty bytes by the disconnection, and the set of
+subscribers and the pending map were changed on Bluetooth threads while the main thread iterated them;
+one recording that could not be stored held every later one back; the automatic hold of invariant 15;
+and the run frames of invariant 16. An inbox entry never placed is dropped after seven days.
 
 Not covered, and not claimed: a run page opened on another activity while one is running natively
 still describes its own run to the wrist, since two runs at once is not something the app supports;

@@ -45,6 +45,7 @@
 	import MovementFigure from '$lib/ui/MovementFigure.svelte';
 	import MuscleBoard from '$lib/ui/MuscleBoard.svelte';
 	import LiveRunView from '$lib/ui/run/LiveRun.svelte';
+	import NoticeDialog from '$lib/ui/NoticeDialog.svelte';
 	import ManualRun from '$lib/ui/run/ManualRun.svelte';
 	import RunGraph from '$lib/ui/run/RunGraph.svelte';
 	import RunRoute from '$lib/ui/run/RunRoute.svelte';
@@ -870,4 +871,19 @@
 			<div style="height: {startBar}px" aria-hidden="true"></div>
 		{/if}
 	</div>
+{/if}
+
+<!-- A start refused because another run is being recorded: said until dismissed, never swallowed. -->
+{#if run.otherRun}
+	<NoticeDialog
+		title={$t('running.otherRunTitle')}
+		message={$t('running.otherRunBody')}
+		actionLabel={$t('running.otherRunOpen')}
+		onaction={() => {
+			const other = run.otherRun;
+			run.otherRun = null;
+			if (other) void goto(`/activities/${other}`);
+		}}
+		onclose={() => (run.otherRun = null)}
+	/>
 {/if}

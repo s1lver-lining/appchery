@@ -966,6 +966,12 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     public void onRound(String activityId, List<String> labels, List<Integer> prices, int roundEnds,
             int roundArrows) {
         boolean sameShape = roundEnds == ends && roundArrows == arrowsPerEnd && labels.equals(keys);
+        /*
+         * Another activity too, not only another shape. Two rounds of the same shape kept the first
+         * one's arrows on the keypad: the phone sends only the ends it holds, so nothing came to
+         * overwrite them, and they read, and were edited, as the second round's.
+         */
+        boolean sameRound = activityId.equals(roundActivity);
         roundActivity = activityId;
         keys = labels;
         Map<String, Integer> next = new HashMap<>();
@@ -976,7 +982,7 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         }
         values = next;
 
-        if (!sameShape) {
+        if (!sameShape || !sameRound) {
             ends = roundEnds;
             arrowsPerEnd = roundArrows;
             shots = new String[ends * arrowsPerEnd];
@@ -994,9 +1000,11 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         /**
          * The phone only sends an end it believes is the better copy, so it is adopted without
          * arguing. The exception is an end this watch has just changed and not yet had acknowledged:
-         * that assertion is newer than anything the phone can have known about, so it stands.
+         * that assertion is newer than anything the phone can have known about, so it stands, and it
+         * is what is drawn: a round shown again has an emptied keypad to draw it on.
          */
-        if (link.pendingFor(stageIndex, endNo)) return;
+        String[] own = link.pendingLabels(stageIndex, endNo);
+        if (own != null) labels = own;
 
         boolean any = false;
         for (int arrow = 0; arrow < arrowsPerEnd; arrow++) {
@@ -1211,14 +1219,21 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
             lastMark = -1;
             return;
         }
+        // A run not started yet, or a new one (its clock went back): nothing alerted belongs to it.
+        boolean fresh = "i".equals(run.status) || run.seconds < markSeconds - 5;
         int mark = run.metres / alertMetres;
-        if (lastMark < 0 || mark < lastMark) {
+        if (lastMark < 0 || fresh) {
             lastMark = mark;
             markMetres = run.metres;
             markSeconds = run.seconds;
             return;
         }
-        if (mark == lastMark) return;
+        /*
+         * Below the last mark alerted within the same run is the other source's figure, not the
+         * runner going backwards: the service's estimate while the phone slept, then the page's own
+         * track once it woke, a few metres apart. Reset here, the same kilometre was alerted twice.
+         */
+        if (mark <= lastMark) return;
         int metres = run.metres - markMetres;
         int seconds = run.seconds - markSeconds;
         lastMark = mark;

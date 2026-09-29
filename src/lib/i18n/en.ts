@@ -1558,6 +1558,10 @@ insetHint:
 	},
 	running: {
 		title: 'Running',
+		otherRunTitle: 'Another run is going',
+		otherRunBody:
+			'A run is already being recorded. Finish it before starting this one: the phone records one run at a time.',
+		otherRunOpen: 'Go to it',
 		hint: 'A run, tracked or written down: how far, how long, and how it felt.',
 		distance: 'Distance',
 		km: 'km',

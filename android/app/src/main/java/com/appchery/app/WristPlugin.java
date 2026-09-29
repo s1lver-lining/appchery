@@ -127,7 +127,7 @@ public class WristPlugin extends Plugin {
     /** The run is over, or the page has left it: nothing to speak for any more. */
     @PluginMethod
     public void forget(PluginCall call) {
-        RunFrames.clear();
+        RunFrames.forget(call.getString("id"));
         call.resolve();
     }
 

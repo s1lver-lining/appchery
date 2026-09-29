@@ -142,7 +142,19 @@ export async function mirrorSession(
 		if (chosen) open(chosen);
 	});
 	await link.showSession(label, shown.map(lineFor), arrows);
+	/*
+	 * A count the wrist asserted for this session while no page had it open, kept natively until now.
+	 * Once per session described rather than on every mirror: this runs on each refresh of the page,
+	 * and applying a kept count refreshes it.
+	 */
+	if (label !== drainedFor) {
+		drainedFor = label;
+		void drainWristInbox().catch(() => undefined);
+	}
 }
+
+/** The session or round whose kept assertions were last looked for, see mirrorSession and mirrorRound. */
+let drainedFor: string | null = null;
 
 /** The scoring activity the phone has open, so the keypad matches what is being shot. */
 export async function mirrorRound(activity: ActivityLike): Promise<void> {
@@ -177,8 +189,12 @@ export async function mirrorRound(activity: ActivityLike): Promise<void> {
 	onWatchOpen(null);
 	lastSession = null;
 	await link.setRound(round, recordFor(round));
-	// Ends scored on the wrist while no page had this round open, kept natively until one did.
-	void drainWristInbox().catch(() => undefined);
+	// Ends scored on the wrist while no page had this round open, kept natively until one did. Once
+	// per round described, as for the session: applying a kept end refreshes the page that got here.
+	if (round.activityId !== drainedFor) {
+		drainedFor = round.activityId;
+		void drainWristInbox().catch(() => undefined);
+	}
 }
 
 /**
@@ -231,6 +247,8 @@ export async function mirrorArrows(total: number, updatedAt: number): Promise<vo
 export async function mirrorIdle(): Promise<void> {
 	// Nothing worth saying again: a watch that links while the phone is here should be idle too.
 	describeAgain = null;
+	// Whatever is opened next is looked for kept assertions afresh, the same round or session included.
+	drainedFor = null;
 	onWatchLinked(null);
 
 	const link = watchLink();

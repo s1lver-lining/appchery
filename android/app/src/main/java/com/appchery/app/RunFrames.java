@@ -82,6 +82,12 @@ final class RunFrames {
     /** A run described on the wrist and waiting for its start, which a button there may give it. */
     private static boolean armed = false;
     /**
+     * Held by the page for going nowhere, not by the runner: let go again by the first fix that moves.
+     * The page judges that only while it is awake, so a run held at a crossing with the screen on and
+     * then run on with the phone in a pocket stayed held, its clock stopped, until Resume was pressed.
+     */
+    private static boolean autoHeld = false;
+    /**
      * Bumped by every change made here rather than by the page, and handed back with the state. A
      * plan from a page that has not adopted the latest one describes a run that no longer exists,
      * and taking it would undo a pause or a finish made from the wrist. See doc/llm-memory/watch-protocol.md.
@@ -252,12 +258,14 @@ final class RunFrames {
                 metresSince = 0;
                 anchorStamp = pressed;
                 status = "p";
+                autoHeld = false;
                 if (app != null) TraceService.hold(app);
                 return Applied.CHANGED;
             case "ru":
                 if (!live || !"p".equals(status)) return Applied.NOTHING;
                 anchorStamp = pressed;
                 status = "r";
+                autoHeld = false;
                 last = null;
                 recent.clear();
                 if (app != null) TraceService.begin(app);
@@ -391,12 +399,20 @@ final class RunFrames {
         synchronized (LOCK) {
             long adopted = plan.optLong("rv", -1);
             if (adopted >= 0 && adopted < rev) return;
+            /*
+             * Another activity's page while this one's run is going: a past run looked at mid run, or
+             * one opened to be started later. Taken, its plan replaced the live run here, and the watch,
+             * the beats and the buttons went with it. Two runs at once is not something the app does.
+             */
+            String planned = plan.optString("id", null);
+            if (live && activityId != null && planned != null && !planned.equals(activityId)) return;
             String next = plan.optString("st", "i");
             // A change the page made itself, which a press waiting on the link must not be dated before.
             if (!next.equals(status)) lastChangeWall = System.currentTimeMillis();
             status = next;
             live = "r".equals(status) || "p".equals(status);
             armed = "i".equals(status);
+            autoHeld = "p".equals(status) && plan.optInt("ah", 0) == 1;
             activityId = plan.optString("id", null);
             if (armed) holdReady();
             // Taken by the page along with the revision it just adopted, or it would not be planning.
@@ -443,6 +459,17 @@ final class RunFrames {
      * `d`, a claim made before the next run's first plan would tell that run it had been finished
      * from the wrist, and the page would believe it and stop a run that had just started.
      */
+    /**
+     * The page is done with its run: stored, or left unstarted. Only that page's run, for the same
+     * reason as in {@link #plan}: another activity's page closing must not clear a run still going.
+     */
+    static void forget(String id) {
+        synchronized (LOCK) {
+            if (live && activityId != null && id != null && !id.equals(activityId)) return;
+        }
+        clear();
+    }
+
     static void clear() {
         synchronized (LOCK) {
             // Stored by the page now, so nothing of the finish needs to outlive this process any more.
@@ -544,7 +571,13 @@ final class RunFrames {
     /** The run as it stands, for a watch that has just come back and knows nothing of it. */
     static byte[] current() {
         synchronized (LOCK) {
-            return live ? compose() : null;
+            /*
+             * Finished and waiting to start too, not only going. A replay says the page's last run
+             * frame before this one, and after a finish from the wrist with the page asleep that frame
+             * still says running: with nothing after it, a watch that had restarted went back to a run
+             * that was over and stayed on it.
+             */
+            return live || armed || "d".equals(status) ? compose() : null;
         }
     }
 
@@ -560,8 +593,20 @@ final class RunFrames {
      */
     static void onFix(Location fix) {
         byte[] frame = null;
+        boolean letGo = false;
         synchronized (LOCK) {
             if (!live) return;
+            if ("p".equals(status) && autoHeld && moving(fix)) {
+                // Going again: the clock runs from this fix, as the page's own letting go does.
+                anchorStamp = SystemClock.elapsedRealtime();
+                status = "r";
+                autoHeld = false;
+                last = null;
+                recent.clear();
+                rev++;
+                lastChangeWall = System.currentTimeMillis();
+                letGo = true;
+            }
             if (!"r".equals(status)) return;
             // A paused run has no fixes to work from, so its clock is whatever it was stopped at.
             take(fix);
@@ -573,6 +618,13 @@ final class RunFrames {
             frame = compose();
         }
         if (frame != null) Wrist.get().write(frame);
+        if (letGo) Wrist.get().runChanged();
+    }
+
+    /** A fix that says the runner is going, by the same gates `take` believes movement by. */
+    private static boolean moving(Location fix) {
+        if (fix.hasAccuracy() && fix.getAccuracy() > ACCURACY_M) return false;
+        return fix.hasSpeed() && fix.getSpeed() >= MOVING_MS;
     }
 
     private static void take(Location fix) {

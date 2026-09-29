@@ -19,7 +19,7 @@ import {
 	type Connection
 } from './ble';
 import { connect as connectOverWeb } from './ble.web';
-import { WatchLink, type LinkEvent, type RecordedEnd } from './link';
+import { WatchLink, belongsHere, type LinkEvent, type RecordedEnd } from './link';
 import type { RunCommand } from './protocol';
 
 /** The alert settings as the watch is told them, a nonsense distance being no distance alert. */
@@ -441,28 +441,50 @@ export async function importWristMotion(): Promise<void> {
 			if (isActive) void importWristMotion().catch(() => undefined);
 		});
 	}
+	try {
+		await importMotion(Wrist);
+	} finally {
+		/*
+		 * Every time, recordings or not. This sat after the recordings, behind a return for when there
+		 * were none, so the ends and counts kept while the screen was off were applied on waking only
+		 * when a recording happened to be waiting as well.
+		 */
+		await drainWristInbox().catch(() => undefined);
+	}
+}
+
+async function importMotion(Wrist: typeof import('./ble.native').Wrist): Promise<void> {
 	const { items } = await Wrist.motion();
 	if (items.length === 0) return;
 	const offset = link?.offset ?? 0;
+	const stored: number[] = [];
 	for (const item of items) {
-		await saveWristMotion({
-			activityId: item.a,
-			stageIndex: item.s,
-			endNo: item.n,
-			startedAt: item.st + offset,
-			durationMs: item.du,
-			watchKey: item.k,
-			arm: get(wristArm),
-			arrowsBefore: item.tb ?? null,
-			arrowsAfter: item.ta ?? null,
-			countedBy: item.by ?? null,
-			shotOrdinal: item.o ?? null,
-			endedOnShot: item.sh === 1,
-			data: item.data
-		});
+		/*
+		 * One at a time: a recording that cannot be stored stays for next time on its own. The whole
+		 * batch used to fail with it, and every recording after it waited behind it for good.
+		 */
+		try {
+			await saveWristMotion({
+				activityId: item.a,
+				stageIndex: item.s,
+				endNo: item.n,
+				startedAt: item.st + offset,
+				durationMs: item.du,
+				watchKey: item.k,
+				arm: get(wristArm),
+				arrowsBefore: item.tb ?? null,
+				arrowsAfter: item.ta ?? null,
+				countedBy: item.by ?? null,
+				shotOrdinal: item.o ?? null,
+				endedOnShot: item.sh === 1,
+				data: item.data
+			});
+			stored.push(item.k);
+		} catch (error) {
+			console.error('Appchery: could not store a wrist recording', item.k, error);
+		}
 	}
-	await Wrist.forgetMotion({ keys: items.map((item) => item.k) });
-	await drainWristInbox();
+	if (stored.length > 0) await Wrist.forgetMotion({ keys: stored });
 }
 
 let resumeImport = false;
@@ -481,6 +503,7 @@ export async function drainWristInbox(): Promise<void> {
 	if (!Wrist?.inbox) return;
 	const { items } = await Wrist.inbox();
 	for (const item of items) {
+		if (!belongsHere(item, link)) continue;
 		await link.receive(new TextEncoder().encode(JSON.stringify(item))).catch(() => undefined);
 	}
 }
