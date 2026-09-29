@@ -3,4 +3,8 @@
     <string name="run_tracking_title">Sortie en cours</string>
     <string name="run_tracking_text">Appchery enregistre votre sortie.</string>
     <string name="run_paused_text">Votre sortie est en pause.</string>
+    <string name="run_finished_title">Sortie terminée</string>
+    <string name="run_finished_text">Ouvrez Appchery pour l\'enregistrer.</string>
+    <string name="run_ready_title">Prêt à courir</string>
+    <string name="run_ready_text">Démarrez depuis votre montre ou dans Appchery.</string>
 </resources>

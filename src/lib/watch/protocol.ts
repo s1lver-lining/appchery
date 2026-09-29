@@ -18,6 +18,15 @@ import { resolve, type Mergeable } from '$lib/sync/merge';
 export const PROTOCOL_VERSION = 2;
 
 /**
+ * What a phone announces in its hello, beyond the version. Bits rather than a version bump: a watch
+ * that knows none of them goes on exactly as before, and one that knows them can rely on each.
+ */
+export const PHONE_CAN = {
+	/** Run controls stamped with `at` are acked with a `ck`, so the watch may keep them pending. */
+	ACK_CONTROLS: 1
+} as const;
+
+/**
  * Default BLE MTU leaves 20 usable bytes and Chrome negotiates about 185 with no way to ask for
  * more, so nothing may be written that assumes headroom above this.
  */
@@ -40,8 +49,12 @@ const MAX_NAME_LENGTH = 40;
 const MAX_ACTIVITIES = 60;
 
 export type Wire =
-	/** Who is on the other end, and what its clock reads, so the two can be compared. */
-	| { v: number; t: 'hello'; d: string; c: number }
+	/**
+	 * Who is on the other end, and what its clock reads, so the two can be compared. `k` is what the
+	 * phone can do beyond the version, as bits of {@link PHONE_CAN}: a watch keeps a control pending
+	 * only for a phone that says it acks them, and an older phone that never would is sent it once.
+	 */
+	| { v: number; t: 'hello'; d: string; c: number; k?: number }
 	/** What is being shot: the score set's labels and values, and the shape of each stage. */
 	| { v: number; t: 'round'; a: string; z: [string, number][]; s: [number, number][] }
 	/** One end, entire. A label is null where no arrow has been shot yet. */
@@ -144,8 +157,16 @@ export type Wire =
 	 * watch whose notifications were never given a larger one drops anything longer, silently, and a
 	 * pause button that works only on a well negotiated link is a pause button that cannot be
 	 * trusted. `{"v":2,"t":"rh"}` is sixteen bytes and always fits.
+	 *
+	 * `at` is when it was pressed, on the watch's clock, and names the press: a watch whose link has
+	 * room sends it, keeps the control until it is acked with a `ck` carrying the same stamp, and
+	 * sends it again meanwhile, so a press made while the link blinked is not lost and one arriving
+	 * twice is one press. Left out on the twenty byte fallback, where the control goes once as before.
+	 * See doc/llm-memory/watch-protocol.md.
 	 */
-	| { v: number; t: RunCommandType }
+	| { v: number; t: RunCommandType; at?: number }
+	/** A control taken, named by its stamp, so the watch forgets its copy. Phone to watch. */
+	| { v: number; t: 'ck'; at: number }
 	/** Whether the watch should record the wrist's motion while a round is on it. */
 	| { v: number; t: 'mr'; o: 0 | 1 }
 	/**
@@ -305,7 +326,11 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 	switch (m.t) {
 		case 'hello':
 			if (!isId(m.d) || !isTime(m.c)) break;
-			return { ok: true, message: { v: version, t: 'hello', d: m.d, c: m.c } };
+			if (m.k !== undefined && !Number.isInteger(m.k)) break;
+			return {
+				ok: true,
+				message: { v: version, t: 'hello', d: m.d, c: m.c, ...(m.k === undefined ? {} : { k: m.k as number }) }
+			};
 
 		case 'round': {
 			if (!isId(m.a) || !Array.isArray(m.z) || !Array.isArray(m.s)) break;
@@ -416,7 +441,14 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 		case 'ru':
 		case 're':
 		case 'rl':
-			return { ok: true, message: { v: version, t: m.t as RunCommandType } };
+			// Unstamped from an older watch, or over the twenty byte fallback: one press, sent once.
+			if (m.at === undefined) return { ok: true, message: { v: version, t: m.t as RunCommandType } };
+			if (!isTime(m.at)) break;
+			return { ok: true, message: { v: version, t: m.t as RunCommandType, at: m.at } };
+
+		case 'ck':
+			if (!isTime(m.at)) break;
+			return { ok: true, message: { v: version, t: 'ck', at: m.at } };
 
 		case 'bye':
 			return { ok: true, message: { v: version, t: 'bye' } };

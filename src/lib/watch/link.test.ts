@@ -2,7 +2,15 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { WA_10_RING } from '$lib/domain/rounds/seed';
 import { missZone, scorableZones } from '$lib/domain/rounds/geometry';
 import { WatchLink, type LinkEvent, type RecordedEnd, type Record, type Round } from './link';
-import { decode, encode, endKey, PROTOCOL_VERSION, type EndState, type Wire } from './protocol';
+import {
+	decode,
+	encode,
+	endKey,
+	PHONE_CAN,
+	PROTOCOL_VERSION,
+	type EndState,
+	type Wire
+} from './protocol';
 import type { PlannedShot } from './apply';
 
 const ROUND: Round = {
@@ -91,9 +99,9 @@ function watchEnd(labels: (string | null)[], at: number): Uint8Array {
 const SIX = ['X', '10', '9', '9', '8', '7'];
 
 describe('opening a link', () => {
-	it('says hello with this device and its clock', async () => {
+	it('says hello with this device, its clock, and that it acks controls', async () => {
 		await link.open();
-		expect(sent).toEqual([{ v: PROTOCOL_VERSION, t: 'hello', d: 'phone', c: PHONE_NOW }]);
+		expect(sent).toEqual([{ v: PROTOCOL_VERSION, t: 'hello', k: PHONE_CAN.ACK_CONTROLS, d: 'phone', c: PHONE_NOW }]);
 	});
 
 	it('answers a hello with the round, so the watch can draw the right keypad', async () => {
@@ -363,6 +371,54 @@ describe('not believing the link until the watch answers', () => {
 		expect(link.live).toBe(true);
 	});
 
+	/**
+	 * The failure behind heart rates that stopped mid run: a page frozen with a hello out thawed, its
+	 * liveness timer fired before the queued answer was read, and a healthy link was called stale and
+	 * taken down, the native run with it. A timer that fires far late is a page that was asleep.
+	 */
+	it('asks again rather than calling the link stale when its timer fires long after it was due', async () => {
+		let clock = PHONE_NOW;
+		const late = new WatchLink(
+			{
+				send: async (bytes) => {
+					const decoded = decode(bytes);
+					if (decoded.ok) sent.push(decoded.message);
+				}
+			},
+			'phone',
+			(event) => events.push(event),
+			() => clock,
+			(run) => timers.push(run)
+		);
+		await late.open();
+		sent = [];
+		// Frozen with the screen off for most of an hour, then thawed.
+		clock += 45 * 60_000;
+		elapse();
+		expect(events.filter((e) => e.kind === 'stale')).toHaveLength(0);
+		expect(sent.map((m) => m.t)).toEqual(['hello']);
+		// The answer that was queued behind the timer, read now.
+		await late.receive(encode({ v: 2, t: 'hello', d: 'watch', c: clock }));
+		elapse();
+		expect(events.filter((e) => e.kind === 'stale')).toHaveLength(0);
+		expect(late.live).toBe(true);
+	});
+
+	it('still calls the link stale when nobody answered while the page was awake throughout', async () => {
+		let clock = PHONE_NOW;
+		const awake = new WatchLink(
+			{ send: async () => {} },
+			'phone',
+			(event) => events.push(event),
+			() => clock,
+			(run) => timers.push(run)
+		);
+		await awake.open();
+		clock += 2500;
+		elapse();
+		expect(events).toContainEqual({ kind: 'stale' });
+	});
+
 	it('stops believing the link when the watch says goodbye', async () => {
 		await link.open();
 		await link.receive(encode({ v: 1, t: 'hello', d: 'watch', c: PHONE_NOW }));
@@ -448,6 +504,37 @@ describe('what the watch asks for', () => {
 		link.clearRound();
 		await link.receive(encode({ v: 1, t: 'end', s: 0, n: 1, l: SIX, at: PHONE_NOW }));
 		expect(record.ends.size).toBe(0);
+	});
+});
+
+/**
+ * Run controls reaching the page, which in the installed app only an old watch's do: the native side
+ * takes the rest. In a browser this is where every one of them lands.
+ */
+describe('a run control from the wrist', () => {
+	it('takes a stamped press once and acks every copy of it, since the watch sends it until acked', async () => {
+		await link.receive(encode({ v: 2, t: 'rl', at: 42 }));
+		await link.receive(encode({ v: 2, t: 'rl', at: 42 }));
+		expect(events).toEqual([{ kind: 'command', command: 'lap' }]);
+		expect(sent).toEqual([
+			{ v: PROTOCOL_VERSION, t: 'ck', at: 42 },
+			{ v: PROTOCOL_VERSION, t: 'ck', at: 42 }
+		]);
+	});
+
+	it('takes two presses as two', async () => {
+		await link.receive(encode({ v: 2, t: 'rl', at: 42 }));
+		await link.receive(encode({ v: 2, t: 'rl', at: 43 }));
+		expect(events).toEqual([
+			{ kind: 'command', command: 'lap' },
+			{ kind: 'command', command: 'lap' }
+		]);
+	});
+
+	it('takes an unstamped press as it always did, and acks nothing', async () => {
+		await link.receive(encode({ v: 2, t: 're' }));
+		expect(events).toEqual([{ kind: 'command', command: 'stop' }]);
+		expect(sent).toEqual([]);
 	});
 });
 

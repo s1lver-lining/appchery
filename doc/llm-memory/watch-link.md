@@ -275,3 +275,46 @@ drops while `RunFrames` holds a live run, going or paused, using auto connect be
 the watch as long as it takes and costs nothing meanwhile. Once subscribed again it writes the
 run's current frame, which the watch takes as linked and as its run screen. The page, when it wakes,
 reconnects in its own way and the native link simply gives way to it.
+
+**Not only a run: whatever the page last said.** Added 2026-09-27, untested on the devices yet.
+Starting the watch app with the phone asleep got "Linked" and nothing more: the native side
+resubscribed, which is all the watch needs to say linked, but only a live run was ever said again on
+the page's behalf. `Wrist` now keeps the page's last description, newest per subject (`hello`,
+`session`, each `activity`, `screen`, `round`, each `end`, `mr`, `ms`, ...), cleared by `bye`, and
+replays it on any subscription it makes by itself or under a page that has been quiet for four
+seconds. The hello goes out with a fresh clock. It reconnects by itself after any drop the page had
+described something for, not only during a run, and a watch reached while its app is not running
+is waited for (`onServiceChanged`) rather than given up on. Whether the stack reports a service
+*added* to a watch it is not bonded to was not measured.
+
+**The watch as a companion device, so a stopped phone app is started again.** Added 2026-09-27,
+untested on the devices. After the first link to a watch works, `Companion.ensure` registers it
+with `CompanionDeviceManager` (Android's own dialog, once; a refusal is remembered in the `wrist`
+preferences and not asked again) and observes its presence. `WristCompanion` is then bound by
+Android whenever the watch is near, which keeps the process alive, and calls `Wrist.wake`: the
+address and the page's last description are read back from preferences and the link waits for the
+watch app. Android 13 and later only. Native only: nothing in `src/` changed, and the browser build
+has no such thing to offer. The association is by the address `Wrist` connected to; if that turns
+out to be a random address rather than the watch's identity one, the system's scan will not find it
+and the registration fails quietly.
+
+**The model all of this now follows** is in [watch-protocol.md](watch-protocol.md): four kinds of
+message from the watch, one way in for each, and what the archer gets in every state of the phone.
+The two entries below are how it came about.
+
+**What the watch asserts survives a frozen page too, not only what it records.** Added 2026-09-29.
+The link is owned natively so a run survives the screen going off, and recorded motion is kept by
+`WristMotion` for the same reason, but the small durable assertions the watch makes — an end scored
+on the wrist, the training count — were still only ever handled by the page, and a page Android has
+frozen is not handling anything. A session shot with the screen off read the count from the last
+`arrows` message the awake page happened to see: 14 where the watch had counted 90, while all 96
+recordings of those shots were kept. `WristInbox` is the symmetric twin of `WristMotion`: `deliver`
+keeps every durable message (`WristInbox.durable`, currently `end` and `arrows`) as a file, newest
+per subject (`end:<s>:<n>`, `arrows`), as well as offering it to the page. The page re-injects each
+through `WatchLink.receive` on waking (`drainWristInbox`, on the same triggers as the motion import),
+which is idempotent, so it applies and acks exactly as a live message would. The ack the page sends
+then is what clears the entry, watched for in `Wrist.remember` (`ack` clears the end, the `arrows`
+echo clears the count): an assertion the page cannot place yet — no round open — is simply left and
+tried again. Adding a durable type is one line in `WristInbox.durable` plus its key in `keyOf`. The
+counts already lost this way are repaired once from the recordings by
+`reconcileTrainingArrowsFromRecordings`, which only ever raises a count. Untested on the devices yet.

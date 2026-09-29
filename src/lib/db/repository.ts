@@ -726,6 +726,56 @@ export async function addTrainingArrows(sessionId: string, delta: number) {
 	return next;
 }
 
+/**
+ * Repairs training counts that a frozen page lost. A training count only ever reached the phone
+ * through the live `arrows` message, so arrows counted with the screen off were dropped while the
+ * recordings of the same shots survived natively: a session could read 14 where the watch had
+ * counted 90. The recordings carry the count after each shot, so the true total is the largest
+ * `arrows_after` among a session's training recordings. Run once, and only ever raises a count:
+ * a figure the archer has since edited down by hand is left alone, and a session with no recordings
+ * (nothing was recorded, or they have been cleared) is untouched. Going forward WristInbox keeps the
+ * count from being lost in the first place, so this is for the sessions broken before that existed.
+ */
+export async function reconcileTrainingArrowsFromRecordings(): Promise<number> {
+	const sessions = (await listSessions()).sort((a, b) => a.startedAt - b.startedAt);
+	const recordings = (await listWristMotion()).filter(
+		(row) => row.activityId === 'training' && row.arrowsAfter !== null
+	);
+	if (recordings.length === 0) return 0;
+
+	let repaired = 0;
+	for (let i = 0; i < sessions.length; i++) {
+		const from = sessions[i].startedAt;
+		// Training recordings carry no session, so they belong to this one until the next one began,
+		// which is how the motion page groups them too.
+		const until = i + 1 < sessions.length ? sessions[i + 1].startedAt : Infinity;
+		let counted = 0;
+		for (const row of recordings) {
+			if (row.startedAt >= from && row.startedAt < until) {
+				counted = Math.max(counted, row.arrowsAfter ?? 0);
+			}
+		}
+		if (counted <= 0) continue;
+
+		const [existing] = await db()
+			.select()
+			.from(schema.activity)
+			.where(
+				and(
+					eq(schema.activity.sessionId, sessions[i].id),
+					eq(schema.activity.kind, 'training'),
+					isNull(schema.activity.deletedAt)
+				)
+			);
+		// Only ever raised: a count already at or above what was recorded is either right or a
+		// deliberate edit, and nothing here should overrule the archer.
+		if (existing && existing.arrowsShot >= counted) continue;
+		await setTrainingArrows(sessions[i].id, counted);
+		repaired++;
+	}
+	return repaired;
+}
+
 export async function listActivities(sessionId: string) {
 	return db()
 		.select()

@@ -7,6 +7,8 @@
 	import { tick } from 'svelte';
 	import { get } from 'svelte/store';
 	import { initDb, dbInfo } from '$lib/db';
+import { reconcileTrainingArrowsFromRecordings } from '$lib/db/repository';
+import { settleWristFinishedRun } from '$lib/run/live.svelte';
 	// Imported for its side effect: beforeinstallprompt fires early, and a listener registered only
 	// once Settings is opened would already have missed it.
 	import '$lib/install';
@@ -174,6 +176,12 @@ import { resumeWatch } from '$lib/watch/store';
 		if (ready) void resumeWatch();
 	});
 
+	// A run finished from the wrist while no page held it is only in this process until stored, and
+	// the service is held for it meanwhile. Stored as the app opens, see doc/llm-memory/watch-protocol.md.
+	$effect(() => {
+		if (ready) void settleWristFinishedRun().catch((e) => console.error('Appchery: could not store a run finished from the wrist', e));
+	});
+
 	$effect(() => {
 		// Touch the store so the theme attribute is applied before the shell first paints.
 		void $theme;
@@ -181,6 +189,14 @@ import { resumeWatch } from '$lib/watch/store';
 			.then(() => {
 				volatileStorage = !dbInfo().persistent;
 				ready = true;
+				// Once: repair training counts a frozen page lost before WristInbox kept them, from the
+				// recordings that survived. Only ever raises a count, so a second run would be harmless,
+				// but the flag keeps it from touching a figure the archer later edits down by hand.
+				if (!localStorage.getItem('trainingArrowsReconciled')) {
+					void reconcileTrainingArrowsFromRecordings()
+						.then(() => localStorage.setItem('trainingArrowsReconciled', '1'))
+						.catch((e) => console.error('Appchery: could not reconcile training counts', e));
+				}
 			})
 			// Not every rejection is an Error: worker APIs reject with plain response objects, and
 			// String() renders those as "[object Object]", which tells a user nothing at all.

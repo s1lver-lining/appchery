@@ -71,11 +71,37 @@ final class RunFrames {
 
     private static List<Step> steps = new ArrayList<>();
     private static final List<Result> results = new ArrayList<>();
-    /** An hour of a beat every few seconds, which is longer than any run holds a phone asleep for. */
-    private static final int BEATS_MOST = 1200;
+    /**
+     * Four hours of a beat every four seconds, the watch's cadence. A run is spent with the phone
+     * asleep and the page takes these only when it wakes, so the buffer has to outlast the run.
+     */
+    private static final int BEATS_MOST = 3600;
     private static final List<Beat> beats = new ArrayList<>();
 
     private static boolean live = false;
+    /** A run described on the wrist and waiting for its start, which a button there may give it. */
+    private static boolean armed = false;
+    /**
+     * Bumped by every change made here rather than by the page, and handed back with the state. A
+     * plan from a page that has not adopted the latest one describes a run that no longer exists,
+     * and taking it would undo a pause or a finish made from the wrist. See doc/llm-memory/watch-protocol.md.
+     */
+    private static long rev = 0;
+    /** When the run was started from the wrist, on this phone's clock, for the page to date it by. */
+    private static long startedWall = 0;
+    /** When the run last changed, on this phone's clock: a press is never dated before it. */
+    private static long lastChangeWall = 0;
+    /** Laps taken on the wrist, as the run's clock and distance at each, until the page adopts them. */
+    private static final List<double[]> laps = new ArrayList<>();
+    /** The activity being run, so a page starting afresh can find the run this still holds. */
+    private static String activityId = null;
+    /**
+     * The presses already taken, by the watch's own stamp: a control is re-sent until it is acked,
+     * so the same press arriving twice must be one press. A set rather than the latest, so a watch
+     * whose clock is corrected backwards still has its next press taken.
+     */
+    private static final java.util.LinkedHashSet<Long> taken = new java.util.LinkedHashSet<>();
+    private static final int TAKEN_MOST = 64;
     /** The runner's maximum, from the page, or zero where none is set. */
     private static int maxHeart = 0;
     /** The last beat heard, kept apart from the queue the page drains, to colour the next frame. */
@@ -113,68 +139,225 @@ final class RunFrames {
         app = context.getApplicationContext();
     }
 
+    /** What {@link #control} made of a button on the wrist. */
+    enum Taken {
+        /** Acted on, or already acted on, or meaningless for the run as it stands: answered either way. */
+        DONE,
+        /** No run is described here to act on, so it is left for whoever does know of one. */
+        NO_RUN
+    }
+
+    /** A run control, as the watch names them. */
+    static boolean isControl(String type) {
+        return "rg".equals(type) || "rh".equals(type) || "ru".equals(type) || "re".equals(type)
+                || "rl".equals(type);
+    }
+
     /**
-     * A button on the wrist while the page is frozen, which is most of a run.
+     * A run button on the wrist, taken here whatever the page is doing.
      *
-     * The page is the one that drives a run, so this only acts when the page plainly cannot: it has
-     * been silent for seconds, and the watch is asking for something that cannot wait for it to
-     * thaw. What is done here is handed back through {@link #state()} when it does.
+     * The native side owns the link and is alive for as long as the app is, so every control lands
+     * here and is acted on at once. The page used to act when it was awake and this only when it had
+     * been silent for seconds, and a control that fell between the two waited for the phone to be
+     * picked up: a finish pressed at the end of a run was applied minutes later, when the screen came
+     * on. Now the page adopts what was done here, through {@link #state()}, and a plan it sends from
+     * before it adopted is refused, see {@link #rev}. See doc/llm-memory/watch-protocol.md.
+     *
+     * `stamp` is the watch's own stamp for the press, or 0 from a watch too old to give one, and
+     * identifies it: the watch sends a control again until it is acked. `pressedAt` is the same
+     * moment on this phone's clock, or 0 where it is not known. A press that waited out the link
+     * going down is dated where it was made, but never before the run last changed nor after now.
      */
-    static boolean command(String type) {
+    static Taken control(String type, long stamp, long pressedAt) {
         byte[] frame;
         synchronized (LOCK) {
-            if (!live) return false;
-            if (SystemClock.elapsedRealtime() - Wrist.lastPageWrite() < QUIET_MS) return false;
+            if (!live && !armed) return Taken.NO_RUN;
+            if (stamp > 0 && taken.contains(stamp)) return Taken.DONE;
+            long now = System.currentTimeMillis();
+            long at = pressedAt <= 0 ? now : Math.min(now, Math.max(pressedAt, lastChangeWall));
+            // The press on the clock the anchors are kept on, which is the one the run is timed by.
+            long pressed = SystemClock.elapsedRealtime() - (now - at);
 
-            switch (type) {
-                case "rh":
-                    if (!"r".equals(status)) return false;
-                    // The clock stops where it is: an anchor with no time running from it.
-                    anchorSeconds = seconds();
-                    anchorMetres = metres();
-                    metresSince = 0;
-                    anchorStamp = SystemClock.elapsedRealtime();
-                    status = "p";
-                    if (app != null) TraceService.hold(app);
-                    break;
-                case "ru":
-                    if (!"p".equals(status)) return false;
-                    anchorStamp = SystemClock.elapsedRealtime();
-                    status = "r";
-                    last = null;
-                    recent.clear();
-                    if (app != null) TraceService.begin(app);
-                    break;
-                case "re":
-                    anchorSeconds = seconds();
-                    anchorMetres = metres();
-                    metresSince = 0;
-                    status = "d";
-                    live = false;
-                    if (app != null) TraceService.end(app);
-                    break;
-                default:
-                    // Starting a run is the page's alone: nothing is running for this to speak for.
-                    return false;
+            Applied applied = apply(type, at, pressed);
+            // Not taken, so not remembered: the watch sends it again and it is taken then.
+            if (applied == Applied.NOT_NOW) return Taken.NO_RUN;
+            if (stamp > 0) {
+                taken.add(stamp);
+                while (taken.size() > TAKEN_MOST) taken.remove(taken.iterator().next());
             }
+            if (applied == Applied.NOTHING) return Taken.DONE;
+            rev++;
+            lastChangeWall = at;
             lastFrameAt = SystemClock.elapsedRealtime();
             frame = compose();
         }
         if (frame != null) Wrist.get().write(frame);
-        return true;
+        // An awake page adopts at once rather than on its next thaw; a frozen one finds it then.
+        Wrist.get().runChanged();
+        return Taken.DONE;
+    }
+
+    /** What one control did to the run. */
+    private enum Applied {
+        /** The run changed. */
+        CHANGED,
+        /** Meaningless for the run as it stands, a pause of a paused run: answered and forgotten. */
+        NOTHING,
+        /** Right, but not possible at this moment: left for the watch to send again. */
+        NOT_NOW
+    }
+
+    /** One control applied to the run, dated by `at` (wall) and `pressed` (elapsed). Under LOCK. */
+    private static Applied apply(String type, long at, long pressed) {
+        switch (type) {
+            case "rg":
+                // Already going: a start pressed twice is one start.
+                if (!armed) return Applied.NOTHING;
+                if (app == null) return Applied.NOT_NOW;
+                try {
+                    // The fixes of whatever came before are not part of this run.
+                    TraceService.reset();
+                    TraceService.begin(app);
+                } catch (RuntimeException refused) {
+                    /*
+                     * Android starts no service from the background unless the app is running one
+                     * already, which is what the ready hold is for, see plan. Without it the start
+                     * waits: the watch keeps the press and sends it again with the next frame the
+                     * phone sends, which it does once it is picked up.
+                     */
+                    return Applied.NOT_NOW;
+                }
+                armed = false;
+                live = true;
+                status = "r";
+                anchorSeconds = 0;
+                anchorMetres = 0;
+                metresSince = 0;
+                anchorStamp = pressed;
+                startedWall = at;
+                // The first block, as starting on the phone does: a run starts at its beginning.
+                if (stepIndex < 0 && !steps.isEmpty() && freeFromSeconds < 0) stepIndex = 0;
+                stepFromSeconds = 0;
+                stepFromMetres = 0;
+                last = null;
+                recent.clear();
+                results.clear();
+                laps.clear();
+                return Applied.CHANGED;
+            case "rh":
+                if (!live || !"r".equals(status)) return Applied.NOTHING;
+                // The clock stops where it was pressed: an anchor with no time running from it.
+                anchorSeconds = clockAt(pressed);
+                anchorMetres = metres();
+                metresSince = 0;
+                anchorStamp = pressed;
+                status = "p";
+                if (app != null) TraceService.hold(app);
+                return Applied.CHANGED;
+            case "ru":
+                if (!live || !"p".equals(status)) return Applied.NOTHING;
+                anchorStamp = pressed;
+                status = "r";
+                last = null;
+                recent.clear();
+                if (app != null) TraceService.begin(app);
+                return Applied.CHANGED;
+            case "re":
+                if (!live) return Applied.NOTHING;
+                anchorSeconds = clockAt(pressed);
+                anchorMetres = metres();
+                metresSince = 0;
+                status = "d";
+                live = false;
+                keepFinish();
+                /*
+                 * Held rather than ended. The service is the one thing keeping this process alive,
+                 * and until the page takes the run, it and the fixes it gathered exist only here:
+                 * ended, Android was free to kill the app and the run went with it. The page ends
+                 * the service once it has stored the run, see TraceService.done.
+                 */
+                if (app != null) TraceService.done(app);
+                return Applied.CHANGED;
+            case "rl":
+                if (!live) return Applied.NOTHING;
+                laps.add(new double[]{clockAt(pressed), metres()});
+                return Applied.CHANGED;
+            default:
+                return Applied.NOTHING;
+        }
     }
 
     /**
-     * A beat the watch reported. Kept only while the page is asleep: awake, the page is told
-     * directly and holding a second copy here would have it counted twice when the two are joined.
+     * The service up and waiting, for a run on its start screen with a watch to start it from.
+     *
+     * Android starts no service from the background, and the wrist's Start is pressed with the phone
+     * in a pocket: started only then, the service was refused, and the start waited for the phone to
+     * be picked up. So it is started now, while the page describing the run is on screen, held with
+     * no GPS until the start (TraceService.READY). Only with a watch linked, the one case it is for,
+     * and only with location granted, without which the service cannot run at all. The page's own
+     * start takes it over, and leaving the run unstarted ends it. Under LOCK.
+     */
+    private static void holdReady() {
+        if (app == null || TraceService.isRunning() || !Wrist.get().isReady()) return;
+        if (androidx.core.content.ContextCompat.checkSelfPermission(app,
+                android.Manifest.permission.ACCESS_FINE_LOCATION)
+                != android.content.pm.PackageManager.PERMISSION_GRANTED) return;
+        try {
+            TraceService.ready(app);
+        } catch (RuntimeException refused) {
+            // Not allowed at this moment after all: a start from the wrist waits for the phone.
+        }
+    }
+
+    private static final String PREFS = "runframes";
+
+    /** A finish from the wrist, written down, see {@link #restore}. Under LOCK. */
+    private static void keepFinish() {
+        if (app == null || activityId == null) return;
+        app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString("id", activityId)
+                .putFloat("s", (float) anchorSeconds)
+                .putLong("rev", rev + 1)
+                .apply();
+    }
+
+    /**
+     * A finish from the wrist that outlived the process it was made in. The service is held for it
+     * so the process stays, but a process can still be killed, by a force stop for one: then this is
+     * all that is left of the finish, and the page adopts it as the run's end rather than taking the
+     * run for one still going and starting the GPS again. Under LOCK.
+     */
+    private static void restore() {
+        if (app == null || live || armed || !"i".equals(status)) return;
+        android.content.SharedPreferences prefs = app.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        String id = prefs.getString("id", null);
+        if (id == null) return;
+        status = "d";
+        anchorSeconds = prefs.getFloat("s", 0);
+        activityId = id;
+        rev = Math.max(rev, prefs.getLong("rev", 0));
+    }
+
+    /** The run's clock at a moment on the anchors' clock, never before the last anchor. */
+    private static double clockAt(long when) {
+        if (!"r".equals(status)) return anchorSeconds;
+        return anchorSeconds + Math.max(0, when - anchorStamp) / 1000.0;
+    }
+
+    /**
+     * A beat the watch reported, kept with when it arrived until the page drains it.
+     *
+     * Every beat, whatever the page is doing: the page takes them from here on each of its ticks, and
+     * in one go when it thaws. Handed to the page directly, a beat reaching a frozen page waited for
+     * the thaw and was dated then, so it matched no fix and a run lost its heart rate from the moment
+     * the phone went into the pocket. One way in, so no beat is ever counted twice either.
      */
     static void heard(int bpm) {
         if (bpm < 25 || bpm > 250) return;
         synchronized (LOCK) {
-            if (!live) return;
+            if (!live && !armed) return;
             lastBpm = bpm;
             lastBpmAt = SystemClock.elapsedRealtime();
-            if (SystemClock.elapsedRealtime() - Wrist.lastPageWrite() < QUIET_MS) return;
             Beat beat = new Beat();
             beat.at = System.currentTimeMillis();
             beat.bpm = bpm;
@@ -183,11 +366,41 @@ final class RunFrames {
         }
     }
 
-    /** The page describing the run: where its clock and its distance are, and what is left to run. */
+    /** The beats nobody has taken yet, oldest first, and gone from here once handed over. */
+    static JSONArray drainBeats() {
+        synchronized (LOCK) {
+            JSONArray out = new JSONArray();
+            try {
+                for (Beat beat : beats) out.put(new JSONObject().put("b", beat.bpm).put("at", beat.at));
+            } catch (JSONException impossible) {
+                // Two numbers into an empty object.
+            }
+            beats.clear();
+            return out;
+        }
+    }
+
+    /**
+     * The page describing the run: where its clock and its distance are, and what is left to run.
+     *
+     * Refused when it was made before the page adopted the latest change made here: it would put a
+     * run paused or finished from the wrist back to running. The page adopts, and its next plan
+     * carries the revision it adopted.
+     */
     static void plan(JSONObject plan) {
         synchronized (LOCK) {
-            status = plan.optString("st", "i");
+            long adopted = plan.optLong("rv", -1);
+            if (adopted >= 0 && adopted < rev) return;
+            String next = plan.optString("st", "i");
+            // A change the page made itself, which a press waiting on the link must not be dated before.
+            if (!next.equals(status)) lastChangeWall = System.currentTimeMillis();
+            status = next;
             live = "r".equals(status) || "p".equals(status);
+            armed = "i".equals(status);
+            activityId = plan.optString("id", null);
+            if (armed) holdReady();
+            // Taken by the page along with the revision it just adopted, or it would not be planning.
+            laps.clear();
             cue = plan.optInt("c", 0);
             anchorSeconds = plan.optDouble("s", 0);
             anchorMetres = plan.optDouble("d", 0);
@@ -232,7 +445,14 @@ final class RunFrames {
      */
     static void clear() {
         synchronized (LOCK) {
+            // Stored by the page now, so nothing of the finish needs to outlive this process any more.
+            if (app != null) app.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().clear().apply();
             live = false;
+            armed = false;
+            startedWall = 0;
+            activityId = null;
+            laps.clear();
+            // Not the revision nor the presses taken: both only ever count up, across runs too.
             status = "i";
             stepIndex = -1;
             freeFromSeconds = -1;
@@ -252,11 +472,22 @@ final class RunFrames {
      */
     static JSONObject state() {
         synchronized (LOCK) {
+            restore();
             JSONObject out = new JSONObject();
             try {
                 out.put("live", live);
+                // The revision the page is adopting, which its next plan carries so it is not refused.
+                out.put("rev", rev);
+                out.put("id", activityId == null ? JSONObject.NULL : activityId);
+                // When the wrist started it, where it did: the page dates the run by this.
+                if (startedWall > 0) out.put("sw", startedWall);
                 // What the run is now, which the page cannot work out from a track it never saw stop.
                 out.put("st", status);
+                JSONArray lapped = new JSONArray();
+                for (double[] lap : laps) {
+                    lapped.put(new JSONObject().put("s", lap[0]).put("d", lap[1]));
+                }
+                out.put("laps", lapped);
                 out.put("s", (int) Math.round(seconds()));
                 out.put("i", stepIndex);
                 out.put("c", cue);
@@ -291,9 +522,25 @@ final class RunFrames {
     }
 
     /**
-     * One fix, judged by the same rules as the page and then used for the wrist. Called from the
-     * service's location callback, which is the only thing here that ever wakes the processor.
+     * Where the run is, without taking anything: for a page starting afresh to learn whether a run
+     * finished from the wrist is waiting here to be stored. {@link #state()} drains, this does not.
      */
+    static JSONObject status() {
+        synchronized (LOCK) {
+            restore();
+            JSONObject out = new JSONObject();
+            try {
+                out.put("st", status);
+                out.put("live", live);
+                out.put("rev", rev);
+                out.put("id", activityId == null ? JSONObject.NULL : activityId);
+            } catch (JSONException impossible) {
+                // Plain values into an empty object.
+            }
+            return out;
+        }
+    }
+
     /** The run as it stands, for a watch that has just come back and knows nothing of it. */
     static byte[] current() {
         synchronized (LOCK) {
@@ -307,6 +554,10 @@ final class RunFrames {
         }
     }
 
+    /**
+     * One fix, judged by the same rules as the page and then used for the wrist. Called from the
+     * service's location callback, which is the only thing here that ever wakes the processor.
+     */
     static void onFix(Location fix) {
         byte[] frame = null;
         synchronized (LOCK) {
@@ -351,8 +602,13 @@ final class RunFrames {
 
     /** The run's clock, continued from where the page left it. */
     private static double seconds() {
-        // Held where it stopped: a paused run's frame is sent again on reconnecting, long after.
-        if ("p".equals(status)) return anchorSeconds;
+        /*
+         * Held where it stopped, paused or finished alike. A paused run's frame is sent again on
+         * reconnecting, long after; and a finished one's clock is what the page adopts as the run's
+         * length, whenever it next wakes. Left running after a finish, the run grew by however long
+         * the phone stayed in the pocket.
+         */
+        if ("p".equals(status) || "d".equals(status)) return anchorSeconds;
         return anchorSeconds + (SystemClock.elapsedRealtime() - anchorStamp) / 1000.0;
     }
 

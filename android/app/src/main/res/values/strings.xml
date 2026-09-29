@@ -7,4 +7,8 @@
     <string name="run_tracking_title">Run in progress</string>
     <string name="run_tracking_text">Appchery is recording your run.</string>
     <string name="run_paused_text">Your run is paused.</string>
+    <string name="run_finished_title">Run finished</string>
+    <string name="run_finished_text">Open Appchery to save it.</string>
+    <string name="run_ready_title">Ready to run</string>
+    <string name="run_ready_text">Start from your watch or in Appchery.</string>
 </resources>

@@ -93,6 +93,21 @@ export function onWatchApplied(handler: (() => void) | null): void {
 	onApplied = handler;
 }
 
+let onRunChange: (() => void) | null = null;
+
+/**
+ * What to do when a control from the wrist changed the run on the native side. The run is driven by
+ * native code whatever the page is doing, see doc/llm-memory/watch-protocol.md, so the page holding
+ * it is only told, and adopts what was done.
+ */
+export function onWatchRunChanged(handler: (() => void) | null): void {
+	onRunChange = handler;
+}
+
+function runChanged(): void {
+	onRunChange?.();
+}
+
 /**
  * What to do the moment a watch starts listening. The pages describe themselves as they mount, so a
  * link made after that leaves the watch knowing nothing and showing it: this is how whatever is on
@@ -219,7 +234,7 @@ export async function connectWatch(): Promise<void> {
 		const remembered = get(rememberedWatch);
 		result = remembered
 			? await openLink((onBytes, onLost) =>
-					connectOverNative(onBytes, onLost, { deviceId: remembered, onRestarted: regreet })
+					connectOverNative(onBytes, onLost, { deviceId: remembered, onRestarted: regreet, onRunChanged: runChanged })
 				)
 			: { ok: false, reason: 'not-found' };
 		// The archer asked for a watch, so a remembered one that is not there is a reason to offer the
@@ -227,7 +242,7 @@ export async function connectWatch(): Promise<void> {
 		if (!result.ok && result.reason === 'not-found') {
 			rememberedWatch.set(null);
 			result = await openLink((onBytes, onLost) =>
-				connectOverNative(onBytes, onLost, { onRestarted: regreet })
+				connectOverNative(onBytes, onLost, { onRestarted: regreet, onRunChanged: runChanged })
 			);
 		}
 	} else {
@@ -326,7 +341,7 @@ async function tryRemembered(quiet: boolean): Promise<void> {
 		const connectOverNative = await nativeTransport();
 		if (!quiet) watchStatus.set({ state: 'connecting' });
 		const result = await openLink((onBytes, onLost) =>
-			connectOverNative(onBytes, onLost, { deviceId: remembered, onRestarted: regreet })
+			connectOverNative(onBytes, onLost, { deviceId: remembered, onRestarted: regreet, onRunChanged: runChanged })
 		);
 
 		if (!result.ok) {
@@ -427,9 +442,28 @@ export async function importWristMotion(): Promise<void> {
 		});
 	}
 	await Wrist.forgetMotion({ keys: items.map((item) => item.k) });
+	await drainWristInbox();
 }
 
 let resumeImport = false;
+
+/**
+ * Applies the durable assertions the native side kept while the page was frozen: an end scored on
+ * the wrist, the training count. Each goes back through {@link WatchLink.receive}, the same idempotent
+ * path a live message takes, so it is applied and acked exactly as if the page had never slept. The
+ * ack the page sends on applying is what clears the entry natively, so an assertion the page cannot
+ * place yet (no round open) simply stays and is tried again next time. See WristInbox.java.
+ */
+export async function drainWristInbox(): Promise<void> {
+	const can = support();
+	if (!can.usable || can.path !== 'native' || !link) return;
+	const { Wrist } = await import('./ble.native');
+	if (!Wrist?.inbox) return;
+	const { items } = await Wrist.inbox();
+	for (const item of items) {
+		await link.receive(new TextEncoder().encode(JSON.stringify(item))).catch(() => undefined);
+	}
+}
 
 // The switch reaches a watch already linked, not only the next one.
 recordWristMotion.subscribe((on) => void link?.setMotion(on).catch(() => undefined));
@@ -446,10 +480,15 @@ shotRule.subscribe((rule) => void link?.setShotRule(rule).catch(() => undefined)
  * a link going down and coming back must not take it with it. Clearing it here left a watch whose
  * taps reached a phone that had stopped listening for them.
  */
-function dropLink(): void {
+function dropLink(farewell = false): void {
 	stopRetry();
 	stopHeartbeat();
-	void link?.close();
+	/*
+	 * `bye` only when the archer is done with this watch. It tells the watch the phone let go and has
+	 * the native side forget everything it would say again on the page's behalf; sent by a link being
+	 * recovered or reopened, it took the watch's run away mid run and left nothing to put it back.
+	 */
+	if (farewell) void link?.close();
 	connection?.disconnect();
 	connection = null;
 	link = null;
@@ -472,6 +511,6 @@ function reopenStale(): void {
 
 export function disconnectWatch(): void {
 	rememberedWatch.set(null);
-	dropLink();
+	dropLink(true);
 	watchStatus.set(initial());
 }

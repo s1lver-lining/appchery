@@ -76,11 +76,26 @@ public class TraceService extends Service implements LocationListener {
         }
     }
 
-    /** Whether the service is listening or merely staying alive, which is what a pause is. */
-    static final String EXTRA_LISTEN = "listen";
+    /**
+     * What the service is up for: listening to the fixes of a run going, or staying alive with
+     * nothing to listen to, for a run paused or a run finished that the page has not stored yet.
+     */
+    static final String EXTRA_MODE = "mode";
+    static final String LISTEN = "listen";
+    static final String HOLD = "hold";
+    static final String DONE = "done";
+    /**
+     * A run on its start screen with a watch to start it from. Android starts no service from the
+     * background, and the wrist's Start is pressed with the phone in a pocket, so the service is up
+     * and waiting, with no GPS, from while the page was on screen. See RunFrames.plan.
+     */
+    static final String READY = "ready";
+
+    /** Where the mode is kept, so a service Android restarts comes back as it was. */
+    private static final String PREFS = "trace";
 
     static void begin(Context context) {
-        context.startForegroundService(new Intent(context, TraceService.class).putExtra(EXTRA_LISTEN, true));
+        start(context, LISTEN);
     }
 
     /**
@@ -89,11 +104,31 @@ public class TraceService extends Service implements LocationListener {
      * a killed app cannot be told to carry on, by the wrist or by anybody.
      */
     static void hold(Context context) {
-        context.startForegroundService(new Intent(context, TraceService.class).putExtra(EXTRA_LISTEN, false));
+        start(context, HOLD);
+    }
+
+    /**
+     * A run finished from the wrist, which the page has not stored yet. Held for the same reason as
+     * a pause: until the page takes it, the run and the fixes gathered for it exist only in this
+     * process, and a stopped service is a process Android may kill. The notification says so, and
+     * tapping it opens the app, which stores the run and ends the service.
+     */
+    static void done(Context context) {
+        start(context, DONE);
+    }
+
+    /** Waiting for a start from the wrist, see READY. */
+    static void ready(Context context) {
+        start(context, READY);
     }
 
     static void end(Context context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().remove(EXTRA_MODE).apply();
         context.stopService(new Intent(context, TraceService.class));
+    }
+
+    private static void start(Context context, String mode) {
+        context.startForegroundService(new Intent(context, TraceService.class).putExtra(EXTRA_MODE, mode));
     }
 
     @Override
@@ -113,14 +148,35 @@ public class TraceService extends Service implements LocationListener {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        boolean listen = intent == null || intent.getBooleanExtra(EXTRA_LISTEN, true);
-        startForeground(NOTIFICATION, notification(listen));
+        android.content.SharedPreferences prefs = getSharedPreferences(PREFS, MODE_PRIVATE);
+        /*
+         * A restart by Android comes with no intent at all, and used to be taken as listening: a run
+         * paused, or finished from the wrist, whose process was killed came back with the GPS on.
+         * So the mode is written down each time and read back when there is nothing to say it.
+         */
+        String mode = intent != null ? intent.getStringExtra(EXTRA_MODE) : null;
+        if (mode == null) mode = prefs.getString(EXTRA_MODE, LISTEN);
+        // Ready for a run in a process that has since died: the run it was ready for is not here.
+        if (intent == null && READY.equals(mode)) {
+            prefs.edit().remove(EXTRA_MODE).apply();
+            stopSelf();
+            return START_NOT_STICKY;
+        }
+        prefs.edit().putString(EXTRA_MODE, mode).apply();
+        boolean listen = LISTEN.equals(mode);
+        try {
+            startForeground(NOTIFICATION, notification(mode));
+        } catch (RuntimeException refused) {
+            // Location not granted, or not allowed at this moment: no service, rather than no app.
+            stopSelf();
+            return START_NOT_STICKY;
+        }
         LocationManager locations = getSystemService(LocationManager.class);
         synchronized (LOCK) {
             running = true;
         }
         if (!listen) {
-            // Held: the fixes stop, the process does not, and the run can be started again.
+            // Held: the fixes stop, the process does not, and the run can be started again or stored.
             if (locations != null) locations.removeUpdates(this);
             return START_STICKY;
         }
@@ -139,14 +195,25 @@ public class TraceService extends Service implements LocationListener {
         return START_STICKY;
     }
 
-    private Notification notification(boolean listen) {
+    private Notification notification(String mode) {
         Intent open = new Intent(this, MainActivity.class);
         open.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_CLEAR_TOP);
         PendingIntent tap =
                 PendingIntent.getActivity(this, 0, open, PendingIntent.FLAG_IMMUTABLE);
+        int title = R.string.run_tracking_title;
+        int text = R.string.run_paused_text;
+        if (DONE.equals(mode)) {
+            title = R.string.run_finished_title;
+            text = R.string.run_finished_text;
+        } else if (READY.equals(mode)) {
+            title = R.string.run_ready_title;
+            text = R.string.run_ready_text;
+        } else if (LISTEN.equals(mode)) {
+            text = R.string.run_tracking_text;
+        }
         return new NotificationCompat.Builder(this, CHANNEL)
-                .setContentTitle(getString(R.string.run_tracking_title))
-                .setContentText(getString(listen ? R.string.run_tracking_text : R.string.run_paused_text))
+                .setContentTitle(getString(title))
+                .setContentText(getString(text))
                 .setSmallIcon(android.R.drawable.ic_menu_mylocation)
                 .setPriority(NotificationCompat.PRIORITY_LOW)
                 .setOngoing(true)

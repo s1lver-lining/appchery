@@ -30,19 +30,49 @@ interface WristPlugin {
 	/** Recorded motion the native side received and kept, see WristMotion.java. */
 	motion(): Promise<{ items: NativeMotion[] }>;
 	forgetMotion(options: { keys: number[] }): Promise<void>;
+	/**
+	 * Durable assertions the native side kept while the page was frozen, for the page to apply again,
+	 * see WristInbox.java. No forget: an entry clears when the page acks it, watched for natively.
+	 */
+	inbox(): Promise<{ items: Record<string, unknown>[] }>;
+	/** The beats the wrist reported since the page last asked, oldest first, see RunFrames.heard. */
+	beats(): Promise<{ items: { b: number; at: number }[] }>;
+	/** Where the native run is, without draining anything, see RunFrames.status. */
+	runStatus(): Promise<WristRunStatus>;
 	addListener(
 		event: 'bytes',
 		handler: (data: { text: string }) => void
 	): Promise<{ remove: () => Promise<void> }>;
+	/** `run`: a control from the wrist changed the run natively, for the page to adopt. */
 	addListener(
-		event: 'lost' | 'restarted',
+		event: 'lost' | 'restarted' | 'run',
 		handler: () => void
 	): Promise<{ remove: () => Promise<void> }>;
 }
 
-/** What the service worked out while the page was asleep, for the page to adopt. */
+/** The native run at a glance, for a page starting afresh. */
+export interface WristRunStatus {
+	st: 'i' | 'r' | 'p' | 'd';
+	live: boolean;
+	rev: number;
+	/** The activity the run belongs to, as the page last described it, or null. */
+	id: string | null;
+}
+
+/**
+ * What the native side did with the run since the page last adopted: while the page was asleep,
+ * and also while it was awake, since every control from the wrist is taken there now.
+ */
 export interface WristClaim {
 	live: boolean;
+	/** The revision this is, which the page's next plan carries so the native side takes it. */
+	rev: number;
+	/** The activity the run belongs to, as the page last described it, or null. */
+	id: string | null;
+	/** When the wrist started the run, on this phone's clock, where it did. */
+	sw?: number;
+	/** Laps taken on the wrist since the page last adopted, as the run's clock and distance at each. */
+	laps?: { s: number; d: number }[];
 	/** Where the run is now: it may have been paused or finished from the wrist in the meantime. */
 	st: 'i' | 'r' | 'p' | 'd';
 	/** The run's clock as the service has it, in seconds. */
@@ -87,6 +117,8 @@ export interface ConnectOptions {
 	deviceId?: string | null;
 	/** The watch app restarted while the link stayed up, so it has to be told everything again. */
 	onRestarted?: () => void;
+	/** A control from the wrist changed the run natively, for whichever page holds it to adopt. */
+	onRunChanged?: () => void;
 }
 
 export async function connect(
@@ -145,6 +177,9 @@ export async function connect(
 	const restarted = await Wrist.addListener('restarted', () => {
 		if (!closing) options.onRestarted?.();
 	});
+	const changed = await Wrist.addListener('run', () => {
+		if (!closing) options.onRunChanged?.();
+	});
 
 	try {
 		await Wrist.connect({ address: id });
@@ -152,6 +187,7 @@ export async function connect(
 		await quietly(() => incoming.remove());
 		await quietly(() => gone.remove());
 		await quietly(() => restarted.remove());
+		await quietly(() => changed.remove());
 		// A remembered watch out of range, off, or simply left at home: ordinary, and not a fault the
 		// archer can act on beyond bringing the watch closer.
 		const reason = failureOf(error, remembered ? 'not-found' : 'failed');
@@ -178,6 +214,8 @@ export async function connect(
 				void quietly(() => incoming.remove());
 				void quietly(() => gone.remove());
 				void quietly(() => restarted.remove());
+				void quietly(() => changed.remove());
+				// The link only: the run the native side holds is not the link's, see WristPlugin.disconnect.
 				void quietly(() => Wrist.disconnect());
 			}
 		}

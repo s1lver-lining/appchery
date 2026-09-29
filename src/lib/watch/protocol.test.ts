@@ -8,6 +8,7 @@ import {
 	skew,
 	MAX_MESSAGE_BYTES,
 	fitRun,
+	PHONE_CAN,
 	PROTOCOL_VERSION,
 	type EndState,
 	type Wire
@@ -357,6 +358,40 @@ describe('a run on the wrist', () => {
 			expect(decoded.ok && decoded.message).toEqual({ v: PROTOCOL_VERSION, t });
 		}
 		expect(decode(new TextEncoder().encode('{"v":2,"t":"rq"}')).ok).toBe(false);
+	});
+
+	/**
+	 * A stamped press does not fit the twenty byte fallback, which is why the watch sends one only on
+	 * a link with room and the bare form otherwise. What it has to fit is the budget every other
+	 * message keeps to.
+	 */
+	it('carries a stamped press, which fits the normal budget and not the fallback', () => {
+		for (const t of ['rg', 'rh', 'ru', 're', 'rl'] as const) {
+			const stamped = { v: PROTOCOL_VERSION, t, at: 1790534426000 } as Wire;
+			const bytes = encode(stamped);
+			expect(bytes.length).toBeGreaterThan(20);
+			expect(bytes.length).toBeLessThanOrEqual(MAX_MESSAGE_BYTES);
+			const decoded = decode(bytes);
+			expect(decoded.ok && decoded.message).toEqual(stamped);
+		}
+		expect(decode(new TextEncoder().encode('{"v":2,"t":"rh","at":"soon"}')).ok).toBe(false);
+	});
+
+	it('carries the ack for a press, and refuses one naming nothing', () => {
+		const ack = { v: PROTOCOL_VERSION, t: 'ck', at: 1790534426000 } as Wire;
+		const decoded = decode(encode(ack));
+		expect(decoded.ok && decoded.message).toEqual(ack);
+		expect(decode(new TextEncoder().encode('{"v":2,"t":"ck"}')).ok).toBe(false);
+	});
+
+	it('carries what the phone can do in its hello, and a hello without it as before', () => {
+		const told = { v: PROTOCOL_VERSION, t: 'hello', d: 'phone', c: 1789668623593, k: PHONE_CAN.ACK_CONTROLS } as Wire;
+		const decodedTold = decode(encode(told));
+		expect(decodedTold.ok && decodedTold.message).toEqual(told);
+		const bare = { v: PROTOCOL_VERSION, t: 'hello', d: 'phone', c: 1789668623593 } as Wire;
+		const decodedBare = decode(encode(bare));
+		expect(decodedBare.ok && decodedBare.message).toEqual(bare);
+		expect(decode(new TextEncoder().encode('{"v":2,"t":"hello","d":"phone","c":1,"k":"all"}')).ok).toBe(false);
 	});
 
 	it('carries the beat up from the wrist, and refuses one nobody could have', () => {

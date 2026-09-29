@@ -17,6 +17,8 @@ import android.util.Log;
 
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayDeque;
+import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.UUID;
 
 /**
@@ -56,6 +58,9 @@ final class Wrist {
 
         /** The watch app restarted under a link that stayed up, and knows nothing of this phone. */
         void onRestarted();
+
+        /** A control from the wrist changed the run here, for the page to adopt, see RunFrames.control. */
+        void onRunChanged();
     }
 
     private static Wrist instance;
@@ -102,6 +107,165 @@ final class Wrist {
         pageWroteAt = android.os.SystemClock.elapsedRealtime();
     }
 
+    /** How long the page has to have been silent before this speaks for it, as in RunFrames. */
+    private static final long QUIET_MS = 4000;
+
+    private static boolean pageQuiet() {
+        return android.os.SystemClock.elapsedRealtime() - pageWroteAt >= QUIET_MS;
+    }
+
+    /**
+     * What the page last told the watch, newest per subject: the session and its activities, the
+     * screen, the round and its ends. A watch app started with the phone asleep subscribes, says
+     * linked, and would stay on its status face until the page woke to describe itself again. This
+     * is that description, said on the page's behalf. Keyed so a long session stays a handful of
+     * messages rather than a log.
+     */
+    private final LinkedHashMap<String, byte[]> said = new LinkedHashMap<>();
+    private byte[] saidHello;
+
+    /** A message from the page, kept for {@link #replay} before it goes out. */
+    synchronized void remember(byte[] bytes) {
+        org.json.JSONObject message;
+        try {
+            message = new org.json.JSONObject(new String(bytes, StandardCharsets.UTF_8));
+        } catch (org.json.JSONException notOurs) {
+            return;
+        }
+        String type = message.optString("t", "");
+        switch (type) {
+            case "hello":
+                saidHello = bytes;
+                return;
+            case "bye":
+                said.clear();
+                saidHello = null;
+                save();
+                return;
+            case "ack":
+                // The page has applied an end the watch scored, so its kept copy can go, see WristInbox.
+                WristInbox.clear(context, "end:" + message.optInt("s") + ":" + message.optInt("n"));
+                return;
+            case "mk":
+                // Answers to something the watch said, which a replay would only confuse.
+                return;
+            case "arrows":
+                // The page's echo of the training total: it has taken the watch's count, so forget it.
+                // Still kept for replay, so a watch that restarts is told the total the phone settled on.
+                WristInbox.clear(context, "arrows");
+                keep(type, bytes);
+                return;
+            case "session":
+                // A new session has its own activities; the old ones' positions mean nothing now.
+                forget("activity:");
+                keep(type, bytes);
+                return;
+            case "round":
+                forget("end:");
+                keep(type, bytes);
+                return;
+            case "activity":
+                keep("activity:" + message.optInt("i"), bytes);
+                return;
+            case "end":
+                keep("end:" + message.optInt("s") + ":" + message.optInt("n"), bytes);
+                return;
+            default:
+                keep(type, bytes);
+        }
+    }
+
+    private void keep(String key, byte[] bytes) {
+        // Moved to the end, so the replay says things in the order the page last said them.
+        said.remove(key);
+        said.put(key, bytes);
+        save();
+    }
+
+    private static final String PREFS = "wrist";
+
+    /**
+     * Written down as well as held, because the process that needs it may be a new one: Android
+     * stopped the app, and {@link WristCompanion} started it again when the watch came near.
+     */
+    private void save() {
+        if (context == null) return;
+        org.json.JSONArray list = new org.json.JSONArray();
+        for (java.util.Map.Entry<String, byte[]> one : said.entrySet()) {
+            list.put(new org.json.JSONArray().put(one.getKey()).put(text(one.getValue())));
+        }
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit()
+                .putString("hello", saidHello == null ? null : text(saidHello))
+                .putString("said", list.toString())
+                .apply();
+    }
+
+    private void restore(Context given) {
+        android.content.SharedPreferences prefs = given.getSharedPreferences(PREFS, Context.MODE_PRIVATE);
+        if (address == null) address = prefs.getString("address", null);
+        if (saidHello != null || !said.isEmpty()) return;
+        String hello = prefs.getString("hello", null);
+        saidHello = hello == null ? null : hello.getBytes(StandardCharsets.UTF_8);
+        try {
+            org.json.JSONArray list = new org.json.JSONArray(prefs.getString("said", "[]"));
+            for (int i = 0; i < list.length(); i++) {
+                org.json.JSONArray one = list.getJSONArray(i);
+                said.put(one.getString(0), one.getString(1).getBytes(StandardCharsets.UTF_8));
+            }
+        } catch (org.json.JSONException broken) {
+            said.clear();
+        }
+    }
+
+    /**
+     * The watch is near, and nobody is holding a link to it: the page is asleep or was never
+     * started. Waits for the watch app the same way a run behind a dark screen does, and says the
+     * page's last description once it is there.
+     */
+    synchronized void wake(Context given) {
+        if (gatt != null || ready) return;
+        context = given.getApplicationContext();
+        restore(context);
+        if (address == null || !hasSaid()) return;
+        closing = false;
+        rejoin();
+    }
+
+    private void forget(String prefix) {
+        Iterator<String> keys = said.keySet().iterator();
+        while (keys.hasNext()) if (keys.next().startsWith(prefix)) keys.remove();
+    }
+
+    /** Whether there is anything worth reconnecting on the page's behalf for. */
+    private synchronized boolean hasSaid() {
+        return saidHello != null && !said.isEmpty();
+    }
+
+    /**
+     * The page's last description, said again for a page that is asleep. The hello goes first with
+     * this moment's clock, because the watch takes its offset from it and the page's is stale.
+     */
+    private void replay() {
+        byte[] hello;
+        byte[][] rest;
+        synchronized (this) {
+            hello = saidHello;
+            rest = said.values().toArray(new byte[0][]);
+        }
+        if (hello != null) {
+            try {
+                org.json.JSONObject fresh = new org.json.JSONObject(new String(hello, StandardCharsets.UTF_8));
+                fresh.put("c", System.currentTimeMillis());
+                write(fresh.toString().getBytes(StandardCharsets.UTF_8));
+            } catch (org.json.JSONException impossible) {
+                write(hello);
+            }
+        }
+        for (byte[] one : rest) write(one);
+        // The page's run frame is minutes old by now; this one is worked out from the fixes.
+        resend();
+    }
+
     boolean isReady() {
         return ready;
     }
@@ -119,6 +283,7 @@ final class Wrist {
         resubscribing = false;
         rejoining = false;
         this.context = context.getApplicationContext();
+        this.context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString("address", wanted).apply();
 
         BluetoothManager manager = context.getSystemService(BluetoothManager.class);
         BluetoothAdapter adapter = manager == null ? null : manager.getAdapter();
@@ -257,7 +422,7 @@ final class Wrist {
             // The connect call was answered long ago: a link that cannot subscribe again is a link lost.
             resubscribing = false;
             ready = false;
-            if (RunFrames.isLive()) main.post(this::rejoin);
+            if (RunFrames.isLive() || hasSaid()) main.post(this::rejoin);
             if (told != null) main.post(told::onLost);
             return;
         }
@@ -282,7 +447,7 @@ final class Wrist {
                 ready = false;
                 Listener told = listener;
                 if (closing || told == null) return;
-                if (wasReady && RunFrames.isLive()) rejoin();
+                if (wasReady && (RunFrames.isLive() || hasSaid())) rejoin();
                 if (wasReady) main.post(told::onLost);
                 else finish(false, "not-found");
             }
@@ -302,7 +467,8 @@ final class Wrist {
         public void onServicesDiscovered(BluetoothGatt link, int status) {
             BluetoothGattService service = link.getService(SERVICE);
             // The watch app between one copy and the next: its service comes back with another change.
-            if (service == null && resubscribing) return;
+            // So is a watch reached while its app is not running: waited for, not given up on.
+            if (service == null && (resubscribing || rejoining)) return;
             if (service == null) {
                 // The address was remembered from a watch that had it, so this is the watch app gone.
                 closeGatt();
@@ -355,12 +521,14 @@ final class Wrist {
             }
             if (rejoining) {
                 rejoining = false;
-                resend();
+                replay();
                 return;
             }
             if (resubscribing) {
                 resubscribing = false;
-                resend();
+                // An awake page is told and describes itself; an asleep one is spoken for.
+                if (pageQuiet()) replay();
+                else resend();
                 Listener told = listener;
                 if (told != null) main.post(told::onRestarted);
                 return;
@@ -370,6 +538,15 @@ final class Wrist {
 
         @Override
         public void onServiceChanged(BluetoothGatt link) {
+            if (!ready && rejoining) {
+                // The watch app came up under a link made while it was away: now there is a service.
+                try {
+                    link.discoverServices();
+                } catch (SecurityException denied) {
+                    rejoining = false;
+                }
+                return;
+            }
             if (!ready) return;
             // The stack drops our notification registration with the old service, so it is made again.
             resubscribing = true;
@@ -405,25 +582,90 @@ final class Wrist {
         if (!TO_PHONE.equals(ch.getUuid()) || value == null) return;
         byte[] copy = value.clone();
         /*
-         * Offered to the run first. A run button pressed while the page is frozen has nowhere else
-         * to go: the page is where a run is driven from, and a page Android has stopped calling is
-         * not going to drive anything. RunFrames takes it only when the page has plainly gone quiet,
-         * and hands back what it did when the page comes round.
+         * Everything the watch says lands here first, and is handled here whatever the page is
+         * doing: frozen, on another screen, or not started. Each message is one of four kinds, and
+         * each kind has one way in, see doc/llm-memory/watch-protocol.md.
          */
         String type = typeOf(copy);
-        // Recorded motion is received here whatever the page is doing, see WristMotion.
+
+        // Telemetry: recorded motion, kept as files until the page stores them, see WristMotion.
         if (WristMotion.take(context, type, copy)) return;
-        if (type != null && type.length() == 2 && type.charAt(0) == 'r' && RunFrames.command(type)) return;
-        /*
-         * A beat is offered to the run and then delivered anyway. It is not a command: nothing acts
-         * on it, and the page is where it is written down. Buffered here only while the page is
-         * asleep, because a run is spent with the screen off and a graph with an hour missing out of
-         * the middle of it is not a graph.
-         */
-        if ("hr".equals(type)) RunFrames.heard(beatOf(copy));
+
+        // Controls: acted on here at once and acked, the page adopting what was done, see RunFrames.
+        if (RunFrames.isControl(type) && takeControl(type, copy)) return;
+
+        // Telemetry: a beat, kept with when it came until the page drains it, see RunFrames.heard.
+        if ("hr".equals(type)) {
+            RunFrames.heard(beatOf(copy));
+            return;
+        }
+
+        // Assertions: kept until the page acks them, and offered to it now as well, see WristInbox.
+        if (WristInbox.durable(type)) WristInbox.take(context, type, copy);
+
+        // The watch's clock, for dating a press that waited out the link going down.
+        if ("hello".equals(type)) noteWatchClock(copy);
+
+        // What is the page's to act on: the assertions, navigation, and the hello it answers.
         Listener told = listener;
         if (told == null) return;
         main.post(() -> told.onBytes(copy));
+    }
+
+    /** This phone's clock minus the watch's, from the watch's last hello; valid once one is heard. */
+    private volatile long watchOffset = 0;
+    private volatile boolean watchClockKnown = false;
+
+    private void noteWatchClock(byte[] bytes) {
+        try {
+            long clock = new org.json.JSONObject(new String(bytes, StandardCharsets.UTF_8)).optLong("c", 0);
+            if (clock <= 0) return;
+            watchOffset = System.currentTimeMillis() - clock;
+            watchClockKnown = true;
+        } catch (org.json.JSONException notOurs) {
+            // A hello the page will make sense of or not; the clock is only a refinement.
+        }
+    }
+
+    /**
+     * A run control from the watch, acted on by RunFrames and acked, so the watch stops sending it.
+     * False only for a press this cannot place and a page might: no run is described here and the
+     * watch is too old to say when it was pressed, which is how controls always went before.
+     */
+    private boolean takeControl(String type, byte[] bytes) {
+        long stamp;
+        try {
+            stamp = new org.json.JSONObject(new String(bytes, StandardCharsets.UTF_8)).optLong("at", 0);
+        } catch (org.json.JSONException notOurs) {
+            return false;
+        }
+        long pressedAt = stamp > 0 && watchClockKnown ? stamp + watchOffset : 0;
+        RunFrames.Taken result = RunFrames.control(type, stamp, pressedAt);
+        if (result == RunFrames.Taken.NO_RUN) {
+            // A watch that stamps its presses keeps this one and sends it again once a run is described.
+            return stamp > 0;
+        }
+        if (stamp > 0) ackControl(stamp);
+        return true;
+    }
+
+    /** Tells the watch a control has been taken, so it forgets the copy it is holding. */
+    private void ackControl(long stamp) {
+        try {
+            org.json.JSONObject ack = new org.json.JSONObject();
+            ack.put("v", 2);
+            ack.put("t", "ck");
+            ack.put("at", stamp);
+            write(ack.toString().getBytes(StandardCharsets.UTF_8));
+        } catch (org.json.JSONException impossible) {
+            // Three plain values into an empty object.
+        }
+    }
+
+    /** The run changed here rather than on the page: an awake page adopts it at once. */
+    void runChanged() {
+        Listener told = listener;
+        if (told != null) main.post(told::onRunChanged);
     }
 
     /** The beat out of a message already known to be one, or zero where it is not a number. */

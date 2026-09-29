@@ -1,5 +1,5 @@
 import { Capacitor } from '@capacitor/core';
-import { Wrist, type WristClaim } from '$lib/watch/ble.native';
+import { Wrist, type WristClaim, type WristRunStatus } from '$lib/watch/ble.native';
 import type { RunFrame } from '$lib/watch/link';
 import type { RunStep } from '$lib/domain/run/workout';
 import type { RunLive } from '$lib/domain/running';
@@ -18,11 +18,19 @@ import { maxHeartRate } from '$lib/prefs';
 
 const native = () => Capacitor.isNativePlatform() && Capacitor.isPluginAvailable('Wrist');
 
-/** Where the run is now, and what is left of it, so the service can carry on from exactly here. */
+/**
+ * Where the run is now, and what is left of it, so the service can carry on from exactly here.
+ *
+ * `rev` is the native revision this page last adopted, see {@link takeBack}: a plan from before the
+ * page adopted a change made from the wrist is refused natively, or it would undo it. -1 where the
+ * page never learnt one, which the native side takes as it always did.
+ */
 export async function handDown(
 	frame: RunFrame,
 	steps: RunStep[],
-	live: RunLive | null
+	live: RunLive | null,
+	rev = -1,
+	activityId: string | null = null
 ): Promise<void> {
 	if (!native()) return;
 	if (frame.status === 'd' || !live) {
@@ -31,6 +39,8 @@ export async function handDown(
 	}
 	const at = steps.findIndex((step) => step.key === live.stepKey);
 	await Wrist.plan({
+		rv: rev,
+		id: activityId,
 		st: frame.status,
 		c: frame.cue,
 		s: frame.seconds,
@@ -57,8 +67,34 @@ export async function handDown(
 	}).catch(() => undefined);
 }
 
-/** What the service reached while the page was frozen, or null where there was no service to ask. */
+/**
+ * What the native side did with the run since this page last adopted, or null where there is no
+ * native side to ask. Drains: the beats and laps in it are handed over once.
+ */
 export async function takeBack(): Promise<WristClaim | null> {
 	if (!native()) return null;
 	return Wrist.claim().catch(() => null);
+}
+
+/**
+ * The beats the wrist reported since the page last asked. The native side keeps every one with when
+ * it came, whatever the page is doing, and this is the only way they reach the page in the installed
+ * app, so none is counted twice or dated by when a frozen page happened to thaw. Empty in a browser,
+ * where the beats arrive through the link instead.
+ */
+export async function takeBeats(): Promise<{ b: number; at: number }[]> {
+	if (!native()) return [];
+	const taken = await Wrist.beats().catch(() => null);
+	return taken?.items ?? [];
+}
+
+/** The native run at a glance, without draining anything, or null where there is none to ask. */
+export async function nativeRun(): Promise<WristRunStatus | null> {
+	if (!native()) return null;
+	return Wrist.runStatus().catch(() => null);
+}
+
+/** Whether beats and run controls go through the native side, rather than through the link. */
+export function nativeRuns(): boolean {
+	return native();
 }

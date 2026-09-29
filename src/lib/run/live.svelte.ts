@@ -16,16 +16,28 @@ import {
 	type RunStep,
 	type RunWorkout
 } from '$lib/domain/run/workout';
-import { elapsed, emptyLive, type RunRecord, type StepResult } from '$lib/domain/running';
-import { appendRunPoints, clearRunPoints, listRunPoints, updateRun } from '$lib/db/repository';
+import { elapsed, emptyLive, parseRun, type RunRecord, type StepResult } from '$lib/domain/running';
+import {
+	appendRunPoints,
+	clearRunPoints,
+	getActivity,
+	listRunPoints,
+	updateRun
+} from '$lib/db/repository';
 import { screenLock } from '$lib/ui/wakeLock';
 import { zoneOf, zoneWithin } from '$lib/domain/run/zones';
 import { autoPauseRuns, maxHeartRate } from '$lib/prefs';
 import { get } from 'svelte/store';
 import { commit, tap, warn } from '$lib/haptics';
 import { trackingSource, type Source, type StartFailure } from './source';
-import { acceptHeart, acceptRunCommands, endMirroredRun, mirrorRun } from '$lib/watch/mirror';
-import { handDown, takeBack } from './handover';
+import {
+	acceptHeart,
+	acceptRunChanges,
+	acceptRunCommands,
+	endMirroredRun,
+	mirrorRun
+} from '$lib/watch/mirror';
+import { handDown, nativeRun, nativeRuns, takeBack, takeBeats } from './handover';
 import type { RunFrame } from '$lib/watch/link';
 import type { RunCommand, RunStatus } from '$lib/watch/protocol';
 
@@ -58,8 +70,12 @@ const MIRROR_MS = 2000;
  * stamped with it would be claiming a reading nobody took.
  */
 const BEAT_STALE_MS = 20_000;
-/** An hour of a beat every few seconds, which is longer than any fix still waiting to be written. */
-const BEAT_LOG_MOST = 1200;
+/**
+ * Four hours of a beat every four seconds, the watch's cadence, as the native buffer holds. A page
+ * frozen for most of a run takes every beat back in one go when it thaws, before the fixes they
+ * belong on are written: kept to an hour, the first part of a long run lost its heart rate.
+ */
+const BEAT_LOG_MOST = 3600;
 /**
  * How long a run goes nowhere before it holds its own clock, where that has been asked for. Long
  * enough that a fix rejected at a corner is not a pause, short enough that a crossing is.
@@ -106,6 +122,12 @@ export class LiveRun {
 	/** What the wrist was last told, so a block change or a pause is sent the moment it happens. */
 	private mirroredCue = -1;
 	private mirroredStatus = '';
+	/**
+	 * The native revision this page last adopted, carried by every plan it hands down so the native
+	 * side can refuse one made before a change from the wrist was adopted. -1 until the first adopt,
+	 * and in a browser, where there is no native side.
+	 */
+	private nativeRev = -1;
 
 	get steps(): RunStep[] {
 		return this.record?.workout ? flatten(this.record.workout) : [];
@@ -221,7 +243,8 @@ export class LiveRun {
 	 */
 	async resumed() {
 		if (!this.activityId || !this.record) return;
-		if (this.status === 'running' || this.status === 'paused') {
+		// Idle too: a run started from the wrist while this page sat on its start screen, asleep.
+		if (this.status === 'running' || this.status === 'paused' || this.status === 'idle') {
 			await this.adopt();
 			this.now = Date.now();
 			if (this.status === 'running') this.startPolling();
@@ -233,9 +256,15 @@ export class LiveRun {
 		this.record = record;
 		this.source = trackingSource();
 		this.background = this.source.background;
-		// The buttons on the wrist, which ask rather than decide: the run is driven from one place.
+		/*
+		 * The buttons on the wrist. In the installed app the native side takes every one of them and
+		 * this page adopts what it did (acceptRunChanges); these reach the page only in a browser, or
+		 * from a watch too old to stamp its presses. See doc/llm-memory/watch-protocol.md.
+		 */
 		acceptRunCommands((command) => void this.command(command));
-		// And what the wrist measures rather than asks for, which travels the other way.
+		acceptRunChanges(() => void this.nativeChanged());
+		// And what the wrist measures rather than asks for, which travels the other way. Only in a
+		// browser: in the app the beats are drained from the native side, see tick.
 		acceptHeart((bpm, at) => this.heard(bpm, at));
 		const stored = await listRunPoints(activityId);
 		this.track = replayTracked(stored);
@@ -244,13 +273,31 @@ export class LiveRun {
 		this.heart = null;
 		for (const point of stored) this.count(point.heartRate ?? null);
 		this.now = Date.now();
-		// A run reopened while it was still running carries on: the service never stopped.
-		if (record.live?.status === 'running') await this.begin(false);
-		else if (record.live?.status === 'paused') {
-			await this.adopt();
-			this.tick();
-		}
-		else await this.mirror(true);
+		/*
+		 * What the native side did while no page held this run, before anything here acts on it. A
+		 * run finished or paused from the wrist while the app was on another screen, or while the
+		 * page had been thrown away, used to be resumed as running here, and the first plan handed
+		 * down then undid the finish natively as well.
+		 */
+		const before = record.live?.status;
+		await this.adopt();
+		const status = this.record?.live?.status;
+		// A run reopened while it is still running carries on: the service never stopped. One the
+		// wrist started or resumed was begun by adopt already, and is not begun twice.
+		if (status === 'running' && before === 'running') await this.begin(false);
+		else if (status === 'paused') this.tick();
+		else if (status !== 'running') await this.mirror(true);
+	}
+
+	/**
+	 * A control from the wrist changed the run on the native side. Adopted at once while this page
+	 * is awake; a frozen page adopts on thawing instead, the same way.
+	 */
+	private async nativeChanged() {
+		if (!this.activityId || !this.record) return;
+		await this.adopt();
+		this.now = Date.now();
+		if (this.status === 'running' || this.status === 'paused') await this.mirror(true);
 	}
 
 	/** A button on the watch. Refused where it makes no sense, so a stale wrist cannot restart a run. */
@@ -272,9 +319,12 @@ export class LiveRun {
 			 * Left mid run, going or held. Nothing is stopped: the service is what keeps this
 			 * process alive, and a paused run whose service was stopped is a run nobody can start
 			 * again, from the wrist or from here. The wrist keeps the run, so its buttons have to
-			 * keep reaching this page for as long as it lasts.
+			 * keep reaching this page for as long as it lasts, and what they did natively has to be
+			 * adopted by it: a run finished from the wrist while the app is on another screen is
+			 * stored here, and the service let go.
 			 */
 			acceptRunCommands((command) => void this.command(command));
+			acceptRunChanges(() => void this.nativeChanged());
 			return;
 		}
 		this.lock.release();
@@ -320,12 +370,17 @@ export class LiveRun {
 	async stop() {
 		const live = this.record?.live;
 		if (!live || !this.record) return;
+		// Stopped once: a second stop, from the wrist and the phone together, would drain the fixes again.
+		if (live.status === 'done' || this.stopping) return;
+		this.stopping = true;
 		if (live.status === 'running') live.baseSeconds = elapsed(live, Date.now());
 		live.legStartedAt = null;
 		// Whatever the service gathered and nobody has taken yet: the last minutes of a run ended
 		// from the wrist are in that buffer, and a run that stops before draining it loses them.
 		await this.ingest().catch(() => undefined);
 		live.status = 'done';
+		// Done guards a second stop from here on.
+		this.stopping = false;
 		this.closeStep();
 		this.stopPolling();
 		await this.source?.stop();
@@ -354,20 +409,30 @@ export class LiveRun {
 		const live = this.record?.live;
 		if (!live || !this.record) return;
 		if (live.status !== 'running' && live.status !== 'paused') return;
+		if (!this.lapAt(this.seconds, this.track.distanceM)) return;
+		commit();
+		await this.save();
+	}
+
+	/**
+	 * A lap ending where the run's clock and distance were, whoever pressed for it: this page, or the
+	 * wrist through the native side, whose laps are adopted by the same arithmetic. False for a lap
+	 * of nothing, which is a button pressed twice.
+	 */
+	private lapAt(runSeconds: number, runMetres: number): boolean {
+		if (!this.record) return false;
 		const from = this.record.laps.reduce(
 			(sum, lap) => ({ seconds: sum.seconds + lap.seconds, distanceM: sum.distanceM + lap.distanceM }),
 			{ seconds: 0, distanceM: 0 }
 		);
-		const seconds = Math.round(Math.max(0, this.seconds - from.seconds));
-		const distanceM = Math.round(Math.max(0, this.track.distanceM - from.distanceM));
-		// A lap of nothing is a button pressed twice, which is not a lap.
-		if (seconds < 1) return;
+		const seconds = Math.round(Math.max(0, runSeconds - from.seconds));
+		const distanceM = Math.round(Math.max(0, runMetres - from.distanceM));
+		if (seconds < 1) return false;
 		this.record.laps = [
 			...this.record.laps,
 			{ index: this.record.laps.length + 1, distanceM, seconds }
 		];
-		commit();
-		await this.save();
+		return true;
 	}
 
 	/** The block the runner says they are on, which always beats the one the clock thinks they are on. */
@@ -457,7 +522,10 @@ export class LiveRun {
 		this.now = Date.now();
 		// Frozen by Android and thawed again: the service ran the run in the meantime, so what it
 		// did is taken back before anything here is worked out on top of a block it has left.
-		if (slept && this.status === 'running') await this.adopt();
+		if (slept && (this.status === 'running' || this.status === 'paused')) await this.adopt();
+		// The beats since the last tick, which in the app reach the page only this way. Before the
+		// fixes, so each fix finds the beat taken as it was recorded.
+		if (nativeRuns()) for (const beat of await takeBeats()) this.heard(beat.b, beat.at);
 		// A run held by the app is still listening, or it could never hear the runner start again.
 		if (this.status === 'running' || this.autoHeld) await this.ingest();
 		await this.judgeStillness();
@@ -517,22 +585,62 @@ export class LiveRun {
 		await mirrorRun(frame).catch(() => undefined);
 		// And the same run handed to the service, which speaks for this page once Android stops
 		// calling it: a run is spent with the screen off, see doc/llm-memory/running.md.
-		await handDown(frame, this.steps, this.record.live);
+		await handDown(frame, this.steps, this.record.live, this.nativeRev, this.activityId);
 	}
 
 	/**
-	 * What the service did while this page was frozen. Its own track is still the record, so only
-	 * what cannot be rebuilt from that is adopted: which block the run reached, when it changed, and
-	 * what the blocks it finished came to.
+	 * What the native side did since this page last adopted: while it was frozen, while it was on
+	 * another screen, and, since every control from the wrist is taken there, while it was awake as
+	 * well. Its own track is still the record, so only what cannot be rebuilt from that is adopted:
+	 * the state the wrist put the run in, which block it reached, the laps taken, and what the
+	 * blocks it finished came to. See doc/llm-memory/watch-protocol.md.
 	 */
-	private async adopt() {
+	private adopt(): Promise<void> {
+		/*
+		 * One at a time. A thaw sets off the tick, the visibility change and the native run event
+		 * together, and two adopts of one finish each stopped the run, draining the fixes twice.
+		 */
+		if (!this.adopting) this.adopting = this.adoptNow().finally(() => (this.adopting = null));
+		return this.adopting;
+	}
+
+	private adopting: Promise<void> | null = null;
+	/** A stop under way, whose status only reads done once the last fixes are drained. */
+	private stopping = false;
+
+	private async adoptNow() {
+		// This run's only: a page opened on another activity must not take the run the wrist holds,
+		// nor drain its beats. Asked without draining, which is what the claim below then does.
+		const glance = await nativeRun();
+		if (glance?.id && glance.id !== this.activityId) return;
 		const taken = await takeBack();
 		const live = this.record?.live;
 		if (!taken || !live || !this.record) return;
+		// Carried by every plan from here on, so the native side takes them again.
+		if (typeof taken.rev === 'number') this.nativeRev = taken.rev;
 
 		// Every beat the wrist reported while nobody here was listening, each back where it belongs.
 		for (const sample of taken.hr ?? []) this.heard(sample.b, sample.at);
 		this.beatLog.sort((a, b) => a.at - b.at);
+
+		/*
+		 * Started from the wrist. The service has been running it since the press, from an empty
+		 * buffer, so the page takes it as its own start would have made it, dated by the press.
+		 */
+		if (live.status === 'idle' && (taken.st === 'r' || taken.st === 'p' || taken.st === 'd')) {
+			await clearRunPoints(this.activityId);
+			this.track = emptyTrack();
+			this.beats = { sum: 0, count: 0, max: 0 };
+			this.autoHeld = false;
+			this.movedAt = Date.now();
+			live.startedAt = taken.sw ?? Date.now() - taken.s * 1000;
+			live.baseSeconds = taken.s;
+			live.legStartedAt = null;
+			live.status = 'paused';
+		}
+
+		// Laps pressed on the wrist, each ending where the run's clock and distance were at the press.
+		for (const mark of taken.laps ?? []) this.lapAt(mark.s, mark.d);
 
 		const steps = this.steps;
 		for (const done of taken.done) {
@@ -809,6 +917,28 @@ function plannedOf(workout: RunWorkout) {
 /** What a workout's steps are called on screen when the runner named none of them. */
 export function stepName(step: RunStep, names: Record<string, string>): string {
 	return step.label?.trim() || names[step.kind] || step.kind;
+}
+
+/**
+ * A run finished from the wrist that no page has stored yet, stored as the app starts.
+ *
+ * The native side holds such a run, and the service stays up for it with a notification saying so
+ * (TraceService.done), until a page adopts it. Normally that is the run's own page, which adopts on
+ * any change from the wrist even when it is not on screen. This is for the page that is not there at
+ * all: Android threw the webview away while the service kept the process alive, and the app opened
+ * afresh, from the notification or otherwise. See doc/llm-memory/watch-protocol.md.
+ */
+export async function settleWristFinishedRun(): Promise<void> {
+	const glance = await nativeRun();
+	if (!glance || glance.st !== 'd' || !glance.id) return;
+	const activity = await getActivity(glance.id);
+	if (!activity?.measurements) return;
+	const record = parseRun(activity.measurements);
+	if (record.live?.status !== 'running' && record.live?.status !== 'paused') return;
+	const run = new LiveRun();
+	// Adopts the finish and stores it, which also ends the service and clears the native side.
+	await run.open(glance.id, record);
+	await run.close();
 }
 
 export type { RunWorkout };

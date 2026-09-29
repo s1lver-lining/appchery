@@ -32,6 +32,8 @@ public class WristPlugin extends Plugin {
             @Override
             public void onReady(boolean ok, String reason) {
                 if (ok) {
+                    // Once per watch: Android starts the app when it comes near, see Companion.
+                    Companion.ensure(getActivity(), address);
                     JSObject result = new JSObject();
                     result.put("connected", true);
                     call.resolve(result);
@@ -57,14 +59,43 @@ public class WristPlugin extends Plugin {
             public void onRestarted() {
                 notifyListeners("restarted", new JSObject());
             }
+
+            @Override
+            public void onRunChanged() {
+                notifyListeners("run", new JSObject());
+            }
         });
     }
 
+    /**
+     * The link let go, and only the link. The run is not the link's: this used to clear it too, and a
+     * page thawing into a link it judged stale "recovered" it mid run, wiping the run from under the
+     * watch, whose buttons and heart rate then went nowhere until the phone was picked up. The run
+     * is cleared by {@link #forget}, when the page says it is over.
+     */
     @PluginMethod
     public void disconnect(PluginCall call) {
-        RunFrames.clear();
         Wrist.get().disconnect();
         call.resolve();
+    }
+
+    /** The beats the wrist reported since the page last asked, see RunFrames.heard. */
+    @PluginMethod
+    public void beats(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("items", RunFrames.drainBeats());
+        call.resolve(result);
+    }
+
+    /** Where the run is, without taking anything, for a page starting afresh, see RunFrames.status. */
+    @PluginMethod
+    public void runStatus(PluginCall call) {
+        RunFrames.remember(getContext());
+        try {
+            call.resolve(JSObject.fromJSONObject(RunFrames.status()));
+        } catch (org.json.JSONException impossible) {
+            call.resolve();
+        }
     }
 
     @PluginMethod
@@ -75,6 +106,7 @@ public class WristPlugin extends Plugin {
             return;
         }
         Wrist.get().pageWrote();
+        Wrist.get().remember(text.getBytes(StandardCharsets.UTF_8));
         Wrist.get().write(text.getBytes(StandardCharsets.UTF_8));
         call.resolve();
     }
@@ -85,6 +117,8 @@ public class WristPlugin extends Plugin {
      */
     @PluginMethod
     public void plan(PluginCall call) {
+        // Something to start the service with, for a run armed with a watch to start it from.
+        RunFrames.remember(getContext());
         JSObject given = call.getData();
         RunFrames.plan(given);
         call.resolve();
@@ -102,6 +136,18 @@ public class WristPlugin extends Plugin {
     public void motion(PluginCall call) {
         JSObject result = new JSObject();
         result.put("items", WristMotion.waiting(getContext()));
+        call.resolve(result);
+    }
+
+    /**
+     * Durable assertions received while the page could not take them, for the page to apply again.
+     * No matching forget: an entry is cleared by {@link Wrist#remember} when the page acks it, which
+     * is the page saying it truly landed. See WristInbox.
+     */
+    @PluginMethod
+    public void inbox(PluginCall call) {
+        JSObject result = new JSObject();
+        result.put("items", WristInbox.waiting(getContext()));
         call.resolve(result);
     }
 
@@ -124,6 +170,8 @@ public class WristPlugin extends Plugin {
      */
     @PluginMethod
     public void claim(PluginCall call) {
+        // A fresh process may not have one yet, and a finish kept from a killed one is read with it.
+        RunFrames.remember(getContext());
         JSONObject state = RunFrames.state();
         try {
             call.resolve(JSObject.fromJSONObject(state));

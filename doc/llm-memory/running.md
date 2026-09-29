@@ -422,11 +422,15 @@ draws and what a GPX wants. A sample older than twenty seconds is not written at
 out of range or the sensor has lost the skin, and a fix stamped with it would be claiming a reading
 nobody took.
 
-With the page frozen, `RunFrames` buffers the beats exactly as it composes the frames, and hands
-them back through `claim` with the rest of what it did. They carry the moment each was taken, so the
-page puts every one of them on the fix it belongs to rather than stamping a whole batch with the
-newest. Buffered only while the page is quiet, because a sample kept twice is a sample averaged
-twice.
+`RunFrames` buffers every beat, whatever the page is doing, with the moment it came, and the page
+drains them: on each tick while it is awake (`takeBeats`) and in one go through `claim` when it
+thaws. That is the only way a beat reaches the page in the app, so none is counted twice, and each
+lands on the fix it belongs to rather than a whole batch being stamped with the newest. Until
+2026-09-29 beats were buffered only while the page was quiet and otherwise handed to the page
+directly, and a beat handed to a page that had just frozen waited for the thaw and was dated then:
+with the page also losing the native run on a thaw (see [watch-protocol.md](watch-protocol.md)),
+long runs lost their heart rate from halfway. Both buffers hold four hours at the watch's four
+seconds.
 
 `BODY_SENSORS` is asked for on the way into a run rather than on a settings screen nobody visits,
 which is where the phone asks for its own. Refused, the run is a run without a heart rate, and the
@@ -516,15 +520,21 @@ A paused run keeps its service. Stopping it is the app giving up the one thing k
 alive, and Android reclaims the process within seconds: the run could be paused from the wrist and
 then never resumed, because there was nothing left to ask, and the phone came back to its launcher
 with the app started again from the beginning. So a pause holds the service with nothing to listen
-to, and only finishing a run or leaving it stopped puts it down.
+to. A run finished from the wrist is held the same way (`TraceService.done`, a notification saying to
+open the app) until the page has stored it, because until then the run and its unsaved fixes exist
+only in this process; only the page storing a run, or leaving it, puts the service down. The mode is
+written down, so a service Android restarts comes back held rather than listening to GPS. And a run
+on its start screen with a watch linked has the service up already, "Ready to run" with no GPS, so
+that Start pressed on the wrist with the phone in a pocket can start it: Android starts no service
+from the background (see invariant 6 in [watch-protocol.md](watch-protocol.md)).
 
-The buttons work while the page is frozen for the same reason the frames do. `Wrist.java` offers
-what arrives to `RunFrames` before the page: if the page has been silent for seconds and the message
-is a run button, the service acts on it, stops or restarts the fixes itself, and sends the frame that
-answers it. Everything it did, the clock it stopped, the block it reached, the run it finished, is
-handed back through `claim` when the page thaws, and the page adopts it rather than carrying on from
-where it was frozen. A page that thaws to a paused run has no ticks to notice anything with, so it
-asks again the moment the screen is looked at.
+Every button on the wrist is taken by `RunFrames`, whatever the page is doing: start, pause,
+resume, finish and lap, dated by when it was pressed. Until 2026-09-29 the service acted only once the
+page had been silent for four seconds and left the rest to the page, and a press that fell between
+the two waited for the phone to be picked up. Everything it did, the clock it stopped, the block it
+reached, the laps, the run it started or finished, is adopted by the page: at once while it is awake
+(the `run` event), on a thaw, and whenever the run's page opens. See [watch-protocol.md](watch-protocol.md)
+for the model this follows, which is the same for every message the watch sends.
 
 Nothing here runs on a timer. A frame goes out on the back of a location the service was already
 woken for, at most one every three seconds: an hour of running is an hour of battery, and a timer of

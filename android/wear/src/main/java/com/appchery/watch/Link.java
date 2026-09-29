@@ -148,6 +148,29 @@ public class Link {
 
     /** Newest assertion per end, waiting to be acknowledged. Superseded ones are simply replaced. */
     private final Map<String, JSONObject> pending = new LinkedHashMap<>();
+
+    /**
+     * Run controls pressed here and not yet acked, by the stamp that names each, oldest first. Apart
+     * from `pending`, which a new round clears: a finish pressed as the round changes is still a
+     * finish. Kept only for a phone that says it acks them (`k` in its hello), and stamped only on a
+     * link with room for it; any other way a control goes once, bare, as controls always did. See
+     * doc/llm-memory/watch-protocol.md.
+     */
+    private final Map<Long, JSONObject> controls = new LinkedHashMap<>();
+    /** When each control last went, on the elapsed clock, so one whose ack is on its way is not resent. */
+    private final Map<Long, Long> controlSentAt = new java.util.HashMap<>();
+    /** Whether the phone acks run controls, from the `k` in its last hello. */
+    private volatile boolean phoneAcksControls = false;
+    private long lastControlStamp = 0;
+    /** A press older than this is one nobody means any more, and goes rather than being sent. */
+    private static final long CONTROL_MOST_MS = 10 * 60_000;
+    /** Room a stamped control needs: `{"v":2,"t":"rl","at":1790534426000}` is 36 bytes. */
+    private static final int CONTROL_PAYLOAD = 40;
+    /** How long an ack may take before a run frame from the phone has the control sent again. */
+    private static final long CONTROL_RESEND_MS = 1_500;
+    /** Enough for any run's worth of presses; a phone that never answers must not grow it all day. */
+    private static final int CONTROLS_MOST = 16;
+
     private int payload = DEFAULT_PAYLOAD;
     private String activityId;
 
@@ -356,7 +379,32 @@ public class Link {
     private void flush() {
         if (subscribers.isEmpty() || toPhone == null || server == null) return;
         for (JSONObject message : new ArrayList<>(pending.values())) send(message);
+        resendControls(0);
         offerMotion();
+    }
+
+    /**
+     * Every control not yet acked, sent again if it has waited at least `after` since it last went.
+     * Called on every subscription with no wait, and on every run frame the phone sends with a short
+     * one: a frame is the phone saying it knows the run, which is when a control it could not place
+     * before can be taken. Too old a control is dropped instead, see CONTROL_MOST_MS.
+     */
+    private void resendControls(long after) {
+        long now = System.currentTimeMillis();
+        long clock = android.os.SystemClock.elapsedRealtime();
+        java.util.Iterator<Map.Entry<Long, JSONObject>> each = controls.entrySet().iterator();
+        while (each.hasNext()) {
+            Map.Entry<Long, JSONObject> one = each.next();
+            if (now - one.getKey() > CONTROL_MOST_MS) {
+                each.remove();
+                controlSentAt.remove(one.getKey());
+                continue;
+            }
+            Long sent = controlSentAt.get(one.getKey());
+            if (sent != null && clock - sent < after) continue;
+            controlSentAt.put(one.getKey(), clock);
+            send(one.getValue());
+        }
     }
 
     private void setPayload(int size) {
@@ -577,9 +625,19 @@ public class Link {
         Log.i(TAG, "in " + type);
         switch (type) {
             case "hello":
+                // What the phone can do, which decides whether a control is kept until it is acked.
+                phoneAcksControls = (message.optInt("k", 0) & 1) != 0;
                 // The phone speaks first on connecting, and the reply carries this watch's clock so
-                // the two can tell whose edit came later.
+                // the two can tell whose edit came later, and when a control was pressed.
                 hello();
+                return;
+            case "ck":
+                // A control taken, so its copy goes.
+                long taken = message.optLong("at", 0);
+                main.post(() -> {
+                    controls.remove(taken);
+                    controlSentAt.remove(taken);
+                });
                 return;
             case "round":
                 onRound(message);
@@ -636,6 +694,23 @@ public class Link {
             // A type each rather than a type and an action: a link that never negotiated an MTU can
             // notify twenty bytes, and "rc" with an action in it is twenty five, dropped in silence.
             message.put("t", type(action));
+            /*
+             * Stamped and kept until acked, where the phone acks and the link has room: a press made
+             * as the link blinks is then sent again rather than lost, and dated where it was made.
+             * On the twenty byte fallback the stamp would not fit, so it goes bare and once.
+             */
+            if (phoneAcksControls && payload >= CONTROL_PAYLOAD) {
+                long stamp = Math.max(System.currentTimeMillis(), lastControlStamp + 1);
+                lastControlStamp = stamp;
+                message.put("at", stamp);
+                controls.put(stamp, message);
+                controlSentAt.put(stamp, android.os.SystemClock.elapsedRealtime());
+                while (controls.size() > CONTROLS_MOST) {
+                    Long oldest = controls.keySet().iterator().next();
+                    controls.remove(oldest);
+                    controlSentAt.remove(oldest);
+                }
+            }
             send(message);
         } catch (Exception e) {
             Log.w(TAG, "could not ask to " + action, e);
@@ -706,7 +781,11 @@ public class Link {
         run.plannedSeconds = message.has("ps") ? message.optInt("ps", -1) : -1;
         run.plannedMetres = message.has("pd") ? message.optInt("pd", -1) : -1;
         run.plannedPace = message.optInt("pp", 0);
-        main.post(() -> listener.onRun(run));
+        main.post(() -> {
+            listener.onRun(run);
+            // The phone knows the run now, so a control it could not place before goes again.
+            resendControls(CONTROL_RESEND_MS);
+        });
     }
 
     private void onRound(JSONObject message) {

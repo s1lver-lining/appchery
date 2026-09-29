@@ -77,6 +77,19 @@
             android:exported="false"
             android:foregroundServiceType="location" />
 
+        <!--
+            Started by Android when the registered watch comes near, so a watch app opened with the
+            phone app stopped still finds a phone waiting for it. See Companion.java.
+        -->
+        <service
+            android:name=".WristCompanion"
+            android:exported="true"
+            android:permission="android.permission.BIND_COMPANION_DEVICE_SERVICE">
+            <intent-filter>
+                <action android:name="android.companion.CompanionDeviceService" />
+            </intent-filter>
+        </service>
+
         <provider
             android:name="androidx.core.content.FileProvider"
             android:authorities="${applicationId}.fileprovider"
@@ -109,6 +122,9 @@
     <uses-permission android:name="android.permission.BLUETOOTH" android:maxSdkVersion="30" />
     <uses-permission android:name="android.permission.BLUETOOTH_ADMIN" android:maxSdkVersion="30" />
     <uses-feature android:name="android.hardware.bluetooth_le" android:required="false" />
+    <!-- The watch as a companion device, whose presence starts the app. -->
+    <uses-feature android:name="android.software.companion_device_setup" android:required="false" />
+    <uses-permission android:name="android.permission.REQUEST_OBSERVE_COMPANION_DEVICE_PRESENCE" />
 
     <!-- Tracking a run: the service that keeps receiving fixes, and the notification it runs behind. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />

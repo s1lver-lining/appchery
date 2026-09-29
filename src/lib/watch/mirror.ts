@@ -4,6 +4,7 @@ import type { RoundDefinition } from '$lib/domain/rounds/types';
 import { RUNNING_KIND, parseRun } from '$lib/domain/running';
 import { recordFor } from './record';
 import {
+	drainWristInbox,
 	watchLink,
 	onWatchApplied,
 	onWatchBack,
@@ -11,7 +12,8 @@ import {
 	onWatchOpen,
 	onWatchArrows,
 	onWatchCommand,
-	onWatchHeart
+	onWatchHeart,
+	onWatchRunChanged
 } from './store';
 import type { ActivityLine, Round, RunFrame } from './link';
 import type { RunCommand } from './protocol';
@@ -175,6 +177,8 @@ export async function mirrorRound(activity: ActivityLike): Promise<void> {
 	onWatchOpen(null);
 	lastSession = null;
 	await link.setRound(round, recordFor(round));
+	// Ends scored on the wrist while no page had this round open, kept natively until one did.
+	void drainWristInbox().catch(() => undefined);
 }
 
 /**
@@ -199,6 +203,7 @@ export function endMirroredRun(): void {
 	watchLink()?.clearRun();
 	onWatchCommand(null);
 	onWatchHeart(null);
+	onWatchRunChanged(null);
 	describeAgain = null;
 	onWatchLinked(null);
 }
@@ -245,6 +250,8 @@ export async function mirrorIdle(): Promise<void> {
 /** What to do when the watch asserts the session's training arrows. */
 export function acceptArrows(handler: ((total: number, at: number) => void) | null): void {
 	onWatchArrows(handler);
+	// A count the wrist asserted while no page was listening for one, kept natively until one is.
+	if (handler) void drainWristInbox().catch(() => undefined);
 }
 
 /** What the run buttons on the wrist do. The watch asks; the phone is what runs a run. */
@@ -255,6 +262,14 @@ export function acceptRunCommands(handler: ((command: RunCommand) => void) | nul
 /** The beat as the wrist reads it, which is the one thing about a run that travels upwards. */
 export function acceptHeart(handler: ((bpm: number, at: number) => void) | null): void {
 	onWatchHeart(handler);
+}
+
+/**
+ * What to do when a control from the wrist changed the run on the native side, which takes every
+ * one of them in the installed app: the page holding the run adopts, see doc/llm-memory/watch-protocol.md.
+ */
+export function acceptRunChanges(handler: (() => void) | null): void {
+	onWatchRunChanged(handler);
 }
 
 /** Where back goes from this page. The watch asks; only the phone knows what is behind it. */

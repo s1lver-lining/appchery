@@ -10,6 +10,7 @@ import {
 	commandOf,
 	fitRun,
 	MAX_BLOCK_LABEL,
+	PHONE_CAN,
 	PROTOCOL_VERSION,
 	type BlockKind,
 	type EndState,
@@ -161,6 +162,8 @@ export class WatchLink {
 	private answered = false;
 	/** A hello is out and has not been answered yet, which is what the liveness timer is watching. */
 	private awaiting = false;
+	/** The stamps of the controls this page has taken, so one sent again is not taken twice. */
+	private controlsTaken = new Set<number>();
 	private screen: Screen = 'idle';
 	/**
 	 * The session as last described. Held because a watch that restarts has forgotten it and cannot
@@ -223,9 +226,27 @@ export class WatchLink {
 	 */
 	async ping(): Promise<void> {
 		this.awaiting = true;
-		await this.say({ v: PROTOCOL_VERSION, t: 'hello', d: this.deviceId, c: this.now() });
+		const asked = this.now();
+		await this.say({
+			v: PROTOCOL_VERSION,
+			t: 'hello',
+			d: this.deviceId,
+			c: asked,
+			k: PHONE_CAN.ACK_CONTROLS
+		});
 		this.timer(() => {
 			if (!this.awaiting) return;
+			/*
+			 * Fired far later than it was set for: this page was frozen, and the answer may be queued
+			 * right behind this callback. Judged on a clock that had stopped, a healthy link was called
+			 * stale the moment the phone was glanced at mid run, and taken down, and the run went with
+			 * it (see doc/llm-memory/watch-protocol.md). So it asks again, and only a hello left
+			 * unanswered through a stretch this page was actually awake for is called stale.
+			 */
+			if (this.now() - asked > LIVENESS_MS * 2) {
+				void this.ping().catch(() => undefined);
+				return;
+			}
 			this.awaiting = false;
 			this.answered = false;
 			this.notify({ kind: 'stale' });
@@ -466,6 +487,20 @@ export class WatchLink {
 				case 'ru':
 				case 're':
 				case 'rl':
+					/*
+					 * Reached only where there is no native side to take it (the browser), or from a watch
+					 * too old to stamp it. A stamped press is sent until acked, so it is acked, and the
+					 * same stamp arriving again is the same press, not a second one.
+					 */
+					if (message.at !== undefined) {
+						const again = this.controlsTaken.has(message.at);
+						this.controlsTaken.add(message.at);
+						if (this.controlsTaken.size > 64) {
+							this.controlsTaken.delete(this.controlsTaken.values().next().value as number);
+						}
+						await this.say({ v: PROTOCOL_VERSION, t: 'ck', at: message.at });
+						if (again) return;
+					}
 					this.notify({ kind: 'command', command: commandOf(message.t) });
 					return;
 				case 'arrows':
@@ -487,6 +522,7 @@ export class WatchLink {
 				case 'mr':
 				case 'ms':
 				case 'mk':
+				case 'ck':
 					return;
 				// Nothing the phone has to act on: it is the one that sends these.
 				case 'ack':
