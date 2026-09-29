@@ -88,6 +88,9 @@ public class Link {
 
         /** The thresholds a shot is counted by, as the archer set them on the phone. */
         void onShotRule(JSONObject rule);
+
+        /** Which alerts to raise: an end shot, a block changed, every `metres` of a run (0 is none). */
+        void onAlerts(boolean end, boolean block, int metres);
     }
 
     /**
@@ -670,6 +673,12 @@ public class Link {
                 return;
             case "ms":
                 main.post(() -> listener.onShotRule(message));
+                return;
+            case "al":
+                boolean endAlert = message.optInt("e", 0) == 1;
+                boolean blockAlert = message.optInt("b", 1) == 1;
+                int everyMetres = Math.max(0, message.optInt("d", 0));
+                main.post(() -> listener.onAlerts(endAlert, blockAlert, everyMetres));
                 return;
             case "mk":
                 main.post(() -> onMotionKept(message));

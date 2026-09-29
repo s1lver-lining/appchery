@@ -111,6 +111,18 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     private static final int HEART_PERMISSION = 2;
     private int lastCue = -1;
     private boolean running = false;
+    /** The alerts the phone asked for, remembered so a restart raises them before the phone is back. */
+    private boolean endAlert = false;
+    private boolean blockAlert = true;
+    private int alertMetres = 0;
+    /** The last distance alerted in this run, as a count of `alertMetres`, and where it was passed. */
+    private int lastMark = -1;
+    private int markMetres = 0;
+    private int markSeconds = 0;
+    /** The line an alert shows over whatever screen is up, gone by itself or with a tap. */
+    private TextView banner;
+    private final Runnable hideBanner = () -> banner.setVisibility(View.GONE);
+    private static final long BANNER_MS = 3000;
     /** The sensor against the skin, on only while a run is: a light held on all day is a flat watch. */
     private Heart heart;
     private boolean keepAwake = false;
@@ -164,6 +176,10 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         sessionView.setMotion(trainingMotion);
         autoCount = getSharedPreferences("watch", MODE_PRIVATE).getBoolean("auto-count", false);
         sessionView.setAutoCount(autoCount);
+        android.content.SharedPreferences saved = getSharedPreferences("watch", MODE_PRIVATE);
+        endAlert = saved.getBoolean("alert-end", false);
+        blockAlert = saved.getBoolean("alert-block", true);
+        alertMetres = saved.getInt("alert-metres", 0);
         motion = new Motion(this, new android.os.Handler(getMainLooper()), new Motion.Listener() {
             @Override
             public void onSegment() {
@@ -174,7 +190,15 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
             public void onShot() {
                 if ("score".equals(screen)) {
                     // A shot in a round is cut into a segment of its own, so each arrow keeps its draw.
-                    if (roundEnd != null) shotsInEnd.merge(roundEnd, 1, Integer::sum);
+                    if (roundEnd != null) {
+                        int shot = shotsInEnd.merge(roundEnd, 1, Integer::sum);
+                        // The end's last arrow, counted rather than scored: the moment to go and pull.
+                        if (autoCount && endAlert && shot == arrowsPerEnd) {
+                            String key = roundEnd;
+                            int end = Integer.parseInt(key.substring(key.lastIndexOf(':') + 1));
+                            alert(end >= ends ? "Round finished" : "End finished");
+                        }
+                    }
                     shotJustEnded = true;
                     syncMotion();
                 } else if ("session".equals(screen) && autoCount) {
@@ -282,6 +306,20 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
 
         shell.addView(buildScoring());
 
+        banner = new TextView(this);
+        banner.setBackgroundColor(0xF0000000);
+        banner.setTextColor(WHITE);
+        banner.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 22);
+        banner.setTypeface(Typeface.DEFAULT_BOLD);
+        banner.setGravity(Gravity.CENTER);
+        banner.setVisibility(View.GONE);
+        banner.setOnClickListener(view -> {
+            banner.removeCallbacks(hideBanner);
+            banner.setVisibility(View.GONE);
+        });
+        shell.addView(banner, new FrameLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
         // Focus lives here, so a rotary event always reaches the hierarchy whatever screen is up.
         shell.setFocusableInTouchMode(true);
         setContentView(shell);
@@ -293,6 +331,8 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
     private void rebuildScoring() {
         if (root != null) shell.removeView(root);
         shell.addView(buildScoring());
+        // Kept above the scoring view that was just put on top of it.
+        banner.bringToFront();
         showScreen(screen);
         redraw();
     }
@@ -1138,8 +1178,11 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         boolean live = !"d".equals(run.status);
         runView.show(run);
 
-        if ("r".equals(run.status) && run.cue != lastCue && lastCue >= 0) wake();
+        if ("r".equals(run.status) && run.cue != lastCue && lastCue >= 0 && blockAlert) {
+            alert(run.label.isEmpty() ? "Next block" : run.label);
+        }
         lastCue = run.cue;
+        passDistance(run, live);
 
         if (live && !running) {
             running = true;
@@ -1153,9 +1196,64 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
             running = false;
             heart.stop();
             lastCue = -1;
+            lastMark = -1;
             // Back to whatever the phone was showing behind the run, which it never stopped being.
             showScreen(mirrored);
         }
+    }
+
+    /**
+     * Every `alertMetres` of a run, with the pace since the last one. The first frame heard only
+     * sets the mark, so a watch app restarted halfway through a run does not announce where it is.
+     */
+    private void passDistance(Link.Run run, boolean live) {
+        if (!live || alertMetres <= 0) {
+            lastMark = -1;
+            return;
+        }
+        int mark = run.metres / alertMetres;
+        if (lastMark < 0 || mark < lastMark) {
+            lastMark = mark;
+            markMetres = run.metres;
+            markSeconds = run.seconds;
+            return;
+        }
+        if (mark == lastMark) return;
+        int metres = run.metres - markMetres;
+        int seconds = run.seconds - markSeconds;
+        lastMark = mark;
+        markMetres = run.metres;
+        markSeconds = run.seconds;
+        String line = distance(mark * alertMetres);
+        if (metres > 0 && seconds > 0) {
+            int pace = Math.round(seconds * 1000f / metres);
+            line += "\n" + (pace / 60) + ":" + String.format(java.util.Locale.ROOT, "%02d", pace % 60) + "/km";
+        }
+        alert(line);
+    }
+
+    private static String distance(int metres) {
+        return java.math.BigDecimal.valueOf(metres, 3).stripTrailingZeros().toPlainString() + " km";
+    }
+
+    /** A buzz, the screen lit, and the line for three seconds or until tapped. */
+    private void alert(String line) {
+        banner.setText(line);
+        banner.setVisibility(View.VISIBLE);
+        banner.bringToFront();
+        banner.removeCallbacks(hideBanner);
+        banner.postDelayed(hideBanner, BANNER_MS);
+        wake();
+    }
+
+    @Override
+    public void onAlerts(boolean end, boolean block, int metres) {
+        endAlert = end;
+        blockAlert = block;
+        if (metres != alertMetres) lastMark = -1;
+        alertMetres = metres;
+        getSharedPreferences("watch", MODE_PRIVATE).edit().putBoolean("alert-end", end)
+                .putBoolean("alert-block", block).putInt("alert-metres", metres).apply();
     }
 
     /**

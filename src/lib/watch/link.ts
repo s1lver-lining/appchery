@@ -32,6 +32,13 @@ import {
  */
 
 /** A run as the wrist is to show it. Worked out on the phone, because the watch decides nothing. */
+/** The alerts the watch raises by itself; a distance of 0 is no distance alert. */
+export interface WatchAlerts {
+	end: boolean;
+	block: boolean;
+	distanceMetres: number;
+}
+
 export interface RunFrame {
 	status: RunStatus;
 	seconds: number;
@@ -176,6 +183,8 @@ export class WatchLink {
 	private motion = false;
 	/** Set before the link opens, so the first `mr` carries it; `setShotRule` for a change later. */
 	shotRule: ShotRule = SHOT;
+	/** Set before the link opens as well; `setAlerts` for a change later. */
+	alerts: WatchAlerts = { end: false, block: true, distanceMetres: 0 };
 	/** Recorded ends being put back together, by the watch's key. */
 	private assembling = new Map<
 		number,
@@ -285,6 +294,23 @@ export class WatchLink {
 		await this.sendShotRule();
 	}
 
+	/** Which alerts the watch raises by itself, remembered by the watch until told otherwise. */
+	async setAlerts(alerts: WatchAlerts): Promise<void> {
+		this.alerts = alerts;
+		await this.sendAlerts();
+	}
+
+	private async sendAlerts(): Promise<void> {
+		const { end, block, distanceMetres } = this.alerts;
+		await this.say({
+			v: PROTOCOL_VERSION,
+			t: 'al',
+			e: end ? 1 : 0,
+			b: block ? 1 : 0,
+			d: Math.max(0, Math.round(distanceMetres))
+		});
+	}
+
 	/**
 	 * Said with the switch, which is to say on every round and every recovered hello: rarely enough
 	 * to cost nothing, often enough that a watch that missed one hears it before the next end.
@@ -292,6 +318,7 @@ export class WatchLink {
 	private async sendMotion(): Promise<void> {
 		await this.say({ v: PROTOCOL_VERSION, t: 'mr', o: this.motion ? 1 : 0 });
 		await this.sendShotRule();
+		await this.sendAlerts();
 	}
 
 	private async sendShotRule(): Promise<void> {
@@ -521,6 +548,7 @@ export class WatchLink {
 					return;
 				case 'mr':
 				case 'ms':
+				case 'al':
 				case 'mk':
 				case 'ck':
 					return;

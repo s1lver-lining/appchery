@@ -52,7 +52,11 @@ vi.mock('$lib/prefs', () => ({
 		REFRACTORY_MS: 3000,
 		AFTER_SHOT_MS: 700
 	}),
-	wristArm: writable<string | null>(null)
+	wristArm: writable<string | null>(null),
+	watchEndAlert: writable(false),
+	watchBlockAlert: writable(true),
+	watchDistanceAlert: writable(false),
+	watchDistanceKm: writable(1)
 }));
 
 // `support()` looks for a window before it looks at anything else, and vitest runs in node.

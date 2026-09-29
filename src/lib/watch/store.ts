@@ -1,7 +1,16 @@
 import { App } from '@capacitor/app';
-import { get, writable } from 'svelte/store';
+import { derived, get, writable } from 'svelte/store';
 import { deviceId, saveWristMotion } from '$lib/db/repository';
-import { recordWristMotion, rememberedWatch, shotRule, wristArm } from '$lib/prefs';
+import {
+	recordWristMotion,
+	rememberedWatch,
+	shotRule,
+	watchBlockAlert,
+	watchDistanceAlert,
+	watchDistanceKm,
+	watchEndAlert,
+	wristArm
+} from '$lib/prefs';
 import {
 	canReconnectSilently,
 	support,
@@ -12,6 +21,16 @@ import {
 import { connect as connectOverWeb } from './ble.web';
 import { WatchLink, type LinkEvent, type RecordedEnd } from './link';
 import type { RunCommand } from './protocol';
+
+/** The alert settings as the watch is told them, a nonsense distance being no distance alert. */
+const watchAlerts = derived(
+	[watchEndAlert, watchBlockAlert, watchDistanceAlert, watchDistanceKm],
+	([end, block, distance, km]) => ({
+		end,
+		block,
+		distanceMetres: distance && Number.isFinite(km) && km > 0 ? Math.round(km * 1000) : 0
+	})
+);
 
 /**
  * The one link this device holds, kept here rather than on a page because the app is a single page:
@@ -374,6 +393,7 @@ async function adopt(opened: Connection): Promise<void> {
 	link = new WatchLink(opened.channel, deviceId(), (event) => handle(event, name));
 	link.keepMotion = keepRecordedEnd;
 	link.shotRule = get(shotRule);
+	link.alerts = get(watchAlerts);
 	// Said before anything else, and the status stays at connecting until the watch answers it.
 	await link.open();
 	await link.setMotion(get(recordWristMotion));
@@ -468,6 +488,7 @@ export async function drainWristInbox(): Promise<void> {
 // The switch reaches a watch already linked, not only the next one.
 recordWristMotion.subscribe((on) => void link?.setMotion(on).catch(() => undefined));
 shotRule.subscribe((rule) => void link?.setShotRule(rule).catch(() => undefined));
+watchAlerts.subscribe((alerts) => void link?.setAlerts(alerts).catch(() => undefined));
 
 /**
  * Puts the link down and forgets the watch. Forgetting is the point of the button: an archer who

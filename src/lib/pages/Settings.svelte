@@ -43,7 +43,11 @@
 		dismissedBest,
 		recordWristMotion,
 		shotRule,
-		wristArm
+		wristArm,
+		watchEndAlert,
+		watchBlockAlert,
+		watchDistanceAlert,
+		watchDistanceKm
 	} from '$lib/prefs';
 	import { countWristMotion } from '$lib/db/repository';
 	import { importWristMotion } from '$lib/watch/store';
@@ -510,6 +514,60 @@
 						{/if}
 
 						{#if $watchStatus.state !== 'unsupported'}
+							<p class="mt-4 text-sm font-semibold text-muted">{$t('settings.watchAlerts')}</p>
+							<p class="mt-0.5 text-sm text-muted">{$t('settings.watchAlertsHint')}</p>
+							<div class="mt-3 flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<p class="font-medium">{$t('settings.watchEndAlert')}</p>
+									<p class="mt-0.5 text-sm text-muted">{$t('settings.watchEndAlertHint')}</p>
+								</div>
+								<Toggle
+									checked={$watchEndAlert}
+									label={$t('settings.watchEndAlert')}
+									onchange={(v) => watchEndAlert.set(v)}
+								/>
+							</div>
+							<div class="mt-3 flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<p class="font-medium">{$t('settings.watchBlockAlert')}</p>
+									<p class="mt-0.5 text-sm text-muted">{$t('settings.watchBlockAlertHint')}</p>
+								</div>
+								<Toggle
+									checked={$watchBlockAlert}
+									label={$t('settings.watchBlockAlert')}
+									onchange={(v) => watchBlockAlert.set(v)}
+								/>
+							</div>
+							<div class="mt-3 flex items-start justify-between gap-4">
+								<div class="flex-1">
+									<p class="font-medium">{$t('settings.watchDistanceAlert')}</p>
+									<p class="mt-0.5 text-sm text-muted">{$t('settings.watchDistanceAlertHint')}</p>
+								</div>
+								<Toggle
+									checked={$watchDistanceAlert}
+									label={$t('settings.watchDistanceAlert')}
+									onchange={(v) => watchDistanceAlert.set(v)}
+								/>
+							</div>
+							{#if $watchDistanceAlert}
+								<label class="mt-2 block text-sm">
+									<span class="text-muted">{$t('settings.watchDistanceKm')}</span>
+									<input
+										type="number"
+										inputmode="decimal"
+										min="0.1"
+										step="0.1"
+										class="mt-0.5 w-full rounded-lg border border-line bg-transparent px-2 py-1"
+										value={$watchDistanceKm}
+										onchange={(e) => {
+											const km = Number(e.currentTarget.value);
+											if (Number.isFinite(km) && km >= 0.1) watchDistanceKm.set(km);
+											else e.currentTarget.value = String($watchDistanceKm);
+										}}
+									/>
+								</label>
+							{/if}
+
 							<div class="mt-4 flex items-start justify-between gap-4">
 								<div class="flex-1">
 									<p class="font-medium">{$t('settings.wristMotionTitle')}</p>

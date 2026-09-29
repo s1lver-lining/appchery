@@ -271,6 +271,17 @@ export const shotRule = (() => {
 	return store;
 })();
 
+/**
+ * Alerts the watch raises by itself: a buzz, the screen lit and a line for three seconds. Kept here
+ * and sent to the watch, which remembers them, so a watch started with the phone asleep still has them.
+ * The block change was the only one before and always on, so it stays on unless turned off.
+ */
+export const watchEndAlert = flag('appchery.watchEndAlert', false);
+export const watchBlockAlert = flag('appchery.watchBlockAlert', true);
+export const watchDistanceAlert = flag('appchery.watchDistanceAlert', false);
+/** Every how many kilometres the distance alert goes off. */
+export const watchDistanceKm = storedNumber('appchery.watchDistanceKm', 1);
+
 /** Which arm the watch is worn on while recording, `bow` or `string`, since the two move differently. */
 export const wristArm = storedString('appchery.wristArm');
 

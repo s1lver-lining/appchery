@@ -725,3 +725,13 @@ describe('the shot rule', () => {
 		expect(new TextEncoder().encode(JSON.stringify(worst)).length).toBeLessThanOrEqual(180);
 	});
 });
+
+describe('the watch alerts', () => {
+	it('go with the recording switch, and again when changed', async () => {
+		await link.setMotion(false);
+		expect(sent).toContainEqual({ v: 2, t: 'al', e: 0, b: 1, d: 0 });
+		sent = [];
+		await link.setAlerts({ end: true, block: false, distanceMetres: 1500 });
+		expect(sent).toEqual([{ v: 2, t: 'al', e: 1, b: 0, d: 1500 }]);
+	});
+});

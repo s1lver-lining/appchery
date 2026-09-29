@@ -176,6 +176,8 @@ export type Wire =
 	 * 20 byte fallback, which is why it is said again on every round and every recovered hello.
 	 */
 	| { v: number; t: 'ms'; r: number; s: number; f: number; h: number; g: number; a: number }
+	/** The watch's own alerts: an end shot, a block changed, and every `d` metres of a run (0 is off). */
+	| { v: number; t: 'al'; e: 0 | 1; b: 0 | 1; d: number }
 	/**
 	 * One end's recorded motion is coming: `k` names it, `b` bytes follow in `mc` chunks. Sized to the
 	 * MTU actually negotiated rather than to the budget, because a chunk lost costs only a resend.
@@ -463,6 +465,10 @@ export function decode(bytes: Uint8Array | ArrayBuffer | DataView): Decoded {
 			const [r, s, f, h, g, a] = fields as number[];
 			return { ok: true, message: { v: version, t: 'ms', r, s, f, h, g, a } };
 		}
+
+		case 'al':
+			if ((m.e !== 0 && m.e !== 1) || (m.b !== 0 && m.b !== 1) || !isFigure(m.d)) break;
+			return { ok: true, message: { v: version, t: 'al', e: m.e, b: m.b, d: m.d } };
 
 		case 'mh':
 			if (!isTime(m.k) || !isId(m.a) || !isIndex(m.s) || !isIndex(m.n)) break;

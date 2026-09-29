@@ -29,6 +29,7 @@ describe('encoding', () => {
 	it('round trips every kind of message', () => {
 		const messages: Wire[] = [
 			{ v: PROTOCOL_VERSION, t: 'hello', d: 'device-a', c: 1789668623593 },
+			{ v: PROTOCOL_VERSION, t: 'al', e: 1, b: 0, d: 1000 },
 			{
 				v: PROTOCOL_VERSION,
 				t: 'round',
