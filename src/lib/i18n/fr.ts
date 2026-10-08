@@ -434,9 +434,9 @@ export const fr: Dictionary = {
 		fromIdeal: 'de 70',
 		hint: "Pesez l'arc prêt à tirer, puis mesurez sa puissance au peson.",
 		verdict: {
-			good: "Le compte y est : l'arc porte bien son poids.",
+			good: "Bon rapport : l'arc est bien équilibré pour sa puissance.",
 			fair: 'Un peu à côté, mais tirable. Un changement de masse de stabilisation se justifie.',
-			poor: "Loin du compte : l'arc paraîtra mort, ou impossible à tenir à pleine allonge."
+			poor: "Rapport éloigné : l'arc semblera mou, ou trop lourd à tenir à pleine allonge."
 		}
 	},
 	brace: {
@@ -532,7 +532,7 @@ export const fr: Dictionary = {
 			fine: 'Réglage fin'
 		},
 		guideCredit:
-			'Ordre du classique d’après Claude Cangelosi, Guide des réglages d’un arc. Textes de nous.',
+			'Ordre du classique d’après Claude Cangelosi, Guide des réglages d’un arc. Textes rédigés par nos soins.',
 		startNamed: 'Commencer : {name}',
 		needBow: 'Choisissez un arc par défaut pour lancer un réglage depuis cette page.',
 		applyTitle: 'Appliquer le réglage',
@@ -597,7 +597,7 @@ export const fr: Dictionary = {
 		deleteBow: 'Supprimer cet arc',
 		confirmTitle: 'Supprimer cet arc ?',
 		confirmBody:
-			"Ses révisions et ses repères de viseur partent avec lui. Les séances tirées avec sont conservées et retombent sur le type d'arc."
+			"Ses révisions et ses repères de viseur sont supprimés avec lui. Les séances tirées avec cet arc sont conservées et passent sur son type d'arc générique."
 	},
 	sight: {
 		title: 'Repères de viseur',
@@ -680,7 +680,7 @@ export const fr: Dictionary = {
 			"est **une semaine que vous comptez répéter** : les séances prévues, aux jours voulus. Un programme est un **modèle, pas un historique** : rien n'est enregistré tant que vous n'avez pas tiré. Une semaine sautée ne laisse aucune trace.",
 		bowTerm: 'Un arc',
 		bowBody:
-			"est tout ce avec quoi vous tirez : le vôtre, celui du club, un arc nu monté pour un week end. Son **type** détermine les réglages demandés et les procédures proposées : on ne demandera jamais le tiller d'une poulies.",
+			"est tout ce avec quoi vous tirez : le vôtre, celui du club, un arc nu monté pour un week-end. Son **type** détermine les réglages demandés et les procédures proposées : on ne vous demandera jamais le tiller d'un arc à poulies.",
 		revisionTerm: 'Une révision',
 		revisionBody:
 			"est **l'état des réglages d'un arc à un instant donné**, conservé plutôt qu'écrasé : un score tiré le mois dernier reste rattaché à l'arc qui l'a tiré. Une activité de réglage en écrit une.",
@@ -689,7 +689,7 @@ export const fr: Dictionary = {
 			"est celui présélectionné sur une nouvelle séance. Il est **conservé sur cet appareil** plutôt que synchronisé, car l'arc que vous prenez dépend de l'endroit où vous êtes.",
 		rangeTerm: 'Les filtres',
 		rangeBody:
-			'déterminent ce que lisent tous les chiffres en dessous, et ils se combinent : comment vous tirez **dans le vent avec un arc donné**. Les périodes sont glissantes, pas calendaires.',
+			"s'appliquent à tous les chiffres en dessous, et se combinent : par exemple, vos scores **par vent fort avec un arc donné**. Les périodes sont glissantes, pas calendaires.",
 		chartTerm: 'Le graphique principal',
 		chartBody:
 			'compte toutes les flèches saisies, tir terminé ou non, colorées selon le **type de session**. Une mesure à la fois. Touchez une barre pour lire ce jour seul.',
@@ -804,7 +804,7 @@ export const fr: Dictionary = {
 		},
 		bestOn: 'Record le {date}',
 		spread: 'Écart',
-		distribution: 'Où les flèches sont arrivées',
+		distribution: 'Répartition des flèches par zone',
 		byEnd: 'Au fil du tir',
 		byEndHint: "Moyenne par flèche à chaque volée, dans l'ordre où elles ont été tirées.",
 		byEndCount: 'Sur {n} tirs.',
@@ -840,7 +840,7 @@ export const fr: Dictionary = {
 			partOfDay: 'Score selon le moment de la journée',
 			weekday: 'Score selon le jour de la semaine',
 			place: 'Score selon le lieu',
-			distribution: 'Où les flèches sont arrivées',
+			distribution: 'Répartition des flèches par zone',
 			volumeByRound: 'Flèches par tir'
 		},
 		perArrowHint: 'Score par flèche, pour comparer des tirs de longueurs différentes.',
@@ -942,7 +942,7 @@ export const fr: Dictionary = {
 		shareCopied: 'Lien copié.',
 		searchScope: 'Recherche',
 		searchAll: 'Partout',
-		searchMine: 'Ce que je suis',
+		searchMine: 'Mes suivis',
 		within: 'À moins de {km} km',
 		nearYou: 'À moins de {km} km de vous.',
 		locating: 'Recherche de votre position',
@@ -1066,7 +1066,7 @@ export const fr: Dictionary = {
 		signedOutTitle: 'Connectez-vous pour suivre des archers',
 		signedOutBody: 'Suivre quelqu’un, et partager vos tirs, demande un compte. Tout le reste de l’app n’en demandera jamais.',
 		claimTitle: 'Choisissez un identifiant',
-		claimHint: 'L’identifiant permet qu’on vous trouve. Sans lui, personne ne le peut.',
+		claimHint: 'L’identifiant permet qu’on vous trouve. Sans identifiant, personne ne peut vous chercher.',
 		handlePlaceholder: 'votrenom',
 		handleRules: 'De trois à vingt caractères : lettres, chiffres et tirets bas.',
 		handleTaken: 'Cet identifiant est déjà pris.',
@@ -1077,9 +1077,9 @@ export const fr: Dictionary = {
 		searchPlaceholder: '@identifiant',
 		find: 'Chercher',
 		noSuchHandle: 'Aucun archer avec cet identifiant.',
-		noSuchHandleBody: 'Les identifiants sont exacts : vérifiez l’orthographe, ou faites-vous le dicter.',
+		noSuchHandleBody: 'L’identifiant doit être exact : vérifiez l’orthographe, ou demandez à l’archer de vous l’épeler.',
 		tooManyLookups: 'Trop de recherches d’un coup. Réessayez dans une minute.',
-		actionFailed: 'Cela n’est pas passé. Rien n’a été modifié.',
+		actionFailed: 'Une erreur est survenue. Rien n’a été modifié.',
 		follow: 'Suivre',
 		askToFollow: 'Demander à suivre',
 		unfollow: 'Ne plus suivre',
@@ -1104,7 +1104,7 @@ export const fr: Dictionary = {
 		emptyFeedTitle: 'Rien de partagé avec vous',
 		emptyFeedBody: 'Abonnez-vous à un archer, et ses partages apparaissent ici.',
 		emptyFollowingTitle: 'Vous ne suivez personne',
-		emptyFollowingBody: 'Cherchez un identifiant ci-dessus. Ils sont exacts, il vous faut l’orthographe.',
+		emptyFollowingBody: 'Cherchez un identifiant ci-dessus. L’orthographe doit être exacte.',
 		emptyFollowersTitle: 'Personne ne vous suit encore',
 		emptyFollowersBody: 'Donnez votre identifiant à quelqu’un : cela suffit pour vous trouver.',
 		nothingSharedTitle: 'Rien de partagé',
@@ -1170,7 +1170,7 @@ export const fr: Dictionary = {
 		confirmBody: {
 			imported: "Toutes les séances écrites par un import disparaissent, avec leurs comptages et leurs flèches. Les séances saisies dans Appchery sont conservées.",
 			everything: "Toutes les séances, activités, arcs, plans et badges de cet appareil disparaissent. Exportez une sauvegarde d'abord si vous voulez en récupérer quelque chose.",
-			rebuild: "Tout ce qui est sur cet appareil disparaît, et la base est reconstruite à partir de rien. Une sauvegarde exportée maintenant emporterait le même problème : mettez de côté ce dont vous avez besoin autrement."
+			rebuild: "Tout ce qui est sur cet appareil disparaît, et la base est reconstruite à partir de rien. Une sauvegarde exportée maintenant contiendrait le même problème : gardez d'abord ce dont vous avez besoin par un autre moyen."
 		},
 		confirmAction: {
 			imported: 'Supprimer les imports',
@@ -1238,7 +1238,7 @@ export const fr: Dictionary = {
 		watch: 'Montre',
 		watchHint: 'Marquez une volée au poignet. Le téléphone garde le relevé et calcule chaque score.',
 		watchAlerts: 'Alertes de la montre',
-		watchAlertsHint: 'La montre vibre, s’allume et affiche une ligne pendant trois secondes. Touchez-la pour la fermer plus tôt.',
+		watchAlertsHint: 'La montre vibre, s’allume et affiche l’alerte pendant trois secondes. Touchez-la pour la fermer plus tôt.',
 		watchEndAlert: 'Fin de volée',
 		watchEndAlertHint: 'Quand la montre compte la dernière flèche d’une volée avec le compteur automatique. Affiche « Round finished » à la fin d’un tir.',
 		watchBlockAlert: 'Changement de bloc',
@@ -1346,7 +1346,7 @@ export const fr: Dictionary = {
 		searchAction: 'Rechercher',
 		textScaleTitle: 'Taille du texte',
 		textScaleHint:
-			'Agrandit ou réduit toute l’app : le texte et les lignes et boutons autour de lui ensemble. La feuille de score garde sa part de l’écran quel que soit votre choix.',
+			'Agrandit ou réduit toute l’app : texte, boutons et espacements ensemble. La feuille de score garde sa part de l’écran quel que soit votre choix.',
 		textScaleSmall: 'Plus petit',
 		textScaleLarge: 'Plus grand',
 		weekStartTitle: 'Commencer la semaine le dimanche',
@@ -1362,18 +1362,18 @@ export const fr: Dictionary = {
 		sheetHeightLong: 'Plus de feuille',
 		badgeSideTitle: 'Position du score pendant le placement',
 		badgeSideHint:
-			'La valeur affichée à côté du réticule quand vous placez une flèche. En suivant votre main, elle se place hors du pouce qui pointe.',
+			'La valeur affichée à côté du réticule quand vous placez une flèche. Avec « Ma main », elle se place du côté opposé au pouce pour rester visible.',
 		badgeSideRight: 'Droite',
 		badgeSideBow: 'Ma main',
 		badgeSideLeft: 'Gauche',
 		maxHeartTitle: 'Fréquence cardiaque maximale',
-		maxHeartHint: "Votre maximum à vous, pour qu'une sortie puisse dire dans quelle zone elle a été courue. Laissée vide, la fréquence reste un chiffre et rien de plus.",
+		maxHeartHint: "Sert à calculer vos zones de fréquence cardiaque pendant une sortie. Laissée vide, seule la fréquence en bpm est affichée.",
 		autoPauseTitle: 'Mettre en pause automatiquement',
-		autoPauseHint: "Arrête le chrono quand vous êtes à l'arrêt pendant une sortie, et le relance quand vous repartez. Désactivé par défaut : marcher une côte volontairement, c'est encore courir.",
+		autoPauseHint: "Arrête le chrono quand vous êtes à l'arrêt pendant une sortie, et le relance quand vous repartez. Désactivé par défaut, pour qu'une côte montée en marchant compte dans la sortie.",
 		runMapsTitle: 'Carte sous une sortie',
-		runMapsHint: "Dessine une sortie terminée sur une carte. La carte vient d'openfreemap.org, ce qui revient à indiquer à leur serveur à peu près où vous avez couru. Désactivé, une sortie dessine quand même sa forme, et n'importe laquelle peut recevoir une carte sur le moment.",
+		runMapsHint: "Dessine une sortie terminée sur une carte. La carte vient d'openfreemap.org, ce qui revient à indiquer à leur serveur à peu près où vous avez couru. Désactivé, une sortie affiche quand même la forme de son parcours, et vous pouvez toujours afficher la carte d'une sortie au cas par cas.",
 		runMapPromptTitle: 'Proposer une carte aux sorties qui n\u2019en ont pas',
-		runMapPromptHint: "La question d'une ligne sous un parcours. La désactiver laisse le bouton de carte en place.",
+		runMapPromptHint: "Propose sous le parcours d'afficher une carte. Le désactiver laisse le bouton de carte en place.",
 		awakeTitle: 'Garder l’écran allumé pendant le score',
 		awakeHint:
 			'Maintient l’écran allumé jusqu’à la fin du tir, pour marquer depuis le téléphone en main. Cela consomme de la batterie. Le chronomètre le fait de toute façon.',
@@ -1443,8 +1443,8 @@ export const fr: Dictionary = {
 		play: 'Dérouler le tir',
 		pause: 'Pause',
 		pickAPhase: "Choisissez un moment du tir pour voir ce qu'il demande.",
-		working: 'Au travail',
-		nothingWorking: "Presque rien : c'est le moment d'avant.",
+		working: 'Muscles sollicités',
+		nothingWorking: "Presque aucun muscle sollicité : c'est avant l'effort.",
 		selection: 'Sélection',
 		selectionEmpty: 'Touchez un muscle sur la silhouette, ou dans la liste ci-dessous.',
 		clear: 'Effacer',
@@ -1453,7 +1453,7 @@ export const fr: Dictionary = {
 		deepTitle: 'Sous la surface',
 insetHint:
 			"Les deux omoplates, trapèze et deltoïde écartés. Choisir un muscle le choisit des deux côtés.",
-		load: { 1: 'Léger', 2: 'Au travail', 3: 'À fond' },
+		load: { 1: 'Léger', 2: 'Modéré', 3: 'Intense' },
 		view: { back: 'Dos', front: 'Face', both: 'Les deux', deep: 'Profond' },
 		inset: {
 			scapulaBack: 'Les omoplates, vues de dos',
@@ -1463,7 +1463,7 @@ insetHint:
 			mover: 'Fait le mouvement',
 			stabiliser: "Tient l'articulation",
 			postural: "Tient l'archer debout",
-			fault: 'Doit rester tranquille'
+			fault: 'Doit rester relâché'
 		},
 		roleShort: {
 			mover: 'Moteur',
@@ -1525,18 +1525,18 @@ insetHint:
 	strength: {
 		title: 'Renforcement',
 		hint: 'Élastique, maintiens et gainage, série après série.',
-		progress: 'Fait pour le moment',
+		progress: 'Progression',
 		sets: 'séries',
 		finished: 'Terminé',
 		resting: 'Repos {time}',
 		upNext: 'Ensuite : {exercise}, série {set} sur {of}',
 		addExercise: 'Ajouter un exercice',
 		openExercise: 'Lire tout l\'exercice',
-		worked: 'Ce que cette séance a travaillé',
+		worked: 'Muscles travaillés',
 		setNumber: 'Série {n}',
 		secondsShort: 's',
 		rowSummary: '{done} séries sur {total}',
-		runningElsewhere: "La course est une activité à part, lancée depuis la même liste que celle ci."
+		runningElsewhere: "La course est une activité à part, lancée depuis la même liste que celle-ci."
 	},
 	strava: {
 		title: 'Strava',
@@ -1553,7 +1553,7 @@ insetHint:
 		openApp: 'Ouvrir Appchery',
 		refused: "Strava ne vous a pas connecté",
 		send: 'Envoyer sur Strava',
-		waiting: 'Strava le traite',
+		waiting: 'Traitement par Strava',
 		onStrava: 'Sur Strava',
 		error: {
 			offline: 'Aucune réponse de Strava. Réessayez une fois que vous avez du réseau.',
@@ -1583,7 +1583,7 @@ insetHint:
 		effort: 'Sensations',
 		effortHint: 'Indique si demain doit être un jour de repos.',
 		efforts: { easy: 'Facile', steady: 'Modéré', tempo: 'Soutenu', hard: 'Difficile', max: 'Maximal' },
-		whatItWorks: 'Ce que ça travaille',
+		whatItWorks: 'Muscles travaillés',
 		unfinished: 'Enregistré tel quel.',
 		track: 'Suivre cette sortie',
 		byHand: 'La saisir à la main',
@@ -1644,13 +1644,13 @@ insetHint:
 		mapFailed: 'Aucune carte reçue.',
 		route: 'Le parcours',
 		fastestKm: 'le plus rapide',
-		zones: "Où l'effort est passé",
+		zones: 'Zones de fréquence cardiaque',
 		zoneName: 'Zone {n}',
 		bpm: 'bpm',
 		scrubHint: 'Maintenez le graphique pour le lire.',
 		graph: 'Graphique',
 		graphNothing: 'Rien de choisi à tracer.',
-		noTrack: "Cette course n'a gardé aucune trace à tracer.",
+		noTrack: "Aucun parcours n'a été enregistré pour cette course.",
 		height: 'Altitude',
 		heart: 'Cardio',
 		heartMax: 'pic {n}',
@@ -1694,7 +1694,7 @@ insetHint:
 		goalDistance: 'Distance',
 		goalOpen: 'Manuel',
 		metres: 'm',
-		openHint: "Court jusqu'à ce que vous le disiez.",
+		openHint: "Dure jusqu'à ce que vous passiez au bloc suivant.",
 		targetPace: 'Allure visée',
 		pacePlaceholder: '5:30',
 		noPace: 'Aucune',
@@ -1760,10 +1760,10 @@ insetHint:
 		rating: 'Le ressenti',
 		ratings: { 1: 'Affreux', 2: 'Laborieux', 3: 'Correct', 4: 'Bon', 5: 'Le meilleur' },
 		meanRating: 'Ressenti : {rating}',
-		ranking: "Vos flèches, les plus à part d'abord",
+		ranking: 'Vos flèches, les plus écartées du groupe d’abord',
 		rankingHint: 'Classe chaque tube face aux autres du jeu, et non face au centre de la cible.',
 		rankingEmpty: 'Pointez les flèches sur le blason pour voir ceci.',
-		rankingThin: 'Tirez trois volées et le tube à part se montrera.',
+		rankingThin: 'Tirez trois volées pour repérer la flèche qui s’écarte du groupe.',
 		arrowNo: 'Flèche',
 		offGroup: 'Écart au groupe',
 		ownGroup: 'Groupement propre',
@@ -1777,7 +1777,7 @@ insetHint:
 			calledShot: { name: 'Anneau annoncé', hint: 'Un anneau est annoncé avant chaque flèche. Seul celui-là compte.' },
 			targetScore: { name: 'Objectif de score', hint: 'Atteignez le score en le moins de flèches possible.' },
 			beatTheClock: { name: 'Contre la montre', hint: 'Marquez le plus possible avant la fin du temps.' },
-			arrowSorting: { name: 'Tri de flèches', hint: "Pointez chaque flèche dans l'ordre et voyez quel tube part à part." },
+			arrowSorting: { name: 'Tri de flèches', hint: "Pointez chaque flèche dans l'ordre et voyez quelle flèche s'écarte du groupe." },
 			blindBale: { name: 'Tir à blanc', hint: 'Yeux fermés, sans blason. Aucun score, juste le ressenti.' },
 			onePressure: { name: 'Flèche unique', hint: 'Une flèche, une attente, puis une autre.' }
 		}
@@ -1940,7 +1940,7 @@ insetHint:
 		intoLevel: '{into} XP sur {span}',
 		toNext: '{xp} XP avant le niveau {level}',
 		total: 'Expérience acquise',
-		sources: "D'où elle vient",
+		sources: 'Répartition',
 		empty: "Rien de tiré, donc rien d'acquis.",
 		share: '{percent} %',
 		sourceNames: {
@@ -1951,11 +1951,11 @@ insetHint:
 		},
 		sourceCounts: {
 			arrows: '{n} flèches tirées',
-			rounds: '{n} séries terminées',
+			rounds: '{n} tirs terminés',
 			badges: '{n} badges obtenus',
 			matches: '{n} matchs gagnés ou nuls'
 		},
-		rates: 'Ce que valent les choses',
+		rates: 'Barème',
 		rules: {
 			arrows: {
 				title: 'Flèches',
@@ -1963,11 +1963,11 @@ insetHint:
 				body: "Chaque flèche rapporte autant, quel que soit le motif du tir. La seule chose qui rapporte quoi qu'il arrive."
 			},
 			rounds: {
-				title: 'Séries menées à leur terme',
+				title: 'Tirs menés à leur terme',
 				formula: 'flèches × {xp} × difficulté × forme',
 				difficulty: 'difficulté = ({face} ÷ {metres}) ÷ (blason en cm ÷ distance en m), tenue entre {min} et {max}',
 				form: 'forme = {floor} + {rest} × (votre score ÷ le maximum possible)',
-				body: "En plus des flèches, et seulement une fois la série terminée. La forme ne descend jamais sous {floor}, car une mauvaise série reste une série tirée.",
+				body: "En plus des flèches, et seulement une fois le tir terminé. La forme ne descend jamais sous {floor}, car un mauvais tir reste un tir effectué.",
 				example: 'Un WA 720 à 70m à 640 points: 72 × 3 × 1,28 × 0,94 = 260 XP'
 			},
 			badges: {
@@ -1987,7 +1987,7 @@ insetHint:
 				example: 'Niveau 2 à 100 XP, niveau 10 à 8 100, niveau 20 à 36 100.'
 			}
 		},
-		rateDeterministic: "Rien n'est mis de côté : supprimer une session reprend exactement ce qu'elle avait donné."
+		rateDeterministic: "Supprimer une séance retire exactement l'XP qu'elle avait rapportée."
 	},
 	badges: {
 		title: 'Badges',
@@ -1996,7 +1996,7 @@ insetHint:
 		earnedOn: 'Obtenu le {date}',
 		locked: 'Pas encore obtenu',
 		progress: '{current} / {target}',
-		empty: 'Rien encore obtenu. Va tirer.',
+		empty: 'Rien obtenu pour le moment. À vous de tirer !',
 		viewGrid: 'Afficher la grille',
 		viewDetail: 'Afficher les règles',
 		new: 'Badge obtenu',

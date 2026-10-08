@@ -434,9 +434,9 @@ export const en = {
 		fromIdeal: 'from 70',
 		hint: 'Weigh the bow ready to shoot, then measure its draw weight on a scale.',
 		verdict: {
-			good: 'Right where it should be: the bow carries its weight well.',
+			good: 'Good ratio: the bow is well balanced for its draw weight.',
 			fair: 'Off the mark, but shootable. Worth a change of stabiliser mass.',
-			poor: 'A long way off: the bow will feel dead or unholdable at full draw.'
+			poor: 'Far off: the bow will feel sluggish, or too heavy to hold at full draw.'
 		}
 	},
 	brace: {
@@ -531,7 +531,7 @@ export const en = {
 			arrows: 'Arrows',
 			fine: 'Fine tuning'
 		},
-		guideCredit: 'Recurve order after Claude Cangelosi, Guide des réglages d’un arc. Wording ours.',
+		guideCredit: 'Recurve order after Claude Cangelosi, Guide des réglages d’un arc. Text written by us.',
 		startNamed: 'Start: {name}',
 		needBow: 'Set a default bow to start a tuning from here.',
 		applyTitle: 'Apply the adjustment',
@@ -596,7 +596,7 @@ export const en = {
 		deleteBow: 'Delete this bow',
 		confirmTitle: 'Delete this bow?',
 		confirmBody:
-			'Its revisions and sight marks go with it. The outings shot with it are kept and fall back to the bow type.'
+			'Its revisions and sight marks are deleted with it. Sessions shot with it are kept and switch to its generic bow type.'
 	},
 	sight: {
 		title: 'Sight marks',
@@ -804,7 +804,7 @@ export const en = {
 		},
 		bestOn: 'Best on {date}',
 		spread: 'Spread',
-		distribution: 'Where the arrows landed',
+		distribution: 'Arrow distribution by ring',
 		byEnd: 'Through the round',
 		byEndHint: 'Average per arrow at each end, in the order they were shot.',
 		byEndCount: 'Over {n} rounds.',
@@ -840,7 +840,7 @@ export const en = {
 			partOfDay: 'Score by time of day',
 			weekday: 'Score by day of the week',
 			place: 'Score by place',
-			distribution: 'Where the arrows landed',
+			distribution: 'Arrow distribution by ring',
 			volumeByRound: 'Arrows by round'
 		},
 		perArrowHint: 'Score per arrow, so rounds of different lengths compare.',
@@ -1064,7 +1064,7 @@ export const en = {
 		signedOutTitle: 'Sign in to follow archers',
 		signedOutBody: 'Following somebody, and sharing what you shot, needs an account. Everything else in the app never will.',
 		claimTitle: 'Choose a handle',
-		claimHint: 'A handle is how people find you. Without one, nobody can.',
+		claimHint: 'Your handle is how people find you. Without one, nobody can search for you.',
 		handlePlaceholder: 'yourname',
 		handleRules: 'Three to twenty characters: letters, numbers and underscores.',
 		handleTaken: 'That handle is taken.',
@@ -1075,9 +1075,9 @@ export const en = {
 		searchPlaceholder: '@handle',
 		find: 'Find',
 		noSuchHandle: 'No archer with that handle.',
-		noSuchHandleBody: 'Handles are exact: check the spelling, or ask them to read it out.',
+		noSuchHandleBody: 'Handles must match exactly: check the spelling, or ask the archer to spell it out.',
 		tooManyLookups: 'Too many searches just now. Try again in a minute.',
-		actionFailed: 'That did not go through. Nothing was changed.',
+		actionFailed: 'Something went wrong. Nothing was changed.',
 		follow: 'Follow',
 		askToFollow: 'Ask to follow',
 		unfollow: 'Unfollow',
@@ -1102,7 +1102,7 @@ export const en = {
 		emptyFeedTitle: 'Nothing shared with you yet',
 		emptyFeedBody: 'Follow an archer, and whatever they choose to share appears here.',
 		emptyFollowingTitle: 'Not following anybody yet',
-		emptyFollowingBody: 'Search a handle above to find somebody. Handles are exact, so you need the spelling.',
+		emptyFollowingBody: 'Search a handle above to find somebody. Handles must be spelled exactly.',
 		emptyFollowersTitle: 'Nobody follows you yet',
 		emptyFollowersBody: 'Give somebody your handle and they can find you.',
 		nothingSharedTitle: 'Nothing shared',
@@ -1167,7 +1167,7 @@ export const en = {
 		confirmBody: {
 			imported: 'Every session written by an import goes, with its rounds and arrows. Sessions you recorded in Appchery are kept.',
 			everything: 'Every session, activity, bow, plan and badge on this device goes. Export a backup first if you want any of it back.',
-			rebuild: 'Everything on this device goes, and the database is built again from nothing. A backup exported now would carry the same problem, so save what you need another way first.'
+			rebuild: 'Everything on this device goes, and the database is built again from nothing. A backup exported now would contain the same problem, so keep what you need some other way first.'
 		},
 		confirmAction: {
 			imported: 'Remove imported',
@@ -1237,7 +1237,7 @@ export const en = {
 		watch: 'Watch',
 		watchHint: 'Score a round from your wrist. The phone keeps the record and works out every score.',
 		watchAlerts: 'Watch alerts',
-		watchAlertsHint: 'The watch buzzes, lights up and shows a line for three seconds. Tap it to dismiss sooner.',
+		watchAlertsHint: 'The watch buzzes, lights up and shows the alert for three seconds. Tap it to dismiss sooner.',
 		watchEndAlert: 'End finished',
 		watchEndAlertHint: 'When the watch counts the last arrow of an end with the automatic counter on. Says “Round finished” at the end of a round.',
 		watchBlockAlert: 'Block change',
@@ -1366,13 +1366,13 @@ export const en = {
 		badgeSideBow: 'My hand',
 		badgeSideLeft: 'Left',
 		maxHeartTitle: 'Highest heart rate',
-		maxHeartHint: 'What your own maximum is, so a run can say which zone it was run in. Left empty, the beat is shown as a number and nothing more.',
+		maxHeartHint: 'Used to work out your heart rate zones on a run. Left empty, only the heart rate in bpm is shown.',
 		autoPauseTitle: 'Pause a run by itself',
-		autoPauseHint: 'Holds the clock while you are standing still on a run, and starts it again when you move. Off by default: walking a hill on purpose is still running.',
+		autoPauseHint: 'Holds the clock while you are standing still on a run, and starts it again when you move. Off by default, so walking up a hill still counts as part of the run.',
 		runMapsTitle: 'Map under a run',
-		runMapsHint: 'Draws a finished run on a map. The map is fetched from openfreemap.org, which means telling their server roughly where you ran. Off, a run still draws its own shape, and any one run can still be given a map on the spot.',
+		runMapsHint: 'Draws a finished run on a map. The map is fetched from openfreemap.org, which means telling their server roughly where you ran. When off, a run still shows its route shape, and you can still show the map for any single run.',
 		runMapPromptTitle: 'Offer a map on runs without one',
-		runMapPromptHint: 'The one line question under a route. Turning it off leaves the map button where it is.',
+		runMapPromptHint: 'Asks under the route whether to show a map. Turning it off keeps the map button.',
 		awakeTitle: 'Keep the screen on while scoring',
 		awakeHint:
 			'Holds the screen awake until the round is finished, for scoring from the phone in your hand. It costs battery. The shooting clock holds it either way.',
@@ -1442,8 +1442,8 @@ export const en = {
 		play: 'Play the shot',
 		pause: 'Pause',
 		pickAPhase: 'Pick a moment of the shot to see what it asks for.',
-		working: 'Working now',
-		nothingWorking: 'Nothing much: this is the moment before the work starts.',
+		working: 'Muscles in use',
+		nothingWorking: 'Almost no muscles in use yet: this is before the effort starts.',
 		selection: 'Selected',
 		selectionEmpty: 'Tap a muscle on the figure, or one in the list below.',
 		clear: 'Clear',
@@ -1452,7 +1452,7 @@ export const en = {
 		deepTitle: 'Under the surface',
 insetHint:
 			'Both blades, trapezius and deltoid lifted away. Picking a muscle picks both sides.',
-		load: { 1: 'Light', 2: 'Working', 3: 'Hardest' },
+		load: { 1: 'Light', 2: 'Moderate', 3: 'Intense' },
 		view: { back: 'Back', front: 'Front', both: 'Both', deep: 'Deep' },
 		inset: {
 			scapulaBack: 'The shoulder blades, from behind',
@@ -1462,7 +1462,7 @@ insetHint:
 			mover: 'Makes the draw happen',
 			stabiliser: 'Holds the joint still',
 			postural: 'Holds the archer up',
-			fault: 'Should stay quiet'
+			fault: 'Should stay relaxed'
 		},
 		roleShort: { mover: 'Mover', stabiliser: 'Stabiliser', postural: 'Postural', fault: 'Fault' },
 		side: { draw: 'String arm', bow: 'Bow arm', left: "The archer's left", right: "The archer's right", },
@@ -1519,14 +1519,14 @@ insetHint:
 	strength: {
 		title: 'Strength',
 		hint: 'Bandwork, holds and core, worked through set by set.',
-		progress: 'Done so far',
+		progress: 'Progress',
 		sets: 'sets',
 		finished: 'Finished',
 		resting: 'Rest {time}',
 		upNext: 'Next: {exercise}, set {set} of {of}',
 		addExercise: 'Add an exercise',
 		openExercise: 'Read the whole exercise',
-		worked: 'What this session worked',
+		worked: 'Muscles worked',
 		setNumber: 'Set {n}',
 		secondsShort: 's',
 		rowSummary: '{done} of {total} sets',
@@ -1547,7 +1547,7 @@ insetHint:
 		openApp: 'Open Appchery',
 		refused: 'Strava did not sign you in',
 		send: 'Send to Strava',
-		waiting: 'Strava is working on it',
+		waiting: 'Strava is processing it',
 		onStrava: 'On Strava',
 		error: {
 			offline: 'No answer from Strava. Try again once you have a signal.',
@@ -1577,7 +1577,7 @@ insetHint:
 		effort: 'Feel',
 		effortHint: 'Tells you whether tomorrow should be a rest day.',
 		efforts: { easy: 'Easy', steady: 'Moderate', tempo: 'Sustained', hard: 'Hard', max: 'Maximal' },
-		whatItWorks: 'What it works',
+		whatItWorks: 'Muscles worked',
 		unfinished: 'Saved as it stands.',
 		track: 'Track this run',
 		byHand: 'Enter it by hand',
@@ -1637,13 +1637,13 @@ insetHint:
 		mapFailed: 'No map came back.',
 		route: 'Where it went',
 		fastestKm: 'fastest',
-		zones: 'Where the effort went',
+		zones: 'Heart rate zones',
 		zoneName: 'Zone {n}',
 		bpm: 'bpm',
 		scrubHint: 'Hold the graph to read it.',
 		graph: 'Graph',
 		graphNothing: 'Nothing picked to draw.',
-		noTrack: 'This run kept no track to draw.',
+		noTrack: 'No route was recorded for this run.',
 		height: 'Height',
 		heart: 'Heart',
 		heartMax: 'peak {n}',
@@ -1688,7 +1688,7 @@ insetHint:
 		goalDistance: 'Distance',
 		goalOpen: 'Manual',
 		metres: 'm',
-		openHint: 'Runs until you say so.',
+		openHint: 'Lasts until you move to the next block.',
 		targetPace: 'Target pace',
 		pacePlaceholder: '5:30',
 		noPace: 'None',
@@ -1754,10 +1754,10 @@ insetHint:
 		rating: 'How it felt',
 		ratings: { 1: 'Awful', 2: 'Rough', 3: 'Fine', 4: 'Good', 5: 'The best' },
 		meanRating: 'Felt: {rating}',
-		ranking: 'Your arrows, the odd ones first',
+		ranking: 'Your arrows, furthest from the group first',
 		rankingHint: 'Ranks each shaft against the others in the set, not against the middle of the target.',
 		rankingEmpty: 'Plot the arrows on the face to see this.',
-		rankingThin: 'Shoot three ends and the odd shaft shows itself.',
+		rankingThin: 'Shoot three ends to spot the arrow that strays from the group.',
 		arrowNo: 'Arrow',
 		offGroup: 'Off the group',
 		ownGroup: 'Own group',
@@ -1771,7 +1771,7 @@ insetHint:
 			calledShot: { name: 'Called ring', hint: 'A ring is called before each arrow. Only that ring counts.' },
 			targetScore: { name: 'Target score', hint: 'Reach the score in as few arrows as you can.' },
 			beatTheClock: { name: 'Beat the clock', hint: 'Score as much as you can before time runs out.' },
-			arrowSorting: { name: 'Arrow sorting', hint: 'Plot every arrow in order and see which shaft lands apart.' },
+			arrowSorting: { name: 'Arrow sorting', hint: 'Plot every arrow in order and see which arrow strays from the group.' },
 			blindBale: { name: 'Blind bale', hint: 'Eyes closed, no face. No score, only how it felt.' },
 			onePressure: { name: 'One arrow', hint: 'One arrow, then a wait, then one more.' }
 		}
@@ -1929,7 +1929,7 @@ insetHint:
 		intoLevel: '{into} of {span} XP',
 		toNext: '{xp} XP to level {level}',
 		total: 'Experience earned',
-		sources: 'Where it came from',
+		sources: 'Breakdown',
 		empty: 'Nothing shot yet, so nothing earned yet.',
 		share: '{percent}%',
 		sourceNames: {
@@ -1944,7 +1944,7 @@ insetHint:
 			badges: '{n} badges earned',
 			matches: '{n} matches won or drawn'
 		},
-		rates: 'What things are worth',
+		rates: 'Point values',
 		rules: {
 			arrows: {
 				title: 'Arrows',
@@ -1976,7 +1976,7 @@ insetHint:
 				example: 'Level 2 at 100 XP, level 10 at 8,100, level 20 at 36,100.'
 			}
 		},
-		rateDeterministic: 'Nothing is banked: deleting a session takes back exactly what it gave.'
+		rateDeterministic: 'Deleting a session removes exactly the XP it earned.'
 	},
 	badges: {
 		title: 'Badges',
