@@ -1187,7 +1187,12 @@ public class KeypadActivity extends androidx.activity.ComponentActivity
         runView.show(run);
 
         if ("r".equals(run.status) && run.cue != lastCue && lastCue >= 0 && blockAlert) {
-            alert(run.label.isEmpty() ? "Next block" : run.label);
+            if (run.hasBlock) {
+                runView.announce();
+                wake();
+            } else {
+                alert("Free run");
+            }
         }
         lastCue = run.cue;
         passDistance(run, live);

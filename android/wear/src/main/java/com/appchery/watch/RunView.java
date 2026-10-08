@@ -207,6 +207,19 @@ public class RunView extends FrameLayout {
     private float dragY = 0f;
     /** Set for as long as a page is animating into place, which is not a drag but is not still either. */
     private boolean settling = false;
+    /** Where the runner was when a new block took the screen, so it can be handed back. -1 is none. */
+    private int returnTo = -1;
+    private boolean returnToControls = false;
+    /** The rest of a touch that only put the new block away, which is all it was for. */
+    private boolean swallowing = false;
+    private static final long ANNOUNCE_MS = 3000;
+    private final Runnable unannounce = () -> {
+        if (returnTo < 0) return;
+        if (pages().contains(returnTo)) page = returnTo;
+        onControls = returnToControls;
+        returnTo = -1;
+        draw();
+    };
 
     private final Runnable tick = new Runnable() {
         @Override
@@ -719,7 +732,29 @@ public class RunView extends FrameLayout {
         draw();
     }
 
+    /**
+     * A new block, shown on the block page whatever was up, then the runner's own page back. The
+     * same page rather than a line of its own, because what the new block asks for is the news.
+     */
+    public void announce() {
+        if (run == null || !run.hasBlock || moving()) return;
+        if (returnTo < 0) {
+            returnTo = page;
+            returnToControls = onControls;
+        }
+        page = PAGE_BLOCK;
+        onControls = false;
+        removeCallbacks(unannounce);
+        postDelayed(unannounce, ANNOUNCE_MS);
+        draw();
+    }
+
     public void turn(int by) {
+        if (returnTo >= 0) {
+            removeCallbacks(unannounce);
+            unannounce.run();
+            return;
+        }
         if (onControls) {
             toggleControls();
             return;
@@ -999,6 +1034,20 @@ public class RunView extends FrameLayout {
             return true;
         }
         return false;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent event) {
+        // A touch on a new block puts it away, and goes no further: it was not aimed at a page.
+        if (event.getActionMasked() == MotionEvent.ACTION_DOWN && returnTo >= 0) {
+            swallowing = true;
+            removeCallbacks(unannounce);
+            unannounce.run();
+        }
+        if (!swallowing) return super.dispatchTouchEvent(event);
+        int action = event.getActionMasked();
+        if (action == MotionEvent.ACTION_UP || action == MotionEvent.ACTION_CANCEL) swallowing = false;
+        return true;
     }
 
     @Override
