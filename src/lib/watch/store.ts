@@ -1,6 +1,7 @@
 import { App } from '@capacitor/app';
 import { derived, get, writable } from 'svelte/store';
 import { deviceId, saveWristMotion } from '$lib/db/repository';
+import { currentId } from '$lib/db/reid';
 import {
 	recordWristMotion,
 	rememberedWatch,
@@ -410,7 +411,7 @@ async function keepRecordedEnd(end: RecordedEnd): Promise<void> {
 	let binary = '';
 	for (const byte of end.data) binary += String.fromCharCode(byte);
 	await saveWristMotion({
-		activityId: end.activityId,
+		activityId: await currentId(end.activityId),
 		stageIndex: end.stageIndex,
 		endNo: end.endNo,
 		startedAt: end.startedAt,
@@ -465,7 +466,7 @@ async function importMotion(Wrist: typeof import('./ble.native').Wrist): Promise
 		 */
 		try {
 			await saveWristMotion({
-				activityId: item.a,
+				activityId: await currentId(item.a),
 				stageIndex: item.s,
 				endNo: item.n,
 				startedAt: item.st + offset,
@@ -503,6 +504,8 @@ export async function drainWristInbox(): Promise<void> {
 	if (!Wrist?.inbox) return;
 	const { items } = await Wrist.inbox();
 	for (const item of items) {
+		// Kept before its round was given a new id, it still belongs to that round.
+		if (typeof item._scope === 'string' && item.t === 'end') item._scope = await currentId(item._scope);
 		if (!belongsHere(item, link)) continue;
 		await link.receive(new TextEncoder().encode(JSON.stringify(item))).catch(() => undefined);
 	}

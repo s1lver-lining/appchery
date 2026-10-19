@@ -892,7 +892,10 @@ export const fr: Dictionary = {
 		unclaimed: "{n} enregistrements sur cet appareil n'appartiennent encore à aucun compte.",
 		someRefused: 'Le serveur a refusé {n} changements.',
 		someTaken:
-			'{n} d’entre eux sont des enregistrements qu’un autre compte détient déjà sur le serveur, en général parce que la même sauvegarde a été restaurée sous deux comptes. Ce compte ne peut pas les écraser : supprimez-les d’abord de l’autre compte.',
+			'{n} d’entre eux sont des enregistrements qu’un autre compte détient déjà sur le serveur, en général parce que les mêmes données ont été déplacées vers un nouveau compte. Rendez-les propres à ce compte pour les envoyer ici : l’autre compte garde sa copie.',
+		reown: 'Les rendre propres à ce compte',
+		reowned: '{n} enregistrements appartiennent maintenant à ce compte et sont en cours d’envoi.',
+		reownInUse: 'Certains sont ouverts sur la montre ou dans une course. Fermez-la, puis réessayez.',
 		serverHint: 'Ce que le serveur détient pour ce compte. Rien sur cet appareil n’est touché.',
 		replaceServer: 'Remplacer la copie du serveur par cet appareil',
 		deleteServer: 'Supprimer mes données du serveur et me déconnecter',

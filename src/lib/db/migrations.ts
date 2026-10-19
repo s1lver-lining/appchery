@@ -393,5 +393,7 @@ export const MIGRATIONS: string[][] = [
 		`ALTER TABLE wrist_motion ADD COLUMN ended_on_shot INTEGER NOT NULL DEFAULT 0;`
 	],
 	// 0015 why the server refused a change, so a row another account holds can be told apart
-	[`ALTER TABLE change_log ADD COLUMN refusal TEXT;`]
+	[`ALTER TABLE change_log ADD COLUMN refusal TEXT;`],
+	// 0016 the ids a row was given in place of one another account holds, for whatever still says the old one
+	[`CREATE TABLE id_alias (old_id TEXT PRIMARY KEY NOT NULL, new_id TEXT NOT NULL);`]
 ];

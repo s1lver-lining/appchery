@@ -116,6 +116,22 @@ once, is marked `taken` in `change_log.refusal`, and the account card says what 
 what restoring one backup under two accounts produces. Only an unreachable server throws, and a
 refusal never stops the pull that follows it.
 
+Moving one history to a new account produces exactly that: the old account uploaded the rows first,
+and the ids are the same. The account card then offers to make them this account's own. Each taken
+row this account owns on the device gets a new id, and `src/lib/db/reid.ts` carries every reference
+along: the `REFERENCES` list names each column that holds another row's id, and a test fails on any
+`_id` column that is in neither it nor `NOT_REFERENCES`, because a reference missed there is a link
+broken without a word. A row whose reference changed has its `updated_at` bumped, so it outranks the
+copies other devices hold, and everything changed is queued and pushed. The other account keeps its
+copy and nothing is deleted on the server. Unlike sync, this runs in one transaction with foreign
+keys deferred: a half done rewrite leaves arrows pointing at an end that no longer exists.
+
+The watch and the run tracker hold ids outside the database. A round open on the watch or a run held
+by the native side refuses the re-id while it uses one of the ids, since either would go on writing
+under an id that just stopped existing. Ends and motion the watch kept for later carry the old id
+in their scope, so `id_alias` keeps every old id and the new one, and the wrist store looks each
+arriving id up there before using it.
+
 Ownership is stamped here rather than in the repository. `src/lib/db/repository.ts` knows nothing
 about accounts and is better for it: the local database has one archer and is the source of truth,
 so who owns a row is a fact about syncing. Push claims every ownerless row before it sends anything,

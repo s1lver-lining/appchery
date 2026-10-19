@@ -4,7 +4,7 @@
 	import Icon from './Icon.svelte';
 	import { account, signIn, signUp, signOut, requestPasswordReset, AuthError, initAuth, unclaimedRowCount } from '$lib/sync/auth';
 	import { hasBuiltInServer } from '$lib/sync/config';
-	import { syncNow, syncStatus, refreshSyncStatus, emptyServer } from '$lib/sync';
+	import { syncNow, syncStatus, refreshSyncStatus, emptyServer, reownTaken } from '$lib/sync';
 	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { syncAlert } from '$lib/sync/alert';
 	import { startWatching } from '$lib/sync/watch';
@@ -122,6 +122,19 @@
 		busy = false;
 	}
 
+	async function reown() {
+		busy = true;
+		error = null;
+		notice = null;
+		try {
+			notice = $t('account.reowned', { n: await reownTaken() });
+			await refresh();
+		} catch (e) {
+			error = (e as Error).message === 'inUse' ? $t('account.reownInUse') : $t('account.error.unknown');
+		}
+		busy = false;
+	}
+
 	async function reset() {
 		busy = true;
 		error = null;
@@ -158,8 +171,18 @@
 						: $t('account.silentSince', { days: Math.floor((Date.now() - ($syncAlert.silentSince ?? 0)) / 86400000) })}
 					{#if $syncAlert.taken > 0}
 						<span class="mt-1 block">{$t('account.someTaken', { n: $syncAlert.taken })}</span>
+						<button
+							class="press mt-2 w-full rounded-lg bg-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-50"
+							disabled={busy || $syncStatus.phase === 'syncing'}
+							onclick={reown}
+						>
+							{$t('account.reown')}
+						</button>
 					{/if}
-					<span class="mt-1 block text-muted">{$t('account.pressSync')}</span>
+					<!-- Retrying a taken row only meets the same refusal, so the hint is for the others. -->
+					{#if $syncAlert.failed > $syncAlert.taken || $syncAlert.failed === 0}
+						<span class="mt-1 block text-muted">{$t('account.pressSync')}</span>
+					{/if}
 				</p>
 			{/if}
 			{#if $syncStatus.pending > 0}

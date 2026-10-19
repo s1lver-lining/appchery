@@ -891,7 +891,10 @@ export const en = {
 		unclaimed: '{n} records on this device belong to no account yet.',
 		someRefused: 'The server rejected {n} changes.',
 		someTaken:
-			'{n} of them are records another account already holds on the server, usually because the same backup was restored under two accounts. This account cannot overwrite them: delete them from the other account first.',
+			'{n} of them are records another account already holds on the server, usually because the same data was moved to a new account. Make them this account’s own to send them here: the other account keeps its copy.',
+		reown: 'Make them this account’s own',
+		reowned: '{n} records are now this account’s own and are being sent.',
+		reownInUse: 'Some of them are open on the watch or in a run. Close it, then try again.',
 		serverHint: 'What the server holds for this account. Nothing on this device is touched.',
 		replaceServer: 'Replace the server copy with this device',
 		deleteServer: 'Delete my data on the server and sign out',

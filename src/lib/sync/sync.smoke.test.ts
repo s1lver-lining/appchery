@@ -31,10 +31,26 @@ vi.mock('$lib/db', async () => {
 	return {
 		db: () => proxy,
 		schema: actual,
-		transaction: <T>(work: () => Promise<T>) => work()
+		// A real one: the re-id defers its foreign keys, which only holds inside a transaction.
+		transaction: async <T>(work: () => Promise<T>) => {
+			sqlite.exec('BEGIN');
+			try {
+				const result = await work();
+				sqlite.exec('COMMIT');
+				return result;
+			} catch (error) {
+				sqlite.exec('ROLLBACK');
+				throw error;
+			}
+		}
 	};
 });
 vi.mock('$lib/db/changed', () => ({ dataChanged: () => {} }));
+
+// What the watch and the run tracker hold in memory, which a re-id must not pull out from under them.
+const live = vi.hoisted(() => ({ round: null as string | null, run: null as string | null }));
+vi.mock('$lib/watch/store', () => ({ watchLink: () => (live.round ? { roundActivity: live.round } : null) }));
+vi.mock('$lib/run/handover', () => ({ nativeRun: async () => (live.run ? { id: live.run } : null) }));
 
 // The stand-in server, swapped per test. syncNow reaches for its client through this module.
 const stub = vi.hoisted(() => ({ client: null as unknown }));
@@ -52,7 +68,7 @@ vi.stubGlobal('localStorage', {
 
 const { push } = await import('./push');
 const { pull } = await import('./pull');
-const { syncNow, syncStatus, emptyServer } = await import('./index');
+const { syncNow, syncStatus, emptyServer, reownTaken } = await import('./index');
 const { account } = await import('./auth');
 
 const USER = 'user-1';
@@ -179,6 +195,7 @@ beforeEach(async () => {
 		schema.session,
 		schema.bow,
 		schema.changeLog,
+		schema.idAlias,
 		schema.syncState,
 		schema.socialProfile,
 		schema.socialActivity
@@ -852,5 +869,96 @@ describe('emptying the server', () => {
 		expect([...server.rowsOf('session').keys()]).toEqual(['session-other']);
 		expect(get(account)).toBeNull();
 		expect(await proxy.select().from(schema.session)).toHaveLength(1);
+	});
+});
+
+describe('making taken rows our own', () => {
+	function insertActivity(id: string, sessionId: string) {
+		return proxy.insert(schema.activity).values({
+			id,
+			createdAt: 100,
+			updatedAt: 100,
+			deviceId: 'device-a',
+			userId: USER,
+			sessionId,
+			kind: 'scoring',
+			startedAt: 100
+		});
+	}
+
+	it('knows every column that holds another row id', async () => {
+		const { REFERENCES, NOT_REFERENCES } = await import('$lib/db/reid');
+		const listed = new Set([...REFERENCES.map(({ table, column }) => `${table}.${column}`), ...NOT_REFERENCES]);
+		const tables = sqlite.prepare(`SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'`).all();
+
+		// A reference missed here is a link the re-id breaks without a word.
+		const missing: string[] = [];
+		for (const { name } of tables as { name: string }[]) {
+			for (const { name: column } of sqlite.prepare(`PRAGMA table_info(${name})`).all() as { name: string }[]) {
+				if (!column.endsWith('_id') || column === 'user_id' || column === 'device_id') continue;
+				if (!listed.has(`${name}.${column}`)) missing.push(`${name}.${column}`);
+			}
+		}
+		expect(missing).toEqual([]);
+	});
+
+	it('gives a row a new id that its children follow', async () => {
+		const { giveNewIds, currentId } = await import('$lib/db/reid');
+		await insertSession('session-old');
+		await insertActivity('activity-a', 'session-old');
+		await logChange('session', 'session-old');
+
+		await giveNewIds([{ table: 'session', id: 'session-old' }]);
+
+		const fresh = await currentId('session-old');
+		expect(fresh).not.toBe('session-old');
+		const [activity] = await proxy.select().from(schema.activity);
+		expect(activity.sessionId).toBe(fresh);
+		// The child changed, so it outranks the copies elsewhere and goes up again.
+		expect(activity.updatedAt).toBeGreaterThan(100);
+		const log = await proxy.select().from(schema.changeLog);
+		expect(log.map((row) => `${row.tableName}:${row.rowId}`).sort()).toEqual([`activity:activity-a`, `session:${fresh}`]);
+	});
+
+	it('sends rows another account held, under new ids', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await insertSession('session-ported');
+		await logChange('session', 'session-ported');
+		server.refuseRow('session-ported', '42501');
+		await syncNow('manual');
+
+		const { failedCount, takenCount } = await import('./push');
+		expect(await takenCount()).toBe(1);
+
+		expect(await reownTaken()).toBe(1);
+
+		const [session] = await proxy.select().from(schema.session);
+		expect(session.id).not.toBe('session-ported');
+		expect(server.upserts).toContain(`session:${session.id}`);
+		expect(await failedCount()).toBe(0);
+		account.set(null);
+	});
+
+	it('leaves rows alone while the watch has them open', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await insertSession('session-ported');
+		await insertActivity('activity-open', 'session-ported');
+		await logChange('activity', 'activity-open');
+		server.refuseRow('activity-open', '42501');
+		await syncNow('manual');
+
+		live.round = 'activity-open';
+		await expect(reownTaken()).rejects.toThrow('inUse');
+		live.round = null;
+
+		const [activity] = await proxy.select().from(schema.activity);
+		expect(activity.id).toBe('activity-open');
+		account.set(null);
 	});
 });

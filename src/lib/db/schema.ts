@@ -298,6 +298,15 @@ export const changeLog = sqliteTable(
 );
 
 /**
+ * A row's old id and the one it was given instead, see src/lib/db/reid.ts. Never synced: the watch
+ * and the run tracker may still say the old id, and this is how it finds its way.
+ */
+export const idAlias = sqliteTable('id_alias', {
+	oldId: text('old_id').primaryKey(),
+	newId: text('new_id').notNull()
+});
+
+/**
  * Somebody else's profile as it was last seen, so the friends screen reads at a range with no
  * signal. A cache and never a source: nothing here is pushed, and anything the server disagrees with
  * is overwritten on the next look.

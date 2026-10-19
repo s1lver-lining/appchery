@@ -135,14 +135,28 @@ async function run(trigger: 'manual' | 'automatic'): Promise<void> {
 	}
 }
 
+/** Runs work alone: any exchange in progress finishes first, and none starts until it is done. */
+async function exclusive<T>(work: () => Promise<T>): Promise<T> {
+	while (inFlight) await inFlight.catch(() => {});
+	const running = work();
+	// The guard only waits; the caller is the one owed the failure.
+	inFlight = running
+		.then(
+			() => {},
+			() => {}
+		)
+		.finally(() => {
+			inFlight = null;
+		});
+	return running;
+}
+
 /**
  * Empties the server of this account's shooting, then either signs out or sends this device's copy
  * up in its place. Held in the exchange guard: a push landing halfway would leave half a server.
  */
 export async function emptyServer(then: 'signOut' | 'resend'): Promise<void> {
-	while (inFlight) await inFlight.catch(() => {});
-
-	const work = (async () => {
+	await exclusive(async () => {
 		const user = get(account);
 		const client = await supabase();
 		if (!user || !client) throw new Error('noServer');
@@ -150,20 +164,26 @@ export async function emptyServer(then: 'signOut' | 'resend'): Promise<void> {
 		const { deleteServerRows, requeueEverything } = await import('./reset');
 		await deleteServerRows(client, user.id);
 		if (then === 'resend') await requeueEverything(user.id);
-	})();
-
-	// The guard only waits; the caller is the one owed the failure.
-	inFlight = work.then(
-		() => {},
-		() => {}
-	).finally(() => {
-		inFlight = null;
 	});
-	await work;
 
 	if (then === 'signOut') {
 		await signOut();
 		return;
 	}
 	await syncNow('manual');
+}
+
+/**
+ * Gives the rows another account holds on the server new ids here, then sends them. Held in the
+ * exchange guard, so no push reads the log while it is being rewritten.
+ */
+export async function reownTaken(): Promise<number> {
+	const count = await exclusive(async () => {
+		const user = get(account);
+		if (!user) throw new Error('noServer');
+		const { reownTaken: reown } = await import('./reown');
+		return reown(user.id);
+	});
+	await syncNow('manual');
+	return count;
 }
