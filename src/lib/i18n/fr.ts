@@ -896,23 +896,6 @@ export const fr: Dictionary = {
 		reown: 'Les rendre propres à ce compte',
 		reowned: '{n} enregistrements appartiennent maintenant à ce compte et sont en cours d’envoi.',
 		reownInUse: 'Certains sont ouverts sur la montre ou dans une course. Fermez-la, puis réessayez.',
-		serverHint: 'Ce que le serveur détient pour ce compte. Rien sur cet appareil n’est touché.',
-		replaceServer: 'Remplacer la copie du serveur par cet appareil',
-		deleteServer: 'Supprimer mes données du serveur et me déconnecter',
-		serverReplaced: 'La copie du serveur a été remplacée par cet appareil.',
-		serverEmptied: 'Vos données sur le serveur ont été supprimées et vous êtes déconnecté.',
-		confirmTitle: {
-			resend: 'Remplacer la copie du serveur ?',
-			signOut: 'Supprimer vos données du serveur ?'
-		},
-		confirmBody: {
-			resend: 'Chaque session, arc et plan que ce compte détient sur le serveur est supprimé, puis cet appareil envoie les siens à leur place. Ce que seul un autre appareil avait envoyé est perdu, sauf s’il l’envoie de nouveau.',
-			signOut: 'Chaque session, arc et plan que ce compte détient sur le serveur est supprimé, et cet appareil se déconnecte. Rien sur cet appareil n’est touché. Votre pseudo et vos abonnés restent.'
-		},
-		confirmAction: {
-			resend: 'Remplacer',
-			signOut: 'Supprimer et se déconnecter'
-		},
 		silentSince: 'Rien n’a été synchronisé depuis {days} jours.',
 		pressSync: 'Synchronisez pour les réessayer.',
 		syncNow: 'Synchroniser maintenant',
@@ -1173,6 +1156,12 @@ export const fr: Dictionary = {
 		total: 'Score total',
 		average: '{value} par flèche'
 	},
+	syncProgress: {
+		push: 'Envoi de {done} changements sur {total}',
+		pull: 'Réception : {received} enregistrements pour l’instant',
+		reown: 'Nouveaux identifiants : {done} sur {total}',
+		empty: 'Suppression sur le serveur : {done} tables sur {total}'
+	},
 	danger: {
 		title: 'Zone dangereuse',
 		imported: 'Supprimer les séances importées',
@@ -1183,21 +1172,32 @@ export const fr: Dictionary = {
 		everythingRemoved: 'Tout a été supprimé.',
 		rebuild: 'Refaire la base de données',
 		rebuildHint: "Vide entièrement la base et la reconstruit telle que cette version de l'application l'attend. La seule issue pour une base que l'application ne sait pas lire.",
+		serverHint: 'Ce que le serveur détient pour ce compte. Rien sur cet appareil n’est touché.',
+		serverResend: 'Remplacer la copie du serveur par cet appareil',
+		serverDelete: 'Supprimer mes données du serveur et me déconnecter',
+		serverResent: 'La copie du serveur a été remplacée par cet appareil.',
+		serverDeleted: 'Vos données sur le serveur ont été supprimées et vous êtes déconnecté.',
 		rebuilt: 'La base de données a été refaite.',
 		confirmTitle: {
 			imported: 'Supprimer les séances importées ?',
 			everything: 'Tout supprimer ?',
-			rebuild: 'Refaire la base de données ?'
+			rebuild: 'Refaire la base de données ?',
+			serverResend: 'Remplacer la copie du serveur ?',
+			serverDelete: 'Supprimer vos données du serveur ?'
 		},
 		confirmBody: {
 			imported: "Toutes les séances écrites par un import disparaissent, avec leurs comptages et leurs flèches. Les séances saisies dans Appchery sont conservées.",
 			everything: "Toutes les séances, activités, arcs, plans et badges de cet appareil disparaissent. Exportez une sauvegarde d'abord si vous voulez en récupérer quelque chose.",
-			rebuild: "Tout ce qui est sur cet appareil disparaît, et la base est reconstruite à partir de rien. Une sauvegarde exportée maintenant contiendrait le même problème : gardez d'abord ce dont vous avez besoin par un autre moyen."
+			rebuild: "Tout ce qui est sur cet appareil disparaît, et la base est reconstruite à partir de rien. Une sauvegarde exportée maintenant contiendrait le même problème : gardez d'abord ce dont vous avez besoin par un autre moyen.",
+			serverResend: 'Chaque session, arc et plan que ce compte détient sur le serveur est supprimé, puis cet appareil envoie les siens à leur place. Ce que seul un autre appareil avait envoyé est perdu, sauf s’il l’envoie de nouveau.',
+			serverDelete: 'Chaque session, arc et plan que ce compte détient sur le serveur est supprimé, et cet appareil se déconnecte. Rien sur cet appareil n’est touché. Votre pseudo et vos abonnés restent.'
 		},
 		confirmAction: {
 			imported: 'Supprimer les imports',
 			everything: 'Tout supprimer',
-			rebuild: 'La refaire'
+			rebuild: 'La refaire',
+			serverResend: 'Remplacer',
+			serverDelete: 'Supprimer et se déconnecter'
 		}
 	},
 	importer: {

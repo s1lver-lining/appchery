@@ -4,12 +4,15 @@ import { db, schema } from '$lib/db';
 import { OWNED_TABLES } from '$lib/db/synced';
 import { writeSyncState } from './config';
 import { adoptLocalRows } from './auth';
+import { syncProgress } from './progress';
 
 // Emptying the server for one account, see doc/sync.md § 4. Neither function ever touches a row on this device.
 
 /** Every synced row this account holds on the server, children first. Profile, follows and handle stay. */
 export async function deleteServerRows(client: SupabaseClient, userId: string): Promise<void> {
-	for (const { name } of [...OWNED_TABLES].reverse()) {
+	const tables = [...OWNED_TABLES].reverse();
+	for (const [done, { name }] of tables.entries()) {
+		syncProgress.set({ step: 'empty', done, total: tables.length });
 		const { error } = await client.from(name).delete().eq('user_id', userId);
 		if (error) throw new Error(`${name}: ${error.message}`);
 	}

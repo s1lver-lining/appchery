@@ -5,6 +5,7 @@ import { OWNED_TABLES, LOCAL_ONLY_COLUMNS, type OwnedTableName } from '$lib/db/s
 import { readSyncState, writeSyncState } from './config';
 import { resolveWithDeletes, type Mergeable } from './merge';
 import { dataChanged } from '$lib/db/changed';
+import { syncProgress } from './progress';
 
 // Bringing other devices' changes down. The cursor, the ordering and the merge are doc/sync.md § 4.
 
@@ -24,6 +25,9 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 	const marks = readCursors(state.lastPullCursor);
 	let applied = 0;
 	let skipped = 0;
+	let received = 0;
+	let walked = 0;
+	syncProgress.set({ step: 'pull', done: 0, total: OWNED_TABLES.length, received });
 
 	// Parents before children, so an activity never lands before the session it belongs to.
 	for (const { name, table } of OWNED_TABLES) {
@@ -44,6 +48,8 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 			if (error) throw new PullError(`${name}: ${error.message}`);
 			if (!data || data.length === 0) break;
 
+			received += data.length;
+			syncProgress.set({ step: 'pull', done: walked, total: OWNED_TABLES.length, received });
 			const outcome = await applyRows(name, table, data);
 			applied += outcome.applied;
 			skipped += outcome.skipped;
@@ -58,6 +64,8 @@ export async function pull(client: SupabaseClient, userId: string): Promise<Pull
 			if (last === cursor) break;
 			cursor = last;
 		}
+		walked += 1;
+		syncProgress.set({ step: 'pull', done: walked, total: OWNED_TABLES.length, received });
 	}
 
 	await writeSyncState({ lastSyncAt: Date.now(), lastPullCursor: JSON.stringify(marks) });

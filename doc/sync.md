@@ -178,7 +178,7 @@ explicit action that never touches the phone, and wiping the phone never touches
 is a side effect of the other, because the archer asking to free up space on a phone is not asking to
 lose their history, and an archer closing an account is not asking to wipe the device in their hand.
 
-The account card holds the two server side actions. **Delete my data on the server** removes every
+The danger zone in the settings data tab holds the two server side actions, shown while signed in. **Delete my data on the server** removes every
 synced row the account holds there and signs out, leaving profile, handle and follows alone. Signing
 out is part of it because this device would otherwise send its pending changes straight back into
 the account just emptied. **Replace the server copy with this device** removes the same rows, drops
@@ -223,6 +223,9 @@ device that never signs in never fetches the client library at all.
 
 The settings account section shows, signed out, that sync is optional and everything works without
 it. Signed in it shows the account, when the last exchange was, how much is waiting, and sign out.
+While an exchange runs it shows a bar fed by `src/lib/sync/progress.ts`: a push counts the queue it
+read at the start, a pull counts the tables it has walked and the rows received so far, since the
+server never says how many are coming, and the re-id and the server actions count their own steps.
 An exchange attempted with no connection says so rather than appearing to do nothing.
 
 Signing out keeps this device's shooting untouched and takes the social cache with it: profiles and

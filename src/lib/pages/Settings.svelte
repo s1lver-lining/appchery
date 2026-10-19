@@ -142,6 +142,7 @@
 	import { appVersion, appBuild } from '$lib/build';
 	import AccountCard from '$lib/ui/AccountCard.svelte';
 	import { account } from '$lib/sync/auth';
+	import SyncProgressBar from '$lib/ui/SyncProgressBar.svelte';
 	import { syncAlert, syncAlertUnread, markSyncAlertSeen } from '$lib/sync/alert';
 	import { diagnoseStorage, type StorageProblem } from '$lib/db/diagnosis';
 
@@ -340,7 +341,7 @@
 		input.value = '';
 	}
 
-	let dangerDialog = $state<'imported' | 'everything' | 'rebuild' | null>(null);
+	let dangerDialog = $state<'imported' | 'everything' | 'rebuild' | 'serverResend' | 'serverDelete' | null>(null);
 	let dangerNotice = $state<string | null>(null);
 
 	async function runDanger() {
@@ -349,7 +350,12 @@
 		if (!mode) return;
 		busy = true;
 		try {
-			if (mode === 'imported') {
+			if (mode === 'serverResend' || mode === 'serverDelete') {
+				// Loaded here rather than at the top: a device that never signs in never fetches sync.
+				const { emptyServer } = await import('$lib/sync');
+				await emptyServer(mode === 'serverDelete' ? 'signOut' : 'resend');
+				dangerNotice = $t(mode === 'serverDelete' ? 'danger.serverDeleted' : 'danger.serverResent');
+			} else if (mode === 'imported') {
 				const removed = await deleteImportedSessions();
 				dangerNotice = $t('danger.importedRemoved', { n: removed });
 			} else if (mode === 'rebuild') {
@@ -1322,6 +1328,24 @@
 							{$t('danger.everything')}
 						</button>
 
+						{#if $account}
+							<p class="mt-4 text-sm text-muted">{$t('danger.serverHint')}</p>
+							<button
+								class="mt-2 w-full rounded-lg border border-danger/60 py-2 text-sm font-medium text-danger disabled:opacity-50"
+								disabled={busy}
+								onclick={() => (dangerDialog = 'serverResend')}
+							>
+								{$t('danger.serverResend')}
+							</button>
+							<button
+								class="mt-2 w-full rounded-lg border border-danger/60 py-2 text-sm font-medium text-danger disabled:opacity-50"
+								disabled={busy}
+								onclick={() => (dangerDialog = 'serverDelete')}
+							>
+								{$t('danger.serverDelete')}
+							</button>
+						{/if}
+
 						{#if schemaAhead}
 						<!-- Offered only to a database no migration can reach, because it throws away a file
 							that is otherwise none of this button's business. -->
@@ -1335,6 +1359,10 @@
 						</button>
 					{/if}
 
+					<!-- Only for its own actions: the account card above already shows an ordinary exchange. -->
+					{#if busy}
+						<SyncProgressBar />
+					{/if}
 					{#if dangerNotice}
 							<p class="mt-3 text-sm text-muted">{dangerNotice}</p>
 						{/if}

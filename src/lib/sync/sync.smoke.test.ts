@@ -962,3 +962,27 @@ describe('making taken rows our own', () => {
 		account.set(null);
 	});
 });
+
+describe('progress', () => {
+	it('counts the queue down while pushing, and clears when the exchange ends', async () => {
+		const { syncProgress } = await import('./progress');
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+		for (const id of ['session-1', 'session-2', 'session-3']) {
+			await insertSession(id);
+			await logChange('session', id);
+		}
+
+		const seen: string[] = [];
+		const stop = syncProgress.subscribe((p) => p && seen.push(`${p.step}:${p.done}/${p.total}`));
+		await syncNow('manual');
+		stop();
+
+		expect(seen).toContain('push:0/3');
+		expect(seen).toContain('push:3/3');
+		expect(seen.at(-1)).toMatch(/^pull:\d+\/\d+$/);
+		expect(get(syncProgress)).toBeNull();
+		account.set(null);
+	});
+});

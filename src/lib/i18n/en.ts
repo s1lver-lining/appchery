@@ -895,23 +895,6 @@ export const en = {
 		reown: 'Make them this account’s own',
 		reowned: '{n} records are now this account’s own and are being sent.',
 		reownInUse: 'Some of them are open on the watch or in a run. Close it, then try again.',
-		serverHint: 'What the server holds for this account. Nothing on this device is touched.',
-		replaceServer: 'Replace the server copy with this device',
-		deleteServer: 'Delete my data on the server and sign out',
-		serverReplaced: 'The server copy was replaced by this device.',
-		serverEmptied: 'Your data on the server was deleted and you are signed out.',
-		confirmTitle: {
-			resend: 'Replace the server copy?',
-			signOut: 'Delete your data on the server?'
-		},
-		confirmBody: {
-			resend: 'Every session, bow and plan this account holds on the server is deleted, then this device sends its own in their place. Anything only another device sent is lost unless that device sends it again.',
-			signOut: 'Every session, bow and plan this account holds on the server is deleted, and this device signs out. Nothing on this device is touched. Your handle and followers stay.'
-		},
-		confirmAction: {
-			resend: 'Replace',
-			signOut: 'Delete and sign out'
-		},
 		silentSince: 'Nothing has synced for {days} days.',
 		pressSync: 'Sync now to retry them.',
 		syncNow: 'Sync now',
@@ -1170,6 +1153,12 @@ export const en = {
 		total: 'Total score',
 		average: '{value} per arrow'
 	},
+	syncProgress: {
+		push: 'Sending {done} of {total} changes',
+		pull: 'Receiving: {received} records so far',
+		reown: 'Giving new ids: {done} of {total}',
+		empty: 'Deleting on the server: {done} of {total} tables'
+	},
 	danger: {
 		title: 'Danger zone',
 		imported: 'Remove imported sessions',
@@ -1180,21 +1169,32 @@ export const en = {
 		everythingRemoved: 'Everything was removed.',
 		rebuild: 'Make the database afresh',
 		rebuildHint: 'Empties the database completely and builds it again the way this version of the app expects. The only way out of a database this app cannot read.',
+		serverHint: 'What the server holds for this account. Nothing on this device is touched.',
+		serverResend: 'Replace the server copy with this device',
+		serverDelete: 'Delete my data on the server and sign out',
+		serverResent: 'The server copy was replaced by this device.',
+		serverDeleted: 'Your data on the server was deleted and you are signed out.',
 		rebuilt: 'The database was made afresh.',
 		confirmTitle: {
 			imported: 'Remove imported sessions?',
 			everything: 'Remove everything?',
-			rebuild: 'Make the database afresh?'
+			rebuild: 'Make the database afresh?',
+			serverResend: 'Replace the server copy?',
+			serverDelete: 'Delete your data on the server?'
 		},
 		confirmBody: {
 			imported: 'Every session written by an import goes, with its rounds and arrows. Sessions you recorded in Appchery are kept.',
 			everything: 'Every session, activity, bow, plan and badge on this device goes. Export a backup first if you want any of it back.',
-			rebuild: 'Everything on this device goes, and the database is built again from nothing. A backup exported now would contain the same problem, so keep what you need some other way first.'
+			rebuild: 'Everything on this device goes, and the database is built again from nothing. A backup exported now would contain the same problem, so keep what you need some other way first.',
+			serverResend: 'Every session, bow and plan this account holds on the server is deleted, then this device sends its own in their place. Anything only another device sent is lost unless that device sends it again.',
+			serverDelete: 'Every session, bow and plan this account holds on the server is deleted, and this device signs out. Nothing on this device is touched. Your handle and followers stay.'
 		},
 		confirmAction: {
 			imported: 'Remove imported',
 			everything: 'Remove everything',
-			rebuild: 'Make it afresh'
+			rebuild: 'Make it afresh',
+			serverResend: 'Replace',
+			serverDelete: 'Delete and sign out'
 		}
 	},
 	importer: {

@@ -4,6 +4,7 @@ import { db, schema } from '$lib/db';
 import { LOCAL_ONLY_COLUMNS, OWNED_TABLES, ownedTable, type OwnedTableName } from '$lib/db/synced';
 import { writeSyncState } from './config';
 import { adoptLocalRows } from './auth';
+import { syncProgress } from './progress';
 
 // Sending local changes up, see doc/sync.md § 4. The log holds no payload, so a row is read as it
 // stands now: ten edits of one end collapse into one upload.
@@ -74,6 +75,9 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 
 	// The repository knows nothing about accounts, so rows arrive ownerless and are claimed here.
 	await adoptLocalRows(userId);
+	const total = await pendingCount();
+	let walked = 0;
+	syncProgress.set({ step: 'push', done: 0, total });
 
 	for (;;) {
 		const batch = (await db()
@@ -113,6 +117,9 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 				.set({ syncedAt: Date.now() })
 				.where(inArray(schema.changeLog.id, done.slice(i, i + 100)));
 		}
+
+		walked += batch.length;
+		syncProgress.set({ step: 'push', done: Math.min(walked, total), total });
 
 		const highest = batch[batch.length - 1].id;
 		await writeSyncState({ lastPushCursor: String(highest) });

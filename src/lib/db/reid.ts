@@ -41,9 +41,14 @@ const SYNCED = new Set<string>(OWNED_TABLES.map(({ name }) => name));
  * queued to be sent. One transaction, unlike sync: a half done rewrite leaves arrows pointing at an
  * end that no longer exists, and the archer asked for this one, so nothing of theirs is mid write.
  */
-export async function giveNewIds(rows: { table: string; id: string }[]): Promise<number> {
+export async function giveNewIds(
+	rows: { table: string; id: string }[],
+	onProgress: (done: number, total: number) => void = () => {}
+): Promise<number> {
 	if (rows.length === 0) return 0;
 	const now = Date.now();
+	const total = rows.length + REFERENCES.length;
+	let done = 0;
 
 	return transaction(async () => {
 		// The parents move before their children follow, which only holds together at the commit.
@@ -60,6 +65,7 @@ export async function giveNewIds(rows: { table: string; id: string }[]): Promise
 				.delete(schema.changeLog)
 				.where(and(eq(schema.changeLog.tableName, table), eq(schema.changeLog.rowId, id)));
 			if (SYNCED.has(table)) owed.set(`${table}:${fresh}`, { table, id: fresh });
+			onProgress(++done, total);
 		}
 
 		for (const { table, column } of REFERENCES) {
@@ -67,6 +73,7 @@ export async function giveNewIds(rows: { table: string; id: string }[]): Promise
 			const ref = sql.identifier(column);
 			const stale = sql`${ref} IN (SELECT old_id FROM id_alias)`;
 			const moving = (await db().all(sql`SELECT id FROM ${name} WHERE ${stale}`)) as unknown[][];
+			onProgress(++done, total);
 			if (moving.length === 0) continue;
 
 			if (SYNCED.has(table)) {

@@ -5,6 +5,7 @@ import { push, pendingCount, failedCount, retryFailed } from './push';
 import { pull } from './pull';
 import { readSyncState } from './config';
 import { refreshSyncAlert } from './alert';
+import { syncProgress } from './progress';
 
 // One exchange: push, then pull, see doc/sync.md § 5. Failures are silent and left for the next
 // trigger, because offline at a range is the normal case rather than something to interrupt over.
@@ -77,6 +78,7 @@ export function syncNow(trigger: 'manual' | 'automatic' = 'manual'): Promise<voi
 
 	inFlight ??= run(trigger).finally(() => {
 		inFlight = null;
+		syncProgress.set(null);
 	});
 	return inFlight;
 }
@@ -138,7 +140,7 @@ async function run(trigger: 'manual' | 'automatic'): Promise<void> {
 /** Runs work alone: any exchange in progress finishes first, and none starts until it is done. */
 async function exclusive<T>(work: () => Promise<T>): Promise<T> {
 	while (inFlight) await inFlight.catch(() => {});
-	const running = work();
+	const running = work().finally(() => syncProgress.set(null));
 	// The guard only waits; the caller is the one owed the failure.
 	inFlight = running
 		.then(

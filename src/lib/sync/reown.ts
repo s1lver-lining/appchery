@@ -2,6 +2,7 @@ import { and, eq, inArray, isNotNull } from 'drizzle-orm';
 import { db, schema } from '$lib/db';
 import { ownedTable } from '$lib/db/synced';
 import { giveNewIds } from '$lib/db/reid';
+import { syncProgress } from './progress';
 
 // Rows another account holds on the server, made this account's own by new ids, see doc/sync.md § 4.
 
@@ -47,5 +48,5 @@ async function inUse(ids: Set<string>): Promise<boolean> {
 export async function reownTaken(userId: string): Promise<number> {
 	const rows = await takenRows(userId);
 	if (await inUse(new Set(rows.map(({ id }) => id)))) throw new ReownError('inUse');
-	return giveNewIds(rows);
+	return giveNewIds(rows, (done, total) => syncProgress.set({ step: 'reown', done, total }));
 }
