@@ -20,6 +20,7 @@ import { elapsed, emptyLive, parseRun, type RunRecord, type StepResult } from '$
 import {
 	appendRunPoints,
 	clearRunPoints,
+	RUN_POINTS_PER_INSERT,
 	getActivity,
 	listRunPoints,
 	updateRun
@@ -425,9 +426,9 @@ export class LiveRun {
 		this.stopping = true;
 		if (live.status === 'running') live.baseSeconds = elapsed(live, Date.now());
 		live.legStartedAt = null;
-		// Whatever the service gathered and nobody has taken yet: the last minutes of a run ended
-		// from the wrist are in that buffer, and a run that stops before draining it loses them.
-		await this.ingest().catch(() => undefined);
+		// The last minutes of a run ended from the wrist are in the service's buffer. A failed write
+		// leaves them pending for the flush below and the close, so nothing is swallowed here.
+		await this.ingest();
 		live.status = 'done';
 		// Done guards a second stop from here on.
 		this.stopping = false;
@@ -839,11 +840,22 @@ export class LiveRun {
 		if (this.pending.length >= 10) await this.flush();
 	}
 
+	/**
+	 * The fixes written, a batch at a time, each let go only once it is stored. A write that fails
+	 * keeps the rest for the next save or the close rather than losing the run, see doc/llm-memory/running.md.
+	 */
 	private async flush() {
-		if (this.pending.length === 0 || !this.activityId) return;
-		const writing = this.pending;
-		this.pending = [];
-		await appendRunPoints(this.activityId, writing);
+		if (!this.activityId) return;
+		while (this.pending.length > 0) {
+			const writing = this.pending.slice(0, RUN_POINTS_PER_INSERT);
+			try {
+				await appendRunPoints(this.activityId, writing);
+			} catch (error) {
+				console.error('run points not written, kept to try again', error);
+				return;
+			}
+			this.pending = this.pending.slice(writing.length);
+		}
 	}
 
 	/** A block ends when what it asked for is done, and the next one starts without a tap. */
@@ -902,6 +914,8 @@ export class LiveRun {
 	private async save() {
 		if (!this.record) return;
 		this.lastSaved = Date.now();
+		// Fixes a failed write left behind, tried again with every save rather than only after ten more.
+		await this.flush();
 		const live = this.record.live;
 		// While it runs, the two numbers hold what it has come to, so a crash leaves a run worth keeping.
 		if (this.record.mode === 'tracked' && live && live.status !== 'done') {

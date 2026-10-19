@@ -471,23 +471,27 @@ export async function markWorkoutUsed(id: string) {
  * are the tracker's business, and these rows are the record the run can be rebuilt from.
  */
 export async function appendRunPoints(activityId: string, points: TrackedFix[]) {
-	if (points.length === 0) return;
-	await db()
-		.insert(schema.runPoint)
-		.values(
-			points.map((point) => ({
-				activityId,
-				at: point.at,
-				latitude: point.lat,
-				longitude: point.lon,
-				accuracy: point.accuracy,
-				altitude: point.altitude,
-				speed: point.speed,
-				elapsedSeconds: point.elapsedSeconds,
-				heartRate: point.heartRate ?? null
-			}))
-		);
+	for (let from = 0; from < points.length; from += RUN_POINTS_PER_INSERT) {
+		await db()
+			.insert(schema.runPoint)
+			.values(
+				points.slice(from, from + RUN_POINTS_PER_INSERT).map((point) => ({
+					activityId,
+					at: point.at,
+					latitude: point.lat,
+					longitude: point.lon,
+					accuracy: point.accuracy,
+					altitude: point.altitude,
+					speed: point.speed,
+					elapsedSeconds: point.elapsedSeconds,
+					heartRate: point.heartRate ?? null
+				}))
+			);
+	}
 }
+
+// Under the 999 bound values the strictest SQLite allows: a whole run in one insert lost its track.
+export const RUN_POINTS_PER_INSERT = 90;
 
 export async function listRunPoints(activityId: string): Promise<TrackedFix[]> {
 	const rows = await db()
