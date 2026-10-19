@@ -893,6 +893,23 @@ export const fr: Dictionary = {
 		someRefused: 'Le serveur a refusé {n} changements.',
 		someTaken:
 			'{n} d’entre eux sont des enregistrements qu’un autre compte détient déjà sur le serveur, en général parce que la même sauvegarde a été restaurée sous deux comptes. Ce compte ne peut pas les écraser : supprimez-les d’abord de l’autre compte.',
+		serverHint: 'Ce que le serveur détient pour ce compte. Rien sur cet appareil n’est touché.',
+		replaceServer: 'Remplacer la copie du serveur par cet appareil',
+		deleteServer: 'Supprimer mes données du serveur et me déconnecter',
+		serverReplaced: 'La copie du serveur a été remplacée par cet appareil.',
+		serverEmptied: 'Vos données sur le serveur ont été supprimées et vous êtes déconnecté.',
+		confirmTitle: {
+			resend: 'Remplacer la copie du serveur ?',
+			signOut: 'Supprimer vos données du serveur ?'
+		},
+		confirmBody: {
+			resend: 'Chaque session, arc et plan que ce compte détient sur le serveur est supprimé, puis cet appareil envoie les siens à leur place. Ce que seul un autre appareil avait envoyé est perdu, sauf s’il l’envoie de nouveau.',
+			signOut: 'Chaque session, arc et plan que ce compte détient sur le serveur est supprimé, et cet appareil se déconnecte. Rien sur cet appareil n’est touché. Votre pseudo et vos abonnés restent.'
+		},
+		confirmAction: {
+			resend: 'Remplacer',
+			signOut: 'Supprimer et se déconnecter'
+		},
 		silentSince: 'Rien n’a été synchronisé depuis {days} jours.',
 		pressSync: 'Synchronisez pour les réessayer.',
 		syncNow: 'Synchroniser maintenant',

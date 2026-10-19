@@ -892,6 +892,23 @@ export const en = {
 		someRefused: 'The server rejected {n} changes.',
 		someTaken:
 			'{n} of them are records another account already holds on the server, usually because the same backup was restored under two accounts. This account cannot overwrite them: delete them from the other account first.',
+		serverHint: 'What the server holds for this account. Nothing on this device is touched.',
+		replaceServer: 'Replace the server copy with this device',
+		deleteServer: 'Delete my data on the server and sign out',
+		serverReplaced: 'The server copy was replaced by this device.',
+		serverEmptied: 'Your data on the server was deleted and you are signed out.',
+		confirmTitle: {
+			resend: 'Replace the server copy?',
+			signOut: 'Delete your data on the server?'
+		},
+		confirmBody: {
+			resend: 'Every session, bow and plan this account holds on the server is deleted, then this device sends its own in their place. Anything only another device sent is lost unless that device sends it again.',
+			signOut: 'Every session, bow and plan this account holds on the server is deleted, and this device signs out. Nothing on this device is touched. Your handle and followers stay.'
+		},
+		confirmAction: {
+			resend: 'Replace',
+			signOut: 'Delete and sign out'
+		},
 		silentSince: 'Nothing has synced for {days} days.',
 		pressSync: 'Sync now to retry them.',
 		syncNow: 'Sync now',

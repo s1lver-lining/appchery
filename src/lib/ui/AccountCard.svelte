@@ -4,7 +4,8 @@
 	import Icon from './Icon.svelte';
 	import { account, signIn, signUp, signOut, requestPasswordReset, AuthError, initAuth, unclaimedRowCount } from '$lib/sync/auth';
 	import { hasBuiltInServer } from '$lib/sync/config';
-	import { syncNow, syncStatus, refreshSyncStatus } from '$lib/sync';
+	import { syncNow, syncStatus, refreshSyncStatus, emptyServer } from '$lib/sync';
+	import ConfirmDialog from './ConfirmDialog.svelte';
 	import { syncAlert } from '$lib/sync/alert';
 	import { startWatching } from '$lib/sync/watch';
 	import { locale } from '$lib/i18n';
@@ -18,6 +19,7 @@
 	let notice = $state<string | null>(null);
 	let error = $state<string | null>(null);
 	let unclaimed = $state(0);
+	let emptying = $state<'signOut' | 'resend' | null>(null);
 
 	const configured = hasBuiltInServer();
 
@@ -104,6 +106,22 @@
 		busy = false;
 	}
 
+	async function empty() {
+		const then = emptying!;
+		emptying = null;
+		busy = true;
+		error = null;
+		notice = null;
+		try {
+			await emptyServer(then);
+			notice = $t(then === 'signOut' ? 'account.serverEmptied' : 'account.serverReplaced');
+			await refresh();
+		} catch (e) {
+			error = /fetch|network/i.test(String(e)) ? $t('account.error.offline') : $t('account.error.unknown');
+		}
+		busy = false;
+	}
+
 	async function reset() {
 		busy = true;
 		error = null;
@@ -170,6 +188,21 @@
 			>
 				{$t('account.signOut')}
 			</button>
+			<p class="mt-4 text-sm text-muted">{$t('account.serverHint')}</p>
+			<button
+				class="press mt-2 w-full rounded-lg border border-line py-2 text-sm font-medium text-danger disabled:opacity-50"
+				disabled={busy || $syncStatus.phase === 'syncing'}
+				onclick={() => (emptying = 'resend')}
+			>
+				{$t('account.replaceServer')}
+			</button>
+			<button
+				class="press mt-2 w-full rounded-lg border border-line py-2 text-sm font-medium text-danger disabled:opacity-50"
+				disabled={busy || $syncStatus.phase === 'syncing'}
+				onclick={() => (emptying = 'signOut')}
+			>
+				{$t('account.deleteServer')}
+			</button>
 		{:else}
 			<p class="text-sm text-muted">{$t('account.hint')}</p>
 			{#if unclaimed > 0}
@@ -226,3 +259,13 @@
 		{/if}
 	</div>
 </section>
+
+{#if emptying}
+	<ConfirmDialog
+		title={$t(`account.confirmTitle.${emptying}`)}
+		message={$t(`account.confirmBody.${emptying}`)}
+		confirmLabel={$t(`account.confirmAction.${emptying}`)}
+		onconfirm={empty}
+		oncancel={() => (emptying = null)}
+	/>
+{/if}

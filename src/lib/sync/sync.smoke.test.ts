@@ -52,7 +52,7 @@ vi.stubGlobal('localStorage', {
 
 const { push } = await import('./push');
 const { pull } = await import('./pull');
-const { syncNow, syncStatus } = await import('./index');
+const { syncNow, syncStatus, emptyServer } = await import('./index');
 const { account } = await import('./auth');
 
 const USER = 'user-1';
@@ -72,6 +72,7 @@ function fakeServer() {
 	}
 
 	const client = {
+		auth: { signOut: () => Promise.resolve({ error: null }) },
 		from(name: string) {
 			const query = {
 				filters: [] as ((row: Record<string, unknown>) => boolean)[],
@@ -88,6 +89,14 @@ function fakeServer() {
 						rowsOf(name).set(String(row.id), { ...row, server_updated_at: new Date(++clock * 1000).toISOString() });
 					}
 					return Promise.resolve({ error: null });
+				},
+				delete() {
+					return {
+						eq(column: string, value: unknown) {
+							for (const [id, row] of rowsOf(name)) if (row[column] === value) rowsOf(name).delete(id);
+							return Promise.resolve({ error: null });
+						}
+					};
 				},
 				select(columns?: string) {
 					void columns;
@@ -799,5 +808,49 @@ describe('the feed and the cache behind it', () => {
 
 		const { sharedFeed } = await import('./social');
 		expect((await sharedFeed()).map((shared) => shared.id)).toEqual(['their-round']);
+	});
+});
+
+describe('emptying the server', () => {
+	function serverRow(id: string, userId: string) {
+		return { id, user_id: userId, created_at: 1, updated_at: 1, device_id: 'device-b', started_at: 1, kind: 'practice' };
+	}
+
+	it('replaces the server copy with what this device holds, refusals included', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		// Sent long ago, so the log says there is nothing owed for it.
+		await insertSession('session-sent');
+		await logChange('session', 'session-sent');
+		await push(server.client as never, USER);
+		await proxy.update(schema.changeLog).set({ failedAt: 1, refusal: 'taken' });
+		server.rowsOf('session').set('session-stale', serverRow('session-stale', USER));
+		server.rowsOf('session').set('session-other', serverRow('session-other', 'user-2'));
+
+		await emptyServer('resend');
+
+		expect([...server.rowsOf('session').keys()].sort()).toEqual(['session-other', 'session-sent']);
+		const { failedCount, pendingCount } = await import('./push');
+		expect(await failedCount()).toBe(0);
+		expect(await pendingCount()).toBe(0);
+		account.set(null);
+	});
+
+	it('deletes only this account on the server, signs out, and keeps the device', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await insertSession('session-mine');
+		server.rowsOf('session').set('session-mine', serverRow('session-mine', USER));
+		server.rowsOf('session').set('session-other', serverRow('session-other', 'user-2'));
+
+		await emptyServer('signOut');
+
+		expect([...server.rowsOf('session').keys()]).toEqual(['session-other']);
+		expect(get(account)).toBeNull();
+		expect(await proxy.select().from(schema.session)).toHaveLength(1);
 	});
 });

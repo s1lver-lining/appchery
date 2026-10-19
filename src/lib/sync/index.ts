@@ -1,6 +1,6 @@
 import { get, writable } from 'svelte/store';
 import { supabase } from './client';
-import { account } from './auth';
+import { account, signOut } from './auth';
 import { push, pendingCount, failedCount, retryFailed } from './push';
 import { pull } from './pull';
 import { readSyncState } from './config';
@@ -133,4 +133,37 @@ async function run(trigger: 'manual' | 'automatic'): Promise<void> {
 		failures += 1;
 		await refreshSyncStatus('error', error instanceof Error ? error.message : String(error));
 	}
+}
+
+/**
+ * Empties the server of this account's shooting, then either signs out or sends this device's copy
+ * up in its place. Held in the exchange guard: a push landing halfway would leave half a server.
+ */
+export async function emptyServer(then: 'signOut' | 'resend'): Promise<void> {
+	while (inFlight) await inFlight.catch(() => {});
+
+	const work = (async () => {
+		const user = get(account);
+		const client = await supabase();
+		if (!user || !client) throw new Error('noServer');
+
+		const { deleteServerRows, requeueEverything } = await import('./reset');
+		await deleteServerRows(client, user.id);
+		if (then === 'resend') await requeueEverything(user.id);
+	})();
+
+	// The guard only waits; the caller is the one owed the failure.
+	inFlight = work.then(
+		() => {},
+		() => {}
+	).finally(() => {
+		inFlight = null;
+	});
+	await work;
+
+	if (then === 'signOut') {
+		await signOut();
+		return;
+	}
+	await syncNow('manual');
 }

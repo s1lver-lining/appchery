@@ -162,6 +162,16 @@ explicit action that never touches the phone, and wiping the phone never touches
 is a side effect of the other, because the archer asking to free up space on a phone is not asking to
 lose their history, and an archer closing an account is not asking to wipe the device in their hand.
 
+The account card holds the two server side actions. **Delete my data on the server** removes every
+synced row the account holds there and signs out, leaving profile, handle and follows alone. Signing
+out is part of it because this device would otherwise send its pending changes straight back into
+the account just emptied. **Replace the server copy with this device** removes the same rows, drops
+every log entry for the device's own rows, queues all of them again, tombstones included, and clears
+the cursors, the way a restore does: without that the log still says everything was sent, and the
+server would stay empty. Both run inside the exchange guard, so no push lands halfway through. They
+are the repair for a backup restored under two accounts: delete from the account that should not
+have it, then replace from the device that is right.
+
 Restoring a backup drops the log and the cursors the file was carrying, because they describe a sync
 that happened on another device, and re-enqueues every restored row as pending instead. Tombstones
 are enqueued with the rest: a delete that reached the file has to reach the server too, or the next
