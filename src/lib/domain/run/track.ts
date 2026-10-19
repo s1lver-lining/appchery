@@ -24,7 +24,14 @@ export interface RunFix {
  * whatever the wrist was reporting when it landed. The beat is on the fix rather than in a series of
  * its own because that is how a GPX carries one, and because a run is read back point by point.
  */
-export type TrackedFix = RunFix & { elapsedSeconds: number; heartRate?: number | null };
+export type TrackedFix = RunFix & {
+	elapsedSeconds: number;
+	heartRate?: number | null;
+	bridgedM?: number | null;
+};
+
+/** A fix that may carry the distance the service measured across fixes the page never received. */
+export type BridgedFix = RunFix & { bridgedM?: number | null };
 
 export const TRACK_RULES = {
 	/** Beyond this the fix says little more than which town you are in. */
@@ -129,7 +136,7 @@ export function isUsable(fix: RunFix): boolean {
  */
 export function addFix(
 	state: TrackState,
-	fix: RunFix,
+	fix: BridgedFix,
 	seconds: number
 ): { state: TrackState; moved: boolean } {
 	if (!isUsable(fix)) return { state, moved: false };
@@ -142,14 +149,18 @@ export function addFix(
 		return { state: next, moved: true };
 	}
 
-	const step = haversine(state.last, fix);
+	const bridged = fix.bridgedM ?? null;
+	// Across lost fixes the straight line cuts every corner, and the service judged them already.
+	const step = bridged ?? haversine(state.last, fix);
 	const gap = (fix.at - state.last.at) / 1000;
 	// No time passed, so nothing was run: a repeated or reordered fix is not a stride.
 	if (gap <= 0) return { state, moved: false };
-	if (fix.speed !== null && fix.speed < TRACK_RULES.stillMs) return { state, moved: false };
-	const believed = fix.speed !== null && fix.speed >= TRACK_RULES.movingMs;
-	if (!believed && step < stepFloor(fix)) return { state, moved: false };
-	if (step / gap > TRACK_RULES.maxSpeedMs) return { state, moved: false };
+	if (bridged === null) {
+		if (fix.speed !== null && fix.speed < TRACK_RULES.stillMs) return { state, moved: false };
+		const believed = fix.speed !== null && fix.speed >= TRACK_RULES.movingMs;
+		if (!believed && step < stepFloor(fix)) return { state, moved: false };
+		if (step / gap > TRACK_RULES.maxSpeedMs) return { state, moved: false };
+	}
 
 	next.distanceM = state.distanceM + step;
 	next.last = fix;

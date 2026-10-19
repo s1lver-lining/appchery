@@ -50,11 +50,15 @@ public class TraceService extends Service implements LocationListener {
         Double accuracy;
         Double altitude;
         Double speed;
+        /** The run's distance as RunFrames had counted it at this fix, or NaN outside a run. */
+        double odometer = Double.NaN;
     }
 
     private static final Object LOCK = new Object();
     private static final ArrayList<Fix> BUFFERED = new ArrayList<>();
     private static long lastSeq = 0;
+    /** The newest fix given up to make room, which a page that has not taken it has lost. */
+    private static long droppedThrough = 0;
     private static boolean running = false;
 
     static boolean isRunning() {
@@ -72,10 +76,19 @@ public class TraceService extends Service implements LocationListener {
         }
     }
 
+    /** Whether fixes after `since` were given up before anybody took them. */
+    static boolean lostAfter(long since) {
+        synchronized (LOCK) {
+            return droppedThrough > since;
+        }
+    }
+
     /** A new run starts from an empty buffer: the fixes of the last one are not part of this one. */
     static void reset() {
         synchronized (LOCK) {
             BUFFERED.clear();
+            // Cleared on purpose, so nothing of the last run counts as lost to this one.
+            droppedThrough = 0;
         }
     }
 
@@ -227,8 +240,11 @@ public class TraceService extends Service implements LocationListener {
 
     @Override
     public void onLocationChanged(Location location) {
+        // The wrist, fed from the fix this service was woken for rather than from a timer of its own.
+        double odometer = RunFrames.onFix(location);
         Fix fix = new Fix();
         synchronized (LOCK) {
+            fix.odometer = odometer;
             fix.seq = ++lastSeq;
             fix.at = location.getTime();
             fix.lat = location.getLatitude();
@@ -237,11 +253,9 @@ public class TraceService extends Service implements LocationListener {
             fix.altitude = location.hasAltitude() ? location.getAltitude() : null;
             fix.speed = location.hasSpeed() ? (double) location.getSpeed() : null;
             BUFFERED.add(fix);
-            // The oldest go first: a page that has been away that long has lost them either way.
-            while (BUFFERED.size() > BUFFER) BUFFERED.remove(0);
+            // The oldest go first, and the page is told, so it spans them with the odometer.
+            while (BUFFERED.size() > BUFFER) droppedThrough = BUFFERED.remove(0).seq;
         }
-        // The wrist, fed from the fix this service was woken for rather than from a timer of its own.
-        RunFrames.onFix(location);
     }
 
     @Override

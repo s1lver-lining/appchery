@@ -27,7 +27,19 @@ export interface Source {
 	hold(): Promise<void>;
 	stop(): Promise<void>;
 	/** Everything gathered since the last call, oldest first. */
-	drain(): Promise<RunFix[]>;
+	drain(): Promise<Drained>;
+}
+
+/**
+ * A fix with the run's distance as the service had counted it there, or null where nothing counted.
+ * Only the difference between two of them means anything: what the service ran in between.
+ */
+export type SourcedFix = RunFix & { odometerM: number | null };
+
+/** `lost` is fixes gone before this page took them, from a buffer that outgrew a frozen page. */
+export interface Drained {
+	fixes: SourcedFix[];
+	lost: boolean;
 }
 
 interface TracePlugin {
@@ -35,9 +47,10 @@ interface TracePlugin {
 	hold(): Promise<void>;
 	stop(): Promise<void>;
 	drain(options: { since: number }): Promise<{
-		fixes: (RunFix & { seq: number })[];
+		fixes: (RunFix & { seq: number; odometer?: number | null })[];
 		seq: number;
 		running: boolean;
+		lost?: boolean;
 	}>;
 }
 
@@ -65,9 +78,9 @@ function nativeSource(): Source {
 		},
 		async drain() {
 			const taken = await Trace.drain({ since: seq }).catch(() => null);
-			if (!taken) return [];
+			if (!taken) return { fixes: [], lost: false };
 			seq = taken.seq;
-			return taken.fixes.map(readFix);
+			return { fixes: taken.fixes.map(readFix), lost: taken.lost === true };
 		}
 	};
 }
@@ -116,7 +129,7 @@ function webSource(): Source {
 		async drain() {
 			const taken = held;
 			held = [];
-			return taken;
+			return { fixes: taken.map((fix) => ({ ...fix, odometerM: null })), lost: false };
 		}
 	};
 }
@@ -124,8 +137,9 @@ function webSource(): Source {
 const number = (value: unknown): number | null =>
 	typeof value === 'number' && Number.isFinite(value) ? value : null;
 
-function readFix(fix: RunFix & { seq: number }): RunFix {
+function readFix(fix: RunFix & { seq: number; odometer?: number | null }): SourcedFix {
 	return {
+		odometerM: number(fix.odometer),
 		at: fix.at,
 		lat: fix.lat,
 		lon: fix.lon,

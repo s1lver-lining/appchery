@@ -395,5 +395,10 @@ export const MIGRATIONS: string[][] = [
 	// 0015 why the server refused a change, so a row another account holds can be told apart
 	[`ALTER TABLE change_log ADD COLUMN refusal TEXT;`],
 	// 0016 the ids a row was given in place of one another account holds, for whatever still says the old one
-	[`CREATE TABLE id_alias (old_id TEXT PRIMARY KEY NOT NULL, new_id TEXT NOT NULL);`]
+	[`CREATE TABLE id_alias (old_id TEXT PRIMARY KEY NOT NULL, new_id TEXT NOT NULL);`],
+	// 0017 the distance the service measured across fixes the page never received
+	[
+		// Local only, as the rest of run_point, see doc/llm-memory/running.md.
+		`ALTER TABLE run_point ADD COLUMN bridged_m REAL;`
+	]
 ];

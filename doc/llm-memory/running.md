@@ -549,6 +549,31 @@ again from the fixes, which is why the totals at the end are the track's and not
 In a browser none of this exists: there is no service, so a tab the phone puts to sleep stops
 recording and stops mirroring, and the page says so rather than pretending otherwise.
 
+### A page asleep for a whole run
+
+A run started and finished from the wrist with the phone in a pocket is one the page never sees
+until the end: every fix of it arrives in a single drain. On 2026-10-18 that was a marathon, nearly
+four hours, and two things gave way.
+
+* **The write.** The whole batch went into one insert, ten bound values a fix, far over what SQLite
+  allows in one statement. The insert failed, `flush` had already let the fixes go, and `stop`
+  swallowed the error and stored the totals it had worked out in memory: a run with its distance,
+  its splits and its heart rate, and a track of the ninety seconds before the first pause. Fixes are
+  now written `RUN_POINTS_PER_INSERT` at a time, and each batch is let go only once it is stored. A
+  write that fails keeps the rest pending, tried again on every save and on leaving the page.
+* **The buffer.** The service held three hours of fixes and dropped the oldest beyond that, so the
+  page measured a straight line from before the pause to the first fix left, half an hour of running
+  later: 2.4 km short of what the wrist had shown. It now holds twelve hours, and whatever it still
+  gives up is said: `drain` answers `lost`, and every fix carries `odometer`, the run's distance as
+  `RunFrames` had counted it there. The next fix the page counts after a loss takes the difference of
+  the two odometers as its step instead of the straight line, and keeps it as `bridged_m` on its
+  row, so the graph, the splits and a replay all agree with the live total. Only the difference
+  means anything: the odometer starts again from the page's distance with every plan.
+
+A block's result is not the run. `steps` holds what each block came to when its goal was met, and a
+programme that runs out leaves the run going: the 42 000 m block of that marathon closed at 13 781 s
+and the run, finished from the wrist after the line, at 14 117 s.
+
 ### The buttons ask
 
 The watch never drives the run. `rc` carries `go`, `pause`, `resume` or `stop` up to the phone, which

@@ -590,12 +590,15 @@ final class RunFrames {
     /**
      * One fix, judged by the same rules as the page and then used for the wrist. Called from the
      * service's location callback, which is the only thing here that ever wakes the processor.
+     * Answers the run's distance after it, stamped on the fix for a page that loses the ones between,
+     * or NaN outside a run.
      */
-    static void onFix(Location fix) {
+    static double onFix(Location fix) {
         byte[] frame = null;
         boolean letGo = false;
+        double odometer;
         synchronized (LOCK) {
-            if (!live) return;
+            if (!live) return Double.NaN;
             if ("p".equals(status) && autoHeld && moving(fix)) {
                 // Going again: the clock runs from this fix, as the page's own letting go does.
                 anchorStamp = SystemClock.elapsedRealtime();
@@ -607,18 +610,20 @@ final class RunFrames {
                 lastChangeWall = System.currentTimeMillis();
                 letGo = true;
             }
-            if (!"r".equals(status)) return;
+            if (!"r".equals(status)) return metres();
             // A paused run has no fixes to work from, so its clock is whatever it was stopped at.
             take(fix);
+            odometer = metres();
             long now = SystemClock.elapsedRealtime();
-            if (now - Wrist.lastPageWrite() < QUIET_MS) return;
-            if (now - lastFrameAt < FRAME_MS) return;
-            lastFrameAt = now;
-            advance();
-            frame = compose();
+            if (now - Wrist.lastPageWrite() >= QUIET_MS && now - lastFrameAt >= FRAME_MS) {
+                lastFrameAt = now;
+                advance();
+                frame = compose();
+            }
         }
         if (frame != null) Wrist.get().write(frame);
         if (letGo) Wrist.get().runChanged();
+        return odometer;
     }
 
     /** A fix that says the runner is going, by the same gates `take` believes movement by. */

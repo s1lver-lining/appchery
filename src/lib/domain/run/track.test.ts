@@ -175,3 +175,21 @@ describe('replaying a stored track', () => {
 		expect(replay([]).distanceM).toBe(0);
 	});
 });
+
+describe('fixes lost before the page took them', () => {
+	it('counts what the service measured across the gap rather than the straight line', () => {
+		const start = run(emptyTrack(), 10, 3);
+		// Half an hour gone, ending 3 km up the road after 5.4 km of running round the streets.
+		const after = north(start.distanceM + 3000, 1810 * 1000, { bridgedM: 5400 } as Partial<RunFix>);
+		const taken = addFix(start, after, 1810);
+		expect(taken.moved).toBe(true);
+		expect(taken.state.distanceM).toBeCloseTo(start.distanceM + 5400, 6);
+		expect(taken.state.splits).toHaveLength(5);
+	});
+
+	it('is still refused where no time passed', () => {
+		const start = run(emptyTrack(), 10, 3);
+		const same = north(start.distanceM, start.last!.at, { bridgedM: 500 } as Partial<RunFix>);
+		expect(addFix(start, same, 10).moved).toBe(false);
+	});
+});

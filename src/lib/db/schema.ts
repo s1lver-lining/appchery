@@ -431,7 +431,9 @@ export const runPoint = sqliteTable(
 		/** The run's own clock when it landed, so the pauses are visible in the track itself. */
 		elapsedSeconds: real('elapsed_seconds').notNull(),
 		/** Beats a minute as the watch last reported them, or null wherever nothing was measuring. */
-		heartRate: integer('heart_rate')
+		heartRate: integer('heart_rate'),
+		/** Metres the service counted since the fix before, where the fixes between were lost. */
+		bridgedM: real('bridged_m')
 	},
 	(t) => [index('idx_run_point_activity').on(t.activityId, t.at)]
 );

@@ -109,6 +109,10 @@ export class LiveRun {
 		'wakeLock' in navigator ? navigator.wakeLock.request('screen') : undefined
 	);
 	private pending: TrackedFix[] = [];
+	/** Fixes were lost before this page took them, and the next one to count spans the gap. */
+	private bridging = false;
+	/** Where the service's distance stood at the last fix counted here, to measure a gap against. */
+	private countedOdometer: number | null = null;
 	private lastMirrored = 0;
 	/**
 	 * Beats off the wrist waiting for a fix to be written on. A list rather than the last one,
@@ -296,6 +300,8 @@ export class LiveRun {
 		acceptHeart((bpm, at) => this.heard(bpm, at));
 		const stored = await listRunPoints(activityId);
 		this.track = replayTracked(stored);
+		this.bridging = false;
+		this.countedOdometer = null;
 		// Carried on from what is already written, so a run reopened averages over the whole of it.
 		this.beats = { sum: 0, count: 0, max: 0 };
 		this.heart = null;
@@ -391,7 +397,11 @@ export class LiveRun {
 		this.autoHeld = false;
 		this.movedAt = Date.now();
 		const fresh = live.status === 'idle';
-		if (fresh) await clearRunPoints(this.activityId);
+		if (fresh) {
+			await clearRunPoints(this.activityId);
+			this.bridging = false;
+			this.countedOdometer = null;
+		}
 		live.startedAt = live.startedAt ?? Date.now();
 		live.legStartedAt = Date.now();
 		live.status = 'running';
@@ -684,6 +694,8 @@ export class LiveRun {
 		if (live.status === 'idle' && (taken.st === 'r' || taken.st === 'p' || taken.st === 'd')) {
 			await clearRunPoints(this.activityId);
 			this.track = emptyTrack();
+			this.bridging = false;
+			this.countedOdometer = null;
 			this.beats = { sum: 0, count: 0, max: 0 };
 			this.autoHeld = false;
 			this.movedAt = Date.now();
@@ -821,20 +833,29 @@ export class LiveRun {
 	}
 
 	private async ingest() {
-		const fixes = (await this.source?.drain()) ?? [];
-		if (fixes.length === 0) return;
+		const drained = await this.source?.drain();
+		if (!drained) return;
+		// Held until a fix counts, since the first one after the loss may itself be refused.
+		if (drained.lost) this.bridging = true;
+		if (drained.fixes.length === 0) return;
 		let state = this.track;
 		const seconds = this.seconds;
-		for (const fix of fixes) {
+		for (const { odometerM, ...fix } of drained.fixes) {
 			// The clock as it was when the fix was taken, so a batch drained at once is not stamped alike.
 			const at = Math.max(0, seconds - (this.now - fix.at) / 1000);
-			const taken = addFix(state, fix, at);
+			const bridgedM =
+				this.bridging && odometerM !== null && this.countedOdometer !== null
+					? Math.max(0, odometerM - this.countedOdometer)
+					: null;
+			const taken = addFix(state, { ...fix, bridgedM }, at);
 			if (!taken.moved) continue;
 			this.movedAt = Date.now();
+			this.bridging = false;
+			this.countedOdometer = odometerM;
 			state = taken.state;
 			const heartRate = this.beatFor(fix.at);
 			this.count(heartRate);
-			this.pending.push({ ...fix, elapsedSeconds: at, heartRate });
+			this.pending.push({ ...fix, elapsedSeconds: at, heartRate, bridgedM });
 		}
 		this.track = state;
 		if (this.pending.length >= 10) await this.flush();

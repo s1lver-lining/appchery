@@ -484,7 +484,8 @@ export async function appendRunPoints(activityId: string, points: TrackedFix[]) 
 					altitude: point.altitude,
 					speed: point.speed,
 					elapsedSeconds: point.elapsedSeconds,
-					heartRate: point.heartRate ?? null
+					heartRate: point.heartRate ?? null,
+					bridgedM: point.bridgedM ?? null
 				}))
 			);
 	}
@@ -507,7 +508,8 @@ export async function listRunPoints(activityId: string): Promise<TrackedFix[]> {
 		altitude: row.altitude,
 		speed: row.speed,
 		elapsedSeconds: row.elapsedSeconds,
-		heartRate: row.heartRate
+		heartRate: row.heartRate,
+		bridgedM: row.bridgedM
 	}));
 }
 

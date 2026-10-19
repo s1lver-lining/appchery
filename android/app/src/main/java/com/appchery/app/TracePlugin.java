@@ -118,6 +118,7 @@ public class TracePlugin extends Plugin {
             one.put("accuracy", fix.accuracy);
             one.put("altitude", fix.altitude);
             one.put("speed", fix.speed);
+            if (!Double.isNaN(fix.odometer)) one.put("odometer", fix.odometer);
             fixes.put(one);
             seq = fix.seq;
         }
@@ -125,6 +126,7 @@ public class TracePlugin extends Plugin {
         result.put("fixes", fixes);
         result.put("seq", seq);
         result.put("running", TraceService.isRunning());
+        result.put("lost", TraceService.lostAfter(since));
         call.resolve(result);
     }
 }
