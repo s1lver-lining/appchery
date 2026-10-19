@@ -35,8 +35,11 @@ public class TraceService extends Service implements LocationListener {
 
     private static final String CHANNEL = "run";
     private static final int NOTIFICATION = 7;
-    /** Roughly three hours of fixes at one a second, which is longer than any run this app records. */
-    private static final int BUFFER = 12_000;
+    /**
+     * Twelve hours of fixes at one a second. Three hours was shorter than a marathon run with the page
+     * asleep, and the start of it went. See doc/llm-memory/running.md.
+     */
+    private static final int BUFFER = 43_200;
 
     /** One fix, held until the page has taken it. */
     static final class Fix {
