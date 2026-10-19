@@ -136,7 +136,16 @@ async function applyRows(name: string, table: OwnedTable, remote: Record<string,
 }
 
 function matches(local: Record<string, unknown>, candidate: Record<string, unknown>): boolean {
-	return Object.keys(candidate).every((key) => local[key] === candidate[key]);
+	return Object.keys(candidate).every((key) => same(local[key], candidate[key]));
+}
+
+/**
+ * Postgres prints a double with 15 significant digits unless told otherwise, so a plotted arrow read
+ * back from its own push differs in the last two, and was queued again on every exchange for ever.
+ */
+function same(a: unknown, b: unknown): boolean {
+	if (typeof a === 'number' && typeof b === 'number') return a === b || a.toPrecision(15) === b.toPrecision(15);
+	return a === b;
 }
 
 /** A server row as the local table wants it. Columns the server lacks keep whatever the device had. */

@@ -80,6 +80,7 @@ function fakeServer() {
 	let refuse = false;
 	let unreachable = false;
 	const refusedIds = new Map<string, string>();
+	let fifteenDigits = false;
 	const upserts: string[] = [];
 
 	function rowsOf(name: string) {
@@ -102,7 +103,14 @@ function fakeServer() {
 
 					for (const row of payload) {
 						upserts.push(`${name}:${row.id}`);
-						rowsOf(name).set(String(row.id), { ...row, server_updated_at: new Date(++clock * 1000).toISOString() });
+						// Postgres keeps every digit but, by default, prints a double with only fifteen of them.
+						const printed = Object.fromEntries(
+							Object.entries(row).map(([key, value]) => [
+								key,
+								fifteenDigits && typeof value === 'number' ? Number(value.toPrecision(15)) : value
+							])
+						);
+						rowsOf(name).set(String(row.id), { ...printed, server_updated_at: new Date(++clock * 1000).toISOString() });
 					}
 					return Promise.resolve({ error: null });
 				},
@@ -155,6 +163,7 @@ function fakeServer() {
 		upserts,
 		rowsOf,
 		refuseEverything: () => (refuse = true),
+		printFifteenDigits: () => (fifteenDigits = true),
 		/** Turns one row away, the way Postgres fails a whole statement for it. */
 		refuseRow: (id: string, code = '23514') => void refusedIds.set(id, code),
 		beUnreachable: () => (unreachable = true),
@@ -396,6 +405,19 @@ describe('a change the server will not take', () => {
 });
 
 describe('pull', () => {
+	it('does not queue a row again because the server printed its floats shorter', async () => {
+		const server = fakeServer();
+		server.printFifteenDigits();
+		await insertSession('session-gps', { latitude: 45.764043123456789, longitude: 4.835659123456789 });
+		await logChange('session', 'session-gps');
+
+		await push(server.client as never, USER);
+		await pull(server.client as never, USER);
+
+		const { pendingCount } = await import('./push');
+		expect(await pendingCount()).toBe(0);
+	});
+
 	it('leaves a shared activity belonging to another account out of these tables', async () => {
 		const server = fakeServer();
 		server.rowsOf('activity').set('activity-theirs', {

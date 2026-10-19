@@ -428,6 +428,11 @@ A pass over push and pull found two more:
 - **The sync button did nothing when a sync was already running.** It was answered with the exchange
   in progress, which had read the queue before the press: the refused changes the button exists to
   retry stayed refused. A press now waits for the run in progress and then has its own.
+- **A plotted arrow was sent up on every exchange for ever.** Postgres prints a double with fifteen
+  significant digits unless `extra_float_digits` says otherwise, so a shot's `x` read back by the pull
+  differed from the copy it had just pushed in the last two digits. The copies tied, the local one
+  won, and pull queued it again because it "genuinely differed". Pull now compares numbers at fifteen
+  digits, which holds against any server, and migration 0012 has this one print them exactly.
 - **One refused row poisoned two hundred.** A refusal was counted against every entry in its chunk,
   so a single row another account held gave up on everything uploaded beside it, and a backup
   restored under a second account ended with thousands of refused changes. The refused push also
