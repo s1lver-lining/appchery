@@ -891,6 +891,8 @@ export const fr: Dictionary = {
 		adoptedNone: 'Connecté.',
 		unclaimed: "{n} enregistrements sur cet appareil n'appartiennent encore à aucun compte.",
 		someRefused: 'Le serveur a refusé {n} changements.',
+		someTaken:
+			'{n} d’entre eux sont des enregistrements qu’un autre compte détient déjà sur le serveur, en général parce que la même sauvegarde a été restaurée sous deux comptes. Ce compte ne peut pas les écraser : supprimez-les d’abord de l’autre compte.',
 		silentSince: 'Rien n’a été synchronisé depuis {days} jours.',
 		pressSync: 'Synchronisez pour les réessayer.',
 		syncNow: 'Synchroniser maintenant',

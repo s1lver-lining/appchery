@@ -17,6 +17,8 @@ const SEEN_KEY = 'appchery.syncAlertSeen';
 export interface SyncAlert {
 	/** Changes the server refused often enough that the app stopped asking. */
 	failed: number;
+	/** Of those, the rows whose id another account already holds on the server. */
+	taken: number;
 	/** Set when there is work waiting and nothing has got through for days. */
 	silentSince: number | null;
 }
@@ -56,6 +58,11 @@ export async function refreshSyncAlert(): Promise<void> {
 		.from(schema.changeLog)
 		.where(isNotNull(schema.changeLog.failedAt));
 
+	const [taken] = await db()
+		.select({ n: sql<number>`count(*)` })
+		.from(schema.changeLog)
+		.where(and(isNotNull(schema.changeLog.failedAt), eq(schema.changeLog.refusal, 'taken')));
+
 	const [waiting] = await db()
 		.select({ n: sql<number>`count(*)` })
 		.from(schema.changeLog)
@@ -74,5 +81,5 @@ export async function refreshSyncAlert(): Promise<void> {
 	// to worry about, whatever the date on its last exchange.
 	const silent = lastSyncAt !== null && pending > 0 && Date.now() - lastSyncAt > SILENCE;
 
-	syncAlert.set(failed > 0 || silent ? { failed, silentSince: silent ? lastSyncAt : null } : null);
+	syncAlert.set(failed > 0 || silent ? { failed, taken: Number(taken?.n ?? 0), silentSince: silent ? lastSyncAt : null } : null);
 }

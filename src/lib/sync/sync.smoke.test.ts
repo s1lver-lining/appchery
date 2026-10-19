@@ -63,6 +63,7 @@ function fakeServer() {
 	let clock = 0;
 	let refuse = false;
 	let unreachable = false;
+	const refusedIds = new Map<string, string>();
 	const upserts: string[] = [];
 
 	function rowsOf(name: string) {
@@ -79,6 +80,8 @@ function fakeServer() {
 				upsert(payload: Record<string, unknown>[]) {
 					if (refuse) return Promise.resolve({ error: { message: 'refused', code: '23514' } });
 					if (unreachable) return Promise.resolve({ error: { message: 'fetch failed' } });
+					const bad = payload.find((row) => refusedIds.has(String(row.id)));
+					if (bad) return Promise.resolve({ error: { message: 'refused', code: refusedIds.get(String(bad.id)) } });
 
 					for (const row of payload) {
 						upserts.push(`${name}:${row.id}`);
@@ -127,10 +130,13 @@ function fakeServer() {
 		upserts,
 		rowsOf,
 		refuseEverything: () => (refuse = true),
+		/** Turns one row away, the way Postgres fails a whole statement for it. */
+		refuseRow: (id: string, code = '23514') => void refusedIds.set(id, code),
 		beUnreachable: () => (unreachable = true),
 		behave: () => {
 			refuse = false;
 			unreachable = false;
+			refusedIds.clear();
 		}
 	};
 }
@@ -314,6 +320,39 @@ describe('a change the server will not take', () => {
 		expect(await failedCount()).toBe(0);
 		expect(await pendingCount()).toBe(1);
 	});
+	it('is counted against the refused row only, not the rows sharing its chunk', async () => {
+		await insertSession('session-before');
+		await logChange('session', 'session-before');
+		await insertSession('session-poison');
+		await logChange('session', 'session-poison');
+		await insertSession('session-after');
+		await logChange('session', 'session-after');
+
+		const server = fakeServer();
+		server.refuseRow('session-poison');
+		for (let attempt = 0; attempt < 5; attempt++) await push(server.client as never, USER);
+
+		expect([...server.upserts].sort()).toEqual(['session:session-after', 'session:session-before']);
+		const { failedCount, pendingCount } = await import('./push');
+		expect(await failedCount()).toBe(1);
+		expect(await pendingCount()).toBe(0);
+	});
+
+	it('is given up on at once when another account holds the id', async () => {
+		await insertSession('session-restored');
+		await logChange('session', 'session-restored');
+
+		const server = fakeServer();
+		server.refuseRow('session-restored', '42501');
+		const result = await push(server.client as never, USER);
+
+		// No retry makes a row this account's, so the archer is told now rather than in five exchanges.
+		expect(result.refused).toBe(1);
+		const { failedCount, takenCount } = await import('./push');
+		expect(await failedCount()).toBe(1);
+		expect(await takenCount()).toBe(1);
+	});
+
 	it('leaves a change pending when the row belongs to another account', async () => {
 		const server = fakeServer();
 		await insertSession('session-theirs', { userId: 'user-2' });
@@ -613,6 +652,33 @@ describe('syncNow', () => {
 
 		expect(await failedCount()).toBe(0);
 		expect(server.upserts).toContain('session:session-poison');
+		account.set(null);
+	});
+
+	it('still pulls when the server refused a change', async () => {
+		const server = fakeServer();
+		stub.client = server.client;
+		account.set({ id: USER, email: 'archer@example.com' });
+
+		await insertSession('session-poison');
+		await logChange('session', 'session-poison');
+		server.refuseRow('session-poison');
+		server.rowsOf('session').set('session-remote', {
+			id: 'session-remote',
+			user_id: USER,
+			created_at: 50,
+			updated_at: 50,
+			device_id: 'device-b',
+			started_at: 50,
+			kind: 'practice',
+			server_updated_at: new Date(1000).toISOString()
+		});
+
+		await syncNow('manual');
+
+		const pulled = await proxy.select().from(schema.session).where(eq(schema.session.id, 'session-remote'));
+		expect(pulled).toHaveLength(1);
+		expect(get(syncStatus).error).toBe('refused');
 		account.set(null);
 	});
 

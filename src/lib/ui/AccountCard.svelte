@@ -138,6 +138,9 @@
 					{$syncAlert.failed > 0
 						? $t('account.someRefused', { n: $syncAlert.failed })
 						: $t('account.silentSince', { days: Math.floor((Date.now() - ($syncAlert.silentSince ?? 0)) / 86400000) })}
+					{#if $syncAlert.taken > 0}
+						<span class="mt-1 block">{$t('account.someTaken', { n: $syncAlert.taken })}</span>
+					{/if}
 					<span class="mt-1 block text-muted">{$t('account.pressSync')}</span>
 				</p>
 			{/if}

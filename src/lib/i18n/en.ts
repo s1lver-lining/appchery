@@ -890,6 +890,8 @@ export const en = {
 		adoptedNone: 'Signed in.',
 		unclaimed: '{n} records on this device belong to no account yet.',
 		someRefused: 'The server rejected {n} changes.',
+		someTaken:
+			'{n} of them are records another account already holds on the server, usually because the same backup was restored under two accounts. This account cannot overwrite them: delete them from the other account first.',
 		silentSince: 'Nothing has synced for {days} days.',
 		pressSync: 'Sync now to retry them.',
 		syncNow: 'Sync now',

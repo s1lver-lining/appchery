@@ -107,6 +107,15 @@ of holding every entry behind it. A tombstone is an ordinary upsert of a row wit
 `deleted_at` set. A failed chunk leaves everything after it pending, so a retry resumes rather than
 restarts, which is what makes a bulk import of thousands of rows survivable.
 
+A refusal is the server answering, and it is held against the row that earned it. Postgres fails a
+whole statement for one bad row, so a refused upsert is sent again one row at a time to find it, and
+only that row's log entries count a refusal. After five it stops being asked about. A refusal by row
+level security means the id is already held by another account: the insert always carries this
+account's `user_id`, so nothing else can trip it. Retrying cannot change that, so the entry stops at
+once, is marked `taken` in `change_log.refusal`, and the account card says what happened. That is
+what restoring one backup under two accounts produces. Only an unreachable server throws, and a
+refusal never stops the pull that follows it.
+
 Ownership is stamped here rather than in the repository. `src/lib/db/repository.ts` knows nothing
 about accounts and is better for it: the local database has one archer and is the source of truth,
 so who owns a row is a fact about syncing. Push claims every ownerless row before it sends anything,
@@ -390,6 +399,10 @@ A pass over push and pull found two more:
 - **The sync button did nothing when a sync was already running.** It was answered with the exchange
   in progress, which had read the queue before the press: the refused changes the button exists to
   retry stayed refused. A press now waits for the run in progress and then has its own.
+- **One refused row poisoned two hundred.** A refusal was counted against every entry in its chunk,
+  so a single row another account held gave up on everything uploaded beside it, and a backup
+  restored under a second account ended with thousands of refused changes. The refused push also
+  threw, which skipped the pull for that exchange.
 - **Signing in as somebody else inherited the last archer's cursor**, so the second account's pull
   asked only for rows newer than the first account's last exchange and the rest of its history never
   came down. Signing out clears the cursors.

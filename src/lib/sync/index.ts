@@ -114,7 +114,8 @@ async function run(trigger: 'manual' | 'automatic'): Promise<void> {
 	const stillOurs = () => get(account)?.id === user.id;
 
 	try {
-		await push(client, user.id);
+		// A refused row is the server answering, so the pull still runs: only an unreachable one throws.
+		const { refused } = await push(client, user.id);
 		if (!stillOurs()) return refreshSyncStatus();
 
 		await pull(client, user.id);
@@ -126,7 +127,7 @@ async function run(trigger: 'manual' | 'automatic'): Promise<void> {
 		const { publishCard } = await import('./card');
 		await refreshSocial().catch(() => {});
 		await publishCard().catch(() => {});
-		await refreshSyncStatus();
+		await refreshSyncStatus(refused > 0 ? 'error' : 'idle', refused > 0 ? 'refused' : null);
 		failures = 0;
 	} catch (error) {
 		failures += 1;

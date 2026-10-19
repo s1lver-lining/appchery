@@ -391,5 +391,7 @@ export const MIGRATIONS: string[][] = [
 	[
 		`ALTER TABLE wrist_motion ADD COLUMN shot_ordinal INTEGER;`,
 		`ALTER TABLE wrist_motion ADD COLUMN ended_on_shot INTEGER NOT NULL DEFAULT 0;`
-	]
+	],
+	// 0015 why the server refused a change, so a row another account holds can be told apart
+	[`ALTER TABLE change_log ADD COLUMN refusal TEXT;`]
 ];

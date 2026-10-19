@@ -17,9 +17,14 @@ const CHUNK = 200;
  */
 const REFUSALS_ALLOWED = 5;
 
+/** What PostgREST answers when row level security turns a write away, which an upsert only meets on an id another account holds. */
+const RLS_REFUSAL = '42501';
+
 export interface PushResult {
 	uploaded: number;
 	pending: number;
+	/** Rows the server answered and turned away during this push. */
+	refused: number;
 }
 
 interface PendingEntry {
@@ -39,6 +44,11 @@ export async function failedCount(): Promise<number> {
 	return countLog(isNotNull(schema.changeLog.failedAt));
 }
 
+/** Of those, the ones whose id another account already holds on the server. */
+export async function takenCount(): Promise<number> {
+	return countLog(and(isNotNull(schema.changeLog.failedAt), eq(schema.changeLog.refusal, 'taken')));
+}
+
 async function countLog(condition: SQL | undefined): Promise<number> {
 	const [row] = await db()
 		.select({ n: sql<number>`count(*)` })
@@ -51,12 +61,13 @@ async function countLog(condition: SQL | undefined): Promise<number> {
 export async function retryFailed(): Promise<void> {
 	await db()
 		.update(schema.changeLog)
-		.set({ failedAt: null, attempts: 0 })
+		.set({ failedAt: null, attempts: 0, refusal: null })
 		.where(isNotNull(schema.changeLog.failedAt));
 }
 
 export async function push(client: SupabaseClient, userId: string): Promise<PushResult> {
 	let uploaded = 0;
+	let refused = 0;
 	// Walked by id rather than by what is left pending, so an entry this account cannot send is
 	// stepped over for this run instead of holding every entry behind it.
 	let cursor = 0;
@@ -85,16 +96,11 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 
 		if (batch.length === 0) break;
 
-		let sent: Set<string>;
-		try {
-			sent = await pushBatch(client, userId, batch);
-		} catch (error) {
-			// A server that answered and refused is telling us something a retry will not change. One
-			// that could not be reached is telling us nothing, so it costs the chunk nothing.
-			if (error instanceof PushError && error.refused) await countRefusal(batch);
-			throw error;
-		}
+		// A server that could not be reached throws here and costs the chunk nothing: it refused nothing.
+		const { sent, refusals } = await pushBatch(client, userId, batch);
 		uploaded += sent.size;
+		refused += refusals.size;
+		await countRefusals(batch, refusals);
 
 		// Only what actually went up. A row belonging to another archer on a shared device was never
 		// ours to send, and stamping it sent would throw away their change the moment they sign in.
@@ -116,15 +122,17 @@ export async function push(client: SupabaseClient, userId: string): Promise<Push
 	}
 
 	await writeSyncState({ lastSyncAt: Date.now() });
-	return { uploaded, pending: await pendingCount() };
+	return { uploaded, pending: await pendingCount(), refused };
 }
 
-/** The rows that reached the server, keyed as the log names them, so only those are stamped sent. */
-async function pushBatch(
-	client: SupabaseClient,
-	userId: string,
-	batch: PendingEntry[]
-): Promise<Set<string>> {
+interface BatchOutcome {
+	/** The rows that reached the server, keyed as the log names them, so only those are stamped sent. */
+	sent: Set<string>;
+	/** The rows the server turned away, with why. */
+	refusals: Map<string, string>;
+}
+
+async function pushBatch(client: SupabaseClient, userId: string, batch: PendingEntry[]): Promise<BatchOutcome> {
 	// Latest entry per row, so a row inserted and then edited five times is read once and sent once.
 	const wanted = new Map<string, PendingEntry>();
 	for (const entry of batch) wanted.set(`${entry.tableName}:${entry.rowId}`, entry);
@@ -138,6 +146,7 @@ async function pushBatch(
 	}
 
 	const sent = new Set<string>();
+	const refusals = new Map<string, string>();
 
 	// Parents before children, so a chunk carrying both lands them in an order the server can hold.
 	for (const { name } of OWNED_TABLES) {
@@ -148,40 +157,61 @@ async function pushBatch(
 		if (payload.length === 0) continue;
 
 		const { error } = await client.from(name).upsert(payload, { onConflict: 'id' });
-		// PostgREST reports a refusal with a code; a network that never arrived has none.
-		if (error) throw new PushError(`${name}: ${error.message}`, Boolean(error.code));
-		for (const row of payload) sent.add(`${name}:${String(row.id)}`);
+		if (!error) {
+			for (const row of payload) sent.add(`${name}:${String(row.id)}`);
+			continue;
+		}
+		unlessAnswered(name, error);
+
+		// One refused row fails the whole statement, so the rows go again one at a time to find it rather
+		// than blaming every row that happened to share its chunk.
+		for (const row of payload) {
+			const key = `${name}:${String(row.id)}`;
+			const { error: alone } = await client.from(name).upsert([row], { onConflict: 'id' });
+			if (!alone) sent.add(key);
+			else {
+				unlessAnswered(name, alone);
+				refusals.set(key, alone.code === RLS_REFUSAL ? 'taken' : String(alone.code));
+			}
+		}
 	}
 
-	return sent;
+	return { sent, refusals };
 }
 
-export class PushError extends Error {
-	/** The server answered and said no, rather than being unreachable. */
-	readonly refused: boolean;
-
-	constructor(message: string, refused = false) {
-		super(message);
-		this.refused = refused;
-	}
+/** PostgREST reports a refusal with a code; a network that never arrived has none. */
+function unlessAnswered(name: string, error: { message: string; code?: string }) {
+	if (!error.code) throw new PushError(`${name}: ${error.message}`);
 }
+
+/** The server could not be reached, which refuses nothing. */
+export class PushError extends Error {}
 
 /**
- * A refusal against every change in the chunk, and a full stop for those that have had their share.
- * One bad row would otherwise hold up every row behind it for as long as the archer keeps the app.
+ * A refusal against each refused change, and a full stop for those that have had their share. A row
+ * another account holds stops at once: no number of retries makes it this account's.
  */
-async function countRefusal(batch: PendingEntry[]): Promise<void> {
-	const ids = batch.map((entry) => entry.id);
-	for (let i = 0; i < ids.length; i += 100) {
-		const chunk = ids.slice(i, i + 100);
-		await db()
-			.update(schema.changeLog)
-			.set({ attempts: sql`${schema.changeLog.attempts} + 1` })
-			.where(inArray(schema.changeLog.id, chunk));
-		await db()
-			.update(schema.changeLog)
-			.set({ failedAt: Date.now() })
-			.where(and(inArray(schema.changeLog.id, chunk), gte(schema.changeLog.attempts, REFUSALS_ALLOWED)));
+async function countRefusals(batch: PendingEntry[], refusals: Map<string, string>): Promise<void> {
+	const byReason = new Map<string, number[]>();
+	for (const entry of batch) {
+		const reason = refusals.get(`${entry.tableName}:${entry.rowId}`);
+		if (reason === undefined) continue;
+		byReason.set(reason, [...(byReason.get(reason) ?? []), entry.id]);
+	}
+
+	for (const [reason, ids] of byReason) {
+		const allowed = reason === 'taken' ? 1 : REFUSALS_ALLOWED;
+		for (let i = 0; i < ids.length; i += 100) {
+			const chunk = ids.slice(i, i + 100);
+			await db()
+				.update(schema.changeLog)
+				.set({ attempts: sql`${schema.changeLog.attempts} + 1`, refusal: reason })
+				.where(inArray(schema.changeLog.id, chunk));
+			await db()
+				.update(schema.changeLog)
+				.set({ failedAt: Date.now() })
+				.where(and(inArray(schema.changeLog.id, chunk), gte(schema.changeLog.attempts, allowed)));
+		}
 	}
 }
 

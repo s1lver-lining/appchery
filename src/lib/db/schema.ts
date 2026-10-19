@@ -290,7 +290,9 @@ export const changeLog = sqliteTable(
 		syncedAt: integer('synced_at'),
 		/** Refusals counted, so a row the server will never take stops being asked about. */
 		attempts: integer('attempts').notNull().default(0),
-		failedAt: integer('failed_at')
+		failedAt: integer('failed_at'),
+		/** `taken` when another account already holds this id on the server, else the refusal's code. */
+		refusal: text('refusal')
 	},
 	(t) => [index('idx_change_log_pending').on(t.syncedAt)]
 );
