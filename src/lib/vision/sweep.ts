@@ -79,6 +79,11 @@ export interface SweepOptions {
 	 * proposer has to be judged by anyway.
 	 */
 	agreeVotes?: number;
+	/** What a look at a place on the black to white edge counts for, as a share of a look anywhere else. */
+	edgeWeight?: number;
+	/** The band either side of that edge, in face radii, inner and outer. */
+	edgeFrom?: number;
+	edgeTo?: number;
 }
 
 export class SweepTracker {
@@ -251,6 +256,20 @@ export class SweepTracker {
 		 */
 		this.displaceRatio = options.displaceRatio ?? 1.25;
 		this.agreeVotes = options.agreeVotes ?? 0;
+		// A light shaft is darkest against the white, so its impact is misread on the black edge from every viewpoint.
+		this.edgeWeight = options.edgeWeight ?? 0.3;
+		this.edgeFrom = options.edgeFrom ?? 0.77;
+		this.edgeTo = options.edgeTo ?? 0.85;
+	}
+
+	private readonly edgeWeight: number;
+	private readonly edgeFrom: number;
+	private readonly edgeTo: number;
+
+	/** How much a place's looks count for, which is less on the black to white edge. */
+	private support(candidate: SweepCandidate): number {
+		const r = Math.hypot(candidate.x, candidate.y);
+		return r >= this.edgeFrom && r < this.edgeTo ? candidate.votes * this.edgeWeight : candidate.votes;
 	}
 
 	setLimit(limit: number) {
@@ -300,9 +319,9 @@ export class SweepTracker {
 		const room = (this.expected ?? Math.min(this.limit, 6)) - this.confirmed.length;
 		if (!Number.isFinite(room) || room <= 0) return [];
 		const offered: Impact[] = [];
-		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
+		for (const candidate of [...this.candidates].sort((a, b) => this.support(b) - this.support(a))) {
 			if (offered.length >= room) break;
-			if (candidate.votes < this.fillVotes) continue;
+			if (this.support(candidate) < this.fillVotes) continue;
 			// Not a second mark on a shaft already marked, nor on one already scored in an earlier end.
 			if (this.apart(this.confirmed, candidate)) continue;
 			if (this.apart(this.taken, candidate)) continue;
@@ -334,9 +353,9 @@ export class SweepTracker {
 		const missing = (this.expected ?? 0) - this.confirmed.length;
 		if (this.expected === null || missing <= 0 || this.passes < this.guessAfter) return [];
 		const offered: Impact[] = [];
-		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
+		for (const candidate of [...this.candidates].sort((a, b) => this.support(b) - this.support(a))) {
 			if (offered.length >= missing) break;
-			if (candidate.votes < this.guessVotes) continue;
+			if (this.support(candidate) < this.guessVotes) continue;
 			// Not a second mark on a shaft already marked, nor on one already scored in an earlier end.
 			if (this.apart(this.confirmed, candidate)) continue;
 			if (this.apart(this.taken, candidate)) continue;
@@ -432,14 +451,14 @@ export class SweepTracker {
 		 * archer has to work out which of two marks a hand's breadth apart is the real one.
 		 */
 		const ready: SweepCandidate[] = [];
-		for (const candidate of [...this.candidates].sort((a, b) => b.votes - a.votes)) {
+		for (const candidate of [...this.candidates].sort((a, b) => this.support(b) - this.support(a))) {
 			if (this.confirmed.length + ready.length >= this.limit) break;
-			if (candidate.votes < this.minVotes || this.agreement(candidate) < this.minAgreement) continue;
+			if (this.support(candidate) < this.minVotes || this.agreement(candidate) < this.minAgreement) continue;
 			if (candidate.agreed < this.agreeVotes) continue;
 			if (this.apart(ready, candidate)) continue;
 			if (this.apart(this.confirmed, candidate)) {
 				const held = this.displaceRatio > 0 ? this.blocker(candidate) : undefined;
-				if (!held || candidate.votes < held.votes * this.displaceRatio) continue;
+				if (!held || this.support(candidate) < this.support(held) * this.displaceRatio) continue;
 				// The better evidence takes the place, and the mark it displaces goes back to gathering.
 				this.confirmed = this.confirmed.filter((mark) => mark !== held);
 				this.candidates.push(held);
@@ -541,6 +560,8 @@ export class SweepTracker {
 	 */
 	accept() {
 		this.taken.push(...this.settledArrows);
+		// Anything seen as often as a confirmed arrow is still in the boss and must not return as a new arrow.
+		this.taken.push(...this.candidates.filter((c) => c.votes >= this.minVotes));
 		this.confirmed = [];
 		this.candidates = [];
 	}
