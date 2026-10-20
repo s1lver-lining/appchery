@@ -38,6 +38,8 @@ const option = (name, fallback) => {
 	return i === -1 ? fallback : args[i + 1];
 };
 const only = option('video', null);
+/** A JSON list of recording names to keep to, so a tuning run can leave a holdout out of it. */
+const listed = option('list', null) ? new Set(JSON.parse(await readFile(resolve(option('list', null)), 'utf8'))) : null;
 const tune = JSON.parse(option('tune', '{}'));
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
@@ -57,6 +59,7 @@ const { propose, downscale } = await load();
 const cache = [];
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
+	if (listed && !listed.has(name)) continue;
 	const folder = join(WORK, name);
 	if (!existsSync(join(folder, 'labels.json'))) continue;
 	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));

@@ -41,6 +41,18 @@ const anchorsAt = (r) => [
 	[0, -r]
 ];
 
+const args = process.argv.slice(2);
+const option = (name, fallback) => {
+	const i = args.indexOf(`--${name}`);
+	return i === -1 ? fallback : args[i + 1];
+};
+/** A JSON list of recording names to keep to, so a tuning run can leave a holdout out of it. */
+const listed = option('list', null) ? new Set(JSON.parse(await readFile(option('list', null), 'utf8'))) : null;
+/** Face detector settings to try, so a sweep of them needs no code edit. */
+const detect = JSON.parse(option('tune', '{}'));
+/** How far off a found face may be and still be the labelled one, as its mean ring radius error. */
+const RIGHT = 0.1;
+
 const { locate } = await load();
 const errors = [];
 const lopsided = [];
@@ -48,6 +60,7 @@ const missed = [];
 let frames = 0;
 
 for (const name of (await readdir(WORK)).sort()) {
+	if (listed && !listed.has(name)) continue;
 	const folder = join(WORK, name);
 	if (!existsSync(join(folder, 'labels.json'))) continue;
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
@@ -65,7 +78,7 @@ for (const name of (await readdir(WORK)).sort()) {
 		frames += 1;
 
 		const pixels = await decode(join(folder, samples[Number(index)]), meta.width, meta.height);
-		const found = locate({ width: meta.width, height: meta.height, data: pixels }, SCALE);
+		const found = locate({ width: meta.width, height: meta.height, data: pixels }, SCALE, detect);
 		if (!found) {
 			missed.push(`${name.slice(-24)} frame ${index}`);
 			continue;
@@ -119,6 +132,11 @@ const pct = (v) => `${(v * 100).toFixed(1)}%`;
 
 console.log(`hand fitted faces   ${frames}`);
 console.log(`found by detector   ${errors.length} (${((errors.length / frames) * 100).toFixed(0)}%)`);
+{
+	// A face found is not the face labelled: two side by side, and the neighbour is found just as well.
+	const right = errors.filter((e) => e.mean < RIGHT).length;
+	console.log(`the labelled face  ${right} (${((right / frames) * 100).toFixed(0)}%), within ${RIGHT * 100}% of radius`);
+}
 const skew = [...lopsided].sort((a, b) => a - b);
 const sk = (share) => skew[Math.min(skew.length - 1, Math.floor(skew.length * share))] ?? 0;
 console.log(`ring radius error   ${pct(at(0.5))} of face radius median, ${pct(at(0.9))} at p90`);

@@ -1,7 +1,7 @@
 // Entry point for scripts/arrow_detector.sh, bundled and run inside a browser so it can decode and
 // re-encode images. Not imported by the app.
 import { downscale } from "./pixels";
-import { detectFaces, scaleFace, toFaceCoords } from "./face";
+import { detectFaces, scaleFace, toFaceCoords, type FaceDetectOptions } from "./face";
 import { verifyRings } from "./rings";
 import { detectArrowsInStill, type StillOptions } from "./still";
 import { detectArrowsLearned, type ArrowModel } from "./learned";
@@ -47,9 +47,9 @@ export interface StillFace {
  * caller can draw straight onto it.
  */
 /** The single best verified face at a chosen scale, in the original image's pixels. */
-export function locate(frame: Frame, scale = 2): FaceLocation | null {
+export function locate(frame: Frame, scale = 2, detect: FaceDetectOptions = {}): FaceLocation | null {
   const small = downscale(frame, scale);
-  const face = detectFaces(small).filter((f) => verifyRings(small, f).ok)[0];
+  const face = detectFaces(small, detect).filter((f) => verifyRings(small, f, detect as Record<string, number>).ok)[0];
   if (!face) return null;
   return scaleFace(face, scale);
 }
