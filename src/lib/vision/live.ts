@@ -1,6 +1,6 @@
 import { refineFace } from './refine';
 import { toFaceCoords, toImageCoords } from './face';
-import type { ArrowModel } from './learned';
+import type { LoadedScorer } from './scorers';
 import type { Frame, FaceLocation, Impact } from './types';
 
 /**
@@ -201,8 +201,9 @@ export class LiveScanner {
 		this.worker.postMessage({ type: 'tune', tune });
 	}
 
-	setModel(model: ArrowModel | null) {
-		this.worker.postMessage({ type: 'model', model });
+	/** Which version of the scorer reads the arrows. See `scorers.ts`. */
+	setScorer(scorer: LoadedScorer) {
+		this.worker.postMessage({ type: 'scorer', model: scorer.model, settings: scorer.settings });
 	}
 
 	setLimit(limit: number) {

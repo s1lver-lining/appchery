@@ -11,6 +11,7 @@
 	import { bestTurn, ringsOf, type Tap } from './fit';
 	import Stage, { type Guess } from './Stage.svelte';
 	import Player from './Player.svelte';
+	import { SCORERS, scorerOf } from '$lib/vision/scorers';
 	import {
 		Saver,
 		options,
@@ -607,12 +608,30 @@
 		changed();
 	}
 
+	let scorer = $state(scorerOf(storedText('labelling.scorer')).id);
+	function storedText(key: string): string | null {
+		try {
+			return localStorage.getItem(key);
+		} catch {
+			return null;
+		}
+	}
+	function pickScorer(id: string) {
+		scorer = id;
+		scorecard = { state: 'idle' };
+		try {
+			localStorage.setItem('labelling.scorer', id);
+		} catch {
+			// A private window keeps the choice for this visit only.
+		}
+	}
+
 	async function runScore() {
 		if (!rec) return;
 		await saver.flush();
 		scorecard = { state: 'running' };
 		try {
-			const response = await fetch(`/__label/score/${encodeURIComponent(rec.video)}`, { method: 'POST' });
+			const response = await fetch(`/__label/score/${encodeURIComponent(rec.video)}?scorer=${encodeURIComponent(scorer)}`, { method: 'POST' });
 			if (!response.ok) throw new Error(await response.text());
 			scorecard = { state: 'done', result: await response.json() };
 		} catch (error) {
@@ -1101,6 +1120,12 @@
 				{:else}
 					<h2 class="text-base font-bold">How the detector did</h2>
 					<p class="mt-1 text-muted">The detector against your labels, same numbers as the reports.</p>
+					<label class="mt-3 flex items-center gap-2 text-sm">
+						<span class="text-muted">Scorer</span>
+						<select class="flex-1 rounded-lg border border-line bg-bg px-2 py-1.5" value={scorer} onchange={(e) => pickScorer(e.currentTarget.value)}>
+							{#each SCORERS as s (s.id)}<option value={s.id}>{s.name}</option>{/each}
+						</select>
+					</label>
 					{#if scorecard.state === 'done' && scorecard.result}
 						{@const r = scorecard.result}
 						<div class="mt-3 grid grid-cols-2 gap-2">
@@ -1171,7 +1196,7 @@
 	{/if}
 
 	{#if playing && rec}
-		<Player video={rec.video} count={countOf(rec)} onclose={() => (playing = false)} />
+		<Player video={rec.video} count={countOf(rec)} {scorer} onclose={() => (playing = false)} />
 	{/if}
 </div>
 

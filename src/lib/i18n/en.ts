@@ -1335,11 +1335,9 @@ export const en = {
 			'This device reported no motion while recording, so no motion file was saved. Phones report it; most laptops do not.',
 		recordPath:
 			'One video per end, saved on this device. Copy them off with a cable or the file manager.',
-		detectorTitle: 'Arrow detector',
+		detectorTitle: 'Scorer',
 		detectorHint:
-			'Classical: shape and colour rules. Learned: a small trained model. Both run on this device.',
-		detectorClassical: 'Classical',
-		detectorLearned: 'Learned',
+			'Which version scores your arrows. ML versions use a small trained model. All run on this device.',
 		smoothTitle: 'Steady the overlay',
 		smoothHint:
 			'Steadies the overlay lines. Scoring is unaffected.',

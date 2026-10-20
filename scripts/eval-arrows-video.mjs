@@ -11,6 +11,7 @@
  *
  * Ground truth is the impacts placed by hand in scripts/label-arrows.mjs.
  */
+import { loadScorer } from './lib/scorers.mjs';
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, readdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
@@ -159,8 +160,11 @@ const SCALE = Number(option('scale', 4));
  */
 const hold = Number(option('hold', 0));
 /** Weights for the learned detector, measured through the same harness as the written one. */
+// A scorer version from `src/lib/vision/scorers.ts`, or loose weights with `--model` to try before naming them.
+const scorer = loadScorer(option('scorer', null));
 const modelPath = option('model', null);
-const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
+const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : scorer.model;
+Object.assign(tune, { ...scorer.settings, ...tune });
 // Recordings measured at once, half the logical cores by default so each process has a core to itself.
 const jobs = Math.max(1, Number(option('jobs', Math.floor(availableParallelism() / 2))));
 /** Set on the processes `--jobs` starts: hand the tallies back as JSON rather than report them. */
@@ -579,7 +583,7 @@ if (recordsTo) await writeFile(resolve(recordsTo), JSON.stringify(recs, null, 1)
 const sorted = errors.sort((a, b) => a - b);
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
 console.log(rows.join('\n'));
-console.log(`\ndetector            ${model ? 'learned' : 'classical'}`);
+console.log(`\nscorer              ${modelPath ? `${modelPath} (loose weights)` : scorer.name}`);
 {
 	const sorted = [...costsAll].sort((a, b) => a - b);
 	const median = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;

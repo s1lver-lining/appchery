@@ -4,12 +4,13 @@
 	import { WA_10_RING } from '$lib/domain/rounds/seed';
 	import { LiveScanner, type LiveImpact } from '$lib/vision/live';
 	import { LiveView } from '$lib/vision/live-view';
+	import { loadScorer } from '$lib/vision/scorer-load';
 	import { upFromGravity } from '$lib/vision/motion';
 	import type { Impact } from '$lib/vision/pipeline';
 	import Icon from '$lib/ui/Icon.svelte';
 
 	// A recording played into the phone's own live path, from the file instead of the camera.
-	let { video, count, onclose }: { video: string; count: number; onclose: () => void } = $props();
+	let { video, count, scorer, onclose }: { video: string; count: number; scorer: string; onclose: () => void } = $props();
 
 	type MotionSample = { at: number; gravity: { x: number; y: number; z: number } | null };
 
@@ -43,6 +44,8 @@
 			passes = scanner!.readout.passes;
 		});
 		scanner.setLimit(count || 6);
+		const made = scanner;
+		void loadScorer(scorer).then((loaded) => made.setScorer(loaded));
 		view = new LiveView(scanner);
 		found = [];
 		passes = 0;

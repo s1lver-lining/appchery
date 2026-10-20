@@ -5,6 +5,7 @@
 	import type { LiveImpact } from '$lib/vision/live';
 	import { LiveScanner } from '$lib/vision/live';
 	import { LiveView } from '$lib/vision/live-view';
+	import { loadScorer } from '$lib/vision/scorer-load';
 	import { MotionLog, allowMotion } from '$lib/vision/motion';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
@@ -74,20 +75,15 @@
 		readout = scanner.readout;
 	});
 
-	/**
-	 * The learned detector's weights, fetched only when it is the one chosen. About a megabyte of
-	 * numbers, which has no business in the bundle of an app most archers will score by hand.
-	 */
+	// The scorer version chosen in settings, whose weights are fetched only when it has any.
 	$effect(() => {
-		if ($arrowDetector !== 'learned') return;
 		let cancelled = false;
-		import('$lib/vision/arrow-model.json')
-			.then((module) => {
-				if (cancelled) return;
-				scanner.setModel((module.default ?? module) as never);
+		loadScorer($arrowDetector)
+			.then((scorer) => {
+				if (!cancelled) scanner.setScorer(scorer);
 			})
 			.catch(() => {
-				// No weights shipped means the classical detector, which is the default anyway.
+				// Weights that will not load leave the scanner on its defaults, which is Aphaia 1.0.
 			});
 		return () => {
 			cancelled = true;

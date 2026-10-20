@@ -63,9 +63,9 @@ const ROOT = new URL('..', import.meta.url).pathname;
 let model = null;
 if (learned) {
 	try {
-		model = JSON.parse(await readFile(join(ROOT, 'src/lib/vision/arrow-model.json'), 'utf8'));
+		model = JSON.parse(await readFile(join(ROOT, 'src/lib/vision/scorers/aphaia-ml-1.0.json'), 'utf8'));
 	} catch {
-		console.error('No learned model at src/lib/vision/arrow-model.json. Train one first:');
+		console.error('No learned model at src/lib/vision/scorers/aphaia-ml-1.0.json. Train one first:');
 		console.error('  node scripts/prepare-arrows.mjs && .venv-ml/bin/python scripts/train-arrows.py');
 		process.exit(1);
 	}

@@ -372,7 +372,7 @@ async function serve() {
 
 			// About a megabyte of weights, so only when the learned detector is actually asked for.
 			if (url.pathname === '/model') {
-				const file = join(ROOT, 'src/lib/vision/arrow-model.json');
+				const file = join(ROOT, 'src/lib/vision/scorers/aphaia-ml-1.0.json');
 				if (!existsSync(file)) return send(response, 404, 'text/plain', 'no model trained');
 				return send(response, 200, 'application/json', await readFile(file));
 			}

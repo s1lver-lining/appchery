@@ -26,7 +26,8 @@ from PIL import Image
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREPARED = os.path.join(ROOT, "test/datasets/prepared")
 RECORDINGS = os.path.join(ROOT, "test/datasets/prepared-videos")
-OUT = os.path.join(ROOT, "src/lib/vision/arrow-model.json")
+# A new version, never over a shipped one: name it in src/lib/vision/scorers.ts once it measures better.
+OUT = os.path.join(ROOT, "src/lib/vision/scorers/next.json")
 
 SIZE = 128
 STRIDE = 4

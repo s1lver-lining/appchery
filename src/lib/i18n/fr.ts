@@ -1336,11 +1336,9 @@ export const fr: Dictionary = {
 			"Cet appareil n'a signalé aucun mouvement pendant l'enregistrement, aucun fichier n'a donc été créé. Les téléphones le signalent, la plupart des ordinateurs non.",
 		recordPath:
 			"Une vidéo par volée, enregistrée sur cet appareil. Récupérez-les par câble ou avec le gestionnaire de fichiers.",
-		detectorTitle: 'Détecteur de flèches',
+		detectorTitle: 'Version du compteur',
 		detectorHint:
-			'Classique : règles de forme et de couleur. Apprise : un petit modèle entraîné. Les deux fonctionnent sur cet appareil.',
-		detectorClassical: 'Classique',
-		detectorLearned: 'Apprise',
+			'La version qui compte vos flèches. Les versions ML utilisent un petit modèle entraîné. Toutes fonctionnent sur cet appareil.',
 		smoothTitle: "Stabiliser l'incrustation",
 		smoothHint:
 			"Stabilise les lignes tracées sur le blason. Les scores ne changent pas.",

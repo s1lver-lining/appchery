@@ -7,6 +7,7 @@ import { extname, join } from 'node:path';
 import { listRecordings, motionPath } from './recordings.mjs';
 import { readLabels } from './labels.mjs';
 import { LABELS_FILE } from '../../src/lib/labelling/format.ts';
+import { scorerOf } from '../../src/lib/vision/scorers.ts';
 
 const ROOT = new URL('../..', import.meta.url).pathname;
 const VIDEOS = join(ROOT, 'test/datasets/appchery_videos');
@@ -98,11 +99,11 @@ async function sendVideo(request, response, file) {
 }
 
 /** The measuring harness on one recording, so the page's scorecard is the overnight reports' number. */
-function score(name) {
+function score(name, scorer) {
 	return new Promise((done, fail) => {
 		const child = spawn(
 			process.execPath,
-			[join(ROOT, 'scripts/eval-arrows-video.mjs'), '--video', name, '--jobs', '1', '--slower', '0', '--emit'],
+			[join(ROOT, 'scripts/eval-arrows-video.mjs'), '--video', name, '--jobs', '1', '--slower', '0', '--emit', '--scorer', scorer],
 			{ stdio: ['ignore', 'pipe', 'pipe'] }
 		);
 		let text = '';
@@ -164,7 +165,9 @@ async function handle(request, response) {
 	}
 
 	if (what === 'score' && request.method === 'POST') {
-		return send(response, 200, 'application/json', JSON.stringify(await score(name)));
+		// Through the registry, so only a known version's id ever reaches the command line.
+		const scorer = scorerOf(url.searchParams.get('scorer')).id;
+		return send(response, 200, 'application/json', JSON.stringify(await score(name, scorer)));
 	}
 
 	send(response, 404, 'text/plain', 'not found');

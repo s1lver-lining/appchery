@@ -40,7 +40,7 @@ if (split) {
 
 let model = null;
 if (detector === 'learned') {
-	model = JSON.parse(await readFile(join(ROOT, 'src/lib/vision/arrow-model.json'), 'utf8'));
+	model = JSON.parse(await readFile(join(ROOT, 'src/lib/vision/scorers/aphaia-ml-1.0.json'), 'utf8'));
 }
 
 const bundled = await build({

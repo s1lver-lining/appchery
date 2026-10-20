@@ -231,9 +231,9 @@ export const recordCameraVideo = flag('appchery.recordCameraVideo', false);
 export const recordMotion = flag('appchery.recordMotion', true);
 
 /**
- * Which arrow detector the camera uses: the hand written one or the learned one. Classical is the
- * default because it is the one that has been measured on more than one dataset. Both stay available,
- * because a detector that is better on average can still be worse on a particular boss.
+ * Which scorer version the camera uses, by id from `vision/scorers.ts`. Older values, `classical` and
+ * `learned`, still read as Aphaia 1.0 and Aphaia ML 1.0. Every version stays available, because one
+ * that is better on average can still be worse on a particular boss.
  */
 export const arrowDetector = storedString('appchery.arrowDetector');
 
