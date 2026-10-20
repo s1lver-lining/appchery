@@ -20,7 +20,7 @@ export const SCORERS: readonly Scorer[] = [
 	{ id: 'aphaia-1.0', name: 'Aphaia 1.0', settings: {} },
 	{ id: 'aphaia-ml-1.0', name: 'Aphaia ML 1.0', weights: 'aphaia-ml-1.0.json', settings: {} },
 	{ id: 'aphaia-1.1', name: 'Aphaia 1.1', settings: { paperLock: true } },
-	{ id: 'aphaia-1.2alpha', name: 'Aphaia 1.2alpha', settings: { paperLock: true, holdBlink: true, sweep: { minShare: 0.2 } }, preview: true }
+	{ id: 'aphaia-1.2alpha', name: 'Aphaia 1.2alpha', settings: { paperLock: true, holdBlink: true, alignWhole: true, sweep: { minShare: 0.2 } }, preview: true }
 ];
 
 /** A choice that follows whichever shipped version was added last, so it moves on as new ones ship. */

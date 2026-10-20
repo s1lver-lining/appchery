@@ -9,7 +9,7 @@ take `--scorer <id>`.
 | Aphaia 1.0 | classical | The written detector as of October 2026, with gravity for which way is up. |
 | Aphaia ML 1.0 | learned | The same scanner with arrows proposed by `scorers/aphaia-ml-1.0.json`. |
 | Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). What "Latest model", the default, runs today. |
-| Aphaia 1.2alpha | classical, preview | 1.1 with marks proposed on fewer than a fifth of the passes left out (`sweep.minShare`), and a face kept through one pass it was missed on (`holdBlink`). |
+| Aphaia 1.2alpha | classical, preview | 1.1 with marks proposed on fewer than a fifth of the passes left out (`sweep.minShare`), a face kept through one pass it was missed on (`holdBlink`), and a fit from the search turned onto the followed one from any angle (`alignWhole`). |
 
 ## Aphaia 1.2alpha: marks have to keep being seen
 
@@ -39,7 +39,32 @@ runs of the same version differed by nine arrows. With it, on the labels of 20 O
 | with `edgeUp: 0.1` | 223 | 61 |
 | with `edgeUp: 0.05` | 220 | 59 |
 | with both | 227 | 60 |
-| with `holdBlink` and `sweep.shortAsUnsure` | 246 shown, 224 scored | 130 shown, 47 scored |
+| with `holdBlink` and `alignWhole` (1.2alpha now) | 227 | 55 |
+| and `sweep.shortAsUnsure` | 234 shown, 227 scored | 79 shown, 49 scored |
+
+`alignWhole` fixes the turns of about a quarter that four recordings took: every one landed on a pass
+with a face search (every 15th), whose fit comes out of an ellipse at any quarter turn, and was turned
+back onto the followed fit within 15° only, so it kept the wrong quarter.
+
+### Why the scorer misses arrows
+
+Per pass, over 5600 steady passes, a real arrow is proposed within 0.05 radii on a median of 39% of them
+(44% with each pass's drift taken out), and 2.4 of the 4.9 proposals a pass are false. The tracker can
+only work with that. By month:
+
+| | August | September | October |
+| --- | --- | --- | --- |
+| median share of passes proposing an arrow, within 0.05 r | 0.40 | 0.45 | 0.12 |
+| within 0.12 r | 0.62 | 0.59 | 0.26 |
+
+1.2alpha finds 211 of the 308 arrows of August and September and 16 of the 66 of October. October is
+other kit on a worn face: light grey shafts grouped in a gold full of holes and torn paper. Its
+proposals fall along the shafts below the tips, so the proposer sees the shafts and loses where they
+end. Face size looked like a cause and is not: the crop reads every face at 120 to 150 px of radius,
+and the small faces are all October ones. `contrast: 'colour'` found 18 of the 66 against 16.
+
+So the limit is the proposer's reading of where a shaft ends on a busy face, not orientation or
+tracking: orientation fixed in full added 3 arrows, and drift taken out per pass 0.05 of share.
 
 Where 1.1 misses arrows (111 misses on these recordings): 41 are marked 0.05 to 0.15 radii off, mostly
 along the ring, so the face has turned; 32 are hardly ever proposed; 23 are proposed often and never
