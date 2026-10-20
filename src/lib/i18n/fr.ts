@@ -1337,6 +1337,7 @@ export const fr: Dictionary = {
 		recordPath:
 			"Une vidéo par volée, enregistrée sur cet appareil. Récupérez-les par câble ou avec le gestionnaire de fichiers.",
 		detectorTitle: 'Version du compteur',
+		detectorLatest: 'Dernier modèle ({name})',
 		detectorHint:
 			'La version qui compte vos flèches. Les versions ML utilisent un petit modèle entraîné. Toutes fonctionnent sur cet appareil.',
 		smoothTitle: "Stabiliser l'incrustation",

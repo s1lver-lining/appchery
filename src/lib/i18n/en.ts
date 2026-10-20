@@ -1336,6 +1336,7 @@ export const en = {
 		recordPath:
 			'One video per end, saved on this device. Copy them off with a cable or the file manager.',
 		detectorTitle: 'Scorer',
+		detectorLatest: 'Latest model ({name})',
 		detectorHint:
 			'Which version scores your arrows. ML versions use a small trained model. All run on this device.',
 		smoothTitle: 'Steady the overlay',

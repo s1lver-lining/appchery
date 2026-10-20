@@ -20,14 +20,23 @@ export const SCORERS: readonly Scorer[] = [
 	{ id: 'aphaia-1.1', name: 'Aphaia 1.1', settings: { paperLock: true } }
 ];
 
-export const DEFAULT_SCORER = 'aphaia-1.1';
+/** A choice that follows whichever version was added last, so it moves on as new ones ship. */
+export const LATEST = 'latest';
+export const LATEST_SCORER: Scorer = SCORERS[SCORERS.length - 1];
+export const DEFAULT_SCORER = LATEST;
 
-// The names the setting held before scorers had versions.
-const RENAMED: Record<string, string> = { classical: 'aphaia-1.1', learned: 'aphaia-ml-1.0' };
+// The names the setting held before scorers had versions. Classical was the default, so it follows the latest.
+const RENAMED: Record<string, string> = { classical: LATEST, learned: 'aphaia-ml-1.0' };
+
+/** The choice as stored, read back as `latest` or a version that exists. */
+export function choiceOf(id: string | null | undefined): string {
+	const wanted = (id && RENAMED[id]) ?? id ?? DEFAULT_SCORER;
+	return wanted === LATEST || SCORERS.some((s) => s.id === wanted) ? wanted : DEFAULT_SCORER;
+}
 
 export function scorerOf(id: string | null | undefined): Scorer {
-	const wanted = (id && RENAMED[id]) ?? id ?? DEFAULT_SCORER;
-	return SCORERS.find((s) => s.id === wanted) ?? SCORERS.find((s) => s.id === DEFAULT_SCORER)!;
+	const choice = choiceOf(id);
+	return choice === LATEST ? LATEST_SCORER : SCORERS.find((s) => s.id === choice)!;
 }
 
 /** What the scanner is handed: the same shape whichever version and wherever it was loaded. */

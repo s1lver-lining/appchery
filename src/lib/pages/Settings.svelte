@@ -123,7 +123,7 @@
 		};
 	});
 	import { settingsTabOf } from '$lib/settings';
-	import { SCORERS, scorerOf } from '$lib/vision/scorers';
+	import { SCORERS, LATEST, LATEST_SCORER, choiceOf } from '$lib/vision/scorers';
 	import PageHeader from '$lib/ui/PageHeader.svelte';
 	import TabDeck from '$lib/ui/TabDeck.svelte';
 	import { saveFile, recordingsPath } from '$lib/files';
@@ -1112,14 +1112,14 @@
 						<p class="font-medium">{$t('settings.detectorTitle')}</p>
 						<p class="mt-0.5 text-sm text-muted">{$t('settings.detectorHint')}</p>
 						<div class="mt-2 flex flex-wrap gap-2" role="group" aria-label={$t('settings.detectorTitle')}>
-							{#each SCORERS as scorer (scorer.id)}
+							{#each [{ id: LATEST, name: $t('settings.detectorLatest', { name: LATEST_SCORER.name }) }, ...SCORERS] as scorer (scorer.id)}
 								<button
 									type="button"
 									class="press flex-1 rounded-lg border px-3 py-2 text-sm font-medium whitespace-nowrap
-										{scorerOf($arrowDetector).id === scorer.id
+										{choiceOf($arrowDetector) === scorer.id
 										? 'border-brand bg-brand text-brand-ink'
 										: 'border-line'}"
-									aria-pressed={scorerOf($arrowDetector).id === scorer.id}
+									aria-pressed={choiceOf($arrowDetector) === scorer.id}
 									onclick={() => arrowDetector.set(scorer.id)}
 								>
 									{scorer.name}

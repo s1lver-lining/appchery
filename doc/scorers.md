@@ -8,7 +8,7 @@ take `--scorer <id>`.
 | --- | --- | --- |
 | Aphaia 1.0 | classical | The written detector as of October 2026, with gravity for which way is up. |
 | Aphaia ML 1.0 | learned | The same scanner with arrows proposed by `scorers/aphaia-ml-1.0.json`. |
-| Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). The default. |
+| Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). What "Latest model", the default, runs today. |
 
 ## Aphaia 1.1: holding the face to its paper
 
@@ -49,6 +49,7 @@ the app through `scorer-load.ts`, the scripts through `scripts/lib/scorers.mjs`.
    then rename the file after the version.
 3. Add the entry to `SCORERS` and measure it against the one it replaces:
    `node scripts/eval-arrows-video.mjs --slower 0 --scorer <id>`.
-4. Change `DEFAULT_SCORER` only once it measures better.
+4. Add it last only once it measures better: "Latest model", the default choice, follows the last entry
+   of `SCORERS`. One still being tried goes earlier in the list.
 
 A shipped version is never edited. Fixing one is a new version.
