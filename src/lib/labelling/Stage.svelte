@@ -423,8 +423,25 @@
 		if (!image) return;
 		const w = image.naturalWidth;
 		const h = image.naturalHeight;
-		const px = Math.max(0, Math.min(w - 1, x));
-		const py = Math.max(0, Math.min(h - 1, y));
+		let px = x;
+		let py = y;
+		// Outside the picture, brought back along the shaft from its tip, where the shaft leaves the edge.
+		const fit = homography(fitHere(rec, frame));
+		const arrow = arrowsOn(labelsOf(rec), frame, face.id).find((a) => a.n === n);
+		if (fit && arrow && (px < 0 || py < 0 || px > w - 1 || py > h - 1)) {
+			const tip = project(fit, arrow.x, arrow.y);
+			let along = 1;
+			const dx = px - tip.x;
+			const dy = py - tip.y;
+			if (px < 0 && dx < 0) along = Math.min(along, -tip.x / dx);
+			if (px > w - 1 && dx > 0) along = Math.min(along, (w - 1 - tip.x) / dx);
+			if (py < 0 && dy < 0) along = Math.min(along, -tip.y / dy);
+			if (py > h - 1 && dy > 0) along = Math.min(along, (h - 1 - tip.y) / dy);
+			px = tip.x + dx * Math.max(0, along);
+			py = tip.y + dy * Math.max(0, along);
+		}
+		px = Math.max(0, Math.min(w - 1, px));
+		py = Math.max(0, Math.min(h - 1, py));
 		const margin = Math.min(w, h) * 0.015;
 		const cut = px < margin || py < margin || px > w - 1 - margin || py > h - 1 - margin;
 		const here = ensureFrame(rec, frame);
