@@ -46,6 +46,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import { readFile, writeFile, appendFile, mkdir, mkdtemp, readdir, rm, stat } from 'node:fs/promises';
 import { existsSync, createReadStream } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { tmpdir } from 'node:os';
 import { join, resolve, basename, extname } from 'node:path';
 import { listRecordings, motionPath } from './lib/recordings.mjs';
@@ -587,8 +588,8 @@ async function exportSet() {
 	for (const name of await recordings()) {
 		if (listed && !listed.has(name)) continue;
 		const folder = join(WORK, name);
-		if (!existsSync(join(folder, 'labels.json'))) continue;
-		const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
+		if (!hasLabel(folder)) continue;
+		const label = readLabel(folder);
 		const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 		const { width, height } = meta;
 		const small = { width: Math.floor(width / SCALE), height: Math.floor(height / SCALE) };
@@ -616,7 +617,8 @@ async function exportSet() {
 				 * and says nothing about the other four, and a crop written from it would put the four it
 				 * omits into the background, teaching the detector that a real arrow is not one.
 				 */
-				if (list.length < label.arrows.length) {
+				// Arrows out of sight count as accounted for: the crop then simply does not show them.
+				if (list.length + (label.frameHidden?.[sample]?.length ?? 0) < label.arrows.length) {
 					console.log(
 						`  ${name.slice(-24)}: frame ${Number(sample) + 1} has ${list.length} of ` +
 							`${label.arrows.length} arrows, so it is not used. Finish it or clear it.`
@@ -927,7 +929,6 @@ async function todo() {
 	for (const name of (await readdir(WORK)).sort()) {
 		if (only && !name.includes(only)) continue;
 		if (!existsSync(join(WORK, name, 'frames.json'))) continue;
-		const file = join(WORK, name, 'labels.json');
 		/*
 		 * A recording with nothing on it is the one this command exists to report.
 		 *
@@ -936,12 +937,12 @@ async function todo() {
 		 * is the wrong way round for something called todo, and it is how twelve recordings sat unlabelled
 		 * without appearing anywhere.
 		 */
-		if (!existsSync(file)) {
+		if (!hasLabel(join(WORK, name))) {
 			waiting += 1;
 			rows.push(`${name.slice(-24)}  nothing labelled yet`);
 			continue;
 		}
-		const label = JSON.parse(await readFile(file, 'utf8'));
+		const label = readLabel(join(WORK, name));
 		const frames = Object.entries(label.nocks ?? {}).filter(([, list]) => list.length > 0);
 		const here = frames.reduce((total, [, list]) => total + list.length, 0);
 		nockFrames += frames.length;

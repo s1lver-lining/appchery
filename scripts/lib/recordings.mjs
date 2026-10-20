@@ -23,6 +23,9 @@ const VIDEO = /\.(webm|mp4|mov|mkv|m4v)$/i;
  * the end and the moment they were taken, so they are already unique across the corpus, and it is the
  * name that a workspace folder and a labels file are keyed by. Putting a directory in it would have
  * moved every label that already exists.
+ *
+ * @param {string} root
+ * @param {string | null} [only]
  */
 export async function listRecordings(root, only = null) {
 	const found = [];
@@ -41,7 +44,11 @@ export async function listRecordings(root, only = null) {
 	return only ? found.filter((r) => r.name.includes(only)) : found;
 }
 
-/** Where a recording's motion file would be, which exists only for the sessions recorded with one. */
+/**
+ * Where a recording's motion file would be, which exists only for the sessions recorded with one.
+ *
+ * @param {string} path
+ */
 export function motionPath(path) {
 	return path.replace(VIDEO, '.motion.json');
 }

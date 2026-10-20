@@ -17,6 +17,7 @@ import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -62,9 +63,9 @@ let frames = 0;
 for (const name of (await readdir(WORK)).sort()) {
 	if (listed && !listed.has(name)) continue;
 	const folder = join(WORK, name);
-	if (!existsSync(join(folder, 'labels.json'))) continue;
+	if (!hasLabel(folder)) continue;
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
-	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
+	const label = readLabel(folder);
 	const samples = (await readdir(folder)).filter((f) => f.startsWith('sample-')).sort();
 
 	const anchor = ANCHOR_RADII[label.faceType] ?? ANCHOR;

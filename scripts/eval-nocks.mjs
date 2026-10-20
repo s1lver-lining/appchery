@@ -31,6 +31,7 @@
  */
 import { readFile, readdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { join } from 'node:path';
 
 const ROOT = new URL('..', import.meta.url).pathname;
@@ -64,9 +65,8 @@ const repaired = [];
 
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
-	const file = join(WORK, name, 'labels.json');
-	if (!existsSync(file)) continue;
-	const label = JSON.parse(await readFile(file, 'utf8'));
+	if (!hasLabel(join(WORK, name))) continue;
+	const label = readLabel(join(WORK, name));
 	if (!label.arrows?.length || !label.nocks) continue;
 	const metaFile = join(WORK, name, 'frames.json');
 	const meta = existsSync(metaFile) ? JSON.parse(await readFile(metaFile, 'utf8')) : null;

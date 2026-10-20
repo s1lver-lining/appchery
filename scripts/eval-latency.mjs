@@ -18,6 +18,7 @@ import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { listRecordings, motionPath } from './lib/recordings.mjs';
@@ -50,8 +51,8 @@ const records = [];
 for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
 	const folder = join(WORK, name);
-	if (!existsSync(join(folder, 'labels.json'))) continue;
-	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
+	if (!hasLabel(folder)) continue;
+	const label = readLabel(folder);
 	if (label.empty || !label.arrows?.length) continue;
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 	const truth = homography(

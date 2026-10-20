@@ -3,6 +3,7 @@ import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { listRecordings } from './lib/recordings.mjs';
@@ -32,9 +33,8 @@ const angles = [];
 const gaps = [];
 const tune = process.argv.includes('--tune') ? JSON.parse(process.argv[process.argv.indexOf('--tune') + 1]) : {};
 for (const name of (await readdir(WORK)).sort()) {
-  const file = join(WORK, name, 'labels.json');
-  if (!existsSync(file)) continue;
-  const label = JSON.parse(await readFile(file, 'utf8'));
+  if (!hasLabel(join(WORK, name))) continue;
+  const label = readLabel(join(WORK, name));
   if (!label.nocks || !label.arrows?.length) continue;
   const meta = JSON.parse(await readFile(join(WORK, name, 'frames.json'), 'utf8'));
 

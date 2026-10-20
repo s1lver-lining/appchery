@@ -15,6 +15,7 @@ import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, readdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { tmpdir, availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
 import { listRecordings, motionPath } from './lib/recordings.mjs';
@@ -90,6 +91,8 @@ const anchorsAt = (r) => [
 ];
 /** How close a detection must be to a labelled impact to count as that arrow, in face radii. */
 const MATCH = 0.05;
+/** Looks the tracker needs before it will confirm an arrow, which is what an arrow in sight has to allow. */
+const VISIBLE_LOOKS = 7;
 
 const args = process.argv.slice(2);
 const option = (name, fallback) => {
@@ -230,17 +233,21 @@ if (jobs > 1) {
 for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
 	const folder = join(WORK, name);
-	if (!existsSync(join(folder, 'labels.json'))) continue;
-	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
+	if (!hasLabel(folder)) continue;
+	const label = readLabel(folder);
 	if (label.empty || !label.arrows?.length) continue;
 
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 	// Tied on every frame carrying the whole set, as the export does: the arrow frame alone may have no sweep face.
 	const radius = ANCHOR_RADII[label.faceType] ?? ANCHOR;
+	// Each tie is matched to the marks as a set; arrow numbers are not the same shaft from frame to frame.
 	const claims = [[label.arrowFrame, label.arrows]];
 	for (const [sample, list] of Object.entries(label.frameArrows ?? {})) {
-		if (list.length >= label.arrows.length) claims.push([Number(sample), list]);
+		const out = label.frameHidden?.[sample] ?? [];
+		if (list.length + out.length >= label.arrows.length) claims.push([Number(sample), [...list, ...out].sort((a, b) => a.n - b.n)]);
 	}
+	// Only arrows in sight for as long as the tracker needs to confirm one are owed: see `visibleShare`.
+	const share = visibleShare(label);
 	const ties = [];
 	for (const [sample, arrows] of claims) {
 		const fit = label.frames?.[String(sample)];
@@ -367,6 +374,43 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	 * The labels moved into the detector's own frame, by way of the picture. Both describe the same
 	 * face, so a point drawn from one and read by the other is the only fair comparison there is.
 	 */
+	// How far a still arrow wanders in the sweep's face coordinates between labelled frames: the fit turning.
+	if (args.includes('--drift')) {
+		const at = (candidate) => {
+			const face = result.track[candidate.frame - first]?.face;
+			if (!face) return null;
+			return candidate.arrows.map((arrow) => {
+				const point = project(candidate.fit, arrow.x, arrow.y);
+				return toFaceCoords(face, point.x, point.y);
+			});
+		};
+		const base = at(tie);
+		const turns = [];
+		let moved = 0;
+		for (const other of ties) {
+			const here = at(other);
+			if (!here || other === tie) continue;
+			// As sets: an arrow's number is not the same shaft on every frame, so pairing by number is wrong.
+			let best = 0;
+			let bestCost = Infinity;
+			for (let degree = -180; degree < 180; degree += 0.5) {
+				const r = (degree * Math.PI) / 180;
+				const cos = Math.cos(r);
+				const sin = Math.sin(r);
+				let cost = 0;
+				for (const p of here) cost += Math.min(...base.map((q) => Math.hypot(q.x * cos - q.y * sin - p.x, q.x * sin + q.y * cos - p.y)));
+				if (cost < bestCost) {
+					bestCost = cost;
+					best = degree;
+				}
+			}
+			turns.push(Math.abs(best));
+			for (const p of here) moved = Math.max(moved, Math.min(...base.map((q) => Math.hypot(q.x - p.x, q.y - p.y))));
+		}
+		rows.push(`${name.slice(-24)}  drift: ${ties.length} tied frames, turn up to ${Math.max(0, ...turns).toFixed(1)}°, arrows move up to ${moved.toFixed(3)} radii`);
+		recs.push({ name, drift: Math.max(0, ...turns), moved });
+	}
+
 	const targets = tie.arrows.map((arrow) => {
 		// Both in the video's own pixels: the sweep already put its fit back to full resolution.
 		const point = project(tie.fit, arrow.x, arrow.y);
@@ -381,9 +425,11 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	}
 	proposedEver += everProposed;
 
+	const offered = result.passes + result.dropped;
+	const owed = targets.map((_, n) => share[n] * offered >= VISIBLE_LOOKS);
 	const taken = new Set();
 	let hit = 0;
-	for (const target of targets) {
+	for (const [n, target] of targets.entries()) {
 		let best = -1;
 		let near = MATCH;
 		result.arrows.forEach((arrow, i) => {
@@ -396,6 +442,8 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 		});
 		if (best >= 0) {
 			taken.add(best);
+			// A mark on an arrow mostly out of sight is neither right nor wrong.
+			if (!owed[n]) continue;
 			hit += 1;
 			errors.push(near);
 		}
@@ -422,7 +470,7 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	});
 
 	found += hit;
-	wanted += targets.length;
+	wanted += owed.filter(Boolean).length;
 	spurious += result.arrows.length - taken.size;
 
 	/*
@@ -478,7 +526,7 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	 */
 	const sureTaken = new Set();
 	let sureHit = 0;
-	for (const target of targets) {
+	for (const [n, target] of targets.entries()) {
 		let best = -1;
 		let near = MATCH;
 		result.scored.forEach((arrow, i) => {
@@ -486,7 +534,7 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 			const d = Math.hypot(arrow.x - target.x, arrow.y - target.y);
 			if (d < near) { near = d; best = i; }
 		});
-		if (best >= 0) { sureTaken.add(best); sureHit += 1; }
+		if (best >= 0) { sureTaken.add(best); if (owed[n]) sureHit += 1; }
 	}
 	sureFound += sureHit;
 	sureSpurious += result.scored.length - sureTaken.size;
@@ -513,9 +561,9 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 			JSON.stringify({ targets, everything: result.everything, arrows: result.arrows, scored: result.scored, passes: result.passes, faced, off: tie.off, tie: tie.sample, face: tie.face })
 		);
 	}
-	recs.push({ name, wanted: targets.length, hit, everProposed, spurious: result.arrows.length - taken.size, sureHit, sureSpurious: result.scored.length - sureTaken.size, faced, off: tie.off, tie: tie.sample, cause: null });
+	recs.push({ name, wanted: owed.filter(Boolean).length, hit, everProposed, spurious: result.arrows.length - taken.size, sureHit, sureSpurious: result.scored.length - sureTaken.size, faced, off: tie.off, tie: tie.sample, cause: null });
 	rows.push(
-		`${name.slice(-24)}  ${hit}/${targets.length} found, ${everProposed}/${targets.length} ever proposed, ` +
+		`${name.slice(-24)}  ${hit}/${owed.filter(Boolean).length} found, ${everProposed}/${targets.length} ever proposed, ` +
 			`${result.arrows.length - taken.size} spurious`
 	);
 }
@@ -592,7 +640,7 @@ async function inParallel() {
 	const names = [];
 	for (const name of (await readdir(WORK)).sort()) {
 		if (only && !name.includes(only)) continue;
-		if (existsSync(join(WORK, name, 'labels.json'))) names.push(name);
+		if (hasLabel(join(WORK, name))) names.push(name);
 	}
 	const passed = [];
 	for (let i = 0; i < args.length; i++) {
@@ -716,6 +764,18 @@ async function load() {
 	const module = await import(outfile);
 	setTimeout(() => rm(directory, { recursive: true, force: true }), 0).unref?.();
 	return module;
+}
+
+/** Each arrow's share of the checked frames it is in sight on, the frames standing for the sweep. */
+function visibleShare(label) {
+	const checked = new Set([String(label.arrowFrame)]);
+	for (const [sample, frame] of Object.entries(label.frames ?? {})) if (frame.arrowsOk) checked.add(sample);
+	for (const sample of Object.keys(label.frameArrows ?? {})) checked.add(sample);
+	return label.arrows.map((_, n) => {
+		let seen = 0;
+		for (const sample of checked) if (!(label.frameHidden?.[sample] ?? []).some((a) => a.n === n)) seen += 1;
+		return seen / checked.size;
+	});
 }
 
 async function* decode(file, width, height, scaleTo) {

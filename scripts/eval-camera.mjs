@@ -14,6 +14,7 @@
 import { chromium } from 'playwright';
 import { readFile, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { spawn } from 'node:child_process';
 import { join } from 'node:path';
 import { serve, play } from './virtual-camera.mjs';
@@ -95,8 +96,8 @@ async function main() {
 /** The impacts placed by hand, in the video's own pixels, on each frame somebody vouched for. */
 async function groundTruth(name, path) {
 	const folder = join(WORK, name);
-	if (!existsSync(join(folder, 'labels.json'))) return null;
-	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
+	if (!hasLabel(folder)) return null;
+	const label = readLabel(folder);
 	/*
 	 * A recording with no arrows written down yet is not a recording with no arrows in the paper. The
 	 * fits can be filled in automatically and the arrows cannot, so a workspace part way through

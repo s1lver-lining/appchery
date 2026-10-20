@@ -19,6 +19,7 @@ import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
 import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
+import { hasLabel, readLabel } from './lib/labels.mjs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 
@@ -61,8 +62,8 @@ for (const name of (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
 	if (listed && !listed.has(name)) continue;
 	const folder = join(WORK, name);
-	if (!existsSync(join(folder, 'labels.json'))) continue;
-	const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
+	if (!hasLabel(folder)) continue;
+	const label = readLabel(folder);
 	if (label.empty || !label.arrows?.length) continue;
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
 	const samples = (await readdir(folder)).filter((f) => f.startsWith('sample-')).sort();
@@ -74,17 +75,20 @@ for (const name of (await readdir(WORK)).sort()) {
 	 * The frames the archer actually looked at, each with its own fit and its own full set of arrows.
 	 * A partial set is not a frame where the rest are absent, it is a frame that was not finished.
 	 */
+	// Every frame is matched on its own, as a set: arrow numbers are not the same shaft from frame to frame.
 	const labelled = new Map();
 	const consider = (index, arrows) => {
 		const fit = label.frames?.[String(index)];
 		if (!fit || fit.skip || !fit.handles || !(fit.touched ?? true)) return;
-		if (!arrows || arrows.length !== count) return;
-		labelled.set(index, { handles: fit.handles, arrows });
+		// Arrows out of sight are accounted for, and a proposal on one is neither right nor wrong.
+		const hidden = label.frameHidden?.[String(index)] ?? [];
+		if (!arrows || arrows.length + hidden.length !== count) return;
+		labelled.set(index, { handles: fit.handles, arrows, hidden });
 	};
 	consider(label.arrowFrame, label.arrows);
 	for (const [index, arrows] of Object.entries(label.frameArrows ?? {})) consider(Number(index), arrows);
 
-	for (const [index, { handles, arrows }] of [...labelled].sort((a, b) => a[0] - b[0])) {
+	for (const [index, { handles, arrows, hidden }] of [...labelled].sort((a, b) => a[0] - b[0])) {
 		const hand = homography(handles, radius);
 		if (!hand) continue;
 		const file = join(folder, samples[index]);
@@ -109,7 +113,7 @@ for (const name of (await readdir(WORK)).sort()) {
 		const cut = cropped ? cutOut(whole, box) : whole;
 		const small = downscale(cut, SCALE);
 		const corners = full.map(([x, y]) => [(x - box.x) / SCALE, (y - box.y) / SCALE]);
-		cache.push({ video: name.slice(-24), index, small, corners, arrows, kind });
+		cache.push({ video: name.slice(-24), index, small, corners, arrows, hidden, kind });
 	}
 }
 
@@ -161,6 +165,12 @@ function run(options, weights) {
 				}
 				reasons.set(why, (reasons.get(why) ?? 0) + 1);
 			}
+		}
+		for (const arrow of shot.hidden) {
+			const i = proposals.findIndex((p, k) => !taken.has(k) && Math.hypot(p.x - arrow.x, p.y - arrow.y) < MATCH);
+			if (i < 0) continue;
+			taken.add(i);
+			offered -= 1;
 		}
 		/*
 		 * Pairs of real arrows sitting closer than the tracker will ever put two marks, and whether the
