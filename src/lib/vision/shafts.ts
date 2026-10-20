@@ -473,7 +473,24 @@ function eitherWay(grey: Float32Array, width: number, height: number, x: number,
 	return Math.max(dark, light);
 }
 
-let planes: { frame: Frame; red: Float32Array; green: Float32Array; blue: Float32Array } | null = null;
+/** One colour of the frame at a point, bilinear and held to the edge, the same way `sample` reads grey. */
+function colourAt(frame: Frame, channel: number, x: number, y: number): number {
+	const { width, height, data } = frame;
+	x = Math.min(Math.max(x, 0), width - 1);
+	y = Math.min(Math.max(y, 0), height - 1);
+	const x0 = Math.floor(x);
+	const y0 = Math.floor(y);
+	const x1 = Math.min(x0 + 1, width - 1);
+	const y1 = Math.min(y0 + 1, height - 1);
+	const fx = x - x0;
+	const fy = y - y0;
+	return (
+		data[(y0 * width + x0) * 4 + channel] * (1 - fx) * (1 - fy) +
+		data[(y0 * width + x1) * 4 + channel] * fx * (1 - fy) +
+		data[(y1 * width + x0) * 4 + channel] * (1 - fx) * fy +
+		data[(y1 * width + x1) * 4 + channel] * fx * fy
+	);
+}
 
 /** The straightened strip along a line, channels outermost, in the order the network learnt them. */
 function strip(
@@ -488,19 +505,6 @@ function strip(
 	model: ShaftModel
 ): { features: Float32Array[]; step: number } {
 	const { width, height } = frame;
-	if (planes?.frame !== frame) {
-		const n = width * height;
-		const red = new Float32Array(n);
-		const green = new Float32Array(n);
-		const blue = new Float32Array(n);
-		for (let i = 0; i < n; i++) {
-			red[i] = frame.data[i * 4];
-			green[i] = frame.data[i * 4 + 1];
-			blue[i] = frame.data[i * 4 + 2];
-		}
-		planes = { frame, red, green, blue };
-	}
-	const colours = [planes.red, planes.green, planes.blue];
 	const k = model.positions;
 	const across = model.across;
 	const step = (2 * model.half * radius) / (k - 1);
@@ -522,12 +526,8 @@ function strip(
 		for (let j = 0; j < rows; j++) features[j][i] = values[j] - background;
 		const side = across * apart;
 		for (let c = 0; c < 3; c++) {
-			const middle = sample(colours[c], width, height, x, y) / 255;
-			const flanks =
-				(sample(colours[c], width, height, x + nx * side, y + ny * side) +
-					sample(colours[c], width, height, x - nx * side, y - ny * side)) /
-				2 /
-				255;
+			const middle = colourAt(frame, c, x, y) / 255;
+			const flanks = (colourAt(frame, c, x + nx * side, y + ny * side) + colourAt(frame, c, x - nx * side, y - ny * side)) / 2 / 255;
 			features[rows + c][i] = middle - flanks;
 		}
 		features[rows + 3][i] = background;

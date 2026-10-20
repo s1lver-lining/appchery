@@ -608,7 +608,9 @@ console.log(`\nscorer              ${modelPath ? `${modelPath} (loose weights)` 
 		`passes              ${passesTaken} taken, ${passesDropped} dropped ` +
 			`(${((passesDropped / Math.max(offered, 1)) * 100).toFixed(0)}% of those the clock called for)`
 	);
-	console.log(`  a pass costs      ${median.toFixed(1)}ms median here, modelled at ${slower}x for the device`);
+	const mean = costsAll.reduce((a, b) => a + b, 0) / Math.max(1, costsAll.length);
+	const p90 = sorted[Math.floor(sorted.length * 0.9)] ?? 0;
+	console.log(`  a pass costs      ${median.toFixed(1)}ms median here, ${mean.toFixed(1)}ms mean, ${p90.toFixed(1)}ms at p90, modelled at ${slower}x for the device`);
 }
 console.log(`\narrows found        ${found}/${wanted} (${((found / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);
 console.log(`ever proposed       ${proposedEver}/${wanted} (${((proposedEver / Math.max(wanted, 1)) * 100).toFixed(0)}%)`);

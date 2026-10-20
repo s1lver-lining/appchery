@@ -10,6 +10,8 @@ export interface Scorer {
 	name: string;
 	/** File under `src/lib/vision/scorers/` holding the learned weights. */
 	weights?: string;
+	/** File under `src/lib/vision/scorers/` holding the shaft reader's weights, handed in as `still.shafts`. */
+	shafts?: string;
 	/** Scanner options this version runs with, on top of the defaults. */
 	settings: Record<string, unknown>;
 	/** Still being tried: chosen only by hand, and free to change until it is renamed and shipped. */

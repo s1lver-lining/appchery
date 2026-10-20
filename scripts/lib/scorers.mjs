@@ -14,5 +14,8 @@ export function weightsPath(file) {
 export function loadScorer(id) {
 	const scorer = scorerOf(id);
 	const model = scorer.weights ? JSON.parse(readFileSync(weightsPath(scorer.weights), 'utf8')) : null;
-	return { id: scorer.id, name: scorer.name, model, settings: scorer.settings };
+	const settings = scorer.shafts
+		? { ...scorer.settings, still: { ...scorer.settings.still, shafts: JSON.parse(readFileSync(weightsPath(scorer.shafts), 'utf8')) } }
+		: scorer.settings;
+	return { id: scorer.id, name: scorer.name, model, settings };
 }

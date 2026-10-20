@@ -133,6 +133,8 @@ export interface StillOptions {
 	 * shaft is dropped, and one it says is a shaft has its tip read by it.
 	 */
 	shaftsJudge?: boolean;
+	/** With `shafts`, the shafts read are held to leaning together as the dark runs are. */
+	shaftsStand?: boolean;
 }
 
 export interface StillArrow {
@@ -241,7 +243,12 @@ export function detectArrowsInStill(
 			length: shaft.length,
 			width: 1
 		});
-		const read = detectShafts(frame, face, options.shafts);
+		const found = detectShafts(frame, face, options.shafts);
+		let read = found;
+		if (options.shaftsStand) {
+			const standing = new Set(standingTogether(found.map(toStill), face, options.standTolerance ?? 0.35).map((arrow) => arrow.imageX));
+			read = found.filter((shaft) => standing.has(shaft.imageX));
+		}
 		const alone = !options.shaftsAndRuns && options.shaftsSure === undefined;
 		if (alone) return read.map(toStill);
 		const runs = detectArrowsInStill(frame, face, { ...options, shafts: undefined });
