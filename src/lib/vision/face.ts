@@ -485,9 +485,12 @@ export function pinFace(fitted: FaceLocation, up = -Math.PI / 2): FaceLocation {
  * coordinates written on it from rotating underneath the arrows.
  */
 /** The turn `alignFace` would apply, given separately so it can be blended with another one. */
-export function alignTurn(previous: FaceLocation, fitted: FaceLocation): number {
-	/** As far as a frame's worth of drift could conceivably reach. Beyond it this is a different face. */
-	const REACH = Math.PI / 12;
+export function alignTurn(previous: FaceLocation, fitted: FaceLocation, whole = false): number {
+	/**
+	 * As far as a frame's worth of drift could conceivably reach. Beyond it this is a different face, for
+	 * a followed fit; a fresh one from the search can start any way round, so `whole` looks everywhere.
+	 */
+	const REACH = whole ? Math.PI : Math.PI / 12;
 
 	const cost = (turn: number) => {
 		let total = 0;
@@ -503,7 +506,9 @@ export function alignTurn(previous: FaceLocation, fitted: FaceLocation): number 
 	// Coarse then fine, which is enough: the cost has one minimum anywhere near the answer, and a tenth
 	// of a degree is far below what a drawn line or an arrow's place can show.
 	let turn = 0;
-	for (let step = REACH / 4; step > 0.0005; step /= 3) {
+	// From the best of a ring of starts, so the descent below begins in the right quarter.
+	if (whole) for (let k = 1; k < 36; k++) if (cost((k * Math.PI) / 18 - Math.PI) < cost(turn)) turn = (k * Math.PI) / 18 - Math.PI;
+	for (let step = whole ? Math.PI / 36 : REACH / 4; step > 0.0005; step /= 3) {
 		let improved = true;
 		while (improved) {
 			improved = false;
@@ -519,6 +524,6 @@ export function alignTurn(previous: FaceLocation, fitted: FaceLocation): number 
 	return turn;
 }
 
-export function alignFace(previous: FaceLocation, fitted: FaceLocation): FaceLocation {
-	return turnFace(fitted, alignTurn(previous, fitted));
+export function alignFace(previous: FaceLocation, fitted: FaceLocation, whole = false): FaceLocation {
+	return turnFace(fitted, alignTurn(previous, fitted, whole));
 }

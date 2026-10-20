@@ -132,6 +132,8 @@ export interface ScannerOptions {
 	 * within a quarter turn of where gravity put it; 0 leaves gravity alone. See `edges.ts`.
 	 */
 	edgeUp?: number;
+	/** Turn a fit taken from the search onto the followed one from any angle, not only within 15°. */
+	alignWhole?: boolean;
 }
 
 /**
@@ -190,6 +192,7 @@ export class Scanner {
 	private lost: FaceLocation[] = [];
 	private readonly holdBlink: boolean;
 	private readonly edgeUp: number;
+	private readonly alignWhole: boolean;
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -239,6 +242,7 @@ export class Scanner {
 		this.chainThroughLoss = options.chainThroughLoss ?? false;
 		this.holdBlink = options.holdBlink ?? false;
 		this.edgeUp = options.edgeUp ?? 0;
+		this.alignWhole = options.alignWhole ?? false;
 		this.tracker = new SweepTracker(options.sweep);
 	}
 
@@ -291,7 +295,7 @@ export class Scanner {
 	adopt(faces: FaceLocation[]) {
 		if (faces.length === 0 || faces.length !== this.faces.length) return;
 		// The page's geometry, but this side's way round, which is the one the paper has been holding.
-		this.faces = this.paperLock ? faces.map((face, i) => alignFace(this.faces[i], face)) : faces;
+		this.faces = this.paperLock ? faces.map((face, i) => alignFace(this.faces[i], face, this.alignWhole)) : faces;
 	}
 
 	/**
@@ -340,7 +344,7 @@ export class Scanner {
 	 * one then wrote gravity's own error into the coordinates afresh.
 	 */
 	private settle(previous: FaceLocation, face: FaceLocation): FaceLocation {
-		return alignFace(previous, face);
+		return alignFace(previous, face, this.alignWhole);
 	}
 
 	/**
