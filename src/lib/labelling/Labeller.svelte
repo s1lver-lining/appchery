@@ -432,8 +432,10 @@
 	}
 
 	function nextRecording() {
-		const next = recordings.findIndex((r, i) => i !== current && !progressOf(r).done);
-		if (next >= 0) open(next);
+		// From where the archer is, wrapping round, so the ones skipped earlier come last.
+		const count = recordings.length;
+		const next = Array.from({ length: count - 1 }, (_, k) => (current + 1 + k) % count).find((i) => !progressOf(recordings[i]).done);
+		if (next !== undefined) open(next);
 		else say('All recordings labelled.');
 	}
 
