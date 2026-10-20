@@ -765,3 +765,26 @@ describe('aimedAt', () => {
 		expect(aimedAt([a, b], frame, at(190, 100, 5))).toEqual([a]);
 	});
 });
+
+describe('a mark seen on too few passes', () => {
+	const sweep = (options = {}) => {
+		const tracker = new SweepTracker(options);
+		tracker.setLimit(8);
+		for (let pass = 0; pass < 40; pass++) {
+			// One place every pass, another for the first ten and never again.
+			const seen = [{ x: 0.2, y: 0 }, ...(pass < 10 ? [{ x: -0.4, y: 0.3 }] : [])];
+			tracker.push(seen.map((p) => ({ ...p, area: 100, face: 0 })));
+		}
+		return tracker;
+	};
+
+	it('is kept by default', () => {
+		expect(sweep().arrows).toHaveLength(2);
+	});
+
+	it('is dropped when the share asked for is above what it had, and the steady one stays', () => {
+		const tracker = sweep({ minShare: 0.4, patience: 100 });
+		expect(tracker.arrows.map((a) => Math.round(a.x * 10) / 10)).toEqual([0.2]);
+		expect(tracker.scored).toHaveLength(1);
+	});
+});

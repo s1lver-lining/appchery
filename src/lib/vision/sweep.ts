@@ -84,6 +84,8 @@ export interface SweepOptions {
 	/** The band either side of that edge, in face radii, inner and outer. */
 	edgeFrom?: number;
 	edgeTo?: number;
+	/** Share of all passes a mark must have been proposed on to be shown or scored; none by default. */
+	minShare?: number;
 }
 
 export class SweepTracker {
@@ -260,7 +262,14 @@ export class SweepTracker {
 		this.edgeWeight = options.edgeWeight ?? 0.3;
 		this.edgeFrom = options.edgeFrom ?? 0.77;
 		this.edgeTo = options.edgeTo ?? 0.85;
+		this.minShare = options.minShare ?? 0;
 	}
+
+	private readonly minShare: number;
+
+	/** Whether a mark was proposed on enough of the passes: a false one shows up on a sixth, a real one on half. */
+	private held = (mark: Impact): boolean =>
+		this.minShare <= 0 || ((mark as SweepCandidate).at?.length ?? 0) >= this.minShare * this.passes;
 
 	private readonly edgeWeight: number;
 	private readonly edgeFrom: number;
@@ -291,7 +300,7 @@ export class SweepTracker {
 	 * thing as a missing arrow, so this only ever offers guesses when it has been told how many to find.
 	 */
 	get arrows(): Impact[] {
-		return [...this.confirmed, ...this.filling()];
+		return [...this.confirmed, ...this.filling()].filter(this.held);
 	}
 
 	/**
@@ -333,7 +342,7 @@ export class SweepTracker {
 
 	/** What an accepted end writes down, which is never a mark that has not earned its place. */
 	get scored(): Impact[] {
-		return this.settledArrows;
+		return this.settledArrows.filter(this.held);
 	}
 
 	/** What an accepted end actually scores, which never includes the first seconds' provisional marks. */
@@ -410,8 +419,12 @@ export class SweepTracker {
 			// Already scored: not a new arrow, and not evidence about anything either.
 			if (this.nearest(this.taken, proposal)) continue;
 
-			// Already offered and kept: not a new arrow.
-			if (this.nearest(this.confirmed, proposal)) continue;
+			// Already offered and kept: not a new arrow, but still a pass it was seen on.
+			const kept = this.nearest(this.confirmed, proposal) as SweepCandidate | undefined;
+			if (kept) {
+				if (kept.at[kept.at.length - 1] !== this.passes) kept.at.push(this.passes);
+				continue;
+			}
 
 			const candidate = this.nearest(this.candidates, proposal) as SweepCandidate | undefined;
 			if (candidate) {
