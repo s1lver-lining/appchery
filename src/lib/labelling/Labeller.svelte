@@ -954,6 +954,7 @@
 						<button
 							class="press tabular relative h-9 min-w-9 shrink-0 rounded-lg border text-xs font-semibold transition-transform"
 							class:border-brand={i === frame}
+							class:border-[3px]={i === frame}
 							class:border-line={i !== frame}
 							class:scale-110={i === frame}
 							class:bg-win={state === 'done'}
