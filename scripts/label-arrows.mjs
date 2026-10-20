@@ -568,9 +568,12 @@ function byNumberThenName(a, b) {
  * the clicked face coordinates. Frames the archer rejected in the check pass are left out.
  */
 async function exportSet() {
-	const { FaceTrack, toFace } = await load();
-	const out = join(ROOT, 'test/datasets/prepared-videos');
+	const { FaceTrack, toFace, toImageCoords } = await load();
+	// Elsewhere when asked, so a set cut for an experiment does not replace the one the model was trained on.
+	const out = argument('--out') ? resolve(argument('--out')) : join(ROOT, 'test/datasets/prepared-videos');
 	await mkdir(out, { recursive: true });
+	/** A JSON list of recording names to keep to, so a held out set stays out of training. */
+	const listed = argument('--list') ? new Set(JSON.parse(await readFile(resolve(argument('--list')), 'utf8'))) : null;
 	/**
 	 * One flat file of raw crops rather than thousands of jpegs. Encoding each through its own process
 	 * cost more than everything else here put together, and a block of bytes is easier for the training
@@ -582,6 +585,7 @@ async function exportSet() {
 	const labels = [];
 
 	for (const name of await recordings()) {
+		if (listed && !listed.has(name)) continue;
 		const folder = join(WORK, name);
 		if (!existsSync(join(folder, 'labels.json'))) continue;
 		const label = JSON.parse(await readFile(join(folder, 'labels.json'), 'utf8'));
@@ -690,7 +694,12 @@ async function exportSet() {
 					face
 				)
 			);
-			labels.push({ video: name, frame: here, impacts: impactsAt(here) });
+			// In the crop's coordinates: the crop follows the ellipse summary, whose angle the face coordinates do not share.
+			const impacts = impactsAt(here).map((point) => {
+				const pixel = toImageCoords(face, point.x, point.y);
+				return imageToCrop(face, pixel.x, pixel.y);
+			});
+			labels.push({ video: name, frame: here, impacts });
 			written += 1;
 		}
 		console.log(
@@ -747,6 +756,18 @@ function project(h, x, y) {
 	return {
 		x: (h[0][0] * x + h[0][1] * y + h[0][2]) / w,
 		y: (h[1][0] * x + h[1][1] * y + h[1][2]) / w
+	};
+}
+
+/** A picture point in the coordinates `cropBytes` samples in: the inverse of its mapping. */
+function imageToCrop(face, x, y) {
+	const cos = Math.cos(face.rotation);
+	const sin = Math.sin(face.rotation);
+	const dx = x - face.cx;
+	const dy = y - face.cy;
+	return {
+		x: (dx * cos + dy * sin) / face.semiMajor,
+		y: (-dx * sin + dy * cos) / face.semiMinor
 	};
 }
 

@@ -289,6 +289,11 @@ def main():
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--extra", default="")
     parser.add_argument("--out", default=OUT)
+    # Another set of recording crops, such as one exported with a held out set left out of it.
+    parser.add_argument("--recordings", default=RECORDINGS)
+    # Times to repeat the crops of recordings whose name holds this text, so a new kind of arrow is not
+    # drowned by the many sessions shot with the old one. "2026-10-19:4" repeats that day's crops four times.
+    parser.add_argument("--repeat", default="")
     args = parser.parse_args()
 
     torch.manual_seed(args.seed)
@@ -312,10 +317,15 @@ def main():
     only that the model can memorise. Whole recordings held out is the only honest question: here is a
     boss you have never seen, in light you have never seen, with arrows you have never seen.
     """
-    _, sessions = load_recordings(RECORDINGS)
+    _, sessions = load_recordings(args.recordings)
     videos = sorted({item[3] for item in sessions})
     holdout = set(videos[:: max(1, len(videos) // 4)][:4])
     video_train = [(i, p, c) for i, p, c, v in sessions if v not in holdout]
+    if args.repeat:
+        text, times = args.repeat.rsplit(":", 1)
+        extra = [(i, p, c) for i, p, c, v in sessions if v not in holdout and text in v]
+        video_train += extra * (int(times) - 1)
+        print(f"recordings   {len(extra)} crops matching {text!r} repeated {times}x")
     video_test = [(i, p, c) for i, p, c, v in sessions if v in holdout]
 
     """
