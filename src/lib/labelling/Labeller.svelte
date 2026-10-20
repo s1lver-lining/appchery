@@ -580,6 +580,29 @@
 		if (!on && step === 'nocks') go(frame, 'score');
 	}
 
+	/** Each arrow in sight on this frame and what its nock says, for the list beside the picture. */
+	const nockRows = $derived.by(() => {
+		if (!rec || step !== 'nocks') return [];
+		const here = frameFace(rec, frame);
+		return arrowsOn(labelsOf(rec), frame, faceOf(rec).id)
+			.filter((arrow) => !arrow.hidden)
+			.map((arrow) => {
+				const nock = here?.nocks?.[arrow.n];
+				const state = nock === undefined ? 'to do' : nock === null ? "can't see" : here?.nockCut?.includes(arrow.n) ? 'leaves the picture' : 'placed';
+				return { n: arrow.n, state };
+			});
+	});
+
+	function removeNock(n: number) {
+		if (!rec) return;
+		const here = frameFace(rec, frame);
+		if (!here?.nocks || !(n in here.nocks)) return;
+		delete here.nocks[n];
+		if (here.nockCut) here.nockCut = here.nockCut.filter((c) => c !== n);
+		target = n;
+		changed();
+	}
+
 	function nockUnseen() {
 		if (!rec || target === null) return;
 		const here = ensureFrame(rec, frame);
@@ -1113,6 +1136,20 @@
 					<p class="mt-1 text-muted">Click the far end of the shaft ringed in pink. If it runs off the picture, click where it leaves the edge. Drag a nock to move it.</p>
 					{#if target !== null}
 						<div class="mt-3 rounded-xl border border-line bg-bg p-3">Arrow <b>{target + 1}</b> · {wanted.length} left on this frame</div>
+					{/if}
+					{#if nockRows.length}
+						<ul class="mt-3 divide-y divide-line rounded-xl border border-line bg-bg">
+							{#each nockRows as row (row.n)}
+								<li class="flex items-center gap-2 px-3 py-1.5 {target === row.n ? 'bg-brand/10' : ''}">
+									<button class="press flex-1 text-left" title="Pick this arrow" onclick={() => (target = row.n)}>
+										<b>#{row.n + 1}</b> <span class="text-muted">{row.state}</span>
+									</button>
+									{#if row.state !== 'to do'}
+										<button class="press rounded-lg border border-line px-2 py-0.5 text-xs" title="Remove this nock" onclick={() => removeNock(row.n)}>Remove</button>
+									{/if}
+								</li>
+							{/each}
+						</ul>
 					{/if}
 					<div class="mt-4 grid grid-cols-2 gap-2">
 						<button class="press rounded-xl border border-line py-2" onclick={nockUnseen}>Can't see it <kbd>X</kbd></button>
