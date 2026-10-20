@@ -321,7 +321,8 @@
 			const isTarget = step === 'nocks' && target === arrow.n;
 			const isSelected = selected === arrow.n || isTarget;
 			c.save();
-			if (arrow.hidden) {
+			if (!isSelected && !options.rings) c.globalAlpha = 0;
+			else if (arrow.hidden) {
 				c.globalAlpha = 0.45;
 				c.setLineDash([2, 4]);
 			} else if (!checked && !arrow.moved) {
@@ -347,6 +348,7 @@
 				c.stroke();
 			}
 			c.restore();
+			if (!options.tags) continue;
 			// The arrow's number on a dark tag, then its score in the ring's own colour.
 			const zone = scoreAt(WA_10_RING, arrow.x, arrow.y);
 			c.globalAlpha = arrow.hidden ? 0.5 : 1;

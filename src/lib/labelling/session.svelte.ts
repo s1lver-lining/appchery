@@ -11,25 +11,44 @@ export type Step = 'face' | 'arrows' | 'nocks' | 'score';
 export const STEPS: Step[] = ['face', 'arrows', 'nocks', 'score'];
 
 const NOCKS_KEY = 'labelling.nocks';
+const TAGS_KEY = 'labelling.tags';
+const RINGS_KEY = 'labelling.rings';
 
-function stored(): boolean {
+function stored(key: string, fallback: boolean): boolean {
 	try {
-		return localStorage.getItem(NOCKS_KEY) === '1';
+		const value = localStorage.getItem(key);
+		return value === null ? fallback : value === '1';
 	} catch {
-		return false;
+		return fallback;
+	}
+}
+
+function store(key: string, on: boolean) {
+	try {
+		localStorage.setItem(key, on ? '1' : '0');
+	} catch {
+		// A browser refusing storage just forgets the choice on reload.
 	}
 }
 
 /** Nocks are labelled only when asked for: nothing the scorer measures or learns from reads them. */
-export const options = $state({ nocks: stored() });
+export const options = $state({ nocks: stored(NOCKS_KEY, false), tags: stored(TAGS_KEY, true), rings: stored(RINGS_KEY, true) });
 
 export function setNocks(on: boolean) {
 	options.nocks = on;
-	try {
-		localStorage.setItem(NOCKS_KEY, on ? '1' : '0');
-	} catch {
-		// A browser refusing storage just forgets the choice on reload.
-	}
+	store(NOCKS_KEY, on);
+}
+
+/** The number and score drawn beside each arrow. */
+export function setTags(on: boolean) {
+	options.tags = on;
+	store(TAGS_KEY, on);
+}
+
+/** The green circles around arrows that are not selected. */
+export function setRings(on: boolean) {
+	options.rings = on;
+	store(RINGS_KEY, on);
 }
 
 /** The steps shown, which leave out the nocks while they are off. */
