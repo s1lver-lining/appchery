@@ -308,7 +308,7 @@ export class SweepTracker {
 		const kept = this.confirmed.filter(this.held);
 		const short = this.confirmed.filter((mark) => !this.held(mark)).map((mark) => ({ ...mark, unsure: true }));
 		const room = (this.expected ?? Math.min(this.limit, 6)) - kept.length;
-		return [...kept, ...[...short, ...this.filling()].slice(0, Math.max(0, room))];
+		return [...kept, ...short.slice(0, Math.max(0, room))];
 	}
 
 	/**
