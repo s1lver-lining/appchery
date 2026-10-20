@@ -46,6 +46,9 @@ const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 const verbose = args.includes('--verbose');
 const cropped = args.includes('--crop');
+/** A file to write every frame's labelled arrows, proposals and turned away runs to, for a closer look. */
+const dumpTo = option('dump', null);
+const dumped = [];
 const pct = (a, b) => `${((a / Math.max(1, b)) * 100).toFixed(0)}%`;
 
 const { propose, downscale } = await load();
@@ -113,7 +116,13 @@ for (const name of (await readdir(WORK)).sort()) {
 		const cut = cropped ? cutOut(whole, box) : whole;
 		const small = downscale(cut, SCALE);
 		const corners = full.map(([x, y]) => [(x - box.x) / SCALE, (y - box.y) / SCALE]);
-		cache.push({ video: name.slice(-24), index, small, corners, arrows, hidden, kind });
+		// Each nock with its arrow's tip, both in face coordinates, which is a shaft whose line is known.
+		const back = invert(hand);
+		const shafts = (label.nocks?.[String(index)] ?? []).flatMap((nock) => {
+			const tip = arrows.find((a, i) => (a.n ?? i) === nock.arrow);
+			return tip ? [{ tip, nock: project(back, nock.x, nock.y) }] : [];
+		});
+		cache.push({ video: name.slice(-24), index, small, corners, arrows, hidden, kind, shafts });
 	}
 }
 
@@ -140,6 +149,7 @@ function run(options, weights) {
 		const rejected = [];
 		const proposals = propose(shot.small, shot.corners, 1, options, weights, rejected);
 		costs.push(performance.now() - started);
+		if (dumpTo) dumped.push({ video: shot.video, index: shot.index, arrows: shot.arrows, hidden: shot.hidden, proposals, rejected, radius: Math.hypot(shot.corners[0][0] - shot.corners[2][0], shot.corners[0][1] - shot.corners[2][1]) / 2 });
 		offered += proposals.length;
 		const taken = new Set();
 		let hit = 0;
@@ -219,6 +229,53 @@ function run(options, weights) {
 	return { found, wanted, offered, errors, perKind, rows, costs };
 }
 
+/**
+ * Whether each shaft with a nock labelled was found as a run, kept or turned away, and whether the tip
+ * read off it was right: the shaft finder and the tip reader measured apart, since they fail apart.
+ */
+function shaftsFound(options) {
+	const tally = { shafts: 0, run: 0, kept: 0, tip: 0 };
+	for (const shot of cache) {
+		if (!shot.shafts.length) continue;
+		const rejected = [];
+		const proposals = propose(shot.small, shot.corners, 1, options, null, rejected);
+		const runs = [
+			...proposals.filter((p) => p.far).map((p) => ({ a: p, b: p.far, kept: true })),
+			...rejected.filter((r) => r.outX !== undefined).map((r) => ({ a: r, b: { x: r.outX, y: r.outY }, kept: false }))
+		];
+		for (const { tip, nock } of shot.shafts) {
+			tally.shafts += 1;
+			const bearing = Math.atan2(nock.y - tip.y, nock.x - tip.x);
+			// Along the shaft: within 5° of its bearing, with the run's middle on its line.
+			const along = runs.filter(({ a, b }) => {
+				const turn = Math.atan2(b.y - a.y, b.x - a.x) - bearing;
+				if (Math.abs(Math.atan2(Math.sin(turn), Math.cos(turn))) > (5 * Math.PI) / 180) return false;
+				const mx = (a.x + b.x) / 2 - tip.x;
+				const my = (a.y + b.y) / 2 - tip.y;
+				return Math.abs(mx * Math.sin(bearing) - my * Math.cos(bearing)) < 0.02;
+			});
+			if (!along.length) continue;
+			tally.run += 1;
+			const kept = along.filter((r) => r.kept);
+			if (!kept.length) continue;
+			tally.kept += 1;
+			if (kept.some(({ a }) => Math.hypot(a.x - tip.x, a.y - tip.y) < MATCH)) tally.tip += 1;
+		}
+	}
+	return tally;
+}
+
+function invert(h) {
+	const [[a, b, c], [d, e, f], [g, k, l]] = h;
+	const det = a * (e * l - f * k) - b * (d * l - f * g) + c * (d * k - e * g);
+	const m = [
+		[(e * l - f * k) / det, (c * k - b * l) / det, (b * f - c * e) / det],
+		[(f * g - d * l) / det, (a * l - c * g) / det, (c * d - a * f) / det],
+		[(d * k - e * g) / det, (b * g - a * k) / det, (a * e - b * d) / det]
+	];
+	return m.map((row) => row.map((v) => v / m[2][2]));
+}
+
 /*
  * A sweep of settings, all over the same frames, so the differences between them are the settings.
  * Each entry is a name and the options to merge over the defaults.
@@ -238,6 +295,7 @@ if (sweep) {
 }
 
 const { found, wanted, offered, errors, perKind, rows, costs } = run(tune, model);
+if (dumpTo) await (await import("node:fs/promises")).writeFile(resolve(dumpTo), JSON.stringify(dumped));
 if (verbose) for (const row of rows) console.log(row);
 
 console.log(`\nproposer on single labelled frames, given the archer's own fit`);
@@ -273,6 +331,10 @@ console.log(`    both told apart in that one frame  ${bothSeen} (${pct(bothSeen,
 console.log(`    only one of the two seen           ${oneSeen} (${pct(oneSeen, closePairs)})`);
 console.log(`    neither seen                       ${closePairs - bothSeen - oneSeen}`);
 
+{
+	const s = shaftsFound(tune);
+	if (s.shafts) console.log(`\n  shafts with a nock labelled: ${s.shafts}; found as a run ${s.run} (${pct(s.run, s.shafts)}), kept ${s.kept} (${pct(s.kept, s.shafts)}), tip read within ${MATCH} on ${s.tip} (${pct(s.tip, s.shafts)})`);
+}
 console.log('\n  why the missed ones were missed:');
 for (const [why, n] of [...reasons].sort((a, b) => b[1] - a[1])) {
 	console.log(`    ${why.padEnd(24)} ${String(n).padStart(4)}  ${pct(n, wanted - found)}`);
