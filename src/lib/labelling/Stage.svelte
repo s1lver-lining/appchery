@@ -306,7 +306,8 @@
 				if (cut) c.strokeRect(n.x - 5, n.y - 5, 10, 10);
 				else c.fillRect(n.x - 4, n.y - 4, 8, 8);
 			}
-			const isSelected = selected === arrow.n || (step === 'nocks' && target === arrow.n);
+			const isTarget = step === 'nocks' && target === arrow.n;
+			const isSelected = selected === arrow.n || isTarget;
 			c.save();
 			if (arrow.hidden) {
 				c.globalAlpha = 0.45;
@@ -317,10 +318,10 @@
 			c.strokeStyle = 'rgba(0,0,0,0.6)';
 			c.lineWidth = 4;
 			c.beginPath();
-			c.arc(s.x, s.y, isSelected ? 11 : 8, 0, Math.PI * 2);
+			c.arc(s.x, s.y, isTarget ? 20 : isSelected ? 11 : 8, 0, Math.PI * 2);
 			c.stroke();
 			c.strokeStyle = isSelected ? '#ff4fd8' : '#3ddc84';
-			c.lineWidth = 2;
+			c.lineWidth = isTarget ? 3 : 2;
 			c.stroke();
 			c.restore();
 			// The arrow's number on a dark tag, then its score in the ring's own colour.
