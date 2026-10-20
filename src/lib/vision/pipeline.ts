@@ -5,6 +5,7 @@ import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
 import { detectArrowsFromImpacts, type ImpactOptions } from './impacts';
 import { paperContrast } from './contrast';
+import { edgeTurn } from './edges';
 import { textureTurn, unrollWith } from './texture';
 import { detectArrowsLearned, detectArrowsInCrop, type ArrowModel } from './learned';
 import { SweepTracker, type SweepOptions } from './sweep';
@@ -124,6 +125,13 @@ export interface ScannerOptions {
 	 * between two looks, instead of pinning it to gravity afresh while the arrows wait in the old frame.
 	 */
 	chainThroughLoss?: boolean;
+	/** Keep following a face for one pass the search and the rings both missed, rather than dropping it. */
+	holdBlink?: boolean;
+	/**
+	 * How strongly the straight edges round a new face must agree before they set its way up exactly,
+	 * within a quarter turn of where gravity put it; 0 leaves gravity alone. See `edges.ts`.
+	 */
+	edgeUp?: number;
 }
 
 /**
@@ -154,6 +162,8 @@ const ADOPT_MARGIN = 0.10;
 const PAPER_EVERY = 3;
 const PAPER_STILL = 0.004;
 const PAPER_MOST = 0.5;
+/** The most the edges round a face may turn gravity's answer, about 20°, beyond which they mean another line. */
+const EDGE_MOST = 0.35;
 
 /** Arrows past the end's own count that may still be reported, for an end that holds more than it should. */
 export const EXTRA_ARROWS = 2;
@@ -178,6 +188,8 @@ export class Scanner {
 	private readonly chainThroughLoss: boolean;
 	/** The faces last followed before a loss, to chain a face found again onto. */
 	private lost: FaceLocation[] = [];
+	private readonly holdBlink: boolean;
+	private readonly edgeUp: number;
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -225,6 +237,8 @@ export class Scanner {
 		this.paperReach = options.paperReach ?? 1.25;
 		this.paperRegain = options.paperRegain ?? false;
 		this.chainThroughLoss = options.chainThroughLoss ?? false;
+		this.holdBlink = options.holdBlink ?? false;
+		this.edgeUp = options.edgeUp ?? 0;
 		this.tracker = new SweepTracker(options.sweep);
 	}
 
@@ -339,8 +353,14 @@ export class Scanner {
 	 * else. Gravity is not steady enough to be believed frame by frame but it is easily steady enough
 	 * to answer this once.
 	 */
-	private acquire(face: FaceLocation): FaceLocation {
-		return this.up === null ? face : pinFace(face, this.up);
+	private acquire(face: FaceLocation, small: Frame): FaceLocation {
+		if (this.up === null) return face;
+		const pinned = pinFace(face, this.up);
+		if (this.edgeUp <= 0) return pinned;
+		// Only a correction to gravity, never a replacement: weak edges, or none on a clean face, change nothing.
+		const edges = edgeTurn(small, pinned);
+		if (!edges || edges.strength < this.edgeUp || Math.abs(edges.turn) > EDGE_MOST) return pinned;
+		return turnFace(pinned, edges.turn);
 	}
 
 	/** The picture a written proposer reads, made once a pass per face when both proposers want it. */
@@ -403,7 +423,7 @@ export class Scanner {
 						const before = this.lost[i];
 						// The same place on the picture, so the same face: the camera barely turns in a blink.
 						const near = before && Math.hypot(face.cx - before.cx, face.cy - before.cy) < before.semiMajor;
-						return near ? this.settle(before, face) : this.acquire(face);
+						return near ? this.settle(before, face) : this.acquire(face, small);
 					}
 					// A search knows nothing of which way round the last fit was describing the face, and a
 					// face has no way round of its own, so a fresh answer is turned onto the old origin
@@ -456,6 +476,9 @@ export class Scanner {
 				 */
 				this.settled += this.faceEvery;
 				this.missed = 0;
+			} else if (this.holdBlink && this.faces.length > 0 && this.missed === 0) {
+				// One pass missing is a hand or a blur far more often than a walk away, so the face is followed on.
+				this.missed = 1;
 			} else {
 				if (this.chainThroughLoss && this.faces.length > 0) this.lost = this.faces;
 				if (this.paperRegain && this.faces.length > 0) this.regaining = true;
