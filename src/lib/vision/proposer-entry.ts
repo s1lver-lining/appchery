@@ -2,7 +2,7 @@
 // when it is handed the archer's own fit. Not imported by the app.
 import { downscale } from './pixels';
 export { downscale };
-import { faceFromAnchors, scaleFace } from './face';
+import { faceFromAnchors, scaleFace, toFaceCoords } from './face';
 import { detectArrowsInStill, type StillOptions } from './still';
 import { detectArrowsFromImpacts, type ImpactOptions } from './impacts';
 import { detectArrowsLearned, type ArrowModel } from './learned';
@@ -16,6 +16,8 @@ export interface Proposal {
 	length: number;
 	/** How sure the learned detector is, where it is the one answering. */
 	confidence?: number;
+	/** The far end of the shaft that was read, in face coordinates, for asking where along it the tip went. */
+	far?: { x: number; y: number };
 }
 
 /**
@@ -37,7 +39,7 @@ export function propose(
 	options: StillOptions & ImpactOptions & { proposer?: string } = {},
 	model: ArrowModel | null = null,
 	/** Filled with the runs that were found and then turned away, and the reason for each. */
-	turnedAway?: { x: number; y: number; why: string }[]
+	turnedAway?: { x: number; y: number; why: string; outX?: number; outY?: number }[]
 ): Proposal[] {
 	const small = downscale(frame, scale);
 	const full = faceFromAnchors(anchors, 1);
@@ -64,7 +66,8 @@ export function propose(
 			x: arrow.x,
 			y: arrow.y,
 			area: arrow.area,
-			length: arrow.length
+			length: arrow.length,
+			far: toFaceCoords(face, arrow.tailX, arrow.tailY)
 		}));
 
 	if (options.proposer === 'impacts') return steps();

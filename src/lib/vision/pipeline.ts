@@ -33,7 +33,7 @@ export interface ScanResult {
 	/** Proposals this frame produced, before the tracker judged them. Diagnostic, not used for scoring. */
 	detections: number;
 	/** Those same proposals, so a harness can tell what was never seen from what was seen and dropped. */
-	proposed: { x: number; y: number; face: number; area: number; from: string }[];
+	proposed: { x: number; y: number; face: number; area: number; from: string; far?: { x: number; y: number } }[];
 }
 
 /**
@@ -554,7 +554,9 @@ export class Scanner {
 						y: arrow.y,
 						area: arrow.area,
 						face: index,
-						from: 'shape'
+						from: 'shape',
+						// Where the shaft is seen to reach, so its line can be read and not only its tip.
+						far: toFaceCoords(local ?? face, arrow.leanX, arrow.leanY)
 					}));
 				})
 			: [];

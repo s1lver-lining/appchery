@@ -114,7 +114,7 @@ export interface StillOptions {
 	 * completely different work: a shaft no run was ever found along is a failure of the search, and one
 	 * found and then dropped for having no ridge is a failure of a threshold.
 	 */
-	turnedAway?: { x: number; y: number; why: string }[];
+	turnedAway?: { x: number; y: number; why: string; outX?: number; outY?: number }[];
 }
 
 export interface StillArrow {
@@ -271,8 +271,8 @@ export function detectArrowsInStill(
 		if (!turnedAway) return;
 		const a = toFaceCoords(face, segment.ax, segment.ay);
 		const b = toFaceCoords(face, segment.bx, segment.by);
-		const inner = Math.hypot(a.x, a.y) <= Math.hypot(b.x, b.y) ? a : b;
-		turnedAway.push({ x: inner.x, y: inner.y, why });
+		const [inner, outer] = Math.hypot(a.x, a.y) <= Math.hypot(b.x, b.y) ? [a, b] : [b, a];
+		turnedAway.push({ x: inner.x, y: inner.y, why, outX: outer.x, outY: outer.y });
 	};
 	for (const segment of straightRuns(frame, mask, box, minLength * radius, face, bridge * radius)) {
 		if (segment.length < minLength * radius || segment.length > maxLength * radius) {

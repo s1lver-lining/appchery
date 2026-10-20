@@ -31,7 +31,7 @@ export interface SweepResult {
 	dropped: number;
 	proposals: number;
 	/** Every proposal of every pass, to separate what was never seen from what was seen and dropped. */
-	everything: { x: number; y: number; pass: number; area: number; face: number; from: string }[];
+	everything: { x: number; y: number; pass: number; area: number; face: number; from: string; far?: { x: number; y: number } }[];
 	/**
 	 * The pass at which the face first counted as found, so latency can be measured from that moment.
 	 *
@@ -90,7 +90,7 @@ export class Sweep {
 	private withFace = 0;
 	private passes = 0;
 	private proposals = 0;
-	private everything: { x: number; y: number; pass: number; area: number; face: number; from: string }[] = [];
+	private everything: { x: number; y: number; pass: number; area: number; face: number; from: string; far?: { x: number; y: number } }[] = [];
 	private at: FaceLocation | null = null;
 	private firstSteady: number | null = null;
 	private readonly costs: number[] = [];
@@ -237,7 +237,7 @@ export class Sweep {
 			this.proposals += result.detections;
 			this.recent = result.proposed.map((seen) => ({ x: seen.x, y: seen.y }));
 			for (const seen of result.proposed) {
-				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes, area: seen.area ?? 0, face: seen.face, from: seen.from ?? 'shape' });
+				this.everything.push({ x: seen.x, y: seen.y, pass: this.passes, area: seen.area ?? 0, face: seen.face, from: seen.from ?? 'shape', far: seen.far });
 			}
 		} else {
 			this.scanner.track(small);
