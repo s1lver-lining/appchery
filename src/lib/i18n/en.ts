@@ -1247,9 +1247,16 @@ export const en = {
 	},
 	settings: {
 		title: 'Settings',
-		appTab: 'App',
-		shootingTab: 'Shooting',
-		dataTab: 'Data',
+		pages: {
+			display: { title: 'Display', summary: 'Theme, text size, animations' },
+			language: { title: 'Language and region', summary: 'Language, clock, first day of the week' },
+			shooting: { title: 'Shooting', summary: 'Plotting arrows, screen, location and weather' },
+			running: { title: 'Running', summary: 'Heart rate, maps, Strava' },
+			watch: { title: 'Watch', summary: 'Connection, alerts, wrist motion' },
+			detector: { title: 'Arrow detector', summary: 'Scorer version, overlay, recording' },
+			data: { title: 'Data', summary: 'Account, backup, import, badges' },
+			app: { title: 'App', summary: 'Updates and installing' }
+		},
 		linkEquipment: 'Equipment list',
 		language: 'Language',
 		theme: 'Theme',
@@ -1361,9 +1368,7 @@ export const en = {
 			'Hides the browser bars until you leave the page or reload. Installing the app does this for good.',
 		searchTitle: 'Search the settings',
 		searchPlaceholder: 'What are you looking for?',
-		searchLead: 'Type a word from a setting\u2019s name or from what it does.',
 		searchEmpty: 'Nothing here matches {q}.',
-		searchAction: 'Search',
 		textScaleTitle: 'Text size',
 		textScaleHint:
 			'Draws the whole app larger or smaller: the text and the rows and buttons around it together. The scoresheet keeps its share of the screen whatever you choose.',

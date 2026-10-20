@@ -15,7 +15,7 @@ The rules an archer could observe, stated plainly. Everything after this section
 **Without an account.** Everything works, forever. Nothing is uploaded, no network is required, and
 the sync module is never even loaded. This is the app; the rest is additive.
 
-**Signing in.** Optional, from the settings data tab, with an email and a password. Every row already
+**Signing in.** Optional, from the Data page of the settings, with an email and a password. Every row already
 on the device is claimed by that account, so a history shot years before the account existed becomes
 the account's history. Signing out changes nothing on the device.
 
@@ -72,7 +72,7 @@ device, so syncing them would be syncing a cache and inviting conflicts over dat
 correct answer already. A second device that pulls a year of shooting earns the badges itself.
 
 The visible cost is that a device pulling history for the first time re-celebrates level ups. The
-settings data tab already has the button that resets celebration state, and the recheck already
+Data page of the settings already has the button that resets celebration state, and the recheck already
 reconciles badges, so both are one press away.
 
 **Published, not synced.** The profile card: arrows, outings, badges and level, computed on the device
@@ -178,7 +178,7 @@ explicit action that never touches the phone, and wiping the phone never touches
 is a side effect of the other, because the archer asking to free up space on a phone is not asking to
 lose their history, and an archer closing an account is not asking to wipe the device in their hand.
 
-The danger zone in the settings data tab holds the two server side actions, shown while signed in. **Delete my data on the server** removes every
+The danger zone in the Data page of the settings holds the two server side actions, shown while signed in. **Delete my data on the server** removes every
 synced row the account holds there and signs out, leaving profile, handle and follows alone. Signing
 out is part of it because this device would otherwise send its pending changes straight back into
 the account just emptied. **Replace the server copy with this device** removes the same rows, drops

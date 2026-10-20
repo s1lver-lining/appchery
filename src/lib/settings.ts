@@ -2,240 +2,102 @@
  * What the settings page holds, listed so it can be searched.
  *
  * Kept beside the page rather than read out of it: a setting is looked for by what it does, and the
- * markup of a switch says nothing about that. The key names both the anchor on the page and the
+ * markup of a switch says nothing about that. The key names both the anchor on its page and the
  * `?setting=` that scrolls to it, so a result found here leads straight to the control itself.
  */
 
 import { fold, matchesQuery } from './domain/search';
+import type { IconName } from './ui/Icon.svelte';
 
-export type SettingsTab = 'app' | 'shooting' | 'data';
+export type SettingsPage =
+	| 'display'
+	| 'language'
+	| 'shooting'
+	| 'running'
+	| 'watch'
+	| 'detector'
+	| 'data'
+	| 'app';
+
+export interface SettingsPageInfo {
+	key: SettingsPage;
+	icon: IconName;
+}
+
+/** In the order the settings list them: most reached for first, what throws data away near the end. */
+export const SETTINGS_PAGES: SettingsPageInfo[] = [
+	{ key: 'display', icon: 'sun' },
+	{ key: 'language', icon: 'calendar' },
+	{ key: 'shooting', icon: 'target' },
+	{ key: 'running', icon: 'run' },
+	{ key: 'watch', icon: 'watch' },
+	{ key: 'detector', icon: 'camera' },
+	{ key: 'data', icon: 'download' },
+	{ key: 'app', icon: 'refresh' },
+];
+
+/** Dictionary keys for a page's name and for the line under it naming what it holds. */
+export const pageTitle = (page: SettingsPage) => `settings.pages.${page}.title`;
+export const pageSummary = (page: SettingsPage) => `settings.pages.${page}.summary`;
 
 export interface SettingEntry {
-	/** Names the anchor, `setting-<key>`, and the `?setting=` the search page sends the archer to. */
+	/** Names the anchor, `setting-<key>`, and the `?setting=` that scrolls the page to it. */
 	key: string;
-	tab: SettingsTab;
+	page: SettingsPage;
 	/** Dictionary keys, so the search runs in whatever language the app is being read in. */
 	title: string;
 	hint?: string;
-	/** The heading it sits under, shown beside a result so two like names are told apart. */
-	section: string;
 }
 
 export const SETTINGS: SettingEntry[] = [
-	{ key: 'about', tab: 'app', title: 'settings.about', section: 'settings.appTab' },
-	{ key: 'language', tab: 'app', title: 'settings.language', section: 'settings.appTab' },
-	{ key: 'theme', tab: 'app', title: 'settings.theme', section: 'settings.appTab' },
-	{
-		key: 'refresh',
-		tab: 'app',
-		title: 'settings.refreshTitle',
-		hint: 'settings.refreshHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'install',
-		tab: 'app',
-		title: 'settings.installTitle',
-		hint: 'settings.installHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'fullscreen',
-		tab: 'app',
-		title: 'settings.fullscreenTitle',
-		hint: 'settings.fullscreenHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'clock',
-		tab: 'app',
-		title: 'settings.clockTitle',
-		hint: 'settings.clockHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'newButton',
-		tab: 'app',
-		title: 'settings.newButtonTitle',
-		hint: 'settings.newButtonHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'feedHint',
-		tab: 'app',
-		title: 'settings.feedHintTitle',
-		hint: 'settings.feedHintHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'noAnimations',
-		tab: 'app',
-		title: 'settings.noAnimationsTitle',
-		hint: 'settings.noAnimationsHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'halfBreak',
-		tab: 'app',
-		title: 'settings.halfBreakTitle',
-		hint: 'settings.halfBreakHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'textScale',
-		tab: 'app',
-		title: 'settings.textScaleTitle',
-		hint: 'settings.textScaleHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'weekStart',
-		tab: 'app',
-		title: 'settings.weekStartTitle',
-		hint: 'settings.weekStartHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'celebrations',
-		tab: 'app',
-		title: 'settings.celebrationsTitle',
-		hint: 'settings.celebrationsHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'competitionColour',
-		tab: 'app',
-		title: 'settings.competitionColourTitle',
-		hint: 'settings.competitionColourHint',
-		section: 'settings.display'
-	},
-	{
-		key: 'tapWindow',
-		tab: 'shooting',
-		title: 'settings.tapWindowTitle',
-		hint: 'settings.tapWindowHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'sheetHeight',
-		tab: 'shooting',
-		title: 'settings.sheetHeightTitle',
-		hint: 'settings.sheetHeightHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'badgeSide',
-		tab: 'shooting',
-		title: 'settings.badgeSideTitle',
-		hint: 'settings.badgeSideHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'awake',
-		tab: 'shooting',
-		title: 'settings.awakeTitle',
-		hint: 'settings.awakeHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'maxHeart',
-		tab: 'shooting',
-		title: 'settings.maxHeartTitle',
-		hint: 'settings.maxHeartHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'drift',
-		tab: 'shooting',
-		title: 'settings.driftTitle',
-		hint: 'settings.driftHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'haptics',
-		tab: 'shooting',
-		title: 'settings.hapticsTitle',
-		hint: 'settings.hapticsHint',
-		section: 'settings.plotting'
-	},
-	{
-		key: 'location',
-		tab: 'shooting',
-		title: 'settings.locationTitle',
-		hint: 'settings.locationHint',
-		section: 'settings.conditions'
-	},
-	{
-		key: 'weather',
-		tab: 'shooting',
-		title: 'settings.weatherTitle',
-		hint: 'settings.weatherHint',
-		section: 'settings.conditions'
-	},
-	{
-		key: 'place',
-		tab: 'shooting',
-		title: 'settings.placeTitle',
-		hint: 'settings.placeHint',
-		section: 'settings.conditions'
-	},
-	{
-		key: 'detector',
-		tab: 'shooting',
-		title: 'settings.detectorTitle',
-		hint: 'settings.detectorHint',
-		section: 'auto.title'
-	},
-	{
-		key: 'smooth',
-		tab: 'shooting',
-		title: 'settings.smoothTitle',
-		hint: 'settings.smoothHint',
-		section: 'auto.title'
-	},
-	{
-		key: 'record',
-		tab: 'shooting',
-		title: 'settings.recordTitle',
-		hint: 'settings.recordHint',
-		section: 'auto.title'
-	},
-	{
-		key: 'motion',
-		tab: 'shooting',
-		title: 'settings.motionTitle',
-		hint: 'settings.motionHint',
-		section: 'auto.title'
-	},
-	{ key: 'storage', tab: 'data', title: 'settings.storage', section: 'settings.dataTab' },
-	{ key: 'backup', tab: 'data', title: 'backup.title', hint: 'backup.hint', section: 'settings.dataTab' },
-	{
-		key: 'importer',
-		tab: 'data',
-		title: 'importer.title',
-		hint: 'importer.hint',
-		section: 'settings.dataTab'
-	},
-	{
-		key: 'recalc',
-		tab: 'data',
-		title: 'settings.recalcTitle',
-		hint: 'settings.recalcHint',
-		section: 'settings.dataTab'
-	},
-	{
-		key: 'forget',
-		tab: 'data',
-		title: 'settings.forgetTitle',
-		hint: 'settings.forgetHint',
-		section: 'settings.dataTab'
-	},
-	{ key: 'danger', tab: 'data', title: 'danger.title', section: 'settings.dataTab' }
+	{ key: 'theme', page: 'display', title: 'settings.theme' },
+	{ key: 'textScale', page: 'display', title: 'settings.textScaleTitle', hint: 'settings.textScaleHint' },
+	{ key: 'noAnimations', page: 'display', title: 'settings.noAnimationsTitle', hint: 'settings.noAnimationsHint' },
+	{ key: 'fullscreen', page: 'display', title: 'settings.fullscreenTitle', hint: 'settings.fullscreenHint' },
+	{ key: 'newButton', page: 'display', title: 'settings.newButtonTitle', hint: 'settings.newButtonHint' },
+	{ key: 'feedHint', page: 'display', title: 'settings.feedHintTitle', hint: 'settings.feedHintHint' },
+	{ key: 'celebrations', page: 'display', title: 'settings.celebrationsTitle', hint: 'settings.celebrationsHint' },
+	{ key: 'competitionColour', page: 'display', title: 'settings.competitionColourTitle', hint: 'settings.competitionColourHint' },
+	{ key: 'language', page: 'language', title: 'settings.language' },
+	{ key: 'clock', page: 'language', title: 'settings.clockTitle', hint: 'settings.clockHint' },
+	{ key: 'weekStart', page: 'language', title: 'settings.weekStartTitle', hint: 'settings.weekStartHint' },
+	{ key: 'tapWindow', page: 'shooting', title: 'settings.tapWindowTitle', hint: 'settings.tapWindowHint' },
+	{ key: 'sheetHeight', page: 'shooting', title: 'settings.sheetHeightTitle', hint: 'settings.sheetHeightHint' },
+	{ key: 'badgeSide', page: 'shooting', title: 'settings.badgeSideTitle', hint: 'settings.badgeSideHint' },
+	{ key: 'halfBreak', page: 'shooting', title: 'settings.halfBreakTitle', hint: 'settings.halfBreakHint' },
+	{ key: 'awake', page: 'shooting', title: 'settings.awakeTitle', hint: 'settings.awakeHint' },
+	{ key: 'drift', page: 'shooting', title: 'settings.driftTitle', hint: 'settings.driftHint' },
+	{ key: 'haptics', page: 'shooting', title: 'settings.hapticsTitle', hint: 'settings.hapticsHint' },
+	{ key: 'location', page: 'shooting', title: 'settings.locationTitle', hint: 'settings.locationHint' },
+	{ key: 'weather', page: 'shooting', title: 'settings.weatherTitle', hint: 'settings.weatherHint' },
+	{ key: 'place', page: 'shooting', title: 'settings.placeTitle', hint: 'settings.placeHint' },
+	{ key: 'maxHeart', page: 'running', title: 'settings.maxHeartTitle', hint: 'settings.maxHeartHint' },
+	{ key: 'autoPause', page: 'running', title: 'settings.autoPauseTitle', hint: 'settings.autoPauseHint' },
+	{ key: 'runMaps', page: 'running', title: 'settings.runMapsTitle', hint: 'settings.runMapsHint' },
+	{ key: 'runMapPrompt', page: 'running', title: 'settings.runMapPromptTitle', hint: 'settings.runMapPromptHint' },
+	{ key: 'strava', page: 'running', title: 'strava.title', hint: 'strava.connectHint' },
+	{ key: 'watch', page: 'watch', title: 'settings.watch', hint: 'settings.watchHint' },
+	{ key: 'watchAlerts', page: 'watch', title: 'settings.watchAlerts', hint: 'settings.watchAlertsHint' },
+	{ key: 'wristMotion', page: 'watch', title: 'settings.wristMotionTitle', hint: 'settings.wristMotionHint' },
+	{ key: 'detector', page: 'detector', title: 'settings.detectorTitle', hint: 'settings.detectorHint' },
+	{ key: 'smooth', page: 'detector', title: 'settings.smoothTitle', hint: 'settings.smoothHint' },
+	{ key: 'record', page: 'detector', title: 'settings.recordTitle', hint: 'settings.recordHint' },
+	{ key: 'motion', page: 'detector', title: 'settings.motionTitle', hint: 'settings.motionHint' },
+	{ key: 'account', page: 'data', title: 'account.title', hint: 'account.hint' },
+	{ key: 'storage', page: 'data', title: 'settings.storage' },
+	{ key: 'backup', page: 'data', title: 'backup.title', hint: 'backup.hint' },
+	{ key: 'importer', page: 'data', title: 'importer.title', hint: 'importer.hint' },
+	{ key: 'recalc', page: 'data', title: 'settings.recalcTitle', hint: 'settings.recalcHint' },
+	{ key: 'forget', page: 'data', title: 'settings.forgetTitle', hint: 'settings.forgetHint' },
+	{ key: 'danger', page: 'data', title: 'danger.title' },
+	{ key: 'refresh', page: 'app', title: 'settings.refreshTitle', hint: 'settings.refreshHint' },
+	{ key: 'install', page: 'app', title: 'settings.installTitle', hint: 'settings.installHint' },
 ];
 
-/** Which tab a setting lives on, since being sent to one on another tab is being sent nowhere. */
-export function settingsTabOf(key: string): SettingsTab | undefined {
-	return SETTINGS.find((entry) => entry.key === key)?.tab;
+/** Where a setting lives, so a link to it opens the page that holds it. */
+export function settingHref(key: string): string | undefined {
+	const entry = SETTINGS.find((row) => row.key === key);
+	return entry && `/settings/${entry.page}?setting=${key}`;
 }
 
 /**
@@ -255,7 +117,7 @@ export function searchSettings(
 	for (const entry of entries) {
 		const title = translate(entry.title);
 		const hint = entry.hint ? translate(entry.hint) : '';
-		if (!matchesQuery(query, [title, hint, translate(entry.section)])) continue;
+		if (!matchesQuery(query, [title, hint, translate(pageTitle(entry.page))])) continue;
 		const folded = fold(title);
 		const named = words.every((word) => folded.includes(word));
 		scored.push({ entry, rank: named ? (folded.startsWith(words[0]) ? 0 : 1) : 2 });

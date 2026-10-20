@@ -1248,9 +1248,16 @@ export const fr: Dictionary = {
 	},
 	settings: {
 		title: 'Paramètres',
-		appTab: 'Application',
-		shootingTab: 'Tir',
-		dataTab: 'Données',
+		pages: {
+			display: { title: 'Affichage', summary: 'Thème, taille du texte, animations' },
+			language: { title: 'Langue et région', summary: 'Langue, horloge, premier jour de la semaine' },
+			shooting: { title: 'Tir', summary: 'Pointage des flèches, écran, lieu et météo' },
+			running: { title: 'Course', summary: 'Fréquence cardiaque, cartes, Strava' },
+			watch: { title: 'Montre', summary: 'Connexion, alertes, mouvement du poignet' },
+			detector: { title: 'Détecteur de flèches', summary: 'Version du modèle, superposition, enregistrement' },
+			data: { title: 'Données', summary: 'Compte, sauvegarde, import, badges' },
+			app: { title: 'Application', summary: 'Mises à jour et installation' }
+		},
 		linkEquipment: 'Liste du matériel',
 		language: 'Langue',
 		theme: 'Thème',
@@ -1362,9 +1369,7 @@ export const fr: Dictionary = {
 			"Masque les barres du navigateur jusqu'à ce que vous quittiez la page ou la rechargiez. Installer l'application le fait définitivement.",
 		searchTitle: 'Rechercher dans les réglages',
 		searchPlaceholder: 'Que cherchez-vous ?',
-		searchLead: 'Tapez un mot du nom d\u2019un réglage ou de ce qu\u2019il fait.',
 		searchEmpty: 'Rien ici ne correspond à {q}.',
-		searchAction: 'Rechercher',
 		textScaleTitle: 'Taille du texte',
 		textScaleHint:
 			'Agrandit ou réduit toute l’app : texte, boutons et espacements ensemble. La feuille de score garde sa part de l’écran quel que soit votre choix.',

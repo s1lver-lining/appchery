@@ -12,7 +12,7 @@ A badge means something different. It marks a day that happened. Deleting the se
 in should not reach back and unmake it, so badges are rows in `badge`, written once and kept.
 
 That storage buys one problem: a badge whose shooting is gone is a badge standing on nothing. The
-recheck in the settings data tab is the answer, and it is deliberately a button rather than
+recheck in the Data page of the settings is the answer, and it is deliberately a button rather than
 something that runs on load. Losing a badge is a thing that should happen because the archer asked
 for a tidy up, never quietly while they were looking at something else. A badge that survives a
 recheck keeps its original date, because that is still the day it was shot.

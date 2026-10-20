@@ -106,7 +106,7 @@ and pick from several options.
 
 Good, because guessing the other way round costs a badge:
 **Once earned, kept.** Deleting a session never takes a badge back. If you want the list to match
-the history exactly, the recheck in the settings data tab is the button that does it, and it is the
+the history exactly, the recheck in the Data page of the settings is the button that does it, and it is the
 only thing in the app that can take a badge away.
 
 Bad, because it is about the code and no user needs it:

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { t } from '$lib/i18n';
-	import { SETTINGS } from '$lib/settings';
+	import { SETTINGS, settingHref } from '$lib/settings';
 	import Icon from './Icon.svelte';
 
 	/**
@@ -18,7 +18,7 @@
 
 {#if entry}
 	<a
-		href="/settings?setting={setting}"
+		href={settingHref(setting)}
 		class="inline-flex items-center gap-1 align-baseline font-medium text-brand-text underline
 			underline-offset-2"
 	>

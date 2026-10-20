@@ -207,7 +207,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'Once earned, kept.',
-					body: 'Deleting a session never takes a badge back. If you want the list to match the history exactly, the recheck in the settings data tab is the button that does it, and it is the only thing in the app that can take a badge away.'
+					body: 'Deleting a session never takes a badge back. If you want the list to match the history exactly, the recheck on the Data page of the settings is the button that does it, and it is the only thing in the app that can take a badge away.'
 				}
 			]
 		},
@@ -221,7 +221,7 @@ export const tricksEn = {
 				},
 				{
 					lead: 'A celebration is remembered per device.',
-					body: 'The app remembers the last level it congratulated you for, so it never announces the same one twice, and lowers that mark if a deleted session costs you a level. To be congratulated for where you already stand, celebrate again in the settings data tab forgets the lot, levels and records alike.'
+					body: 'The app remembers the last level it congratulated you for, so it never announces the same one twice, and lowers that mark if a deleted session costs you a level. To be congratulated for where you already stand, celebrate again on the Data page of the settings forgets the lot, levels and records alike.'
 				},
 				{
 					lead: 'The level can ride the header.',

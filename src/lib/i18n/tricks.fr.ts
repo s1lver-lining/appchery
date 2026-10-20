@@ -202,7 +202,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Acquis, gardé.',
-					body: 'Supprimer une séance ne reprend jamais un badge. Pour que la liste colle exactement à l’historique, la revérification de l’onglet données des paramètres est le bouton qui le fait, et la seule chose dans l’app qui puisse retirer un badge.'
+					body: 'Supprimer une séance ne reprend jamais un badge. Pour que la liste colle exactement à l’historique, la revérification de la page Données des paramètres est le bouton qui le fait, et la seule chose dans l’app qui puisse retirer un badge.'
 				}
 			]
 		},
@@ -216,7 +216,7 @@ export const tricksFr: TricksDictionary = {
 				},
 				{
 					lead: 'Une célébration est retenue par appareil.',
-					body: 'L’app retient le dernier niveau pour lequel elle vous a félicité, pour ne jamais annoncer deux fois le même, et abaisse ce repère si une séance supprimée vous coûte un niveau. Pour être félicité de là où vous êtes déjà, « Fêter à nouveau » dans l’onglet données des paramètres oublie tout, niveaux et records compris.'
+					body: 'L’app retient le dernier niveau pour lequel elle vous a félicité, pour ne jamais annoncer deux fois le même, et abaisse ce repère si une séance supprimée vous coûte un niveau. Pour être félicité de là où vous êtes déjà, « Fêter à nouveau » dans la page Données des paramètres oublie tout, niveaux et records compris.'
 				},
 				{
 					lead: 'Le niveau peut tenir l’en-tête.',
