@@ -269,6 +269,8 @@
 	}
 
 	let loadingFor = '';
+	/** The recording the view was last fitted for. */
+	let viewedVideo = '';
 	async function load() {
 		if (!rec) return;
 		const key = `${rec.video}/${frame}`;
@@ -289,7 +291,11 @@
 		pixels = c.getImageData(0, 0, off.width, off.height);
 		image = img;
 		await tick();
-		stage?.fitFace();
+		// Fitted when a recording opens, then left where the archer put it: the next frame is the same view.
+		if (viewedVideo !== rec.video) {
+			viewedVideo = rec.video;
+			stage?.fitFace();
+		}
 		if (step === 'arrows') setTimeout(() => arrive(key), 30);
 	}
 
