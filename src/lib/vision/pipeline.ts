@@ -134,6 +134,11 @@ export interface ScannerOptions {
 	edgeUp?: number;
 	/** Turn a fit taken from the search onto the followed one from any angle, not only within 15°. */
 	alignWhole?: boolean;
+	/**
+	 * With `still.shafts`, the shafts are read on one pass in this many and the dark runs alone on the
+	 * others, so their cost is spread over a sweep the tracker gathers agreement across anyway.
+	 */
+	shaftsEvery?: number;
 }
 
 /**
@@ -193,6 +198,7 @@ export class Scanner {
 	private readonly holdBlink: boolean;
 	private readonly edgeUp: number;
 	private readonly alignWhole: boolean;
+	private readonly shaftsEvery: number;
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -232,6 +238,7 @@ export class Scanner {
 		this.crop = options.crop ?? null;
 		this.combine = options.combine ?? false;
 		this.still = options.still ?? {};
+		this.shaftsEvery = Math.max(1, options.shaftsEvery ?? 1);
 		this.proposer = options.proposer ?? 'shape';
 		this.impacts = options.impacts ?? {};
 		this.contrast = options.contrast ?? 'dark';
@@ -549,7 +556,8 @@ export class Scanner {
 					 */
 					const local = region ? faceInRegion(face, this.scale, region) : null;
 					const from = this.readFrom(local ? region!.frame : small, local ?? face, index);
-					return detectArrowsInStill(from, local ?? face, this.still).map((arrow) => ({
+					const still = this.still.shafts && this.frames % this.shaftsEvery !== 0 ? { ...this.still, shafts: undefined } : this.still;
+					return detectArrowsInStill(from, local ?? face, still).map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
 						area: arrow.area,

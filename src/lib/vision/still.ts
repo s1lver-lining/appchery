@@ -1,6 +1,7 @@
 import { rgbToHsv, luma } from './pixels';
 import { toFaceCoords } from './face';
 import type { Frame, FaceLocation } from './types';
+import { detectShafts, type Shaft, type ShaftModel } from './shafts';
 
 /**
  * Finding arrows in a single photograph.
@@ -115,6 +116,23 @@ export interface StillOptions {
 	 * found and then dropped for having no ridge is a failure of a threshold.
 	 */
 	turnedAway?: { x: number; y: number; why: string; outX?: number; outY?: number }[];
+	/**
+	 * Weights for reading shafts as lines either way of the paper, with a learned tip along each, in
+	 * place of the dark runs and their filters. Left out, the dark runs. See `shafts.ts`.
+	 */
+	shafts?: ShaftModel;
+	/** With `shafts`, the dark runs' arrows are kept too wherever no shaft was read near them. */
+	shaftsAndRuns?: boolean;
+	/**
+	 * With `shafts`, how sure the network must be of a shaft no dark run agrees with, a run's arrow
+	 * within 0.05 radii of its tip being agreement. Left out, the model's own threshold for every shaft.
+	 */
+	shaftsSure?: number;
+	/**
+	 * With `shafts` and `shaftsAndRuns`, each dark run is read by the network too: one it says is no
+	 * shaft is dropped, and one it says is a shaft has its tip read by it.
+	 */
+	shaftsJudge?: boolean;
 }
 
 export interface StillArrow {
@@ -209,6 +227,44 @@ export function detectArrowsInStill(
 	face: FaceLocation,
 	options: StillOptions = {}
 ): StillArrow[] {
+	if (options.shafts) {
+		const toStill = (shaft: Shaft): StillArrow => ({
+			x: shaft.x,
+			y: shaft.y,
+			imageX: shaft.imageX,
+			imageY: shaft.imageY,
+			tailX: shaft.farX,
+			tailY: shaft.farY,
+			leanX: shaft.farX,
+			leanY: shaft.farY,
+			area: shaft.length * shaft.confidence,
+			length: shaft.length,
+			width: 1
+		});
+		const read = detectShafts(frame, face, options.shafts);
+		const alone = !options.shaftsAndRuns && options.shaftsSure === undefined;
+		if (alone) return read.map(toStill);
+		const runs = detectArrowsInStill(frame, face, { ...options, shafts: undefined });
+		const sure = options.shaftsSure ?? 0;
+		const agreed = read.filter(
+			(shaft) => shaft.confidence >= sure || runs.some((run) => Math.hypot(shaft.x - run.x, shaft.y - run.y) < 0.05)
+		);
+		if (!options.shaftsAndRuns) return agreed.map(toStill);
+		let extra: StillArrow[] = runs;
+		if (options.shaftsJudge) {
+			const judged = detectShafts(
+				frame,
+				face,
+				options.shafts,
+				runs.map((run) => ({ ax: run.imageX, ay: run.imageY, bx: run.leanX, by: run.leanY })),
+				false
+			);
+			extra = judged.map(toStill);
+		}
+		const kept = agreed.map(toStill);
+		return [...kept, ...extra.filter((run) => !kept.some((shaft) => sameShaft(face, shaft, run)))];
+	}
+
 	const darkness = options.darkness ?? 0.75;
 	const minLength = options.minLength ?? 0.09;
 	const maxLength = options.maxLength ?? 3;
@@ -398,6 +454,27 @@ export function detectArrowsInStill(
 	 * from 48 of 146 to 65, and the marks put twice on one shaft fell from 6 to 2.
 	 */
 	return standingTogether(kept, face, standTolerance);
+}
+
+/**
+ * Whether two readings are one arrow: tips close, or one lying along the other's shaft. The shaft reader
+ * and the dark runs often read one shaft's tip at two places along it, and each became a mark.
+ */
+function sameShaft(face: FaceLocation, a: StillArrow, b: StillArrow): boolean {
+	const apart = Math.hypot(a.x - b.x, a.y - b.y);
+	if (apart < 0.05) return true;
+	if (apart > 0.25) return false;
+	const far = toFaceCoords(face, a.leanX, a.leanY);
+	const otherFar = toFaceCoords(face, b.leanX, b.leanY);
+	const ux = far.x - a.x;
+	const uy = far.y - a.y;
+	const vx = otherFar.x - b.x;
+	const vy = otherFar.y - b.y;
+	const span = Math.hypot(ux, uy);
+	const otherSpan = Math.hypot(vx, vy);
+	if (!(span > 0) || !(otherSpan > 0)) return false;
+	if (Math.abs((ux * vx + uy * vy) / (span * otherSpan)) < Math.cos((8 * Math.PI) / 180)) return false;
+	return Math.abs((b.x - a.x) * uy - (b.y - a.y) * ux) / span < 0.03;
 }
 
 interface Segment {

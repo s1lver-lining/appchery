@@ -42,6 +42,8 @@ const only = option('video', null);
 /** A JSON list of recording names to keep to, so a tuning run can leave a holdout out of it. */
 const listed = option('list', null) ? new Set(JSON.parse(await readFile(resolve(option('list', null)), 'utf8'))) : null;
 const tune = JSON.parse(option('tune', '{}'));
+// Weights for the line and tip reader of `src/lib/vision/shafts.ts`.
+if (option('shafts', null)) tune.shafts = JSON.parse(await readFile(resolve(option('shafts', null)), 'utf8'));
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
 const verbose = args.includes('--verbose');
