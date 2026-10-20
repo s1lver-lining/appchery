@@ -200,12 +200,14 @@ let everWrongOut = 0;
 let everFound = 0;
 /** One line per recording, for whoever wants to group them differently from the totals here. */
 const recs = [];
+/** The largest turn of the face between checked frames, per recording checked on more than one. */
+const drifts = [];
 
 /** The tallies by name, so a recording measured in a process of its own can hand them back whole. */
 const tally = () => ({
 	found, wanted, passesTaken, passesDropped, costsAll, spurious, proposedEver, errors, rows, wrong,
 	doubles, sureFound, sureSpurious, wrongAt, crowdedOut, everShown, everRight, everWrong, everWrongOut,
-	everFound, recs
+	everFound, recs, drifts
 });
 
 if (jobs > 1) {
@@ -230,6 +232,7 @@ if (jobs > 1) {
 		rows.push(...part.rows);
 		wrong.push(...part.wrong);
 		recs.push(...part.recs);
+		drifts.push(...part.drifts);
 		part.wrongAt.forEach((n, i) => (wrongAt[i] += n));
 	}
 }
@@ -346,17 +349,20 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	passesDropped += result.dropped;
 	for (const c of result.costs) costsAll.push(c);
 	// The tie whose hand fit the sweep's face matches best, so locking onto the neighbour is reported as such.
-	let tie = null;
-	for (const candidate of ties) {
+	// How far the sweep's face on a tied frame is from the hand fit, in radii, or null with no face there.
+	const offOf = (candidate) => {
 		const face = result.track[candidate.frame - first]?.face;
-		if (!face) continue;
+		if (!face) return null;
 		const centre = project(candidate.fit, 0, 0);
 		const edge = [[1, 0], [0, 1], [-1, 0], [0, -1]].map(([u, v]) => project(candidate.fit, u, v));
 		const r = edge.reduce((sum, p) => sum + Math.hypot(p.x - centre.x, p.y - centre.y), 0) / 4;
-		const off =
-			Math.hypot(face.cx - centre.x, face.cy - centre.y) / r +
-			Math.abs((face.semiMajor + face.semiMinor) / 2 / r - 1);
-		if (!tie || off < tie.off) tie = { ...candidate, face, off };
+		return Math.hypot(face.cx - centre.x, face.cy - centre.y) / r + Math.abs((face.semiMajor + face.semiMinor) / 2 / r - 1);
+	};
+	let tie = null;
+	for (const candidate of ties) {
+		const off = offOf(candidate);
+		if (off === null) continue;
+		if (!tie || off < tie.off) tie = { ...candidate, face: result.track[candidate.frame - first].face, off };
 	}
 	const faced = result.track.filter((t) => t.face).length / Math.max(1, result.track.length);
 	if (!tie) {
@@ -379,7 +385,7 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	 * face, so a point drawn from one and read by the other is the only fair comparison there is.
 	 */
 	// How far a still arrow wanders in the sweep's face coordinates between labelled frames: the fit turning.
-	if (args.includes('--drift')) {
+	{
 		const at = (candidate) => {
 			const face = result.track[candidate.frame - first]?.face;
 			if (!face) return null;
@@ -393,7 +399,8 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 		let moved = 0;
 		for (const other of ties) {
 			const here = at(other);
-			if (!here || other === tie) continue;
+			// A frame where the sweep held another face or a broken fit is a fit fault, not the face turning.
+			if (!here || other.sample === tie.sample || offOf(other) > 0.3) continue;
 			// As sets: an arrow's number is not the same shaft on every frame, so pairing by number is wrong.
 			let best = 0;
 			let bestCost = Infinity;
@@ -409,10 +416,13 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 				}
 			}
 			turns.push(Math.abs(best));
+			if (args.includes('--drift')) rows.push(`${name.slice(-24)}    frame ${other.sample}: turned ${best}°, arrows left ${(bestCost / here.length).toFixed(3)} radii apart, against ${(here.reduce((sum, p) => sum + Math.min(...base.map((q) => Math.hypot(q.x - p.x, q.y - p.y))), 0) / here.length).toFixed(3)} unturned`);
 			for (const p of here) moved = Math.max(moved, Math.min(...base.map((q) => Math.hypot(q.x - p.x, q.y - p.y))));
 		}
-		rows.push(`${name.slice(-24)}  drift: ${ties.length} tied frames, turn up to ${Math.max(0, ...turns).toFixed(1)}°, arrows move up to ${moved.toFixed(3)} radii`);
-		recs.push({ name, drift: Math.max(0, ...turns), moved });
+		if (args.includes('--drift')) rows.push(`${name.slice(-24)}  drift: ${ties.length} tied frames, turn up to ${Math.max(0, ...turns).toFixed(1)}°, arrows move up to ${moved.toFixed(3)} radii`);
+		// One checked frame has nothing to drift against, so it says nothing either way.
+		if (turns.length) drifts.push(Math.max(...turns));
+		if (args.includes('--drift')) recs.push({ name, drift: Math.max(0, ...turns), moved });
 	}
 
 	const targets = tie.arrows.map((arrow) => {
@@ -562,7 +572,7 @@ for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	if (dumpTo) {
 		await writeFile(
 			join(resolve(dumpTo), `${name}.json`),
-			JSON.stringify({ targets, everything: result.everything, arrows: result.arrows, scored: result.scored, passes: result.passes, faced, off: tie.off, tie: tie.sample, face: tie.face })
+			JSON.stringify({ targets, owed, passes: result.passes, shownEver: result.shownEver, faces: result.track.filter((t) => t.pass).map((t) => t.face), everything: result.everything, arrows: result.arrows, scored: result.scored, faced, off: tie.off, tie: tie.sample, face: tie.face })
 		);
 	}
 	recs.push({ name, wanted: owed.filter(Boolean).length, hit, everProposed, spurious: result.arrows.length - taken.size, sureHit, sureSpurious: result.scored.length - sureTaken.size, faced, off: tie.off, tie: tie.sample, cause: null });
@@ -605,6 +615,11 @@ console.log(`  arrows ever marked ${everFound}/${wanted} (${((everFound / wanted
 console.log(`  wrong marks ever   ${everWrong} distinct places (${(everWrong / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(`    past the edge    ${everWrongOut} of those were out beyond the printed face`);
 console.log(`  right of all shown ${((everRight / Math.max(1, everShown)) * 100).toFixed(0)}%\n`);
+{
+	const sorted = [...drifts].sort((a, b) => a - b);
+	const median = sorted.length ? sorted[Math.floor(sorted.length / 2)].toFixed(1) : '--';
+	console.log(`orientation drift   ${median}° median, ${sorted.filter((d) => d <= 5).length}/${sorted.length} recordings within 5°, ${sorted.filter((d) => d > 45).length} turned past 45° (checked on two frames or more)`);
+}
 console.log(`crowded out         ${crowdedOut} arrows had a right mark within a ring of them and got none`);
 console.log(`double marks        ${doubles} (${(doubles / Math.max(rows.length, 1)).toFixed(1)} per recording)`);
 console.log(
