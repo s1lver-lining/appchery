@@ -218,6 +218,12 @@
 		return arrowsPlaced(r) ? frame : (faceOf(r).placedOn ?? bestFrame(r));
 	}
 
+	/** Where the nocks step opens: the frame already open when nocks are asked of it, else the first that is. */
+	function nocksFrame(r: Recording) {
+		const frames = nockFrames(r);
+		return frames.includes(frame) ? frame : (frames[0] ?? 0);
+	}
+
 	function pickFace(id: string) {
 		if (!rec) return;
 		view.face = id;
@@ -426,8 +432,9 @@
 			const next = after((i) => !arrowsChecked(rec, i));
 			if (next >= 0) return go(next);
 			say(options.nocks ? 'Arrows done. Now the nocks.' : 'Arrows done.');
-			const nocks = nockFrames(rec).find((i) => nocksWanted(rec, i).length > 0);
-			return faceOf(rec).empty || nocks === undefined ? go(frame, 'score') : go(nocks, 'nocks');
+			const wanting = nockFrames(rec).filter((i) => nocksWanted(rec, i).length > 0);
+			if (faceOf(rec).empty || wanting.length === 0) return go(frame, 'score');
+			return go(wanting.includes(frame) ? frame : wanting[0], 'nocks');
 		}
 		if (step === 'nocks') {
 			const next = nockFrames(rec).find((i) => nocksWanted(rec, i).length > 0);
@@ -773,7 +780,7 @@
 
 	function openStep(s: Step) {
 		if (!rec) return;
-		go(s === 'arrows' ? arrowsFrame(rec) : s === 'nocks' ? (nockFrames(rec)[0] ?? 0) : frame, s);
+		go(s === 'arrows' ? arrowsFrame(rec) : s === 'nocks' ? nocksFrame(rec) : frame, s);
 	}
 
 	function cellTitle(i: number, state: string): string {
