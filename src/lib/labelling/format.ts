@@ -59,6 +59,8 @@ export interface FrameFace {
 	hidden?: number[];
 	/** Null where the nock cannot be made out on this frame. */
 	nocks?: Record<string, Point | null>;
+	/** Arrows whose nock point is where the shaft leaves the picture: on the shaft, but not its nock. */
+	nockCut?: number[];
 }
 
 export interface Labels {
@@ -295,6 +297,8 @@ export function fromLegacy(old: any, meta: FramesMeta): Labels {
 		const i = Number(key);
 		const face = (frames[i] ??= { a: { state: 'ok', fit: seedFit(meta.seeds[i], meta.width, meta.height) } }).a;
 		face.nocks = Object.fromEntries(list.map((nock) => [nock.arrow, [nock.x, nock.y] as Point]));
+		const cut = list.filter((nock) => (nock as { cut?: boolean }).cut).map((nock) => nock.arrow);
+		if (cut.length) face.nockCut = cut;
 	}
 
 	return {
@@ -321,7 +325,7 @@ export function toLegacy(labels: Labels) {
 	const frames: Record<string, { handles: Point[] | null; skip: boolean; touched: boolean; arrowsOk: boolean }> = {};
 	const frameArrows: Record<string, Arrow[]> = {};
 	const frameHidden: Record<string, Arrow[]> = {};
-	const nocks: Record<string, { arrow: number; x: number; y: number }[]> = {};
+	const nocks: Record<string, { arrow: number; x: number; y: number; cut?: boolean }[]> = {};
 	for (const [key, faces] of Object.entries(labels.frames)) {
 		const here = faces[face?.id ?? 'a'];
 		if (!here) continue;
@@ -329,7 +333,7 @@ export function toLegacy(labels: Labels) {
 		else if (here.fit) frames[key] = { handles: atRadius(here.fit, 1, radius), skip: false, touched: true, arrowsOk: Boolean(here.arrowsOk) };
 		if (here.nocks) {
 			const seen = Object.entries(here.nocks).filter((entry): entry is [string, Point] => entry[1] !== null);
-			if (seen.length) nocks[key] = seen.map(([n, [x, y]]) => ({ arrow: Number(n), x, y }));
+			if (seen.length) nocks[key] = seen.map(([n, [x, y]]) => ({ arrow: Number(n), x, y, ...(here.nockCut?.includes(Number(n)) ? { cut: true } : {}) }));
 		}
 		if (!face || here.state === 'none') continue;
 		const placed = arrowsOn(labels, Number(key), face.id);

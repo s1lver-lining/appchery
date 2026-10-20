@@ -33,9 +33,12 @@ Enter moves on to the next thing. Each recording goes through these steps.
    turns it to the angle that lays the most arrows on what the detector sees there, and says so.
    Undo puts it back. Dragging one arrow moves it on that frame only. H hides the chosen arrow from
    this frame to the next frame already checked, for an arrow behind another or out of the picture.
-3. **Nocks**, only with *Label nocks* ticked, which is off by default: nothing the scorer measures or
-   learns from reads them. Off, the step, the nock lines and their share of the progress are gone. Six frames spread over the sweep, counting any already nocked. Each visible arrow is
-   asked for in turn. S says the nock cannot be seen.
+3. **Nocks**, only with *Label nocks* ticked, which is off by default. Tip and nock give the shaft's
+   line, which `eval-proposer.mjs` measures the shaft finder against. Off, the step, the nock lines and their share of the progress are gone. Six frames spread over the sweep, counting any already nocked. Each visible arrow is
+   asked for in turn. X says the nock cannot be seen. While the button is held, a dashed line shows the
+   shaft from the tip to the pointer. A nock can be dragged to move it. Where the shaft runs off the
+   picture, click where it leaves the edge: a point that close to the edge is kept as on the shaft but
+   not its nock, drawn as a hollow square, and the nock and tail measures leave it out.
 4. **Score.** Runs `eval-arrows-video.mjs --slower 0` on the recording, which gives the same numbers
    as the overnight reports. The player (P, from any step) plays the recording through the phone's
    own live path: `LiveScanner`, its worker, and `LiveView`, which the camera page draws with too.
@@ -81,6 +84,7 @@ node scripts share it, which works because node strips the types itself.
   * `moved`, arrows placed on that frame alone;
   * `hidden`, arrows out of sight on that frame;
   * `nocks`, in picture pixels, null where a nock cannot be seen.
+  * `nockCut`, the arrows whose nock point is where the shaft leaves the picture.
 
 `scripts/lib/labels.mjs` gives the measuring scripts their labels in the old shape, from the new file
 when there is one and from the old file otherwise. A frame with hidden arrows lists only the visible

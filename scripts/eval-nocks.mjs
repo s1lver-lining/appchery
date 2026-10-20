@@ -71,7 +71,9 @@ for (const name of (await readdir(WORK)).sort()) {
 	const metaFile = join(WORK, name, 'frames.json');
 	const meta = existsSync(metaFile) ? JSON.parse(await readFile(metaFile, 'utf8')) : null;
 
-	for (const [index, placed] of Object.entries(label.nocks)) {
+	for (const [index, all] of Object.entries(label.nocks)) {
+		// A point where the shaft leaves the picture is on the shaft but is not a nock.
+		const placed = all?.filter((nock) => !nock.cut);
 		// Three lines is the fewest that can disagree about where they meet; two always agree exactly.
 		if (!placed || placed.length < 3) continue;
 		// A hand fit if there is one, otherwise the detector's own, which is what the tool started from.

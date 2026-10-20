@@ -279,16 +279,32 @@
 			const p = project(h, arrow.x, arrow.y);
 			const s = screen(p.x, p.y);
 			const nock = options.nocks ? here?.nocks?.[arrow.n] : null;
-			if (nock) {
+			// The shaft as it would be with the nock under the pointer, while the button is held.
+			const aimed = step === 'nocks' && pressed && pointer && target === arrow.n && !nockDragged;
+			if (aimed) {
+				c.save();
+				c.setLineDash([6, 4]);
+				c.strokeStyle = '#ff4fd8';
+				c.lineWidth = 2;
+				c.beginPath();
+				c.moveTo(s.x, s.y);
+				c.lineTo(pointer!.x, pointer!.y);
+				c.stroke();
+				c.restore();
+			}
+			if (nock && !aimed) {
 				const n = screen(nock[0], nock[1]);
-				c.strokeStyle = 'rgba(80,200,255,0.9)';
+				const cut = here?.nockCut?.includes(arrow.n);
+				c.strokeStyle = nockDragged === arrow.n ? '#ff4fd8' : 'rgba(80,200,255,0.9)';
 				c.lineWidth = 2;
 				c.beginPath();
 				c.moveTo(s.x, s.y);
 				c.lineTo(n.x, n.y);
 				c.stroke();
+				// Hollow where the shaft runs off the picture, so it reads as a point on it rather than its nock.
 				c.fillStyle = 'rgba(80,200,255,1)';
-				c.fillRect(n.x - 4, n.y - 4, 8, 8);
+				if (cut) c.strokeRect(n.x - 5, n.y - 5, 10, 10);
+				else c.fillRect(n.x - 4, n.y - 4, 8, 8);
 			}
 			const isSelected = selected === arrow.n || (step === 'nocks' && target === arrow.n);
 			c.save();
@@ -376,9 +392,48 @@
 		| { kind: 'turn'; start: Point[]; from: number }
 		| { kind: 'centre'; start: Point[] }
 		| { kind: 'arrow'; n: number }
+		| { kind: 'nock'; n: number }
 		| { kind: 'aim' };
 	let drag: Drag | null = null;
 	let downAt: { x: number; y: number } | null = null;
+	/** The arrow whose nock is being dragged, so it is drawn as the one moving. */
+	let nockDragged = $state<number | null>(null);
+
+	/** The nock under the pointer on this frame, within a fingertip on the screen. */
+	function nockAt(p: { x: number; y: number }): number | null {
+		let best: number | null = null;
+		let near = 12;
+		for (const [n, nock] of Object.entries(frameFace(rec, frame)?.nocks ?? {})) {
+			if (!nock) continue;
+			const s = screen(nock[0], nock[1]);
+			const d = Math.hypot(s.x - p.x, s.y - p.y);
+			if (d < near) {
+				near = d;
+				best = Number(n);
+			}
+		}
+		return best;
+	}
+
+	/**
+	 * Puts an arrow's nock point, kept inside the picture. A point at its edge is where the shaft runs off
+	 * it: still on the shaft, which is all a shaft's line needs, but marked so it is never read as a nock.
+	 */
+	function setNock(n: number, x: number, y: number) {
+		if (!image) return;
+		const w = image.naturalWidth;
+		const h = image.naturalHeight;
+		const px = Math.max(0, Math.min(w - 1, x));
+		const py = Math.max(0, Math.min(h - 1, y));
+		const margin = Math.min(w, h) * 0.015;
+		const cut = px < margin || py < margin || px > w - 1 - margin || py > h - 1 - margin;
+		const here = ensureFrame(rec, frame);
+		here.nocks = { ...(here.nocks ?? {}), [n]: [px, py] };
+		const others = (here.nockCut ?? []).filter((c) => c !== n);
+		if (cut) here.nockCut = [...others, n];
+		else if (others.length) here.nockCut = others;
+		else delete here.nockCut;
+	}
 
 	function local(event: PointerEvent) {
 		const rect = canvas!.getBoundingClientRect();
@@ -440,7 +495,7 @@
 			if (placing) return guessAt(p) >= 0 ? 'pointer' : 'crosshair';
 			return 'default';
 		}
-		if (step === 'nocks') return arrowAt(p) !== null ? 'pointer' : 'crosshair';
+		if (step === 'nocks') return nockAt(p) !== null ? 'grab' : arrowAt(p) !== null ? 'pointer' : 'crosshair';
 		if (onCentre(p)) return 'all-scroll';
 		const fit = fitHere(rec, frame);
 		const i = toImg(p);
@@ -463,7 +518,10 @@
 		if (now.endsWith('-resize')) return 'Drag to stretch, click to fit';
 		if (step === 'face') return 'Click a ring edge to fit';
 		if (step === 'arrows' && placing) return now === 'pointer' ? 'Click to take this guess' : 'Click the impact (hold to aim)';
-		if (step === 'nocks') return now === 'pointer' ? 'Click to pick this arrow' : 'Click the pink arrow’s nock';
+		if (step === 'nocks') {
+			if (now === 'grab') return 'Drag to move this nock';
+			return now === 'pointer' ? 'Click to pick this arrow' : 'Click the pink arrow’s nock, or where its shaft leaves the picture';
+		}
 		return '';
 	}
 
@@ -506,6 +564,14 @@
 			}
 		}
 		if (step === 'nocks') {
+			const held = nockAt(p);
+			if (held !== null) {
+				target = held;
+				nockDragged = held;
+				pressed = true;
+				drag = { kind: 'nock', n: held };
+				return;
+			}
 			const n = arrowAt(p);
 			if (n !== null) {
 				target = n;
@@ -528,7 +594,7 @@
 			hint = hintFor(p, cursor);
 			return;
 		}
-		if (drag.kind === 'pan' || drag.kind === 'arrow' || drag.kind === 'turn') cursor = 'grabbing';
+		if (drag.kind === 'pan' || drag.kind === 'arrow' || drag.kind === 'turn' || drag.kind === 'nock') cursor = 'grabbing';
 		const i = toImg(p);
 		if (drag.kind === 'pending') {
 			if (Math.hypot(p.x - drag.sx, p.y - drag.sy) < 5) return;
@@ -555,6 +621,9 @@
 		} else if (drag.kind === 'turn') {
 			const q = toFace(drag.start, i.x, i.y);
 			if (q) setFit(turned(drag.start, Math.atan2(q.y, q.x) - drag.from));
+		} else if (drag.kind === 'nock') {
+			if (downAt && Math.hypot(p.x - downAt.x, p.y - downAt.y) < 4) return;
+			setNock(drag.n, i.x, i.y);
 		} else if (drag.kind === 'arrow') {
 			if (downAt && Math.hypot(p.x - downAt.x, p.y - downAt.y) < 4) return;
 			pressed = true;
@@ -567,6 +636,7 @@
 		const was = drag;
 		drag = null;
 		pressed = false;
+		nockDragged = null;
 		if (!was) return;
 		const i = toImg(p);
 		const still = downAt ? Math.hypot(p.x - downAt.x, p.y - downAt.y) < 5 : false;
@@ -579,10 +649,12 @@
 				if (q) addArrow(q.x, q.y, -1);
 			}
 		} else if (was.kind === 'aim' && step === 'nocks' && target !== null) {
-			const here = ensureFrame(rec, frame);
-			here.nocks = { ...(here.nocks ?? {}), [target]: [i.x, i.y] };
+			setNock(target, i.x, i.y);
 			onchange();
 			onnock?.();
+		} else if (was.kind === 'nock') {
+			// Moving a nock only corrects it, so the step stays on this arrow rather than moving on.
+			if (!still) onchange();
 		} else if (was.kind === 'arrow' && still) {
 			// A click on an arrow only picks it.
 		} else if (was.kind === 'move' || was.kind === 'centre' || was.kind === 'pull' || was.kind === 'turn' || was.kind === 'arrow') {
@@ -657,7 +729,7 @@
 		onpointerdown={down}
 		onpointermove={move}
 		onpointerup={up}
-		onpointercancel={() => ((drag = null), (pressed = false))}
+		onpointercancel={() => ((drag = null), (pressed = false), (nockDragged = null))}
 		onpointerleave={() => (pointer = drag ? pointer : null)}
 		onwheel={wheel}
 		oncontextmenu={(event) => event.preventDefault()}

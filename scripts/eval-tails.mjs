@@ -38,7 +38,9 @@ for (const name of (await readdir(WORK)).sort()) {
   if (!label.nocks || !label.arrows?.length) continue;
   const meta = JSON.parse(await readFile(join(WORK, name, 'frames.json'), 'utf8'));
 
-  for (const [index, placed] of Object.entries(label.nocks)) {
+  for (const [index, all] of Object.entries(label.nocks)) {
+    // A point where the shaft leaves the picture is on the shaft but is not a nock.
+    const placed = all?.filter((nock) => !nock.cut);
     if (!placed?.length) continue;
     // A hand fit if there is one, otherwise the frame's own automatic one, for want of enough of the first.
     const fit = label.frames?.[index]?.handles ? label.frames[index] : { handles: meta.seeds?.[Number(index)]?.handles };

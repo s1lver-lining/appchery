@@ -82,6 +82,13 @@ describe('legacy labels', () => {
 		expect(back.frames[0].handles![0][0]).toBeCloseTo(handles[0][0], 6);
 	});
 
+	it('keeps a point where a shaft leaves the picture apart from a nock', () => {
+		const labels = fromLegacy({ ...old, nocks: { 1: [{ arrow: 0, x: 300, y: 500 }, { arrow: 1, x: 0, y: 640, cut: true }] } }, meta);
+		expect(labels.frames[1].a.nockCut).toEqual([1]);
+		const back = toLegacy(labels);
+		expect(back.nocks[1]).toEqual([{ arrow: 0, x: 300, y: 500 }, { arrow: 1, x: 0, y: 640, cut: true }]);
+	});
+
 	it('lists only visible arrows on a frame with one out of sight', () => {
 		const labels = fromLegacy(old, meta);
 		labels.frames[1].a.hidden = [1];

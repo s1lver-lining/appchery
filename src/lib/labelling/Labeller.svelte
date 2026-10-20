@@ -536,6 +536,7 @@
 				const here = faces[face.id];
 				if (here?.moved) delete here.moved[n];
 				if (here?.nocks) delete here.nocks[n];
+				if (here?.nockCut) here.nockCut = here.nockCut.filter((c) => c !== n);
 				if (here?.hidden) here.hidden = here.hidden.filter((h) => h !== n);
 			}
 			if (face.arrows.length === 0) face.placedOn = null;
@@ -604,6 +605,7 @@
 		if (!here?.nocks || keys.length === 0) return;
 		const last = keys[keys.length - 1];
 		delete here.nocks[last];
+		if (here.nockCut) here.nockCut = here.nockCut.filter((c) => c !== Number(last));
 		target = Number(last);
 		changed();
 	}
@@ -1108,7 +1110,7 @@
 					</div>
 				{:else if step === 'nocks'}
 					<h2 class="text-base font-bold">Click the nocks</h2>
-					<p class="mt-1 text-muted">Click the far end of the shaft ringed in pink.</p>
+					<p class="mt-1 text-muted">Click the far end of the shaft ringed in pink. If it runs off the picture, click where it leaves the edge. Drag a nock to move it.</p>
 					{#if target !== null}
 						<div class="mt-3 rounded-xl border border-line bg-bg p-3">Arrow <b>{target + 1}</b> · {wanted.length} left on this frame</div>
 					{/if}
