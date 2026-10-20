@@ -13,9 +13,9 @@
  */
 import { build } from 'esbuild';
 import { spawn } from 'node:child_process';
-import { readFile, readdir, mkdtemp, rm } from 'node:fs/promises';
+import { readFile, readdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { tmpdir, availableParallelism } from 'node:os';
 import { join, resolve } from 'node:path';
 import { listRecordings, motionPath } from './lib/recordings.mjs';
 
@@ -158,6 +158,12 @@ const hold = Number(option('hold', 0));
 /** Weights for the learned detector, measured through the same harness as the written one. */
 const modelPath = option('model', null);
 const model = modelPath ? JSON.parse(await readFile(resolve(modelPath), 'utf8')) : null;
+// Recordings measured at once, half the logical cores by default so each process has a core to itself.
+const jobs = Math.max(1, Number(option('jobs', Math.floor(availableParallelism() / 2))));
+/** Set on the processes `--jobs` starts: hand the tallies back as JSON rather than report them. */
+const emit = args.includes('--emit');
+/** A folder to write each recording's proposals, marks and labels into, for looking at one closely. */
+const dumpTo = option('dump', null);
 
 const { Sweep, toFaceCoords, downscale, regionBox, DETECT_EVERY_MS } = await load();
 
@@ -185,8 +191,43 @@ let everRight = 0;
 let everWrong = 0;
 let everWrongOut = 0;
 let everFound = 0;
+/** One line per recording, for whoever wants to group them differently from the totals here. */
+const recs = [];
 
-for (const name of (await readdir(WORK)).sort()) {
+/** The tallies by name, so a recording measured in a process of its own can hand them back whole. */
+const tally = () => ({
+	found, wanted, passesTaken, passesDropped, costsAll, spurious, proposedEver, errors, rows, wrong,
+	doubles, sureFound, sureSpurious, wrongAt, crowdedOut, everShown, everRight, everWrong, everWrongOut,
+	everFound, recs
+});
+
+if (jobs > 1) {
+	for (const part of await inParallel()) {
+		found += part.found;
+		wanted += part.wanted;
+		passesTaken += part.passesTaken;
+		passesDropped += part.passesDropped;
+		spurious += part.spurious;
+		proposedEver += part.proposedEver;
+		doubles += part.doubles;
+		sureFound += part.sureFound;
+		sureSpurious += part.sureSpurious;
+		crowdedOut += part.crowdedOut;
+		everShown += part.everShown;
+		everRight += part.everRight;
+		everWrong += part.everWrong;
+		everWrongOut += part.everWrongOut;
+		everFound += part.everFound;
+		costsAll.push(...part.costsAll);
+		errors.push(...part.errors);
+		rows.push(...part.rows);
+		wrong.push(...part.wrong);
+		recs.push(...part.recs);
+		part.wrongAt.forEach((n, i) => (wrongAt[i] += n));
+	}
+}
+
+for (const name of jobs > 1 ? [] : (await readdir(WORK)).sort()) {
 	if (only && !name.includes(only)) continue;
 	const folder = join(WORK, name);
 	if (!existsSync(join(folder, 'labels.json'))) continue;
@@ -194,11 +235,24 @@ for (const name of (await readdir(WORK)).sort()) {
 	if (label.empty || !label.arrows?.length) continue;
 
 	const meta = JSON.parse(await readFile(join(folder, 'frames.json'), 'utf8'));
-	const truth = homography(
-		label.frames[String(label.arrowFrame)].handles,
-		ANCHOR_RADII[label.faceType] ?? ANCHOR
-	);
-	if (!truth) continue;
+	// Tied on every frame carrying the whole set, as the export does: the arrow frame alone may have no sweep face.
+	const radius = ANCHOR_RADII[label.faceType] ?? ANCHOR;
+	const claims = [[label.arrowFrame, label.arrows]];
+	for (const [sample, list] of Object.entries(label.frameArrows ?? {})) {
+		if (list.length >= label.arrows.length) claims.push([Number(sample), list]);
+	}
+	const ties = [];
+	for (const [sample, arrows] of claims) {
+		const fit = label.frames?.[String(sample)];
+		if (!fit || fit.skip) continue;
+		const h = homography(fit.handles, radius);
+		if (h) ties.push({ sample, frame: meta.chosen[sample], fit: h, arrows });
+	}
+	if (ties.length === 0) {
+		rows.push(`${name.slice(-24)}  skipped: no fitted frame carries the arrows`);
+		recs.push({ name, skipped: 'no fitted frame carries the arrows' });
+		continue;
+	}
 
 	const { width, height } = meta;
 	const at = meta.chosen[label.arrowFrame];
@@ -280,9 +334,32 @@ for (const name of (await readdir(WORK)).sort()) {
 	passesTaken += result.passes;
 	passesDropped += result.dropped;
 	for (const c of result.costs) costsAll.push(c);
-	if (!result.at) {
-		rows.push(`${name.slice(-24)}  no face on the labelled frame`);
+	// The tie whose hand fit the sweep's face matches best, so locking onto the neighbour is reported as such.
+	let tie = null;
+	for (const candidate of ties) {
+		const face = result.track[candidate.frame - first]?.face;
+		if (!face) continue;
+		const centre = project(candidate.fit, 0, 0);
+		const edge = [[1, 0], [0, 1], [-1, 0], [0, -1]].map(([u, v]) => project(candidate.fit, u, v));
+		const r = edge.reduce((sum, p) => sum + Math.hypot(p.x - centre.x, p.y - centre.y), 0) / 4;
+		const off =
+			Math.hypot(face.cx - centre.x, face.cy - centre.y) / r +
+			Math.abs((face.semiMajor + face.semiMinor) / 2 / r - 1);
+		if (!tie || off < tie.off) tie = { ...candidate, face, off };
+	}
+	const faced = result.track.filter((t) => t.face).length / Math.max(1, result.track.length);
+	if (!tie) {
+		rows.push(`${name.slice(-24)}  no face on any labelled frame`);
+		recs.push({ name, wanted: label.arrows.length, hit: 0, everProposed: 0, spurious: result.arrows.length, sureHit: 0, sureSpurious: result.scored.length, faced, off: null, cause: 'no face' });
 		wanted += label.arrows.length;
+		continue;
+	}
+	if (tie.off > 0.3) {
+		rows.push(`${name.slice(-24)}  wrong face: the sweep's face is ${tie.off.toFixed(2)} radii off the labelled one`);
+		recs.push({ name, wanted: label.arrows.length, hit: 0, everProposed: 0, spurious: result.arrows.length, sureHit: 0, sureSpurious: result.scored.length, faced, off: tie.off, cause: 'wrong face' });
+		wanted += label.arrows.length;
+		spurious += result.arrows.length;
+		sureSpurious += result.scored.length;
 		continue;
 	}
 
@@ -290,10 +367,10 @@ for (const name of (await readdir(WORK)).sort()) {
 	 * The labels moved into the detector's own frame, by way of the picture. Both describe the same
 	 * face, so a point drawn from one and read by the other is the only fair comparison there is.
 	 */
-	const targets = label.arrows.map((arrow) => {
+	const targets = tie.arrows.map((arrow) => {
 		// Both in the video's own pixels: the sweep already put its fit back to full resolution.
-		const point = project(truth, arrow.x, arrow.y);
-		return toFaceCoords(result.at, point.x, point.y);
+		const point = project(tie.fit, arrow.x, arrow.y);
+		return toFaceCoords(tie.face, point.x, point.y);
 	});
 
 	// Was it ever proposed at all, in any pass? That separates a proposer that cannot see an arrow
@@ -430,11 +507,26 @@ for (const name of (await readdir(WORK)).sort()) {
 			unsure: Boolean(arrow.unsure)
 		});
 	});
+	if (dumpTo) {
+		await writeFile(
+			join(resolve(dumpTo), `${name}.json`),
+			JSON.stringify({ targets, everything: result.everything, arrows: result.arrows, scored: result.scored, passes: result.passes, faced, off: tie.off, tie: tie.sample, face: tie.face })
+		);
+	}
+	recs.push({ name, wanted: targets.length, hit, everProposed, spurious: result.arrows.length - taken.size, sureHit, sureSpurious: result.scored.length - sureTaken.size, faced, off: tie.off, tie: tie.sample, cause: null });
 	rows.push(
 		`${name.slice(-24)}  ${hit}/${targets.length} found, ${everProposed}/${targets.length} ever proposed, ` +
 			`${result.arrows.length - taken.size} spurious`
 	);
 }
+
+if (emit) {
+	process.stdout.write(JSON.stringify(tally()));
+	process.exit(0);
+}
+/** Where to write the line per recording, when one is asked for. */
+const recordsTo = option('records', null);
+if (recordsTo) await writeFile(resolve(recordsTo), JSON.stringify(recs, null, 1));
 
 const sorted = errors.sort((a, b) => a - b);
 const pct = (v) => `${(v * 100).toFixed(1)}%`;
@@ -493,6 +585,44 @@ if (args.includes('--why')) {
 	console.log(`\n  by ring, centre outwards (10 bins)`);
 	console.log(`    right  ${ring(right)}`);
 	console.log(`    wrong  ${ring(bad)}`);
+}
+
+/** Every labelled recording measured in a child process, `jobs` at a time, merged in name order. */
+async function inParallel() {
+	const names = [];
+	for (const name of (await readdir(WORK)).sort()) {
+		if (only && !name.includes(only)) continue;
+		if (existsSync(join(WORK, name, 'labels.json'))) names.push(name);
+	}
+	const passed = [];
+	for (let i = 0; i < args.length; i++) {
+		if (args[i] === '--jobs' || args[i] === '--video') i += 1;
+		else if (args[i] !== '--emit') passed.push(args[i]);
+	}
+	const script = new URL(import.meta.url).pathname;
+	const parts = new Array(names.length);
+	let next = 0;
+	const worker = async () => {
+		while (next < names.length) {
+			const at = next++;
+			const out = await new Promise((done, fail) => {
+				const child = spawn(process.execPath, [script, ...passed, '--video', names[at], '--jobs', '1', '--emit'], {
+					stdio: ['ignore', 'pipe', 'pipe']
+				});
+				let text = '';
+				let said = '';
+				child.stdout.on('data', (chunk) => (text += chunk));
+				// Kept for the failure only: ffmpeg complains on every recording and none of it matters.
+				child.stderr.on('data', (chunk) => (said = (said + chunk).slice(-4000)));
+				child.on('close', (code) =>
+					code === 0 ? done(text) : fail(new Error(`${names[at]} exited ${code}\n${said}`))
+				);
+			});
+			parts[at] = JSON.parse(out);
+		}
+	};
+	await Promise.all(Array.from({ length: Math.min(jobs, names.length) }, worker));
+	return parts;
 }
 
 /**
@@ -596,13 +726,22 @@ async function* decode(file, width, height, scaleTo) {
 	], { stdio: ['ignore', 'pipe', 'inherit'] });
 
 	const size = width * height * 4;
-	let held = Buffer.alloc(0);
+	// Filled in place: gluing chunks onto a growing buffer was a third of a run.
+	let frame = Buffer.allocUnsafe(size);
+	let filled = 0;
 	try {
 		for await (const chunk of child.stdout) {
-			held = held.length === 0 ? chunk : Buffer.concat([held, chunk]);
-			while (held.length >= size) {
-				yield held.subarray(0, size);
-				held = held.subarray(size);
+			let from = 0;
+			while (from < chunk.length) {
+				const take = Math.min(size - filled, chunk.length - from);
+				chunk.copy(frame, filled, from, from + take);
+				filled += take;
+				from += take;
+				if (filled === size) {
+					yield frame;
+					frame = Buffer.allocUnsafe(size);
+					filled = 0;
+				}
 			}
 		}
 	} finally {

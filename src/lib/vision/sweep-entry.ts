@@ -71,6 +71,11 @@ export interface SweepResult {
 	}[];
 }
 
+/** Process CPU time, so a pass costs the same however busy the machine is. */
+function cpuNow(): number {
+	const usage = (globalThis as { process?: { cpuUsage?: () => { user: number; system: number } } }).process?.cpuUsage?.();
+	return usage ? (usage.user + usage.system) / 1000 : performance.now();
+}
 /**
  * Replays one recording through the live scanner and reports what it ended up with.
  *
@@ -223,9 +228,9 @@ export class Sweep {
 		if (nowMs - this.last >= this.detectEveryMs && nowMs >= this.busyUntil) {
 			pass = true;
 			this.last = nowMs;
-			const started = performance.now();
+			const started = cpuNow();
 			const result = this.scanner.pushReduced(small, typeof region === 'function' ? region() : region);
-			const cost = performance.now() - started;
+			const cost = cpuNow() - started;
 			this.costs.push(cost);
 			// In the recording's own time, so the next pass is owed from when this one would have ended.
 			this.busyUntil = nowMs + cost * this.slower;
