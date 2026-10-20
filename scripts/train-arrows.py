@@ -21,7 +21,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from PIL import Image
+from PIL import Image, ImageFilter
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 PREPARED = os.path.join(ROOT, "test/datasets/prepared")
@@ -146,8 +146,45 @@ def render(points, span):
     return heat, offset, mask
 
 
-def augment(image, points, cover, span, rng):
+def recolour(image, cover, span, rng):
+    """Arrows painted another colour, so the model learns their shape and not the club's favourite fletching.
+
+    A median keeps the rings, edges and all, and wipes out anything thinner than its window: what it wipes
+    out is shafts, fletchings and holes. Only that is recoloured, never the rings.
+    """
+    size = image.shape[0]
+    axis = (np.arange(size) + 0.5) / size * 2 * span - span
+    radius = np.hypot(axis[None, :], axis[:, None])
+    picture = Image.fromarray((image * 255).astype(np.uint8))
+    paper = np.asarray(picture.filter(ImageFilter.MedianFilter(7)), dtype=np.float32) / 255.0
+    apart = (np.linalg.norm(image - paper, axis=2) > 0.2) & (radius < 1.15) & (cover > 0)
+    if not apart.any():
+        return image
+
+    pixels = image[apart]
+    top = pixels.max(axis=1)
+    low = pixels.min(axis=1)
+    grey = top - low < 0.08
+    # Grey shafts and black carbon get a colour of their own, so dark is not the only thing an arrow can be.
+    hue = (rng.random() + np.zeros(len(pixels))) % 1.0
+    saturation = np.where(grey, rng.uniform(0.3, 0.9), np.clip((top - low) / np.maximum(top, 1e-3) * rng.uniform(0.5, 1.5), 0, 1))
+    value = np.clip(np.where(grey, rng.uniform(0.35, 1.0), top * rng.uniform(0.7, 1.3)), 0, 1)
+    sector = (hue * 6).astype(int) % 6
+    f = hue * 6 - np.floor(hue * 6)
+    p = value * (1 - saturation)
+    q = value * (1 - f * saturation)
+    t = value * (1 - (1 - f) * saturation)
+    choices = [(value, t, p), (q, value, p), (p, value, t), (p, q, value), (t, p, value), (value, p, q)]
+    rgb = np.stack([np.choose(sector, [c[k] for c in choices]) for k in range(3)], axis=1)
+    out = image.copy()
+    out[apart] = rgb
+    return out
+
+
+def augment(image, points, cover, span, rng, recolouring=0.0):
     """Rotation is the big one: a target face is round, so any angle is another real example."""
+    if recolouring and rng.random() < recolouring:
+        image = recolour(image, cover, span, rng)
     angle = rng.uniform(0, 2 * math.pi)
     flip = rng.random() < 0.5
 
@@ -290,6 +327,8 @@ def main():
     parser.add_argument("--seed", type=int, default=7)
     parser.add_argument("--extra", default="")
     parser.add_argument("--out", default=OUT)
+    # Share of training crops whose arrows are painted another colour. Off by default, as the shipped weights were trained.
+    parser.add_argument("--recolour", type=float, default=0.0)
     # Another set of recording crops, such as one exported with a held out set left out of it.
     parser.add_argument("--recordings", default=RECORDINGS)
     # Times to repeat the crops of recordings whose name holds this text, so a new kind of arrow is not
@@ -358,7 +397,7 @@ def main():
         for start in range(0, len(train) - batch + 1, batch):
             images, heats, offsets, masks, valids = [], [], [], [], []
             for image, points, cover in train[start : start + batch]:
-                aug, moved, cover_out = augment(image, points, cover, span, rng)
+                aug, moved, cover_out = augment(image, points, cover, span, rng, args.recolour)
                 heat, offset, mask = render(moved, span)
                 images.append(aug.transpose(2, 0, 1))
                 heats.append(heat)
