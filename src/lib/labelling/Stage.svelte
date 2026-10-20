@@ -275,6 +275,7 @@
 			c.strokeText('?', s.x, s.y);
 			c.fillText('?', s.x, s.y);
 		}
+		aimFrom = null;
 		for (const arrow of arrowsOn(labelsOf(rec), frame, face.id)) {
 			const p = project(h, arrow.x, arrow.y);
 			const s = screen(p.x, p.y);
@@ -282,6 +283,7 @@
 			// The shaft as it would be with the nock under the pointer, while the button is held.
 			const aimed = step === 'nocks' && pressed && pointer && target === arrow.n && nockDragged === null;
 			if (aimed) {
+				aimFrom = s;
 				c.save();
 				c.setLineDash([6, 4]);
 				c.strokeStyle = '#ff4fd8';
@@ -363,12 +365,23 @@
 		}
 	}
 
+	/** Where the shaft being aimed starts on screen, so the loupe can keep off it. */
+	let aimFrom: { x: number; y: number } | null = null;
+
+	function nearSegment(px: number, py: number, a: { x: number; y: number }, b: { x: number; y: number }) {
+		const dx = b.x - a.x;
+		const dy = b.y - a.y;
+		const t = Math.max(0, Math.min(1, ((px - a.x) * dx + (py - a.y) * dy) / (dx * dx + dy * dy || 1)));
+		return Math.hypot(px - a.x - t * dx, py - a.y - t * dy);
+	}
+
 	function drawLoupe(c: CanvasRenderingContext2D, at: { x: number; y: number }) {
 		if (!image) return;
 		const r = 70;
 		const zoomBy = 4;
-		const lx = at.x < r * 2.4 ? at.x + r * 1.4 : at.x - r * 1.4;
+		let lx = at.x < r * 2.4 ? at.x + r * 1.4 : at.x - r * 1.4;
 		const ly = at.y < r * 2.4 ? at.y + r * 1.4 : at.y - r * 1.4;
+		if (aimFrom && nearSegment(lx, ly, aimFrom, at) < r) lx = at.x * 2 - lx;
 		const ix = (at.x - ox) / scale;
 		const iy = (at.y - oy) / scale;
 		const k = scale * zoomBy;
