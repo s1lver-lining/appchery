@@ -1,6 +1,6 @@
 // Entry point for scripts/eval-arrows-video.mjs, which replays a recording and asks what it found.
 // Not imported by the app.
-import { Scanner, type Region } from './pipeline';
+import { Scanner, type Region, type ScannerOptions } from './pipeline';
 import { toFaceCoords, scaleFace } from './face';
 import { upFromGravity } from './motion';
 import { luma } from './pixels';
@@ -145,17 +145,11 @@ export class Sweep {
 			 * detector as it behaves on a laptop rather than on a phone.
 			 */
 			motion?: { at: number; gravity: { x: number; y: number; z: number } | null }[] | null;
+			[setting: string]: unknown;
 		} = {}
 	) {
-		this.scanner = new Scanner({
-			scale: options.scale,
-			sweep: options.sweep,
-			still: options.still,
-			model: (options.model ?? null) as never,
-			combine: options.combine,
-			proposer: options.proposer,
-			impacts: options.impacts
-		});
+		// Everything else passed straight on, so a scorer version's own settings reach the scanner as in the app.
+		this.scanner = new Scanner({ ...(options as ScannerOptions), model: (options.model ?? null) as never });
 		// The end's remaining arrows, exactly as the app sets it: only six are ever going to be offered.
 		if (options.arrows) this.scanner.setLimit(options.arrows);
 		this.motion = options.motion ?? null;

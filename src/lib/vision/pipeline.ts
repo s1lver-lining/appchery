@@ -1,9 +1,11 @@
 import { downscale } from './pixels';
-import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords, SEARCH_PRECHECK } from './face';
+import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords, toImageCoords, turnFace, SEARCH_PRECHECK } from './face';
 import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
 import { detectArrowsFromImpacts, type ImpactOptions } from './impacts';
+import { paperContrast } from './contrast';
+import { textureTurn, unrollWith } from './texture';
 import { detectArrowsLearned, detectArrowsInCrop, type ArrowModel } from './learned';
 import { SweepTracker, type SweepOptions } from './sweep';
 import type { Frame, FaceLocation, Impact } from './types';
@@ -97,6 +99,21 @@ export interface ScannerOptions {
 	proposer?: 'shape' | 'impacts' | 'both';
 	/** Thresholds for the impact proposer, so a harness can sweep them without a code edit. */
 	impacts?: ImpactOptions;
+	/**
+	 * What a shaft stands out by: `dark`, darker than the paper, as Aphaia 1.0 reads it, or `colour`, any
+	 * colour apart from the paper's, so a white or red shaft on a light ring is seen too. See `contrast.ts`.
+	 */
+	contrast?: 'dark' | 'colour';
+	/** How much a change of hue counts against a change of brightness, with `contrast: 'colour'`. */
+	hueGain?: number;
+	/**
+	 * Hold which way round the face is described to the paper itself: its holes, tears and print, and the
+	 * bale and corners round it, which a new face without a mark on it still has. Gravity pins the face
+	 * when it is found and covers whenever the paper cannot say. See `doc/scorers.md`.
+	 */
+	paperLock?: boolean;
+	/** How far out the paper is read for the lock, in face radii, so the bale round a new face counts. */
+	paperReach?: number;
 }
 
 /**
@@ -123,6 +140,11 @@ export interface ScannerOptions {
  */
 const ADOPT_MARGIN = 0.10;
 
+/** Passes between looks at the paper, and the turns it acts on, in radians: a quarter degree to thirty. */
+const PAPER_EVERY = 3;
+const PAPER_STILL = 0.004;
+const PAPER_MOST = 0.5;
+
 /** Arrows past the end's own count that may still be reported, for an end that holds more than it should. */
 export const EXTRA_ARROWS = 2;
 
@@ -133,6 +155,13 @@ export class Scanner {
 	private readonly still: StillOptions;
 	private readonly proposer: 'shape' | 'impacts' | 'both';
 	private readonly impacts: ImpactOptions;
+	private readonly contrast: 'dark' | 'colour';
+	private readonly hueGain: number;
+	private readonly paperLock: boolean;
+	private readonly paperReach: number;
+	/** The paper as it was when each face was first steady, which every later pass is turned to match. */
+	private paper: (Float32Array | null)[] = [];
+	private paperPasses = 0;
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -174,6 +203,10 @@ export class Scanner {
 		this.still = options.still ?? {};
 		this.proposer = options.proposer ?? 'shape';
 		this.impacts = options.impacts ?? {};
+		this.contrast = options.contrast ?? 'dark';
+		this.hueGain = options.hueGain ?? 1;
+		this.paperLock = options.paperLock ?? false;
+		this.paperReach = options.paperReach ?? 1.25;
 		this.tracker = new SweepTracker(options.sweep);
 	}
 
@@ -225,7 +258,31 @@ export class Scanner {
 	// the better one. Counts must match, or the tracker's arrows would land on a different face.
 	adopt(faces: FaceLocation[]) {
 		if (faces.length === 0 || faces.length !== this.faces.length) return;
-		this.faces = faces;
+		// The page's geometry, but this side's way round, which is the one the paper has been holding.
+		this.faces = this.paperLock ? faces.map((face, i) => alignFace(this.faces[i], face)) : faces;
+	}
+
+	/**
+	 * Turns each face back onto the paper it was first seen with. Every few passes, because the turn a
+	 * chain drifts by in a fifth of a second is far below what the match can see.
+	 */
+	private holdToPaper(small: Frame, region: Region | null) {
+		if (this.paperPasses++ % PAPER_EVERY !== 0) return;
+		this.faces = this.faces.map((face, index) => {
+			const local = region ? faceInRegion(face, this.scale, region) : null;
+			const picture = local ? region!.frame : small;
+			const here = unrollWith(picture, (u, v) => toImageCoords(local ?? face, u, v), { inner: 0.22, outer: this.paperReach });
+			if (!here) return face;
+			const first = this.paper[index];
+			if (!first) {
+				this.paper[index] = here;
+				return face;
+			}
+			const turn = textureTurn(first, here);
+			// A turn bigger than any drift between two looks is a match on the wrong thing, not a correction.
+			if (turn === null || Math.abs(turn) < PAPER_STILL || Math.abs(turn) > PAPER_MOST) return face;
+			return turnFace(face, turn);
+		});
 	}
 
 	track(small: Frame): FaceLocation[] {
@@ -264,6 +321,17 @@ export class Scanner {
 		return this.up === null ? face : pinFace(face, this.up);
 	}
 
+	/** The picture a written proposer reads, made once a pass per face when both proposers want it. */
+	private readFrom(frame: Frame, face: FaceLocation, index: number): Frame {
+		if (this.contrast === 'dark') return frame;
+		const made = this.contrasted.get(index);
+		if (made && made.source === frame) return made.frame;
+		const fresh = paperContrast(frame, face, undefined, this.hueGain);
+		this.contrasted.set(index, { source: frame, frame: fresh });
+		return fresh;
+	}
+	private readonly contrasted = new Map<number, { source: Frame; frame: Frame }>();
+
 	/**
 	 * The same as `push`, for a frame the caller has already reduced to `scaleFactor`.
 	 *
@@ -287,6 +355,7 @@ export class Scanner {
 			// Pointed at another target: what was gathered belongs to the one the camera left.
 			if (target.length > 0 && this.faces.length > 0 && !sameTarget(this.faces[0], target)) {
 				this.faces = [];
+				this.paper = [];
 				this.tracker.clear();
 				this.settled = 0;
 			}
@@ -360,6 +429,7 @@ export class Scanner {
 				this.missed = 0;
 			} else {
 				this.faces = [];
+				this.paper = [];
 				this.settled = 0;
 				/**
 				 * The arrows are not forgotten with the face, not at once. A boss that vanishes for a pass or
@@ -392,6 +462,7 @@ export class Scanner {
 			};
 		}
 
+		if (this.paperLock) this.holdToPaper(small, region);
 		const faces = this.faces;
 		/** Which face a point belongs to, or -1 when it is on none of them. */
 		const owner = (cx: number, cy: number) => {
@@ -413,7 +484,7 @@ export class Scanner {
 					 * worse answer than reading it from the crop, but it is an answer.
 					 */
 					const local = region ? faceInRegion(face, this.scale, region) : null;
-					const from = local ? region!.frame : small;
+					const from = this.readFrom(local ? region!.frame : small, local ?? face, index);
 					return detectArrowsInStill(from, local ?? face, this.still).map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
@@ -427,7 +498,7 @@ export class Scanner {
 		const steps = (!this.model || this.combine) && this.proposer !== 'shape'
 			? faces.flatMap((face, index) => {
 					const local = region ? faceInRegion(face, this.scale, region) : null;
-					const from = local ? region!.frame : small;
+					const from = this.readFrom(local ? region!.frame : small, local ?? face, index);
 					return detectArrowsFromImpacts(from, local ?? face, this.impacts).map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
