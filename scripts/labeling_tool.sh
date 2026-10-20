@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# The new labelling page is /label under `npm run dev`: see doc/labelling.md. This one stays until it is retired.
 # Starts the labelling tool: browse the corpus, place the labels, and see what the detector makes of it.
 #
 #   ./scripts/labeling_tool.sh                 # serve the page

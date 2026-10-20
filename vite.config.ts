@@ -4,6 +4,8 @@ import { sveltekit } from '@sveltejs/kit/vite';
 import tailwindcss from '@tailwindcss/vite';
 import { defineConfig, type Plugin } from 'vite';
 import { proxied, targetOf } from './src/lib/competitions/proxy.ts';
+// The labelling page's corpus, for `vite dev` only. See src/routes/label.
+import { labellingServer } from './scripts/lib/labelling-server.mjs';
 
 /**
  * SQLite's OPFS backend requires the page to be cross-origin isolated.
@@ -103,7 +105,7 @@ function ianseoProxy(): Plugin {
 const ssl = process.env.APPCHERY_SSL === '1';
 
 export default defineConfig({
-	plugins: [crossOriginIsolation(), ianseoProxy(), ...(ssl ? [basicSsl()] : []), tailwindcss(), sveltekit()],
+	plugins: [crossOriginIsolation(), ianseoProxy(), labellingServer(), ...(ssl ? [basicSsl()] : []), tailwindcss(), sveltekit()],
 	// PUBLIC_ alongside Vite's own prefix, so the sync server can be baked in without SvelteKit's
 	// $env/static/public, which fails the build when a variable is absent. Absent is the normal case
 	// here: a build with no server configured is a working offline app, not a broken one.

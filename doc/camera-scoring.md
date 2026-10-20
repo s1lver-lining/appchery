@@ -666,6 +666,13 @@ pass.
 Ground truth for both comes from `scripts/label-arrows.mjs`, where the four anchors are dragged onto
 the black to white edge by hand and each impact is clicked once.
 
+The labelling page at `/label` replaces that tool and writes `labels-v2.json`; see `doc/labelling.md`.
+Arrow numbers in those labels are not the same shaft from frame to frame, so compare arrows across
+frames as sets, never by number.
+Its converter reads the old files as saved, without the turn described below: every `frames.json`
+was rewritten on 20 October, after most of the labels were made, so the turn now measures against seeds
+the labels were never fitted beside.
+
 The four anchors may be dragged in any rotational order, so on loading a recording the tool puts each
 frame's hand fit into the same order round the circle as that frame's automatic one, and turns anything
 expressed in that frame's coordinates to match. The turn used to go the wrong way. A half turn is its
