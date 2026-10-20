@@ -8,6 +8,31 @@ take `--scorer <id>`.
 | --- | --- | --- |
 | Aphaia 1.0 | classical | The written detector as of October 2026, with gravity for which way is up. |
 | Aphaia ML 1.0 | learned | The same scanner with arrows proposed by `scorers/aphaia-ml-1.0.json`. |
+| Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). The default. |
+
+## Aphaia 1.1: holding the face to its paper
+
+The rings say nothing about which way round a face is, so the fit's orientation drifts during a sweep and
+an arrow's looks spread along an arc instead of piling up. Gravity pins the face when it is found; after
+that, every third pass unrolls the paper from 0.22 to 1.25 radii (holes, tears, print, and past the edge
+the corners, logos and bale, which a brand new face still has) and turns the face back onto how it looked
+when first steady. A turn is taken only when the match is clear and between a quarter degree and 30°.
+
+Measured with `eval-arrows-video.mjs --slower 0 --drift`, against 1.0:
+
+| | 1.0 | 1.1 |
+| --- | --- | --- |
+| arrows found | 221/374 | 247/374 |
+| spurious arrows | 178 | 146 |
+| median drift over a sweep (22 recordings with 3+ tied frames) | 9.5° | 4.5° |
+| a pass costs | 75ms | 83ms |
+
+## Tried and left off
+
+`contrast: 'colour'` reads shafts by how far their colour is from the paper's, not only by darkness, so a
+white or red shaft on a light ring is seen. On these recordings, nearly all dark shafts, it found 216 and
+210 arrows (hue gain 0 and 1) against 221, so no version uses it yet. It is the option to try once
+recordings of light shafts are labelled.
 
 ## The interface
 
