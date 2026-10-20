@@ -58,6 +58,8 @@ worker.addEventListener('activate', (event) => {
 // An export shared from another app arrives as a POST that no static host can answer, so the file is
 // parked in a cache and the import page is told to come and collect it.
 worker.addEventListener('fetch', (event) => {
+	// Under `vite dev` nothing is content hashed, so a cached file is whatever version happened to be cached.
+	if (import.meta.env.DEV) return;
 	const request = event.request;
 	const target = new URL(request.url);
 	if (request.method === 'POST' && target.pathname.endsWith('/import')) {
@@ -89,6 +91,7 @@ worker.addEventListener('fetch', (event) => {
 	// The proxy in front of the competition sources answers with somebody else's results, which change
 	// while they are being read. Cached here they would freeze, and the app would date them as fresh.
 	if (url.pathname.startsWith(PROXY_PREFIX)) return;
+
 
 	event.respondWith(
 		(async () => {
