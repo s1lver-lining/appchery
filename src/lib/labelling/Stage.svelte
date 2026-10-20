@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { scoreAt } from '$lib/domain/rounds/geometry';
 	import { WA_10_RING } from '$lib/domain/rounds/seed';
-	import { arrowsOn, edgeOf, homography, project, turned, type Point } from './format';
+	import { arrowsOn, edgeOf, homography, project, turned, type FrameFace, type Point } from './format';
 	import { centreOf, fitToTaps, guessRing, moved, pulled, recentred, ringsOf, snapToEdge, toFace, toImage, type Tap } from './fit';
 	import { ensureFrame, faceOf, fitHere, frameFace, labelsOf, options, type Recording, type Step } from './session.svelte';
 
@@ -91,6 +91,16 @@
 
 	export function setSpace(held: boolean) {
 		spaceHeld = held;
+	}
+
+	/** Lets go of a held press in the nocks step as if it never happened, putting a dragged nock back. */
+	export function cancelPress() {
+		if (step !== 'nocks' || !drag) return false;
+		if (drag.kind === 'nock' && drag.moving) Object.assign(ensureFrame(rec, frame), drag.before);
+		drag = null;
+		pressed = false;
+		nockDragged = null;
+		return true;
 	}
 
 	/** Taps begin again from the fit as it stands. */
@@ -417,7 +427,7 @@
 		| { kind: 'turn'; start: Point[]; from: number }
 		| { kind: 'centre'; start: Point[] }
 		| { kind: 'arrow'; n: number }
-		| { kind: 'nock'; n: number; moving: boolean }
+		| { kind: 'nock'; n: number; moving: boolean; before: Pick<FrameFace, 'nocks' | 'nockCut'> }
 		| { kind: 'aim' };
 	let drag: Drag | null = null;
 	let downAt: { x: number; y: number } | null = null;
@@ -611,7 +621,8 @@
 			const held = nockAt(p);
 			if (held !== null) {
 				pressed = true;
-				drag = { kind: 'nock', n: held, moving: false };
+				const here = frameFace(rec, frame);
+				drag = { kind: 'nock', n: held, moving: false, before: { nocks: here?.nocks, nockCut: here?.nockCut } };
 				return;
 			}
 			const n = arrowAt(p);

@@ -731,6 +731,7 @@
 			}
 		}
 		if (step === 'nocks') {
+			if (key === 'Escape') return void stage?.cancelPress();
 			if (key === 'x') return nockUnseen();
 			if (key === 'Backspace') return undoNock();
 			if (key === 'Enter') return advance();
