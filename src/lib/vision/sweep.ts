@@ -86,6 +86,8 @@ export interface SweepOptions {
 	edgeTo?: number;
 	/** Share of all passes a mark must have been proposed on to be shown or scored; none by default. */
 	minShare?: number;
+	/** With `minShare`, still offer what falls short as unsure marks to make up the end's count, though never score it. */
+	shortAsUnsure?: boolean;
 }
 
 export class SweepTracker {
@@ -263,9 +265,11 @@ export class SweepTracker {
 		this.edgeFrom = options.edgeFrom ?? 0.77;
 		this.edgeTo = options.edgeTo ?? 0.85;
 		this.minShare = options.minShare ?? 0;
+		this.shortAsUnsure = options.shortAsUnsure ?? false;
 	}
 
 	private readonly minShare: number;
+	private readonly shortAsUnsure: boolean;
 
 	/** Whether a mark was proposed on enough of the passes: a false one shows up on a sixth, a real one on half. */
 	private held = (mark: Impact): boolean =>
@@ -300,7 +304,11 @@ export class SweepTracker {
 	 * thing as a missing arrow, so this only ever offers guesses when it has been told how many to find.
 	 */
 	get arrows(): Impact[] {
-		return [...this.confirmed, ...this.filling()].filter(this.held);
+		if (!this.shortAsUnsure) return [...this.confirmed, ...this.filling()].filter(this.held);
+		const kept = this.confirmed.filter(this.held);
+		const short = this.confirmed.filter((mark) => !this.held(mark)).map((mark) => ({ ...mark, unsure: true }));
+		const room = (this.expected ?? Math.min(this.limit, 6)) - kept.length;
+		return [...kept, ...[...short, ...this.filling()].slice(0, Math.max(0, room))];
 	}
 
 	/**
