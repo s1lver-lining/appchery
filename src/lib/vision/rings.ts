@@ -120,6 +120,8 @@ export function verifyRings(
 		outer?: number;
 		surround?: number;
 		agreement?: number;
+		/** The bar each ring of a complete gold, red, blue and black sequence has to clear. */
+		worn?: number;
 	} = {}
 ): RingCheck {
 	/**
@@ -140,6 +142,14 @@ export function verifyRings(
 
 	const is = (probe: RingProbe, ...colours: RingColour[]) =>
 		probe.colour !== null && colours.includes(probe.colour) && probe.agreement >= minAgreement;
+
+	// Holes eat probe samples, so a complete gold, red, blue, black sequence is accepted at a lower bar.
+	const worn = options.worn ?? 0.5;
+	const holed = (probe: RingProbe, ...colours: RingColour[]) =>
+		probe.colour !== null && colours.includes(probe.colour) && probe.agreement >= worn;
+	if (holed(gold, 'gold') && holed(red, 'red') && holed(mid, 'blue') && holed(outer, 'dark')) {
+		return { ok: true, reason: null, probes };
+	}
 
 	if (!is(gold, 'gold')) return { ok: false, reason: 'noGold', probes };
 
