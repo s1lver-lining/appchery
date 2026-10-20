@@ -13,6 +13,7 @@ export const STEPS: Step[] = ['face', 'arrows', 'nocks', 'score'];
 const NOCKS_KEY = 'labelling.nocks';
 const TAGS_KEY = 'labelling.tags';
 const RINGS_KEY = 'labelling.rings';
+const SHAFTS_KEY = 'labelling.shafts';
 
 function stored(key: string, fallback: boolean): boolean {
 	try {
@@ -32,7 +33,12 @@ function store(key: string, on: boolean) {
 }
 
 /** Nocks are labelled only when asked for: nothing the scorer measures or learns from reads them. */
-export const options = $state({ nocks: stored(NOCKS_KEY, false), tags: stored(TAGS_KEY, true), rings: stored(RINGS_KEY, true) });
+export const options = $state({
+	nocks: stored(NOCKS_KEY, false),
+	tags: stored(TAGS_KEY, true),
+	rings: stored(RINGS_KEY, true),
+	shafts: stored(SHAFTS_KEY, true)
+});
 
 export function setNocks(on: boolean) {
 	options.nocks = on;
@@ -49,6 +55,12 @@ export function setTags(on: boolean) {
 export function setRings(on: boolean) {
 	options.rings = on;
 	store(RINGS_KEY, on);
+}
+
+/** The blue shafts drawn from each arrow to its nock. */
+export function setShafts(on: boolean) {
+	options.shafts = on;
+	store(SHAFTS_KEY, on);
 }
 
 /** The steps shown, which leave out the nocks while they are off. */

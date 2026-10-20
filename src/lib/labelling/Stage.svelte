@@ -304,7 +304,7 @@
 				c.stroke();
 				c.restore();
 			}
-			if (nock && !aimed) {
+			if (nock && !aimed && (options.shafts || nockDragged === arrow.n)) {
 				const n = screen(nock[0], nock[1]);
 				const cut = here?.nockCut?.includes(arrow.n);
 				c.strokeStyle = nockDragged === arrow.n ? '#ff4fd8' : 'rgba(80,200,255,0.9)';

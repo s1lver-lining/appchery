@@ -17,6 +17,7 @@
 		options,
 		setNocks,
 		setRings,
+		setShafts,
 		setTags,
 		stepsShown,
 		view,
@@ -951,6 +952,7 @@
 						<button class="press rounded-lg bg-surface/90 p-1.5 shadow" aria-label="Whole picture" onclick={() => stage?.fitView()}><Icon name="expand" size={18} /></button>
 						<button class="press rounded-lg bg-surface/90 p-1.5 text-center text-sm leading-none font-bold shadow" class:opacity-50={!options.tags} aria-label="Arrow numbers and scores" aria-pressed={options.tags} title="Arrow numbers and scores" onclick={() => setTags(!options.tags)}>#</button>
 						<button class="press rounded-lg bg-surface/90 p-1.5 text-center text-lg leading-none font-bold text-win shadow" class:opacity-50={!options.rings} aria-label="Green circles around arrows" aria-pressed={options.rings} title="Green circles around arrows" onclick={() => setRings(!options.rings)}>○</button>
+						<button class="press rounded-lg bg-surface/90 p-1.5 text-center text-lg leading-none font-bold text-sky-400 shadow" class:opacity-50={!options.shafts} aria-label="Blue shafts to the nocks" aria-pressed={options.shafts} title="Blue shafts to the nocks" onclick={() => setShafts(!options.shafts)}>╱</button>
 					</div>
 				</div>
 
