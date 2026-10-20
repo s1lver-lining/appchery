@@ -9,7 +9,7 @@ take `--scorer <id>`.
 | Aphaia 1.0 | classical | The written detector as of October 2026, with gravity for which way is up. |
 | Aphaia ML 1.0 | learned | The same scanner with arrows proposed by `scorers/aphaia-ml-1.0.json`. |
 | Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). What "Latest model", the default, runs today. |
-| Aphaia 1.2alpha | classical, preview | 1.1 with marks proposed on fewer than a fifth of the passes left out (`sweep.minShare`). |
+| Aphaia 1.2alpha | classical, preview | 1.1 with marks proposed on fewer than a fifth of the passes left out (`sweep.minShare`), and a face kept through one pass it was missed on (`holdBlink`). |
 
 ## Aphaia 1.2alpha: marks have to keep being seen
 
@@ -27,6 +27,19 @@ recordings (runs vary by a few arrows, since passes are dropped by the clock):
 
 0.15 found 251 with 77 spurious and 0.1 found 262 with 108, so 0.2 makes the fewest mistakes; it is the
 best share in the August and September recordings and in the October ones taken apart.
+
+Measure with `--slower 0` when comparing settings: with passes dropped by this machine's own clock, two
+runs of the same version differed by nine arrows. With it, on the labels of 20 October:
+
+| | found | spurious |
+| --- | --- | --- |
+| 1.1 | 251 | 143 |
+| 1.2alpha, share only | 221 | 56 |
+| with `holdBlink` (1.2alpha now) | 224 | 53 |
+| with `edgeUp: 0.1` | 223 | 61 |
+| with `edgeUp: 0.05` | 220 | 59 |
+| with both | 227 | 60 |
+| with `holdBlink` and `sweep.shortAsUnsure` | 246 shown, 224 scored | 130 shown, 47 scored |
 
 Where 1.1 misses arrows (111 misses on these recordings): 41 are marked 0.05 to 0.15 radii off, mostly
 along the ring, so the face has turned; 32 are hardly ever proposed; 23 are proposed often and never
@@ -64,8 +77,9 @@ better on the whole: 233 found and 60 spurious, and 242 and 45, against 240 and 
 
 Straight edges round the face (the paper's border, the bale, corner prints) as a helper for which way is
 up, tried offline on 384 labelled frames: where the edges are strong, a sixth of the frames, their angle
-holds to about 5° within a recording; elsewhere straw and shafts blur it to 7° or 8°. Worth taking as a
-helper beside gravity only when strong, and with shafts left out and only long lines counted.
+holds to about 5° within a recording; elsewhere straw and shafts blur it to 7° or 8°. As `edgeUp`, the
+strength at which they correct gravity's answer by up to 20° on a new face, it measured no better at 0.1
+or 0.05, so it stays off; reading only long lines and leaving the shafts out is what it would need next.
 
 ## The interface
 
