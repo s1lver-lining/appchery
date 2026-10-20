@@ -8,7 +8,7 @@ import { Scanner, regionBox, type Region } from './pipeline';
 export { DETECT_EVERY_MS } from './live';
 import { upFromGravity } from './motion';
 export { upFromGravity };
-import { alignFace, cropToImage, detectFaces, scaleFace, toImageCoords } from './face';
+import { alignFace, cropToImage, detectFaces, scaleFace, toImageCoords, SEARCH_PRECHECK } from './face';
 import { refineFace } from './refine';
 import { verifyRings } from './rings';
 import { SteadyFace } from './steady';
@@ -326,7 +326,7 @@ export class FaceTrack {
 			}
 		}
 
-		const found = detectFaces(small).filter((face) => verifyRings(small, face).ok);
+		const found = detectFaces(small, { precheck: SEARCH_PRECHECK }).filter((face) => verifyRings(small, face).ok);
 		// A fresh search knows nothing of how the last one was turned, so it is put back onto it.
 		const held = this.faces[0];
 		this.faces = held ? found.map((face) => alignFace(held, face)) : found;

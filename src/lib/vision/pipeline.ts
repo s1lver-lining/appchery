@@ -1,5 +1,5 @@
 import { downscale } from './pixels';
-import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords } from './face';
+import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords, SEARCH_PRECHECK } from './face';
 import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
@@ -277,7 +277,7 @@ export class Scanner {
 		this.track(small);
 
 		if (this.frames % this.faceEvery === 0 || this.faces.length === 0) {
-			const candidates = detectFaces(small);
+			const candidates = detectFaces(small, { precheck: SEARCH_PRECHECK });
 			// The rings are what separate a target face from anything else that happens to be yellow.
 			const checks = candidates.map((face) => verifyRings(small, face));
 			const verified = candidates.filter((_, i) => checks[i].ok);

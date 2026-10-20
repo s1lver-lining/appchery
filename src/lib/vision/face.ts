@@ -1,5 +1,6 @@
 import { rgbToHsv, components } from './pixels';
 import { refineFace } from './refine';
+import { probeRing } from './rings';
 import type { Frame, FaceLocation } from './types';
 
 /**
@@ -32,7 +33,12 @@ export interface FaceDetectOptions {
 	limit?: number;
 	/** Fit to the surrounding rings after the gold blob. On by default; off is for measuring it. */
 	refine?: boolean;
+	/** Share of a probe circle round an unfitted seed that must read as a ring before it is fitted. */
+	precheck?: number;
 }
+
+/** What the live search asks of a seed before fitting it; see `precheck`. */
+export const SEARCH_PRECHECK = 0.25;
 
 /**
  * Every face in the frame, best supported first. A three spot puts three golds in one image, and
@@ -64,11 +70,25 @@ export function detectFaces(frame: Frame, options: FaceDetectOptions = {}): Face
 
 	for (const blob of components(mask, width, height, minSize)) {
 		const seed = fromMoments(blob.pixels, width, blob.size, GOLD_SHARE_OF_FACE);
+		if (seed && options.precheck && !ringed(frame, seed, options.precheck)) continue;
 		// The blob only has to get close: the rings around it are what settle the geometry.
 		if (seed) found.push(options.refine === false ? seed : refineFace(frame, seed));
 		if (found.length >= limit) break;
 	}
 	return found;
+}
+
+// Grey with them, because the black of a field face comes back grey in anything short of full light.
+const RING_COLOURS = ['red', 'blue', 'dark', 'grey'];
+
+/** Whether anything round an unfitted seed looks like a ring, since straw blobs cost a full fit each. */
+function ringed(frame: Frame, seed: FaceLocation, share: number): boolean {
+	for (const radius of [RED_RING, MID_RING]) {
+		const probe = probeRing(frame, seed, radius, 16);
+		if (probe.colour === null) return true;
+		if (probe.agreement >= share && RING_COLOURS.includes(probe.colour)) return true;
+	}
+	return false;
 }
 
 /** The single best face, which is what a caller aiming at one target wants. */
