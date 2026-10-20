@@ -280,7 +280,7 @@
 			const s = screen(p.x, p.y);
 			const nock = options.nocks ? here?.nocks?.[arrow.n] : null;
 			// The shaft as it would be with the nock under the pointer, while the button is held.
-			const aimed = step === 'nocks' && pressed && pointer && target === arrow.n && !nockDragged;
+			const aimed = step === 'nocks' && pressed && pointer && target === arrow.n && nockDragged === null;
 			if (aimed) {
 				c.save();
 				c.setLineDash([6, 4]);
@@ -392,7 +392,7 @@
 		| { kind: 'turn'; start: Point[]; from: number }
 		| { kind: 'centre'; start: Point[] }
 		| { kind: 'arrow'; n: number }
-		| { kind: 'nock'; n: number }
+		| { kind: 'nock'; n: number; moving: boolean }
 		| { kind: 'aim' };
 	let drag: Drag | null = null;
 	let downAt: { x: number; y: number } | null = null;
@@ -564,12 +564,12 @@
 			}
 		}
 		if (step === 'nocks') {
+			// A nock is only taken hold of once the pointer moves: a click still places the pink arrow's nock,
+			// which in a tight group often lands by another one.
 			const held = nockAt(p);
 			if (held !== null) {
-				target = held;
-				nockDragged = held;
 				pressed = true;
-				drag = { kind: 'nock', n: held };
+				drag = { kind: 'nock', n: held, moving: false };
 				return;
 			}
 			const n = arrowAt(p);
@@ -622,7 +622,12 @@
 			const q = toFace(drag.start, i.x, i.y);
 			if (q) setFit(turned(drag.start, Math.atan2(q.y, q.x) - drag.from));
 		} else if (drag.kind === 'nock') {
-			if (downAt && Math.hypot(p.x - downAt.x, p.y - downAt.y) < 4) return;
+			if (!drag.moving && downAt && Math.hypot(p.x - downAt.x, p.y - downAt.y) < 4) return;
+			if (!drag.moving) {
+				drag.moving = true;
+				target = drag.n;
+				nockDragged = drag.n;
+			}
 			setNock(drag.n, i.x, i.y);
 		} else if (drag.kind === 'arrow') {
 			if (downAt && Math.hypot(p.x - downAt.x, p.y - downAt.y) < 4) return;
@@ -648,13 +653,13 @@
 				const q = toFace(fitHere(rec, frame), i.x, i.y);
 				if (q) addArrow(q.x, q.y, -1);
 			}
-		} else if (was.kind === 'aim' && step === 'nocks' && target !== null) {
+		} else if ((was.kind === 'aim' || (was.kind === 'nock' && !was.moving)) && step === 'nocks' && target !== null) {
 			setNock(target, i.x, i.y);
 			onchange();
 			onnock?.();
 		} else if (was.kind === 'nock') {
 			// Moving a nock only corrects it, so the step stays on this arrow rather than moving on.
-			if (!still) onchange();
+			onchange();
 		} else if (was.kind === 'arrow' && still) {
 			// A click on an arrow only picks it.
 		} else if (was.kind === 'move' || was.kind === 'centre' || was.kind === 'pull' || was.kind === 'turn' || was.kind === 'arrow') {
