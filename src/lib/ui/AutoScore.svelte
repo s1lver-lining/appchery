@@ -1,10 +1,10 @@
 <script lang="ts">
 	import { onDestroy } from 'svelte';
 	import { t } from '$lib/i18n';
-	import { regionBox, toImageCoords, type FaceLocation, type Impact } from '$lib/vision/pipeline';
+	import type { FaceLocation, Impact } from '$lib/vision/pipeline';
 	import type { LiveImpact } from '$lib/vision/live';
-	import { DETECT_EVERY_MS, LiveScanner } from '$lib/vision/live';
-import { SteadyFace } from '$lib/vision/steady';
+	import { LiveScanner } from '$lib/vision/live';
+	import { LiveView } from '$lib/vision/live-view';
 	import { MotionLog, allowMotion } from '$lib/vision/motion';
 	import { scoreAt, decimalScore } from '$lib/domain/rounds/geometry';
 	import type { ScoreSet } from '$lib/domain/rounds/types';
@@ -51,9 +51,6 @@ import { SteadyFace } from '$lib/vision/steady';
 		() => onclose()
 	);
 
-	/** Rings 9 and 10 of ten equal rings, which is the gold's share of the face radius. */
-	const GOLD_SHARE = 0.2;
-
 	let video = $state<HTMLVideoElement | null>(null);
 	let overlay = $state<HTMLCanvasElement | null>(null);
 	let error = $state<string | null>(null);
@@ -97,7 +94,6 @@ import { SteadyFace } from '$lib/vision/steady';
 		};
 	});
 
-	const work = document.createElement('canvas');
 	let stream: MediaStream | null = null;
 	let raf = 0;
 	/** Raised by stop, because the archer can close this while the browser is still asking for the camera. */
@@ -264,82 +260,8 @@ import { SteadyFace } from '$lib/vision/steady';
 	}
 	onDestroy(stop);
 
-	/**
-	 * How often the full search for faces and arrows runs. Everything in between follows the geometry
-	 * already found, which is cheap, so the overlay tracks the camera at the display's own rate instead
-	 * of waiting for a detection to finish. Detection three times a second is far more often than an
-	 * arrow arrives.
-	 */
-	let lastDetection = 0;
-
-	/** One smoother per face, made on demand, so a three spot's three faces are steadied separately. */
-	const steadying: SteadyFace[] = [];
-	function smoother(index: number): SteadyFace {
-		return (steadying[index] ??= new SteadyFace());
-	}
-
-	/** The frame reduced for detection, scaled by the canvas rather than by a loop over every pixel. */
-	function reduce(): { width: number; height: number; data: Uint8ClampedArray } | null {
-		if (!video) return null;
-		const scale = scanner.scaleFactor;
-		const width = Math.floor(video.videoWidth / scale);
-		const height = Math.floor(video.videoHeight / scale);
-		if (width === 0 || height === 0) return null;
-
-		work.width = width;
-		work.height = height;
-		const context = work.getContext('2d', { willReadFrequently: true });
-		if (!context) return null;
-		// Drawing straight to the smaller canvas hands the scaling to the GPU, which is most of the win.
-		context.drawImage(video, 0, 0, width, height);
-		return { width, height, data: context.getImageData(0, 0, width, height).data };
-	}
-
-	/** The canvas the sharper cut is taken with, kept beside the one the whole frame is reduced on. */
-	const regionWork = document.createElement('canvas');
-
-	/**
-	 * The paper around the face, cut from the video for the proposer to read.
-	 *
-	 * Cut from the video element rather than from the reduced frame, which is the whole point: taken
-	 * from a picture already shrunk to a quarter, this would be a magnified copy of the same information
-	 * rather than more of it. One resampling, by the GPU, straight from the camera.
-	 *
-	 * Where the box goes is `regionBox`, shared with the replay the labelling tool watches and with the
-	 * measuring harness, so the three cannot drift apart. All that differs here is who resamples.
-	 */
-	function cutRegion(): { frame: { width: number; height: number; data: Uint8ClampedArray }; x: number; y: number; scale: number } | null {
-		const face = faces[0];
-		if (!video || !face) return null;
-		const box = regionBox(face, scanner.scaleFactor, video.videoWidth, video.videoHeight);
-		if (!box) return null;
-
-		regionWork.width = box.width;
-		regionWork.height = box.height;
-		const context = regionWork.getContext('2d', { willReadFrequently: true });
-		if (!context) return null;
-		context.drawImage(
-			video,
-			box.x,
-			box.y,
-			box.width * box.scale,
-			box.height * box.scale,
-			0,
-			0,
-			box.width,
-			box.height
-		);
-		return {
-			frame: {
-				width: box.width,
-				height: box.height,
-				data: context.getImageData(0, 0, box.width, box.height).data
-			},
-			x: box.x,
-			y: box.y,
-			scale: box.scale
-		};
-	}
+	/** The follow, the offer and the overlay, shared with the labelling tool's player so both show the same. */
+	const view = new LiveView(scanner);
 
 	function tick(now: number) {
 		raf = requestAnimationFrame(tick);
@@ -355,115 +277,11 @@ import { SteadyFace } from '$lib/vision/steady';
 		 */
 		scanner.setUp(motion.up);
 
-		const small = reduce();
-		if (!small) return;
-
-		/**
-		 * The face is followed here and the search is handed away. Nothing on this path waits for a
-		 * detection, so the overlay keeps the camera's own rate whatever the detector is costing.
-		 */
-		faces = scanner.follow(small);
-		/**
-		 * What the rings are drawn with, which is not quite what was fitted. Nothing is ever read off
-		 * this: it exists to stop the lines trembling between frames, and it is handed to `draw` for the
-		 * rings alone. The arrows go through `faces`, the fit itself, because a mark on the boss is an
-		 * answer and answers are not worth smoothing.
-		 */
-		const shown = $smoothOverlay ? faces.map((face, i) => smoother(i).show(face)) : faces;
-		if (now - lastDetection >= DETECT_EVERY_MS) {
-			lastDetection = now;
-			// Cut before the offer and after the follow: it is framed on the fit this frame just made.
-			const region = cutRegion();
-			// Offered last, because both buffers are given away rather than copied.
-			scanner.offer(small, region);
-		}
-
-		draw(shown, faces, found, overlay, video.videoWidth, video.videoHeight);
-	}
-
-	/** The overlay is drawn in the small image's pixels, so every coordinate scales back up. */
-	function draw(
-		located: FaceLocation[],
-		fitted: FaceLocation[],
-		arrows: Impact[],
-		canvas: HTMLCanvasElement,
-		width: number,
-		height: number
-	) {
-		canvas.width = width;
-		canvas.height = height;
-		const context = canvas.getContext('2d');
-		if (!context) return;
-
-		const scale = scanner.scaleFactor;
-		context.lineWidth = Math.max(2, width / 300);
-
-		// Every face is outlined, so a three spot shows all three being watched.
-		for (const face of located) {
-			/**
-			 * Drawn through the face's own projection rather than as an ellipse. A boss seen from
-			 * anywhere but square on is a projection, and the ellipse matching it near the middle does
-			 * not match it at the edge: the gold sits perfectly while the outer ring lands a couple of
-			 * rings inside where it belongs.
-			 */
-			const ring = (share: number) => {
-				context.beginPath();
-				for (let i = 0; i <= 128; i++) {
-					const angle = (i / 128) * Math.PI * 2;
-					const point = toImageCoords(face, Math.cos(angle) * share, Math.sin(angle) * share);
-					const x = point.x * scale;
-					const y = point.y * scale;
-					i === 0 ? context.moveTo(x, y) : context.lineTo(x, y);
-				}
-				context.closePath();
-				context.stroke();
-			};
-
-			context.strokeStyle = 'rgba(255,255,255,0.85)';
-			ring(1);
-			/**
-			 * The gold as well. It is the one ring present on every face including a three spot, and
-			 * seeing it sit on the real gold is how the archer can tell at a glance that the fit is right.
-			 */
-			context.strokeStyle = 'rgba(247,224,60,0.95)';
-			ring(GOLD_SHARE);
-		}
-
-		arrows.forEach((arrow, index) => {
-			// The fit, not the smoothed line. Smoothing lags the fit by up to a tenth of a ring, and a
-			// ring drawn a tenth of a ring from the shaft is the difference between a 9 and a 10 to look at.
-			const face = fitted[arrow.face] ?? located[arrow.face];
-			if (!face) return;
-			const point = toImageCoords(face, arrow.x, arrow.y);
-			context.strokeStyle = index < remaining ? '#3ddc84' : 'rgba(255,255,255,0.4)';
-			// Dashed for one offered to make the end's number up rather than one the sweep agreed on, so
-			// the archer knows which marks to look at twice.
-			context.setLineDash(arrow.unsure ? [width / 120, width / 120] : []);
-			context.beginPath();
-			context.arc(point.x * scale, point.y * scale, width / 60, 0, Math.PI * 2);
-			context.stroke();
-			context.setLineDash([]);
-
-			/*
-			 * The score written on the picture, where the arrow is, rather than only in the pills below.
-			 * That is the reading the pills cannot give: which mark on the boss the detector thinks it
-			 * scored. A pill saying 9 is right or wrong depending on which shaft it is about, and only
-			 * the archer looking at the boss can say.
-			 */
-			if (!$detectorReadout) return;
-			// Saved, because the line width and the font here are not the ones the rings are drawn with.
-			context.save();
-			const text = `${label(arrow)}${detail(arrow)}`;
-			context.font = `600 ${Math.max(11, width / 40)}px system-ui, sans-serif`;
-			context.textAlign = 'center';
-			context.textBaseline = 'bottom';
-			context.lineWidth = Math.max(2, width / 300);
-			context.strokeStyle = 'rgba(0,0,0,0.75)';
-			context.strokeText(text, point.x * scale, point.y * scale - width / 45);
-			context.fillStyle = '#ffffff';
-			context.fillText(text, point.x * scale, point.y * scale - width / 45);
-			context.restore();
-		});
+		const step = view.frame(video, now, $smoothOverlay);
+		if (!step) return;
+		faces = step.faces;
+		const written = $detectorReadout ? (arrow: Impact) => `${label(arrow as LiveImpact)}${detail(arrow as LiveImpact)}` : null;
+		view.draw(overlay, step.shown, faces, found, video.videoWidth, video.videoHeight, remaining, written);
 	}
 
 	function label(arrow: LiveImpact): string {
