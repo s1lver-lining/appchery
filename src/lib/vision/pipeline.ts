@@ -114,6 +114,16 @@ export interface ScannerOptions {
 	paperLock?: boolean;
 	/** How far out the paper is read for the lock, in face radii, so the bale round a new face counts. */
 	paperReach?: number;
+	/**
+	 * With `paperLock`, keep the paper through a short loss of the face and turn the face found again
+	 * onto it, at any angle, rather than leaving it where gravity pinned it.
+	 */
+	paperRegain?: boolean;
+	/**
+	 * Turn a face found again after a short loss onto the way round the last one had, as a pass does
+	 * between two looks, instead of pinning it to gravity afresh while the arrows wait in the old frame.
+	 */
+	chainThroughLoss?: boolean;
 }
 
 /**
@@ -162,6 +172,12 @@ export class Scanner {
 	/** The paper as it was when each face was first steady, which every later pass is turned to match. */
 	private paper: (Float32Array | null)[] = [];
 	private paperPasses = 0;
+	private readonly paperRegain: boolean;
+	/** Set when a face found again still has to be turned onto the paper kept from before the loss. */
+	private regaining = false;
+	private readonly chainThroughLoss: boolean;
+	/** The faces last followed before a loss, to chain a face found again onto. */
+	private lost: FaceLocation[] = [];
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -207,6 +223,8 @@ export class Scanner {
 		this.hueGain = options.hueGain ?? 1;
 		this.paperLock = options.paperLock ?? false;
 		this.paperReach = options.paperReach ?? 1.25;
+		this.paperRegain = options.paperRegain ?? false;
+		this.chainThroughLoss = options.chainThroughLoss ?? false;
 		this.tracker = new SweepTracker(options.sweep);
 	}
 
@@ -267,7 +285,9 @@ export class Scanner {
 	 * chain drifts by in a fifth of a second is far below what the match can see.
 	 */
 	private holdToPaper(small: Frame, region: Region | null) {
-		if (this.paperPasses++ % PAPER_EVERY !== 0) return;
+		// A face found again is matched on every pass until it is back on its paper, before arrows land.
+		const regaining = this.regaining;
+		if (this.paperPasses++ % PAPER_EVERY !== 0 && !regaining) return;
 		this.faces = this.faces.map((face, index) => {
 			const local = region ? faceInRegion(face, this.scale, region) : null;
 			const picture = local ? region!.frame : small;
@@ -279,8 +299,10 @@ export class Scanner {
 				return face;
 			}
 			const turn = textureTurn(first, here);
-			// A turn bigger than any drift between two looks is a match on the wrong thing, not a correction.
-			if (turn === null || Math.abs(turn) < PAPER_STILL || Math.abs(turn) > PAPER_MOST) return face;
+			if (regaining && index === 0 && turn !== null) this.regaining = false;
+			// A turn bigger than any drift between two looks is a match on the wrong thing, not a correction,
+			// except after a loss, where gravity may have pinned the face anywhere.
+			if (turn === null || Math.abs(turn) < PAPER_STILL || (Math.abs(turn) > PAPER_MOST && !regaining)) return face;
 			return turnFace(face, turn);
 		});
 	}
@@ -356,6 +378,8 @@ export class Scanner {
 			if (target.length > 0 && this.faces.length > 0 && !sameTarget(this.faces[0], target)) {
 				this.faces = [];
 				this.paper = [];
+				this.regaining = false;
+				this.lost = [];
 				this.tracker.clear();
 				this.settled = 0;
 			}
@@ -375,7 +399,12 @@ export class Scanner {
 				 */
 				const ordered = fresh.map((face, i) => {
 					const followed = this.faces[i];
-					if (!followed) return this.acquire(face);
+					if (!followed) {
+						const before = this.lost[i];
+						// The same place on the picture, so the same face: the camera barely turns in a blink.
+						const near = before && Math.hypot(face.cx - before.cx, face.cy - before.cy) < before.semiMajor;
+						return near ? this.settle(before, face) : this.acquire(face);
+					}
 					// A search knows nothing of which way round the last fit was describing the face, and a
 					// face has no way round of its own, so a fresh answer is turned onto the old origin
 					// before it is adopted. Otherwise every arrow already found jumps at that moment.
@@ -428,8 +457,10 @@ export class Scanner {
 				this.settled += this.faceEvery;
 				this.missed = 0;
 			} else {
+				if (this.chainThroughLoss && this.faces.length > 0) this.lost = this.faces;
+				if (this.paperRegain && this.faces.length > 0) this.regaining = true;
+				else if (!this.paperRegain) this.paper = [];
 				this.faces = [];
-				this.paper = [];
 				this.settled = 0;
 				/**
 				 * The arrows are not forgotten with the face, not at once. A boss that vanishes for a pass or
@@ -438,7 +469,13 @@ export class Scanner {
 				 * staying gone, which is what walking to the next target looks like.
 				 */
 				this.missed += 1;
-				if (this.missed >= this.forgetAfter) this.tracker.clear();
+				if (this.missed >= this.forgetAfter) {
+					this.tracker.clear();
+					// The arrows that the kept paper was holding in place are gone, so the paper goes too.
+					this.paper = [];
+					this.regaining = false;
+					this.lost = [];
+				}
 			}
 		} else if (this.faces.length > 0) {
 			this.settled += 1;
