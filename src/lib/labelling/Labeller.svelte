@@ -213,12 +213,17 @@
 		say('No doubtful frames here.');
 	}
 
+	/** Where the arrows step opens: the reference until the arrows are placed, then the frame already open. */
+	function arrowsFrame(r: Recording) {
+		return arrowsPlaced(r) ? frame : (faceOf(r).placedOn ?? bestFrame(r));
+	}
+
 	function pickFace(id: string) {
 		if (!rec) return;
 		view.face = id;
 		fitDoubts = {};
 		void judgeAll(rec);
-		go(step === 'arrows' ? (faceOf(rec).placedOn ?? bestFrame(rec)) : frame);
+		go(step === 'arrows' ? arrowsFrame(rec) : frame);
 	}
 
 	function newFace() {
@@ -414,7 +419,7 @@
 			const next = after((i) => !faceDecided(rec, i));
 			if (next >= 0) return go(next);
 			say('Faces done. Now the arrows.');
-			return go(faceOf(rec).placedOn ?? bestFrame(rec), 'arrows');
+			return go(arrowsFrame(rec), 'arrows');
 		}
 		if (step === 'arrows') {
 			if (!arrowsPlaced(rec)) return say(`Place all ${countOf(rec) || 'the'} arrows first, or say how many there are.`);
@@ -768,7 +773,7 @@
 
 	function openStep(s: Step) {
 		if (!rec) return;
-		go(s === 'arrows' ? (face?.placedOn ?? bestFrame(rec)) : s === 'nocks' ? (nockFrames(rec)[0] ?? 0) : frame, s);
+		go(s === 'arrows' ? arrowsFrame(rec) : s === 'nocks' ? (nockFrames(rec)[0] ?? 0) : frame, s);
 	}
 
 	function cellTitle(i: number, state: string): string {
