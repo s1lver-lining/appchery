@@ -13,7 +13,7 @@ import { detectArrowsInStill } from './still';
 import { detectArrowsLearned, type ArrowModel } from './learned';
 import { verifyRings, classify, probeRing } from './rings';
 import { SweepTracker } from './sweep';
-import { Scanner } from './pipeline';
+import { Scanner, aimedAt } from './pipeline';
 import { rgbToHsv, largestComponent } from './pixels';
 import { upFromGravity } from './motion';
 import type { Frame, FaceLocation } from './types';
@@ -738,5 +738,30 @@ describe('reading which way is up off gravity', () => {
 		expect(upFromGravity(null)).toBeNull();
 		expect(upFromGravity({ x: 20, y: 20, z: 20 })).toBeNull();
 		expect(upFromGravity({ x: 0.2, y: 0.3, z: 9.8 })).toBeNull();
+	});
+});
+
+describe('aimedAt', () => {
+	const at = (cx: number, cy: number, r: number) => ({ cx, cy, semiMajor: r, semiMinor: r, angle: 0 }) as unknown as FaceLocation;
+	const frame = { width: 200, height: 200, data: new Uint8ClampedArray(0) };
+
+	it('takes the target nearest the middle, not the first found', () => {
+		const left = at(30, 100, 25);
+		const middle = at(110, 100, 25);
+		expect(aimedAt([left, middle], frame)).toEqual([middle]);
+	});
+
+	it('keeps the spots of a three spot together', () => {
+		// A spot is fitted as the whole face it is cut from, so spots sit closer than a radius and a bit.
+		const spots = [at(100, 65, 30), at(100, 100, 30), at(100, 135, 30)];
+		expect(aimedAt(spots, frame)).toHaveLength(3);
+		expect(aimedAt(spots, frame)[0]).toBe(spots[1]);
+	});
+
+	it('holds the followed target until another is clearly nearer the middle', () => {
+		const a = at(80, 100, 25);
+		const b = at(130, 100, 25);
+		expect(aimedAt([a, b], frame, b)).toEqual([b]);
+		expect(aimedAt([a, b], frame, at(190, 100, 5))).toEqual([a]);
 	});
 });

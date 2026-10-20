@@ -283,9 +283,17 @@ export class Scanner {
 			const verified = candidates.filter((_, i) => checks[i].ok);
 			this.check = checks.find((c) => !c.ok) ?? checks[0] ?? null;
 
-			if (verified.length > 0) {
+			const target = aimedAt(verified, small, this.faces[0] ?? null);
+			// Pointed at another target: what was gathered belongs to the one the camera left.
+			if (target.length > 0 && this.faces.length > 0 && !sameTarget(this.faces[0], target)) {
+				this.faces = [];
+				this.tracker.clear();
+				this.settled = 0;
+			}
+
+			if (target.length > 0) {
 				// Nearest first, so face 0 stays face 0 between detections and the tracker's indices hold.
-				const fresh = this.faces.length > 0 ? matchOrder(this.faces, verified) : verified;
+				const fresh = this.faces.length > 0 ? matchOrder(this.faces, target) : target;
 
 				/**
 				 * A face already being followed keeps the geometry it has. The search and the follow are
@@ -634,6 +642,30 @@ function faceInRegion(face: FaceLocation, detectScale: number, region: Region): 
  * Reorders newly detected faces to match the previous frame's, so a face keeps its index and the
  * arrows already tracked on it are not attributed to a different one.
  */
+/**
+ * The face nearest the middle of the picture and the spots of the same target, nearest first.
+ *
+ * A boss often carries several targets, and the archer points at their own. Two separate faces can never
+ * overlap, while a three spot's spots are closer than a face's diameter, so overlap is what joins them.
+ */
+export function aimedAt(faces: FaceLocation[], frame: Frame, holding: FaceLocation | null = null): FaceLocation[] {
+	if (faces.length < 2) return faces;
+	const off = (face: FaceLocation) => Math.hypot(face.cx - frame.width / 2, face.cy - frame.height / 2);
+	let centre = faces.reduce((best, face) => (off(face) < off(best) ? face : best));
+	// The one being followed is kept until another is nearer the middle by a whole radius, so a sweep past
+	// the edge of a neighbour does not throw the end away.
+	const kept = holding ? faces.find((face) => Math.hypot(face.cx - holding.cx, face.cy - holding.cy) < holding.semiMajor) : undefined;
+	if (kept && off(kept) < off(centre) + kept.semiMajor) centre = kept;
+	const near = (face: FaceLocation) =>
+		Math.hypot(face.cx - centre.cx, face.cy - centre.cy) < (face.semiMajor + centre.semiMajor) * 0.8;
+	return faces.filter(near).sort((a, b) => off(a) - off(b));
+}
+
+/** Whether a face being followed is one of the target's faces, rather than a neighbour on the boss. */
+function sameTarget(followed: FaceLocation, target: FaceLocation[]): boolean {
+	return target.some((face) => Math.hypot(face.cx - followed.cx, face.cy - followed.cy) < followed.semiMajor);
+}
+
 function matchOrder(previous: FaceLocation[], fresh: FaceLocation[]): FaceLocation[] {
 	const taken = new Set<number>();
 	const ordered: FaceLocation[] = [];
