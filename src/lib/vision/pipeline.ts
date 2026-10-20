@@ -583,12 +583,16 @@ export function regionBox(
 	const bottom = Math.min(height, Math.ceil(face.cy * detectScale + reach));
 	if (right <= left || bottom <= top) return null;
 
-	const across = Math.floor((right - left) / REGION_SCALE);
-	const down = Math.floor((bottom - top) / REGION_SCALE);
-	if (across === 0 || down === 0) return null;
-	// Never more pixels than reducing the whole frame would have been, or the cheap half stops being cheap.
-	if (across * down > (width / detectScale) * (height / detectScale) * 2) return null;
-	return { x: left, y: top, width: across, height: down, scale: REGION_SCALE };
+	// As fine as fits within the whole frame's budget, so a small face gets shafts wide enough to read.
+	const budget = (width / detectScale) * (height / detectScale) * 3;
+	for (let scale = 1; scale <= REGION_SCALE; scale++) {
+		const across = Math.floor((right - left) / scale);
+		const down = Math.floor((bottom - top) / scale);
+		if (across === 0 || down === 0) return null;
+		if (across * down > budget) continue;
+		return { x: left, y: top, width: across, height: down, scale };
+	}
+	return null;
 }
 
 /**
