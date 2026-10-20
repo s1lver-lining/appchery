@@ -168,6 +168,9 @@ Object.assign(tune, { ...scorer.settings, ...tune });
 // Weights for the line and tip reader of `src/lib/vision/shafts.ts`, to try before a version names them.
 const shaftsPath = option('shafts', null);
 if (shaftsPath) tune.still = { ...(tune.still ?? {}), shafts: JSON.parse(await readFile(resolve(shaftsPath), 'utf8')) };
+// More of them, taken in turn on the passes that read shafts, as a comma separated list.
+const alsoPaths = option('shafts-also', null);
+if (alsoPaths) tune.shaftsAlso = await Promise.all(alsoPaths.split(',').map(async (file) => JSON.parse(await readFile(resolve(file), 'utf8'))));
 // Recordings measured at once, half the logical cores by default so each process has a core to itself.
 const jobs = Math.max(1, Number(option('jobs', Math.floor(availableParallelism() / 2))));
 /** Set on the processes `--jobs` starts: hand the tallies back as JSON rather than report them. */

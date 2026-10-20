@@ -175,49 +175,72 @@ function findLines(
 	const { strength, bearing } = ridges(part, bw, bh);
 
 	const inside = new Uint8Array(bw * bh);
-	const values: number[] = [];
+	const values = new Float32Array(bw * bh);
+	let count = 0;
+	const [h0, h1, h2, h3, h4, h5, h6, h7, h8] = face.inverse;
+	const reach2 = VOTE_REACH * VOTE_REACH;
 	for (let y = 0; y < bh; y++) {
 		for (let x = 0; x < bw; x++) {
-			const p = toFaceCoords(face, x + bx, y + by);
-			if (Math.hypot(p.x, p.y) < VOTE_REACH) {
+			// The face's inverse written out, one pixel at a time being most of what this costs.
+			const X = x + bx;
+			const Y = y + by;
+			const w = h6 * X + h7 * Y + h8;
+			const u = (h0 * X + h1 * Y + h2) / w;
+			const v = (h3 * X + h4 * Y + h5) / w;
+			if (u * u + v * v < reach2) {
 				inside[y * bw + x] = 1;
-				values.push(strength[y * bw + x]);
+				values[count++] = strength[y * bw + x];
 			}
 		}
 	}
-	if (values.length === 0) return [];
-	values.sort((a, b) => a - b);
-	const bar = quantile(values, 1 - VOTERS);
+	if (count === 0) return [];
+	const sorted = values.subarray(0, count).sort();
+	const bar = quantile(sorted, 1 - VOTERS);
 
-	const reach = Math.floor(Math.hypot(height, width)) + 1;
+	// Distances are measured from the face's middle, and only as far as a line through the voting area
+	// can be, so the table is the face's size and not the frame's.
+	const reach = Math.ceil(Math.hypot(bw, bh)) + 1;
 	const rhos = 2 * reach + 1;
 	const votes = new Float32Array(BEARINGS * rhos);
+	const cosines = new Float32Array(BEARINGS);
+	const sines = new Float32Array(BEARINGS);
+	for (let a = 0; a < BEARINGS; a++) {
+		cosines[a] = Math.cos((a * Math.PI) / BEARINGS);
+		sines[a] = Math.sin((a * Math.PI) / BEARINGS);
+	}
 	for (let i = 0; i < bw * bh; i++) {
 		if (!inside[i] || !(strength[i] > bar)) continue;
-		const x = (i % bw) + bx;
-		const y = Math.floor(i / bw) + by;
+		const x = (i % bw) + bx - centre.x;
+		const y = Math.floor(i / bw) + by - centre.y;
 		const own = Math.round((bearing[i] / Math.PI) * BEARINGS);
 		for (let d = -2; d <= 2; d++) {
 			const a = (((own + d) % BEARINGS) + BEARINGS) % BEARINGS;
-			const theta = (a * Math.PI) / BEARINGS;
-			const rho = Math.round(x * -Math.sin(theta) + y * Math.cos(theta)) + reach;
+			const rho = Math.round(x * -sines[a] + y * cosines[a]) + reach;
 			votes[a * rhos + rho] += strength[i];
 		}
 	}
 
+	// A peak is a cell no lower than any within four bearings and three distances, the bearings wrapping
+	// round, found as a maximum along the distances and then along the bearings.
+	const along = new Float32Array(BEARINGS * rhos);
+	for (let a = 0; a < BEARINGS; a++) {
+		const row = a * rhos;
+		for (let r = 0; r < rhos; r++) {
+			let most = -Infinity;
+			for (let q = Math.max(0, r - 3); q <= Math.min(rhos - 1, r + 3); q++) most = Math.max(most, votes[row + q]);
+			along[row + r] = most;
+		}
+	}
 	const peaks: { a: number; r: number; votes: number }[] = [];
 	for (let a = 0; a < BEARINGS; a++) {
 		for (let r = 0; r < rhos; r++) {
 			const n = votes[a * rhos + r];
 			if (!(n > 0)) continue;
 			let top = true;
-			for (let da = -4; da <= 4 && top; da++) {
-				const row = ((a + da + BEARINGS) % BEARINGS) * rhos;
-				for (let dr = -3; dr <= 3; dr++) {
-					if (votes[row + ((r + dr + rhos) % rhos)] > n) {
-						top = false;
-						break;
-					}
+			for (let da = -4; da <= 4; da++) {
+				if (along[((a + da + BEARINGS) % BEARINGS) * rhos + r] > n) {
+					top = false;
+					break;
 				}
 			}
 			if (top) peaks.push({ a, r, votes: n });
@@ -233,8 +256,8 @@ function findLines(
 		const nx = -uy;
 		const ny = ux;
 		const rho = peak.r - reach;
-		const x0 = nx * rho;
-		const y0 = ny * rho;
+		const x0 = centre.x + nx * rho;
+		const y0 = centre.y + ny * rho;
 		const t0 = (centre.x - x0) * ux + (centre.y - y0) * uy;
 		const ts: number[] = [];
 		for (let t = t0 - 2.2 * radius; t < t0 + 2.2 * radius; t += 1) ts.push(t);
@@ -354,17 +377,27 @@ function gaussian(source: Float32Array, width: number, height: number, sigma: nu
 	};
 	const across = new Float32Array(width * height);
 	for (let y = 0; y < height; y++) {
+		const row = y * width;
 		for (let x = 0; x < width; x++) {
 			let v = 0;
-			for (let k = -half; k <= half; k++) v += kernel[k + half] * source[y * width + reflect(x + k, width)];
-			across[y * width + x] = v;
+			if (x >= half && x < width - half) {
+				for (let k = -half; k <= half; k++) v += kernel[k + half] * source[row + x + k];
+			} else {
+				for (let k = -half; k <= half; k++) v += kernel[k + half] * source[row + reflect(x + k, width)];
+			}
+			across[row + x] = v;
 		}
 	}
 	const out = new Float32Array(width * height);
 	for (let y = 0; y < height; y++) {
+		const inner = y >= half && y < height - half;
 		for (let x = 0; x < width; x++) {
 			let v = 0;
-			for (let k = -half; k <= half; k++) v += kernel[k + half] * across[reflect(y + k, height) * width + x];
+			if (inner) {
+				for (let k = -half; k <= half; k++) v += kernel[k + half] * across[(y + k) * width + x];
+			} else {
+				for (let k = -half; k <= half; k++) v += kernel[k + half] * across[reflect(y + k, height) * width + x];
+			}
 			out[y * width + x] = v;
 		}
 	}
@@ -389,7 +422,7 @@ function gradient(source: Float32Array, width: number, height: number, axis: 'x'
 	return out;
 }
 
-function quantile(sorted: number[], q: number): number {
+function quantile(sorted: Float32Array, q: number): number {
 	const at = (sorted.length - 1) * q;
 	const below = Math.floor(at);
 	const above = Math.min(sorted.length - 1, below + 1);

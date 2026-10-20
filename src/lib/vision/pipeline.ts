@@ -3,6 +3,7 @@ import { alignFace, detectFaces, faceFromAnchors, pinFace, toFaceCoords, toImage
 import { refineFace, ringAgreement } from './refine';
 import { verifyRings, type RingCheck } from './rings';
 import { detectArrowsInStill, type StillOptions } from './still';
+import type { ShaftModel } from './shafts';
 import { detectArrowsFromImpacts, type ImpactOptions } from './impacts';
 import { paperContrast } from './contrast';
 import { edgeTurn } from './edges';
@@ -139,6 +140,12 @@ export interface ScannerOptions {
 	 * others, so their cost is spread over a sweep the tracker gathers agreement across anyway.
 	 */
 	shaftsEvery?: number;
+	/**
+	 * More shaft readers, taken in turn with `still.shafts` on the passes that read shafts. Two models
+	 * trained apart make different mistakes, and a mistake only one of them makes is proposed on fewer
+	 * passes for the tracker to agree on, at no extra cost to any one pass.
+	 */
+	shaftsAlso?: ShaftModel[];
 }
 
 /**
@@ -199,6 +206,7 @@ export class Scanner {
 	private readonly edgeUp: number;
 	private readonly alignWhole: boolean;
 	private readonly shaftsEvery: number;
+	private readonly shaftReaders: ShaftModel[];
 	private frames = 0;
 	private faces: FaceLocation[] = [];
 	private check: RingCheck | null = null;
@@ -239,6 +247,7 @@ export class Scanner {
 		this.combine = options.combine ?? false;
 		this.still = options.still ?? {};
 		this.shaftsEvery = Math.max(1, options.shaftsEvery ?? 1);
+		this.shaftReaders = this.still.shafts ? [this.still.shafts, ...(options.shaftsAlso ?? [])] : [];
 		this.proposer = options.proposer ?? 'shape';
 		this.impacts = options.impacts ?? {};
 		this.contrast = options.contrast ?? 'dark';
@@ -556,7 +565,12 @@ export class Scanner {
 					 */
 					const local = region ? faceInRegion(face, this.scale, region) : null;
 					const from = this.readFrom(local ? region!.frame : small, local ?? face, index);
-					const still = this.still.shafts && this.frames % this.shaftsEvery !== 0 ? { ...this.still, shafts: undefined } : this.still;
+					const turn = Math.floor(this.frames / this.shaftsEvery);
+					const still = !this.still.shafts
+						? this.still
+						: this.frames % this.shaftsEvery !== 0
+							? { ...this.still, shafts: undefined }
+							: { ...this.still, shafts: this.shaftReaders[turn % this.shaftReaders.length] };
 					return detectArrowsInStill(from, local ?? face, still).map((arrow) => ({
 						x: arrow.x,
 						y: arrow.y,
