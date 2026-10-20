@@ -814,7 +814,8 @@
 			</div>
 			<span class="tabular shrink-0 text-xs text-muted">{totals.done}/{recordings.length} recordings · {share(totals.work, totals.all)}%</span>
 		</div>
-		<span class="ml-auto shrink-0 text-xs text-muted sm:ml-0">
+		<!-- Fixed width, or the bar beside it shrinks for as long as Saving… shows. -->
+		<span class="ml-auto w-16 shrink-0 text-right text-xs text-muted sm:ml-0">
 			{#if readOnly}Read only{:else if saver.state === 'saving'}Saving…{:else if saver.state === 'failed'}<span class="text-danger">Not saved</span>{:else if saver.state === 'saved'}Saved{/if}
 		</span>
 		<button class="press rounded-lg border border-line px-2.5 py-1 text-sm" onclick={undo}>Undo <kbd>U</kbd></button>
