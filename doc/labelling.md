@@ -47,8 +47,8 @@ Enter moves on to the next thing. Each recording goes through these steps.
   finds the turn that lines up their holes and tears. Against 100 frames aligned by hand it answers on
   87, with a median error of 0.5°. Reaching an unchecked frame turns it; L turns every unchecked frame.
 * **Doubtful frames.** A red `!` on a frame means its fit reads under half the ring colours it should
-  (Face step). In the Arrows step it means fewer than half its arrows sit on a shaft the detector sees,
-  counted only where the detector sees enough shafts to say so. D jumps to the next one.
+  (Face step). Arrows are not judged: the only thing to judge them against is the detector being
+  measured, and it flagged most frames even where the arrows were right. D jumps to the next one.
 * **Faces.** Add a face in the Face step for a three spot. Each face has its own fit, type and arrows,
   and Tab moves between them. The measuring scripts still read only the first face.
 * **Prepare.** Recordings in the corpus that are not prepared yet are listed under the queue, with a

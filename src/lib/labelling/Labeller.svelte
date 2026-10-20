@@ -5,7 +5,7 @@
 	import { WA_10_RING } from '$lib/domain/rounds/seed';
 	import { downscale } from '$lib/vision/pixels';
 	import type { Frame } from '$lib/vision/types';
-	import { DOUBT_SCALE, arrowsSeen, fitAgreement, seenOn } from './doubt';
+	import { DOUBT_SCALE, fitAgreement, seenOn } from './doubt';
 	import { textureTurn, unroll } from './texture';
 	import { FACE_TYPES, arrowsOn, empty, turned, type Point } from './format';
 	import { bestTurn, ringsOf, type Tap } from './fit';
@@ -134,15 +134,16 @@
 		const task = nextTask(r);
 		view.face = task.face;
 		fitDoubts = {};
-		arrowDoubts = {};
 		smalls.clear();
 		void judgeAll(r);
 		go(task.frame, task.step);
 	}
 
-	/** Frames whose fit or arrows look wrong, with why, so they can be looked at first. */
+	/**
+	 * Frames whose rings do not read the colours they should. Arrows are not judged: the detector they would
+	 * be judged against is the thing being measured, and it flagged frames that were right.
+	 */
 	let fitDoubts = $state<Record<number, string>>({});
-	let arrowDoubts = $state<Record<number, string>>({});
 	const smalls = new Map<string, Frame>();
 
 	async function smallOf(r: Recording, i: number): Promise<Frame | null> {
@@ -172,24 +173,11 @@
 		const f = faceOf(r);
 		if (!hasFace(r, i)) {
 			delete fitDoubts[i];
-			delete arrowDoubts[i];
 			return;
 		}
-		const fit = fitHere(r, i);
-		const agree = fitAgreement(small, fit, f.type);
+		const agree = fitAgreement(small, fitHere(r, i), f.type);
 		if (agree !== null && agree < 0.5) fitDoubts[i] = `Rings match only ${Math.round(agree * 100)}% of the colours`;
 		else delete fitDoubts[i];
-		const visible = arrowsOn(labelsOf(r), i, f.id).filter((a) => !a.hidden);
-		if (!arrowsPlaced(r) || f.placedOn === i || visible.length === 0) {
-			delete arrowDoubts[i];
-			return;
-		}
-		const seen = seenOn(small, fit);
-		const on = arrowsSeen(visible, seen);
-		// Only when the detector sees shafts and the arrows miss them; light shafts it cannot see prove nothing.
-		if (seen.length >= visible.length / 2 && on < visible.length / 2) {
-			arrowDoubts[i] = `Only ${on}/${visible.length} arrows on a detected shaft`;
-		} else delete arrowDoubts[i];
 	}
 
 	async function judgeAll(r: Recording) {
@@ -209,7 +197,7 @@
 		judging = setTimeout(() => void judge(r, i), 300);
 	}
 
-	const doubts = $derived(step === 'face' ? fitDoubts : step === 'arrows' ? arrowDoubts : {});
+	const doubts = $derived(step === 'face' ? fitDoubts : {});
 
 	function nextDoubt() {
 		if (!rec) return;
@@ -225,7 +213,6 @@
 		if (!rec) return;
 		view.face = id;
 		fitDoubts = {};
-		arrowDoubts = {};
 		void judgeAll(rec);
 		go(step === 'arrows' ? (faceOf(rec).placedOn ?? bestFrame(rec)) : frame);
 	}

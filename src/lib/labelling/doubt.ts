@@ -48,8 +48,3 @@ export function seenOn(small: Frame, fit: Point[]): { x: number; y: number }[] {
 		.map((a) => toFace(fit, a.imageX * DOUBT_SCALE, a.imageY * DOUBT_SCALE))
 		.filter((q): q is { x: number; y: number } => q !== null && Math.hypot(q.x, q.y) < 1.1);
 }
-
-/** How many of these arrows sit on something the detector sees. */
-export function arrowsSeen(arrows: { x: number; y: number }[], seen: { x: number; y: number }[]): number {
-	return arrows.filter((a) => seen.some((s) => Math.hypot(a.x - s.x, a.y - s.y) < 0.05)).length;
-}
