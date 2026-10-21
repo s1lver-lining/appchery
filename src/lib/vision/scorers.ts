@@ -22,7 +22,19 @@ export const SCORERS: readonly Scorer[] = [
 	{ id: 'aphaia-1.0', name: 'Aphaia 1.0', settings: {} },
 	{ id: 'aphaia-ml-1.0', name: 'Aphaia ML 1.0', weights: 'aphaia-ml-1.0.json', settings: {} },
 	{ id: 'aphaia-1.1', name: 'Aphaia 1.1', settings: { paperLock: true } },
-	{ id: 'aphaia-1.2alpha', name: 'Aphaia 1.2alpha', settings: { paperLock: true, holdBlink: true, alignWhole: true, sweep: { minShare: 0.2 } }, preview: true }
+	{
+		id: 'aphaia-1.2',
+		name: 'Aphaia 1.2',
+		shafts: 'aphaia-1.2-shafts.json',
+		settings: {
+			paperLock: true,
+			holdBlink: true,
+			alignWhole: true,
+			sweep: { minShare: 0.25 },
+			still: { shaftsAndRuns: true },
+			shaftsEvery: 4
+		}
+	}
 ];
 
 /** A choice that follows whichever shipped version was added last, so it moves on as new ones ship. */
@@ -31,7 +43,7 @@ export const LATEST_SCORER: Scorer = SCORERS.filter((s) => !s.preview).at(-1)!;
 export const DEFAULT_SCORER = LATEST;
 
 // The names the setting held before scorers had versions. Classical was the default, so it follows the latest.
-const RENAMED: Record<string, string> = { classical: LATEST, learned: 'aphaia-ml-1.0' };
+const RENAMED: Record<string, string> = { classical: LATEST, learned: 'aphaia-ml-1.0', 'aphaia-1.2alpha': 'aphaia-1.2' };
 
 /** The choice as stored, read back as `latest` or a version that exists. */
 export function choiceOf(id: string | null | undefined): string {

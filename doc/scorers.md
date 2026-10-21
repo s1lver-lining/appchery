@@ -8,10 +8,64 @@ take `--scorer <id>`.
 | --- | --- | --- |
 | Aphaia 1.0 | classical | The written detector as of October 2026, with gravity for which way is up. |
 | Aphaia ML 1.0 | learned | The same scanner with arrows proposed by `scorers/aphaia-ml-1.0.json`. |
-| Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). What "Latest model", the default, runs today. |
-| Aphaia 1.2alpha | classical, preview | 1.1 with marks proposed on fewer than a fifth of the passes left out (`sweep.minShare`), a face kept through one pass it was missed on (`holdBlink`), and a fit from the search turned onto the followed one from any angle (`alignWhole`). |
+| Aphaia 1.1 | classical | 1.0 with the face held to its paper (`paperLock`). |
+| Aphaia 1.2 | classical and learned | 1.1 with marks proposed on fewer than a quarter of the passes left out (`sweep.minShare`), a face kept through one pass it was missed on (`holdBlink`), a fit from the search turned onto the followed one from any angle (`alignWhole`), and on one pass in four the shafts read as lines by `shafts.ts`, with a learned tip, alongside the dark runs. What "Latest model", the default, runs today. It was tried as 1.2alpha, which a stored choice follows to it. |
+
+## Aphaia 1.2: shafts read either way, with a learned tip
+
+The written proposer looks for pixels darker than the paper. Against the nocks placed by hand on 456
+shafts, it found 81% of them as a run, kept 42%, and read the tip within 0.05 radii on 23%. A light grey
+shaft is lighter than the black and blue rings it crosses and as light as worn paper, so it comes back
+in pieces and fails the ridge test: that is October, where 1.2alpha found 16 of 66 arrows.
+
+`shafts.ts` reads a shaft as a line that stands out from both its sides, darker or lighter. Ridges come
+from the Hessian, vote along their own bearing, and are walked; a frame's thirty best lines hold 85 to
+90% of the labelled shafts. A network of about two thousand weights then reads a straightened strip of
+pixels along each line and says whether it is a shaft and where along it the arrow enters the paper.
+It is trained on the nock lines, and on lines where a dark run and the line finder agree through a
+labelled tip, which are right 86% of the time and are what teach it the sessions with no nocks.
+
+Its marks are added to the dark runs' wherever none of them lies on the same shaft, on one pass in
+four, and a mark has to be proposed on a quarter of the passes. Measured with `--slower 0`, each
+recording day by a model trained without it (the sum is what a new day can expect), and over three
+training seeds:
+
+| | found | spurious |
+| --- | --- | --- |
+| 1.2alpha | 227/374 | 55 |
+| 1.2, held out, three seeds | 228, 236, 231 | 26, 31, 27 |
+| 1.2 as shipped, every day in its training | 244/374 | 29 |
+
+By month as shipped: August 99 to 101 of 161 found and 20 to 8 spurious, September 112 to 113 of 147 and
+15 to 11, October 16 to 30 of 66 and 20 to 10.
+
+What did not work, or was not worth it:
+
+- The shafts alone, without the dark runs: 192 found and 100 spurious. With only August's nocks, the
+  network had not seen the dark shafts of August and September.
+- Both proposers on every pass: 257 found but 116 spurious. A shaft only one proposer reads is kept
+  only if proposed on enough passes, and reading shafts on one pass in two, three or four is what keeps
+  the extra marks out; one in four did as well as one in two.
+- Matching the two proposers' marks by distance only: one shaft read at two places along it became two
+  marks. Matching by the shaft's line took 22 of 91 spurious marks out.
+- A higher confidence for a shaft no dark run agrees with (`shaftsSure`), the network judging the dark
+  runs too (`shaftsJudge`), holding the shafts to leaning together (`shaftsStand`), and two networks
+  taking turns (`shaftsAlso`): none measured better than the noise between training seeds, about ten
+  arrows.
+- A strip half as long (1.5 radii): better per strip, worse end to end over two seeds.
+- `minShare` 0.2 finds more, 242 on average held out, with 52 spurious; 0.3 drops to 215 found.
+
+The cost is the limit. A pass costs 47 ms on average for 1.2alpha on this machine and about 60 for 1.2,
+a shaft pass about 100. Run three times slower, as a phone might, 1.2alpha takes 4,522 passes over the
+recordings and the width 16 network of the trials took 2,390; the width 8 one that shipped took 2,974,
+found 228 against 236 and had 36 spurious against 51. Measure on a phone before trusting either number.
+
+Training: `scripts/train-shafts/run.sh`, on the GPU when there is one (forty seconds a model). The day
+held out models it writes are what `eval-arrows-video.mjs --shafts` measures a day with.
 
 ## Aphaia 1.2alpha: marks have to keep being seen
+
+The preview that became 1.2, kept for its numbers.
 
 A preview: chosen by hand only, and free to change until it is renamed 1.2. Across the labelled sweeps a
 real arrow is proposed on a median of 47% of the passes and a false mark on 17%, so a mark is shown and
