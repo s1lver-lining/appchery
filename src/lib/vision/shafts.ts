@@ -194,8 +194,7 @@ function findLines(
 		}
 	}
 	if (count === 0) return [];
-	const sorted = values.subarray(0, count).sort();
-	const bar = quantile(sorted, 1 - VOTERS);
+	const bar = quantile(values.subarray(0, count), 1 - VOTERS);
 
 	// Distances are measured from the face's middle, and only as far as a line through the voting area
 	// can be, so the table is the face's size and not the frame's.
@@ -422,11 +421,42 @@ function gradient(source: Float32Array, width: number, height: number, axis: 'x'
 	return out;
 }
 
-function quantile(sorted: Float32Array, q: number): number {
-	const at = (sorted.length - 1) * q;
+/** The q-th quantile, interpolated as numpy's is, found by selection rather than a whole sort. Reorders `values`. */
+function quantile(values: Float32Array, q: number): number {
+	const at = (values.length - 1) * q;
 	const below = Math.floor(at);
-	const above = Math.min(sorted.length - 1, below + 1);
-	return sorted[below] + (sorted[above] - sorted[below]) * (at - below);
+	const low = select(values, below);
+	if (below + 1 >= values.length) return low;
+	// Everything past `below` is now no smaller than it, so the next value up is the least of those.
+	let high = Infinity;
+	for (let i = below + 1; i < values.length; i++) if (values[i] < high) high = values[i];
+	return low + (high - low) * (at - below);
+}
+
+/** The k-th smallest value, moving it to index k with the smaller ones before it (Hoare's selection). */
+function select(values: Float32Array, k: number): number {
+	let left = 0;
+	let right = values.length - 1;
+	while (left < right) {
+		const pivot = values[(left + right) >> 1];
+		let i = left;
+		let j = right;
+		while (i <= j) {
+			while (values[i] < pivot) i++;
+			while (values[j] > pivot) j--;
+			if (i <= j) {
+				const t = values[i];
+				values[i] = values[j];
+				values[j] = t;
+				i++;
+				j--;
+			}
+		}
+		if (k <= j) right = j;
+		else if (k >= i) left = i;
+		else break;
+	}
+	return values[k];
 }
 
 /** Bilinear, holding to the edge outside the picture, as scipy's map_coordinates in its nearest mode. */
